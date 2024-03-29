@@ -92,7 +92,10 @@ SRCS=	\
 	sha256.c \
 	md5.c \
 	hmac.c \
-	altsvc.c
+	altsvc.c \
+	curl_sha512_256.c \
+	cw-out.c \
+	request.c
 
 
 LOCAL_CFLAGS=	-DHAVE_CONFIG_H \

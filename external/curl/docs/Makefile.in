@@ -204,7 +204,8 @@ am__uninstall_files_from_dir = { \
   }
 man1dir = $(mandir)/man1
 am__installdirs = "$(DESTDIR)$(man1dir)"
-MANS = $(dist_man_MANS) $(man_MANS)
+NROFF = nroff
+MANS = $(man_MANS)
 RECURSIVE_CLEAN_TARGETS = mostlyclean-recursive clean-recursive	\
   distclean-recursive maintainer-clean-recursive
 am__recursive_targets = \
@@ -230,8 +231,7 @@ am__define_uniq_tagged_files = \
   unique=`for i in $$list; do \
     if test -f "$$i"; then echo $$i; else echo $(srcdir)/$$i; fi; \
   done | $(am__uniquify_input)`
-am__DIST_COMMON = $(dist_man_MANS) $(srcdir)/Makefile.in INSTALL \
-	README.md THANKS TODO
+am__DIST_COMMON = $(srcdir)/Makefile.in INSTALL README.md THANKS TODO
 DISTFILES = $(DIST_COMMON) $(DIST_SOURCES) $(TEXINFOS) $(EXTRA_DIST)
 am__relativize = \
   dir0=`pwd`; \
@@ -358,11 +358,9 @@ LT_SYS_LIBRARY_PATH = @LT_SYS_LIBRARY_PATH@
 MAINT = @MAINT@
 MAKEINFO = @MAKEINFO@
 MANIFEST_TOOL = @MANIFEST_TOOL@
-MANOPT = @MANOPT@
 MKDIR_P = @MKDIR_P@
 NM = @NM@
 NMEDIT = @NMEDIT@
-NROFF = @NROFF@
 OBJDUMP = @OBJDUMP@
 OBJEXT = @OBJEXT@
 OTOOL = @OTOOL@
@@ -398,6 +396,7 @@ USE_ARES = @USE_ARES@
 USE_BEARSSL = @USE_BEARSSL@
 USE_GNUTLS = @USE_GNUTLS@
 USE_HYPER = @USE_HYPER@
+USE_LIBPSL = @USE_LIBPSL@
 USE_LIBRTMP = @USE_LIBRTMP@
 USE_LIBSSH = @USE_LIBSSH@
 USE_LIBSSH2 = @USE_LIBSSH2@
@@ -485,21 +484,17 @@ top_builddir = @top_builddir@
 top_srcdir = @top_srcdir@
 AUTOMAKE_OPTIONS = foreign no-dependencies
 
-# EXTRA_DIST breaks with $(abs_builddir) so build it using this variable
-# but distribute it (using the relative file name) in the next variable
-man_MANS = $(abs_builddir)/curl.1 mk-ca-bundle.1
-noinst_man_MANS = curl.1 mk-ca-bundle.1
-dist_man_MANS = curl-config.1
+# if we disable man page building, ignore these
+@BUILD_DOCS_TRUE@MK_CA_DOCS = mk-ca-bundle.1
+@BUILD_DOCS_TRUE@CURLCONF_DOCS = curl-config.1
+man_MANS = curl-config.1
 CURLPAGES = curl-config.md mk-ca-bundle.md
-
-# Build targets in this file (.) before cmdline-opts to ensure that
-# the curl.1 rule below runs first
 SUBDIRS = . cmdline-opts libcurl
 DIST_SUBDIRS = $(SUBDIRS) examples
-CLEANFILES = $(man_MANS) curl.1 curl-config.1 mk-ca-bundle.1
-nodist_MANS = $(CLEANFILES)
+@BUILD_DOCS_TRUE@CLEANFILES = mk-ca-bundle.1 curl-config.1
 EXTRA_DIST = \
  $(CURLPAGES)                                   \
+ $(CURLCONF_DOCS)                               \
  ALTSVC.md                                      \
  BINDINGS.md                                    \
  BUFREF.md                                      \
@@ -511,12 +506,14 @@ EXTRA_DIST = \
  CODE_OF_CONDUCT.md                             \
  CODE_REVIEW.md                                 \
  CODE_STYLE.md                                  \
+ CLIENT-READERS.md                              \
  CLIENT-WRITERS.md                              \
  CONNECTION-FILTERS.md                          \
  CONTRIBUTE.md                                  \
  CURL-DISABLE.md                                \
  CURLDOWN.md                                    \
  DEPRECATE.md                                   \
+ DISTROS.md                                     \
  DYNBUF.md                                      \
  EARLY-RELEASE.md                               \
  EXPERIMENTAL.md                                \
@@ -545,6 +542,7 @@ EXTRA_DIST = \
  RUSTLS.md                                      \
  ROADMAP.md                                     \
  SECURITY-ADVISORY.md                           \
+ SPONSORS.md                                    \
  SSL-PROBLEMS.md                                \
  SSLCERTS.md                                    \
  THANKS                                         \
@@ -600,10 +598,10 @@ mostlyclean-libtool:
 
 clean-libtool:
 	-rm -rf .libs _libs
-install-man1: $(dist_man_MANS) $(man_MANS)
+install-man1: $(man_MANS)
 	@$(NORMAL_INSTALL)
 	@list1=''; \
-	list2='$(dist_man_MANS) $(man_MANS)'; \
+	list2='$(man_MANS)'; \
 	test -n "$(man1dir)" \
 	  && test -n "`echo $$list1$$list2`" \
 	  || exit 0; \
@@ -638,7 +636,7 @@ uninstall-man1:
 	@$(NORMAL_UNINSTALL)
 	@list=''; test -n "$(man1dir)" || exit 0; \
 	files=`{ for i in $$list; do echo "$$i"; done; \
-	l2='$(dist_man_MANS) $(man_MANS)'; for i in $$l2; do echo "$$i"; done | \
+	l2='$(man_MANS)'; for i in $$l2; do echo "$$i"; done | \
 	  sed -n '/\.1[a-z]*$$/p'; \
 	} | sed -e 's,.*/,,;h;s,.*\.,,;s,^[^1][0-9a-z]*$$,1,;x' \
 	      -e 's,\.[0-9a-z]*$$,,;$(transform);G;s,\n,.,'`; \
@@ -924,24 +922,14 @@ uninstall-man: uninstall-man1
 .PRECIOUS: Makefile
 
 
-# $(abs_builddir) is to disable VPATH when searching for this file, which
-# would otherwise find the copy in $(srcdir) which breaks the $(HUGE)
-# rule in src/Makefile.am in out-of-tree builds that references the file in the
-# build directory.
-#
-# First, seed the used copy of curl.1 with the prebuilt copy (in an out-of-tree
-# build), then run make recursively to rebuild it only if its dependencies
-# have changed.
-$(abs_builddir)/curl.1:
-	if test "$(top_builddir)x" != "$(top_srcdir)x" -a -e "$(srcdir)/curl.1"; then \
-		$(INSTALL_DATA) "$(srcdir)/curl.1" $@ \
-		&& touch -r "$(srcdir)/curl.1" $@; fi
-	cd cmdline-opts && $(MAKE)
+all: $(MK_CA_DOCS)
 
 .md.1:
 	$(CD2)$(CD2NROFF)
 
 curl-config.1: curl-config.md
+
+mk-ca-bundle.1: mk-ca-bundle.md
 
 distclean:
 	rm -f $(CLEANFILES)

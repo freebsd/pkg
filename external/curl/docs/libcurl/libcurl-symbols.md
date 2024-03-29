@@ -4,6 +4,8 @@ SPDX-License-Identifier: curl
 Title: libcurl-symbols
 Section: 3
 Source: libcurl
+Protocol:
+  - All
 See-also:
   - libcurl (3)
   - libcurl-easy (3)
@@ -1507,6 +1509,9 @@ Introduced in 7.61.0.
 
 ## CURLINFO_TYPEMASK
 Introduced in 7.4.1.
+
+## CURLINFO_USED_PROXY
+Introduced in 8.7.0.
 
 ## CURLINFO_XFER_ID
 Introduced in 8.2.0.

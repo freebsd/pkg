@@ -447,7 +447,7 @@ am__define_uniq_tagged_files = \
   unique=`for i in $$list; do \
     if test -f "$$i"; then echo $$i; else echo $(srcdir)/$$i; fi; \
   done | $(am__uniquify_input)`
-DIST_SUBDIRS = $(SUBDIRS)
+DIST_SUBDIRS = ../docs
 am__DIST_COMMON = $(srcdir)/Makefile.in $(srcdir)/Makefile.inc \
 	$(top_srcdir)/depcomp
 DISTFILES = $(DIST_COMMON) $(DIST_SOURCES) $(TEXINFOS) $(EXTRA_DIST)
@@ -580,13 +580,9 @@ LT_SYS_LIBRARY_PATH = @LT_SYS_LIBRARY_PATH@
 MAINT = @MAINT@
 MAKEINFO = @MAKEINFO@
 MANIFEST_TOOL = @MANIFEST_TOOL@
-MANOPT = @MANOPT@
 MKDIR_P = @MKDIR_P@
 NM = @NM@
 NMEDIT = @NMEDIT@
-# Use the C locale to ensure that only ASCII characters appear in the
-# embedded text.
-NROFF = env LC_ALL=C @NROFF@ @MANOPT@ 2>/dev/null # figured out by the configure script
 OBJDUMP = @OBJDUMP@
 OBJEXT = @OBJEXT@
 OTOOL = @OTOOL@
@@ -622,6 +618,7 @@ USE_ARES = @USE_ARES@
 USE_BEARSSL = @USE_BEARSSL@
 USE_GNUTLS = @USE_GNUTLS@
 USE_HYPER = @USE_HYPER@
+USE_LIBPSL = @USE_LIBPSL@
 USE_LIBRTMP = @USE_LIBRTMP@
 USE_LIBSSH = @USE_LIBSSH@
 USE_LIBSSH2 = @USE_LIBSSH2@
@@ -746,7 +743,7 @@ AUTOMAKE_OPTIONS = foreign nostdinc
 AM_CPPFLAGS = -I$(top_srcdir)/include -I$(top_builddir)/lib \
 	-I$(top_builddir)/src -I$(top_srcdir)/lib -I$(top_srcdir)/src \
 	$(am__append_1) -DBUILDING_CURL
-SUBDIRS = ../docs
+@BUILD_DOCS_TRUE@SUBDIRS = ../docs
 
 # libcurl sources to include in curltool lib we use for test binaries
 CURLTOOL_LIBCURL_CFILES = \
@@ -887,12 +884,15 @@ curl_LDFLAGS = $(AM_LDFLAGS) $(CURL_LDFLAGS_BIN)
 @BUILD_UNITTESTS_TRUE@libcurltool_la_LDFLAGS = -static $(LINKFLAGS)
 @BUILD_UNITTESTS_TRUE@libcurltool_la_SOURCES = $(CURL_FILES)
 CLEANFILES = tool_hugehelp.c
+# Use the C locale to ensure that only ASCII characters appear in the
+# embedded text.
+NROFF = env LC_ALL=C @NROFF@ @MANOPT@ 2>/dev/null # figured out by the configure script
 EXTRA_DIST = mkhelp.pl \
  Makefile.mk curl.rc Makefile.inc CMakeLists.txt .checksrc
 
 
 # Use absolute directory to disable VPATH
-MANPAGE = $(abs_top_builddir)/docs/curl.1
+ASCIIPAGE = $(abs_top_builddir)/docs/cmdline-opts/curl.txt
 MKHELP = $(top_srcdir)/src/mkhelp.pl
 HUGE = tool_hugehelp.c
 HUGECMD = $(HUGEIT_$(V))
@@ -2037,22 +2037,22 @@ uninstall-am: uninstall-binPROGRAMS
 
 # Here are the stuff to create a built-in manual
 
-@USE_MANUAL_TRUE@$(MANPAGE):
+@USE_MANUAL_TRUE@$(ASCIIPAGE):
 @USE_MANUAL_TRUE@	cd $(top_builddir)/docs && $(MAKE)
 
 # This generates the tool_hugehelp.c file in both uncompressed and
 # compressed formats.
-@HAVE_LIBZ_TRUE@@USE_MANUAL_TRUE@$(HUGE): $(MANPAGE) $(MKHELP)
+@HAVE_LIBZ_TRUE@@USE_MANUAL_TRUE@$(HUGE): $(ASCIIPAGE) $(MKHELP)
 @HAVE_LIBZ_TRUE@@USE_MANUAL_TRUE@	$(HUGECMD) (echo '#include "tool_setup.h"' > $(HUGE);   \
 @HAVE_LIBZ_TRUE@@USE_MANUAL_TRUE@	echo '#ifndef HAVE_LIBZ' >> $(HUGE);                    \
-@HAVE_LIBZ_TRUE@@USE_MANUAL_TRUE@	$(NROFF) $(MANPAGE) | $(PERL) $(MKHELP) >> $(HUGE);     \
+@HAVE_LIBZ_TRUE@@USE_MANUAL_TRUE@	$(PERL) $(MKHELP) < $(ASCIIPAGE) >> $(HUGE);     \
 @HAVE_LIBZ_TRUE@@USE_MANUAL_TRUE@	echo '#else' >> $(HUGE);                                \
-@HAVE_LIBZ_TRUE@@USE_MANUAL_TRUE@	$(NROFF) $(MANPAGE) | $(PERL) $(MKHELP) -c >> $(HUGE);  \
+@HAVE_LIBZ_TRUE@@USE_MANUAL_TRUE@	$(PERL) $(MKHELP) -c < $(ASCIIPAGE) >> $(HUGE);  \
 @HAVE_LIBZ_TRUE@@USE_MANUAL_TRUE@	echo '#endif /* HAVE_LIBZ */' >> $(HUGE) )
 # This generates the tool_hugehelp.c file uncompressed only
-@HAVE_LIBZ_FALSE@@USE_MANUAL_TRUE@$(HUGE): $(MANPAGE) $(MKHELP)
+@HAVE_LIBZ_FALSE@@USE_MANUAL_TRUE@$(HUGE): $(ASCIIPAGE) $(MKHELP)
 @HAVE_LIBZ_FALSE@@USE_MANUAL_TRUE@	$(HUGECMD)(echo '#include "tool_setup.h"' > $(HUGE);    \
-@HAVE_LIBZ_FALSE@@USE_MANUAL_TRUE@	$(NROFF) $(MANPAGE) | $(PERL) $(MKHELP) >> $(HUGE) )
+@HAVE_LIBZ_FALSE@@USE_MANUAL_TRUE@	$(PERL) $(MKHELP) < $(ASCIIPAGE) >> $(HUGE) )
 
 # built-in manual has been disabled, make a blank file
 @USE_MANUAL_FALSE@$(HUGE):

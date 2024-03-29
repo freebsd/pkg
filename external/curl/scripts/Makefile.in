@@ -268,11 +268,9 @@ LT_SYS_LIBRARY_PATH = @LT_SYS_LIBRARY_PATH@
 MAINT = @MAINT@
 MAKEINFO = @MAKEINFO@
 MANIFEST_TOOL = @MANIFEST_TOOL@
-MANOPT = @MANOPT@
 MKDIR_P = @MKDIR_P@
 NM = @NM@
 NMEDIT = @NMEDIT@
-NROFF = @NROFF@
 OBJDUMP = @OBJDUMP@
 OBJEXT = @OBJEXT@
 OTOOL = @OTOOL@
@@ -308,6 +306,7 @@ USE_ARES = @USE_ARES@
 USE_BEARSSL = @USE_BEARSSL@
 USE_GNUTLS = @USE_GNUTLS@
 USE_HYPER = @USE_HYPER@
+USE_LIBPSL = @USE_LIBPSL@
 USE_LIBRTMP = @USE_LIBRTMP@
 USE_LIBSSH = @USE_LIBSSH@
 USE_LIBSSH2 = @USE_LIBSSH2@
@@ -394,10 +393,10 @@ top_build_prefix = @top_build_prefix@
 top_builddir = @top_builddir@
 top_srcdir = @top_srcdir@
 EXTRA_DIST = coverage.sh completion.pl firefox-db2pem.sh checksrc.pl    \
- mk-ca-bundle.pl schemetable.c cd2nroff nroff2cd cdall cd2cd
+ mk-ca-bundle.pl schemetable.c cd2nroff nroff2cd cdall cd2cd managen
 
-ZSH_COMPLETION_FUNCTION_FILENAME = _curl
-FISH_COMPLETION_FUNCTION_FILENAME = curl.fish
+@USE_ZSH_COMPLETION_TRUE@ZSH_COMPLETION_FUNCTION_FILENAME = _curl
+@USE_FISH_COMPLETION_TRUE@FISH_COMPLETION_FUNCTION_FILENAME = curl.fish
 CLEANFILES = $(ZSH_COMPLETION_FUNCTION_FILENAME) $(FISH_COMPLETION_FUNCTION_FILENAME)
 all: all-am
 
@@ -515,8 +514,6 @@ clean: clean-am
 
 clean-am: clean-generic clean-libtool mostlyclean-am
 
-distclean: distclean-am
-	-rm -f Makefile
 distclean-am: clean-am distclean-generic
 
 dvi: dvi-am
@@ -597,22 +594,29 @@ uninstall-am:
 
 all-local: $(ZSH_COMPLETION_FUNCTION_FILENAME) $(FISH_COMPLETION_FUNCTION_FILENAME)
 
-$(ZSH_COMPLETION_FUNCTION_FILENAME): completion.pl
-@CROSSCOMPILING_TRUE@	@echo "NOTICE: we can't generate zsh completion when cross-compiling!"
-@CROSSCOMPILING_FALSE@	@if ! test -x "$(PERL)"; then echo "No perl: can't install completion.pl"; exit 0; fi
-@CROSSCOMPILING_FALSE@	$(PERL) $(srcdir)/completion.pl --curl $(top_builddir)/src/curl$(EXEEXT) --shell zsh > $@
+@USE_ZSH_COMPLETION_TRUE@$(ZSH_COMPLETION_FUNCTION_FILENAME): completion.pl
+@CROSSCOMPILING_TRUE@@USE_ZSH_COMPLETION_TRUE@	@echo "NOTICE: we can't generate zsh completion when cross-compiling!"
+@CROSSCOMPILING_FALSE@@USE_ZSH_COMPLETION_TRUE@	if test -z "$(PERL)"; then echo "No perl: can't install completion script"; else \
+@CROSSCOMPILING_FALSE@@USE_ZSH_COMPLETION_TRUE@	$(PERL) $(srcdir)/completion.pl --curl $(top_builddir)/src/curl$(EXEEXT) --shell zsh > $@ ; fi
 
-$(FISH_COMPLETION_FUNCTION_FILENAME): completion.pl
-@CROSSCOMPILING_TRUE@	@echo "NOTICE: we can't generate fish completion when cross-compiling!"
-@CROSSCOMPILING_FALSE@	@if ! test -x "$(PERL)"; then echo "No perl: can't install completion.pl"; exit 0; fi
-@CROSSCOMPILING_FALSE@	$(PERL) $(srcdir)/completion.pl --curl $(top_builddir)/src/curl$(EXEEXT) --shell fish > $@
+@USE_FISH_COMPLETION_TRUE@$(FISH_COMPLETION_FUNCTION_FILENAME): completion.pl
+@CROSSCOMPILING_TRUE@@USE_FISH_COMPLETION_TRUE@	@echo "NOTICE: we can't generate fish completion when cross-compiling!"
+@CROSSCOMPILING_FALSE@@USE_FISH_COMPLETION_TRUE@	if test -z "$(PERL)"; then echo "No perl: can't install completion script"; else \
+@CROSSCOMPILING_FALSE@@USE_FISH_COMPLETION_TRUE@	$(PERL) $(srcdir)/completion.pl --curl $(top_builddir)/src/curl$(EXEEXT) --shell fish > $@ ; fi
 
 install-data-local:
-@CROSSCOMPILING_TRUE@	@echo "NOTICE: we can't install zsh completion when cross-compiling!"
-@CROSSCOMPILING_FALSE@	$(MKDIR_P) $(DESTDIR)$(ZSH_FUNCTIONS_DIR)
-@CROSSCOMPILING_FALSE@	$(MKDIR_P) $(DESTDIR)$(FISH_FUNCTIONS_DIR)
-@CROSSCOMPILING_FALSE@	$(INSTALL_DATA) $(ZSH_COMPLETION_FUNCTION_FILENAME) $(DESTDIR)$(ZSH_FUNCTIONS_DIR)/$(ZSH_COMPLETION_FUNCTION_FILENAME)
-@CROSSCOMPILING_FALSE@	$(INSTALL_DATA) $(FISH_COMPLETION_FUNCTION_FILENAME) $(DESTDIR)$(FISH_FUNCTIONS_DIR)/$(FISH_COMPLETION_FUNCTION_FILENAME)
+@CROSSCOMPILING_TRUE@	@echo "NOTICE: we can't install completion scripts when cross-compiling!"
+@CROSSCOMPILING_FALSE@@USE_ZSH_COMPLETION_TRUE@	if test -n "$(PERL)"; then \
+@CROSSCOMPILING_FALSE@@USE_ZSH_COMPLETION_TRUE@	  $(MKDIR_P) $(DESTDIR)$(ZSH_FUNCTIONS_DIR); \
+@CROSSCOMPILING_FALSE@@USE_ZSH_COMPLETION_TRUE@	  $(INSTALL_DATA) $(ZSH_COMPLETION_FUNCTION_FILENAME) $(DESTDIR)$(ZSH_FUNCTIONS_DIR)/$(ZSH_COMPLETION_FUNCTION_FILENAME) ; \
+@CROSSCOMPILING_FALSE@@USE_ZSH_COMPLETION_TRUE@  fi
+@CROSSCOMPILING_FALSE@@USE_FISH_COMPLETION_TRUE@	if test -n "$(PERL)"; then \
+@CROSSCOMPILING_FALSE@@USE_FISH_COMPLETION_TRUE@	  $(MKDIR_P) $(DESTDIR)$(FISH_FUNCTIONS_DIR); \
+@CROSSCOMPILING_FALSE@@USE_FISH_COMPLETION_TRUE@	  $(INSTALL_DATA) $(FISH_COMPLETION_FUNCTION_FILENAME) $(DESTDIR)$(FISH_FUNCTIONS_DIR)/$(FISH_COMPLETION_FUNCTION_FILENAME) ; \
+@CROSSCOMPILING_FALSE@@USE_FISH_COMPLETION_TRUE@  fi
+
+distclean:
+	rm -f $(CLEANFILES)
 
 # Tell versions [3.59,3.63) of GNU make to not export all variables.
 # Otherwise a system limit (for SysV at least) may be exceeded.

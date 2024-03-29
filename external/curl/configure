@@ -923,10 +923,14 @@ BUILD_LIBHOSTNAME_TRUE
 USE_ARES
 USE_MANUAL_FALSE
 USE_MANUAL_TRUE
-MANOPT
-NROFF
+BUILD_DOCS_FALSE
+BUILD_DOCS_TRUE
 PERL
+USE_FISH_COMPLETION_FALSE
+USE_FISH_COMPLETION_TRUE
 FISH_FUNCTIONS_DIR
+USE_ZSH_COMPLETION_FALSE
+USE_ZSH_COMPLETION_TRUE
 ZSH_FUNCTIONS_DIR
 USE_MSH3
 USE_QUICHE
@@ -953,6 +957,7 @@ USE_GSASL_FALSE
 USE_GSASL_TRUE
 USE_LIBPSL_FALSE
 USE_LIBPSL_TRUE
+USE_LIBPSL
 CURL_CA_BUNDLE
 CURL_WITH_MULTI_SSL
 SSL_ENABLED
@@ -1219,6 +1224,7 @@ enable_smb
 enable_smtp
 enable_gopher
 enable_mqtt
+enable_docs
 enable_manual
 enable_libcurl_option
 enable_libgcc
@@ -1988,6 +1994,8 @@ Optional Features:
   --disable-gopher        Disable Gopher support
   --enable-mqtt           Enable MQTT support
   --disable-mqtt          Disable MQTT support
+  --enable-docs           Enable documentation
+  --disable-docs          Disable documentation
   --enable-manual         Enable built-in manual
   --disable-manual        Disable built-in manual
   --enable-libcurl-option Enable --libcurl C code generation support
@@ -2146,7 +2154,10 @@ Optional Packages:
   --without-ca-path       Don't use a default CA path
   --with-ca-fallback      Use the built in CA store of the SSL library
   --without-ca-fallback   Don't use the built in CA store of the SSL library
-  --without-libpsl        disable support for libpsl
+  --with-libpsl=PATH      Where to look for libpsl, PATH points to the LIBPSL
+                          installation; when possible, set the PKG_CONFIG_PATH
+                          environment variable instead of using this option
+  --without-libpsl        disable LIBPSL
   --without-libgsasl      disable libgsasl support for SCRAM
   --with-libssh2=PATH     Where to look for libssh2, PATH points to the
                           libssh2 installation; when possible, set the
@@ -6670,6 +6681,7 @@ curl_tls_srp_msg="no      (--enable-tls-srp)"
    curl_ipv6_msg="no      (--enable-ipv6)"
 curl_unix_sockets_msg="no      (--enable-unix-sockets)"
     curl_idn_msg="no      (--with-{libidn2,winidn})"
+   curl_docs_msg="enabled (--disable-docs)"
  curl_manual_msg="no      (--enable-manual)"
 curl_libcurl_msg="enabled (--disable-libcurl-option)"
 curl_verbose_msg="enabled (--disable-verbose)"
@@ -22608,6 +22620,32 @@ fi
 
 
 
+{ printf "%s\n" "$as_me:${as_lineno-$LINENO}: checking whether to build documentation" >&5
+printf %s "checking whether to build documentation... " >&6; }
+# Check whether --enable-docs was given.
+if test ${enable_docs+y}
+then :
+  enableval=$enable_docs;  case "$enableval" in
+  no)
+       { printf "%s\n" "$as_me:${as_lineno-$LINENO}: result: no" >&5
+printf "%s\n" "no" >&6; }
+       BUILD_DOCS=0
+       curl_docs_msg="no"
+       ;;
+  *)   { printf "%s\n" "$as_me:${as_lineno-$LINENO}: result: yes" >&5
+printf "%s\n" "yes" >&6; }
+       BUILD_DOCS=1
+       ;;
+  esac
+else $as_nop
+  { printf "%s\n" "$as_me:${as_lineno-$LINENO}: result: yes" >&5
+printf "%s\n" "yes" >&6; }
+       BUILD_DOCS=1
+
+fi
+
+
+
 { printf "%s\n" "$as_me:${as_lineno-$LINENO}: checking whether to provide built-in manual" >&5
 printf %s "checking whether to provide built-in manual... " >&6; }
 # Check whether --enable-manual was given.
@@ -28396,89 +28434,59 @@ fi
 
 
 if test "x$OPT_RUSTLS" != xno; then
-  _cppflags=$CPPFLAGS
-  _ldflags=$LDFLAGS
   ssl_msg=
 
-  if test X"$OPT_RUSTLS" != Xno; then
+    CLEANLDFLAGS="$LDFLAGS"
+  CLEANCPPFLAGS="$CPPFLAGS"
 
-    if test "$OPT_RUSTLS" = "yes"; then
-      OPT_RUSTLS=""
-    fi
-
-    case $host_os in
-      darwin*)
-        LDFLAGS="$LDFLAGS -framework Security"
-        ;;
-      *)
-        ;;
-    esac
-
-    if test -z "$OPT_RUSTLS" ; then
-
-      { printf "%s\n" "$as_me:${as_lineno-$LINENO}: checking for rustls_client_session_read in -lrustls" >&5
-printf %s "checking for rustls_client_session_read in -lrustls... " >&6; }
-if test ${ac_cv_lib_rustls_rustls_client_session_read+y}
-then :
-  printf %s "(cached) " >&6
-else $as_nop
-  ac_check_lib_save_LIBS=$LIBS
-LIBS="-lrustls -lpthread -ldl -lm $LIBS"
-cat confdefs.h - <<_ACEOF >conftest.$ac_ext
-/* end confdefs.h.  */
+  case $host_os in
+    darwin*)
+      LDFLAGS="$LDFLAGS -framework Security"
+      ;;
+    *)
+      ;;
+  esac
+  ## NEW CODE
 
 
-#ifdef __cplusplus
-extern "C"
-#endif
-char rustls_client_session_read ();
-int main (void)
-{
-return rustls_client_session_read ();
- ;
- return 0;
-}
-_ACEOF
-if ac_fn_c_try_link "$LINENO"
-then :
-  ac_cv_lib_rustls_rustls_client_session_read=yes
-else $as_nop
-  ac_cv_lib_rustls_rustls_client_session_read=no
-fi
-rm -f core conftest.err conftest.$ac_objext conftest.beam \
-    conftest$ac_exeext conftest.$ac_ext
-LIBS=$ac_check_lib_save_LIBS
-fi
-{ printf "%s\n" "$as_me:${as_lineno-$LINENO}: result: $ac_cv_lib_rustls_rustls_client_session_read" >&5
-printf "%s\n" "$ac_cv_lib_rustls_rustls_client_session_read" >&6; }
-if test "x$ac_cv_lib_rustls_rustls_client_session_read" = xyes
-then :
+  case "$OPT_RUSTLS" in
+    yes)
+            PKGTEST="yes"
+      PREFIX_RUSTLS=
+      ;;
+    *)
+            PKGTEST="no"
+      PREFIX_RUSTLS=$OPT_RUSTLS
 
 
-printf "%s\n" "#define USE_RUSTLS 1" >>confdefs.h
-
-         USE_RUSTLS=1
-
-         RUSTLS_ENABLED=1
-         USE_RUSTLS="yes"
-         ssl_msg="rustls"
-         test rustls != "$DEFAULT_SSL_BACKEND" || VALID_DEFAULT_SSL_BACKEND=yes
-
-fi
-
-    fi
-
-    if test "x$USE_RUSTLS" != "xyes"; then
-            addld=-L$OPT_RUSTLS/lib$libsuff
-      addcflags=-I$OPT_RUSTLS/include
-      rustlslib=$OPT_RUSTLS/lib$libsuff
-
-      LDFLAGS="$LDFLAGS $addld"
-      if test "$addcflags" != "-I/usr/include"; then
-         CPPFLAGS="$CPPFLAGS $addcflags"
+      RUSTLS_PCDIR="$PREFIX_RUSTLS/lib/pkgconfig"
+      if test -f "$RUSTLS_PCDIR/rustls.pc"; then
+        { printf "%s\n" "$as_me:${as_lineno-$LINENO}: PKG_CONFIG_LIBDIR will be set to \"$RUSTLS_PCDIR\"" >&5
+printf "%s\n" "$as_me: PKG_CONFIG_LIBDIR will be set to \"$RUSTLS_PCDIR\"" >&6;}
+        PKGTEST="yes"
       fi
 
-      { printf "%s\n" "$as_me:${as_lineno-$LINENO}: checking for rustls_connection_read in -lrustls" >&5
+      if test "$PKGTEST" != "yes"; then
+        # try lib64 instead
+        RUSTLS_PCDIR="$PREFIX_RUSTLS/lib64/pkgconfig"
+        if test -f "$RUSTLS_PCDIR/rustls.pc"; then
+          { printf "%s\n" "$as_me:${as_lineno-$LINENO}: PKG_CONFIG_LIBDIR will be set to \"$RUSTLS_PCDIR\"" >&5
+printf "%s\n" "$as_me: PKG_CONFIG_LIBDIR will be set to \"$RUSTLS_PCDIR\"" >&6;}
+          PKGTEST="yes"
+        fi
+      fi
+
+      if test "$PKGTEST" != "yes"; then
+
+        addld=-L$PREFIX_RUSTLS/lib$libsuff
+        addcflags=-I$PREFIX_RUSTLS/include
+
+        LDFLAGS="$LDFLAGS $addld"
+        if test "$addcflags" != "-I/usr/include"; then
+            CPPFLAGS="$CPPFLAGS $addcflags"
+        fi
+
+        { printf "%s\n" "$as_me:${as_lineno-$LINENO}: checking for rustls_connection_read in -lrustls" >&5
 printf %s "checking for rustls_connection_read in -lrustls... " >&6; }
 if test ${ac_cv_lib_rustls_rustls_connection_read+y}
 then :
@@ -28519,37 +28527,230 @@ then :
 
 printf "%s\n" "#define USE_RUSTLS 1" >>confdefs.h
 
-       USE_RUSTLS=1
+          USE_RUSTLS=1
 
-       RUSTLS_ENABLED=1
-       USE_RUSTLS="yes"
-       ssl_msg="rustls"
-       test rustls != "$DEFAULT_SSL_BACKEND" || VALID_DEFAULT_SSL_BACKEND=yes
+          RUSTLS_ENABLED=1
+          USE_RUSTLS="yes"
+          ssl_msg="rustls"
+          test rustls != "$DEFAULT_SSL_BACKEND" || VALID_DEFAULT_SSL_BACKEND=yes
 
 else $as_nop
   as_fn_error $? "--with-rustls was specified but could not find rustls." "$LINENO" 5
 fi
 
+
+        USE_RUSTLS="yes"
+        ssl_msg="rustls"
+
+        LIB_RUSTLS="$PREFIX_RUSTLS/lib$libsuff"
+        if test "$PREFIX_RUSTLS" != "/usr" ; then
+          SSL_LDFLAGS="-L$LIB_RUSTLS"
+          SSL_CPPFLAGS="-I$PREFIX_RUSTLS/include"
+        fi
+      fi
+      ;;
+  esac
+
+  if test "$PKGTEST" = "yes"; then
+
+
+    if test -n "$PKG_CONFIG"; then
+      PKGCONFIG="$PKG_CONFIG"
+    else
+      if test -n "$ac_tool_prefix"; then
+  # Extract the first word of "${ac_tool_prefix}pkg-config", so it can be a program name with args.
+set dummy ${ac_tool_prefix}pkg-config; ac_word=$2
+{ printf "%s\n" "$as_me:${as_lineno-$LINENO}: checking for $ac_word" >&5
+printf %s "checking for $ac_word... " >&6; }
+if test ${ac_cv_path_PKGCONFIG+y}
+then :
+  printf %s "(cached) " >&6
+else $as_nop
+  case $PKGCONFIG in
+  [\\/]* | ?:[\\/]*)
+  ac_cv_path_PKGCONFIG="$PKGCONFIG" # Let the user override the test with a path.
+  ;;
+  *)
+  as_save_IFS=$IFS; IFS=$PATH_SEPARATOR
+as_dummy="$PATH:/usr/bin:/usr/local/bin"
+for as_dir in $as_dummy
+do
+  IFS=$as_save_IFS
+  case $as_dir in #(((
+    '') as_dir=./ ;;
+    */) ;;
+    *) as_dir=$as_dir/ ;;
+  esac
+    for ac_exec_ext in '' $ac_executable_extensions; do
+  if as_fn_executable_p "$as_dir$ac_word$ac_exec_ext"; then
+    ac_cv_path_PKGCONFIG="$as_dir$ac_word$ac_exec_ext"
+    printf "%s\n" "$as_me:${as_lineno-$LINENO}: found $as_dir$ac_word$ac_exec_ext" >&5
+    break 2
+  fi
+done
+  done
+IFS=$as_save_IFS
+
+  ;;
+esac
+fi
+PKGCONFIG=$ac_cv_path_PKGCONFIG
+if test -n "$PKGCONFIG"; then
+  { printf "%s\n" "$as_me:${as_lineno-$LINENO}: result: $PKGCONFIG" >&5
+printf "%s\n" "$PKGCONFIG" >&6; }
+else
+  { printf "%s\n" "$as_me:${as_lineno-$LINENO}: result: no" >&5
+printf "%s\n" "no" >&6; }
+fi
+
+
+fi
+if test -z "$ac_cv_path_PKGCONFIG"; then
+  ac_pt_PKGCONFIG=$PKGCONFIG
+  # Extract the first word of "pkg-config", so it can be a program name with args.
+set dummy pkg-config; ac_word=$2
+{ printf "%s\n" "$as_me:${as_lineno-$LINENO}: checking for $ac_word" >&5
+printf %s "checking for $ac_word... " >&6; }
+if test ${ac_cv_path_ac_pt_PKGCONFIG+y}
+then :
+  printf %s "(cached) " >&6
+else $as_nop
+  case $ac_pt_PKGCONFIG in
+  [\\/]* | ?:[\\/]*)
+  ac_cv_path_ac_pt_PKGCONFIG="$ac_pt_PKGCONFIG" # Let the user override the test with a path.
+  ;;
+  *)
+  as_save_IFS=$IFS; IFS=$PATH_SEPARATOR
+as_dummy="$PATH:/usr/bin:/usr/local/bin"
+for as_dir in $as_dummy
+do
+  IFS=$as_save_IFS
+  case $as_dir in #(((
+    '') as_dir=./ ;;
+    */) ;;
+    *) as_dir=$as_dir/ ;;
+  esac
+    for ac_exec_ext in '' $ac_executable_extensions; do
+  if as_fn_executable_p "$as_dir$ac_word$ac_exec_ext"; then
+    ac_cv_path_ac_pt_PKGCONFIG="$as_dir$ac_word$ac_exec_ext"
+    printf "%s\n" "$as_me:${as_lineno-$LINENO}: found $as_dir$ac_word$ac_exec_ext" >&5
+    break 2
+  fi
+done
+  done
+IFS=$as_save_IFS
+
+  ;;
+esac
+fi
+ac_pt_PKGCONFIG=$ac_cv_path_ac_pt_PKGCONFIG
+if test -n "$ac_pt_PKGCONFIG"; then
+  { printf "%s\n" "$as_me:${as_lineno-$LINENO}: result: $ac_pt_PKGCONFIG" >&5
+printf "%s\n" "$ac_pt_PKGCONFIG" >&6; }
+else
+  { printf "%s\n" "$as_me:${as_lineno-$LINENO}: result: no" >&5
+printf "%s\n" "no" >&6; }
+fi
+
+  if test "x$ac_pt_PKGCONFIG" = x; then
+    PKGCONFIG="no"
+  else
+    case $cross_compiling:$ac_tool_warned in
+yes:)
+{ printf "%s\n" "$as_me:${as_lineno-$LINENO}: WARNING: using cross tools not prefixed with host triplet" >&5
+printf "%s\n" "$as_me: WARNING: using cross tools not prefixed with host triplet" >&2;}
+ac_tool_warned=yes ;;
+esac
+    PKGCONFIG=$ac_pt_PKGCONFIG
+  fi
+else
+  PKGCONFIG="$ac_cv_path_PKGCONFIG"
+fi
+
     fi
 
-    if test "x$USE_RUSTLS" = "xyes"; then
-      { printf "%s\n" "$as_me:${as_lineno-$LINENO}: detected rustls" >&5
-printf "%s\n" "$as_me: detected rustls" >&6;}
-      check_for_ca_bundle=1
+    if test "x$PKGCONFIG" != "xno"; then
+      { printf "%s\n" "$as_me:${as_lineno-$LINENO}: checking for rustls options with pkg-config" >&5
+printf %s "checking for rustls options with pkg-config... " >&6; }
+            itexists=`
+    if test -n "$RUSTLS_PCDIR"; then
+      PKG_CONFIG_LIBDIR="$RUSTLS_PCDIR"
+      export PKG_CONFIG_LIBDIR
+    fi
+         $PKGCONFIG --exists rustls >/dev/null 2>&1 && echo 1`
 
-      LIBS="-lrustls -lpthread -ldl -lm $LIBS"
-
-      if test -n "$rustlslib"; then
-                                        if test "x$cross_compiling" != "xyes"; then
-          CURL_LIBRARY_PATH="$CURL_LIBRARY_PATH:$rustlslib"
-          export CURL_LIBRARY_PATH
-          { printf "%s\n" "$as_me:${as_lineno-$LINENO}: Added $rustlslib to CURL_LIBRARY_PATH" >&5
-printf "%s\n" "$as_me: Added $rustlslib to CURL_LIBRARY_PATH" >&6;}
-        fi
+      if test -z "$itexists"; then
+                        PKGCONFIG="no"
+        { printf "%s\n" "$as_me:${as_lineno-$LINENO}: result: no" >&5
+printf "%s\n" "no" >&6; }
+      else
+        { printf "%s\n" "$as_me:${as_lineno-$LINENO}: result: found" >&5
+printf "%s\n" "found" >&6; }
       fi
     fi
 
+
+    if test "$PKGCONFIG" != "no" ; then
+      SSL_LIBS=`
+    if test -n "$RUSTLS_PCDIR"; then
+      PKG_CONFIG_LIBDIR="$RUSTLS_PCDIR"
+      export PKG_CONFIG_LIBDIR
+    fi
+         $PKGCONFIG --libs-only-l --libs-only-other rustls 2>/dev/null`
+
+      SSL_LDFLAGS=`
+    if test -n "$RUSTLS_PCDIR"; then
+      PKG_CONFIG_LIBDIR="$RUSTLS_PCDIR"
+      export PKG_CONFIG_LIBDIR
+    fi
+         $PKGCONFIG --libs-only-L rustls 2>/dev/null`
+
+      SSL_CPPFLAGS=`
+    if test -n "$RUSTLS_PCDIR"; then
+      PKG_CONFIG_LIBDIR="$RUSTLS_PCDIR"
+      export PKG_CONFIG_LIBDIR
+    fi
+         $PKGCONFIG --cflags-only-I rustls 2>/dev/null`
+
+
+      { printf "%s\n" "$as_me:${as_lineno-$LINENO}: pkg-config: SSL_LIBS: \"$SSL_LIBS\"" >&5
+printf "%s\n" "$as_me: pkg-config: SSL_LIBS: \"$SSL_LIBS\"" >&6;}
+      { printf "%s\n" "$as_me:${as_lineno-$LINENO}: pkg-config: SSL_LDFLAGS: \"$SSL_LDFLAGS\"" >&5
+printf "%s\n" "$as_me: pkg-config: SSL_LDFLAGS: \"$SSL_LDFLAGS\"" >&6;}
+      { printf "%s\n" "$as_me:${as_lineno-$LINENO}: pkg-config: SSL_CPPFLAGS: \"$SSL_CPPFLAGS\"" >&5
+printf "%s\n" "$as_me: pkg-config: SSL_CPPFLAGS: \"$SSL_CPPFLAGS\"" >&6;}
+
+      LIB_RUSTLS=`echo $SSL_LDFLAGS | sed -e 's/^-L//'`
+
+                                          LIBS="$SSL_LIBS $LIBS"
+      USE_RUSTLS="yes"
+      ssl_msg="rustls"
+    else
+      as_fn_error $? "pkg-config: Could not find rustls" "$LINENO" 5
+    fi
+
+  else
+            LIBS="-lrustls -lpthread -ldl -lm $LIBS"
   fi
+
+    CPPFLAGS="$CLEAN_CPPFLAGS $SSL_CPPFLAGS"
+  LDFLAGS="$CLAN_LDFLAGS $SSL_LDFLAGS"
+
+  if test "x$USE_RUSTLS" = "xyes"; then
+    { printf "%s\n" "$as_me:${as_lineno-$LINENO}: detected rustls" >&5
+printf "%s\n" "$as_me: detected rustls" >&6;}
+    check_for_ca_bundle=1
+
+    if test -n "$LIB_RUSTLS"; then
+                              if test "x$cross_compiling" != "xyes"; then
+        CURL_LIBRARY_PATH="$CURL_LIBRARY_PATH:$LIB_RUSTLS"
+        export CURL_LIBRARY_PATH
+        { printf "%s\n" "$as_me:${as_lineno-$LINENO}: Added $LIB_RUSTLS to CURL_LIBRARY_PATH" >&5
+printf "%s\n" "$as_me: Added $LIB_RUSTLS to CURL_LIBRARY_PATH" >&6;}
+      fi
+    fi
+  fi
+
   test -z "$ssl_msg" || ssl_backends="${ssl_backends:+$ssl_backends, }$ssl_msg"
 fi
 
@@ -28786,24 +28987,194 @@ printf "%s\n" "#define CURL_CA_FALLBACK 1" >>confdefs.h
 fi
 
 
+OPT_LIBPSL=off
 
 # Check whether --with-libpsl was given.
 if test ${with_libpsl+y}
 then :
-  withval=$with_libpsl; with_libpsl=$withval
-else $as_nop
-  with_libpsl=yes
+  withval=$with_libpsl; OPT_LIBPSL=$withval
 fi
 
-curl_psl_msg="no      (libpsl disabled)"
-if test $with_libpsl != "no"; then
-  { printf "%s\n" "$as_me:${as_lineno-$LINENO}: checking for library containing psl_builtin" >&5
-printf %s "checking for library containing psl_builtin... " >&6; }
-if test ${ac_cv_search_psl_builtin+y}
+
+if test X"$OPT_LIBPSL" != Xno; then
+    CLEANLDFLAGS="$LDFLAGS"
+  CLEANCPPFLAGS="$CPPFLAGS"
+  CLEANLIBS="$LIBS"
+
+  case "$OPT_LIBPSL" in
+  yes)
+
+    if test -n "$PKG_CONFIG"; then
+      PKGCONFIG="$PKG_CONFIG"
+    else
+      if test -n "$ac_tool_prefix"; then
+  # Extract the first word of "${ac_tool_prefix}pkg-config", so it can be a program name with args.
+set dummy ${ac_tool_prefix}pkg-config; ac_word=$2
+{ printf "%s\n" "$as_me:${as_lineno-$LINENO}: checking for $ac_word" >&5
+printf %s "checking for $ac_word... " >&6; }
+if test ${ac_cv_path_PKGCONFIG+y}
 then :
   printf %s "(cached) " >&6
 else $as_nop
-  ac_func_search_save_LIBS=$LIBS
+  case $PKGCONFIG in
+  [\\/]* | ?:[\\/]*)
+  ac_cv_path_PKGCONFIG="$PKGCONFIG" # Let the user override the test with a path.
+  ;;
+  *)
+  as_save_IFS=$IFS; IFS=$PATH_SEPARATOR
+as_dummy="$PATH:/usr/bin:/usr/local/bin"
+for as_dir in $as_dummy
+do
+  IFS=$as_save_IFS
+  case $as_dir in #(((
+    '') as_dir=./ ;;
+    */) ;;
+    *) as_dir=$as_dir/ ;;
+  esac
+    for ac_exec_ext in '' $ac_executable_extensions; do
+  if as_fn_executable_p "$as_dir$ac_word$ac_exec_ext"; then
+    ac_cv_path_PKGCONFIG="$as_dir$ac_word$ac_exec_ext"
+    printf "%s\n" "$as_me:${as_lineno-$LINENO}: found $as_dir$ac_word$ac_exec_ext" >&5
+    break 2
+  fi
+done
+  done
+IFS=$as_save_IFS
+
+  ;;
+esac
+fi
+PKGCONFIG=$ac_cv_path_PKGCONFIG
+if test -n "$PKGCONFIG"; then
+  { printf "%s\n" "$as_me:${as_lineno-$LINENO}: result: $PKGCONFIG" >&5
+printf "%s\n" "$PKGCONFIG" >&6; }
+else
+  { printf "%s\n" "$as_me:${as_lineno-$LINENO}: result: no" >&5
+printf "%s\n" "no" >&6; }
+fi
+
+
+fi
+if test -z "$ac_cv_path_PKGCONFIG"; then
+  ac_pt_PKGCONFIG=$PKGCONFIG
+  # Extract the first word of "pkg-config", so it can be a program name with args.
+set dummy pkg-config; ac_word=$2
+{ printf "%s\n" "$as_me:${as_lineno-$LINENO}: checking for $ac_word" >&5
+printf %s "checking for $ac_word... " >&6; }
+if test ${ac_cv_path_ac_pt_PKGCONFIG+y}
+then :
+  printf %s "(cached) " >&6
+else $as_nop
+  case $ac_pt_PKGCONFIG in
+  [\\/]* | ?:[\\/]*)
+  ac_cv_path_ac_pt_PKGCONFIG="$ac_pt_PKGCONFIG" # Let the user override the test with a path.
+  ;;
+  *)
+  as_save_IFS=$IFS; IFS=$PATH_SEPARATOR
+as_dummy="$PATH:/usr/bin:/usr/local/bin"
+for as_dir in $as_dummy
+do
+  IFS=$as_save_IFS
+  case $as_dir in #(((
+    '') as_dir=./ ;;
+    */) ;;
+    *) as_dir=$as_dir/ ;;
+  esac
+    for ac_exec_ext in '' $ac_executable_extensions; do
+  if as_fn_executable_p "$as_dir$ac_word$ac_exec_ext"; then
+    ac_cv_path_ac_pt_PKGCONFIG="$as_dir$ac_word$ac_exec_ext"
+    printf "%s\n" "$as_me:${as_lineno-$LINENO}: found $as_dir$ac_word$ac_exec_ext" >&5
+    break 2
+  fi
+done
+  done
+IFS=$as_save_IFS
+
+  ;;
+esac
+fi
+ac_pt_PKGCONFIG=$ac_cv_path_ac_pt_PKGCONFIG
+if test -n "$ac_pt_PKGCONFIG"; then
+  { printf "%s\n" "$as_me:${as_lineno-$LINENO}: result: $ac_pt_PKGCONFIG" >&5
+printf "%s\n" "$ac_pt_PKGCONFIG" >&6; }
+else
+  { printf "%s\n" "$as_me:${as_lineno-$LINENO}: result: no" >&5
+printf "%s\n" "no" >&6; }
+fi
+
+  if test "x$ac_pt_PKGCONFIG" = x; then
+    PKGCONFIG="no"
+  else
+    case $cross_compiling:$ac_tool_warned in
+yes:)
+{ printf "%s\n" "$as_me:${as_lineno-$LINENO}: WARNING: using cross tools not prefixed with host triplet" >&5
+printf "%s\n" "$as_me: WARNING: using cross tools not prefixed with host triplet" >&2;}
+ac_tool_warned=yes ;;
+esac
+    PKGCONFIG=$ac_pt_PKGCONFIG
+  fi
+else
+  PKGCONFIG="$ac_cv_path_PKGCONFIG"
+fi
+
+    fi
+
+    if test "x$PKGCONFIG" != "xno"; then
+      { printf "%s\n" "$as_me:${as_lineno-$LINENO}: checking for libpsl options with pkg-config" >&5
+printf %s "checking for libpsl options with pkg-config... " >&6; }
+            itexists=`
+    if test -n ""; then
+      PKG_CONFIG_LIBDIR=""
+      export PKG_CONFIG_LIBDIR
+    fi
+         $PKGCONFIG --exists libpsl >/dev/null 2>&1 && echo 1`
+
+      if test -z "$itexists"; then
+                        PKGCONFIG="no"
+        { printf "%s\n" "$as_me:${as_lineno-$LINENO}: result: no" >&5
+printf "%s\n" "no" >&6; }
+      else
+        { printf "%s\n" "$as_me:${as_lineno-$LINENO}: result: found" >&5
+printf "%s\n" "found" >&6; }
+      fi
+    fi
+
+
+    if test "$PKGCONFIG" != "no" ; then
+      LIB_PSL=`$PKGCONFIG --libs-only-l libpsl`
+      LD_PSL=`$PKGCONFIG --libs-only-L libpsl`
+      CPP_PSL=`$PKGCONFIG --cflags-only-I libpsl`
+    else
+            LIB_PSL="-lpsl"
+    fi
+
+    ;;
+  off)
+        LIB_PSL="-lpsl"
+    ;;
+  *)
+        LIB_PSL="-lpsl"
+    PREFIX_PSL=$OPT_LIBPSL
+    ;;
+  esac
+
+    if test -n "$PREFIX_PSL"; then
+    LD_PSL=-L${PREFIX_PSL}/lib$libsuff
+    CPP_PSL=-I${PREFIX_PSL}/include
+  fi
+
+  LDFLAGS="$LDFLAGS $LD_PSL"
+  CPPFLAGS="$CPPFLAGS $CPP_PSL"
+  LIBS="$LIB_PSL $LIBS"
+
+  { printf "%s\n" "$as_me:${as_lineno-$LINENO}: checking for psl_builtin in -lpsl" >&5
+printf %s "checking for psl_builtin in -lpsl... " >&6; }
+if test ${ac_cv_lib_psl_psl_builtin+y}
+then :
+  printf %s "(cached) " >&6
+else $as_nop
+  ac_check_lib_save_LIBS=$LIBS
+LIBS="-lpsl  $LIBS"
 cat confdefs.h - <<_ACEOF >conftest.$ac_ext
 /* end confdefs.h.  */
 
@@ -28819,50 +29190,51 @@ return psl_builtin ();
  return 0;
 }
 _ACEOF
-for ac_lib in '' psl
-do
-  if test -z "$ac_lib"; then
-    ac_res="none required"
-  else
-    ac_res=-l$ac_lib
-    LIBS="-l$ac_lib  $ac_func_search_save_LIBS"
-  fi
-  if ac_fn_c_try_link "$LINENO"
+if ac_fn_c_try_link "$LINENO"
 then :
-  ac_cv_search_psl_builtin=$ac_res
+  ac_cv_lib_psl_psl_builtin=yes
+else $as_nop
+  ac_cv_lib_psl_psl_builtin=no
 fi
 rm -f core conftest.err conftest.$ac_objext conftest.beam \
-    conftest$ac_exeext
-  if test ${ac_cv_search_psl_builtin+y}
-then :
-  break
+    conftest$ac_exeext conftest.$ac_ext
+LIBS=$ac_check_lib_save_LIBS
 fi
-done
-if test ${ac_cv_search_psl_builtin+y}
+{ printf "%s\n" "$as_me:${as_lineno-$LINENO}: result: $ac_cv_lib_psl_psl_builtin" >&5
+printf "%s\n" "$ac_cv_lib_psl_psl_builtin" >&6; }
+if test "x$ac_cv_lib_psl_psl_builtin" = xyes
 then :
 
-else $as_nop
-  ac_cv_search_psl_builtin=no
-fi
-rm conftest.$ac_ext
-LIBS=$ac_func_search_save_LIBS
-fi
-{ printf "%s\n" "$as_me:${as_lineno-$LINENO}: result: $ac_cv_search_psl_builtin" >&5
-printf "%s\n" "$ac_cv_search_psl_builtin" >&6; }
-ac_res=$ac_cv_search_psl_builtin
-if test "$ac_res" != no
+            for ac_header in libpsl.h
+do :
+  ac_fn_c_check_header_compile "$LINENO" "libpsl.h" "ac_cv_header_libpsl_h" "$ac_includes_default"
+if test "x$ac_cv_header_libpsl_h" = xyes
 then :
-  test "$ac_res" = "none required" || LIBS="$ac_res $LIBS"
-  curl_psl_msg="enabled";
+  printf "%s\n" "#define HAVE_LIBPSL_H 1" >>confdefs.h
+ curl_psl_msg="enabled"
+        LIBPSL_ENABLED=1
 
 printf "%s\n" "#define USE_LIBPSL 1" >>confdefs.h
 
+        USE_LIBPSL=1
 
-else $as_nop
-  as_fn_error $? "libpsl was not found" "$LINENO" 5
 
 fi
 
+done
+
+else $as_nop
+        LDFLAGS=$CLEANLDFLAGS
+      CPPFLAGS=$CLEANCPPFLAGS
+      LIBS=$CLEANLIBS
+
+fi
+
+
+  if test X"$OPT_LIBPSL" != Xoff &&
+     test "$LIBPSL_ENABLED" != "1"; then
+    as_fn_error $? "libpsl libs and/or directories were not found where specified!" "$LINENO" 5
+  fi
 fi
  if test "$curl_psl_msg" = "enabled"; then
   USE_LIBPSL_TRUE=
@@ -32134,9 +32506,10 @@ fi
 
 OPT_NGHTTP3="yes"
 
-if test "x$USE_NGTCP2" = "x" -a "$USE_OPENSSL_QUIC" = "x"; then
+if test "x$USE_NGTCP2" != "x1" -a "x$USE_OPENSSL_QUIC" != "x1"; then
   # without ngtcp2 or openssl quic, nghttp3 is of no use for us
   OPT_NGHTTP3="no"
+  want_nghttp3="no"
 fi
 
 
@@ -32884,9 +33257,9 @@ then :
 fi
 
 case "$OPT_ZSH_FPATH" in
-  no)
+  default|no)
         ;;
-  default|yes)
+  yes)
         ZSH_FUNCTIONS_DIR="$datarootdir/zsh/site-functions"
 
     ;;
@@ -32895,6 +33268,14 @@ case "$OPT_ZSH_FPATH" in
 
     ;;
 esac
+ if test x"$ZSH_FUNCTIONS_DIR" != x; then
+  USE_ZSH_COMPLETION_TRUE=
+  USE_ZSH_COMPLETION_FALSE='#'
+else
+  USE_ZSH_COMPLETION_TRUE='#'
+  USE_ZSH_COMPLETION_FALSE=
+fi
+
 
 
 OPT_FISH_FPATH=default
@@ -32906,9 +33287,9 @@ then :
 fi
 
 case "$OPT_FISH_FPATH" in
-  no)
+  default|no)
         ;;
-  default|yes)
+  yes)
 
     if test -n "$PKG_CONFIG"; then
       PKGCONFIG="$PKG_CONFIG"
@@ -33057,6 +33438,14 @@ printf "%s\n" "found" >&6; }
 
     ;;
 esac
+ if test x"$FISH_FUNCTIONS_DIR" != x; then
+  USE_FISH_COMPLETION_TRUE=
+  USE_FISH_COMPLETION_FALSE='#'
+else
+  USE_FISH_COMPLETION_TRUE='#'
+  USE_FISH_COMPLETION_FALSE=
+fi
+
 
 ac_fn_c_check_header_compile "$LINENO" "sys/types.h" "ac_cv_header_sys_types_h" "
 #ifdef HAVE_SYS_TYPES_H
@@ -43859,7 +44248,6 @@ printf "%s\n" "$as_me: WARNING: cannot determine non-blocking socket method." >&
   fi
 
 
-
 # Extract the first word of "perl", so it can be a program name with args.
 set dummy perl; ac_word=$2
 { printf "%s\n" "$as_me:${as_lineno-$LINENO}: checking for $ac_word" >&5
@@ -43908,91 +44296,21 @@ fi
 
 
 
-for ac_prog in gnroff nroff
-do
-  # Extract the first word of "$ac_prog", so it can be a program name with args.
-set dummy $ac_prog; ac_word=$2
-{ printf "%s\n" "$as_me:${as_lineno-$LINENO}: checking for $ac_word" >&5
-printf %s "checking for $ac_word... " >&6; }
-if test ${ac_cv_path_NROFF+y}
-then :
-  printf %s "(cached) " >&6
-else $as_nop
-  case $NROFF in
-  [\\/]* | ?:[\\/]*)
-  ac_cv_path_NROFF="$NROFF" # Let the user override the test with a path.
-  ;;
-  *)
-  as_save_IFS=$IFS; IFS=$PATH_SEPARATOR
-as_dummy="$PATH:/usr/bin/:/usr/local/bin "
-for as_dir in $as_dummy
-do
-  IFS=$as_save_IFS
-  case $as_dir in #(((
-    '') as_dir=./ ;;
-    */) ;;
-    *) as_dir=$as_dir/ ;;
-  esac
-    for ac_exec_ext in '' $ac_executable_extensions; do
-  if as_fn_executable_p "$as_dir$ac_word$ac_exec_ext"; then
-    ac_cv_path_NROFF="$as_dir$ac_word$ac_exec_ext"
-    printf "%s\n" "$as_me:${as_lineno-$LINENO}: found $as_dir$ac_word$ac_exec_ext" >&5
-    break 2
-  fi
-done
-  done
-IFS=$as_save_IFS
-
-  ;;
-esac
+if test -z "$PERL"; then
+    { printf "%s\n" "$as_me:${as_lineno-$LINENO}: WARNING: disabling documentation" >&5
+printf "%s\n" "$as_me: WARNING: disabling documentation" >&2;}
+  BUILD_DOCS=0
+  curl_docs_msg="no"
 fi
-NROFF=$ac_cv_path_NROFF
-if test -n "$NROFF"; then
-  { printf "%s\n" "$as_me:${as_lineno-$LINENO}: result: $NROFF" >&5
-printf "%s\n" "$NROFF" >&6; }
+
+ if test x"$BUILD_DOCS" = x1; then
+  BUILD_DOCS_TRUE=
+  BUILD_DOCS_FALSE='#'
 else
-  { printf "%s\n" "$as_me:${as_lineno-$LINENO}: result: no" >&5
-printf "%s\n" "no" >&6; }
+  BUILD_DOCS_TRUE='#'
+  BUILD_DOCS_FALSE=
 fi
 
-
-  test -n "$NROFF" && break
-done
-
-
-
-if test -n "$NROFF"; then
-
-  { printf "%s\n" "$as_me:${as_lineno-$LINENO}: checking how to use *nroff to get plain text from man pages" >&5
-printf %s "checking how to use *nroff to get plain text from man pages... " >&6; }
-  MANOPT="-man"
-  mancheck=`echo foo | $NROFF $MANOPT 2>/dev/null`
-  if test -z "$mancheck"; then
-    MANOPT="-mandoc"
-   mancheck=`echo foo | $NROFF $MANOPT 2>/dev/null`
-    if test -z "$mancheck"; then
-      MANOPT=""
-      { printf "%s\n" "$as_me:${as_lineno-$LINENO}: result: failed" >&5
-printf "%s\n" "failed" >&6; }
-      { printf "%s\n" "$as_me:${as_lineno-$LINENO}: WARNING: found no *nroff option to get plaintext from man pages" >&5
-printf "%s\n" "$as_me: WARNING: found no *nroff option to get plaintext from man pages" >&2;}
-    else
-      { printf "%s\n" "$as_me:${as_lineno-$LINENO}: result: $MANOPT" >&5
-printf "%s\n" "$MANOPT" >&6; }
-    fi
-  else
-    { printf "%s\n" "$as_me:${as_lineno-$LINENO}: result: $MANOPT" >&5
-printf "%s\n" "$MANOPT" >&6; }
-  fi
-
-fi
-
-if test -z "$MANOPT"
-then
-      { printf "%s\n" "$as_me:${as_lineno-$LINENO}: WARNING: disabling built-in manual" >&5
-printf "%s\n" "$as_me: WARNING: disabling built-in manual" >&2;}
-  USE_MANUAL="no";
-fi
 
 
 if test "$USE_MANUAL" = "1"; then
@@ -46226,8 +46544,20 @@ if test -z "${CURL_LT_SHLIB_USE_VERSIONED_SYMBOLS_TRUE}" && test -z "${CURL_LT_S
   as_fn_error $? "conditional \"CURL_LT_SHLIB_USE_VERSIONED_SYMBOLS\" was never defined.
 Usually this means the macro was only invoked conditionally." "$LINENO" 5
 fi
+if test -z "${USE_ZSH_COMPLETION_TRUE}" && test -z "${USE_ZSH_COMPLETION_FALSE}"; then
+  as_fn_error $? "conditional \"USE_ZSH_COMPLETION\" was never defined.
+Usually this means the macro was only invoked conditionally." "$LINENO" 5
+fi
+if test -z "${USE_FISH_COMPLETION_TRUE}" && test -z "${USE_FISH_COMPLETION_FALSE}"; then
+  as_fn_error $? "conditional \"USE_FISH_COMPLETION\" was never defined.
+Usually this means the macro was only invoked conditionally." "$LINENO" 5
+fi
 if test -z "${DOING_NATIVE_WINDOWS_TRUE}" && test -z "${DOING_NATIVE_WINDOWS_FALSE}"; then
   as_fn_error $? "conditional \"DOING_NATIVE_WINDOWS\" was never defined.
+Usually this means the macro was only invoked conditionally." "$LINENO" 5
+fi
+if test -z "${BUILD_DOCS_TRUE}" && test -z "${BUILD_DOCS_FALSE}"; then
+  as_fn_error $? "conditional \"BUILD_DOCS\" was never defined.
 Usually this means the macro was only invoked conditionally." "$LINENO" 5
 fi
 if test -z "${USE_MANUAL_TRUE}" && test -z "${USE_MANUAL_FALSE}"; then
@@ -48693,6 +49023,7 @@ _EOF
   IPv6:             ${curl_ipv6_msg}
   Unix sockets:     ${curl_unix_sockets_msg}
   IDN:              ${curl_idn_msg}
+  Build docs:       ${curl_docs_msg}
   Build libcurl:    Shared=${enable_shared}, Static=${enable_static}
   Built-in manual:  ${curl_manual_msg}
   --libcurl option: ${curl_libcurl_msg}
@@ -48741,6 +49072,7 @@ printf "%s\n" "$as_me: Configured to build curl/libcurl:
   IPv6:             ${curl_ipv6_msg}
   Unix sockets:     ${curl_unix_sockets_msg}
   IDN:              ${curl_idn_msg}
+  Build docs:       ${curl_docs_msg}
   Build libcurl:    Shared=${enable_shared}, Static=${enable_static}
   Built-in manual:  ${curl_manual_msg}
   --libcurl option: ${curl_libcurl_msg}
@@ -48766,6 +49098,14 @@ printf "%s\n" "$as_me: Configured to build curl/libcurl:
   Protocols:        ${SUPPORT_PROTOCOLS}
   Features:         ${SUPPORT_FEATURES}
 " >&6;}
+
+non13=`echo "$TLSCHOICE" | grep -Ei 'bearssl|secure-transport|mbedtls'`;
+if test -n "$non13"; then
+ cat >&2 << _EOF
+  WARNING: A selected TLS library ($TLSCHOICE) does not support TLS 1.3!
+_EOF
+fi
+
 if test -n "$experimental"; then
  cat >&2 << _EOF
   WARNING: $experimental enabled but marked EXPERIMENTAL. Use with caution!

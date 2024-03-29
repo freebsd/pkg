@@ -436,11 +436,9 @@ LT_SYS_LIBRARY_PATH = @LT_SYS_LIBRARY_PATH@
 MAINT = @MAINT@
 MAKEINFO = @MAKEINFO@
 MANIFEST_TOOL = @MANIFEST_TOOL@
-MANOPT = @MANOPT@
 MKDIR_P = @MKDIR_P@
 NM = @NM@
 NMEDIT = @NMEDIT@
-NROFF = @NROFF@
 OBJDUMP = @OBJDUMP@
 OBJEXT = @OBJEXT@
 OTOOL = @OTOOL@
@@ -476,6 +474,7 @@ USE_ARES = @USE_ARES@
 USE_BEARSSL = @USE_BEARSSL@
 USE_GNUTLS = @USE_GNUTLS@
 USE_HYPER = @USE_HYPER@
+USE_LIBPSL = @USE_LIBPSL@
 USE_LIBRTMP = @USE_LIBRTMP@
 USE_LIBSSH = @USE_LIBSSH@
 USE_LIBSSH2 = @USE_LIBSSH2@
@@ -666,7 +665,7 @@ CLEANFILES = $(VC14_LIBVCXPROJ) $(VC14_SRCVCXPROJ) \
  $(VC14_30_LIBVCXPROJ) $(VC14_30_SRCVCXPROJ)
 
 bin_SCRIPTS = curl-config
-SUBDIRS = lib src
+SUBDIRS = lib docs src scripts
 DIST_SUBDIRS = $(SUBDIRS) tests packages scripts include docs
 pkgconfigdir = $(libdir)/pkgconfig
 pkgconfig_DATA = libcurl.pc
@@ -782,9 +781,11 @@ LIB_CFILES = \
   curl_range.c       \
   curl_rtmp.c        \
   curl_sasl.c        \
+  curl_sha512_256.c  \
   curl_sspi.c        \
   curl_threads.c     \
   curl_trc.c         \
+  cw-out.c           \
   dict.c             \
   doh.c              \
   dynbuf.c           \
@@ -847,6 +848,7 @@ LIB_CFILES = \
   psl.c              \
   rand.c             \
   rename.c           \
+  request.c          \
   rtsp.c             \
   select.c           \
   sendf.c            \
@@ -925,10 +927,12 @@ LIB_HFILES = \
   curl_setup.h       \
   curl_setup_once.h  \
   curl_sha256.h      \
+  curl_sha512_256.h  \
   curl_sspi.h        \
   curl_threads.h     \
   curl_trc.h         \
   curlx.h            \
+  cw-out.h           \
   dict.h             \
   doh.h              \
   dynbuf.h           \
@@ -981,6 +985,7 @@ LIB_HFILES = \
   psl.h              \
   rand.h             \
   rename.h           \
+  request.h          \
   rtsp.h             \
   select.h           \
   sendf.h            \
@@ -1787,10 +1792,13 @@ cygwinbin:
 	$(MAKE) -C packages/Win32/cygwin cygwinbin
 
 # We extend the standard install with a custom hook:
-install-data-hook:
-	(cd include && $(MAKE) install)
-	(cd docs && $(MAKE) install)
-	(cd docs/libcurl && $(MAKE) install)
+@BUILD_DOCS_TRUE@install-data-hook:
+@BUILD_DOCS_TRUE@	(cd include && $(MAKE) install)
+@BUILD_DOCS_TRUE@	(cd docs && $(MAKE) install)
+@BUILD_DOCS_TRUE@	(cd docs/libcurl && $(MAKE) install)
+@BUILD_DOCS_FALSE@install-data-hook:
+@BUILD_DOCS_FALSE@	(cd include && $(MAKE) install)
+@BUILD_DOCS_FALSE@	(cd docs && $(MAKE) install)
 
 # We extend the standard uninstall with a custom hook:
 uninstall-hook:

@@ -2392,9 +2392,11 @@
     <ClCompile Include="..\..\..\..\lib\curl_range.c" />
     <ClCompile Include="..\..\..\..\lib\curl_rtmp.c" />
     <ClCompile Include="..\..\..\..\lib\curl_sasl.c" />
+    <ClCompile Include="..\..\..\..\lib\curl_sha512_256.c" />
     <ClCompile Include="..\..\..\..\lib\curl_sspi.c" />
     <ClCompile Include="..\..\..\..\lib\curl_threads.c" />
     <ClCompile Include="..\..\..\..\lib\curl_trc.c" />
+    <ClCompile Include="..\..\..\..\lib\cw-out.c" />
     <ClCompile Include="..\..\..\..\lib\dict.c" />
     <ClCompile Include="..\..\..\..\lib\doh.c" />
     <ClCompile Include="..\..\..\..\lib\dynbuf.c" />
@@ -2457,6 +2459,7 @@
     <ClCompile Include="..\..\..\..\lib\psl.c" />
     <ClCompile Include="..\..\..\..\lib\rand.c" />
     <ClCompile Include="..\..\..\..\lib\rename.c" />
+    <ClCompile Include="..\..\..\..\lib\request.c" />
     <ClCompile Include="..\..\..\..\lib\rtsp.c" />
     <ClCompile Include="..\..\..\..\lib\select.c" />
     <ClCompile Include="..\..\..\..\lib\sendf.c" />
@@ -2572,10 +2575,12 @@
     <ClInclude Include="..\..\..\..\lib\curl_setup.h" />
     <ClInclude Include="..\..\..\..\lib\curl_setup_once.h" />
     <ClInclude Include="..\..\..\..\lib\curl_sha256.h" />
+    <ClInclude Include="..\..\..\..\lib\curl_sha512_256.h" />
     <ClInclude Include="..\..\..\..\lib\curl_sspi.h" />
     <ClInclude Include="..\..\..\..\lib\curl_threads.h" />
     <ClInclude Include="..\..\..\..\lib\curl_trc.h" />
     <ClInclude Include="..\..\..\..\lib\curlx.h" />
+    <ClInclude Include="..\..\..\..\lib\cw-out.h" />
     <ClInclude Include="..\..\..\..\lib\dict.h" />
     <ClInclude Include="..\..\..\..\lib\doh.h" />
     <ClInclude Include="..\..\..\..\lib\dynbuf.h" />
@@ -2628,6 +2633,7 @@
     <ClInclude Include="..\..\..\..\lib\psl.h" />
     <ClInclude Include="..\..\..\..\lib\rand.h" />
     <ClInclude Include="..\..\..\..\lib\rename.h" />
+    <ClInclude Include="..\..\..\..\lib\request.h" />
     <ClInclude Include="..\..\..\..\lib\rtsp.h" />
     <ClInclude Include="..\..\..\..\lib\select.h" />
     <ClInclude Include="..\..\..\..\lib\sendf.h" />
