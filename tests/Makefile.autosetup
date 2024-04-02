@@ -149,7 +149,7 @@ VPATH=	$(top_srcdir)/tests
 
 all: $(TESTS) Kyuafile ${TESTS_SHELL} $(TESTS_SHELL_BINS) frontend/Kyuafile
 
-$(TESTS): $(OBJS)
+$(TESTS): $(OBJS) $(top_builddir)/libpkg/libpkg_flat.a
 	$(CC) -o $@ $($@_OBJS) $(LDFLAGS) $(LOCAL_LDFLAGS)
 
 lib/pkg_printf.c: $(top_srcdir)/libpkg/pkg_printf.c
