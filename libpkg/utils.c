@@ -237,7 +237,7 @@ format_exec_cmd(char **dest, const char *in, const char *prefix,
 				ptr++;
 			else
 				ptr = plist_file;
-			fprintf(buf->fp, "%s", cp);
+			fprintf(buf->fp, "%s", ptr);
 			break;
 		case 'B':
 			if (plist_file == NULL || plist_file[0] == '\0') {
