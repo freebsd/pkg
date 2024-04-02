@@ -1098,8 +1098,10 @@ expand_plist_variables(const char *in, kvlist_t *vars)
 			continue;
 		}
 		in++;
-		if (in[0] == '\0')
+		if (in[0] == '\0') {
+			fputc('%', buf->fp);
 			break;
+		}
 		if (in[0] != '%') {
 			fputc('%', buf->fp);
 			fputc(in[0], buf->fp);
