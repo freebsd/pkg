@@ -1,3 +1,6 @@
+Changes from 1.20.99.12 to 1.21.99.0
+- fix regressions in plist parsing
+
 Changes from 1.20.99.11 to 1.20.99.12
 - ECC signature: plenty of fixes
 - plist now have a "@var key value" to deal with %%KEY%% variables
