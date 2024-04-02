@@ -80,51 +80,51 @@ static void
 print_version(struct pkg *pkg, const char *source, const char *ver,
 	      char limchar, unsigned int opt)
 {
-	const char	*key;
+	char	        key;
 	const char	*version = NULL;
 	int		 cout;
 
 	pkg_get(pkg, PKG_ATTR_VERSION, &version);
 	if (ver == NULL) {
 		if (source == NULL)
-			key = "!";
+			key = '!';
 		else
-			key = "?";
+			key = '?';
 	} else {
 		switch (pkg_version_cmp(version, ver)) {
 		case -1:
-			key = "<";
+			key = '<';
 			break;
 		case 0:
-			key = "=";
+			key = '=';
 			break;
 		case 1:
-			key = ">";
+			key = '>';
 			break;
 		default:
-			key = "!";
+			key = '!';
 			break;
 		}
 	}
 
-	if ((opt & VERSION_STATUS) && limchar != *key)
+	if ((opt & VERSION_STATUS) && limchar != key)
 		return;
 
-	if ((opt & VERSION_NOSTATUS) && limchar == *key)
+	if ((opt & VERSION_NOSTATUS) && limchar == key)
 		return;
 
 	if (opt & VERSION_ORIGIN)
-		pkg_printf("%-34o %S", pkg, key);
+		pkg_printf("%-34o %c", pkg, key);
 	else {
 		cout = pkg_printf("%n-%v", pkg, pkg);
 		cout = 35 - cout;
 		if (cout < 1)
 			cout = 1;
-		printf("%*s%s", cout, " ", key);
+		printf("%*s%c", cout, " ", key);
 	}
 
 	if (opt & VERSION_VERBOSE) {
-		switch (*key) {
+		switch (key) {
 		case '<':
 			printf("   needs updating (%s has %s)", source, ver);
 			break;
@@ -138,6 +138,7 @@ print_version(struct pkg *pkg, const char *source, const char *ver,
 			pkg_printf("   orphaned: %o", pkg);
 			break;
 		case '!':
+		default:
 			printf("   Comparison failed");
 			break;
 		}
@@ -379,8 +380,14 @@ have_indexfile(const char **indexfile, char *filebuf, size_t filebuflen,
 	else
 		*indexfile = argv[0];
 
-	if (stat(*indexfile, &sb) == -1)
-		have_indexfile = false;
+	/* TODO: Handle error with errno, as stat() failure can
+	   indicate other issues too. */
+	if (stat(*indexfile, &sb) == -1) {
+		if (errno == ENOENT)
+			have_indexfile = false;
+		else
+			warn("Failed to get stat for the INDEX file!");
+	}
 
 	if (show_error && !have_indexfile)
 		warn("Can't access %s", *indexfile);
@@ -399,6 +406,7 @@ do_source_index(unsigned int opt, char limchar, char *pattern, match_t match,
 	struct pkg	*pkg = NULL;
 	const char	*name = NULL;
 	const char	*origin = NULL;
+	bool		gotnone = true;
 
 	if ( (opt & VERSION_SOURCES) != VERSION_SOURCE_INDEX) {
 		usage_version();
@@ -439,6 +447,10 @@ do_source_index(unsigned int opt, char limchar, char *pattern, match_t match,
 		ie = pkghash_get_value(index, name);
 		print_version(pkg, "index", ie != NULL ? ie->version : NULL,
 		    limchar, opt);
+
+		/* If we reach here, it means at least one package
+		   has matched with our query. */
+		gotnone = false;
 	}
 
 cleanup:
@@ -448,7 +460,7 @@ cleanup:
 	pkgdb_it_free(it);
 	pkgdb_close(db);
 
-	return (EPKG_OK);
+	return (gotnone);
 }
 
 static int
@@ -465,8 +477,7 @@ do_source_remote(unsigned int opt, char limchar, char *pattern, match_t match,
 	const char	*origin = NULL;
 	const char	*version_remote = NULL;
 	bool		is_origin = false;
-
-	int		 retcode = EPKG_OK;
+	int		retcode = EXIT_FAILURE;
 
 	if ( (opt & VERSION_SOURCES) != VERSION_SOURCE_REMOTE ) {
 		usage_version();
@@ -480,6 +491,8 @@ do_source_remote(unsigned int opt, char limchar, char *pattern, match_t match,
 		retcode = pkgcli_update(false, false, reponame);
 		if (retcode != EPKG_OK)
 			return (retcode);
+		else
+			retcode = EXIT_FAILURE;
 	}
 
 	if (pkgdb_open_all(&db, PKGDB_REMOTE, reponame) != EPKG_OK)
@@ -493,10 +506,8 @@ do_source_remote(unsigned int opt, char limchar, char *pattern, match_t match,
 	}
 
 	it = pkgdb_query(db, pattern, match);
-	if (it == NULL) {
-		retcode = EXIT_FAILURE;
+	if (it == NULL)
 		goto cleanup;
-	}
 
 	while (pkgdb_it_next(it, &pkg, PKG_LOAD_BASIC) == EPKG_OK) {
 		pkg_get(pkg, PKG_ATTR_NAME, &name);
@@ -531,6 +542,10 @@ do_source_remote(unsigned int opt, char limchar, char *pattern, match_t match,
 			print_version(pkg, "remote", NULL, limchar, opt);
 		}
 		pkgdb_it_free(it_remote);
+
+		/* If we reach here, it means at least one package
+		   has matched with our query. */
+		retcode = EXIT_SUCCESS;
 	}
 
 cleanup:
@@ -716,6 +731,7 @@ do_source_ports(unsigned int opt, char limchar, char *pattern, match_t match,
 	const char	*origin = NULL;
 	const char	*version = NULL;
 	int		portsfd;
+	bool		gotnone = true;
 
 	if ( (opt & VERSION_SOURCES) != VERSION_SOURCE_PORTS ) {
 		usage_version();
@@ -737,7 +753,7 @@ do_source_ports(unsigned int opt, char limchar, char *pattern, match_t match,
 	}
 
 	if ((it = pkgdb_query(db, pattern, match)) == NULL)
-			goto cleanup;
+		goto cleanup;
 
 	cmd = xstring_new();
 
@@ -758,6 +774,10 @@ do_source_ports(unsigned int opt, char limchar, char *pattern, match_t match,
 		version = port_version(cmd, portsfd, origin, name);
 		print_version(pkg, "port", version, limchar, opt);
 		xstring_reset(cmd);
+
+		/* If we reach here, it means at least one package
+		   has matched with our query. */
+		gotnone = false;
 	}
 
 	xstring_free(cmd);
@@ -770,7 +790,7 @@ cleanup:
 	pkgdb_it_free(it);
 	pkgdb_close(db);
 
-	return (EPKG_OK);
+	return (gotnone);
 }
 
 int
