@@ -872,5 +872,6 @@ bool stringlist_contains(stringlist_t *l, const char *name);
 
 int pkg_parse_manifest_ucl(struct pkg *pkg, ucl_object_t *o);
 int pkg_get_reposdirfd(void);
+char * expand_plist_variables(const char *in, kvlist_t *vars);
 
 #endif

@@ -29,6 +29,7 @@
 #include <private/pkg.h>
 
 ATF_TC_WITHOUT_HEAD(parse_mode);
+ATF_TC_WITHOUT_HEAD(expand_plist_variables);
 
 ATF_TC_BODY(parse_mode, tc)
 {
@@ -271,12 +272,53 @@ ATF_TC_BODY(parse_plist, tc)
 	plist_free(plist);
 }
 
+ATF_TC_BODY(expand_plist_variables, tc)
+{
+	char *plop;
+	kvlist_t kv = tll_init();
+
+	plop = expand_plist_variables("%%this%% is a line", &kv);
+	ATF_REQUIRE_STREQ(plop, "%%this%% is a line");
+	free(plop);
+
+	struct pkg_kv *keyval = pkg_kv_new("this", "@comment ");
+	tll_push_back(kv, keyval);
+
+	plop = expand_plist_variables("%%this%% is a line", &kv);
+	ATF_REQUIRE_STREQ(plop, "@comment  is a line");
+	free(plop);
+
+	plop = expand_plist_variables("%%thos%% is a line", &kv);
+	ATF_REQUIRE_STREQ(plop, "%%thos%% is a line");
+	free(plop);
+
+	plop = expand_plist_variables("%F is a line", &kv);
+	ATF_REQUIRE_STREQ(plop, "%F is a line");
+	free(plop);
+
+	struct pkg_kv *kv2 = pkg_kv_new("new", "var");
+	tll_push_back(kv, kv2);
+
+	plop = expand_plist_variables("%%this%% %F is a %%new%% line", &kv);
+	ATF_REQUIRE_STREQ(plop, "@comment  %F is a var line");
+	free(plop);
+
+	plop = expand_plist_variables("%%this%% %F is %% a %%new%% line", &kv);
+	ATF_REQUIRE_STREQ(plop, "@comment  %F is %% a var line");
+	free(plop);
+
+	plop = expand_plist_variables("%%this%% %F is %%kof a %%new%% line", &kv);
+	ATF_REQUIRE_STREQ(plop, "@comment  %F is %%kof a var line");
+	free(plop);
+}
+
 ATF_TP_ADD_TCS(tp)
 {
 	ATF_TP_ADD_TC(tp, parse_mode);
 	ATF_TP_ADD_TC(tp, parse_plist);
 	ATF_TP_ADD_TC(tp, parse_keyword_attributes);
 	ATF_TP_ADD_TC(tp, parse_keyword);
+	ATF_TP_ADD_TC(tp, expand_plist_variables);
 
 	return (atf_no_error());
 }

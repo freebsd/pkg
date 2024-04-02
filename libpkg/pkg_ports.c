@@ -1079,7 +1079,7 @@ plist_free(struct plist *p)
 	free(p);
 }
 
-static char *
+char *
 expand_plist_variables(const char *in, kvlist_t *vars)
 {
 	xstring *buf;
@@ -1101,6 +1101,7 @@ expand_plist_variables(const char *in, kvlist_t *vars)
 		if (in[0] == '\0')
 			break;
 		if (in[0] != '%') {
+			fputc('%', buf->fp);
 			fputc(in[0], buf->fp);
 			in++;
 			continue;
@@ -1116,7 +1117,6 @@ expand_plist_variables(const char *in, kvlist_t *vars)
 		}
 		if (in[0] != '%') {
 			fprintf(buf->fp, "%%%%%.*s", (int)(in - cp), cp);
-			in++;
 			continue;
 		}
 		len = in - cp -1;
@@ -1127,6 +1127,7 @@ expand_plist_variables(const char *in, kvlist_t *vars)
 				continue;
 			fputs(i->item->value, buf->fp);
 			found = true;
+			in++;
 			break;
 		}
 		if (found)
