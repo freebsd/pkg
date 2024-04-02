@@ -80,7 +80,7 @@ static void
 print_version(struct pkg *pkg, const char *source, const char *ver,
 	      char limchar, unsigned int opt)
 {
-	char	        key;
+	char		 key;
 	const char	*version = NULL;
 	int		 cout;
 
@@ -380,8 +380,6 @@ have_indexfile(const char **indexfile, char *filebuf, size_t filebuflen,
 	else
 		*indexfile = argv[0];
 
-	/* TODO: Handle error with errno, as stat() failure can
-	   indicate other issues too. */
 	if (stat(*indexfile, &sb) == -1) {
 		if (errno == ENOENT)
 			have_indexfile = false;
