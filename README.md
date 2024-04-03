@@ -34,7 +34,7 @@ SourceHut CI:
 <a name="libpkg"></a>
 ### libpkg
 
-pkg is built on top of libpkg, a new library to interface with package
+pkg is built on top of libpkg, a new library to interface with the package
 registration backends.
 It abstracts package management details such as registration, remote
 repositories, package creation, updating, etc.
@@ -44,7 +44,7 @@ repositories, package creation, updating, etc.
 
 The `pkg` package format is a tar archive that may be raw or compressed using one of the following algorithms: `gz`, `bzip2`, `zstd`, or `xz`. The default compression algorithm is `zstd`.
 
-The tar archive itself is composed in two types of elements:
+The tar archive itself is composed of two types of elements:
 
 * the special files at the beginning of the archive, starting with a "+"
 * the data.
@@ -147,11 +147,11 @@ root-owned files without being packaged by the root user.
 
 When a package is installed, it is registered in a SQLite database.
 
-The SQLite database allow fast queries and ACID transactions.  It also
-allows finding the reverse dependencies reliably without a needing the
+The SQLite database allows fast queries and ACID transactions.  It also
+allows finding the reverse dependencies reliably without needing the
 __+REQUIRED_BY__ hack.
 
-In order to save space the MTREE is only stored once, which save 18K per
+In order to save space the MTREE is only stored once, which saves 18K per
 installed package.
 
 pkg supports a `register` command to register packages into the SQLite
@@ -218,9 +218,9 @@ reinstalled) without performing any other actions.
 <a name="pkgports"></a>
 ### pkg in Ports
 
-pkg-1.0 release was committed to the the ports tree on 30th August
-2012, and a series of further releases are planned.  To install the
-latest release version:
+pkg-1.0 release was committed to the ports tree on 30th August 2012,
+and a series of further releases are planned.  To install the latest
+release version:
 
 	$ make -C /usr/ports/ports-mgmt/pkg install clean
 	$ echo "WITH_PKG=yes" >> /etc/make.conf
@@ -229,7 +229,7 @@ latest release version:
 <a name="pkggit"></a>
 ### Building pkg using sources from Git [FreeBSD]
 
-In order to build pkg from source, you will need to have Gnu
+In order to build pkg from source, you will need to have GNU
 autotools and some other tools installed.
 
 	# pkg install autoconf automake libtool pkgconf
@@ -265,7 +265,7 @@ installed.
 Note: if you're running anything other than FreeBSD or DragonFly, you
 will need to do some porting work.  The pkg(8) codebase should be
 reasonably portable onto anything with a c99 compiler, POSIX compliant
-system and capable of running Gnu autotools.  However, various places
+system and capable of running GNU autotools.  However, various places
 in the pkg(8) code make assumptions about OS specific behaviour.  If
 you do try anything like this, we'd be very interested to hear how you
 get on.
@@ -381,13 +381,13 @@ to be obtained from whatever repository has them available.
 
 You can install a package from a specific repository:
 
-    	# pkg install -r myrepo zsh
+    # pkg install -r myrepo zsh
 
 where `myrepo` is one of the tags shown in the `pkg -vv` output.
 pkg(8) will automatically create an annotation showing which
 repository a package came from, similarly to the effect of running:
 
-        # pkg annotate -A pkgname repository myrepo
+    # pkg annotate -A pkgname repository myrepo
 
 pkg(8) will attempt to use the same repository for any updates to this
 package, even if there are more recent versions available from other
