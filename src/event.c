@@ -222,7 +222,7 @@ progressbar_tick(int64_t current, int64_t total)
 				percent = (total != 0) ? (current * 100. / total) : 100;
 				if (last_progress_percent / 10 < percent / 10) {
 					last_progress_percent = percent;
-					printf(".");
+					putchar('.');
 					fflush(stdout);
 				}
 			}
@@ -406,14 +406,14 @@ event_callback(void *data, struct pkg_event *ev)
 			break;
 		printf("\rPushing new entries %d/%d", ev->e_upd_add.done, ev->e_upd_add.total);
 		if (ev->e_upd_add.total == ev->e_upd_add.done)
-			printf("\n");
+		        putchar('\n');
 		break;
 	case PKG_EVENT_UPDATE_REMOVE:
 		if (quiet || !isatty(STDOUT_FILENO))
 			break;
 		printf("\rRemoving entries %d/%d", ev->e_upd_remove.done, ev->e_upd_remove.total);
 		if (ev->e_upd_remove.total == ev->e_upd_remove.done)
-			printf("\n");
+			putchar('\n');
 		break;
 	case PKG_EVENT_FETCH_BEGIN:
 		if (nbtodl > 0)
