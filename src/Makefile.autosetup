@@ -80,7 +80,7 @@ STATIC_ARG=
 LOCAL_LDFLAGS=	-Wl,-Bstatic \
 		@waflags@ $(LIBPKGFLAT) @nowaflags@ \
 		$(LIBS) \
-		-Wl,-Bdynamic $(OTHER_LIBS) \
+		-Wl,-Bdynamic -Wl,--as-needed $(OTHER_LIBS) \
 		-Wl,--export-dynamic
 STATIC_ARG=	-static
 STATIC_LDFLAGS=	$(LIBPKGFLAT) $(LIBS) $(OTHER_LIBS)

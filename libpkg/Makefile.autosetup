@@ -73,6 +73,7 @@ LOCAL_CFLAGS=	-I$(top_srcdir)/compat \
 		-I$(top_builddir)/libpkg \
 		-I$(top_srcdir) \
 		-I$(top_builddir) \
+		-Wl,--as-needed \
 		-Wno-pointer-sign \
 		-Wno-missing-field-initializers \
 		-Wno-sign-compare \
