@@ -194,7 +194,7 @@ exec_delete(int argc, char **argv)
 		printf("The following package(s) are locked and may not ");
 		printf("be removed:\n\n");
 		pkg_jobs_iter_lockedpkgs(jobs, print_pkg, &locked_pkgs);
-		printf("\n");
+		putchar('\n');
 	}
 
 	/* check if we have something to deinstall */
