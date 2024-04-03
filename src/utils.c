@@ -410,7 +410,7 @@ print_info(struct pkg * const pkg, uint64_t options)
 			info_num++;
 
 	if (info_num == 0 && cout > 0) {
-		printf("\n");
+	        putchar('\n');
 		return;
 	}
 
@@ -432,7 +432,7 @@ print_info(struct pkg * const pkg, uint64_t options)
 		/* Several items to print */
 		print_tag = true;
 		if (!quiet)
-			printf("\n");
+		        putchar('\n');
 	}
 
 	for (opt = 0x1; opt <= INFO_LASTFIELD; opt <<= 1) {
@@ -452,7 +452,7 @@ print_info(struct pkg * const pkg, uint64_t options)
 					pkg_printf("%t%{%c %Z%}\n", pkg);
 				}
 			} else if (!print_tag)
-				printf("\n");
+				putchar('\n');
 			break;
 		case INFO_VERSION:
 			if (is_group)
@@ -484,7 +484,7 @@ print_info(struct pkg * const pkg, uint64_t options)
 					printf("%-15s: ", "Repository");
 				pkg_printf("%N [%S]\n", pkg, repourl);
 			} else if (!print_tag)
-				printf("\n");
+				putchar('\n');
 			break;
 		case INFO_CATEGORIES:
 			if (is_group)
@@ -592,7 +592,7 @@ print_info(struct pkg * const pkg, uint64_t options)
 					printf("%-15s: ", "Pkg size");
 				pkg_printf("%#xB\n", pkg);
 			} else if (!print_tag)
-				printf("\n");
+			        putchar('\n');
 			break;
 		case INFO_DESCR:
 			if (is_group)
@@ -698,7 +698,7 @@ print_info(struct pkg * const pkg, uint64_t options)
 				else
 					pkg_printf("%S/%R\n", repourl, pkg);
 			} else if (!print_tag)
-				printf("\n");
+				putchar('\n');
 			break;
 		case INFO_LOCKED:
 			if (print_tag)
@@ -912,25 +912,25 @@ display_summary_item(struct pkg_solved_display *it, int64_t dlsize)
 		pkg_printf("\t%n: %v", it->new, it->new);
 		if (why != NULL)
 			printf(" (%s)", why);
-		printf("\n");
+		putchar('\n');
 		break;
 	case PKG_DISPLAY_INSTALL:
 		pkg_printf("\t%n: %v", it->new, it->new);
 		if (pkg_repos_total_count() > 1)
 			pkg_printf(" [%N]", it->new);
-		printf("\n");
+		putchar('\n');
 		break;
 	case PKG_DISPLAY_UPGRADE:
 		pkg_printf("\t%n: %v -> %v", it->new, it->old, it->new);
 		if (pkg_repos_total_count() > 1)
 			pkg_printf(" [%N]", it->new);
-		printf("\n");
+		putchar('\n');
 		break;
 	case PKG_DISPLAY_DOWNGRADE:
 		pkg_printf("\t%n: %v -> %v", it->new, it->old, it->new);
 		if (pkg_repos_total_count() > 1)
 			pkg_printf(" [%N]", it->new);
-		printf("\n");
+		putchar('\n');
 		break;
 	case PKG_DISPLAY_REINSTALL:
 		pkg_get(it->new, PKG_ATTR_REASON, &why);
@@ -939,7 +939,7 @@ display_summary_item(struct pkg_solved_display *it, int64_t dlsize)
 			pkg_printf(" [%N]", it->new);
 		if (why != NULL)
 			printf(" (%s)", why);
-		printf("\n");
+		putchar('\n');
 		break;
 	case PKG_DISPLAY_FETCH:
 		humanize_number(size, sizeof(size), pkgsize, "B",
@@ -955,13 +955,13 @@ display_summary_item(struct pkg_solved_display *it, int64_t dlsize)
 		pkg_printf("\t%n", it->new, it->new);
 		if (pkg_repos_total_count() > 1)
 			pkg_printf(" [%N]", it->new);
-		printf("\n");
+		putchar('\n');
 		break;
 	case PKG_DISPLAY_GROUP_INSTALL:
 		pkg_printf("\t@%n", it->new, it->new);
 		if (pkg_repos_total_count() > 1)
 			pkg_printf(" [%N]", it->new);
-		printf("\n");
+		putchar('\n');
 		break;
 	default:
 		break;
