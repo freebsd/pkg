@@ -341,7 +341,7 @@ list_elf_hints(const char *hintsfile)
 	printf("\tsearch directories:");
 	for (i = 0;  i < ndirs;  i++)
 		printf("%c%s", i == 0 ? ' ' : ':', dirs[i]);
-	printf("\n");
+	putchar('\n');
 
 	nlibs = 0;
 	for (i = 0;  i < ndirs;  i++) {
