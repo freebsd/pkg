@@ -47,7 +47,6 @@ pkg_start_stop_rc_scripts(struct pkg *pkg, pkg_rc_attr attr)
 	struct pkg_file *file = NULL;
 	char rc_d_path[PATH_MAX];
 	const char *rcfile;
-	const char *rc;
 	size_t len = 0;
 	int ret = 0;
 	bool handle_rc;
@@ -63,14 +62,12 @@ pkg_start_stop_rc_scripts(struct pkg *pkg, pkg_rc_attr attr)
 		if (strncmp(rc_d_path, file->path, len) == 0) {
 			rcfile = file->path;
 			rcfile += len;
-			rc = strrchr(rcfile, '/');
-			rc++;
 			switch (attr) {
 			case PKG_RC_START:
-				ret += rc_start(rc);
+				ret += rc_start(rcfile);
 				break;
 			case PKG_RC_STOP:
-				ret += rc_stop(rc);
+				ret += rc_stop(rcfile);
 				break;
 			}
 		}
