@@ -1093,7 +1093,7 @@ pkg_arch_to_legacy(const char *arch, char *dest, size_t sz)
 	int i = 0;
 	struct arch_trans *arch_trans;
 
-	bzero(dest, sz);
+	memset(dest, '\0', sz);
 	/* Lower case the OS */
 	while (arch[i] != ':' && arch[i] != '\0') {
 		dest[i] = tolower(arch[i]);
