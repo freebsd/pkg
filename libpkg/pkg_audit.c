@@ -692,7 +692,7 @@ pkg_audit_preprocess(struct pkg_audit_entry *h)
 	}
 
 	/* Calculate jump indexes for the first byte of the package name */
-	bzero(audit_entry_first_byte_idx, sizeof(audit_entry_first_byte_idx));
+	memset(audit_entry_first_byte_idx, '\0', sizeof(audit_entry_first_byte_idx));
 	for (n = 1, i = 0; n < 256; n++) {
 		while (ret[i].e != NULL &&
 		    (size_t)(ret[i].e->pkgname[0]) < n)
