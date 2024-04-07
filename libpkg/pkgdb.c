@@ -2357,7 +2357,7 @@ sql_exec(sqlite3 *s, const char *sql, ...)
 
 	ret = EPKG_OK;
 
-	cleanup:
+cleanup:
 	if (sqlbuf != NULL)
 		sqlite3_free(sqlbuf);
 
