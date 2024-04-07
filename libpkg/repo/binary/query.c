@@ -187,7 +187,7 @@ pkg_repo_binary_query(struct pkg_repo *repo, const char *cond, const char *patte
 	sqlite3_stmt	*stmt = NULL;
 	char *sql = NULL;
 	const char	*comp = NULL;
-	char basesql_quick[] = ""
+	const char basesql_quick[] = ""
 		"SELECT DISTINCT(p.id), origin, p.name, p.name as uniqueid, version, comment, "
 		"prefix, desc, arch, maintainer, www, "
 		"licenselogic, flatsize, pkgsize, "
@@ -196,7 +196,7 @@ pkg_repo_binary_query(struct pkg_repo *repo, const char *cond, const char *patte
 		" %s "
 		"%s%s%s "
 		"ORDER BY p.name;";
-	char basesql[] = ""
+	const char basesql[] = ""
 		"WITH flavors AS "
 		"  (SELECT package_id, value.annotation AS flavor FROM pkg_annotation "
 		"   LEFT JOIN annotation tag ON pkg_annotation.tag_id = tag.annotation_id "
@@ -214,10 +214,8 @@ pkg_repo_binary_query(struct pkg_repo *repo, const char *cond, const char *patte
 		" %s "
 		"%s%s%s "
 		"ORDER BY p.name;";
-	char *bsql = basesql;
 
-	if (match == MATCH_INTERNAL)
-		bsql = basesql_quick;
+	const char *bsql = (match == MATCH_INTERNAL) ? basesql_quick : basesql;
 
 	if (match != MATCH_ALL && (pattern == NULL || pattern[0] == '\0'))
 		return (NULL);
@@ -361,6 +359,7 @@ pkg_repo_binary_require(struct pkg_repo *repo, const char *provide)
 
 	return (pkg_repo_binary_it_new(repo, stmt, PKGDB_IT_FLAG_ONCE));
 }
+
 static const char *
 pkg_repo_binary_search_how(match_t match)
 {
@@ -397,7 +396,7 @@ static int
 pkg_repo_binary_build_search_query(xstring *sql, match_t match,
     pkgdb_field field, pkgdb_field sort)
 {
-	const char	*how = NULL;
+	const char	*how;
 	const char	*what = NULL;
 	const char	*orderby = NULL;
 
