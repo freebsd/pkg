@@ -254,5 +254,4 @@ pkg_repo_binary_finalize_prstatements(void)
 			STMT(i) = NULL;
 		}
 	}
-	return;
 }
