@@ -704,7 +704,8 @@ pkg_absolutepath(const char *src, char *dest, size_t dest_size, bool fromroot) {
 	const char *cur, *next;
 
 	src_len = strlen(src);
-	bzero(dest, dest_size);
+	memset(dest, '\0', dest_size);
+
 	if (src_len != 0 && src[0] != '/') {
 		if (fromroot)
 			*dest = '/';
