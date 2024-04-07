@@ -307,7 +307,7 @@ pkg_arch_to_legacy(const char *arch, char *dest, size_t sz)
 	const char *arch_name;
 	bool is64;
 
-	bzero(dest, sz);
+	memset(dest, '\0', sz);
 	/* Lower case the OS */
 	while (arch[i] != ':' && arch[i] != '\0') {
 		dest[i] = tolower(arch[i]);
