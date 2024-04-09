@@ -630,12 +630,12 @@ pkg_repo_binary_update_proceed(const char *name, struct pkg_repo *repo,
 			ucl_object_t *o = ucl_array_pop_first(pkgs);
 			cnt++;
 			if ((cnt % 10 ) == 0)
-				cancel = pkg_emit_progress_tick(nbel, cnt);
+				cancel = pkg_emit_progress_tick(cnt, nbel);
 			rc = pkg_repo_binary_add_from_ucl(sqlite, o, repo);
 			if (rc != EPKG_OK || cancel != 0)
 				break;
 		}
-		pkg_emit_progress_tick(nbel, cnt);
+		pkg_emit_progress_tick(cnt, nbel);
 		save_groups(repo,
 		    ucl_object_ref(ucl_object_find_key(data, "groups")));
 	}
