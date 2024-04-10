@@ -1013,6 +1013,7 @@ pkg_ini(const char *path, const char *reposdir, pkg_init_flags flags)
 	struct os_info oi;
 	size_t ukeylen;
 	int err = EPKG_OK;
+	const char *envabi;
 
 	k = NULL;
 	o = NULL;
@@ -1023,8 +1024,14 @@ pkg_ini(const char *path, const char *reposdir, pkg_init_flags flags)
 	}
 
 	memset(&oi, 0, sizeof(oi));
-	pkg_get_myarch(myabi, BUFSIZ, &oi);
-	pkg_get_myarch_legacy(myabi_legacy, BUFSIZ);
+	envabi = getenv("ABI");
+	if (envabi == NULL) {
+		pkg_get_myarch(myabi, BUFSIZ, &oi);
+		pkg_get_myarch_legacy(myabi_legacy, BUFSIZ);
+	} else {
+		strlcpy(myabi, envabi, sizeof(myabi));
+		pkg_arch_to_legacy(myabi, myabi_legacy, BUFSIZ);
+	}
 #ifdef __FreeBSD__
 	ctx.osversion = oi.osversion;
 	snprintf(myosversion, sizeof(myosversion), "%d", ctx.osversion);
