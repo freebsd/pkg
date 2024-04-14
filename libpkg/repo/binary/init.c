@@ -219,7 +219,7 @@ pkg_repo_binary_open(struct pkg_repo *repo, unsigned mode)
 			repo->name);
 		sqlite3_close(sqlite);
 		if (mode & W_OK)
-			unlink(filepath);
+			(void)unlinkat(dbdirfd, filepath, 0);
 		return (EPKG_REPOSCHEMA);
 	}
 
@@ -249,14 +249,14 @@ pkg_repo_binary_open(struct pkg_repo *repo, unsigned mode)
 int
 pkg_repo_binary_create(struct pkg_repo *repo)
 {
-	char filepath[MAXPATHLEN];
+	const char *filepath;
 	sqlite3 *sqlite = NULL;
 	int retcode, dbdirfd;
 
 	sqlite3_initialize();
 
 	dbdirfd = pkg_get_dbdirfd();
-	snprintf(filepath, sizeof(filepath), "repos/%s/db", repo->name);
+	filepath = pkg_repo_binary_get_filename(repo);
 	/* Should never ever happen */
 	if (faccessat(dbdirfd, filepath, R_OK, 0) == 0)
 		return (EPKG_CONFLICT);
