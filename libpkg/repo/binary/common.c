@@ -230,13 +230,14 @@ pkg_repo_binary_run_prstatement(sql_prstmt_index s, ...)
 	return (retcode);
 }
 
+/*
+ * Returns a path relative to the dbdir.
+ */
 const char *
 pkg_repo_binary_get_filename(struct pkg_repo *repo)
 {
 	if (repo->dbpath == NULL)
-		xasprintf(&repo->dbpath, "%s/repos/%s/db", ctx.dbdir,
-		    repo->name);
-
+		xasprintf(&repo->dbpath, "repos/%s/db", repo->name);
 	return (repo->dbpath);
 }
 
