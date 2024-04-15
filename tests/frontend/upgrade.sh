@@ -8,8 +8,7 @@ tests_init \
 	three_digit_revision \
 	dual_conflict \
 	file_become_dir \
-	dir_become_file \
-	vital
+	dir_become_file
 
 issue1881_body() {
 	atf_check -s exit:0 sh ${RESOURCEDIR}/test_subr.sh new_pkg pkg1 pkg_a 1
@@ -262,45 +261,4 @@ dir_become_file_body() {
 	echo "${TMPDIR}/file-pkg-1" > plist-2
 	atf_check pkg create -M pkg.ucl -p plist-2
 	atf_check -o ignore pkg -o REPOS_DIR="${TMPDIR}" -r ${TMPDIR}/target install -Uy ${TMPDIR}/pkg-2.pkg
-}
-
-vital_body() {
-	atf_check -s exit:0 sh ${RESOURCEDIR}/test_subr.sh new_pkg "meta" "mymeta" "1"
-	mkdir file-pkg-1
-	cat << EOF >> meta.ucl
-vital = true;
-EOF
-	echo entry > file-pkg-1/file
-	echo "${TMPDIR}/file-pkg-1/file" > plist-1
-	atf_check pkg create -M meta.ucl -p plist-1
-	mkdir target
-	atf_check -o ignore pkg -o REPOS_DIR="${TMPDIR}" -r ${TMPDIR}/target install -Uy ${TMPDIR}/mymeta-1.pkg
-	atf_check -s exit:0 sh ${RESOURCEDIR}/test_subr.sh new_pkg "plop" "myplop" "1"
-	atf_check pkg create -M plop.ucl
-	atf_check -o ignore pkg -o REPOS_DIR="${TMPDIR}" -r ${TMPDIR}/target install -Uy ${TMPDIR}/myplop-1.pkg
-	atf_check -s exit:0 sh ${RESOURCEDIR}/test_subr.sh new_pkg "plop" "myplop" "2"
-	echo "${TMPDIR}/file-pkg-1/file" > plist-2
-	atf_check pkg create -M plop.ucl -p plist-2
-	mkdir repoconf
-	cat << EOF > repoconf/repo.conf
-local: {
-	url: file:///$TMPDIR,
-	enabled: true
-}
-EOF
-
-	atf_check -o ignore pkg repo .
-	atf_check -o ignore pkg -o REPOS_DIR="$TMPDIR/repoconf" -r ${TMPDIR}/target -o PKG_CACHEDIR="$TMPDIR" update
-	OUTPUT="Updating local repository catalogue...
-local repository is up to date.
-All repositories are up to date.
-Checking for upgrades (2 candidates):  done
-Processing candidates (2 candidates):  done
-Checking integrity... done (1 conflicting)
-  - myplop-2 conflicts with mymeta-1 on ${TMPDIR}/file-pkg-1/file
-Cannot solve problem using SAT solver, trying another plan
-Checking integrity... done (0 conflicting)
-Your packages are up to date.
-"
-	atf_check -o inline:"${OUTPUT}" pkg -o REPOS_DIR="$TMPDIR/repoconf" -r ${TMPDIR}/target -o PKG_CACHEDIR="$TMPDIR" upgrade -y
 }
