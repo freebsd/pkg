@@ -1,3 +1,10 @@
+Changes from 1.21.99.0 to 1.21.99.1
+- fix regression in HANDLE_RC_SCRIPTS option (off by default)
+- fix processing entries spiner
+- fix database path handling for rootdir
+- revert a change in vital/lock handling in the solver cause
+  some vital packages to never be upgraded.
+
 Changes from 1.20.99.12 to 1.21.99.0
 - fix regressions in plist parsing
 
