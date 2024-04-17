@@ -307,6 +307,7 @@ exec_audit(int argc, char **argv)
 			add_to_check(check, pkg);
 			pkg = NULL;
 		}
+		fts_close(fts);
 	} else if (argc >= 1) {
 		for (i = 0; i < argc; i ++) {
 			name = argv[i];
