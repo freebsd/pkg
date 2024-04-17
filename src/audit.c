@@ -2,28 +2,9 @@
  * Copyright (c) 2011-2012 Julien Laffaye <jlaffaye@FreeBSD.org>
  * Copyright (c) 2014-2015 Matthew Seaman <matthew@FreeBSD.org>
  * Copyright (c) 2014 Vsevolod Stakhov <vsevolod@FreeBSD.org>
- * All rights reserved.
+ * Copyright (c) 2011-2024 Baptiste Daroussin <matthew@FreeBSD.org>
  *
- * Redistribution and use in source and binary forms, with or without
- * modification, are permitted provided that the following conditions
- * are met:
- * 1. Redistributions of source code must retain the above copyright
- *    notice, this list of conditions and the following disclaimer
- *    in this position and unchanged.
- * 2. Redistributions in binary form must reproduce the above copyright
- *    notice, this list of conditions and the following disclaimer in the
- *    documentation and/or other materials provided with the distribution.
- *
- * THIS SOFTWARE IS PROVIDED BY THE AUTHOR(S) ``AS IS'' AND ANY EXPRESS OR
- * IMPLIED WARRANTIES, INCLUDING, BUT NOT LIMITED TO, THE IMPLIED WARRANTIES
- * OF MERCHANTABILITY AND FITNESS FOR A PARTICULAR PURPOSE ARE DISCLAIMED.
- * IN NO EVENT SHALL THE AUTHOR(S) BE LIABLE FOR ANY DIRECT, INDIRECT,
- * INCIDENTAL, SPECIAL, EXEMPLARY, OR CONSEQUENTIAL DAMAGES (INCLUDING, BUT
- * NOT LIMITED TO, PROCUREMENT OF SUBSTITUTE GOODS OR SERVICES; LOSS OF USE,
- * DATA, OR PROFITS; OR BUSINESS INTERRUPTION) HOWEVER CAUSED AND ON ANY
- * THEORY OF LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY, OR TORT
- * (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF
- * THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
+ * SPDX-License-Identifier: BSD-2-Clause
  */
 
 #include "pkg_config.h"
@@ -35,6 +16,7 @@
 #include <archive.h>
 #include <err.h>
 #include <errno.h>
+#include <fts.h>
 #include <fcntl.h>
 #include <fnmatch.h>
 #include <getopt.h>
@@ -208,6 +190,7 @@ exec_audit(int argc, char **argv)
 	char			*name;
 	char			*version;
 	char			*audit_file = NULL;
+	char			*dirname = NULL;
 	int			 affected = 0, vuln = 0;
 	bool			 fetch = false, recursive = false;
 	int			 ch, i;
@@ -219,6 +202,7 @@ exec_audit(int argc, char **argv)
 	ucl_object_t		*obj = NULL;
 
 	struct option longopts[] = {
+		{ "directory",	required_argument,	NULL,	'd' },
 		{ "fetch",	no_argument,		NULL,	'F' },
 		{ "file",	required_argument,	NULL,	'f' },
 		{ "recursive",	no_argument,	NULL,	'r' },
@@ -227,8 +211,11 @@ exec_audit(int argc, char **argv)
 		{ NULL,		0,			NULL,	0   },
 	};
 
-	while ((ch = getopt_long(argc, argv, "+Ff:qrR::", longopts, NULL)) != -1) {
+	while ((ch = getopt_long(argc, argv, "+d:Ff:qrR::", longopts, NULL)) != -1) {
 		switch (ch) {
+		case 'd':
+			dirname = optarg;
+			break;
 		case 'F':
 			fetch = true;
 			break;
@@ -273,6 +260,11 @@ exec_audit(int argc, char **argv)
 			return (EXIT_FAILURE);
 		}
 	}
+	if (dirname != NULL && argc > 1) {
+		warnx("No argument expected with -d");
+		usage_audit();
+		return (EXIT_FAILURE);
+	}
 
 	if (pkg_audit_load(audit, audit_file) != EPKG_OK) {
 		if (errno == ENOENT)
@@ -288,7 +280,34 @@ exec_audit(int argc, char **argv)
 	}
 
 	check = pkghash_new();
-	if (argc >= 1) {
+	if (dirname != NULL) {
+		char * path[2];
+		FTSENT *fts_ent;
+		path[0] = dirname;
+		path[1] = NULL;
+		FTS *fts = fts_open(path, FTS_PHYSICAL|FTS_NOSTAT, NULL);
+		if (fts == NULL)
+			err(EXIT_FAILURE, "fts_open(%s)", dirname);
+		while ((fts_ent = fts_read(fts)) != NULL) {
+			char *ext = strrchr(fts_ent->fts_name, '.');
+			if (ext == NULL)
+				continue;
+			if (strcmp(ext, ".pkg") != 0)
+				continue;
+			*ext = '\0';
+			ext = strrchr(fts_ent->fts_name, '-');
+			if (ext == NULL)
+				continue;
+			*ext = '\0';
+			ext++;
+			if (pkg_new(&pkg, PKG_FILE) != EPKG_OK)
+				err(EXIT_FAILURE, "malloc");
+			pkg_set(pkg, PKG_ATTR_NAME, fts_ent->fts_name);
+			pkg_set(pkg, PKG_ATTR_VERSION, ext);
+			add_to_check(check, pkg);
+			pkg = NULL;
+		}
+	} else if (argc >= 1) {
 		for (i = 0; i < argc; i ++) {
 			name = argv[i];
 			version = strrchr(name, '-');
@@ -466,7 +485,7 @@ exec_audit(int argc, char **argv)
 
 		if (top == NULL) {
 			if (!quiet)
-				printf("%u problem(s) in %u installed package(s) found.\n",
+				printf("%u problem(s) in %u package(s) found.\n",
 				   affected, vuln);
 
 		} else {
