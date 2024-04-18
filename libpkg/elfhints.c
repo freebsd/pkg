@@ -30,6 +30,13 @@
 #include <bsd_compat.h>
 #include <sys/mman.h>
 #include <sys/stat.h>
+#ifdef HAVE_SYS_ENDIAN_H
+#include <sys/endian.h>
+#elif HAVE_ENDIAN_H
+#include <endian.h>
+#elif HAVE_MACHINE_ENDIAN_H
+#include <machine/endian.h>
+#endif
 
 #include <assert.h>
 #include <ctype.h>
