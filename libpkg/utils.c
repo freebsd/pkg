@@ -968,7 +968,7 @@ json_escape(const char *str)
 }
 
 struct tempdir *
-open_tempdir(int rootfd, const char *path)
+open_tempdir(int rootfd, const char *path, stringlist_t *symlinks_allowed)
 {
 	struct stat st;
 	char walk[MAXPATHLEN];
@@ -980,12 +980,19 @@ open_tempdir(int rootfd, const char *path)
 	while ((dir = strrchr(walk, '/')) != NULL) {
 		*dir = '\0';
 		cnt++;
-		/* accept symlinks pointing to directories */
+		/* accept symlinks pointing to directories only for prefix */
 		len = strlen(walk);
 		if (len == 0 && cnt == 1)
 			break;
 		if (len > 0) {
-			if (fstatat(rootfd, RELATIVE_PATH(walk), &st, 0) == -1)
+			int flag = AT_SYMLINK_NOFOLLOW;
+			if (symlinks_allowed != NULL) {
+				tll_foreach(*symlinks_allowed, t) {
+					if (strcmp(RELATIVE_PATH(walk), RELATIVE_PATH(t->item)) == 0)
+						flag = 0;
+				}
+			}
+			if (fstatat(rootfd, RELATIVE_PATH(walk), &st, flag) == -1)
 				continue;
 			if (S_ISDIR(st.st_mode) && cnt == 1)
 				break;

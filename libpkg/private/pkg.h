@@ -122,7 +122,6 @@
 #define DL_FREE(head, free_func) DL_FREE2(head, free_func, prev, next)
 
 typedef tll(struct pkg_kv *) kvlist_t;
-typedef tll(char *) stringlist_t;
 
 typedef enum {
 	IPALL = 0,

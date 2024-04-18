@@ -75,10 +75,10 @@ ATF_TC_BODY(open_tempdir, tc) {
 	struct tempdir *t;
 	int rootfd = open(getenv("TMPDIR"), O_DIRECTORY);
 	ATF_REQUIRE_MSG(rootfd  != -1, "impossible to open TMPDIR");
-	t = open_tempdir(rootfd, "/plop");
+	t = open_tempdir(rootfd, "/plop", NULL);
 	ATF_REQUIRE(t == NULL);
 	mkdirat(rootfd, "usr", 0755);
-	t = open_tempdir(rootfd, "/usr/local/directory");
+	t = open_tempdir(rootfd, "/usr/local/directory", NULL);
 	ATF_REQUIRE(t != NULL);
 	ATF_REQUIRE_STREQ(t->name, "/usr/local");
 	ATF_REQUIRE_EQ(t->len, strlen("/usr/local"));
@@ -86,7 +86,7 @@ ATF_TC_BODY(open_tempdir, tc) {
 	ATF_REQUIRE(t->fd != -1);
 	close(t->fd);
 	free(t);
-	t = open_tempdir(rootfd, "/nousr/local/directory");
+	t = open_tempdir(rootfd, "/nousr/local/directory", NULL);
 	ATF_REQUIRE(t != NULL);
 	ATF_REQUIRE_STREQ(t->name, "/nousr");
 	ATF_REQUIRE_EQ(t->len, strlen("/nousr"));
@@ -97,7 +97,7 @@ ATF_TC_BODY(open_tempdir, tc) {
 	mkdirat(rootfd, "dir", 0755);
 	/* a file in the path */
 	close(openat(rootfd, "dir/file1", O_CREAT|O_WRONLY, 0644));
-	t = open_tempdir(rootfd, "/dir/file1/test");
+	t = open_tempdir(rootfd, "/dir/file1/test", NULL);
 	ATF_REQUIRE(t != NULL);
 	ATF_REQUIRE_STREQ(t->name, "/dir/file1");
 	ATF_REQUIRE_EQ(t->len, strlen("/dir/file1"));

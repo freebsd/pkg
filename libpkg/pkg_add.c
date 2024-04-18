@@ -258,7 +258,7 @@ set_attrsat(int fd, const char *path, mode_t perm, uid_t uid, gid_t gid,
 	/* zfs drops the setuid on fchownat */
 	if (fchmodat(fd, RELATIVE_PATH(path), perm, AT_SYMLINK_NOFOLLOW) == -1) {
 		if (errno == ENOTSUP) {
-			/* 
+			/*
 			 * Executing fchmodat on a symbolic link results in
 			 * ENOENT (file not found) on platforms that do not
 			 * support AT_SYMLINK_NOFOLLOW. The file mode of
@@ -319,7 +319,7 @@ reopen_tempdir(int rootfd, struct tempdir *t)
 }
 
 static struct tempdir *
-get_tempdir(int rootfd, const char *path, tempdirs_t *tempdirs)
+get_tempdir(int rootfd, const char *path, tempdirs_t *tempdirs, stringlist_t *symlinks_allowed)
 {
 	struct tempdir *tmpdir = NULL;
 
@@ -330,7 +330,7 @@ get_tempdir(int rootfd, const char *path, tempdirs_t *tempdirs)
 		}
 	}
 
-	tmpdir = open_tempdir(rootfd, path);
+	tmpdir = open_tempdir(rootfd, path, symlinks_allowed);
 	if (tmpdir != NULL)
 		tll_push_back(*tempdirs, tmpdir);
 
@@ -348,14 +348,14 @@ close_tempdir(struct tempdir *t)
 }
 
 static int
-create_dir(struct pkg *pkg, struct pkg_dir *d, tempdirs_t *tempdirs)
+create_dir(struct pkg *pkg, struct pkg_dir *d, tempdirs_t *tempdirs, stringlist_t *symlinks_allowed)
 {
 	struct stat st;
 	struct tempdir *tmpdir = NULL;
 	int fd;
 	const char *path;
 
-	tmpdir = get_tempdir(pkg->rootfd, d->path, tempdirs);
+	tmpdir = get_tempdir(pkg->rootfd, d->path, tempdirs, symlinks_allowed);
 	if (tmpdir == NULL) {
 		fd = pkg->rootfd;
 		path = d->path;
@@ -398,7 +398,7 @@ create_dir(struct pkg *pkg, struct pkg_dir *d, tempdirs_t *tempdirs)
 /* In case of directories create the dir and extract the creds */
 static int
 do_extract_dir(struct pkg* pkg, struct archive *a __unused, struct archive_entry *ae,
-    const char *path, struct pkg *local __unused, tempdirs_t *tempdirs)
+    const char *path, struct pkg *local __unused, tempdirs_t *tempdirs, stringlist_t *symlinks_allowed)
 {
 	struct pkg_dir *d;
 	const struct stat *aest;
@@ -417,7 +417,7 @@ do_extract_dir(struct pkg* pkg, struct archive *a __unused, struct archive_entry
 	fill_timespec_buf(aest, d->time);
 	archive_entry_fflags(ae, &d->fflags, &clear);
 
-	if (create_dir(pkg, d, tempdirs) == EPKG_FATAL) {
+	if (create_dir(pkg, d, tempdirs, symlinks_allowed) == EPKG_FATAL) {
 		return (EPKG_FATAL);
 	}
 
@@ -443,14 +443,15 @@ try_mkdir(int fd, const char *path)
 }
 
 static int
-create_symlinks(struct pkg *pkg, struct pkg_file *f, const char *target, tempdirs_t *tempdirs)
+create_symlinks(struct pkg *pkg, struct pkg_file *f, const char *target, tempdirs_t *tempdirs,
+    stringlist_t *symlinks_allowed)
 {
 	struct tempdir *tmpdir = NULL;
 	int fd;
 	const char *path;
 	bool tried_mkdir = false;
 
-	tmpdir = get_tempdir(pkg->rootfd, f->path, tempdirs);
+	tmpdir = get_tempdir(pkg->rootfd, f->path, tempdirs, symlinks_allowed);
 	if (tmpdir == NULL && errno == 0)
 		hidden_tempfile(f->temppath, sizeof(f->temppath), f->path);
 	if (tmpdir == NULL) {
@@ -489,7 +490,8 @@ retry:
 /* In case of a symlink create it directly with a random name */
 static int
 do_extract_symlink(struct pkg *pkg, struct archive *a __unused, struct archive_entry *ae,
-    const char *path, struct pkg *local __unused, tempdirs_t *tempdirs)
+    const char *path, struct pkg *local __unused, tempdirs_t *tempdirs,
+    stringlist_t *symlinks_allowed)
 {
 	struct pkg_file *f;
 	const struct stat *aest;
@@ -509,7 +511,7 @@ do_extract_symlink(struct pkg *pkg, struct archive *a __unused, struct archive_e
 	fill_timespec_buf(aest, f->time);
 	archive_entry_fflags(ae, &f->fflags, &clear);
 
-	if (create_symlinks(pkg, f, archive_entry_symlink(ae), tempdirs) == EPKG_FATAL)
+	if (create_symlinks(pkg, f, archive_entry_symlink(ae), tempdirs, symlinks_allowed) == EPKG_FATAL)
 		return (EPKG_FATAL);
 
 	metalog_add(PKG_METALOG_LINK, RELATIVE_PATH(path),
@@ -520,7 +522,8 @@ do_extract_symlink(struct pkg *pkg, struct archive *a __unused, struct archive_e
 }
 
 static int
-create_hardlink(struct pkg *pkg, struct pkg_file *f, const char *path, tempdirs_t *tempdirs)
+create_hardlink(struct pkg *pkg, struct pkg_file *f, const char *path, tempdirs_t *tempdirs,
+    stringlist_t *symlinks_allowed)
 {
 	bool tried_mkdir = false;
 	struct pkg_file *fh;
@@ -529,7 +532,7 @@ create_hardlink(struct pkg *pkg, struct pkg_file *f, const char *path, tempdirs_
 	struct tempdir *tmpdir = NULL;
 	struct tempdir *tmphdir = NULL;
 
-	tmpdir = get_tempdir(pkg->rootfd, f->path, tempdirs);
+	tmpdir = get_tempdir(pkg->rootfd, f->path, tempdirs, symlinks_allowed);
 	if (tmpdir == NULL && errno == 0)
 		hidden_tempfile(f->temppath, sizeof(f->temppath), f->path);
 	if (tmpdir != NULL) {
@@ -595,7 +598,8 @@ retry:
 
 static int
 do_extract_hardlink(struct pkg *pkg, struct archive *a __unused, struct archive_entry *ae,
-    const char *path, struct pkg *local __unused, tempdirs_t *tempdirs)
+    const char *path, struct pkg *local __unused, tempdirs_t *tempdirs,
+    stringlist_t *symlinks_allowed)
 {
 	struct pkg_file *f;
 	const struct stat *aest;
@@ -609,7 +613,7 @@ do_extract_hardlink(struct pkg *pkg, struct archive *a __unused, struct archive_
 	lp = archive_entry_hardlink(ae);
 	aest = archive_entry_stat(ae);
 
-	if (create_hardlink(pkg, f, lp, tempdirs) == EPKG_FATAL)
+	if (create_hardlink(pkg, f, lp, tempdirs, symlinks_allowed) == EPKG_FATAL)
 		return (EPKG_FATAL);
 
 	metalog_add(PKG_METALOG_FILE, RELATIVE_PATH(path),
@@ -641,7 +645,8 @@ retry:
 
 static int
 create_regfile(struct pkg *pkg, struct pkg_file *f, struct archive *a,
-    struct archive_entry *ae, int fromfd, struct pkg *local, tempdirs_t *tempdirs)
+    struct archive_entry *ae, int fromfd, struct pkg *local, tempdirs_t *tempdirs,
+    stringlist_t *symlinks_allowed)
 {
 	int fd = -1;
 	size_t len;
@@ -649,7 +654,7 @@ create_regfile(struct pkg *pkg, struct pkg_file *f, struct archive *a,
 	char *path;
 	struct tempdir *tmpdir = NULL;
 
-	tmpdir = get_tempdir(pkg->rootfd, f->path, tempdirs);
+	tmpdir = get_tempdir(pkg->rootfd, f->path, tempdirs, symlinks_allowed);
 	if (tmpdir == NULL && errno == 0)
 		hidden_tempfile(f->temppath, sizeof(f->temppath), f->path);
 
@@ -733,7 +738,7 @@ create_regfile(struct pkg *pkg, struct pkg_file *f, struct archive *a,
 
 static int
 do_extract_regfile(struct pkg *pkg, struct archive *a, struct archive_entry *ae,
-    const char *path, struct pkg *local, tempdirs_t *tempdirs)
+    const char *path, struct pkg *local, tempdirs_t *tempdirs, stringlist_t *symlinks_allowed)
 {
 	struct pkg_file *f;
 	const struct stat *aest;
@@ -753,7 +758,7 @@ do_extract_regfile(struct pkg *pkg, struct archive *a, struct archive_entry *ae,
 	fill_timespec_buf(aest, f->time);
 	archive_entry_fflags(ae, &f->fflags, &clear);
 
-	if (create_regfile(pkg, f, a, ae, -1, local, tempdirs) == EPKG_FATAL)
+	if (create_regfile(pkg, f, a, ae, -1, local, tempdirs, symlinks_allowed) == EPKG_FATAL)
 		return (EPKG_FATAL);
 
 	metalog_add(PKG_METALOG_FILE, RELATIVE_PATH(path),
@@ -765,14 +770,15 @@ do_extract_regfile(struct pkg *pkg, struct archive *a, struct archive_entry *ae,
 
 static int
 do_extract(struct archive *a, struct archive_entry *ae,
-    int nfiles, struct pkg *pkg, struct pkg *local, tempdirs_t *tempdirs)
+    int nfiles, struct pkg *pkg, struct pkg *local, tempdirs_t *tempdirs,
+    stringlist_t *symlinks_allowed)
 {
 	int	retcode = EPKG_OK;
 	int	ret = 0, cur_file = 0;
 	char	path[MAXPATHLEN];
 	int (*extract_cb)(struct pkg *pkg, struct archive *a,
 	    struct archive_entry *ae, const char *path, struct pkg *local,
-	    tempdirs_t *tempdirs);
+	    tempdirs_t *tempdirs, stringlist_t *sa);
 
 #ifndef HAVE_ARC4RANDOM
 	srand(time(NULL));
@@ -835,7 +841,7 @@ do_extract(struct archive *a, struct archive_entry *ae,
 			break;
 		}
 
-		if (extract_cb(pkg, a, ae, path, local, tempdirs) != EPKG_OK) {
+		if (extract_cb(pkg, a, ae, path, local, tempdirs, symlinks_allowed) != EPKG_OK) {
 			retcode = EPKG_FATAL;
 			goto cleanup;
 		}
@@ -1239,6 +1245,7 @@ pkg_add_common(struct pkgdb *db, const char *path, unsigned flags,
 	int			 ret;
 	int			 nfiles;
 	tempdirs_t		 tempdirs = tll_init();
+	stringlist_t		 symlinks_allowed = tll_init();
 
 	assert(path != NULL);
 
@@ -1343,7 +1350,8 @@ pkg_add_common(struct pkgdb *db, const char *path, unsigned flags,
 	 */
 	if (extract) {
 		pkg_register_cleanup_callback(pkg_rollback_cb, pkg);
-		retcode = do_extract(a, ae, nfiles, pkg, local, &tempdirs);
+		tll_push_back(symlinks_allowed, pkg->prefix);
+		retcode = do_extract(a, ae, nfiles, pkg, local, &tempdirs, &symlinks_allowed);
 		pkg_unregister_cleanup_callback(pkg_rollback_cb, pkg);
 		if (retcode != EPKG_OK) {
 			/* If the add failed, clean up (silently) */
@@ -1496,6 +1504,8 @@ pkg_add_fromdir(struct pkg *pkg, const char *src)
 	size_t link_len;
 	bool install_as_user;
 	tempdirs_t tempdirs = tll_init();
+	stringlist_t symlinks_allowed = tll_init();
+	tll_push_back(symlinks_allowed, pkg->prefix);
 
 	install_as_user = (getenv("INSTALL_AS_USER") != NULL);
 
@@ -1551,7 +1561,7 @@ pkg_add_fromdir(struct pkg *pkg, const char *src)
 #endif
 #endif
 
-		if (create_dir(pkg, d, &tempdirs) == EPKG_FATAL) {
+		if (create_dir(pkg, d, &tempdirs, &symlinks_allowed) == EPKG_FATAL) {
 			retcode = EPKG_FATAL;
 			goto cleanup;
 		}
@@ -1623,7 +1633,7 @@ pkg_add_fromdir(struct pkg *pkg, const char *src)
 				    "'%s'", f->path);
 			}
 			target[link_len] = '\0';
-			if (create_symlinks(pkg, f, target, &tempdirs) == EPKG_FATAL) {
+			if (create_symlinks(pkg, f, target, &tempdirs, &symlinks_allowed) == EPKG_FATAL) {
 				retcode = EPKG_FATAL;
 				goto cleanup;
 			}
@@ -1644,13 +1654,13 @@ pkg_add_fromdir(struct pkg *pkg, const char *src)
 				}
 			}
 			if (path != NULL) {
-				if (create_hardlink(pkg, f, path, &tempdirs) == EPKG_FATAL) {
+				if (create_hardlink(pkg, f, path, &tempdirs, &symlinks_allowed) == EPKG_FATAL) {
 					close(fd);
 					retcode = EPKG_FATAL;
 					goto cleanup;
 				}
 			} else {
-				if (create_regfile(pkg, f, NULL, NULL, fd, NULL, &tempdirs) == EPKG_FATAL) {
+				if (create_regfile(pkg, f, NULL, NULL, fd, NULL, &tempdirs, &symlinks_allowed) == EPKG_FATAL) {
 					close(fd);
 					retcode = EPKG_FATAL;
 					goto cleanup;
@@ -1672,6 +1682,7 @@ pkg_add_fromdir(struct pkg *pkg, const char *src)
 	retcode = pkg_extract_finalize(pkg, &tempdirs);
 
 cleanup:
+	tll_free(symlinks_allowed);
 	tll_free_and_free(hardlinks, free);
 	close(fromfd);
 	return (retcode);

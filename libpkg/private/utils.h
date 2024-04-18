@@ -41,6 +41,8 @@
 #define STARTS_WITH(string, needle) (strncasecmp(string, needle, strlen(needle)) == 0)
 #define RELATIVE_PATH(p) (p + (*p == '/' ? 1 : 0))
 
+typedef tll(char *) stringlist_t;
+
 #define ERROR_SQLITE(db, query) do { \
 	pkg_emit_error("sqlite error while executing %s in file %s:%d: %s", query, \
 	__FILE__, __LINE__, sqlite3_errmsg(db)); \
@@ -114,7 +116,7 @@ char *rtrimspace(char *buf);
 void hidden_tempfile(char *buf, int buflen, const char *path);
 void append_random_suffix(char *buf, int buflen, int suffixlen);
 char *json_escape(const char *str);
-struct tempdir *open_tempdir(int rootfd, const char *path);
+struct tempdir *open_tempdir(int rootfd, const char *path, stringlist_t *strlist);
 const char *get_http_auth(void);
 
 #endif

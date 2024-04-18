@@ -8,7 +8,8 @@ tests_init \
 	three_digit_revision \
 	dual_conflict \
 	file_become_dir \
-	dir_become_file
+	dir_become_file \
+	dir_is_symlink_to_a_dir
 
 issue1881_body() {
 	atf_check -s exit:0 sh ${RESOURCEDIR}/test_subr.sh new_pkg pkg1 pkg_a 1
@@ -259,6 +260,27 @@ dir_become_file_body() {
 	rm -rf file-pkg-1
 	echo entry > file-pkg-1
 	echo "${TMPDIR}/file-pkg-1" > plist-2
+	atf_check pkg create -M pkg.ucl -p plist-2
+	atf_check -o ignore pkg -o REPOS_DIR="${TMPDIR}" -r ${TMPDIR}/target install -Uy ${TMPDIR}/pkg-2.pkg
+}
+
+dir_is_symlink_to_a_dir_body()
+{
+	atf_check -s exit:0 sh ${RESOURCEDIR}/test_subr.sh new_pkg "pkg" "pkg" "1"
+	mkdir share lib lib/something
+	ln -sf ../lib/something share/something
+	echo "entry" > lib/something/file
+	echo "${TMPDIR}/lib/something/file" > plist-1
+	echo "${TMPDIR}/share/something" >> plist-1
+	atf_check pkg create -M pkg.ucl -p plist-1
+	mkdir target
+	atf_check -o ignore pkg -o REPOS_DIR="${TMPDIR}" -r ${TMPDIR}/target install -Uy ${TMPDIR}/pkg-1.pkg
+	atf_check -s exit:0 sh ${RESOURCEDIR}/test_subr.sh new_pkg "pkg" "pkg" "2"
+	rm share/something
+	mkdir share/something
+	echo "entry" > share/something/file
+	echo "${TMPDIR}/lib/something/file" > plist-2
+	echo "${TMPDIR}/share/something/file" >> plist-2
 	atf_check pkg create -M pkg.ucl -p plist-2
 	atf_check -o ignore pkg -o REPOS_DIR="${TMPDIR}" -r ${TMPDIR}/target install -Uy ${TMPDIR}/pkg-2.pkg
 }
