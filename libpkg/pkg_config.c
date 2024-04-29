@@ -996,7 +996,7 @@ type_to_string(int type)
 	return ("unknown");
 }
 
-struct pkg_dbg_flags *
+const struct pkg_dbg_flags *
 _find_flag(const char *str)
 {
 	for (size_t i = 0; i < NELEM(debug_flags); i++) {
@@ -1011,7 +1011,7 @@ config_validate_debug_flags(const ucl_object_t *o)
 	ucl_object_iter_t it = NULL;
 	const ucl_object_t *cur;
 	int ret = EPKG_OK;
-	struct pkg_dbg_flags *f;
+	const struct pkg_dbg_flags *f;
 
 	if (o == NULL)
 		return (ret);

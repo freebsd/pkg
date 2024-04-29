@@ -56,10 +56,12 @@ typedef enum {
 	PKG_DBG_ALL = (1UL << 63),
 } pkg_debug_flags;
 
-static struct pkg_dbg_flags {
+struct pkg_dbg_flags {
 	uint64_t flag;
 	const char *name;
-} debug_flags[] = {
+};
+
+static const struct pkg_dbg_flags debug_flags[] = {
 	{ PKG_DBG_NONE, "none" },
 	{ PKG_DBG_FETCH, "fetch" },
 	{ PKG_DBG_ALL, "all" },
