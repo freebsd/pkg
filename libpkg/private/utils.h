@@ -39,6 +39,7 @@
 #include <xstring.h>
 
 #define STARTS_WITH(string, needle) (strncasecmp(string, needle, strlen(needle)) == 0)
+#define STRIEQ(string, needle) (strcasecmp(string, needle) == 0)
 #define RELATIVE_PATH(p) (p + (*p == '/' ? 1 : 0))
 
 typedef tll(char *) stringlist_t;

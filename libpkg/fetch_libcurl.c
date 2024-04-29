@@ -149,9 +149,9 @@ curl_do_fetch(struct curl_userdata *data, CURL *cl, struct curl_repodata *cr)
 	curl_easy_setopt(cl, CURLOPT_FOLLOWLOCATION, 1L);
 	curl_easy_setopt(cl, CURLOPT_PRIVATE, &data);
 
-	if (ctx.debug_level > 0)
+	if (ctx.debug_flags & PKG_DBG_FETCH)
 		curl_easy_setopt(cl, CURLOPT_VERBOSE, 1L);
-	if (ctx.debug_level > 1)
+	if (ctx.debug_flags & PKG_DBG_FETCH)
 		curl_easy_setopt(cl, CURLOPT_DEBUGFUNCTION, my_trace);
 
 	/* compat with libfetch */
@@ -212,7 +212,7 @@ http_getmirrors(struct pkg_repo *r, struct curl_repodata *cr)
 	size_t cap = 0;
 	struct http_mirror *m, *mirrors = NULL;
 	CURLU *url;
-	pkg_debug(1, "CURL> fetching http mirror list if any");
+	pkg_dbg(PKG_DBG_FETCH, "CURL> fetching http mirror list if any");
 
 	cl = curl_easy_init();
 	data.fh = open_memstream(& buf, &cap);
@@ -247,7 +247,7 @@ http_getmirrors(struct pkg_repo *r, struct curl_repodata *cr)
 		}
 		m = xmalloc(sizeof(*m));
 		m->url = url;
-		pkg_debug(1, "CURL> appending an http mirror: %s", line);
+		pkg_dbg(PKG_DBG_FETCH, "CURL> appending an http mirror: %s", line);
 		LL_APPEND(mirrors, m);
 	}
 	free(buf);
@@ -287,7 +287,7 @@ int
 curl_open(struct pkg_repo *repo, struct fetch_item *fi __unused)
 {
 	struct curl_repodata *cr;
-	pkg_debug(1, "curl_open");
+	pkg_dbg(PKG_DBG_FETCH, "curl_open");
 
 	if (repo->fetch_priv != NULL)
 		return (EPKG_OK);
@@ -378,7 +378,7 @@ curl_fetch(struct pkg_repo *repo, int dest, struct fetch_item *fi)
 	data.totalsize = fi->size;
 	data.url = fi->url;
 
-	pkg_debug(1, "curl> fetching %s\n", fi->url);
+	pkg_dbg(PKG_DBG_FETCH, "curl> fetching %s\n", fi->url);
 	retry = pkg_object_int(pkg_config_get("FETCH_RETRY"));
 	if (repo->mirror_type == SRV || repo->mirror_type == HTTP) {
 		CURLU *cu = curl_url();
@@ -435,16 +435,16 @@ do_retry:
 		free(p);
 		char *lurl;
 		curl_url_get(hu, CURLUPART_URL, &lurl, 0);
-		pkg_debug(1, "CURL> new http mirror url: %s", lurl);
+		pkg_dbg(PKG_DBG_FETCH, "CURL> new http mirror url: %s", lurl);
 		curl_easy_setopt(cl, CURLOPT_CURLU, hu);
 	} else {
-		pkg_debug(1, "CURL> No mirror set url to %s\n", fi->url);
+		pkg_dbg(PKG_DBG_FETCH, "CURL> No mirror set url to %s\n", fi->url);
 		curl_easy_setopt(cl, CURLOPT_URL, fi->url);
 	}
-	if (ctx.debug_level > 0) {
+	if (ctx.debug_flags & PKG_DBG_FETCH) {
 		const char *lurl = NULL;
 		curl_easy_getinfo(cl, CURLINFO_EFFECTIVE_URL, &lurl);
-		pkg_debug(1, "CURL> attempting to fetch from %s, left retry %ld\n",
+		pkg_dbg(PKG_DBG_FETCH, "CURL> attempting to fetch from %s, left retry %ld\n",
 				lurl, retry);
 	}
 	curl_easy_setopt(cl, CURLOPT_HTTPAUTH, (long)CURLAUTH_ANY);

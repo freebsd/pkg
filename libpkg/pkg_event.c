@@ -993,6 +993,26 @@ pkg_debug(int level, const char *fmt, ...)
 }
 
 void
+pkg_dbg(uint64_t flags, const char *fmt, ...)
+{
+	struct pkg_event ev;
+	va_list ap;
+
+	if ((ctx.debug_flags & (flags|PKG_DBG_ALL)) == 0)
+		return;
+
+	ev.type = PKG_EVENT_DEBUG;
+	ev.e_debug.level = 1;
+	va_start(ap, fmt);
+	vasprintf(&ev.e_debug.msg, fmt, ap);
+	va_end(ap);
+
+	pkg_emit_event(&ev);
+	free(ev.e_debug.msg);
+}
+
+
+void
 pkg_emit_backup(void)
 {
 	struct pkg_event ev;

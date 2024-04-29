@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2011-2021 Baptiste Daroussin <bapt@FreeBSD.org>
+ * Copyright (c) 2011-2024 Baptiste Daroussin <bapt@FreeBSD.org>
  * Copyright (c) 2011-2012 Julien Laffaye <jlaffaye@FreeBSD.org>
  * Copyright (c) 2014 Matthew Seaman <matthew@FreeBSD.org>
  * Copyright (c) 2016 Vsevolod Stakhov <vsevolod@FreeBSD.org>
@@ -507,6 +507,12 @@ static struct config_entry c[] = {
 		NULL,
 		"patterns of files to not extract from the package",
 	},
+	{
+		PKG_ARRAY,
+		"PKG_DEBUG_FLAGS",
+		NULL,
+		"debug flags to activate",
+	},
 };
 
 static bool parsed = false;
@@ -989,6 +995,41 @@ type_to_string(int type)
 		return ("boolean");
 	return ("unknown");
 }
+
+struct pkg_dbg_flags *
+_find_flag(const char *str)
+{
+	for (size_t i = 0; i < NELEM(debug_flags); i++) {
+		if (STRIEQ(debug_flags[i].name, str))
+			return (&debug_flags[i]);
+	}
+	return (NULL);
+}
+static uint64_t
+config_validate_debug_flags(const ucl_object_t *o)
+{
+	ucl_object_iter_t it = NULL;
+	const ucl_object_t *cur;
+	int ret = EPKG_OK;
+	struct pkg_dbg_flags *f;
+
+	if (o == NULL)
+		return (ret);
+
+	while ((cur = ucl_iterate_object(o, &it, true))) {
+		const char *str = ucl_object_tostring(cur);
+		f = _find_flag(str);
+		if (f == NULL) {
+			pkg_emit_error("Invalid debug flag %s",
+			    ucl_object_tostring(cur));
+			ret = EPKG_FATAL;
+			continue;
+		}
+		ctx.debug_flags |= f->flag;
+	}
+	return (ret);
+}
+
 int
 pkg_ini(const char *path, const char *reposdir, pkg_init_flags flags)
 {
@@ -1344,6 +1385,9 @@ pkg_ini(const char *path, const char *reposdir, pkg_init_flags flags)
 		connect_evpipe(evpipe);
 
 	ctx.debug_level = pkg_object_int(pkg_config_get("DEBUG_LEVEL"));
+	err = config_validate_debug_flags(ucl_object_find_key(config, "PKG_DEBUG_FLAGS"));
+	if (err != EPKG_OK)
+		goto out;
 	ctx.developer_mode = pkg_object_bool(pkg_config_get("DEVELOPER_MODE"));
 	ctx.dbdir = pkg_object_string(pkg_config_get("PKG_DBDIR"));
 	ctx.cachedir = pkg_object_string(pkg_config_get("PKG_CACHEDIR"));

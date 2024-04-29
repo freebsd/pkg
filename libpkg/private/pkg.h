@@ -150,6 +150,7 @@ struct pkg_stringlist_iterator {
 struct pkg_ctx {
 	int eventpipe;
 	int64_t debug_level;
+	uint64_t debug_flags;
 	bool developer_mode;
 	const char *pkg_rootdir;
 	const char *dbdir;

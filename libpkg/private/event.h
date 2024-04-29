@@ -1,5 +1,5 @@
 /*-
- * Copyright (c) 2011-2012 Baptiste Daroussin <bapt@FreeBSD.org>
+ * Copyright (c) 2011-2024 Baptiste Daroussin <bapt@FreeBSD.org>
  * Copyright (c) 2011-2012 Julien Laffaye <jlaffaye@FreeBSD.org>
  * Copyright (c) 2014 Vsevolod Stakhov <vsevolod@FreeBSD.org>
  * Copyright (c) 2015 Matthew Seaman <matthew@FreeBSD.org>
@@ -50,6 +50,21 @@ void pkg_emit_pkg_errno(pkg_error_t err, const char *func, const char *arg);
 	return (EPKG_FATAL);           \
 } while (0);
 
+typedef enum {
+	PKG_DBG_NONE = (1UL << 0),
+	PKG_DBG_FETCH = (1UL << 1),
+	PKG_DBG_ALL = (1UL << 127),
+} pkg_debug_flags;
+
+static struct pkg_dbg_flags {
+	uint64_t flag;
+	const char *name;
+} debug_flags[] = {
+	{ PKG_DBG_NONE, "none" },
+	{ PKG_DBG_FETCH, "fetch" },
+	{ PKG_DBG_ALL, "all" },
+};
+
 void pkg_emit_already_installed(struct pkg *p);
 void pkg_emit_fetch_begin(const char *url);
 void pkg_emit_fetch_finished(const char *url);
@@ -79,6 +94,7 @@ void pkg_emit_incremental_update(const char *reponame, int processed);
 void pkg_emit_backup(void);
 void pkg_emit_restore(void);
 void pkg_debug(int level, const char *fmt, ...) PKG_FORMAT_ATTRIBUTE(2, 3);
+void pkg_dbg(uint64_t flag, const char *fmt, ...) PKG_FORMAT_ATTRIBUTE(2, 3);
 int pkg_emit_sandbox_call(pkg_sandbox_cb call, int fd, void *ud);
 int pkg_emit_sandbox_get_string(pkg_sandbox_cb call, void *ud, char **str, int64_t *len);
 

@@ -117,7 +117,7 @@ fetch_connect(struct pkg_repo *repo, struct url *u)
 	doc = u->doc;
 	reldoc = doc + strlen(repourl->doc);
 	fetchFreeURL(repourl);
-	pkg_debug(1, "Fetch > libfetch: connecting");
+	pkg_dbg(PKG_DBG_FETCH, "Fetch > libfetch: connecting");
 
 	while (repo->fh == NULL) {
 		if (repo != NULL && repo->mirror_type == SRV &&
@@ -172,7 +172,7 @@ fetch_connect(struct pkg_repo *repo, struct url *u)
 			fputc('v', fetchOpts->fp);
 
 		opts = xstring_get(fetchOpts);
-		pkg_debug(1,"Fetch: fetching from: %s://%s%s%s%s with opts \"%s\"",
+		pkg_dbg(PKG_DBG_FETCH, "Fetch: fetching from: %s://%s%s%s%s with opts \"%s\"",
 		    u->scheme,
 		    u->user,
 		    u->user[0] != '\0' ? "@" : "",
@@ -225,7 +225,7 @@ fetch_open(struct pkg_repo *repo, struct url *u, off_t *sz, time_t *t)
 {
 	int retcode = EPKG_FATAL;
 
-	pkg_debug(1, "opening libfetch fetcher");
+	pkg_dbg(PKG_DBG_FETCH, "opening libfetch fetcher");
 	if (repo->fh == NULL)
 		retcode = fetch_connect(repo, u);
 
