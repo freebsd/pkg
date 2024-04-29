@@ -53,7 +53,7 @@ void pkg_emit_pkg_errno(pkg_error_t err, const char *func, const char *arg);
 typedef enum {
 	PKG_DBG_NONE = (1UL << 0),
 	PKG_DBG_FETCH = (1UL << 1),
-	PKG_DBG_ALL = (1UL << 127),
+	PKG_DBG_ALL = (1UL << 63),
 } pkg_debug_flags;
 
 static struct pkg_dbg_flags {
