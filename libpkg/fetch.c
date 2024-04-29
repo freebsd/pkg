@@ -249,7 +249,7 @@ pkg_fetch_file_to_fd(struct pkg_repo *repo, int dest, struct fetch_item *fi,
 	 * Error if using plain http://, https:// etc with SRV
 	 */
 
-	pkg_dbg(PKG_DBG_FETCH, "Request to fetch %s", fi->url);
+	pkg_dbg(PKG_DBG_FETCH, 1, "Request to fetch %s", fi->url);
 	if (repo == NULL) {
 		fakerepo = xcalloc(1, sizeof(struct pkg_repo));
 		fakerepo->url = xstrdup(fi->url);
@@ -292,7 +292,7 @@ pkg_fetch_file_to_fd(struct pkg_repo *repo, int dest, struct fetch_item *fi,
 
 	if ((retcode = repo->fetcher->open(repo, fi)) != EPKG_OK)
 		goto cleanup;
-	pkg_dbg(PKG_DBG_FETCH, "Fetch: fetcher used: %s", repo->fetcher->scheme);
+	pkg_dbg(PKG_DBG_FETCH, 1, "Fetch: fetcher used: %s", repo->fetcher->scheme);
 
 	retcode = repo->fetcher->fetch(repo, dest, fi);
 	if (retcode == EPKG_OK)

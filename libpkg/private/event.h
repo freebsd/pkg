@@ -98,7 +98,7 @@ void pkg_emit_incremental_update(const char *reponame, int processed);
 void pkg_emit_backup(void);
 void pkg_emit_restore(void);
 void pkg_debug(int level, const char *fmt, ...) PKG_FORMAT_ATTRIBUTE(2, 3);
-void pkg_dbg(uint64_t flag, const char *fmt, ...) PKG_FORMAT_ATTRIBUTE(2, 3);
+void pkg_dbg(uint64_t flag, int level, const char *fmt, ...) PKG_FORMAT_ATTRIBUTE(3, 4);
 int pkg_emit_sandbox_call(pkg_sandbox_cb call, int fd, void *ud);
 int pkg_emit_sandbox_get_string(pkg_sandbox_cb call, void *ud, char **str, int64_t *len);
 

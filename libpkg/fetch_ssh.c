@@ -64,7 +64,7 @@ tcp_connect(struct pkg_repo *repo, struct yuarel *u)
 	int sd = -1;
 	int retcode;
 
-	pkg_dbg(PKG_DBG_FETCH, "TCP> tcp_connect");
+	pkg_dbg(PKG_DBG_FETCH, 1, "TCP> tcp_connect");
 	memset(&hints, 0, sizeof(hints));
 	hints.ai_family = PF_UNSPEC;
 	if (repo->ip == IPV4)
@@ -114,12 +114,12 @@ tcp_connect(struct pkg_repo *repo, struct yuarel *u)
 
 	if (getline(&line, &linecap, repo->fh) > 0) {
 		if (strncmp(line, "ok:", 3) != 0) {
-			pkg_dbg(PKG_DBG_FETCH, "SSH> server rejected, got: %s", line);
+			pkg_dbg(PKG_DBG_FETCH, 1, "SSH> server rejected, got: %s", line);
 			goto tcp_cleanup;
 		}
-		pkg_dbg(PKG_DBG_FETCH, "SSH> server is: %s", line +4);
+		pkg_dbg(PKG_DBG_FETCH, 1, "SSH> server is: %s", line +4);
 	} else {
-		pkg_dbg(PKG_DBG_FETCH, "SSH> nothing to read, got: %s", line);
+		pkg_dbg(PKG_DBG_FETCH, 1, "SSH> nothing to read, got: %s", line);
 		goto tcp_cleanup;
 	}
 	retcode = EPKG_OK;
@@ -182,7 +182,7 @@ ssh_connect(struct pkg_repo *repo, struct yuarel *u)
 			fprintf(cmd->fp, "%s@", u->username);
 		fprintf(cmd->fp, "%s pkg ssh", u->host);
 		cmdline = xstring_get(cmd);
-		pkg_dbg(PKG_DBG_FETCH, "Fetch: running '%s'", cmdline);
+		pkg_dbg(PKG_DBG_FETCH, 1, "Fetch: running '%s'", cmdline);
 		argv[0] = _PATH_BSHELL;
 		argv[1] = "-c";
 		argv[2] = cmdline;
@@ -201,7 +201,7 @@ ssh_connect(struct pkg_repo *repo, struct yuarel *u)
 		goto ssh_cleanup;
 	}
 
-	pkg_dbg(PKG_DBG_FETCH, "SSH> connected");
+	pkg_dbg(PKG_DBG_FETCH, 1, "SSH> connected");
 
 	repo->sshio.in = sshout[0];
 	repo->sshio.out = sshin[1];
@@ -215,12 +215,12 @@ ssh_connect(struct pkg_repo *repo, struct yuarel *u)
 
 	if (getline(&line, &linecap, repo->fh) > 0) {
 		if (strncmp(line, "ok:", 3) != 0) {
-			pkg_dbg(PKG_DBG_FETCH, "SSH> server rejected, got: %s", line);
+			pkg_dbg(PKG_DBG_FETCH, 1, "SSH> server rejected, got: %s", line);
 			goto ssh_cleanup;
 		}
-		pkg_dbg(PKG_DBG_FETCH, "SSH> server is: %s", line +4);
+		pkg_dbg(PKG_DBG_FETCH, 1, "SSH> server is: %s", line +4);
 	} else {
-		pkg_dbg(PKG_DBG_FETCH, "SSH> nothing to read, got: %s", line);
+		pkg_dbg(PKG_DBG_FETCH, 1, "SSH> nothing to read, got: %s", line);
 		goto ssh_cleanup;
 	}
 	retcode = EPKG_OK;
@@ -252,7 +252,7 @@ pkgprotocol_open(struct pkg_repo *repo, struct fetch_item *fi,
 		return (EPKG_FATAL);
 	}
 
-	pkg_dbg(PKG_DBG_FETCH, "SSH> tcp_open");
+	pkg_dbg(PKG_DBG_FETCH, 1, "SSH> tcp_open");
 	if (repo->fh == NULL)
 		retcode = proto_connect(repo, &url);
 	else
@@ -261,13 +261,13 @@ pkgprotocol_open(struct pkg_repo *repo, struct fetch_item *fi,
 	if (retcode != EPKG_OK)
 		return (retcode);
 
-	pkg_dbg(PKG_DBG_FETCH, "SSH> get %s %" PRIdMAX "", url.path, (intmax_t)fi->mtime);
+	pkg_dbg(PKG_DBG_FETCH, 1, "SSH> get %s %" PRIdMAX "", url.path, (intmax_t)fi->mtime);
 	fprintf(repo->fh, "get %s %" PRIdMAX "\n", url.path, (intmax_t)fi->mtime);
 	if ((linelen = getline(&line, &linecap, repo->fh)) > 0) {
 		if (line[linelen -1 ] == '\n')
 			line[linelen -1 ] = '\0';
 
-		pkg_dbg(PKG_DBG_FETCH, "SSH> recv: %s", line);
+		pkg_dbg(PKG_DBG_FETCH, 1, "SSH> recv: %s", line);
 		if (strncmp(line, "ok:", 3) == 0) {
 			fi->size = strtonum(line + 4, 0, LONG_MAX, &errstr);
 			if (errstr) {
@@ -414,7 +414,7 @@ ssh_write(void *data, const char *buf, int l)
 	iov.iov_base = __DECONST(char *, buf);
 	iov.iov_len = l;
 
-	pkg_dbg(PKG_DBG_FETCH, "writing data");
+	pkg_dbg(PKG_DBG_FETCH, 1, "SSH> writing data");
 
 	return (ssh_writev(repo->sshio.out, &iov, 1, repo->fetcher->timeout));
 }
@@ -428,7 +428,7 @@ ssh_read(void *data, char *buf, int len)
 	ssize_t rlen;
 	int deltams;
 
-	pkg_dbg(PKG_DBG_FETCH, "ssh: start reading");
+	pkg_dbg(PKG_DBG_FETCH, 1, "SSH> start reading");
 
 	if (repo->fetcher->timeout > 0) {
 		gettimeofday(&timeout, NULL);
@@ -442,7 +442,7 @@ ssh_read(void *data, char *buf, int len)
 
 	for (;;) {
 		rlen = read(pfd.fd, buf, len);
-		pkg_dbg(PKG_DBG_FETCH, "read %jd", (intmax_t)rlen);
+		pkg_dbg(PKG_DBG_FETCH, 1, "SSH> read %jd", (intmax_t)rlen);
 		if (rlen >= 0) {
 			break;
 		} else if (rlen == -1) {
@@ -468,17 +468,17 @@ ssh_read(void *data, char *buf, int len)
 
 		errno = 0;
 		pfd.revents = 0;
-		pkg_dbg(PKG_DBG_FETCH, "begin poll()");
+		pkg_dbg(PKG_DBG_FETCH, 2, "SSH> begin poll()");
 		if (poll(&pfd, 1, deltams) < 0) {
 			if (errno == EINTR)
 				continue;
 			return (-1);
 		}
-		pkg_dbg(PKG_DBG_FETCH, "end poll()");
+		pkg_dbg(PKG_DBG_FETCH, 2, "SSH> end poll()");
 
 	}
 
-	pkg_dbg(PKG_DBG_FETCH, "ssh: have read %jd bytes", (intmax_t)rlen);
+	pkg_dbg(PKG_DBG_FETCH, 1, "SSH> have read %jd bytes", (intmax_t)rlen);
 
 	return (rlen);
 }

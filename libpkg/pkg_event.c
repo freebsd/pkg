@@ -993,22 +993,38 @@ pkg_debug(int level, const char *fmt, ...)
 }
 
 void
-pkg_dbg(uint64_t flags, const char *fmt, ...)
+pkg_dbg(uint64_t flags, int level, const char *fmt, ...)
 {
 	struct pkg_event ev;
 	va_list ap;
+	xstring *string_fmt = xstring_new();
+	char *nfmt;
+
+	if (ctx.debug_level < level)
+		return;
 
 	if ((ctx.debug_flags & (flags|PKG_DBG_ALL)) == 0)
 		return;
 
 	ev.type = PKG_EVENT_DEBUG;
-	ev.e_debug.level = 1;
+	ev.e_debug.level = level;
+	for (size_t i = 0; i < NELEM(debug_flags); i++) {
+		if (ctx.debug_flags & debug_flags[i].flag) {
+			if (string_fmt->size == 0)
+				fprintf(string_fmt->fp, "(%s", debug_flags[i].name);
+			else
+				fprintf(string_fmt->fp, "|%s", debug_flags[i].name);
+		}
+	}
+	fprintf(string_fmt->fp, ") %s", fmt);
+	nfmt = xstring_get(string_fmt);
 	va_start(ap, fmt);
-	vasprintf(&ev.e_debug.msg, fmt, ap);
+	vasprintf(&ev.e_debug.msg, nfmt, ap);
 	va_end(ap);
 
 	pkg_emit_event(&ev);
 	free(ev.e_debug.msg);
+	free(nfmt);
 }
 
 
