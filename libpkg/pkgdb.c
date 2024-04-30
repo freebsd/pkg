@@ -2087,7 +2087,7 @@ pkgdb_reanalyse_shlibs(struct pkgdb *db, struct pkg *pkg)
 		return (EPKG_FATAL);
 	}
 
-	if ((ret = pkg_analyse_files(db, pkg, NULL)) == EPKG_OK) {
+	if ((ret = pkg_analyse_files(db, pkg, ctx.pkg_rootdir)) == EPKG_OK) {
 		s = db->sqlite;
 		package_id = pkg->id;
 
