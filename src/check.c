@@ -1,30 +1,10 @@
 /*-
- * Copyright (c) 2011-2012 Baptiste Daroussin <bapt@FreeBSD.org>
+ * Copyright (c) 2011-2024 Baptiste Daroussin <bapt@FreeBSD.org>
  * Copyright (c) 2011-2012 Marin Atanasov Nikolov <dnaeon@gmail.com>
  * Copyright (c) 2014 Matthew Seaman <matthew@FreeBSD.org>
  * Copyright (c) 2016 Vsevolod Stakhov <vsevolod@FreeBSD.org>
- * All rights reserved.
  *
- * Redistribution and use in source and binary forms, with or without
- * modification, are permitted provided that the following conditions
- * are met:
- * 1. Redistributions of source code must retain the above copyright
- *    notice, this list of conditions and the following disclaimer
- *    in this position and unchanged.
- * 2. Redistributions in binary form must reproduce the above copyright
- *    notice, this list of conditions and the following disclaimer in the
- *    documentation and/or other materials provided with the distribution.
- *
- * THIS SOFTWARE IS PROVIDED BY THE AUTHOR(S) ``AS IS'' AND ANY EXPRESS OR
- * IMPLIED WARRANTIES, INCLUDING, BUT NOT LIMITED TO, THE IMPLIED WARRANTIES
- * OF MERCHANTABILITY AND FITNESS FOR A PARTICULAR PURPOSE ARE DISCLAIMED.
- * IN NO EVENT SHALL THE AUTHOR(S) BE LIABLE FOR ANY DIRECT, INDIRECT,
- * INCIDENTAL, SPECIAL, EXEMPLARY, OR CONSEQUENTIAL DAMAGES (INCLUDING, BUT
- * NOT LIMITED TO, PROCUREMENT OF SUBSTITUTE GOODS OR SERVICES; LOSS OF USE,
- * DATA, OR PROFITS; OR BUSINESS INTERRUPTION) HOWEVER CAUSED AND ON ANY
- * THEORY OF LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY, OR TORT
- * (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF
- * THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
+ * SPDX-License-Identifier: BSD-2-Clause
  */
 
 #include <sys/param.h>
@@ -246,9 +226,9 @@ void
 usage_check(void)
 {
 	fprintf(stderr,
-	    "Usage: pkg check -B|-d[n]|-s|-r [-qvy] -a\n");
+	    "Usage: pkg check -d[n]|-s [-qvy] -a\n");
 	fprintf(stderr,
-	    "       pkg check -B|-d[n]|-s|-r [-qvy] [-Cgix] <pattern>\n\n");
+	    "       pkg check -d[n]|-s [-qvy] [-Cgix] <pattern>\n\n");
 	fprintf(stderr, "For more information see 'pkg help check'.\n");
 }
 
@@ -265,8 +245,6 @@ exec_check(int argc, char **argv)
 	int ch;
 	bool dcheck = false;
 	bool checksums = false;
-	bool recompute = false;
-	bool reanalyse_shlibs = false;
 	bool noinstall = false;
 	int nbpkgs = 0;
 	int i, processed, total = 0;
@@ -299,8 +277,7 @@ exec_check(int argc, char **argv)
 			match = MATCH_ALL;
 			break;
 		case 'B':
-			reanalyse_shlibs = true;
-			flags |= PKG_LOAD_FILES;
+			/* backward compatibility but do nothing */
 			break;
 		case 'C':
 			pkgdb_set_case_sensitivity(true);
@@ -322,8 +299,7 @@ exec_check(int argc, char **argv)
 			quiet = true;
 			break;
 		case 'r':
-			recompute = true;
-			flags |= PKG_LOAD_FILES;
+			/* backward compatibility but do nothing */
 			break;
 		case 's':
 			checksums = true;
@@ -347,18 +323,14 @@ exec_check(int argc, char **argv)
 	argv += optind;
 
 	/* Default to all packages if no pkg provided */
-	if (argc == 0 && (dcheck || checksums || recompute || reanalyse_shlibs)) {
+	if (argc == 0 && (dcheck || checksums)) {
 		match = MATCH_ALL;
-	} else if ((argc == 0 && match != MATCH_ALL) || !(dcheck || checksums || recompute || reanalyse_shlibs)) {
+	} else if ((argc == 0 && match != MATCH_ALL) || !(dcheck || checksums)) {
 		usage_check();
 		return (EXIT_FAILURE);
 	}
 
-	if (recompute || reanalyse_shlibs)
-		ret = pkgdb_access(PKGDB_MODE_READ|PKGDB_MODE_WRITE,
-				   PKGDB_DB_LOCAL);
-	else
-		ret = pkgdb_access(PKGDB_MODE_READ, PKGDB_DB_LOCAL);
+	ret = pkgdb_access(PKGDB_MODE_READ, PKGDB_DB_LOCAL);
 
 	if (ret == EPKG_ENODB) {
 		if (!quiet)
@@ -372,20 +344,9 @@ exec_check(int argc, char **argv)
 		return (EXIT_FAILURE);
 	}
 
-	if (pkgdb_access(PKGDB_MODE_WRITE, PKGDB_DB_LOCAL) == EPKG_ENOACCESS) {
-		warnx("Insufficient privileges");
-		return (EXIT_FAILURE);
-	}
-
 	ret = pkgdb_open(&db, PKGDB_DEFAULT);
 	if (ret != EPKG_OK)
 		return (EXIT_FAILURE);
-
-	if (pkgdb_obtain_lock(db, PKGDB_LOCK_ADVISORY) != EPKG_OK) {
-		pkgdb_close(db);
-		warnx("Cannot get an advisory lock on a database, it is locked by another process");
-		return (EXIT_FAILURE);
-	}
 
 	i = 0;
 	nbdone = 0;
@@ -451,41 +412,6 @@ exec_check(int argc, char **argv)
 					rc = EXIT_FAILURE;
 				}
 			}
-			if (recompute) {
-				if (pkgdb_upgrade_lock(db, PKGDB_LOCK_ADVISORY,
-						PKGDB_LOCK_EXCLUSIVE) == EPKG_OK) {
-					if (!quiet && verbose)
-						printf(" recomputing...");
-					if (pkg_recompute(db, pkg) != EPKG_OK) {
-						rc = EXIT_FAILURE;
-					}
-					pkgdb_downgrade_lock(db,
-					    PKGDB_LOCK_EXCLUSIVE,
-					    PKGDB_LOCK_ADVISORY);
-				}
-				else {
-					rc = EXIT_FAILURE;
-				}
-			}
-			if (reanalyse_shlibs) {
-				if (pkgdb_upgrade_lock(db, PKGDB_LOCK_ADVISORY,
-						PKGDB_LOCK_EXCLUSIVE) == EPKG_OK) {
-					if (!quiet && verbose)
-						printf(" shared libraries...");
-					if (pkgdb_reanalyse_shlibs(db, pkg) != EPKG_OK) {
-						pkg_fprintf(stderr, "Failed to "
-						    "reanalyse for shlibs: "
-						    "%n-%v\n", pkg, pkg);
-						rc = EXIT_FAILURE;
-					}
-					pkgdb_downgrade_lock(db,
-					    PKGDB_LOCK_EXCLUSIVE,
-					    PKGDB_LOCK_ADVISORY);
-				}
-				else {
-					rc = EXIT_FAILURE;
-				}
-			}
 
 			if (!quiet) {
 				if (!verbose)
@@ -536,7 +462,6 @@ cleanup:
 	xstring_free(msg);
 	tll_free_and_free(dh, free);
 	pkg_free(pkg);
-	pkgdb_release_lock(db, PKGDB_LOCK_ADVISORY);
 	pkgdb_close(db);
 
 	return (rc);

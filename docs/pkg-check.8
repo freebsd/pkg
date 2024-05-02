@@ -14,7 +14,7 @@
 .\"
 .\"     @(#)pkg.8
 .\"
-.Dd May 25, 2018
+.Dd May 2, 2024
 .Dt PKG-CHECK 8
 .Os
 .Sh NAME
@@ -23,52 +23,34 @@
 .Sh SYNOPSIS
 .Nm
 .Sm off
-.Fl B | Fl d | Fl s | Fl r
+.Fl d | Fl s
 .Sm on
 .Op Fl nqvy
 .Fl a
 .Nm
 .Sm off
-.Fl B | Fl d | Fl s | Fl r
+.Fl d | Fl s
 .Sm on
 .Op Fl nqvy
 .Op Fl Cgix
 .Ar pattern
 .Pp
 .Nm
-.Fl -{shlibs,dependencies,checksums,recompute}
+.Fl -{dependencies,checksums}
 .Op Fl -{dry-run,quiet,verbose,yes}
 .Fl -all
 .Nm
-.Fl -{shlibs,dependencies,checksums,recompute}
+.Fl -{dependencies,checksums}
 .Op Fl -{dry-run,quiet,verbose,yes}
 .Op Fl -{case-sensitive,glob,case-insensitive,regex}
 .Ar pattern
 .Sh DESCRIPTION
-.Nm
-.Fl B
-or
-.Nm
-.Fl -shlibs
-regenerates the library dependency metadata for a package by extracting
-library requirement information from the binary ELF files in the package.
-.Pp
 .Nm
 .Fl d
 or
 .Nm
 .Fl -dependencies
 checks for and installs missing dependencies.
-.Pp
-.Nm
-.Fl r
-or
-.Nm
-.Fl -recompute
-recalculates and sets the checksums of installed packages.
-This command should only be used when the administrator has
-made modifications that invalidate a package checksum.
-Spontaneous checksum problems can indicate data or security problems.
 .Pp
 .Nm
 .Fl s
@@ -83,8 +65,6 @@ These options are supported by
 .Bl -tag -width dependencies
 .It Fl a , Fl -all
 Process all packages.
-.It Fl B , Fl -shlibs
-Regenerates the library dependency metadata for a package
 .It Fl C , Fl -case-sensitive
 Use case sensitive standard or regular expression
 .Fl ( x )
@@ -107,8 +87,6 @@ has been set to true in
 .Pa pkg.conf .
 .It Fl n , Fl -dry-run
 Only check for missing dependencies, do not install them.
-.It Fl r , Fl -recompute
-Recalculates and sets the checksums of installed packages
 .It Fl s , Fl -checksums
 Detects installed packages with invalid checksums
 .It Fl v , Fl -verbose
@@ -141,12 +119,6 @@ for additional information.
 See
 .Xr pkg.conf 5 .
 .Sh EXAMPLES
-Regenerate the library dependency metadata of all installed packages
-from the library information in each package's binary ELF files:
-.Bd -literal -offset indent
-pkg check -Ba
-.Ed
-.Pp
 Test for missing dependencies needed by nano, installing any that are
 missing:
 .Bd -literal -offset indent
