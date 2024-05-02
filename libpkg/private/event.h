@@ -56,6 +56,7 @@ typedef enum {
 	PKG_DBG_CONFIG = (1UL << 2),
 	PKG_DBG_PACKING = (1UL << 3),
 	PKG_DBG_DB = (1UL << 4),
+	PKG_DBG_MANIFEST = (1UL << 5),
 	PKG_DBG_ALL = (1UL << 63),
 } pkg_debug_flags;
 
@@ -70,6 +71,7 @@ static const struct pkg_dbg_flags debug_flags[] = {
 	{ PKG_DBG_CONFIG, "config" },
 	{ PKG_DBG_PACKING, "packing" },
 	{ PKG_DBG_DB, "db" },
+	{ PKG_DBG_MANIFEST, "manifest" },
 	{ PKG_DBG_ALL, "all" },
 };
 
