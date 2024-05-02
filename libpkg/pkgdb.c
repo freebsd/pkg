@@ -56,6 +56,8 @@
 
 extern struct pkg_ctx ctx;
 
+#define dbg(x, ...) pkg_dbg(PKG_DBG_DB, x, __VA_ARGS__)
+
 /* An application using a libpkg() DBVERSION is assumed to be compatible
    with:
 
@@ -790,7 +792,7 @@ pkgdb_profile_callback(unsigned type __unused, void *ud __unused,
 	/* According to sqlite3 documentation, nsec has milliseconds accuracy */
 	nsec /= 1000000LLU;
 	if (nsec > 0)
-		pkg_debug(1, "Sqlite request %s was executed in %lu milliseconds",
+		dbg(1, "Sqlite request %s was executed in %lu milliseconds",
 			req, (unsigned long)nsec);
 	return (0);
 }
@@ -1061,7 +1063,7 @@ retry:
 
 	profile = pkg_object_bool(pkg_config_get("SQLITE_PROFILE"));
 	if (profile) {
-		pkg_debug(1, "pkgdb profiling is enabled");
+		dbg(1, "pkgdb profiling is enabled");
 		sqlite3_trace_v2(db->sqlite, SQLITE_TRACE_PROFILE,
 		    pkgdb_profile_callback, NULL);
 	}
@@ -1178,16 +1180,19 @@ pkgdb_transaction_rollback_sqlite(sqlite3 *sqlite, const char *savepoint)
 int
 pkgdb_transaction_begin(struct pkgdb *db, const char *savepoint)
 {
+	dbg(2, "new transaction");
 	return (pkgdb_transaction_begin_sqlite(db->sqlite, savepoint));
 }
 int
 pkgdb_transaction_commit(struct pkgdb *db, const char *savepoint)
 {
+	dbg(2, "end transaction");
 	return (pkgdb_transaction_commit_sqlite(db->sqlite, savepoint));
 }
 int
 pkgdb_transaction_rollback(struct pkgdb *db, const char *savepoint)
 {
+	dbg(2, "end transaction");
 	return (pkgdb_transaction_rollback_sqlite(db->sqlite, savepoint));
 }
 
@@ -1555,7 +1560,7 @@ run_prstmt(sql_prstmt_index s, ...)
 
 	va_end(ap);
 
-	pkg_debug(4, "Pkgdb, running '%s'", sqlite3_expanded_sql(stmt));
+	dbg(4, "running '%s'", sqlite3_expanded_sql(stmt));
 	retcode = sqlite3_step(stmt);
 
 	return (retcode);
@@ -2265,7 +2270,7 @@ sql_exec(sqlite3 *s, const char *sql, ...)
 		sql_to_exec = sql;
 	}
 
-	pkg_debug(4, "Pkgdb: executing '%s'", sql_to_exec);
+	dbg(4, "executing '%s'", sql_to_exec);
 	if (sqlite3_exec(s, sql_to_exec, NULL, NULL, &errmsg) != SQLITE_OK) {
 		ERROR_SQLITE(s, sql_to_exec);
 		sqlite3_free(errmsg);
@@ -2572,7 +2577,7 @@ pkgdb_check_lock_pid(struct pkgdb *db)
 		pid = sqlite3_column_int64(stmt, 0);
 		if (pid != lpid) {
 			if (kill((pid_t)pid, 0) == -1) {
-				pkg_debug(1, "found stale pid %lld in lock database, my pid is: %lld",
+				dbg(1, "found stale pid %lld in lock database, my pid is: %lld",
 						(long long)pid, (long long)lpid);
 				if (pkgdb_remove_lock_pid(db, pid) != EPKG_OK){
 					sqlite3_finalize(stmt);
@@ -2634,7 +2639,7 @@ pkgdb_try_lock(struct pkgdb *db, const char *lock_sql, pkgdb_lock_t type,
 		ret = sqlite3_exec(db->sqlite, lock_sql, NULL, NULL, NULL);
 		if (ret != SQLITE_OK) {
 			if (ret == SQLITE_READONLY && type == PKGDB_LOCK_READONLY) {
-				pkg_debug(1, "want read lock but cannot write to database, "
+				dbg(1, "want read lock but cannot write to database, "
 						"slightly ignore this error for now");
 				return (EPKG_OK);
 			}
@@ -2645,7 +2650,7 @@ pkgdb_try_lock(struct pkgdb *db, const char *lock_sql, pkgdb_lock_t type,
 		if (sqlite3_changes(db->sqlite) == 0) {
 			if (pkgdb_check_lock_pid(db) == EPKG_END) {
 				/* No live processes found, so we can safely reset lock */
-				pkg_debug(1, "no concurrent processes found, cleanup the lock");
+				dbg(1, "no concurrent processes found, cleanup the lock");
 				pkgdb_reset_lock(db);
 
 				if (upgrade) {
@@ -2669,7 +2674,7 @@ pkgdb_try_lock(struct pkgdb *db, const char *lock_sql, pkgdb_lock_t type,
 			else if (num_timeout > 0) {
 				ts.tv_sec = (int)num_timeout;
 				ts.tv_nsec = (num_timeout - (int)num_timeout) * 1000000000.;
-				pkg_debug(1, "waiting for database lock for %d times, "
+				dbg(1, "waiting for database lock for %d times, "
 						"next try in %.2f seconds", tries, num_timeout);
 				(void)nanosleep(&ts, NULL);
 			}
@@ -2711,14 +2716,14 @@ pkgdb_obtain_lock(struct pkgdb *db, pkgdb_lock_t type)
 		if (!ucl_object_toboolean(pkg_config_get("READ_LOCK")))
 				return (EPKG_OK);
 		lock_sql = readonly_lock_sql;
-		pkg_debug(1, "want to get a read only lock on a database");
+		dbg(1, "want to get a read only lock on a database");
 		break;
 	case PKGDB_LOCK_ADVISORY:
 		lock_sql = advisory_lock_sql;
-		pkg_debug(1, "want to get an advisory lock on a database");
+		dbg(1, "want to get an advisory lock on a database");
 		break;
 	case PKGDB_LOCK_EXCLUSIVE:
-		pkg_debug(1, "want to get an exclusive lock on a database");
+		dbg(1, "want to get an exclusive lock on a database");
 		lock_sql = exclusive_lock_sql;
 		break;
 	}
@@ -2726,7 +2731,7 @@ pkgdb_obtain_lock(struct pkgdb *db, pkgdb_lock_t type)
 	ret = pkgdb_try_lock(db, lock_sql, type, false);
 
 	if (ret != EPKG_OK)
-		pkg_debug(1, "failed to obtain the lock: %s",
+		dbg(1, "failed to obtain the lock: %s",
 		    sqlite3_errmsg(db->sqlite));
 
 	return (ret);
@@ -2742,7 +2747,7 @@ pkgdb_upgrade_lock(struct pkgdb *db, pkgdb_lock_t old_type, pkgdb_lock_t new_typ
 	assert(db != NULL);
 
 	if (old_type == PKGDB_LOCK_ADVISORY && new_type == PKGDB_LOCK_EXCLUSIVE) {
-		pkg_debug(1, "want to upgrade advisory to exclusive lock");
+		dbg(1, "want to upgrade advisory to exclusive lock");
 		ret = pkgdb_try_lock(db, advisory_exclusive_lock_sql,
 				new_type, true);
 	}
@@ -2763,7 +2768,7 @@ pkgdb_downgrade_lock(struct pkgdb *db, pkgdb_lock_t old_type,
 
 	if (old_type == PKGDB_LOCK_EXCLUSIVE &&
 	    new_type == PKGDB_LOCK_ADVISORY) {
-		pkg_debug(1, "want to downgrade exclusive to advisory lock");
+		dbg(1, "want to downgrade exclusive to advisory lock");
 		ret = pkgdb_try_lock(db, downgrade_exclusive_lock_sql,
 		    new_type, true);
 	}
@@ -2792,15 +2797,15 @@ pkgdb_release_lock(struct pkgdb *db, pkgdb_lock_t type)
 			return (EPKG_OK);
 
 		unlock_sql = readonly_unlock_sql;
-		pkg_debug(1, "release a read only lock on a database");
+		dbg(1, "release a read only lock on a database");
 
 		break;
 	case PKGDB_LOCK_ADVISORY:
 		unlock_sql = advisory_unlock_sql;
-		pkg_debug(1, "release an advisory lock on a database");
+		dbg(1, "release an advisory lock on a database");
 		break;
 	case PKGDB_LOCK_EXCLUSIVE:
-		pkg_debug(1, "release an exclusive lock on a database");
+		dbg(1, "release an exclusive lock on a database");
 		unlock_sql = exclusive_unlock_sql;
 		break;
 	}
@@ -2976,6 +2981,6 @@ pkgdb_debug(int level, sqlite3_stmt *stmt)
 		return;
 
 	str = sqlite3_expanded_sql(stmt);
-	pkg_debug(level, "Pkgdb: running: '%s'", str);
+	dbg(level, "running: '%s'", str);
 	sqlite3_free(str);
 }
