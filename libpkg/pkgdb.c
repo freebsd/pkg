@@ -1,5 +1,5 @@
 /*-
- * Copyright (c) 2011-2023 Baptiste Daroussin <bapt@FreeBSD.org>
+ * Copyright (c) 2011-2024 Baptiste Daroussin <bapt@FreeBSD.org>
  * Copyright (c) 2011-2012 Julien Laffaye <jlaffaye@FreeBSD.org>
  * Copyright (c) 2011 Will Andrews <will@FreeBSD.org>
  * Copyright (c) 2011 Philippe Pepiot <phil@philpep.org>
@@ -10,28 +10,8 @@
  * Copyright (c) 2013-2014 Vsevolod Stakhov <vsevolod@FreeBSD.org>
  * Copyright (c) 2023 Serenity Cyber Security, LLC
  *                    Author: Gleb Popov <arrowd@FreeBSD.org>
- * All rights reserved.
  *
- * Redistribution and use in source and binary forms, with or without
- * modification, are permitted provided that the following conditions
- * are met:
- * 1. Redistributions of source code must retain the above copyright
- *    notice, this list of conditions and the following disclaimer
- *    in this position and unchanged.
- * 2. Redistributions in binary form must reproduce the above copyright
- *    notice, this list of conditions and the following disclaimer in the
- *    documentation and/or other materials provided with the distribution.
- *
- * THIS SOFTWARE IS PROVIDED BY THE AUTHOR(S) ``AS IS'' AND ANY EXPRESS OR
- * IMPLIED WARRANTIES, INCLUDING, BUT NOT LIMITED TO, THE IMPLIED WARRANTIES
- * OF MERCHANTABILITY AND FITNESS FOR A PARTICULAR PURPOSE ARE DISCLAIMED.
- * IN NO EVENT SHALL THE AUTHOR(S) BE LIABLE FOR ANY DIRECT, INDIRECT,
- * INCIDENTAL, SPECIAL, EXEMPLARY, OR CONSEQUENTIAL DAMAGES (INCLUDING, BUT
- * NOT LIMITED TO, PROCUREMENT OF SUBSTITUTE GOODS OR SERVICES; LOSS OF USE,
- * DATA, OR PROFITS; OR BUSINESS INTERRUPTION) HOWEVER CAUSED AND ON ANY
- * THEORY OF LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY, OR TORT
- * (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF
- * THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
+ * SPDX-License-Identifier: BSD-2-Clause
  */
 
 #ifdef HAVE_CONFIG_H
@@ -2057,69 +2037,6 @@ pkgdb_insert_annotations(struct pkg *pkg, int64_t package_id, sqlite3 *s)
 		}
 	}
 	return (EPKG_OK);
-}
-
-int
-pkgdb_reanalyse_shlibs(struct pkgdb *db, struct pkg *pkg)
-{
-	sqlite3		*s;
-	int64_t		 package_id;
-	int		 ret = EPKG_OK;
-	int		 i;
-	const char	*sql[] = {
-		"DELETE FROM pkg_shlibs_required WHERE package_id = ?1",
-
-		"DELETE FROM pkg_shlibs_provided WHERE package_id = ?1",
-
-		"DELETE FROM shlibs "
-		"WHERE id NOT IN "
-		"(SELECT DISTINCT shlib_id FROM pkg_shlibs_required)"
-		"AND id NOT IN "
-		"(SELECT DISTINCT shlib_id FROM pkg_shlibs_provided)",
-	};
-
-	sqlite3_stmt	*stmt_del;
-
-	assert(db != NULL);
-
-	if (pkg_is_valid(pkg) != EPKG_OK) {
-		pkg_emit_error("the package is not valid");
-		return (EPKG_FATAL);
-	}
-
-	if ((ret = pkg_analyse_files(db, pkg, ctx.pkg_rootdir)) == EPKG_OK) {
-		s = db->sqlite;
-		package_id = pkg->id;
-
-		for (i = 0; i < 2; i++) {
-			/* Clean out old shlibs first */
-			stmt_del = prepare_sql(db->sqlite, sql[i]);
-			if (stmt_del == NULL)
-				return (EPKG_FATAL);
-
-			sqlite3_bind_int64(stmt_del, 1, package_id);
-			pkgdb_debug(4, stmt_del);
-
-			ret = sqlite3_step(stmt_del);
-
-			if (ret != SQLITE_DONE) {
-				ERROR_STMT_SQLITE(db->sqlite, stmt_del);
-				sqlite3_finalize(stmt_del);
-				return (EPKG_FATAL);
-			}
-			sqlite3_finalize(stmt_del);
-		}
-
-		if (sql_exec(db->sqlite, sql[2]) != EPKG_OK)
-			return (EPKG_FATAL);
-
-		/* Save shlibs */
-		ret = pkgdb_update_shlibs_required(pkg, package_id, s);
-		if (ret == EPKG_OK)
-			ret = pkgdb_update_shlibs_provided(pkg, package_id, s);
-	}
-
-	return (ret);
 }
 
 int

@@ -1479,8 +1479,6 @@ int pkg_initialized(void);
 void pkg_shutdown(void);
 
 int pkg_test_filesum(struct pkg *);
-int pkg_recompute(struct pkgdb *, struct pkg *);
-int pkgdb_reanalyse_shlibs(struct pkgdb *, struct pkg *);
 
 void pkgdb_cmd(int argc, char **argv);
 int pkg_sshserve(int fd);

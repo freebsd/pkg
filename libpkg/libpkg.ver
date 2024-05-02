@@ -135,7 +135,6 @@ global:
 	pkg_plugins_shutdown;
 	pkg_printf;
 	pkg_rdeps;
-	pkg_recompute;
 	pkg_repo_cached_name;
 	pkg_repo_create;
 	pkg_repo_create_free;
@@ -219,7 +218,6 @@ global:
 	pkgdb_query_shlib_provide;
 	pkgdb_query_shlib_require;
 	pkgdb_query_which;
-	pkgdb_reanalyse_shlibs;
 	pkgdb_register_ports;
 	pkgdb_release_lock;
 	pkgdb_repo_query;
