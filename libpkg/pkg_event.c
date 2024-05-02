@@ -1009,11 +1009,13 @@ pkg_dbg(uint64_t flags, int level, const char *fmt, ...)
 	ev.type = PKG_EVENT_DEBUG;
 	ev.e_debug.level = level;
 	for (size_t i = 0; i < NELEM(debug_flags); i++) {
-		if (ctx.debug_flags & debug_flags[i].flag) {
-			if (string_fmt->size == 0)
+		if (flags & debug_flags[i].flag) {
+			if (string_fmt->size == 0) {
 				fprintf(string_fmt->fp, "(%s", debug_flags[i].name);
-			else
+				fflush(string_fmt->fp);
+			} else {
 				fprintf(string_fmt->fp, "|%s", debug_flags[i].name);
+			}
 		}
 	}
 	fprintf(string_fmt->fp, ") %s", fmt);
