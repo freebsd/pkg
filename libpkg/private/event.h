@@ -32,6 +32,8 @@
 #ifndef _PKG_EVENT
 #define _PKG_EVENT
 
+#include <stdint.h>
+
 #ifndef PKG_FORMAT_ATTRIBUTE
 #ifdef __GNUC__
 #define PKG_FORMAT_ATTRIBUTE(x, y) __attribute__ ((format (printf, (x), (y))));
