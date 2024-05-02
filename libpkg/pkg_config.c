@@ -63,6 +63,8 @@
 #define INDEXFILE	"INDEX"
 #endif
 
+#define dbg(x, ...) pkg_dbg(PKG_DBG_CONFIG, x, __VA_ARGS__)
+
 struct pkg_ctx ctx = {
 	.eventpipe = -1,
 	.debug_level = 0,
@@ -619,7 +621,7 @@ add_repo(const ucl_object_t *obj, struct pkg_repo *r, const char *rname, pkg_ini
 	int use_ipvx = 0;
 	int priority = 0;
 
-	pkg_dbg(PKG_DBG_CONFIG, 1, "parsing repository object %s", rname);
+	dbg(1, "parsing repository object %s", rname);
 
 	env = NULL;
 	enabled = ucl_object_find_key(obj, "enabled");
@@ -632,7 +634,7 @@ add_repo(const ucl_object_t *obj, struct pkg_repo *r, const char *rname, pkg_ini
 			 * We basically want to remove the existing repo r and
 			 * forget all stuff parsed
 			 */
-			pkg_dbg(PKG_DBG_CONFIG, 1, "disabling repo %s", rname);
+			dbg(1, "disabling repo %s", rname);
 			DL_DELETE(repos, r);
 			pkg_repo_free(r);
 			return;
@@ -721,7 +723,7 @@ add_repo(const ucl_object_t *obj, struct pkg_repo *r, const char *rname, pkg_ini
 	}
 
 	if (r == NULL && url == NULL) {
-		pkg_dbg(PKG_DBG_CONFIG, 1, "No repo and no url for %s", rname);
+		dbg(1, "No repo and no url for %s", rname);
 		return;
 	}
 
@@ -792,10 +794,10 @@ add_repo_obj(const ucl_object_t *obj, const char *file, pkg_init_flags flags)
 	const char *key;
 
 	key = ucl_object_key(obj);
-	pkg_dbg(PKG_DBG_CONFIG, 1, "parsing repo key '%s' in file '%s'", key, file);
+	dbg(1, "parsing repo key '%s' in file '%s'", key, file);
 	r = pkg_repo_find(key);
 	if (r != NULL)
-		pkg_dbg(PKG_DBG_CONFIG, 1, "overwriting repository %s", key);
+		dbg(1, "overwriting repository %s", key);
        add_repo(obj, r, key, flags);
 }
 
@@ -810,10 +812,10 @@ walk_repo_obj(const ucl_object_t *obj, const char *file, pkg_init_flags flags)
 
 	while ((cur = ucl_iterate_object(obj, &it, true))) {
 		key = ucl_object_key(cur);
-		pkg_dbg(PKG_DBG_CONFIG, 1, "parsing key '%s'", key);
+		dbg(1, "parsing key '%s'", key);
 		r = pkg_repo_find(key);
 		if (r != NULL)
-			pkg_dbg(PKG_DBG_CONFIG, 1, "overwriting repository %s", key);
+			dbg(1, "overwriting repository %s", key);
 		if (cur->type == UCL_OBJECT)
 			add_repo(cur, r, key, flags);
 		else {
@@ -864,7 +866,7 @@ load_repo_file(int dfd, const char *repodir, const char *repofile,
 	errno = 0;
 	obj = NULL;
 
-	pkg_dbg(PKG_DBG_CONFIG, 1, "loading %s/%s", repodir, repofile);
+	dbg(1, "loading %s/%s", repodir, repofile);
 	fd = openat(dfd, repofile, O_RDONLY);
 	if (fd == -1) {
 		pkg_errno("Unable to open '%s/%s'", repodir, repofile);
@@ -917,7 +919,7 @@ load_repo_files(const char *repodir, pkg_init_flags flags, struct os_info *oi)
 	struct dirent **ent;
 	int nents, i, fd;
 
-	pkg_dbg(PKG_DBG_CONFIG, 1, "loading repositories in %s", repodir);
+	dbg(1, "loading repositories in %s", repodir);
 	if ((fd = open(repodir, O_DIRECTORY|O_CLOEXEC)) == -1)
 		return;
 
@@ -1374,7 +1376,7 @@ pkg_ini(const char *path, const char *reposdir, pkg_init_flags flags)
 		goto out;
 	}
 
-	pkg_dbg(PKG_DBG_CONFIG, 1, "%s", "pkg initialized");
+	dbg(1, "pkg initialized");
 
 #ifdef __FreeBSD__
 	ctx.osversion = pkg_object_int(pkg_config_get("OSVERSION"));
@@ -1404,7 +1406,7 @@ pkg_ini(const char *path, const char *reposdir, pkg_init_flags flags)
 	object = ucl_object_find_key(config, "PKG_ENV");
 	while ((cur = ucl_iterate_object(object, &it, true))) {
 		evkey = ucl_object_key(cur);
-		pkg_dbg(PKG_DBG_CONFIG, 1, "Setting env var: %s", evkey);
+		dbg(1, "Setting env var: %s", evkey);
 		if (evkey != NULL && evkey[0] != '\0')
 			setenv(evkey, ucl_object_tostring_forced(cur), 1);
 	}
