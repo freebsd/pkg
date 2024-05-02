@@ -46,6 +46,8 @@
 
 struct pkg_solve_item;
 
+#define dbg(x, ...) pkg_dbg(PKG_DBG_SOLVER, x, __VA_ARGS__)
+
 enum pkg_solve_rule_type {
 	PKG_RULE_DEPEND = 0,
 	PKG_RULE_UPGRADE_CONFLICT,
@@ -262,7 +264,7 @@ pkg_debug_print_rule(struct pkg_solve_rule *rule)
 	pkg_print_rule_buf(rule, sb);
 
 	fflush(sb->fp);
-	pkg_debug(2, "%s", sb->buf);
+	dbg(2, "rule: %s", sb->buf);
 	xstring_free(sb);
 }
 
@@ -297,7 +299,7 @@ pkg_solve_handle_provide (struct pkg_solve_problem *problem,
 			libfound = stringlist_contains(&pkg->shlibs_provided, pr->provide);
 			/* Skip incompatible ABI as well */
 			if (libfound && strcmp(pkg->arch, orig->arch) != 0) {
-				pkg_debug(2, "solver: require %s: package %s-%s(%c) provides wrong ABI %s, "
+				dbg(2, "require %s: package %s-%s(%c) provides wrong ABI %s, "
 					"wanted %s", pr->provide, pkg->name, pkg->version,
 					pkg->type == PKG_INSTALLED ? 'l' : 'r', pkg->arch, orig->arch);
 				continue;
@@ -308,7 +310,7 @@ pkg_solve_handle_provide (struct pkg_solve_problem *problem,
 		}
 
 		if (!providefound && !libfound) {
-			pkg_debug(4, "solver: %s provide is not satisfied by %s-%s(%c)", pr->provide,
+			dbg(4, "%s provide is not satisfied by %s-%s(%c)", pr->provide,
 					pkg->name, pkg->version, pkg->type == PKG_INSTALLED ?
 							'l' : 'r');
 			continue;
@@ -318,7 +320,7 @@ pkg_solve_handle_provide (struct pkg_solve_problem *problem,
 			curvar->assumed_reponame = reponame;
 		}
 
-		pkg_debug(4, "solver: %s provide is satisfied by %s-%s(%c)", pr->provide,
+		dbg(4, "%s provide is satisfied by %s-%s(%c)", pr->provide,
 				pkg->name, pkg->version, pkg->type == PKG_INSTALLED ?
 				'l' : 'r');
 
@@ -351,7 +353,7 @@ pkg_solve_add_depend_rule(struct pkg_solve_problem *problem,
 		depvar = NULL;
 		depvar = pkghash_get_value(problem->variables_by_uid, uid);
 		if (depvar == NULL) {
-			pkg_debug(2, "cannot find variable dependency %s", uid);
+			dbg(2, "cannot find variable dependency %s", uid);
 			continue;
 		}
 
@@ -369,7 +371,7 @@ pkg_solve_add_depend_rule(struct pkg_solve_problem *problem,
 	}
 
 	if (cnt == 0) {
-		pkg_debug(2, "cannot find any suitable dependency for %s", var->uid);
+		dbg(2, "cannot find any suitable dependency for %s", var->uid);
 		pkg_solve_rule_free(rule);
 
 		return (EPKG_FATAL);
@@ -394,7 +396,7 @@ pkg_solve_add_conflict_rule(struct pkg_solve_problem *problem,
 	uid = conflict->uid;
 	confvar = pkghash_get_value(problem->variables_by_uid, uid);
 	if (confvar == NULL) {
-		pkg_debug(2, "cannot find conflict %s", uid);
+		dbg(2, "cannot find conflict %s", uid);
 		return (EPKG_END);
 	}
 
@@ -456,7 +458,7 @@ pkg_solve_add_require_rule(struct pkg_solve_problem *problem,
 
 	prhead = pkghash_get_value(problem->j->universe->provides, requirement);
 	if (prhead != NULL) {
-		pkg_debug(4, "solver: Add require rule: %s-%s(%c) wants %s",
+		dbg(4, "Add require rule: %s-%s(%c) wants %s",
 			pkg->name, pkg->version, pkg->type == PKG_INSTALLED ? 'l' : 'r',
 			requirement);
 		/* Require rule: ( !A | P1 | P2 | P3 ... ) must be true */
@@ -487,7 +489,7 @@ pkg_solve_add_require_rule(struct pkg_solve_problem *problem,
 		 * This is terribly broken now so ignore till provides/requires
 		 * are really fixed.
 		 */
-		pkg_debug(1, "solver: for package: %s cannot find provide for requirement: %s",
+		dbg(1, "for package: %s cannot find provide for requirement: %s",
 		    pkg->name, requirement);
 	}
 
@@ -519,7 +521,7 @@ pkg_solve_add_request_rule(struct pkg_solve_problem *problem,
 	struct pkg_solve_variable *confvar, *curvar;
 	int cnt;
 
-	pkg_debug(4, "solver: add variable from %s request with uid %s-%s",
+	dbg(4, "add variable from %s request with uid %s-%s",
 		inverse < 0 ? "delete" : "install", var->uid, var->digest);
 
 	/*
@@ -709,7 +711,7 @@ pkg_solve_add_variable(struct pkg_job_universe_item *un,
 		pkg_solve_variable_set(var, ucur);
 
 		if (tvar == NULL) {
-			pkg_debug(4, "solver: add variable from universe with uid %s", var->uid);
+			dbg(4, "add variable from universe with uid %s", var->uid);
 			pkghash_safe_add(problem->variables_by_uid, var->uid, var, NULL);
 			tvar = var;
 		}
@@ -772,7 +774,7 @@ pkg_solve_jobs_to_sat(struct pkg_jobs *j)
 	}
 
 	if (tll_length(problem->rules) == 0)
-		pkg_debug(1, "problem has no requests");
+		dbg(1, "problem has no requests");
 
 	return (problem);
 }
@@ -868,12 +870,12 @@ pkg_solve_set_initial_assumption(struct pkg_solve_problem *problem,
 			 * We are interested merely in dependencies of top variables
 			 * or of previously assumed dependencies
 			 */
-			pkg_debug(4, "solver: not interested in dependencies for %s-%s",
+			dbg(4, "not interested in dependencies for %s-%s",
 					var->unit->pkg->name, var->unit->pkg->version);
 			return;
 		}
 		else {
-			pkg_debug(4, "solver: examine dependencies for %s-%s",
+			dbg(4, "examine dependencies for %s-%s",
 					var->unit->pkg->name, var->unit->pkg->version);
 		}
 
@@ -926,13 +928,13 @@ pkg_solve_set_initial_assumption(struct pkg_solve_problem *problem,
 			LL_FOREACH(var, cvar) {
 				if (cvar->unit == selected) {
 					picosat_set_default_phase_lit(problem->sat, cvar->order, 1);
-					pkg_debug(4, "solver: assumed %s-%s(%s) to be installed",
+					dbg(4, "assumed %s-%s(%s) to be installed",
 							selected->pkg->name, selected->pkg->version,
 							selected->pkg->type == PKG_INSTALLED ? "l" : "r");
 					cvar->flags |= PKG_VAR_ASSUMED_TRUE;
 				}
 				else {
-					pkg_debug(4, "solver: assumed %s-%s(%s) to be NOT installed",
+					dbg(4, "assumed %s-%s(%s) to be NOT installed",
 							cvar->unit->pkg->name, cvar->unit->pkg->version,
 							cvar->unit->pkg->type == PKG_INSTALLED ? "l" : "r");
 					picosat_set_default_phase_lit(problem->sat, cvar->order, -1);
@@ -1069,7 +1071,7 @@ reiterate:
 			else
 				var->flags &= ~PKG_VAR_INSTALL;
 
-			pkg_debug(2, "decided %s %s-%s to %s",
+			dbg(2, "decided %s %s-%s to %s",
 					var->unit->pkg->type == PKG_INSTALLED ? "local" : "remote",
 							var->uid, var->digest,
 							var->flags & PKG_VAR_INSTALL ? "install" : "delete");
@@ -1099,7 +1101,7 @@ reiterate:
 				 * iteration to ensure that we have no other choices
 				 */
 				if (failed_var) {
-					pkg_debug (1, "trying to delete local package %s-%s on install/upgrade,"
+					dbg (1, "trying to delete local package %s-%s on install/upgrade,"
 							" reiterate on SAT",
 							var->unit->pkg->name, var->unit->pkg->version);
 					need_reiterate = true;
@@ -1262,7 +1264,7 @@ pkg_solve_insert_res_job (struct pkg_solve_variable *var,
 				res->type = (j->type == PKG_JOBS_FETCH) ?
 								PKG_SOLVED_FETCH : PKG_SOLVED_INSTALL;
 				tll_push_back(j->jobs, res);
-				pkg_debug(3, "pkg_solve: schedule installation of %s %s",
+				dbg(3, "pkg_solve: schedule installation of %s %s",
 					add_var->uid, add_var->digest);
 			}
 			else {
@@ -1271,7 +1273,7 @@ pkg_solve_insert_res_job (struct pkg_solve_variable *var,
 				res->items[1] = del_var->unit;
 				res->type = PKG_SOLVED_UPGRADE;
 				tll_push_back(j->jobs, res);
-				pkg_debug(3, "pkg_solve: schedule upgrade of %s from %s to %s",
+				dbg(3, "pkg_solve: schedule upgrade of %s from %s to %s",
 					del_var->uid, del_var->digest, add_var->digest);
 			}
 			j->count ++;
@@ -1292,14 +1294,14 @@ pkg_solve_insert_res_job (struct pkg_solve_variable *var,
 				res->items[0] = cur_var->unit;
 				res->type = PKG_SOLVED_DELETE;
 				tll_push_back(j->jobs, res);
-				pkg_debug(3, "pkg_solve: schedule deletion of %s %s",
+				dbg(3, "schedule deletion of %s %s",
 					cur_var->uid, cur_var->digest);
 				j->count ++;
 			}
 		}
 	}
 	else {
-		pkg_debug(2, "solver: ignoring package %s(%s) as its state has not been changed",
+		dbg(2, "ignoring package %s(%s) as its state has not been changed",
 				var->uid, var->digest);
 	}
 }
@@ -1312,7 +1314,7 @@ pkg_solve_sat_to_jobs(struct pkg_solve_problem *problem)
 
 	while (pkghash_next(&it)) {
 		var = (struct pkg_solve_variable *)it.value;
-		pkg_debug(4, "solver: check variable with uid %s", var->uid);
+		dbg(4, "check variable with uid %s", var->uid);
 		pkg_solve_insert_res_job(var, problem);
 	}
 
