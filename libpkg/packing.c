@@ -2,7 +2,7 @@
  * Copyright (c) 2011-2021 Baptiste Daroussin <bapt@FreeBSD.org>
  * Copyright (c) 2011 Will Andrews <will@FreeBSD.org>
  * All rights reserved.
- * 
+ *
  * Redistribution and use in source and binary forms, with or without
  * modification, are permitted provided that the following conditions
  * are met:
@@ -12,7 +12,7 @@
  * 2. Redistributions in binary form must reproduce the above copyright
  *    notice, this list of conditions and the following disclaimer in the
  *    documentation and/or other materials provided with the distribution.
- * 
+ *
  * THIS SOFTWARE IS PROVIDED BY THE AUTHOR(S) ``AS IS'' AND ANY EXPRESS OR
  * IMPLIED WARRANTIES, INCLUDING, BUT NOT LIMITED TO, THE IMPLIED WARRANTIES
  * OF MERCHANTABILITY AND FITNESS FOR A PARTICULAR PURPOSE ARE DISCLAIMED.
@@ -42,6 +42,8 @@
 #include "private/event.h"
 #include "private/pkg.h"
 #include "private/packing.h"
+
+#define dbg(x, ...) pkg_dbg(PKG_DBG_PACKING, x, __VA_ARGS__);
 
 int
 packing_init(struct packing **pack, const char *path, pkg_formats format, int clevel,
@@ -106,7 +108,7 @@ packing_init(struct packing **pack, const char *path, pkg_formats format, int cl
 		errno = EEXIST;
 		return (EPKG_EXIST);
 	}
-	pkg_debug(1, "Packing to file '%s'", archive_path);
+	dbg(1, "target file '%s'", archive_path);
 	if (archive_write_open_filename(
 	    (*pack)->awrite, archive_path) != ARCHIVE_OK) {
 		pkg_emit_errno("archive_write_open_filename",
@@ -140,6 +142,7 @@ packing_append_iovec(struct packing *pack, const char *path, struct iovec *iov,
 	struct archive_entry *entry;
 	int ret = EPKG_OK, size = 0;
 
+	dbg(1, "adding file '%s'", path);
 	for (int idx = 0; idx < niov; idx++) {
 		size += iov[idx].iov_len;
 	}
@@ -180,6 +183,7 @@ packing_append_buffer(struct packing *pack, const char *buffer,
 {
 	struct iovec iov;
 
+	dbg(1, "adding file '%s'", path);
 	iov.iov_base = __DECONST(char *, buffer);
 	iov.iov_len = size;
 	return (packing_append_iovec(pack, path, &iov, 1));
@@ -202,7 +206,7 @@ packing_append_file_attr(struct packing *pack, const char *filepath,
 	entry = archive_entry_new();
 	archive_entry_copy_sourcepath(entry, filepath);
 
-	pkg_debug(2, "Packing file '%s'", filepath);
+	dbg(1, "adding file '%s'", filepath);
 
 	if (lstat(filepath, &st) != 0) {
 		pkg_emit_errno("lstat", filepath);
