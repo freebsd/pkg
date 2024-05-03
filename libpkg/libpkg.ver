@@ -32,6 +32,7 @@ global:
 	pkg_create_installed;
 	pkg_create_new;
 	pkg_create_repo;
+	pkg_create_set_compression_threads;
 	pkg_create_set_compression_level;
 	pkg_create_set_expand_manifest;
 	pkg_create_set_format;

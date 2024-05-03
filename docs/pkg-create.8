@@ -14,7 +14,7 @@
 .\"
 .\"     @(#)pkg.8
 .\"
-.Dd October 13, 2020
+.Dd May 3, 2024
 .Dt PKG-CREATE 8
 .Os
 .\" ---------------------------------------------------------------------------
@@ -31,6 +31,7 @@
 .Op Fl p Ar plist
 .Op Fl r Ar rootdir
 .Op Fl t Ar timestamp
+.Op Fl T Ar threads
 .Fl m Ar metadatadir
 .Nm
 .Op Fl enqv
@@ -39,6 +40,7 @@
 .Op Fl o Ar outdir
 .Op Fl r Ar rootdir
 .Op Fl t Ar timestamp
+.Op Fl T Ar threads
 .Fl M Ar manifest
 .Nm
 .Op Fl egnqvx
@@ -47,6 +49,7 @@
 .Op Fl o Ar outdir
 .Op Fl r Ar rootdir
 .Op Fl t Ar timestamp
+.Op Fl T Ar threads
 .Ar pkg-name ...
 .Nm
 .Op Fl enqv
@@ -55,6 +58,7 @@
 .Op Fl o Ar outdir
 .Op Fl r Ar rootdir
 .Op Fl t Ar timestamp
+.Op Fl T Ar threads
 .Fl a
 .\" ---------------------------------------------------------------------------
 .Pp
@@ -274,6 +278,14 @@ disturbing similar content already on the system.
 If unspecified, the default is effectively
 .Pa / ,
 the actual root directory.
+.It Fl T Ar threads
+.Ar threads
+represent the number of threads to use during the compression of the archive.
+Set it to
+.Qq 0
+or
+.Qq auto
+to let detect the number of CPU and use it.
 .El
 .\" ---------------------------------------------------------------------------
 .Sh MANIFEST FILE DETAILS

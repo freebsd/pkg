@@ -1,4 +1,4 @@
-.Dd January 23, 2024
+.Dd May 3, 2024
 .Dt PKG_CREATE 3
 .Os
 .Sh NAME
@@ -6,7 +6,8 @@
 .Nm pkg_create_new , pkg_create_free ,
 .Nm pkg_create_set_format , pkg_create_set_overwrite ,
 .Nm pkg_create_set_compression_level , pkg_create_set_rootdir ,
-.Nm pkg_create_set_output_dir , pkg_create_set_timestamp
+.Nm pkg_create_set_output_dir , pkg_create_set_timestamp ,
+.Nm pkg_create_set_compression_threads
 .Nd create packages
 .Sh LIBRARY
 .Lb libpkg
@@ -20,6 +21,8 @@
 .Fn pkg_create_set_format "struct pkg_create *" "const char *"
 .Ft void
 .Fn pkg_create_set_compression_level "struct pkg_create *" "int"
+.Ft void
+.Fn pkg_create_set_compression_threads "struct pkg_create *" "int"
 .Ft void
 .Fn pkg_create_set_overwrite "struct pkg_create *" "bool"
 .Ft void
@@ -63,6 +66,11 @@ Set the default (as specified in libarchive)
 Set the best compression ratio
 .El
 .Pp
+.Fn pkg_create_set_compression_threads
+take a
+.Ft int
+arguments which represents the expected numbers of threads used during
+compression.
 .Fn pkg_create_set_overwrite
 Accept a boolean to define the default behaviour when creating a package and
 a local file already exists.

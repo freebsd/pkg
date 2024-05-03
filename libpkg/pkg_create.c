@@ -216,7 +216,7 @@ pkg_create_archive(struct pkg *pkg, struct pkg_create *pc, unsigned required_fla
 	}
 
 	if (packing_init(&pkg_archive, pkg_path, pc->format,
-	    pc->compression_level, pc->timestamp, pc->overwrite, false) != EPKG_OK) {
+	    pc->compression_level, pc->compression_threads, pc->timestamp, pc->overwrite, false) != EPKG_OK) {
 		pkg_archive = NULL;
 	}
 
@@ -258,6 +258,7 @@ pkg_create_new(void)
 	pc = xcalloc(1, sizeof(*pc));
 	pc->format = packing_format_from_string(ctx.compression_format);
 	pc->compression_level = ctx.compression_level;
+	pc->compression_threads = ctx.compression_threads;
 	pc->timestamp = (time_t) -1;
 	pc->overwrite = true;
 	pc->expand_manifest = false;
@@ -293,6 +294,12 @@ void
 pkg_create_set_compression_level(struct pkg_create *pc, int clevel)
 {
 	pc->compression_level = clevel;
+}
+
+void
+pkg_create_set_compression_threads(struct pkg_create *pc, int threads)
+{
+	pc->compression_threads = threads;
 }
 
 void

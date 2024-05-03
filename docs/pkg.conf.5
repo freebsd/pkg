@@ -127,6 +127,8 @@ Set the default compression level, special values are:
 .It 0 default value per libarchive developers
 .It -1 default value per pkg developers (default)
 .El
+.It Cm COMPRESSION_THREADS: integer
+Set the number of threads to use during compression (only functional for txz and tzst)
 .It Cm CONSERVATIVE_UPGRADE: boolean
 Ensure in multi repository mode that the priority is given as much as possible
 to the repository where a package was first installed from.

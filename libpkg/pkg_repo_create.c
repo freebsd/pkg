@@ -1099,7 +1099,7 @@ pkg_repo_pack_db(const char *name, const char *archive, char *path,
 	struct packing *pack;
 	int ret = EPKG_OK;
 
-	if (packing_init(&pack, archive, prc->meta->packing_format, 0, (time_t)-1, true, true) != EPKG_OK)
+	if (packing_init(&pack, archive, prc->meta->packing_format, 0, 0, (time_t)-1, true, true) != EPKG_OK)
 		return (EPKG_FATAL);
 
 	if (sctx != NULL) {

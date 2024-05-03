@@ -74,33 +74,33 @@ ATF_TC_BODY(packing_set_format, tc)
 	ATF_CHECK(a != NULL);
 
 #if defined(HAVE_ARCHIVE_WRITE_ADD_FILTER_ZSTD) && __FreeBSD_version >= 1300000
-	ATF_REQUIRE_STREQ(packing_set_format(a, TZS, -1), "tzst");
+	ATF_REQUIRE_STREQ(packing_set_format(a, TZS, -1, -1), "tzst");
 #endif
-	ATF_REQUIRE_STREQ(packing_set_format(a, TXZ, -1), "txz");
-	ATF_REQUIRE_STREQ(packing_set_format(a, TBZ, -1), "tbz");
-	ATF_REQUIRE_STREQ(packing_set_format(a, TGZ, -1), "tgz");
-	ATF_REQUIRE_STREQ(packing_set_format(a, TAR, -1), "tar");
-	ATF_REQUIRE_EQ(packing_set_format(a, 28, -1), NULL);
+	ATF_REQUIRE_STREQ(packing_set_format(a, TXZ, -1, -1), "txz");
+	ATF_REQUIRE_STREQ(packing_set_format(a, TBZ, -1, -1), "tbz");
+	ATF_REQUIRE_STREQ(packing_set_format(a, TGZ, -1, -1), "tgz");
+	ATF_REQUIRE_STREQ(packing_set_format(a, TAR, -1, -1), "tar");
+	ATF_REQUIRE_EQ(packing_set_format(a, 28, -1, -1), NULL);
 
 	/* compression min */
 #if defined(HAVE_ARCHIVE_WRITE_ADD_FILTER_ZSTD) && __FreeBSD_version >= 1300000
-	ATF_REQUIRE_STREQ(packing_set_format(a, TZS, INT_MIN), "tzst");
+	ATF_REQUIRE_STREQ(packing_set_format(a, TZS, INT_MIN, -1), "tzst");
 #endif
-	ATF_REQUIRE_STREQ(packing_set_format(a, TXZ, INT_MIN), "txz");
-	ATF_REQUIRE_STREQ(packing_set_format(a, TBZ, INT_MIN), "tbz");
-	ATF_REQUIRE_STREQ(packing_set_format(a, TGZ, INT_MIN), "tgz");
-	ATF_REQUIRE_STREQ(packing_set_format(a, TAR, INT_MIN), "tar");
-	ATF_REQUIRE_EQ(packing_set_format(a, 28, INT_MIN), NULL);
+	ATF_REQUIRE_STREQ(packing_set_format(a, TXZ, INT_MIN, -1), "txz");
+	ATF_REQUIRE_STREQ(packing_set_format(a, TBZ, INT_MIN, -1), "tbz");
+	ATF_REQUIRE_STREQ(packing_set_format(a, TGZ, INT_MIN, -1), "tgz");
+	ATF_REQUIRE_STREQ(packing_set_format(a, TAR, INT_MIN, -1), "tar");
+	ATF_REQUIRE_EQ(packing_set_format(a, 28, INT_MIN, -1), NULL);
 
 	/* compression max */
 #if defined(HAVE_ARCHIVE_WRITE_ADD_FILTER_ZSTD) && __FreeBSD_version >= 1300000
-	ATF_REQUIRE_STREQ(packing_set_format(a, TZS, INT_MAX), "tzst");
+	ATF_REQUIRE_STREQ(packing_set_format(a, TZS, INT_MAX, -1), "tzst");
 #endif
-	ATF_REQUIRE_STREQ(packing_set_format(a, TXZ, INT_MAX), "txz");
-	ATF_REQUIRE_STREQ(packing_set_format(a, TBZ, INT_MAX), "tbz");
-	ATF_REQUIRE_STREQ(packing_set_format(a, TGZ, INT_MAX), "tgz");
-	ATF_REQUIRE_STREQ(packing_set_format(a, TAR, INT_MAX), "tar");
-	ATF_REQUIRE_EQ(packing_set_format(a, 28, INT_MAX), NULL);
+	ATF_REQUIRE_STREQ(packing_set_format(a, TXZ, INT_MAX, -1), "txz");
+	ATF_REQUIRE_STREQ(packing_set_format(a, TBZ, INT_MAX, -1), "tbz");
+	ATF_REQUIRE_STREQ(packing_set_format(a, TGZ, INT_MAX, -1), "tgz");
+	ATF_REQUIRE_STREQ(packing_set_format(a, TAR, INT_MAX, -1), "tar");
+	ATF_REQUIRE_EQ(packing_set_format(a, 28, INT_MAX, -1), NULL);
 }
 
 ATF_TP_ADD_TCS(tp)

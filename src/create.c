@@ -57,13 +57,13 @@ void
 usage_create(void)
 {
 	fprintf(stderr, "Usage: pkg create [-eOhnqv] [-f format] [-l level] "
-		"[-o outdir] [-p plist] [-r rootdir] -m metadatadir\n");
+		"[-T threads] [-o outdir] [-p plist] [-r rootdir] -m metadatadir\n");
 	fprintf(stderr, "Usage: pkg create [-eOhnqv] [-f format] [-l level] "
-		"[-o outdir] [-r rootdir] -M manifest\n");
+		"[-T threads] [-o outdir] [-r rootdir] -M manifest\n");
 	fprintf(stderr, "       pkg create [-eOhgnqvx] [-f format] [-l level] "
-		"[-o outdir] [-r rootdir] pkg-name ...\n");
+		"[-T threads] [-o outdir] [-r rootdir] pkg-name ...\n");
 	fprintf(stderr, "       pkg create [-eOhnqv] [-f format] [-l level] "
-		"[-o outdir] [-r rootdir] -a\n\n");
+		"[-T threads] [-o outdir] [-r rootdir] -a\n\n");
 	fprintf(stderr, "For more information see 'pkg help create'.\n");
 }
 
@@ -172,6 +172,8 @@ exec_create(int argc, char **argv)
 	int		 ch;
 	int		 level;
 	bool		 level_is_set = false;
+	int		 threads;
+	bool		 threads_is_set = false;
 	int		 ret;
 	bool		 hash = false;
 	bool		 overwrite = true;
@@ -208,7 +210,7 @@ exec_create(int argc, char **argv)
 		{ NULL,		0,			NULL,	0   },
 	};
 
-	while ((ch = getopt_long(argc, argv, "+aeghxf:l:r:m:M:no:p:qvt:", longopts, NULL)) != -1) {
+	while ((ch = getopt_long(argc, argv, "+aeghxf:l:r:m:M:no:p:qvt:T:", longopts, NULL)) != -1) {
 		switch (ch) {
 		case 'a':
 			match = MATCH_ALL;
@@ -272,6 +274,21 @@ exec_create(int argc, char **argv)
 				return (EXIT_FAILURE);
 			}
 			break;
+		case 'T':
+			{
+			const char *errstr;
+
+			threads_is_set = true;
+			threads = strtonum(optarg, 0, INT_MAX, &errstr);
+			if (errstr == NULL)
+				break;
+			if (strcasecmp(optarg, "auto") == 0) {
+				threads = 0;
+				break;
+			}
+			warnx("Invalid compression threads %s", optarg);
+			return (EXIT_FAILURE);
+			}
 		case 'v':
 			quiet = false;
 			break;
@@ -310,7 +327,9 @@ exec_create(int argc, char **argv)
 			warnx("unknown format %s, using the default", format);
 	}
 	if (level_is_set)
-	    pkg_create_set_compression_level(pc, level);
+		pkg_create_set_compression_level(pc, level);
+	if (threads_is_set)
+		pkg_create_set_compression_threads(pc, threads);
 	pkg_create_set_overwrite(pc, overwrite);
 	pkg_create_set_rootdir(pc, rootdir);
 	pkg_create_set_output_dir(pc, outdir);

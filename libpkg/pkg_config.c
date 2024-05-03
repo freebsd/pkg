@@ -82,6 +82,7 @@ struct pkg_ctx ctx = {
 	.triggers = true,
 	.compression_format = NULL,
 	.compression_level = -1,
+	.compression_threads = -1,
 	.defer_triggers = false,
 };
 
@@ -515,6 +516,12 @@ static struct config_entry c[] = {
 		NULL,
 		"debug flags to activate",
 	},
+	{
+		PKG_INT,
+		"COMPRESSION_THREADS",
+		"-1",
+		"Set the default number of threads used for compression",
+	}
 };
 
 static bool parsed = false;
@@ -1399,6 +1406,7 @@ pkg_ini(const char *path, const char *reposdir, pkg_init_flags flags)
 	ctx.triggers_path = pkg_object_string(pkg_config_get("PKG_TRIGGERS_DIR"));
 	ctx.compression_format = pkg_object_string(pkg_config_get("COMPRESSION_FORMAT"));
 	ctx.compression_level = pkg_object_int(pkg_config_get("COMPRESSION_LEVEL"));
+	ctx.compression_threads = pkg_object_int(pkg_config_get("COMPRESSION_THREADS"));
 	ctx.archive_symlink = pkg_object_bool(pkg_config_get("ARCHIVE_SYMLINK"));
 	ctx.repo_accept_legacy_pkg = pkg_object_bool(pkg_config_get("REPO_ACCEPT_LEGACY_PKG"));
 

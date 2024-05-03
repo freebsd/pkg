@@ -47,7 +47,7 @@
 
 int
 packing_init(struct packing **pack, const char *path, pkg_formats format, int clevel,
-	time_t timestamp, bool overwrite, bool compat_symlink)
+	int threads, time_t timestamp, bool overwrite, bool compat_symlink)
 {
 	char archive_path[MAXPATHLEN];
 	char archive_symlink[MAXPATHLEN];
@@ -79,7 +79,7 @@ packing_init(struct packing **pack, const char *path, pkg_formats format, int cl
 
 	(*pack)->awrite = archive_write_new();
 	archive_write_set_format_pax_restricted((*pack)->awrite);
-	ext = packing_set_format((*pack)->awrite, format, clevel);
+	ext = packing_set_format((*pack)->awrite, format, clevel, threads);
 	if (ext == NULL) {
 		archive_read_close((*pack)->aread);
 		archive_read_free((*pack)->aread);
@@ -312,7 +312,7 @@ packing_finish(struct packing *pack)
 }
 
 const char *
-packing_set_format(struct archive *a, pkg_formats format, int clevel)
+packing_set_format(struct archive *a, pkg_formats format, int clevel, int threads)
 {
 	const char *notsupp_fmt = "%s is not supported, trying %s";
 
@@ -370,44 +370,50 @@ out:
 	if (format == TAR && clevel != 0)
 		pkg_emit_error("Plain tar and a compression level does not make sense");
 
-	if (elected_format != TAR && clevel != 0) {
+	if (elected_format != TAR) {
 		char buf[16];
+		if (clevel != 0) {
+			/*
+			 * A bit of a kludge but avoids dragging in headers for all of
+			 * these libraries.
+			 */
+			if (clevel == INT_MIN) {
+				switch (elected_format) {
+					case TZS:
+						clevel = -5;
+						break;
+					case TXZ:
+					case TBZ:
+					case TGZ:
+						clevel = 1;
+						break;
+					default:
+						__unreachable();
+				}
+			} else if (clevel == INT_MAX) {
+				switch (elected_format) {
+					case TZS:
+						clevel = 19;
+						break;
+					case TXZ:
+					case TBZ:
+					case TGZ:
+						clevel = 9;
+						break;
+					default:
+						__unreachable();
+				}
+			}
 
-		/*
-		 * A bit of a kludge but avoids dragging in headers for all of
-		 * these libraries.
-		 */
-		if (clevel == INT_MIN) {
-			switch (elected_format) {
-			case TZS:
-				clevel = -5;
-				break;
-			case TXZ:
-			case TBZ:
-			case TGZ:
-				clevel = 1;
-				break;
-			default:
-				__unreachable();
-			}
-		} else if (clevel == INT_MAX) {
-			switch (elected_format) {
-			case TZS:
-				clevel = 19;
-				break;
-			case TXZ:
-			case TBZ:
-			case TGZ:
-				clevel = 9;
-				break;
-			default:
-				__unreachable();
-			}
+			snprintf(buf, sizeof(buf), "%d", clevel);
+			if (archive_write_set_filter_option(a, NULL, "compression-level", buf) != ARCHIVE_OK)
+				pkg_emit_error("bad compression-level %d", clevel);
 		}
-
-		snprintf(buf, sizeof(buf), "%d", clevel);
-		if (archive_write_set_filter_option(a, NULL, "compression-level", buf) != ARCHIVE_OK)
-			pkg_emit_error("bad compression-level %d", clevel);
+		if (threads >= 0) {
+			snprintf(buf, sizeof(buf), "%d", threads);
+			if (archive_write_set_filter_option(a, NULL, "threads", buf) != ARCHIVE_OK)
+				pkg_emit_error("bad threads value %d", threads);
+		}
 	}
 
 	return (packing_format_to_string(elected_format));

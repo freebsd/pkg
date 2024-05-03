@@ -157,6 +157,7 @@ struct pkg_ctx {
 	const char *cachedir;
 	const char *compression_format;
 	int compression_level;
+	int compression_threads;
 	int rootfd;
 	int cachedirfd;
 	int devnullfd;
@@ -298,6 +299,7 @@ struct pkg_create {
 	bool overwrite;
 	bool expand_manifest;
 	int compression_level;
+	int compression_threads;
 	pkg_formats format;
 	time_t timestamp;
 	const char *rootdir;
@@ -713,7 +715,7 @@ void pkg_config_file_free(struct pkg_config_file *);
 struct iovec;
 struct packing;
 
-int packing_init(struct packing **pack, const char *path, pkg_formats format, int clevel, time_t timestamp, bool overwrite, bool archive_symlink);
+int packing_init(struct packing **pack, const char *path, pkg_formats format, int clevel, int threads, time_t timestamp, bool overwrite, bool archive_symlink);
 int packing_append_file_attr(struct packing *pack, const char *filepath,
      const char *newpath, const char *uname, const char *gname, mode_t perm,
      u_long fflags);
