@@ -997,7 +997,7 @@ pkg_dbg(uint64_t flags, int level, const char *fmt, ...)
 {
 	struct pkg_event ev;
 	va_list ap;
-	xstring *string_fmt = xstring_new();
+	xstring *string_fmt;
 	char *nfmt;
 
 	if (ctx.debug_level < level)
@@ -1006,6 +1006,7 @@ pkg_dbg(uint64_t flags, int level, const char *fmt, ...)
 	if ((ctx.debug_flags & (flags|PKG_DBG_ALL)) == 0)
 		return;
 
+	string_fmt = xstring_new();
 	ev.type = PKG_EVENT_DEBUG;
 	ev.e_debug.level = level;
 	for (size_t i = 0; i < NELEM(debug_flags); i++) {
