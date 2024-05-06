@@ -86,6 +86,14 @@ extern "C" {
 #define NELEM(array)    (sizeof(array) / sizeof((array)[0]))
 #endif
 
+#ifndef STREQ
+#define STREQ(s1, s2) (strcmp(s1, s2) == 0)
+#endif
+
+#ifndef STRIEQ
+#define STRIEQ(s1, s2) (strcasecmp(s1, s2) == 0)
+#endif
+
 /* Special exit status for worker processes indicating that a restart
  * is desired -- eg. after a child has updated pkg(8) itself.
  */

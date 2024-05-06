@@ -31,6 +31,10 @@
 #include <mum.h>
 #include <xmalloc.h>
 
+#ifndef STREQ
+#define STREQ(s1, s2) (strcmp(s1, s2) == 0)
+#endif
+
 struct pkghash {
 	pkghash_entry *entries;
 	size_t capacity;
