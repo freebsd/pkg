@@ -245,10 +245,7 @@ exec_delete(int argc, char **argv)
 	}
 	pkgdb_compact(db);
 
-	if (rc)
-		retcode = EXIT_SUCCESS;
-	else
-		retcode = EXIT_FAILURE;
+	retcode = EXIT_SUCCESS;
 
 cleanup:
 	pkgdb_release_lock(db, lock_type);
