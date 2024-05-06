@@ -901,7 +901,6 @@ pkg_jobs_try_remote_candidate(struct pkg_jobs *j, const char *cond, const char *
 		xstring_renew(qmsg);
 		if (pkg_jobs_has_replacement(j, p->uid)) {
 			pkg_debug(1, "replacement %s is already used", p->uid);
-			continue;
 		}
 	}
 
