@@ -668,7 +668,7 @@ apply_keyword_file(ucl_object_t *obj, struct plist *p, char *line, struct file_a
 		l = formated_line;
 	}
 	/* add all shell scripts */
-	for (int i = 0; i < nitems(script_mapping); i++) {
+	for (int i = 0; i < NELEM(script_mapping); i++) {
 		if ((o = ucl_object_find_key(obj, script_mapping[i].key))) {
 			if (format_exec_cmd(&cmd, ucl_object_tostring(o), p->prefix,
 			    p->last_file, l, argc, args, false) != EPKG_OK)
@@ -679,7 +679,7 @@ apply_keyword_file(ucl_object_t *obj, struct plist *p, char *line, struct file_a
 	}
 
 	/* add all lua scripts */
-	for (int i = 0; i < nitems(lua_mapping); i++) {
+	for (int i = 0; i < NELEM(lua_mapping); i++) {
 		if ((o = ucl_object_find_key(obj, lua_mapping[i].key))) {
 			if (format_exec_cmd(&cmd, ucl_object_tostring(o), p->prefix,
 			    p->last_file, l, argc, args, true) != EPKG_OK)

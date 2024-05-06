@@ -859,7 +859,7 @@ pkg_get_myarch_elfparse(char *dest, size_t sz, struct os_info *oi)
 	 * This also helps alleviate some excessive wrapping later.
 	 */
 	checkroot = ctx.pkg_rootdir != NULL;
-	for (fd = -1, i = 0; i < nitems(abi_files); i++) {
+	for (fd = -1, i = 0; i < NELEM(abi_files); i++) {
 		if (abi_files[i] == NULL)
 			continue;
 		/*

@@ -196,7 +196,7 @@ get_component(const char *position, version_component *component)
 		/* handle special suffixes */
 		if (isalpha(pos[1])) {
 			unsigned int i;
-			for (i = 0; i < nitems(stages); i++) {
+			for (i = 0; i < NELEM(stages); i++) {
 				const struct stage *stage = &stages[i];
 				size_t len = stage->namelen;
 				if (strncasecmp(pos, stage->name, len) == 0 &&

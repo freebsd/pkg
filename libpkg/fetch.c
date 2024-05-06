@@ -209,7 +209,7 @@ select_fetcher(const char *url)
 	struct fetcher *f;
 	size_t nsz;
 
-	for (size_t i = 0; i < nitems(fetchers); i++) {
+	for (size_t i = 0; i < NELEM(fetchers); i++) {
 		nsz = strlen(fetchers[i].scheme);
 
 		if ((strncasecmp(url, fetchers[i].scheme, nsz) == 0) &&

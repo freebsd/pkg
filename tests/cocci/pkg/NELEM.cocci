@@ -29,3 +29,10 @@ T[] E;
 
 - (sizeof(E)/sizeof(T))
 + NELEM(E)
+
+@@
+expression E;
+@@
+
+- nitems(E)
++ NELEM(E)

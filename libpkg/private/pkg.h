@@ -67,10 +67,6 @@
 # endif
 #endif
 
-#ifndef nitems
-#define nitems(x)       (sizeof((x)) / sizeof((x)[0]))
-#endif
-
 #ifndef roundup2
 #define	roundup2(x, y)	(((x)+((y)-1))&(~((y)-1))) /* if y is powers of two */
 #endif

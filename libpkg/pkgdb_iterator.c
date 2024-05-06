@@ -838,8 +838,10 @@ populate_pkg(sqlite3_stmt *stmt, struct pkg *pkg) {
 		struct column_mapping *column;
 		switch (sqlite3_column_type(stmt, icol)) {
 		case SQLITE_TEXT:
-			column = bsearch(colname, columns, NELEM(columns) - 1,
-					sizeof(columns[0]), compare_column_func);
+			column = bsearch(colname, columns,
+					 NELEM(columns) - 1,
+					 sizeof(columns[0]),
+					 compare_column_func);
 			if (column == NULL) {
 				pkg_emit_error("unknown column %s", colname);
 				continue;
@@ -918,8 +920,10 @@ populate_pkg(sqlite3_stmt *stmt, struct pkg *pkg) {
 			}
 			break;
 		case SQLITE_INTEGER:
-			column = bsearch(colname, columns, NELEM(columns) - 1,
-					sizeof(columns[0]), compare_column_func);
+			column = bsearch(colname, columns,
+					 NELEM(columns) - 1,
+					 sizeof(columns[0]),
+					 compare_column_func);
 			if (column == NULL) {
 				pkg_emit_error("Unknown column %s", colname);
 				continue;
