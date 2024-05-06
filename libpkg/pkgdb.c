@@ -813,7 +813,7 @@ pkgdb_open_repos(struct pkgdb *db, const char *reponame)
 			continue;
 		}
 
-		if (reponame == NULL || strcasecmp(r->name, reponame) == 0) {
+		if (reponame == NULL || STRIEQ(r->name, reponame)) {
 			/* We need read only access here */
 			if (r->ops->open(r, R_OK) == EPKG_OK) {
 				r->ops->init(r);

@@ -65,8 +65,8 @@ pkg_status(int *count)
 	if (progname == NULL)
 		return (PKG_STATUS_UNINSTALLED);
 
-	if (strcmp(progname, PKG_EXEC_NAME) != 0   &&
-	    strcmp(progname, PKG_STATIC_NAME) != 0 &&
+	if (!STREQ(progname, PKG_EXEC_NAME)   &&
+	    !STREQ(progname, PKG_STATIC_NAME) &&
 	    !is_exec_at_localbase(PKG_EXEC_NAME)   &&
 	    !is_exec_at_localbase(PKG_STATIC_NAME))
 		return (PKG_STATUS_UNINSTALLED);

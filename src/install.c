@@ -91,7 +91,7 @@ exec_install(int argc, char **argv)
 
 	nbactions = nbdone = 0;
 
-	if (strcmp(argv[0], "add") == 0) {
+	if (STREQ(argv[0], "add")) {
 		auto_update = false;
 		local_only = true;
 		yes = true;

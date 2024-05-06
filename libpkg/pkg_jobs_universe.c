@@ -172,9 +172,9 @@ pkg_jobs_universe_add_pkg(struct pkg_jobs_universe *universe, struct pkg *pkg,
 
 		DL_FOREACH(seen, tmp) {
 			if (tmp->pkg == pkg || (tmp->pkg->type == pkg->type &&
-			    strcmp(tmp->pkg->digest, pkg->digest) == 0)) {
+			    STREQ(tmp->pkg->digest, pkg->digest))) {
 				if (tmp->pkg->reponame != NULL) {
-					if (strcmp(tmp->pkg->reponame, pkg->reponame) == 0) {
+					if (STREQ(tmp->pkg->reponame, pkg->reponame)) {
 						same_package = true;
 						break;
 					}
@@ -319,7 +319,7 @@ pkg_jobs_universe_process_deps(struct pkg_jobs_universe *universe,
 			rpkg = rit->item;
 
 			if (pkg->reponame && rpkg->reponame &&
-					strcmp (pkg->reponame, rpkg->reponame) == 0) {
+					STREQ(pkg->reponame, rpkg->reponame)) {
 				found = true;
 				break;
 			}
@@ -887,7 +887,7 @@ pkg_jobs_universe_change_uid(struct pkg_jobs_universe *universe,
 
 			if (found != NULL) {
 				while (pkg_deps(found->pkg, &d) == EPKG_OK) {
-					if (strcmp(d->uid, unit->pkg->uid) == 0) {
+					if (STREQ(d->uid, unit->pkg->uid)) {
 						free(d->uid);
 						d->uid = xstrdup(new_uid);
 					}
@@ -1144,8 +1144,7 @@ pkg_jobs_universe_process_upgrade_chains(struct pkg_jobs *j)
 			 * and if it has the same digest we proceed only if we have a
 			 * forced job
 			 */
-			if (local != NULL && strcmp(local->pkg->digest,
-				selected->pkg->digest) == 0 &&
+			if (local != NULL && STREQ(local->pkg->digest, selected->pkg->digest) &&
 				(j->flags & PKG_FLAG_FORCE) == 0) {
 				pkg_debug (1, "removing %s from the request as it is the "
 								"same as local", selected->pkg->uid);

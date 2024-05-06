@@ -213,7 +213,7 @@ rmdir_p(struct pkgdb *db, struct pkg *pkg, char *dir, const char *prefix_r)
 	if (cnt > 0)
 		return;
 
-	if (strcmp(prefix_r, fullpath + 1) == 0)
+	if (STREQ(prefix_r, fullpath + 1))
 		return;
 
 	pkg_debug(1, "removing directory %s", fullpath);

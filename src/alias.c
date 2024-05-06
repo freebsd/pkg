@@ -95,7 +95,7 @@ exec_alias(int argc, char **argv)
 	for (int i = 0; i < argc; i++) {
 		it = NULL;
 		while ((alias = pkg_object_iterate(all_aliases, &it))) {
-			if (strcmp(argv[i], pkg_object_key(alias)) == 0)
+			if (STREQ(argv[i], pkg_object_key(alias)))
 				break;
 		}
 		if (alias) {

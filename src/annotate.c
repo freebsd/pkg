@@ -149,7 +149,7 @@ do_show(struct pkg *pkg, const char *tag)
 	pkg_get(pkg, PKG_ATTR_ANNOTATIONS, &kl);
 	kit = pkg_kvlist_iterator(kl);
 	while ((note = pkg_kvlist_next(kit))) {
-		if (strcmp(tag, note->key) == 0) {
+		if (STREQ(tag, note->key)) {
 			if (quiet)
 				printf("%s\n", note->value);
 			else

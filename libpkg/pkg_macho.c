@@ -118,7 +118,7 @@ analyse_macho(struct pkg *pkg, const char *fpath,
 			/* Prevent cyclic self-references. A valid dylib shouldn't include a
 			 * LC_LOAD_DYLIB referencing itself, but there's nothing that would
 			 * actually prevent it */
-			if (strcmp(cmd->mlt_install_name, march->mat_install_name) == 0)
+			if (STREQ(cmd->mlt_install_name, march->mat_install_name))
 				continue;
 
 			/* Skip non-resolvable library paths. */

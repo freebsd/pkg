@@ -183,11 +183,11 @@ vquery_yesno(bool deft, const char *msg, va_list ap)
 				}
 			}
 			else {
-				if (strcasecmp(line, "yes\n") == 0) {
+				if (STRIEQ(line, "yes\n")) {
 					r = true;
 					break;
 				}
-				else if (strcasecmp(line, "no\n") == 0) {
+				else if (STRIEQ(line, "no\n")) {
 					r = false;
 					break;
 				}

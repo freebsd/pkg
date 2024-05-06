@@ -228,13 +228,13 @@ exec_help(int argc, char **argv)
 	const pkg_object *alias;
 	pkg_iter it = NULL;
 
-	if ((argc != 2) || (strcmp("help", argv[1]) == 0)) {
+	if ((argc != 2) || STREQ("help", argv[1])) {
 		usage_help();
 		return(EXIT_FAILURE);
 	}
 
 	for (i = 0; i < cmd_len; i++) {
-		if (strcmp(cmd[i].name, argv[1]) == 0) {
+		if (STREQ(cmd[i].name, argv[1])) {
 			xasprintf(&manpage, "/usr/bin/man pkg-%s", cmd[i].name);
 			system(manpage);
 			free(manpage);
@@ -247,7 +247,7 @@ exec_help(int argc, char **argv)
 
 	if (plugins_enabled) {
 		tll_foreach(plugins, it) {
-			if (strcmp(it->item->name, argv[1]) == 0) {
+			if (STREQ(it->item->name, argv[1])) {
 				xasprintf(&manpage, "/usr/bin/man pkg-%s", it->item->name);
 				system(manpage);
 				free(manpage);
@@ -257,10 +257,10 @@ exec_help(int argc, char **argv)
 		}
 	}
 
-	if (strcmp(argv[1], "pkg") == 0) {
+	if (STREQ(argv[1], "pkg")) {
 		system("/usr/bin/man 8 pkg");
 		return (0);
-	} else if (strcmp(argv[1], "pkg.conf") == 0) {
+	} else if (STREQ(argv[1], "pkg.conf")) {
 		system("/usr/bin/man 5 pkg.conf");
 		return (0);
 	}
@@ -268,7 +268,7 @@ exec_help(int argc, char **argv)
 	/* Try aliases */
 	all_aliases = pkg_config_get("ALIAS");
 	while ((alias = pkg_object_iterate(all_aliases, &it))) {
-		if (strcmp(argv[1], pkg_object_key(alias)) == 0) {
+		if (STREQ(argv[1], pkg_object_key(alias))) {
 			printf("`%s` is an alias to `%s`\n", argv[1], pkg_object_string(alias));
 			return (0);
 		}
@@ -508,7 +508,7 @@ expand_aliases(int argc, char ***argv)
 	all_aliases = pkg_config_get("ALIAS");
 
 	while ((alias = pkg_object_iterate(all_aliases, &it))) {
-		if (strcmp(oldargv[0], pkg_object_key(alias)) == 0) {
+		if (STREQ(oldargv[0], pkg_object_key(alias))) {
 			matched = true;
 			break;
 		}
@@ -784,7 +784,7 @@ main(int argc, char **argv)
 	if (activation_test)
 		do_activation_test(argc);
 
-	if (argc >= 1 && strcmp(argv[0], "bootstrap") == 0) {
+	if (argc >= 1 && STREQ(argv[0], "bootstrap")) {
 		int force = 0, yes = 0;
 		while ((ch = getopt(argc, argv, "fy")) != -1) {
 			switch (ch) {
@@ -853,7 +853,7 @@ main(int argc, char **argv)
 		ret = EPKG_FATAL;
 		if (plugins_enabled) {
 			tll_foreach(plugins, it) {
-				if (strcmp(it->item->name, argv[0]) == 0) {
+				if (STREQ(it->item->name, argv[0])) {
 					plugin_found = true;
 					ret = it->item->exec(argc, argv);
 					break;

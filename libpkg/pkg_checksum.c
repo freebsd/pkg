@@ -583,7 +583,7 @@ pkg_checksum_type_from_string(const char *name)
 {
 	int i;
 	for (i = 0; i < PKG_HASH_TYPE_UNKNOWN; i ++) {
-		if (strcasecmp(name, checksum_types[i].name) == 0)
+		if (STRIEQ(name, checksum_types[i].name))
 			return (i);
 	}
 
@@ -793,7 +793,7 @@ pkg_checksum_validate_fileat(int rootfd, const char *path, const char *sum)
 	if (newsum == NULL)
 		return (-1);
 
-	if (strcmp(sum, newsum) != 0) {
+	if (!STREQ(sum, newsum)) {
 		free(newsum);
 		return (-1);
 	}

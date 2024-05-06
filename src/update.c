@@ -62,7 +62,7 @@ pkgcli_update(bool force, bool strict, const char *reponame)
 
 	while (pkg_repos(&r) == EPKG_OK) {
 		if (reponame != NULL) {
-			if (strcmp(pkg_repo_name(r), reponame) != 0)
+			if (!STREQ(pkg_repo_name(r), reponame))
 				continue;
 		} else {
 			if (!pkg_repo_enabled(r))

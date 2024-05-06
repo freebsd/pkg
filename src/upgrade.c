@@ -206,7 +206,7 @@ add_vulnerable_upgrades(struct pkg_jobs	*jobs, struct pkgdb *db)
 			line[linelen - 1] = '\0';
 		}
 
-		if (strcmp(line, vuln_end_lit) == 0) {
+		if (STREQ(line, vuln_end_lit)) {
 			ret = EPKG_OK;
 			break;
 		}

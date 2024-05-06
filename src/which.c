@@ -59,7 +59,7 @@ static bool
 already_in_list(charlist *list, const char *pattern)
 {
 	tll_foreach(*list, it) {
-		if (strcmp(it->item, pattern) == 0)
+		if (STREQ(it->item, pattern))
 			return (true);
 	}
 

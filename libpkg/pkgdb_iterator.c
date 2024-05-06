@@ -319,15 +319,9 @@ pkgdb_load_deps(sqlite3 *sqlite, struct pkg *pkg)
 
 							while (sqlite3_step(opt_stmt) == SQLITE_ROW) {
 								DL_FOREACH(fit->options, optit) {
-									if(strcmp(optit->opt,
-											sqlite3_column_text(opt_stmt, 0))
-											== 0) {
-										if ((strcmp(
-												sqlite3_column_text(opt_stmt, 1),
-												"on") && !optit->on)
-											|| (strcmp(
-												sqlite3_column_text(opt_stmt, 1),
-												"off") && optit->on)) {
+									if(STREQ(optit->opt, sqlite3_column_text(opt_stmt, 0))) {
+										if ((!STREQ(sqlite3_column_text(opt_stmt, 1), "on") && !optit->on)
+											|| (!STREQ(sqlite3_column_text(opt_stmt, 1), "off") && optit->on)) {
 											pkg_debug(4, "incompatible option for"
 													"%s: %s",
 													sqlite3_column_text(opt_stmt, 1),

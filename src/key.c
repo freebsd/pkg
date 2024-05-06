@@ -108,7 +108,7 @@ key_sign_data(struct pkg_key *key, const char *name)
 	datafile = NULL;
 	datastr = NULL;
 	rc = EPKG_FATAL;
-	if (strcmp(name, "-") == 0) {
+	if (STREQ(name, "-")) {
 		datafile = stdin;	/* XXX Make it configurable? */
 		name = "stdin";
 	} else {

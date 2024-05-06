@@ -424,15 +424,15 @@ packing_format_from_string(const char *str)
 {
 	if (str == NULL)
 		return DEFAULT_COMPRESSION;
-	if (strcmp(str, "tzst") == 0)
+	if (STREQ(str, "tzst"))
 		return TZS;
-	if (strcmp(str, "txz") == 0)
+	if (STREQ(str, "txz"))
 		return TXZ;
-	if (strcmp(str, "tbz") == 0)
+	if (STREQ(str, "tbz"))
 		return TBZ;
-	if (strcmp(str, "tgz") == 0)
+	if (STREQ(str, "tgz"))
 		return TGZ;
-	if (strcmp(str, "tar") == 0)
+	if (STREQ(str, "tar"))
 		return TAR;
 	pkg_emit_error("unknown format %s, using txz", str);
 	return TXZ;
@@ -443,12 +443,12 @@ packing_is_valid_format(const char *str)
 {
 	if (str == NULL)
 		return (false);
-	if ((strcmp(str, "pkg") == 0) ||
-	    (strcmp(str, "tzst") == 0) ||
-	    (strcmp(str, "txz") == 0) ||
-	    (strcmp(str, "tbz") == 0) ||
-	    (strcmp(str, "tgz") == 0) ||
-	    (strcmp(str, "tar") == 0))
+	if (STREQ(str, "pkg") ||
+	    STREQ(str, "tzst") ||
+	    STREQ(str, "txz") ||
+	    STREQ(str, "tbz") ||
+	    STREQ(str, "tgz") ||
+	    STREQ(str, "tar"))
 	    return (true);
 	return (false);
 }

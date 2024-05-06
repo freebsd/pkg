@@ -52,7 +52,7 @@ static const unsigned char litchar[] =
 static script_type_t
 get_script_type(const char *str)
 {
-	if (strcasecmp(str, "lua") == 0)
+	if (STRIEQ(str, "lua"))
 		return (SCRIPT_LUA);
 	return (SCRIPT_UNKNOWN);
 }
@@ -329,7 +329,7 @@ triggers_load(bool cleanup_only)
 		ext = strrchr(e->d_name, '.');
 		if (ext == NULL)
 			continue;
-		if (strcmp(ext, ".ucl") != 0)
+		if (!STREQ(ext, ".ucl"))
 			continue;
 		/* only regular files are considered */
 		if (fstatat(dfd, e->d_name, &st, AT_SYMLINK_NOFOLLOW) != 0) {
@@ -518,7 +518,7 @@ trigger_check_match(struct trigger *t, char *dir)
 	if (t->path != NULL) {
 		it = NULL;
 		while ((cur = ucl_iterate_object(t->path, &it, true))) {
-			if (strcmp(dir, ucl_object_tostring(cur)) == 0) {
+			if (STREQ(dir, ucl_object_tostring(cur))) {
 				pkghash_safe_add(t->matched, dir, dir, NULL);
 				return;
 			}

@@ -1232,11 +1232,11 @@ ecc_new(const char *name __unused, struct pkgsign_ctx *sctx)
 	int ret;
 
 	ret = EPKG_FATAL;
-	if (strcmp(name, "ecc") == 0 || strcmp(name, "eddsa") == 0) {
+	if (STREQ(name, "ecc") || STREQ(name, "eddsa")) {
 			keyinfo->sig_alg = EDDSA25519;
 			keyinfo->sig_hash = SHA512;
 			ret = import_params(&keyinfo->params, &wei25519_str_params);
-	} else if (strcmp(name, "ecdsa") == 0) {
+	} else if (STREQ(name, "ecdsa")) {
 			keyinfo->sig_alg = ECDSA;
 			keyinfo->sig_hash = SHA256;
 			ret = import_params(&keyinfo->params, &secp256k1_str_params);

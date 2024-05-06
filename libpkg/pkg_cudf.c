@@ -454,7 +454,7 @@ pkg_jobs_cudf_parse_output(struct pkg_jobs *j, FILE *f)
 		while(begin != NULL)
 			value = strsep(&begin, " \t");
 
-		if (strcmp(param, "package") == 0) {
+		if (STREQ(param, "package")) {
 			if (cur_pkg.uid != NULL) {
 				if (pkg_jobs_cudf_add_package(j, &cur_pkg) != EPKG_OK)  {
 					free(line);
@@ -466,7 +466,7 @@ pkg_jobs_cudf_parse_output(struct pkg_jobs *j, FILE *f)
 			cur_pkg.installed = false;
 			cur_pkg.version = NULL;
 		}
-		else if (strcmp(param, "version") == 0) {
+		else if (STREQ(param, "version")) {
 			if (cur_pkg.uid == NULL) {
 				pkg_emit_error("version line has no corresponding uid in CUDF output");
 				free(line);
@@ -474,7 +474,7 @@ pkg_jobs_cudf_parse_output(struct pkg_jobs *j, FILE *f)
 			}
 			cur_pkg.version = cudf_strdup(value);
 		}
-		else if (strcmp(param, "installed") == 0) {
+		else if (STREQ(param, "installed")) {
 			if (cur_pkg.uid == NULL) {
 				pkg_emit_error("installed line has no corresponding uid in CUDF output");
 				free(line);
@@ -483,7 +483,7 @@ pkg_jobs_cudf_parse_output(struct pkg_jobs *j, FILE *f)
 			if (strncmp(value, "true", 4) == 0)
 				cur_pkg.installed = true;
 		}
-		else if (strcmp(param, "was-installed") == 0) {
+		else if (STREQ(param, "was-installed")) {
 			if (cur_pkg.uid == NULL) {
 				pkg_emit_error("was-installed line has no corresponding uid in CUDF output");
 				free(line);

@@ -392,7 +392,7 @@ pkgdb_repo_query_cond(struct pkgdb *db, const char *cond, const char *pattern, m
 		return (NULL);
 
 	tll_foreach(db->repos, cur) {
-		if (repo == NULL || strcasecmp(cur->item->name, repo) == 0) {
+		if (repo == NULL || STRIEQ(cur->item->name, repo)) {
 			if (pattern != NULL && *pattern == '@')
 				rit = cur->item->ops->groupquery(cur->item, pattern + 1, match);
 			else
@@ -422,7 +422,7 @@ pkgdb_repo_shlib_require(struct pkgdb *db, const char *require, const char *repo
 		return (NULL);
 
 	tll_foreach(db->repos, cur) {
-		if (repo == NULL || strcasecmp(cur->item->name, repo) == 0) {
+		if (repo == NULL || STRIEQ(cur->item->name, repo)) {
 			if (cur->item->ops->shlib_required != NULL) {
 				rit = cur->item->ops->shlib_required(cur->item, require);
 				if (rit != NULL)
@@ -445,7 +445,7 @@ pkgdb_repo_shlib_provide(struct pkgdb *db, const char *require, const char *repo
 		return (NULL);
 
 	tll_foreach(db->repos, cur) {
-		if (repo == NULL || strcasecmp(cur->item->name, repo) == 0) {
+		if (repo == NULL || STRIEQ(cur->item->name, repo)) {
 			if (cur->item->ops->shlib_required != NULL) {
 				rit = cur->item->ops->shlib_provided(cur->item, require);
 				if (rit != NULL)
@@ -468,7 +468,7 @@ pkgdb_repo_require(struct pkgdb *db, const char *require, const char *repo)
 		return (NULL);
 
 	tll_foreach(db->repos, cur) {
-		if (repo == NULL || strcasecmp(cur->item->name, repo) == 0) {
+		if (repo == NULL || STRIEQ(cur->item->name, repo)) {
 			if (cur->item->ops->required != NULL) {
 				rit = cur->item->ops->required(cur->item, require);
 				if (rit != NULL)
@@ -491,7 +491,7 @@ pkgdb_repo_provide(struct pkgdb *db, const char *require, const char *repo)
 		return (NULL);
 
 	tll_foreach(db->repos, cur) {
-		if (repo == NULL || strcasecmp(cur->item->name, repo) == 0) {
+		if (repo == NULL || STRIEQ(cur->item->name, repo)) {
 			if (cur->item->ops->required != NULL) {
 				rit = cur->item->ops->provided(cur->item, require);
 				if (rit != NULL)
@@ -515,7 +515,7 @@ pkgdb_repo_search(struct pkgdb *db, const char *pattern, match_t match,
 		return (NULL);
 
 	tll_foreach(db->repos, cur) {
-		if (repo == NULL || strcasecmp(cur->item->name, repo) == 0) {
+		if (repo == NULL || STRIEQ(cur->item->name, repo)) {
 			if (cur->item->ops->search != NULL) {
 				rit = cur->item->ops->search(cur->item, pattern, match,
 					field, sort);
@@ -543,7 +543,7 @@ pkgdb_all_search(struct pkgdb *db, const char *pattern, match_t match,
 	it = pkgdb_query(db, pattern, match);
 
 	tll_foreach(db->repos, cur) {
-		if (repo == NULL || strcasecmp(cur->item->name, repo) == 0) {
+		if (repo == NULL || STRIEQ(cur->item->name, repo)) {
 			if (cur->item->ops->search != NULL) {
 				rit = cur->item->ops->search(cur->item, pattern, match,
 					field, sort);

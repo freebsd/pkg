@@ -653,7 +653,7 @@ add_repo(const ucl_object_t *obj, struct pkg_repo *r, const char *rname, pkg_ini
 		if (key == NULL)
 			continue;
 
-		if (strcasecmp(key, "url") == 0) {
+		if (STRIEQ(key, "url")) {
 			if (cur->type != UCL_STRING) {
 				pkg_emit_error("Expecting a string for the "
 				    "'%s' key of the '%s' repo",
@@ -661,7 +661,7 @@ add_repo(const ucl_object_t *obj, struct pkg_repo *r, const char *rname, pkg_ini
 				return;
 			}
 			url = ucl_object_tostring(cur);
-		} else if (strcasecmp(key, "pubkey") == 0) {
+		} else if (STRIEQ(key, "pubkey")) {
 			if (cur->type != UCL_STRING) {
 				pkg_emit_error("Expecting a string for the "
 				    "'%s' key of the '%s' repo",
@@ -669,7 +669,7 @@ add_repo(const ucl_object_t *obj, struct pkg_repo *r, const char *rname, pkg_ini
 				return;
 			}
 			pubkey = ucl_object_tostring(cur);
-		} else if (strcasecmp(key, "mirror_type") == 0) {
+		} else if (STRIEQ(key, "mirror_type")) {
 			if (cur->type != UCL_STRING) {
 				pkg_emit_error("Expecting a string for the "
 				    "'%s' key of the '%s' repo",
@@ -677,7 +677,7 @@ add_repo(const ucl_object_t *obj, struct pkg_repo *r, const char *rname, pkg_ini
 				return;
 			}
 			mirror_type = ucl_object_tostring(cur);
-		} else if (strcasecmp(key, "signature_type") == 0) {
+		} else if (STRIEQ(key, "signature_type")) {
 			if (cur->type != UCL_STRING) {
 				pkg_emit_error("Expecting a string for the "
 				    "'%s' key of the '%s' repo",
@@ -685,7 +685,7 @@ add_repo(const ucl_object_t *obj, struct pkg_repo *r, const char *rname, pkg_ini
 				return;
 			}
 			signature_type = ucl_object_tostring(cur);
-		} else if (strcasecmp(key, "fingerprints") == 0) {
+		} else if (STRIEQ(key, "fingerprints")) {
 			if (cur->type != UCL_STRING) {
 				pkg_emit_error("Expecting a string for the "
 				    "'%s' key of the '%s' repo",
@@ -693,7 +693,7 @@ add_repo(const ucl_object_t *obj, struct pkg_repo *r, const char *rname, pkg_ini
 				return;
 			}
 			fingerprints = ucl_object_tostring(cur);
-		} else if (strcasecmp(key, "type") == 0) {
+		} else if (STRIEQ(key, "type")) {
 			if (cur->type != UCL_STRING) {
 				pkg_emit_error("Expecting a string for the "
 					"'%s' key of the '%s' repo",
@@ -701,7 +701,7 @@ add_repo(const ucl_object_t *obj, struct pkg_repo *r, const char *rname, pkg_ini
 				return;
 			}
 			type = ucl_object_tostring(cur);
-		} else if (strcasecmp(key, "ip_version") == 0) {
+		} else if (STRIEQ(key, "ip_version")) {
 			if (cur->type != UCL_INT) {
 				pkg_emit_error("Expecting a integer for the "
 					"'%s' key of the '%s' repo",
@@ -711,7 +711,7 @@ add_repo(const ucl_object_t *obj, struct pkg_repo *r, const char *rname, pkg_ini
 			use_ipvx = ucl_object_toint(cur);
 			if (use_ipvx != 4 && use_ipvx != 6)
 				use_ipvx = 0;
-		} else if (strcasecmp(key, "priority") == 0) {
+		} else if (STRIEQ(key, "priority")) {
 			if (cur->type != UCL_INT) {
 				pkg_emit_error("Expecting a integer for the "
 					"'%s' key of the '%s' repo",
@@ -719,7 +719,7 @@ add_repo(const ucl_object_t *obj, struct pkg_repo *r, const char *rname, pkg_ini
 				return;
 			}
 			priority = ucl_object_toint(cur);
-		} else if (strcasecmp(key, "env") == 0) {
+		} else if (STRIEQ(key, "env")) {
 			if (cur->type != UCL_OBJECT) {
 				pkg_emit_error("Expecting an object for the "
 					"'%s' key of the '%s' repo",
@@ -740,9 +740,9 @@ add_repo(const ucl_object_t *obj, struct pkg_repo *r, const char *rname, pkg_ini
 		pkg_repo_overwrite(r, rname, url, type);
 
 	if (signature_type != NULL) {
-		if (strcasecmp(signature_type, "pubkey") == 0)
+		if (STRIEQ(signature_type, "pubkey"))
 			r->signature_type = SIG_PUBKEY;
-		else if (strcasecmp(signature_type, "fingerprints") == 0)
+		else if (STRIEQ(signature_type, "fingerprints"))
 			r->signature_type = SIG_FINGERPRINT;
 		else
 			r->signature_type = SIG_NONE;
@@ -763,9 +763,9 @@ add_repo(const ucl_object_t *obj, struct pkg_repo *r, const char *rname, pkg_ini
 	r->priority = priority;
 
 	if (mirror_type != NULL) {
-		if (strcasecmp(mirror_type, "srv") == 0)
+		if (STRIEQ(mirror_type, "srv"))
 			r->mirror_type = SRV;
-		else if (strcasecmp(mirror_type, "http") == 0)
+		else if (STRIEQ(mirror_type, "http"))
 			r->mirror_type = HTTP;
 		else
 			r->mirror_type = NOMIRROR;
@@ -915,7 +915,7 @@ configfile(const struct dirent *dp)
 		return (0);
 
 	p = &dp->d_name[n - 5];
-	if (strcmp(p, ".conf") != 0)
+	if (!STREQ(p, ".conf"))
 		return (0);
 	return (1);
 }
@@ -1377,7 +1377,7 @@ pkg_ini(const char *path, const char *reposdir, pkg_init_flags flags)
 	ucl_parser_free(p);
 
 	if (pkg_object_string(pkg_config_get("ABI")) == NULL ||
-	    strcmp(pkg_object_string(pkg_config_get("ABI")), "unknown") == 0) {
+	    STREQ(pkg_object_string(pkg_config_get("ABI")), "unknown")) {
 		pkg_emit_error("Unable to determine ABI");
 		err = EPKG_FATAL;
 		goto out;
@@ -1496,7 +1496,7 @@ pkg_repo_find_type(const char *type)
 
 	cur = &repos_ops[0];
 	while (*cur != NULL) {
-		if (strcasecmp(type, (*cur)->type) == 0) {
+		if (STRIEQ(type, (*cur)->type)) {
 			found = *cur;
 		}
 		cur ++;
@@ -1688,7 +1688,7 @@ pkg_repo_find(const char *reponame)
 	struct pkg_repo *r;
 
 	LL_FOREACH(repos, r) {
-		if (strcmp(r->name, reponame) == 0)
+		if (STREQ(r->name, reponame))
 			return (r);
 	}
 	return (NULL);

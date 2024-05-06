@@ -434,12 +434,12 @@ do_source_index(unsigned int opt, char limchar, char *pattern, match_t match,
 
 		/* If -O was specified, check if this origin matches */
 		if ((opt & VERSION_WITHORIGIN) &&
-		    strcmp(origin, matchorigin) != 0)
+		    !STREQ(origin, matchorigin))
 			continue;
 
 		/* If -n was specified, check if this name matches */
 		if ((opt & VERSION_WITHNAME) &&
-		    strcmp(name, matchname) != 0)
+		    !STREQ(name, matchname))
 			continue;
 
 		ie = pkghash_get_value(index, name);
@@ -513,14 +513,14 @@ do_source_remote(unsigned int opt, char limchar, char *pattern, match_t match,
 
 		/* If -O was specified, check if this origin matches */
 		if ((opt & VERSION_WITHORIGIN) &&
-		    strcmp(origin, matchorigin) != 0) {
+		    !STREQ(origin, matchorigin)) {
 		    	is_origin = true;
 			continue;
 		}
 
 		/* If -n was specified, check if this name matches */
 		if ((opt & VERSION_WITHNAME) &&
-		    strcmp(name, matchname) != 0) {
+		    !STREQ(name, matchname)) {
 		    	is_origin = false;
 			continue;
 		}
@@ -672,7 +672,7 @@ validate_origin(int portsfd, const char *origin)
 	buf = strrchr(origin, '/');
 	buf++;
 
-	if (strcmp(origin, "base") == 0)
+	if (STREQ(origin, "base"))
 		return (false);
 
 	return (pkghash_get(cat->ports, buf) != NULL);
@@ -706,7 +706,7 @@ port_version(xstring *cmd, int portsfd, const char *origin, const char *pkgname)
 					continue;
 				walk[0] = '\0';
 				walk++;
-				if (strcmp(name, pkgname) == 0) {
+				if (STREQ(name, pkgname)) {
 					version = walk;
 					break;
 				}
@@ -761,12 +761,12 @@ do_source_ports(unsigned int opt, char limchar, char *pattern, match_t match,
 
 		/* If -O was specified, check if this origin matches */
 		if ((opt & VERSION_WITHORIGIN) &&
-		    strcmp(origin, matchorigin) != 0)
+		    !STREQ(origin, matchorigin))
 			continue;
 
 		/* If -n was specified, check if this name matches */
 		if ((opt & VERSION_WITHNAME) &&
-		    strcmp(name, matchname) != 0)
+		    !STREQ(name, matchname))
 			continue;
 
 		version = port_version(cmd, portsfd, origin, name);

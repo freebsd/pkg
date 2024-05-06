@@ -98,7 +98,7 @@ attempt_to_merge(int rootfd, struct pkg_config_file *rcf, struct pkg *local,
 		pkg_debug(2, "Ancient vanilla and deployed conf are the same size testing checksum");
 		localsum = pkg_checksum_data(localconf, sz,
 		    PKG_HASH_TYPE_SHA256_HEX);
-		if (localsum && strcmp(localsum, lf->sum) == 0) {
+		if (localsum && STREQ(localsum, lf->sum)) {
 			pkg_debug(2, "Checksum are the same %jd", (intmax_t)strlen(localconf));
 			free(localconf);
 			free(localsum);
@@ -136,7 +136,7 @@ get_uid_from_archive(struct archive_entry *ae)
 	int err;
 
 	user = archive_entry_uname(ae);
-	if (pwent.pw_name != NULL && strcmp(user, pwent.pw_name) == 0)
+	if (pwent.pw_name != NULL && STREQ(user, pwent.pw_name))
 		goto out;
 	pwent.pw_name = NULL;
 	err = getpwnam_r(user, &pwent, user_buffer, sizeof(user_buffer),
@@ -161,7 +161,7 @@ get_gid_from_archive(struct archive_entry *ae)
 	int err;
 
 	group = archive_entry_gname(ae);
-	if (grent.gr_name != NULL && strcmp(group, grent.gr_name) == 0)
+	if (grent.gr_name != NULL && STREQ(group, grent.gr_name))
 		goto out;
 	grent.gr_name = NULL;
 	err = getgrnam_r(group, &grent, group_buffer, sizeof(group_buffer),
@@ -886,7 +886,7 @@ backup_file_if_needed(struct pkg *p, struct pkg_file *f)
 		if (sum == NULL)
 			return;
 
-		if (strcmp(sum, f->sum) == 0) {
+		if (STREQ(sum, f->sum)) {
 			free(sum);
 			return;
 		}
@@ -1081,7 +1081,7 @@ pkg_add_check_pkg_archive(struct pkgdb *db, struct pkg *pkg,
 	 * reading from a file descriptor or a unix domain socket or
 	 * whatever, there's no valid directory to search.
 	 */
-	fromstdin = (strcmp(path, "-") == 0);
+	fromstdin = STREQ(path, "-");
 	strlcpy(bd, path, sizeof(bd));
 	if (!fromstdin) {
 		basedir = get_dirname(bd);

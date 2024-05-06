@@ -83,7 +83,7 @@ pkg_conflicts_request_resolve_chain(struct pkg *req, conflict_chain_t *chain)
 	tll_foreach(*chain, e) {
 		slash_pos = strrchr(e->item->item->pkg->origin, '/');
 		if (slash_pos != NULL) {
-			if (strcmp(slash_pos + 1, req->name) == 0) {
+			if (STREQ(slash_pos + 1, req->name)) {
 				selected = e->item;
 				break;
 			}
@@ -312,7 +312,7 @@ pkg_conflicts_check_local_path(const char *path, const char *uid,
 			uid_local, 0);
 		assert(p != NULL);
 
-		assert(strcmp(uid, p->uid) != 0);
+		assert(!STREQ(uid, p->uid));
 
 		if (pkghash_get(p->conflictshash, uid) == NULL) {
 			/* We need to register the conflict between two universe chains */
@@ -352,7 +352,7 @@ pkg_conflicts_check_all_paths(struct pkg_jobs *j, const char *path,
 
 		uid1 = it->pkg->uid;
 		uid2 = cit->item->pkg->uid;
-		if (strcmp(uid1, uid2) == 0) {
+		if (STREQ(uid1, uid2)) {
 			/* The same upgrade chain, just upgrade item for speed */
 			cit->item = it;
 			return (NULL);

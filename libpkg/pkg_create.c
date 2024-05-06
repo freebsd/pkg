@@ -275,15 +275,15 @@ pkg_create_free(struct pkg_create *pc)
 bool
 pkg_create_set_format(struct pkg_create *pc, const char *format)
 {
-	if (strcmp(format, "tzst") == 0)
+	if (STREQ(format, "tzst"))
 		pc->format = TZS;
-	else if (strcmp(format, "txz") == 0)
+	else if (STREQ(format, "txz"))
 		pc->format = TXZ;
-	else if (strcmp(format, "tbz") == 0)
+	else if (STREQ(format, "tbz"))
 		pc->format = TBZ;
-	else if (strcmp(format, "tgz") == 0)
+	else if (STREQ(format, "tgz"))
 		pc->format = TGZ;
-	else if (strcmp(format, "tar") == 0)
+	else if (STREQ(format, "tar"))
 		pc->format = TAR;
 	else
 		return (false);

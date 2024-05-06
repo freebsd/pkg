@@ -111,7 +111,7 @@ add_missing_dep(struct pkg_dep *d, deps_entries *dh, int *nbpkgs)
 	name = pkg_dep_name(d);
 
 	tll_foreach(*dh, it) {
-		if (strcmp(it->item, name) == 0)
+		if (STREQ(it->item, name))
 			return;
 	}
 	(*nbpkgs)++;

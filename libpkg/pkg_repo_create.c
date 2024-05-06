@@ -126,7 +126,7 @@ hash_file(struct pkg_repo_meta *meta, struct pkg *pkg, char *path)
 		(void)pkg_mkdirs(rel_dir);
 	}
 
-	if (strcmp(path, hash_name) != 0) {
+	if (!STREQ(path, hash_name)) {
 		pkg_debug(1, "Rename the pkg from: %s to: %s", path, hash_name);
 		if (rename(path, hash_name) == -1) {
 			pkg_emit_errno("rename", hash_name);
@@ -226,7 +226,7 @@ pkg_create_repo_read_fts(fts_item_t *items, FTS *fts,
 		if ((fts_ent->fts_info == FTS_D ||
 		    fts_ent->fts_info == FTS_DP ||
 		    fts_ent->fts_info == FTS_SL) &&
-		    strcmp(fts_ent->fts_name, "Latest") == 0) {
+		    STREQ(fts_ent->fts_name, "Latest")) {
 			fts_set(fts, fts_ent, FTS_SKIP);
 			continue;
 		}
@@ -267,7 +267,7 @@ pkg_create_repo_read_fts(fts_item_t *items, FTS *fts,
 			continue;
 
 		/* skip all files which are not .pkg */
-		if (!ctx.repo_accept_legacy_pkg && strcmp(ext + 1, "pkg") != 0)
+		if (!ctx.repo_accept_legacy_pkg && !STREQ(ext + 1, "pkg"))
 			continue;
 
 
@@ -277,7 +277,7 @@ pkg_create_repo_read_fts(fts_item_t *items, FTS *fts,
 			unlink(fts_ent->fts_path);
 			continue;
 		}
-		if (strcmp(fts_ent->fts_name, "meta") == 0 ||
+		if (STREQ(fts_ent->fts_name, "meta") ||
 				pkg_repo_meta_is_special_file(fts_ent->fts_name, meta)) {
 			*ext = '.';
 			continue;
@@ -545,7 +545,7 @@ pkg_repo_create_set_groups(struct pkg_repo_create *prc, const char *path)
 		ext = strrchr(e->d_name, '.');
 		if (ext == NULL)
 			continue;
-		if (strcmp(ext, ".ucl") != 0)
+		if (!STREQ(ext, ".ucl"))
 			continue;
 		/* only regular files are considered */
 		if (fstatat(dfd, e->d_name, &st, AT_SYMLINK_NOFOLLOW) != 0) {
@@ -632,7 +632,7 @@ pkg_repo_create_pack_and_sign(struct pkg_repo_create *prc)
 		ret = EPKG_OK;
 	}
 
-	if (prc->sign.argc > 1 && strcmp(prc->sign.argv[0], "signing_command:") != 0)
+	if (prc->sign.argc > 1 && !STREQ(prc->sign.argv[0], "signing_command:"))
 		return (EPKG_FATAL);
 
 	if (prc->sign.argc > 1) {
@@ -940,16 +940,16 @@ pkg_repo_sign(const char *path, char **argv, int argc, char **sig, size_t *sigle
 	typestr = xstring_new();
 
 	while ((linelen = getline(&line, &linecap, fp)) > 0 ) {
-		if (strcmp(line, "SIGNATURE\n") == 0) {
+		if (STREQ(line, "SIGNATURE\n")) {
 			buf = sigstr;
 			continue;
-		} else if (strcmp(line, "CERT\n") == 0) {
+		} else if (STREQ(line, "CERT\n")) {
 			buf = certstr;
 			continue;
-		} else if (strcmp(line, "TYPE\n") == 0) {
+		} else if (STREQ(line, "TYPE\n")) {
 			buf = typestr;
 			continue;
-		} else if (strcmp(line, "END\n") == 0) {
+		} else if (STREQ(line, "END\n")) {
 			end_seen = true;
 			break;
 		}
@@ -967,7 +967,7 @@ pkg_repo_sign(const char *path, char **argv, int argc, char **sig, size_t *sigle
 	 * END marker if we ran over it.
 	 */
 	if (!end_seen && *certlen >= 4 &&
-	    strcmp(&(*cert)[*certlen - 4], "END\n") == 0)
+	    STREQ(&(*cert)[*certlen - 4], "END\n"))
 		*certlen -= 4;
 
 	/* remove the latest \n */
@@ -1006,7 +1006,7 @@ pack_sign(struct packing *pack, struct pkgsign_ctx *sctx, const char *path,
 
 	offset = 0;
 	sigtype = pkgsign_impl_name(sctx);
-	if (strcmp(sigtype, "rsa") != 0) {
+	if (!STREQ(sigtype, "rsa")) {
 		size = snprintf(buf, sizeof(buf), "%s%s$", PKGSIGN_HEAD, sigtype);
 		if (size >= sizeof(buf)) {
 			free(sigret);
@@ -1052,7 +1052,7 @@ pack_command_sign(struct packing *pack, const char *path, char **argv, int argc,
 
 	offset = 0;
 	snprintf(fname, sizeof(fname), "%s.sig", name);
-	if (*sigtype != '\0' && strcmp(sigtype, "rsa") != 0) {
+	if (*sigtype != '\0' && !STREQ(sigtype, "rsa")) {
 		int typelen;
 
 		typelen = strlen(sigtype);

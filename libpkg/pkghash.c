@@ -74,7 +74,7 @@ pkghash_get(pkghash *table, const char *key)
 	size_t index = (size_t)(hash & (uint64_t)(table->capacity -1));
 
 	while (table->entries[index].key != NULL) {
-		if (strcmp(key, table->entries[index].key) == 0)
+		if (STREQ(key, table->entries[index].key))
 			return (&table->entries[index]);
 		index++;
 		if (index >= table->capacity)
@@ -100,7 +100,7 @@ pkghash_set_entry(pkghash_entry *entries, size_t capacity,
 	size_t index = (size_t)(hash & (uint64_t)(capacity - 1));
 
 	while (entries[index].key != NULL) {
-		if (strcmp(key, entries[index].key) == 0)
+		if (STREQ(key, entries[index].key))
 			return (false);
 		index++;
 		if (index >= capacity)

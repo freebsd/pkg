@@ -283,13 +283,13 @@ urldecode(const char *src, xstring **dest)
 static int
 lua_script_type_str(const char *str)
 {
-	if (strcmp(str, "pre-install") == 0)
+	if (STREQ(str, "pre-install"))
 		return (PKG_LUA_PRE_INSTALL);
-	if (strcmp(str, "post-install") == 0)
+	if (STREQ(str, "post-install"))
 		return (PKG_LUA_POST_INSTALL);
-	if (strcmp(str, "pre-deinstall") == 0)
+	if (STREQ(str, "pre-deinstall"))
 		return (PKG_LUA_PRE_DEINSTALL);
-	if (strcmp(str, "post-deinstall") == 0)
+	if (STREQ(str, "post-deinstall"))
 		return (PKG_LUA_POST_DEINSTALL);
 	return (PKG_LUA_UNKNOWN);
 }
@@ -297,17 +297,17 @@ lua_script_type_str(const char *str)
 static int
 script_type_str(const char *str)
 {
-	if (strcmp(str, "pre-install") == 0)
+	if (STREQ(str, "pre-install"))
 		return (PKG_SCRIPT_PRE_INSTALL);
-	if (strcmp(str, "install") == 0)
+	if (STREQ(str, "install"))
 		return (PKG_SCRIPT_INSTALL);
-	if (strcmp(str, "post-install") == 0)
+	if (STREQ(str, "post-install"))
 		return (PKG_SCRIPT_POST_INSTALL);
-	if (strcmp(str, "pre-deinstall") == 0)
+	if (STREQ(str, "pre-deinstall"))
 		return (PKG_SCRIPT_PRE_DEINSTALL);
-	if (strcmp(str, "deinstall") == 0)
+	if (STREQ(str, "deinstall"))
 		return (PKG_SCRIPT_DEINSTALL);
-	if (strcmp(str, "post-deinstall") == 0)
+	if (STREQ(str, "post-deinstall"))
 		return (PKG_SCRIPT_POST_DEINSTALL);
 	return (PKG_SCRIPT_UNKNOWN);
 }
@@ -322,13 +322,13 @@ pkg_string(struct pkg *pkg, const ucl_object_t *obj, uint32_t offset)
 	str = ucl_object_tostring_forced(obj);
 
 	if (offset & STRING_FLAG_LICENSE) {
-		if (!strcmp(str, "single"))
+		if (STREQ(str, "single"))
 			pkg->licenselogic = LICENSE_SINGLE;
-		else if (!strcmp(str, "or") ||
-				!strcmp(str, "dual"))
+		else if (STREQ(str, "or") ||
+				STREQ(str, "dual"))
 			pkg->licenselogic = LICENSE_OR;
-		else if (!strcmp(str, "and") ||
-				!strcmp(str, "multi"))
+		else if (STREQ(str, "and") ||
+				STREQ(str, "multi"))
 			pkg->licenselogic = LICENSE_AND;
 		else {
 			pkg_emit_error("Unknown license logic: %s", str);
@@ -622,15 +622,15 @@ pkg_set_files_from_object(struct pkg *pkg, const ucl_object_t *obj)
 		key = ucl_object_key(cur);
 		if (key == NULL)
 			continue;
-		if (!strcasecmp(key, "uname") && cur->type == UCL_STRING)
+		if (STRIEQ(key, "uname") && cur->type == UCL_STRING)
 			uname = ucl_object_tostring(cur);
-		else if (!strcasecmp(key, "gname") && cur->type == UCL_STRING)
+		else if (STRIEQ(key, "gname") && cur->type == UCL_STRING)
 			gname = ucl_object_tostring(cur);
-		else if (!strcasecmp(key, "sum") && cur->type == UCL_STRING &&
-		    strlen(ucl_object_tostring(cur)) == 64)
+		else if (STRIEQ(key, "sum") && cur->type == UCL_STRING &&
+			 strlen(ucl_object_tostring(cur)) == 64)
 			sum = ucl_object_tostring(cur);
-		else if (!strcasecmp(key, "perm") &&
-		    (cur->type == UCL_STRING || cur->type == UCL_INT)) {
+		else if (STRIEQ(key, "perm") &&
+			 (cur->type == UCL_STRING || cur->type == UCL_INT)) {
 			if ((set = setmode(ucl_object_tostring_forced(cur))) == NULL)
 				pkg_emit_error("Not a valid mode: %s",
 				    ucl_object_tostring(cur));
@@ -669,18 +669,18 @@ pkg_set_dirs_from_object(struct pkg *pkg, const ucl_object_t *obj)
 		key = ucl_object_key(cur);
 		if (key == NULL)
 			continue;
-		if (!strcasecmp(key, "uname") && cur->type == UCL_STRING)
+		if (STRIEQ(key, "uname") && cur->type == UCL_STRING)
 			uname = ucl_object_tostring(cur);
-		else if (!strcasecmp(key, "gname") && cur->type == UCL_STRING)
+		else if (STRIEQ(key, "gname") && cur->type == UCL_STRING)
 			gname = ucl_object_tostring(cur);
-		else if (!strcasecmp(key, "perm") &&
-		    (cur->type == UCL_STRING || cur->type == UCL_INT)) {
+		else if (STRIEQ(key, "perm") &&
+			 (cur->type == UCL_STRING || cur->type == UCL_INT)) {
 			if ((set = setmode(ucl_object_tostring_forced(cur))) == NULL)
 				pkg_emit_error("Not a valid mode: %s",
 				    ucl_object_tostring(cur));
 			else
 				perm = getmode(set, 0);
-		} else if (!strcasecmp(key, "try") && cur->type == UCL_BOOLEAN) {
+		} else if (STRIEQ(key, "try") && cur->type == UCL_BOOLEAN) {
 			/* ignore on purpose : compatibility*/
 		} else {
 			dbg(1, "Skipping unknown key for dir(%s): %s",
@@ -717,7 +717,7 @@ pkg_set_deps_from_object(struct pkg *pkg, const ucl_object_t *obj)
 				continue;
 			if (cur->type != UCL_STRING) {
 				/* accept version to be an integer */
-				if (cur->type == UCL_INT && strcasecmp(key, "version") == 0) {
+				if (cur->type == UCL_INT && STRIEQ(key, "version")) {
 					if (!noversion)
 						version = ucl_object_tostring_forced(cur);
 					continue;
@@ -727,9 +727,9 @@ pkg_set_deps_from_object(struct pkg *pkg, const ucl_object_t *obj)
 						"for %s", okey);
 				continue;
 			}
-			if (strcasecmp(key, "origin") == 0)
+			if (STRIEQ(key, "origin"))
 				origin = ucl_object_tostring(cur);
-			if (strcasecmp(key, "version") == 0 && !noversion)
+			if (STRIEQ(key, "version") && !noversion)
 				version = ucl_object_tostring(cur);
 		}
 		if (origin != NULL)
@@ -745,7 +745,7 @@ static struct pkg_manifest_key *
 select_manifest_key(const char *key)
 {
 	for (int i = 0; i < NELEM(manifest_keys); i++)
-		if (strcmp(manifest_keys[i].key, key) == 0)
+		if (STREQ(manifest_keys[i].key, key))
 			return (&(manifest_keys[i]));
 	return (NULL);
 }
@@ -1125,8 +1125,8 @@ pkg_emit_object(struct pkg *pkg, short flags)
 		if (map == NULL)
 			map = ucl_object_typed_new(UCL_OBJECT);
 		/* Add annotations except for internal ones. */
-		if ((strcmp(kv->key, "repository") == 0 ||
-		    strcmp(kv->key, "relocated") == 0) &&
+		if ((STREQ(kv->key, "repository") ||
+		     STREQ(kv->key, "relocated")) &&
 		    (flags & PKG_MANIFEST_EMIT_LOCAL_METADATA) == 0)
 			continue;
 		ucl_object_insert_key(map, ucl_object_fromstring(kv->value),

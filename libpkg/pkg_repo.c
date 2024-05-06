@@ -132,7 +132,7 @@ pkg_repo_file_has_ext(const char *path, const char *ext)
 	l = strlen(ext);
 	p = &path[n - l];
 
-	if (strcmp(p, ext) == 0)
+	if (STREQ(p, ext))
 		return (true);
 
 	return (false);
@@ -281,13 +281,13 @@ pkg_repo_meta_extract_signature_pubkey(int fd, void *ud)
 	archive_read_open_fd(a, cb->afd, 4096);
 
 	while (archive_read_next_header(a, &ae) == ARCHIVE_OK) {
-		if (cb->need_sig && strcmp(archive_entry_pathname(ae), "signature") == 0) {
+		if (cb->need_sig && STREQ(archive_entry_pathname(ae), "signature")) {
 			siglen = archive_entry_size(ae);
 			rc = pkg_repo_write_sig_from_archive(a, fd, siglen);
 			if (rc != EPKG_OK)
 				break;
 		}
-		else if (strcmp(archive_entry_pathname(ae), cb->fname) == 0) {
+		else if (STREQ(archive_entry_pathname(ae), cb->fname)) {
 			if (archive_read_data_into_fd(a, cb->tfd) != 0) {
 				pkg_emit_error("Error extracting the archive: '%s'", archive_error_string(a));
 				rc = EPKG_FATAL;
@@ -444,7 +444,7 @@ pkg_repo_meta_extract_signature_fingerprints(int fd, void *ud)
 			rc = EPKG_OK;
 		}
 		else {
-			if (strcmp(archive_entry_pathname(ae), cb->fname) == 0) {
+			if (STREQ(archive_entry_pathname(ae), cb->fname)) {
 				if (archive_read_data_into_fd(a, cb->tfd) != 0) {
 					pkg_emit_error("Error extracting the archive: '%s'", archive_error_string(a));
 					rc = EPKG_FATAL;
@@ -775,7 +775,7 @@ pkg_repo_archive_extract_check_archive(int fd, const char *file,
 			 * grab a new context for each one.  This is cheaper than it sounds,
 			 * verifying contexts are stashed in a pkghash for re-use.
 			 */
-			if (sctx == NULL || strcmp(s->type, signer_name) != 0) {
+			if (sctx == NULL || !STREQ(s->type, signer_name)) {
 				ret = pkgsign_new_verify(s->type, &sctx);
 				if (ret != EPKG_OK) {
 					pkg_emit_error("'%s' signer not found", s->type);
@@ -943,7 +943,7 @@ pkg_repo_meta_extract_pubkey(int fd, void *ud)
 		elt = ucl_object_find_key(cur, "name");
 		if (elt == NULL || elt->type != UCL_STRING)
 			continue;
-		if (strcmp(ucl_object_tostring(elt), cbdata->name) != 0)
+		if (!STREQ(ucl_object_tostring(elt), cbdata->name))
 			continue;
 		elt = ucl_object_find_key(cur, "data");
 		if (elt == NULL || elt->type != UCL_STRING)
@@ -1123,7 +1123,7 @@ pkg_repo_fetch_meta(struct pkg_repo *repo, time_t *t)
 			 * Just as above, each one may have a different type associated with
 			 * it, so grab a new one each time.
 			 */
-			if (sctx == NULL || strcmp(s->type, signer_name) != 0) {
+			if (sctx == NULL || !STREQ(s->type, signer_name)) {
 				ret = pkgsign_new_verify(s->type, &sctx);
 				if (ret != EPKG_OK) {
 					pkg_emit_error("'%s' signer not found", s->type);
@@ -1191,12 +1191,12 @@ pkg_repo_parse_fingerprint(ucl_object_t *obj)
 		if (cur->type != UCL_STRING)
 			continue;
 
-		if (strcasecmp(key, "function") == 0) {
+		if (STRIEQ(key, "function")) {
 			function = ucl_object_tostring(cur);
 			continue;
 		}
 
-		if (strcasecmp(key, "fingerprint") == 0) {
+		if (STRIEQ(key, "fingerprint")) {
 			fp = ucl_object_tostring(cur);
 			continue;
 		}
@@ -1205,7 +1205,7 @@ pkg_repo_parse_fingerprint(ucl_object_t *obj)
 	if (fp == NULL || function == NULL)
 		return (NULL);
 
-	if (strcasecmp(function, "sha256") == 0)
+	if (STRIEQ(function, "sha256"))
 		fct = HASH_SHA256;
 
 	if (fct == HASH_UNKNOWN) {
@@ -1282,8 +1282,8 @@ pkg_repo_load_fingerprints_from_path(const char *path, pkghash **f)
 	}
 
 	while ((ent = readdir(d))) {
-		if (strcmp(ent->d_name, ".") == 0 ||
-		    strcmp(ent->d_name, "..") == 0)
+		if (STREQ(ent->d_name, ".") ||
+		    STREQ(ent->d_name, ".."))
 			continue;
 		finger = pkg_repo_load_fingerprint(path, ent->d_name);
 		if (finger != NULL)

@@ -402,7 +402,7 @@ pkg_adduser(struct pkg *pkg, const char *name)
 	assert(name != NULL && name[0] != '\0');
 
 	tll_foreach(pkg->users, u) {
-		if (strcmp(u->item, name) != 0)
+		if (!STREQ(u->item, name))
 			continue;
 		if (ctx.developer_mode) {
 			pkg_emit_error("duplicate user listing: %s, fatal (developer mode)", name);
@@ -424,7 +424,7 @@ pkg_addgroup(struct pkg *pkg, const char *name)
 	assert(name != NULL && name[0] != '\0');
 
 	tll_foreach(pkg->groups, g) {
-		if (strcmp(g->item, name) != 0)
+		if (!STREQ(g->item, name))
 			continue;
 		if (ctx.developer_mode) {
 			pkg_emit_error("duplicate group listing: %s, fatal (developer mode)", name);
@@ -600,7 +600,7 @@ pkg_addstring(stringlist_t *list, const char *val, const char *title)
 	assert(title != NULL);
 
 	tll_foreach(*list, v) {
-		if (strcmp(v->item, val) != 0)
+		if (!STREQ(v->item, val))
 			continue;
 		if (ctx.developer_mode) {
 			pkg_emit_error("duplicate %s listing: %s, fatal"
@@ -633,7 +633,7 @@ pkg_adddir_attr(struct pkg *pkg, const char *path, const char *uname,
 	assert(pkg != NULL);
 	assert(path != NULL && path[0] != '\0');
 
-	if (strcmp(path, "/") == 0) {
+	if (STREQ(path, "/")) {
 		pkg_emit_error("skipping useless directory: '%s'\n", path);
 		return (EPKG_OK);
 	}
@@ -710,13 +710,13 @@ pkg_addluascript_fileat(int fd, struct pkg *pkg, const char *filename)
 	if ((ret = file_to_bufferat(fd, filename, &data, &sz)) != EPKG_OK)
 		return (ret);
 
-	if (strcmp(filename, "pkg-pre-install.lua") == 0) {
+	if (STREQ(filename, "pkg-pre-install.lua")) {
 		type = PKG_LUA_PRE_INSTALL;
-	} else if (strcmp(filename, "pkg-post-install.lua") == 0) {
+	} else if (STREQ(filename, "pkg-post-install.lua")) {
 		type = PKG_LUA_POST_INSTALL;
-	} else if (strcmp(filename, "pkg-pre-deinstall.lua") == 0) {
+	} else if (STREQ(filename, "pkg-pre-deinstall.lua")) {
 		type = PKG_LUA_PRE_DEINSTALL;
-	} else if (strcmp(filename, "pkg-post-deinstall.lua") == 0) {
+	} else if (STREQ(filename, "pkg-post-deinstall.lua")) {
 		type = PKG_LUA_POST_DEINSTALL;
 	} else {
 		pkg_emit_error("unknown lua script '%s'", filename);
@@ -746,23 +746,23 @@ pkg_addscript_fileat(int fd, struct pkg *pkg, const char *filename)
 	if ((ret = file_to_bufferat(fd, filename, &data, &sz)) != EPKG_OK)
 		return (ret);
 
-	if (strcmp(filename, "pkg-pre-install") == 0 ||
-			strcmp(filename, "+PRE_INSTALL") == 0) {
+	if (STREQ(filename, "pkg-pre-install") ||
+			STREQ(filename, "+PRE_INSTALL")) {
 		type = PKG_SCRIPT_PRE_INSTALL;
-	} else if (strcmp(filename, "pkg-post-install") == 0 ||
-			strcmp(filename, "+POST_INSTALL") == 0) {
+	} else if (STREQ(filename, "pkg-post-install") ||
+			STREQ(filename, "+POST_INSTALL")) {
 		type = PKG_SCRIPT_POST_INSTALL;
-	} else if (strcmp(filename, "pkg-install") == 0 ||
-			strcmp(filename, "+INSTALL") == 0) {
+	} else if (STREQ(filename, "pkg-install") ||
+			STREQ(filename, "+INSTALL")) {
 		type = PKG_SCRIPT_INSTALL;
-	} else if (strcmp(filename, "pkg-pre-deinstall") == 0 ||
-			strcmp(filename, "+PRE_DEINSTALL") == 0) {
+	} else if (STREQ(filename, "pkg-pre-deinstall") ||
+			STREQ(filename, "+PRE_DEINSTALL")) {
 		type = PKG_SCRIPT_PRE_DEINSTALL;
-	} else if (strcmp(filename, "pkg-post-deinstall") == 0 ||
-			strcmp(filename, "+POST_DEINSTALL") == 0) {
+	} else if (STREQ(filename, "pkg-post-deinstall") ||
+			STREQ(filename, "+POST_DEINSTALL")) {
 		type = PKG_SCRIPT_POST_DEINSTALL;
-	} else if (strcmp(filename, "pkg-deinstall") == 0 ||
-			strcmp(filename, "+DEINSTALL") == 0) {
+	} else if (STREQ(filename, "pkg-deinstall") ||
+			STREQ(filename, "+DEINSTALL")) {
 		type = PKG_SCRIPT_DEINSTALL;
 	} else {
 		pkg_emit_error("unknown script '%s'", filename);
@@ -901,7 +901,7 @@ pkg_addshlib_required(struct pkg *pkg, const char *name)
 
 	/* silently ignore duplicates in case of shlibs */
 	tll_foreach(pkg->shlibs_required, s) {
-		if (strcmp(s->item, name) == 0)
+		if (STREQ(s->item, name))
 			return (EPKG_OK);
 	}
 
@@ -924,7 +924,7 @@ pkg_addshlib_provided(struct pkg *pkg, const char *name)
 
 	/* silently ignore duplicates in case of shlibs */
 	tll_foreach(pkg->shlibs_provided, s) {
-		if (strcmp(s->item, name) == 0)
+		if (STREQ(s->item, name))
 			return (EPKG_OK);
 	}
 
@@ -966,7 +966,7 @@ pkg_addrequire(struct pkg *pkg, const char *name)
 
 	/* silently ignore duplicates in case of conflicts */
 	tll_foreach(pkg->requires, p) {
-		if (strcmp(p->item, name) == 0)
+		if (STREQ(p->item, name))
 			return (EPKG_OK);
 	}
 
@@ -983,7 +983,7 @@ pkg_addprovide(struct pkg *pkg, const char *name)
 
 	/* silently ignore duplicates in case of conflicts */
 	tll_foreach(pkg->provides, p) {
-		if (strcmp(p->item, name) == 0)
+		if (STREQ(p->item, name))
 			return (EPKG_OK);
 	}
 
@@ -998,7 +998,7 @@ pkg_kv_get(const kvlist_t *kv, const char *tag)
 	assert(tag != NULL);
 
 	tll_foreach(*kv, k) {
-		if (strcmp(k->item->key, tag) == 0)
+		if (STREQ(k->item->key, tag))
 			return (k->item->value);
 	}
 
@@ -1014,7 +1014,7 @@ pkg_kv_add(kvlist_t *list, const char *key, const char *val, const char *title)
 	assert(title != NULL);
 
 	tll_foreach(*list, k) {
-		if (strcmp(k->item->key, key) != 0)
+		if (!STREQ(k->item->key, key))
 			continue;
 		if (ctx.developer_mode) {
 			pkg_emit_error("duplicate %s: %s, fatal"
@@ -1232,7 +1232,7 @@ pkg_open2(struct pkg **pkg_p, struct archive **a, struct archive_entry **ae,
 
 		if (!manifest &&
 			(flags & PKG_OPEN_MANIFEST_COMPACT) &&
-			strcmp(fpath, "+COMPACT_MANIFEST") == 0) {
+			STREQ(fpath, "+COMPACT_MANIFEST")) {
 			manifest = true;
 
 			ret = pkg_parse_archive(pkg, *a, archive_entry_size(*ae));
@@ -1243,7 +1243,7 @@ pkg_open2(struct pkg **pkg_p, struct archive **a, struct archive_entry **ae,
 			/* Do not read anything more */
 			break;
 		}
-		if (!manifest && strcmp(fpath, "+MANIFEST") == 0) {
+		if (!manifest && STREQ(fpath, "+MANIFEST")) {
 			manifest = true;
 
 			ret = pkg_parse_archive(pkg, *a, archive_entry_size(*ae));
@@ -1502,11 +1502,11 @@ pkg_message_from_ucl(struct pkg *pkg, const ucl_object_t *obj)
 		msg->type = PKG_MESSAGE_ALWAYS;
 		elt = ucl_object_find_key(cur, "type");
 		if (elt != NULL && ucl_object_type(elt) == UCL_STRING) {
-			if (strcasecmp(ucl_object_tostring(elt), "install") == 0)
+			if (STRIEQ(ucl_object_tostring(elt), "install"))
 				msg->type = PKG_MESSAGE_INSTALL;
-			else if (strcasecmp(ucl_object_tostring(elt), "remove") == 0)
+			else if (STRIEQ(ucl_object_tostring(elt), "remove"))
 				msg->type = PKG_MESSAGE_REMOVE;
-			else if (strcasecmp(ucl_object_tostring(elt), "upgrade") == 0)
+			else if (STRIEQ(ucl_object_tostring(elt), "upgrade"))
 				msg->type = PKG_MESSAGE_UPGRADE;
 			else
 				pkg_emit_error("Unknown message type,"

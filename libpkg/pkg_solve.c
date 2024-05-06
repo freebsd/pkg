@@ -298,7 +298,7 @@ pkg_solve_handle_provide (struct pkg_solve_problem *problem,
 		if (pr->is_shlib) {
 			libfound = stringlist_contains(&pkg->shlibs_provided, pr->provide);
 			/* Skip incompatible ABI as well */
-			if (libfound && strcmp(pkg->arch, orig->arch) != 0) {
+			if (libfound && !STREQ(pkg->arch, orig->arch)) {
 				dbg(2, "require %s: package %s-%s(%c) provides wrong ABI %s, "
 					"wanted %s", pr->provide, pkg->name, pkg->version,
 					pkg->type == PKG_INSTALLED ? 'l' : 'r', pkg->arch, orig->arch);
@@ -426,7 +426,7 @@ pkg_solve_add_conflict_rule(struct pkg_solve_problem *problem,
 		 * variables with mismatched digests
 		 */
 		if (conflict->digest) {
-			if (strcmp (conflict->digest, other->digest) != 0)
+			if (!STREQ(conflict->digest, other->digest))
 				continue;
 		}
 
@@ -916,8 +916,8 @@ pkg_solve_set_initial_assumption(struct pkg_solve_problem *problem,
 			selected = pkg_jobs_universe_select_candidate(first, local,
 			    conservative, assumed_reponame, true);
 
-			if (local && (strcmp(selected->pkg->digest, local->pkg->digest) == 0 ||
-			    !pkg_jobs_need_upgrade(selected->pkg, local->pkg))) {
+			if (local && (STREQ(selected->pkg->digest, local->pkg->digest) ||
+				      !pkg_jobs_need_upgrade(selected->pkg, local->pkg))) {
 				selected = local;
 			}
 		}

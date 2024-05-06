@@ -589,17 +589,17 @@ parse_attributes(const ucl_object_t *o, struct file_attr **a)
 		key = ucl_object_key(cur);
 		if (key == NULL)
 			continue;
-		if (!strcasecmp(key, "owner") && cur->type == UCL_STRING) {
+		if (STRIEQ(key, "owner") && cur->type == UCL_STRING) {
 			free((*a)->owner);
 			(*a)->owner = xstrdup(ucl_object_tostring(cur));
 			continue;
 		}
-		if (!strcasecmp(key, "group") && cur->type == UCL_STRING) {
+		if (STRIEQ(key, "group") && cur->type == UCL_STRING) {
 			free((*a)->group);
 			(*a)->group = xstrdup(ucl_object_tostring(cur));
 			continue;
 		}
-		if (!strcasecmp(key, "mode")) {
+		if (STRIEQ(key, "mode")) {
 			if (cur->type == UCL_STRING) {
 				void *set;
 				if ((set = parse_mode(ucl_object_tostring(cur))) == NULL) {
@@ -698,11 +698,11 @@ apply_keyword_file(ucl_object_t *obj, struct plist *p, char *line, struct file_a
 			msg->type = PKG_MESSAGE_ALWAYS;
 			elt = ucl_object_find_key(cur, "type");
 			if (elt != NULL) {
-				if (strcasecmp(ucl_object_tostring(elt), "install") == 0)
+				if (STRIEQ(ucl_object_tostring(elt), "install"))
 					msg->type = PKG_MESSAGE_INSTALL;
-				else if (strcasecmp(ucl_object_tostring(elt), "remove") == 0)
+				else if (STRIEQ(ucl_object_tostring(elt), "remove"))
 					msg->type = PKG_MESSAGE_REMOVE;
-				else if (strcasecmp(ucl_object_tostring(elt), "upgrade") == 0)
+				else if (STRIEQ(ucl_object_tostring(elt), "upgrade"))
 					msg->type = PKG_MESSAGE_UPGRADE;
 			}
 			tll_push_back(p->pkg->message, msg);
@@ -1205,7 +1205,7 @@ add_variable(struct plist *p, char *line, struct file_attr *a __unused)
 		val++;
 
 	tll_foreach(p->variables, v) {
-		if (strcmp(v->item->key, key) == 0) {
+		if (STREQ(v->item->key, key)) {
 			free(v->item->value);
 			v->item->value = xstrdup(val);
 			return (EPKG_OK);

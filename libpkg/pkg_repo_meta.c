@@ -453,7 +453,7 @@ pkg_repo_meta_to_ucl(struct pkg_repo_meta *meta)
 #undef META_EXPORT_FIELD_FUNC
 
 #define META_SPECIAL_FILE(file, meta, field) \
-	special || (meta->field == NULL ? false : (strcmp(file, meta->field) == 0))
+	special || (meta->field == NULL ? false : STREQ(file, meta->field))
 
 bool
 pkg_repo_meta_is_special_file(const char *file, struct pkg_repo_meta *meta)

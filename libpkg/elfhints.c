@@ -184,7 +184,7 @@ add_dir(const char *hintsfile, const char *name, int trusted)
 	}
 
 	for (i = 0;  i < ndirs;  i++)
-		if (strcmp(dirs[i], name) == 0)
+		if (STREQ(dirs[i], name))
 			return;
 	if (ndirs >= MAXDIRS)
 		errx(1, "\"%s\": Too many directories in path", hintsfile);

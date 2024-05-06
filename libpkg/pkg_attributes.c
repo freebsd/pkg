@@ -357,7 +357,7 @@ bool
 stringlist_contains(stringlist_t *l, const char *name)
 {
 	tll_foreach(*l, e) {
-		if (strcmp(e->item, name) == 0)
+		if (STREQ(e->item, name))
 			return (true);
 	}
 	return (false);

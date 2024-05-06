@@ -84,7 +84,7 @@ pkgsign_new(const char *name, struct pkgsign_ctx **ctx)
 	ops = NULL;
 	for (size_t i = 0; i < nitems(pkgsign_builtins); i++) {
 		impl = &pkgsign_builtins[i];
-		if (strcmp(name, impl->pi_name) == 0) {
+		if (STREQ(name, impl->pi_name)) {
 			ops = impl->pi_ops;
 			break;
 		}

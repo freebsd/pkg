@@ -340,13 +340,13 @@ exec_search(int argc, char **argv)
 			match = MATCH_REGEX;
 			break;
 		case 1:
-			if (strcasecmp(optarg, "json") == 0)
+			if (STRIEQ(optarg, "json"))
 				opt |= INFO_RAW_JSON;
-			else if (strcasecmp(optarg, "json-compact") == 0)
+			else if (STRIEQ(optarg, "json-compact"))
 				opt |= INFO_RAW_JSON_COMPACT;
-			else if (strcasecmp(optarg, "yaml") == 0)
+			else if (STRIEQ(optarg, "yaml"))
 				opt |= INFO_RAW_YAML;
-			else if (strcasecmp(optarg, "ucl") == 0)
+			else if (STRIEQ(optarg, "ucl"))
 				opt |= INFO_RAW_UCL;
 			else
 				errx(EXIT_FAILURE, "Invalid format '%s' for the "

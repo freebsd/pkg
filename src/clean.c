@@ -214,8 +214,8 @@ recursive_analysis(int fd, struct pkgdb *db, const char *dir,
 	}
 
 	while ((ent = readdir(d)) != NULL) {
-		if (strcmp(ent->d_name, ".") == 0 ||
-		    strcmp(ent->d_name, "..") == 0)
+		if (STREQ(ent->d_name, ".") ||
+		    STREQ(ent->d_name, ".."))
 			continue;
 		snprintf(path, sizeof(path), "%s/%s", dir, ent->d_name);
 		if (ent->d_type == DT_DIR) {

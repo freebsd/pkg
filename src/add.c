@@ -162,7 +162,7 @@ exec_add(int argc, char **argv)
 			   once per command line, but we aren't
 			   testing for that at the moment */
 
-			if (strcmp(file, "-") != 0 && access(file, F_OK) != 0) {
+			if (!STREQ(file, "-") && access(file, F_OK) != 0) {
 				warn("%s", file);
 				if (errno == ENOENT)
 					warnx("Was 'pkg install %s' meant?", file);

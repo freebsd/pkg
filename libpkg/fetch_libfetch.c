@@ -132,7 +132,7 @@ fetch_connect(struct pkg_repo *repo, struct url *u)
 			} else if (repo != NULL && repo->mirror_type == HTTP &&
 			    strncmp(u->scheme, "http", 4) == 0) {
 				if (u->port == 0) {
-					if (strcmp(u->scheme, "https") == 0)
+					if (STREQ(u->scheme, "https"))
 						u->port = 443;
 					else
 						u->port = 80;

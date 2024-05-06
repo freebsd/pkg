@@ -575,15 +575,15 @@ pkg_repo_binary_groupsearch(struct pkg_repo *repo, const char *pattern, match_t 
 		case MATCH_ALL:
 			break;
 		case MATCH_INTERNAL:
-			if (strcmp(cmp, pattern) != 0)
+			if (!STREQ(cmp, pattern))
 				continue;
 			break;
 		case MATCH_EXACT:
 			if (pkgdb_case_sensitive()) {
-				if (strcmp(cmp, pattern) != 0)
+				if (!STREQ(cmp, pattern))
 					continue;
 			} else {
-				if (strcasecmp(cmp, pattern) != 0)
+				if (!STRIEQ(cmp, pattern))
 					continue;
 			}
 			break;

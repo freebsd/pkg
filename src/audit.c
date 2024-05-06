@@ -231,13 +231,13 @@ exec_audit(int argc, char **argv)
 		case 'R':
 			if (optarg == NULL) {
 				raw = UCL_EMIT_CONFIG;
-			} else if (strcasecmp(optarg, "ucl") == 0) {
+			} else if (STRIEQ(optarg, "ucl")) {
 				raw = UCL_EMIT_CONFIG;
-			} else if (strcasecmp(optarg, "json") == 0) {
+			} else if (STRIEQ(optarg, "json")) {
 				raw = UCL_EMIT_JSON;
-			} else if (strcasecmp(optarg, "json-compact") == 0) {
+			} else if (STRIEQ(optarg, "json-compact")) {
 				raw = UCL_EMIT_JSON_COMPACT;
-			} else if (strcasecmp(optarg, "yaml") == 0) {
+			} else if (STRIEQ(optarg, "yaml")) {
 				raw = UCL_EMIT_YAML;
 			} else {
 				errx(EXIT_FAILURE, "invalid argument %s for --raw option", optarg);
@@ -292,7 +292,7 @@ exec_audit(int argc, char **argv)
 			char *ext = strrchr(fts_ent->fts_name, '.');
 			if (ext == NULL)
 				continue;
-			if (strcmp(ext, ".pkg") != 0)
+			if (!STREQ(ext, ".pkg"))
 				continue;
 			*ext = '\0';
 			ext = strrchr(fts_ent->fts_name, '-');

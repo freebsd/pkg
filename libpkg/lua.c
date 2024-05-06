@@ -557,7 +557,7 @@ lua_readdir(lua_State *L)
 	int i = 0;
 	while ((e = readdir(dir))) {
 		char *name = e->d_name;
-		if (strcmp(name, ".") == 0 || strcmp(name, "..") == 0)
+		if (STREQ(name, ".") || STREQ(name, ".."))
 			continue;
 		lua_pushinteger(L, ++i);
 		lua_pushstring(L, name);

@@ -61,7 +61,7 @@ rm_rf(int basefd, const char *path)
 
 	d = fdopendir(dirfd);
 	while ((e = readdir(d)) != NULL) {
-		if (strcmp(e->d_name, ".") == 0 || strcmp(e->d_name, "..") == 0)
+		if (STREQ(e->d_name, ".") || STREQ(e->d_name, ".."))
 			continue;
 		if (fstatat(dirfd, e->d_name, &st, AT_SYMLINK_NOFOLLOW) != 0) {
 			pkg_emit_errno("fstatat", path);

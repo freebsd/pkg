@@ -235,10 +235,10 @@ exec_create(int argc, char **argv)
 			level = strtonum(optarg, -200, 200, &errstr);
 			if (errstr == NULL)
 				break;
-			if (strcasecmp(optarg, "best") == 0) {
+			if (STRIEQ(optarg, "best")) {
 				level = INT_MAX;
 				break;
-			} else if (strcasecmp(optarg, "fast") == 0) {
+			} else if (STRIEQ(optarg, "fast")) {
 				level = INT_MIN;
 				break;
 			}
@@ -282,7 +282,7 @@ exec_create(int argc, char **argv)
 			threads = strtonum(optarg, 0, INT_MAX, &errstr);
 			if (errstr == NULL)
 				break;
-			if (strcasecmp(optarg, "auto") == 0) {
+			if (STRIEQ(optarg, "auto")) {
 				threads = 0;
 				break;
 			}

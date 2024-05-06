@@ -217,12 +217,12 @@ pkg_jobs_maybe_match_file(struct job_pattern *jp, const char *pattern)
 		 * Compare suffix with .txz or .tbz
 		 */
 		dot_pos ++;
-		if (strcmp(dot_pos, "pkg") == 0 ||
-		    strcmp(dot_pos, "tzst") == 0 ||
-		    strcmp(dot_pos, "txz") == 0 ||
-		    strcmp(dot_pos, "tbz") == 0 ||
-		    strcmp(dot_pos, "tgz") == 0 ||
-		    strcmp(dot_pos, "tar") == 0) {
+		if (STREQ(dot_pos, "pkg") ||
+		    STREQ(dot_pos, "tzst") ||
+		    STREQ(dot_pos, "txz") ||
+		    STREQ(dot_pos, "tbz") ||
+		    STREQ(dot_pos, "tgz") ||
+		    STREQ(dot_pos, "tar")) {
 			if ((pkg_path = realpath(pattern, NULL)) != NULL) {
 				/* Dot pos is one character after the dot */
 				int len = dot_pos - pattern;
@@ -237,7 +237,7 @@ pkg_jobs_maybe_match_file(struct job_pattern *jp, const char *pattern)
 			}
 		}
 	}
-	else if (strcmp(pattern, "-") == 0) {
+	else if (STREQ(pattern, "-")) {
 		/*
 		 * Read package from stdin
 		 */
@@ -470,7 +470,7 @@ delete_process_provides(struct pkg_jobs *j, struct pkg *lp, const char *provide,
 	pkg = NULL;
 	while (pkgdb_it_next(lit, &pkg, PKG_LOAD_BASIC) == EPKG_OK) {
 		/* skip myself */
-		if (strcmp(pkg->uid, lp->uid) == 0)
+		if (STREQ(pkg->uid, lp->uid))
 			continue;
 		req = pkghash_get_value(j->request_delete, pkg->uid);
 		/*
@@ -874,7 +874,7 @@ pkg_jobs_has_replacement(struct pkg_jobs *j, const char *uid)
 	struct pkg_job_replace *cur;
 
 	LL_FOREACH(j->universe->uid_replaces, cur) {
-		if (strcmp (cur->new_uid, uid) == 0) {
+		if (STREQ(cur->new_uid, uid)) {
 			return (true);
 		}
 	}
@@ -1148,7 +1148,7 @@ pkg_jobs_need_upgrade(struct pkg *rp, struct pkg *lp)
 	}
 
 	if (lp->digest != NULL && rp->digest != NULL &&
-	    strcmp(lp->digest, rp->digest) == 0) {
+	    STREQ(lp->digest, rp->digest)) {
 		/* Remote and local packages has the same digest, hence they are the same */
 		return (false);
 	}
@@ -1163,7 +1163,7 @@ pkg_jobs_need_upgrade(struct pkg *rp, struct pkg *lp)
 		return (true);
 
 	/* Compare archs */
-	if (strcmp (lp->arch, rp->arch) != 0) {
+	if (!STREQ(lp->arch, rp->arch)) {
 		free(rp->reason);
 		xasprintf(&rp->reason, "ABI changed: '%s' -> '%s'",
 		    lp->arch, rp->arch);
@@ -1190,8 +1190,8 @@ pkg_jobs_need_upgrade(struct pkg *rp, struct pkg *lp)
 			return (true);
 		}
 		if (ret1 == EPKG_OK) {
-			if (strcmp(lo->key, ro->key) != 0 ||
-			    strcmp(lo->value, ro->value) != 0) {
+			if (!STREQ(lo->key, ro->key) ||
+			    !STREQ(lo->value, ro->value)) {
 				free(rp->reason);
 				xasprintf(&rp->reason, "options changed");
 				return (true);
@@ -1220,8 +1220,8 @@ pkg_jobs_need_upgrade(struct pkg *rp, struct pkg *lp)
 			return (true);
 		}
 		if (ret1 == EPKG_OK) {
-			if ((strcmp(rd->name, ld->name) != 0) ||
-			    (strcmp(rd->origin, ld->origin) != 0)) {
+			if (!STREQ(rd->name, ld->name) ||
+			    !STREQ(rd->origin, ld->origin)) {
 				free(rp->reason);
 				xasprintf(&rp->reason, "direct dependency changed: %s",
 				    rd->name);
@@ -1243,7 +1243,7 @@ pkg_jobs_need_upgrade(struct pkg *rp, struct pkg *lp)
 			return (true);
 		}
 		if (ret1 == EPKG_OK) {
-			if (strcmp(rc->uid, lc->uid) != 0) {
+			if (!STREQ(rc->uid, lc->uid)) {
 				free(rp->reason);
 				rp->reason = xstrdup("direct conflict changed");
 				return (true);
@@ -1266,7 +1266,7 @@ pkg_jobs_need_upgrade(struct pkg *rp, struct pkg *lp)
 	}
 	i = 0;
 	tll_foreach(rp->provides, r) {
-		if (strcmp(r->item, l1[i]) != 0) {
+		if (!STREQ(r->item, l1[i])) {
 			free(rp->reason);
 			rp->reason = xstrdup("provides changed");
 			free(l1);
@@ -1288,7 +1288,7 @@ pkg_jobs_need_upgrade(struct pkg *rp, struct pkg *lp)
 	}
 	i = 0;
 	tll_foreach(rp->requires, r) {
-		if (strcmp(r->item, l1[i]) != 0) {
+		if (!STREQ(r->item, l1[i])) {
 			free(rp->reason);
 			rp->reason = xstrdup("requires changed");
 			free(l1);
@@ -1310,7 +1310,7 @@ pkg_jobs_need_upgrade(struct pkg *rp, struct pkg *lp)
 	}
 	i = 0;
 	tll_foreach(rp->shlibs_provided, r) {
-		if (strcmp(r->item, l1[i]) != 0) {
+		if (!STREQ(r->item, l1[i])) {
 			free(rp->reason);
 			rp->reason = xstrdup("provided shared library changed");
 			free(l1);
@@ -1332,7 +1332,7 @@ pkg_jobs_need_upgrade(struct pkg *rp, struct pkg *lp)
 	}
 	i = 0;
 	tll_foreach(rp->shlibs_required, r) {
-		if (strcmp(r->item, l1[i]) != 0) {
+		if (!STREQ(r->item, l1[i])) {
 			free(rp->reason);
 			rp->reason = xstrdup("required shared library changed");
 			free(l1);
@@ -1567,7 +1567,7 @@ pkg_jobs_check_remote_candidate(struct pkg_jobs *j, struct pkg *pkg)
 			 * Check package with the same uid and explore whether digest
 			 * has been changed
 			 */
-			if (strcmp(p->digest, pkg->digest) != 0)
+			if (!STREQ(p->digest, pkg->digest))
 				npkg ++;
 
 			pkg_free(p);
@@ -2199,8 +2199,8 @@ pkg_jobs_execute(struct pkg_jobs *j)
 					retcode = EPKG_FATAL;
 					goto cleanup;
 				}
-				if (strcmp(p->name, "pkg") == 0 ||
-				    strcmp(p->name, "pkg-devel") == 0) {
+				if (STREQ(p->name, "pkg") ||
+				    STREQ(p->name, "pkg-devel")) {
 					if (j->patterns->match == MATCH_ALL)
 						continue;
 					pkg_emit_error(

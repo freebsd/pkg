@@ -116,7 +116,7 @@ exec_repo(int argc, char **argv)
 		return (EXIT_FAILURE);
 	}
 
-	if (argc > 2 && strcmp(argv[1], "signing_command:") != 0) {
+	if (argc > 2 && !STREQ(argv[1], "signing_command:")) {
 		usage_repo();
 		return (EXIT_FAILURE);
 	}

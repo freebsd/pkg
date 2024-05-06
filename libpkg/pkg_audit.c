@@ -356,50 +356,50 @@ vulnxml_start_element(struct vulnxml_userdata *ud, yxml_t *xml)
 	struct pkg_audit_pkgname *name_entry;
 	struct pkg_audit_package *pkg_entry;
 
-	if (ud->state == VULNXML_PARSE_INIT && strcasecmp(xml->elem, "vuln") == 0) {
+	if (ud->state == VULNXML_PARSE_INIT && STRIEQ(xml->elem, "vuln")) {
 		ud->cur_entry = xcalloc(1, sizeof(struct pkg_audit_entry));
 		ud->cur_entry->next = ud->audit->entries;
 		ud->state = VULNXML_PARSE_VULN;
 	}
-	else if (ud->state == VULNXML_PARSE_VULN && strcasecmp(xml->elem, "topic") == 0) {
+	else if (ud->state == VULNXML_PARSE_VULN && STRIEQ(xml->elem, "topic")) {
 		ud->state = VULNXML_PARSE_TOPIC;
 	}
-	else if (ud->state == VULNXML_PARSE_VULN && strcasecmp(xml->elem, "package") == 0) {
+	else if (ud->state == VULNXML_PARSE_VULN && STRIEQ(xml->elem, "package")) {
 		pkg_entry = xcalloc(1, sizeof(struct pkg_audit_package));
 		LL_PREPEND(ud->cur_entry->packages, pkg_entry);
 		ud->state = VULNXML_PARSE_PACKAGE;
 	}
-	else if (ud->state == VULNXML_PARSE_VULN && strcasecmp(xml->elem, "cvename") == 0) {
+	else if (ud->state == VULNXML_PARSE_VULN && STRIEQ(xml->elem, "cvename")) {
 		ud->state = VULNXML_PARSE_CVE;
 	}
-	else if (ud->state == VULNXML_PARSE_PACKAGE && strcasecmp(xml->elem, "name") == 0) {
+	else if (ud->state == VULNXML_PARSE_PACKAGE && STRIEQ(xml->elem, "name")) {
 		ud->state = VULNXML_PARSE_PACKAGE_NAME;
 		name_entry = xcalloc(1, sizeof(struct pkg_audit_pkgname));
 		LL_PREPEND(ud->cur_entry->packages->names, name_entry);
 	}
-	else if (ud->state == VULNXML_PARSE_PACKAGE && strcasecmp(xml->elem, "range") == 0) {
+	else if (ud->state == VULNXML_PARSE_PACKAGE && STRIEQ(xml->elem, "range")) {
 		ud->state = VULNXML_PARSE_RANGE;
 		vers = xcalloc(1, sizeof(struct pkg_audit_versions_range));
 		LL_PREPEND(ud->cur_entry->packages->versions, vers);
 		ud->range_num = 0;
 	}
-	else if (ud->state == VULNXML_PARSE_RANGE && strcasecmp(xml->elem, "gt") == 0) {
+	else if (ud->state == VULNXML_PARSE_RANGE && STRIEQ(xml->elem, "gt")) {
 		ud->range_num ++;
 		ud->state = VULNXML_PARSE_RANGE_GT;
 	}
-	else if (ud->state == VULNXML_PARSE_RANGE && strcasecmp(xml->elem, "ge") == 0) {
+	else if (ud->state == VULNXML_PARSE_RANGE && STRIEQ(xml->elem, "ge")) {
 		ud->range_num ++;
 		ud->state = VULNXML_PARSE_RANGE_GE;
 	}
-	else if (ud->state == VULNXML_PARSE_RANGE && strcasecmp(xml->elem, "lt") == 0) {
+	else if (ud->state == VULNXML_PARSE_RANGE && STRIEQ(xml->elem, "lt")) {
 		ud->range_num ++;
 		ud->state = VULNXML_PARSE_RANGE_LT;
 	}
-	else if (ud->state == VULNXML_PARSE_RANGE && strcasecmp(xml->elem, "le") == 0) {
+	else if (ud->state == VULNXML_PARSE_RANGE && STRIEQ(xml->elem, "le")) {
 		ud->range_num ++;
 		ud->state = VULNXML_PARSE_RANGE_LE;
 	}
-	else if (ud->state == VULNXML_PARSE_RANGE && strcasecmp(xml->elem, "eq") == 0) {
+	else if (ud->state == VULNXML_PARSE_RANGE && STRIEQ(xml->elem, "eq")) {
 		ud->range_num ++;
 		ud->state = VULNXML_PARSE_RANGE_EQ;
 	}
@@ -414,48 +414,48 @@ vulnxml_end_element(struct vulnxml_userdata *ud, yxml_t *xml)
 	int range_type = -1;
 
 	fflush(ud->content->fp);
-	if (ud->state == VULNXML_PARSE_VULN && strcasecmp(xml->elem, "vuxml") == 0) {
+	if (ud->state == VULNXML_PARSE_VULN && STRIEQ(xml->elem, "vuxml")) {
 		pkg_audit_expand_entry(ud->cur_entry, &ud->audit->entries);
 		ud->state = VULNXML_PARSE_INIT;
 	}
-	else if (ud->state == VULNXML_PARSE_TOPIC && strcasecmp(xml->elem, "vuln") == 0) {
+	else if (ud->state == VULNXML_PARSE_TOPIC && STRIEQ(xml->elem, "vuln")) {
 		ud->cur_entry->desc = xstrdup(ud->content->buf);
 		ud->state = VULNXML_PARSE_VULN;
 	}
-	else if (ud->state == VULNXML_PARSE_CVE && strcasecmp(xml->elem, "references") == 0) {
+	else if (ud->state == VULNXML_PARSE_CVE && STRIEQ(xml->elem, "references")) {
 		entry = ud->cur_entry;
 		cve = xmalloc(sizeof(struct pkg_audit_cve));
 		cve->cvename = xstrdup(ud->content->buf);
 		LL_PREPEND(entry->cve, cve);
 		ud->state = VULNXML_PARSE_VULN;
 	}
-	else if (ud->state == VULNXML_PARSE_PACKAGE && strcasecmp(xml->elem, "affects") == 0) {
+	else if (ud->state == VULNXML_PARSE_PACKAGE && STRIEQ(xml->elem, "affects")) {
 		ud->state = VULNXML_PARSE_VULN;
 	}
-	else if (ud->state == VULNXML_PARSE_PACKAGE_NAME && strcasecmp(xml->elem, "package") == 0) {
+	else if (ud->state == VULNXML_PARSE_PACKAGE_NAME && STRIEQ(xml->elem, "package")) {
 		ud->cur_entry->packages->names->pkgname = xstrdup(ud->content->buf);
 		ud->state = VULNXML_PARSE_PACKAGE;
 	}
-	else if (ud->state == VULNXML_PARSE_RANGE && strcasecmp(xml->elem, "package") == 0) {
+	else if (ud->state == VULNXML_PARSE_RANGE && STRIEQ(xml->elem, "package")) {
 		ud->state = VULNXML_PARSE_PACKAGE;
 	}
-	else if (ud->state == VULNXML_PARSE_RANGE_GT && strcasecmp(xml->elem, "range") == 0) {
+	else if (ud->state == VULNXML_PARSE_RANGE_GT && STRIEQ(xml->elem, "range")) {
 		range_type = GT;
 		ud->state = VULNXML_PARSE_RANGE;
 	}
-	else if (ud->state == VULNXML_PARSE_RANGE_GE && strcasecmp(xml->elem, "range") == 0) {
+	else if (ud->state == VULNXML_PARSE_RANGE_GE && STRIEQ(xml->elem, "range")) {
 		range_type = GTE;
 		ud->state = VULNXML_PARSE_RANGE;
 	}
-	else if (ud->state == VULNXML_PARSE_RANGE_LT && strcasecmp(xml->elem, "range") == 0) {
+	else if (ud->state == VULNXML_PARSE_RANGE_LT && STRIEQ(xml->elem, "range")) {
 		range_type = LT;
 		ud->state = VULNXML_PARSE_RANGE;
 	}
-	else if (ud->state == VULNXML_PARSE_RANGE_LE && strcasecmp(xml->elem, "range") == 0) {
+	else if (ud->state == VULNXML_PARSE_RANGE_LE && STRIEQ(xml->elem, "range")) {
 		range_type = LTE;
 		ud->state = VULNXML_PARSE_RANGE;
 	}
-	else if (ud->state == VULNXML_PARSE_RANGE_EQ && strcasecmp(xml->elem, "range") == 0) {
+	else if (ud->state == VULNXML_PARSE_RANGE_EQ && STRIEQ(xml->elem, "range")) {
 		range_type = EQ;
 		ud->state = VULNXML_PARSE_RANGE;
 	}
@@ -480,7 +480,7 @@ vulnxml_start_attribute(struct vulnxml_userdata *ud, yxml_t *xml)
 	if (ud->state != VULNXML_PARSE_VULN)
 		return;
 
-	if (strcasecmp(xml->attr, "vid") == 0)
+	if (STRIEQ(xml->attr, "vid"))
 		ud->attr = VULNXML_ATTR_VID;
 }
 
@@ -683,8 +683,7 @@ pkg_audit_preprocess(struct pkg_audit_entry *h)
 			for (i = 0; tofill > 1; i++, tofill--)
 				base[i].next_pfx_incr = tofill;
 			tofill = 1;
-		} else if (strcmp(ret[n - 1].e->pkgname,
-		    ret[n].e->pkgname) == 0) {
+		} else if (STREQ(ret[n - 1].e->pkgname, ret[n].e->pkgname)) {
 			tofill++;
 		} else {
 			tofill = 1;

@@ -79,7 +79,7 @@ pkg_sshserve(int fd)
 		if (line[linelen - 1] == '\n')
 			line[linelen - 1] = '\0';
 
-		if (strcmp(line, "quit") == 0)
+		if (STREQ(line, "quit"))
 			return (EPKG_OK);
 
 		if (strncmp(line, "get ", 4) != 0) {

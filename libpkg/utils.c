@@ -988,7 +988,7 @@ open_tempdir(int rootfd, const char *path, stringlist_t *symlinks_allowed)
 			int flag = AT_SYMLINK_NOFOLLOW;
 			if (symlinks_allowed != NULL) {
 				tll_foreach(*symlinks_allowed, t) {
-					if (strcmp(RELATIVE_PATH(walk), RELATIVE_PATH(t->item)) == 0)
+					if (STREQ(RELATIVE_PATH(walk), RELATIVE_PATH(t->item)))
 						flag = 0;
 				}
 			}

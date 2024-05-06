@@ -137,7 +137,7 @@ add_shlibs_to_pkg(struct pkg *pkg, const char *fpath, const char *name,
 			nsz = strlen(name);
 
 			if (fsz >= nsz &&
-			    strcmp(&filepath[fsz - nsz], name) == 0) {
+			    STREQ(&filepath[fsz - nsz], name)) {
 				pkg_addshlib_required(pkg, name);
 				return (EPKG_OK);
 			}
@@ -214,7 +214,7 @@ shlib_valid_abi(const char *fpath, GElf_Ehdr *hdr, const char *abi)
 		return (false);
 	}
 
-	if (strcmp(shlib_arch, arch) != 0) {
+	if (!STREQ(shlib_arch, arch)) {
 		pkg_debug(1, "not valid abi for shlib: %s: %s", shlib_arch,
 		    fpath);
 		return (false);
@@ -582,7 +582,7 @@ elf_string_to_corres(const struct _elf_corres* m, const char *s)
 	int i = 0;
 
 	for (i = 0; m[i].string != NULL; i++)
-		if (strcmp(m[i].string, s) == 0)
+		if (STREQ(m[i].string, s))
 			return (m[i].elf_nb);
 
 	return (-1);
@@ -956,7 +956,7 @@ pkg_get_myarch_elfparse(char *dest, size_t sz, struct os_info *oi)
 				    shdr.sh_name);
 				if (sh_name == NULL)
 					continue;
-				if (strcmp(".ARM.attributes", sh_name) == 0)
+				if (STREQ(".ARM.attributes", sh_name))
 					break;
 			}
 			if (scn != NULL && sh_name != NULL) {
@@ -1116,7 +1116,7 @@ pkg_arch_to_legacy(const char *arch, char *dest, size_t sz)
 
 	for (arch_trans = machine_arch_translation; arch_trans->elftype != NULL;
 	    arch_trans++) {
-		if (strcmp(arch + i, arch_trans->archid) == 0) {
+		if (STREQ(arch + i, arch_trans->archid)) {
 			strlcpy(dest + i, arch_trans->elftype,
 			    sz - (arch + i - dest));
 			return (0);
@@ -1181,7 +1181,7 @@ pkg_get_myarch(char *dest, size_t sz, struct os_info *oi)
 	arch_tweak++;
 	for (arch_trans = machine_arch_translation; arch_trans->elftype != NULL;
 	    arch_trans++) {
-		if (strcmp(arch_tweak, arch_trans->elftype) == 0) {
+		if (STREQ(arch_tweak, arch_trans->elftype)) {
 			strlcpy(arch_tweak, arch_trans->archid,
 			    sz - (arch_tweak - dest));
 			oi->arch = xstrdup(arch_tweak);
