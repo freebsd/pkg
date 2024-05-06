@@ -513,7 +513,7 @@ static struct config_entry c[] = {
 	{
 		PKG_ARRAY,
 		"PKG_DEBUG_FLAGS",
-		NULL,
+		"all",
 		"debug flags to activate",
 	},
 	{
