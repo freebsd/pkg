@@ -58,6 +58,7 @@
 
 #include "pkgcli.h"
 #include "pkghash.h"
+#include "xmalloc.h"
 
 typedef tll(char *) dl_list;
 
@@ -78,7 +79,7 @@ add_to_dellist(int fd, dl_list *dl, const char *cachedir, const char *path)
 
 	assert(path != NULL);
 
-	store_path = strdup(path);
+	store_path = xstrdup(path);
 
 	if (!quiet) {
 		if (first_entry) {

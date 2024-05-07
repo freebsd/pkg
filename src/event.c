@@ -60,6 +60,7 @@
 
 #include "pkg.h"
 #include "pkgcli.h"
+#include "xmalloc.h"
 
 #define STALL_TIME 5
 
@@ -683,7 +684,7 @@ event_callback(void *data, struct pkg_event *ev)
 			signal(SIGINT, cleanup_handler);
 			signal_handler_installed = true;
 		}
-		evtmp = malloc(sizeof(struct cleanup));
+		evtmp = xmalloc(sizeof(struct cleanup));
 		evtmp->cb = ev->e_cleanup_callback.cleanup_cb;
 		evtmp->data = ev->e_cleanup_callback.data;
 		tll_push_back(cleanup_list, evtmp);
