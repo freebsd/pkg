@@ -4,8 +4,8 @@
  * Copyright (c) 2011-2012 Marin Atanasov Nikolov <dnaeon@gmail.com>
  * Copyright (c) 2012-2013 Matthew Seaman <matthew@FreeBSD.org>
  * Copyright (c) 2014 Vsevolod Stakhov <vsevolod@FreeBSD.org>
- * Copyright (c) 2023 Serenity Cyber Security, LLC
- *                    Author: Gleb Popov <arrowd@FreeBSD.org>
+ * Copyright (c) 2023-2024 Serenity Cyber Security, LLC
+ *                         Author: Gleb Popov <arrowd@FreeBSD.org>
  *
  * Redistribution and use in source and binary forms, with or without
  * modification, are permitted provided that the following conditions
@@ -477,40 +477,40 @@ group_load(struct pkg_repo_create *prc, int dfd, const char *name, ucl_object_t 
 	ucl_array_append(prc->groups, obj);
 }
 
+static const char group_schema_str[] = ""
+	"{"
+	"  type = object;"
+	"  properties: {"
+	"    name: { type = string };"
+	"    requires: { "
+	"      type = array;"
+	"      item = { type = string };"
+	"    };"
+	"    depends: { "
+	"      type = array;"
+	"      item = { type = string };"
+	"    };"
+	"    comment: { type = string };"
+	"  };"
+	"  required = [ name, comment ];"
+	"};";
+
 static ucl_object_t *
-group_open_schema(void)
+open_schema(const char* schema_str, size_t schema_str_len)
 {
 	struct ucl_parser *parser;
-	ucl_object_t *group_schema;
-	static const char group_schema_str[] = ""
-		"{"
-		"  type = object;"
-		"  properties: {"
-		"    name: { type = string };"
-		"    requires: { "
-		"      type = array;"
-		"      item = { type = string };"
-		"    };"
-		"    depends: { "
-		"      type = array;"
-		"      item = { type = string };"
-		"    };"
-		"    comment: { type = string };"
-		"  };"
-		"  required = [ name, comment ];"
-		"};";
+	ucl_object_t *schema;
 	parser = ucl_parser_new(UCL_PARSER_NO_FILEVARS);
-	if (!ucl_parser_add_chunk(parser, group_schema_str,
-	    sizeof(group_schema_str) -1)) {
+	if (!ucl_parser_add_chunk(parser, schema_str,
+	    schema_str_len - 1)) {
 		pkg_emit_error("Cannot parse schema for group: %s",
 		    ucl_parser_get_error(parser));
 		    ucl_parser_free(parser);
 		    return (NULL);
 	}
-	group_schema = ucl_parser_get_object(parser);
+	schema = ucl_parser_get_object(parser);
 	ucl_parser_free(parser);
-	return (group_schema);
-
+	return (schema);
 }
 
 void
@@ -534,7 +534,7 @@ pkg_repo_create_set_groups(struct pkg_repo_create *prc, const char *path)
 		return;
 	}
 
-	schema = group_open_schema();
+	schema = open_schema(group_schema_str, sizeof(group_schema_str));
 
 	while ((e = readdir(d)) != NULL) {
 		const char *ext;
