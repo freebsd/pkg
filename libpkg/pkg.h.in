@@ -1752,6 +1752,7 @@ pkg_get_i(struct pkg *p, pkg_attr a, int64_t *val)
 		break;
 	case PKG_KVLIST:
 		free(e->stringlist);
+		break;
 	case PKG_STRINGLIST:
 		free(e->kvlist);
 		break;
@@ -1778,6 +1779,7 @@ pkg_get_b(struct pkg *p, pkg_attr a, bool *val)
 		break;
 	case PKG_KVLIST:
 		free(e->stringlist);
+		break;
 	case PKG_STRINGLIST:
 		free(e->kvlist);
 		break;
