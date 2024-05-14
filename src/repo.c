@@ -1,6 +1,6 @@
 /*-
  * Copyright (c) 2011-2024 Baptiste Daroussin <bapt@FreeBSD.org>
- * 
+ *
  * Redistribution and use in source and binary forms, with or without
  * modification, are permitted provided that the following conditions
  * are met:
@@ -10,7 +10,7 @@
  * 2. Redistributions in binary form must reproduce the above copyright
  *    notice, this list of conditions and the following disclaimer in the
  *    documentation and/or other materials provided with the distribution.
- * 
+ *
  * THIS SOFTWARE IS PROVIDED BY THE AUTHOR(S) ``AS IS'' AND ANY EXPRESS OR
  * IMPLIED WARRANTIES, INCLUDING, BUT NOT LIMITED TO, THE IMPLIED WARRANTIES
  * OF MERCHANTABILITY AND FITNESS FOR A PARTICULAR PURPOSE ARE DISCLAIMED.
@@ -76,10 +76,13 @@ exec_repo(int argc, char **argv)
 		{ NULL,		0,			NULL,	0   },
 	};
 
-	while ((ch = getopt_long(argc, argv, "+hg:lo:qm:s", longopts, NULL)) != -1) {
+	while ((ch = getopt_long(argc, argv, "+heg:lo:qm:s", longopts, NULL)) != -1) {
 		switch (ch) {
 		case 'g':
 			pkg_repo_create_set_groups(prc, optarg);
+			break;
+		case 'e':
+			pkg_repo_create_set_expired_packages(prc, optarg);
 			break;
 		case 'h':
 			hash = true;

@@ -4,8 +4,8 @@
  * Copyright (c) 2011-2012 Marin Atanasov Nikolov <dnaeon@gmail.com>
  * Copyright (c) 2013 Matthew Seaman <matthew@FreeBSD.org>
  * Copyright (c) 2013-2016 Vsevolod Stakhov <vsevolod@FreeBSD.org>
- * Copyright (c) 2023 Serenity Cyber Security, LLC
- *                    Author: Gleb Popov <arrowd@FreeBSD.org>
+ * Copyright (c) 2023-2024 Serenity Cyber Security, LLC
+ *                         Author: Gleb Popov <arrowd@FreeBSD.org>
  *
  * Redistribution and use in source and binary forms, with or without
  * modification, are permitted provided that the following conditions
@@ -755,6 +755,11 @@ pkg_jobs_test_automatic(struct pkg_jobs *j, struct pkg *p)
 	pkg_free(npkg);
 
 	return (true);
+}
+
+static bool
+pkg_jobs_test_expired(struct pkg_jobs *j, struct pkg *p)
+{
 }
 
 
@@ -1531,7 +1536,7 @@ jobs_solve_autoremove(struct pkg_jobs *j)
 			PKG_LOAD_ANNOTATIONS|PKG_LOAD_PROVIDES|
 			PKG_LOAD_SHLIBS_PROVIDED)
 			== EPKG_OK) {
-		if (pkg_jobs_test_automatic(j, pkg)) {
+		if (pkg_jobs_test_expired(j, pkg) || pkg_jobs_test_automatic(j, pkg)) {
 			assert(pkg_jobs_add_req(j, pkg));
 		}
 		pkg = NULL;
