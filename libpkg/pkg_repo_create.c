@@ -550,12 +550,13 @@ pkg_repo_create_set_groups(struct pkg_repo_create *prc, const char *path)
 		/* only regular files are considered */
 		if (fstatat(dfd, e->d_name, &st, AT_SYMLINK_NOFOLLOW) != 0) {
 			pkg_emit_errno("fstatat", e->d_name);
-			return;
+			goto cleanup;
 		}
 		if (!S_ISREG(st.st_mode))
 			continue;
 		group_load(prc, dfd, e->d_name, schema);
 	}
+cleanup:
 	closedir(d);
 	ucl_object_unref(schema);
 }
