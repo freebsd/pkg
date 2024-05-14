@@ -49,6 +49,10 @@ EOF
 		-o ignore \
 		pkg -o REPOS_DIR="${TMPDIR}" \
 		-o ${PKG_CACHEDIR}="${TMPDIR}" update
+
+	atf_check -o inline:"1\n" \
+		pkg -o REPOS_DIR="${TMPDIR}" \
+		-o ${PKG_CACHEDIR}="${TMPDIR}" rquery -U %v test
 }
 
 pubkey_ecdsa_body() {
@@ -82,6 +86,10 @@ EOF
 		-o ignore \
 		pkg -o REPOS_DIR="${TMPDIR}" \
 		-o ${PKG_CACHEDIR}="${TMPDIR}" update
+
+	atf_check -o inline:"1\n" \
+		pkg -o REPOS_DIR="${TMPDIR}" \
+		-o ${PKG_CACHEDIR}="${TMPDIR}" rquery -U %v test
 }
 
 # Legacy format, unprefixed key passed to pkg-repo
@@ -108,5 +116,9 @@ EOF
 		-o ignore \
 		pkg -o REPOS_DIR="${TMPDIR}" \
 		-o ${PKG_CACHEDIR}="${TMPDIR}" update
+
+	atf_check -o inline:"1\n" \
+		pkg -o REPOS_DIR="${TMPDIR}" \
+		-o ${PKG_CACHEDIR}="${TMPDIR}" rquery -U %v test
 }
 
