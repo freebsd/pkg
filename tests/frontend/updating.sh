@@ -34,15 +34,15 @@ EOF
 }
 
 updating_pkg_body() {
-	atf_check -s exit:0 sh ${RESOURCEDIR}/test_subr.sh new_pkg test pkg 1.10.5 /usr/local
-	cat >> test.ucl << EOF
+	atf_check -s exit:0 sh ${RESOURCEDIR}/test_subr.sh new_pkg pkg pkg 1.10.5 /usr/local
+	cat >> pkg.ucl << EOF
 message: [
 	{ message: "Always print" }
 ]
 EOF
 	atf_check \
 		-o match:".*Installing.*" \
-		pkg register -M test.ucl
+		pkg register -M pkg.ucl
 
 	cat > UPDATING <<EOF
 20190619:
@@ -58,15 +58,15 @@ EOF
 }
 
 updating_perl_body() {
-	atf_check -s exit:0 sh ${RESOURCEDIR}/test_subr.sh new_pkg test perl5.26 5.26 /usr/local
-	cat >> test.ucl << EOF
+	atf_check -s exit:0 sh ${RESOURCEDIR}/test_subr.sh new_pkg perl perl5.26 5.26 /usr/local
+	cat >> perl.ucl << EOF
 message: [
 	{ message: "Always print" }
 ]
 EOF
 	atf_check \
 		-o match:".*Installing.*" \
-		pkg register -M test.ucl
+		pkg register -M perl.ucl
 
 	cat > UPDATING <<EOF
 20190620:
@@ -89,15 +89,15 @@ EOF
 }
 
 updating_samba_body() {
-	atf_check -s exit:0 sh ${RESOURCEDIR}/test_subr.sh new_pkg test samba47 4.7.12 /usr/local
-	cat >> test.ucl << EOF
+	atf_check -s exit:0 sh ${RESOURCEDIR}/test_subr.sh new_pkg samba samba47 4.7.12 /usr/local
+	cat >> samba.ucl << EOF
 message: [
 	{ message: "Always print" }
 ]
 EOF
 	atf_check \
 		-o match:".*Installing.*" \
-		pkg register -M test.ucl
+		pkg register -M samba.ucl
 
 	cat > UPDATING <<EOF
 20190622:
@@ -113,15 +113,15 @@ EOF
 }
 
 updating_ilmbase_body() {
-	atf_check -s exit:0 sh ${RESOURCEDIR}/test_subr.sh new_pkg test ilmbase 2.3.0_2 /usr/local
-	cat >> test.ucl << EOF
+	atf_check -s exit:0 sh ${RESOURCEDIR}/test_subr.sh new_pkg ilmbase ilmbase 2.3.0_2 /usr/local
+	cat >> ilmbase.ucl << EOF
 message: [
 	{ message: "Always print" }
 ]
 EOF
 	atf_check \
 		-o match:".*Installing.*" \
-		pkg register -M test.ucl
+		pkg register -M ilmbase.ucl
 
 	cat > UPDATING <<EOF
 20190623:
@@ -137,15 +137,15 @@ EOF
 }
 
 updating_mysql_body() {
-	atf_check -s exit:0 sh ${RESOURCEDIR}/test_subr.sh new_pkg test mysql55-server 5.5.62_1 /usr/local
-	cat >> test.ucl << EOF
+	atf_check -s exit:0 sh ${RESOURCEDIR}/test_subr.sh new_pkg mysql mysql55-server 5.5.62_1 /usr/local
+	cat >> mysql.ucl << EOF
 message: [
 	{ message: "Always print" }
 ]
 EOF
 	atf_check \
 		-o match:".*Installing.*" \
-		pkg register -M test.ucl
+		pkg register -M mysql.ucl
 
 	cat > UPDATING <<EOF
 20190626:
@@ -161,15 +161,15 @@ EOF
 }
 
 updating_postgresql_body() {
-	atf_check -s exit:0 sh ${RESOURCEDIR}/test_subr.sh new_pkg test postgresql95-server 9.5.17 /usr/local
-	cat >> test.ucl << EOF
+	atf_check -s exit:0 sh ${RESOURCEDIR}/test_subr.sh new_pkg postgresql postgresql95-server 9.5.17 /usr/local
+	cat >> postgresql.ucl << EOF
 message: [
 	{ message: "Always print" }
 ]
 EOF
 	atf_check \
 		-o match:".*Installing.*" \
-		pkg register -M test.ucl
+		pkg register -M postgresql.ucl
 
 	cat > UPDATING <<EOF
 20190627:
@@ -185,15 +185,15 @@ EOF
 }
 
 updating_cupsbase_body() {
-	atf_check -s exit:0 sh ${RESOURCEDIR}/test_subr.sh new_pkg test cups-base 2.2.1 /usr/local
-	cat >> test.ucl << EOF
+	atf_check -s exit:0 sh ${RESOURCEDIR}/test_subr.sh new_pkg cups-base cups-base 2.2.1 /usr/local
+	cat >> cups-base.ucl << EOF
 message: [
 	{ message: "Always print" }
 ]
 EOF
 	atf_check \
 		-o match:".*Installing.*" \
-		pkg register -M test.ucl
+		pkg register -M cups-base.ucl
 
 	cat > UPDATING <<EOF
 20190628:
@@ -209,15 +209,15 @@ EOF
 }
 
 updating_cups_body() {
-	atf_check -s exit:0 sh ${RESOURCEDIR}/test_subr.sh new_pkg test cups 2.2.1 /usr/local
-	cat >> test.ucl << EOF
+	atf_check -s exit:0 sh ${RESOURCEDIR}/test_subr.sh new_pkg cups cups 2.2.1 /usr/local
+	cat >> cups.ucl << EOF
 message: [
 	{ message: "Always print" }
 ]
 EOF
 	atf_check \
 		-o match:".*Installing.*" \
-		pkg register -M test.ucl
+		pkg register -M cups.ucl
 
 	cat > UPDATING <<EOF
 20190628:
