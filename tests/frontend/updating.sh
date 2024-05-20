@@ -34,16 +34,8 @@ EOF
 }
 
 updating_pkg_body() {
-	cat > test.ucl << EOF
-name: "pkg"
-origin: "ports-mgmt/pkg"
-version: "1.10.5"
-arch: "*"
-maintainer: "none"
-prefix: "/usr/local"
-www: "unknown"
-comment: "need one"
-desc: "also need one"
+	atf_check -s exit:0 sh ${RESOURCEDIR}/test_subr.sh new_pkg test pkg 1.10.5 /usr/local
+	cat >> test.ucl << EOF
 message: [
 	{ message: "Always print" }
 ]
@@ -54,7 +46,7 @@ EOF
 
 	cat > UPDATING <<EOF
 20190619:
-  AFFECTS: ports-mgmt/pkg
+  AFFECTS: pkg
   AUTHOR: ports@FreeBSD.org
 
   Messages...
@@ -66,16 +58,8 @@ EOF
 }
 
 updating_perl_body() {
-	cat > test.ucl << EOF
-name: "perl5.26"
-origin: "lang/perl5.26"
-version: "5.26_3"
-arch: "*"
-maintainer: "none"
-prefix: "/usr/local"
-www: "unknown"
-comment: "need one"
-desc: "also need one"
+	atf_check -s exit:0 sh ${RESOURCEDIR}/test_subr.sh new_pkg test perl5.26 5.26 /usr/local
+	cat >> test.ucl << EOF
 message: [
 	{ message: "Always print" }
 ]
@@ -86,13 +70,13 @@ EOF
 
 	cat > UPDATING <<EOF
 20190620:
-  AFFECTS: lang/perl5.*
+  AFFECTS: perl5.*
   AUTHOR: ports@FreeBSD.org
 
   Messages...
 
 20190621:
-  AFFECTS: lang/perl5*
+  AFFECTS: perl5*
   AUTHOR: ports@FreeBSD.org
 
   Messages...
@@ -105,16 +89,8 @@ EOF
 }
 
 updating_samba_body() {
-	cat > test.ucl << EOF
-name: "samba47"
-origin: "net/samba47"
-version: "4.7.12"
-arch: "*"
-maintainer: "none"
-prefix: "/usr/local"
-www: "unknown"
-comment: "need one"
-desc: "also need one"
+	atf_check -s exit:0 sh ${RESOURCEDIR}/test_subr.sh new_pkg test samba47 4.7.12 /usr/local
+	cat >> test.ucl << EOF
 message: [
 	{ message: "Always print" }
 ]
@@ -125,7 +101,7 @@ EOF
 
 	cat > UPDATING <<EOF
 20190622:
-  AFFECTS: net/samba4[678]
+  AFFECTS: samba4[678]
   AUTHOR: ports@FreeBSD.org
 
   Messages...
@@ -137,16 +113,8 @@ EOF
 }
 
 updating_ilmbase_body() {
-	cat > test.ucl << EOF
-name: "ilmbase"
-origin: "graphics/ilmbase"
-version: "2.3.0_2"
-arch: "*"
-maintainer: "none"
-prefix: "/usr/local"
-www: "unknown"
-comment: "need one"
-desc: "also need one"
+	atf_check -s exit:0 sh ${RESOURCEDIR}/test_subr.sh new_pkg test ilmbase 2.3.0_2 /usr/local
+	cat >> test.ucl << EOF
 message: [
 	{ message: "Always print" }
 ]
@@ -157,7 +125,7 @@ EOF
 
 	cat > UPDATING <<EOF
 20190623:
-  AFFECTS: users of graphics/ilmbase, graphics/OpenEXR
+  AFFECTS: users of ilmbase, graphics/OpenEXR
   AUTHOR: ports@FreeBSD.org
 
   Messages...
@@ -169,16 +137,8 @@ EOF
 }
 
 updating_mysql_body() {
-	cat > test.ucl << EOF
-name: "mysql55-server"
-origin: "databases/mysql55-server"
-version: "5.5.62_1"
-arch: "*"
-maintainer: "none"
-prefix: "/usr/local"
-www: "unknown"
-comment: "need one"
-desc: "also need one"
+	atf_check -s exit:0 sh ${RESOURCEDIR}/test_subr.sh new_pkg test mysql55-server 5.5.62_1 /usr/local
+	cat >> test.ucl << EOF
 message: [
 	{ message: "Always print" }
 ]
@@ -189,7 +149,7 @@ EOF
 
 	cat > UPDATING <<EOF
 20190626:
-  AFFECTS: users of databases/mysql55-(server|client)
+  AFFECTS: users of mysql55-(server|client)
   AUTHOR: ports@FreeBSD.org
 
   Messages...
@@ -201,16 +161,8 @@ EOF
 }
 
 updating_postgresql_body() {
-	cat > test.ucl << EOF
-name: "postgresql95-server"
-origin: "databases/postgresql95-server"
-version: "9.5.17"
-arch: "*"
-maintainer: "none"
-prefix: "/usr/local"
-www: "unknown"
-comment: "need one"
-desc: "also need one"
+	atf_check -s exit:0 sh ${RESOURCEDIR}/test_subr.sh new_pkg test postgresql95-server 9.5.17 /usr/local
+	cat >> test.ucl << EOF
 message: [
 	{ message: "Always print" }
 ]
@@ -221,7 +173,7 @@ EOF
 
 	cat > UPDATING <<EOF
 20190627:
-  AFFECTS: users of databases/postgresql??-(server|client)
+  AFFECTS: users of postgresql??-(server|client)
   AUTHOR: ports@FreeBSD.org
 
   Messages...
@@ -233,16 +185,8 @@ EOF
 }
 
 updating_cupsbase_body() {
-	cat > test.ucl << EOF
-name: "cups-base"
-origin: "print/cups-base"
-version: "2.2.1"
-arch: "*"
-maintainer: "none"
-prefix: "/usr/local"
-www: "unknown"
-comment: "need one"
-desc: "also need one"
+	atf_check -s exit:0 sh ${RESOURCEDIR}/test_subr.sh new_pkg test cups-base 2.2.1 /usr/local
+	cat >> test.ucl << EOF
 message: [
 	{ message: "Always print" }
 ]
@@ -253,7 +197,7 @@ EOF
 
 	cat > UPDATING <<EOF
 20190628:
-  AFFECTS: users of print/cups-{base,client,image}
+  AFFECTS: users of cups-{base,client,image}
   AUTHOR: ports@FreeBSD.org
 
   Messages...
@@ -265,16 +209,8 @@ EOF
 }
 
 updating_cups_body() {
-	cat > test.ucl << EOF
-name: "cups"
-origin: "print/cups"
-version: "2.2.1"
-arch: "*"
-maintainer: "none"
-prefix: "/usr/local"
-www: "unknown"
-comment: "need one"
-desc: "also need one"
+	atf_check -s exit:0 sh ${RESOURCEDIR}/test_subr.sh new_pkg test cups 2.2.1 /usr/local
+	cat >> test.ucl << EOF
 message: [
 	{ message: "Always print" }
 ]
@@ -285,7 +221,7 @@ EOF
 
 	cat > UPDATING <<EOF
 20190628:
-  AFFECTS: users of print/cups-{base,client,image}
+  AFFECTS: users of cups-{base,client,image}
   AUTHOR: ports@FreeBSD.org
 
   Messages...
