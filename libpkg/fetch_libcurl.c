@@ -364,6 +364,7 @@ curl_fetch(struct pkg_repo *repo, int dest, struct fetch_item *fi)
 	const char *relpath = NULL;
 	const char *userpasswd = get_http_auth();
 	const char *http_proxy = getenv("HTTP_PROXY");
+	const char *http_proxy_auth = getenv("HTTP_PROXY_AUTH");
 	const char *sslkey = getenv("SSL_CLIENT_KEY_FILE");
 	const char *sslcert = getenv("SSL_CLIENT_CERT_FILE");
 	const char *ssl_ca_cert_file = getenv("SSL_CA_CERT_FILE");
@@ -453,6 +454,10 @@ do_retry:
 	}
 	if (http_proxy != NULL)
 		curl_easy_setopt(cl, CURLOPT_PROXY, http_proxy);
+	if (http_proxy_auth != NULL) {
+		curl_easy_setopt(cl, CURLOPT_PROXYAUTH, CURLAUTH_ANY);
+		curl_easy_setopt(cl, CURLOPT_PROXYUSERPWD, http_proxy_auth);
+	}
 	if (sslkey != NULL)
 		curl_easy_setopt(cl, CURLOPT_SSLKEY, sslkey);
 	if (sslcert != NULL)
