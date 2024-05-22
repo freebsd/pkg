@@ -46,12 +46,6 @@ fi
 : ${security_status_baseaudit_jails_ignore+=""}
 : ${security_status_baseaudit_expiry:=2}
 
-security_daily_compat_var security_status_baseaudit_enable
-security_daily_compat_var security_status_baseaudit_quiet
-security_daily_compat_var security_status_baseaudit_chroots
-security_daily_compat_var security_status_baseaudit_jails
-security_daily_compat_var security_status_baseaudit_expiry
-
 # Compute PKG_DBDIR from the config file.
 pkgcmd=%prefix%/sbin/pkg
 PKG_DBDIR=`${pkgcmd} config PKG_DBDIR`
@@ -69,7 +63,7 @@ audit_base() {
 	local chrootv
 	local jailv
 	local jid
-	
+
 	# get version from chroot
 	if [ -n "`echo "$pkgargs" | egrep '^-c'`" ]; then
 		if [ -x "$basedir/bin/freebsd-version" ]; then

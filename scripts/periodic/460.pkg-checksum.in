@@ -15,10 +15,6 @@ fi
 : ${security_status_pkg_checksum_chroots=$pkg_chroots}
 : ${security_status_pkg_checksum_jails=$pkg_jails}
 
-security_daily_compat_var security_status_pkg_checksum_enable
-security_daily_compat_var security_status_pkg_checksum_chroots
-security_daily_compat_var security_status_pkg_checksum_jails
-
 checksum_pkg() {
     local pkgargs="$1"
     local rc
