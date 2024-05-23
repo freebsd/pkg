@@ -945,7 +945,6 @@ USE_NGTCP2_CRYPTO_QUICTLS
 USE_NGTCP2
 USE_NGHTTP2
 IDN_ENABLED
-CURL_PLIST_VERSION
 CURL_LT_SHLIB_USE_VERSIONED_SYMBOLS_FALSE
 CURL_LT_SHLIB_USE_VERSIONED_SYMBOLS_TRUE
 CURL_LT_SHLIB_VERSIONED_FLAVOUR
@@ -1063,6 +1062,7 @@ HTTPD_NGHTTPX
 APACHECTL
 HTTPD
 APXS
+VSFTPD
 CADDY
 TEST_NGHTTPX
 PKGADD_VENDOR
@@ -1181,6 +1181,7 @@ enable_curldebug
 enable_symbol_hiding
 enable_ares
 enable_rt
+enable_httpsrr
 enable_ech
 enable_code_coverage
 enable_dependency_tracking
@@ -1196,6 +1197,7 @@ with_bearssl
 with_rustls
 with_test_nghttpx
 with_test_caddy
+with_test_vsftpd
 with_test_httpd
 with_darwinssl
 enable_largefile
@@ -1224,8 +1226,8 @@ enable_smb
 enable_smtp
 enable_gopher
 enable_mqtt
-enable_docs
 enable_manual
+enable_docs
 enable_libcurl_option
 enable_libgcc
 with_zlib
@@ -1272,7 +1274,6 @@ enable_kerberos_auth
 enable_negotiate_auth
 enable_aws
 enable_ntlm
-enable_ntlm_wb
 enable_tls_srp
 enable_unix_sockets
 enable_cookies
@@ -1949,6 +1950,8 @@ Optional Features:
   --enable-ares[=PATH]    Enable c-ares for DNS lookups
   --disable-ares          Disable c-ares for DNS lookups
   --disable-rt            disable dependency on -lrt
+  --enable-httpsrr        Enable HTTPSRR support
+  --disable-httpsrr       Disable HTTPSRR support
   --enable-ech            Enable ECH support
   --disable-ech           Disable ECH support
   --enable-code-coverage  Provide code coverage
@@ -1994,10 +1997,10 @@ Optional Features:
   --disable-gopher        Disable Gopher support
   --enable-mqtt           Enable MQTT support
   --disable-mqtt          Disable MQTT support
-  --enable-docs           Enable documentation
-  --disable-docs          Disable documentation
   --enable-manual         Enable built-in manual
   --disable-manual        Disable built-in manual
+  --enable-docs           Enable documentation
+  --disable-docs          Disable documentation
   --enable-libcurl-option Enable --libcurl C code generation support
   --disable-libcurl-option
                           Disable --libcurl C code generation support
@@ -2037,11 +2040,6 @@ Optional Features:
   --disable-aws           Disable AWS sig support
   --enable-ntlm           Enable NTLM support
   --disable-ntlm          Disable NTLM support
-  --enable-ntlm-wb[=FILE] Enable NTLM delegation to winbind's ntlm_auth
-                          helper, where FILE is ntlm_auth's absolute filename
-                          (default: /usr/bin/ntlm_auth)
-  --disable-ntlm-wb       Disable NTLM delegation to winbind's ntlm_auth
-                          helper
   --enable-tls-srp        Enable TLS-SRP authentication
   --disable-tls-srp       Disable TLS-SRP authentication
   --enable-unix-sockets   Enable Unix domain sockets
@@ -2107,6 +2105,7 @@ Optional Packages:
   --with-test-nghttpx=PATH
                           where to find nghttpx for testing
   --with-test-caddy=PATH  where to find caddy for testing
+  --with-test-vsftpd=PATH where to find vsftpd for testing
   --with-test-httpd=PATH  where to find httpd/apache2 for testing
 
   --with-pic[=PKGS]       try to use only PIC/non-PIC objects [default=use
@@ -3804,6 +3803,38 @@ printf "%s\n" "(assumed no)" >&6; }
             dontwant_rt="no"
       { printf "%s\n" "$as_me:${as_lineno-$LINENO}: result: no" >&5
 printf "%s\n" "no" >&6; }
+      ;;
+  esac
+
+
+  { printf "%s\n" "$as_me:${as_lineno-$LINENO}: checking whether to enable HTTPSRR support" >&5
+printf %s "checking whether to enable HTTPSRR support... " >&6; }
+  OPT_HTTPSRR="default"
+  # Check whether --enable-httpsrr was given.
+if test ${enable_httpsrr+y}
+then :
+  enableval=$enable_httpsrr; OPT_HTTPSRR=$enableval
+fi
+
+  case "$OPT_HTTPSRR" in
+    no)
+            want_httpsrr="no"
+      curl_httpsrr_msg="no      (--enable-httpsrr)"
+      { printf "%s\n" "$as_me:${as_lineno-$LINENO}: result: no" >&5
+printf "%s\n" "no" >&6; }
+      ;;
+    default)
+            want_httpsrr="no"
+      curl_httpsrr_msg="no      (--enable-httpsrr)"
+      { printf "%s\n" "$as_me:${as_lineno-$LINENO}: result: no" >&5
+printf "%s\n" "no" >&6; }
+      ;;
+    *)
+            want_httpsrr="yes"
+      curl_httpsrr_msg="enabled (--disable-httpsrr)"
+      experimental="httpsrr"
+      { printf "%s\n" "$as_me:${as_lineno-$LINENO}: result: yes" >&5
+printf "%s\n" "yes" >&6; }
       ;;
   esac
 
@@ -6869,7 +6900,7 @@ fi
 
 
 
-CADDY=caddy
+CADDY=/usr/bin/caddy
 
 # Check whether --with-test-caddy was given.
 if test ${with_test_caddy+y}
@@ -6877,6 +6908,20 @@ then :
   withval=$with_test_caddy; CADDY=$withval
   if test X"$OPT_CADDY" = "Xno" ; then
       CADDY=""
+  fi
+
+fi
+
+
+
+VSFTPD=/usr/sbin/vsftpd
+
+# Check whether --with-test-vsftpd was given.
+if test ${with_test_vsftpd+y}
+then :
+  withval=$with_test_vsftpd; VSFTPD=$withval
+  if test X"$OPT_VSFTPD" = "Xno" ; then
+      VSFTPD=""
   fi
 
 fi
@@ -17297,51 +17342,6 @@ else
 fi
 
 
-{ printf "%s\n" "$as_me:${as_lineno-$LINENO}: checking for inline" >&5
-printf %s "checking for inline... " >&6; }
-if test ${ac_cv_c_inline+y}
-then :
-  printf %s "(cached) " >&6
-else $as_nop
-  ac_cv_c_inline=no
-for ac_kw in inline __inline__ __inline; do
-  cat confdefs.h - <<_ACEOF >conftest.$ac_ext
-/* end confdefs.h.  */
-#ifndef __cplusplus
-typedef int foo_t;
-static $ac_kw foo_t static_foo (void) {return 0; }
-$ac_kw foo_t foo (void) {return 0; }
-#endif
-
-_ACEOF
-if ac_fn_c_try_compile "$LINENO"
-then :
-  ac_cv_c_inline=$ac_kw
-fi
-rm -f core conftest.err conftest.$ac_objext conftest.beam conftest.$ac_ext
-  test "$ac_cv_c_inline" != no && break
-done
-
-fi
-{ printf "%s\n" "$as_me:${as_lineno-$LINENO}: result: $ac_cv_c_inline" >&5
-printf "%s\n" "$ac_cv_c_inline" >&6; }
-
-case $ac_cv_c_inline in
-  inline | yes) ;;
-  *)
-    case $ac_cv_c_inline in
-      no) ac_val=;;
-      *) ac_val=$ac_cv_c_inline;;
-    esac
-    cat >>confdefs.h <<_ACEOF
-#ifndef __cplusplus
-#define inline $ac_val
-#endif
-_ACEOF
-    ;;
-esac
-
-
 
 
   { printf "%s\n" "$as_me:${as_lineno-$LINENO}: checking if cpp -P is needed" >&5
@@ -17998,6 +17998,8 @@ printf "%s\n" "gcc '$compiler_num' (raw: '$gccver')" >&6; }
 printf "%s\n" "no" >&6; }
   fi
 
+  case $host in
+    mips-sgi-irix*)
 
     { printf "%s\n" "$as_me:${as_lineno-$LINENO}: checking if compiler is SGI MIPSpro C" >&5
 printf %s "checking if compiler is SGI MIPSpro C... " >&6; }
@@ -18259,6 +18261,8 @@ printf "%s\n" "yes" >&6; }
 printf "%s\n" "no" >&6; }
   fi
 
+    ;;
+  esac
 
   { printf "%s\n" "$as_me:${as_lineno-$LINENO}: checking if compiler is SunPro C" >&5
 printf %s "checking if compiler is SunPro C... " >&6; }
@@ -22620,32 +22624,6 @@ fi
 
 
 
-{ printf "%s\n" "$as_me:${as_lineno-$LINENO}: checking whether to build documentation" >&5
-printf %s "checking whether to build documentation... " >&6; }
-# Check whether --enable-docs was given.
-if test ${enable_docs+y}
-then :
-  enableval=$enable_docs;  case "$enableval" in
-  no)
-       { printf "%s\n" "$as_me:${as_lineno-$LINENO}: result: no" >&5
-printf "%s\n" "no" >&6; }
-       BUILD_DOCS=0
-       curl_docs_msg="no"
-       ;;
-  *)   { printf "%s\n" "$as_me:${as_lineno-$LINENO}: result: yes" >&5
-printf "%s\n" "yes" >&6; }
-       BUILD_DOCS=1
-       ;;
-  esac
-else $as_nop
-  { printf "%s\n" "$as_me:${as_lineno-$LINENO}: result: yes" >&5
-printf "%s\n" "yes" >&6; }
-       BUILD_DOCS=1
-
-fi
-
-
-
 { printf "%s\n" "$as_me:${as_lineno-$LINENO}: checking whether to provide built-in manual" >&5
 printf %s "checking whether to provide built-in manual... " >&6; }
 # Check whether --enable-manual was given.
@@ -22667,6 +22645,34 @@ printf "%s\n" "yes" >&6; }
        USE_MANUAL="1"
 
 fi
+
+
+
+{ printf "%s\n" "$as_me:${as_lineno-$LINENO}: checking whether to build documentation" >&5
+printf %s "checking whether to build documentation... " >&6; }
+# Check whether --enable-docs was given.
+if test ${enable_docs+y}
+then :
+  enableval=$enable_docs;  case "$enableval" in
+  no)
+       { printf "%s\n" "$as_me:${as_lineno-$LINENO}: result: no" >&5
+printf "%s\n" "no" >&6; }
+       BUILD_DOCS=0
+              USE_MANUAL=0
+       curl_docs_msg="no"
+       ;;
+  *)   { printf "%s\n" "$as_me:${as_lineno-$LINENO}: result: yes" >&5
+printf "%s\n" "yes" >&6; }
+       BUILD_DOCS=1
+       ;;
+  esac
+else $as_nop
+  { printf "%s\n" "$as_me:${as_lineno-$LINENO}: result: yes" >&5
+printf "%s\n" "yes" >&6; }
+       BUILD_DOCS=1
+
+fi
+
 
 
 { printf "%s\n" "$as_me:${as_lineno-$LINENO}: checking whether to enable generation of C code" >&5
@@ -25154,7 +25160,7 @@ fi
 if test "$ipv6" = yes; then
   curl_ipv6_msg="enabled"
 
-printf "%s\n" "#define ENABLE_IPV6 1" >>confdefs.h
+printf "%s\n" "#define USE_IPV6 1" >>confdefs.h
 
   IPV6_ENABLED=1
 
@@ -28539,9 +28545,6 @@ else $as_nop
 fi
 
 
-        USE_RUSTLS="yes"
-        ssl_msg="rustls"
-
         LIB_RUSTLS="$PREFIX_RUSTLS/lib$libsuff"
         if test "$PREFIX_RUSTLS" != "/usr" ; then
           SSL_LDFLAGS="-L$LIB_RUSTLS"
@@ -28723,8 +28726,15 @@ printf "%s\n" "$as_me: pkg-config: SSL_CPPFLAGS: \"$SSL_CPPFLAGS\"" >&6;}
       LIB_RUSTLS=`echo $SSL_LDFLAGS | sed -e 's/^-L//'`
 
                                           LIBS="$SSL_LIBS $LIBS"
-      USE_RUSTLS="yes"
       ssl_msg="rustls"
+
+printf "%s\n" "#define USE_RUSTLS 1" >>confdefs.h
+
+      USE_RUSTLS=1
+
+      USE_RUSTLS="yes"
+      RUSTLS_ENABLED=1
+      test rustls != "$DEFAULT_SSL_BACKEND" || VALID_DEFAULT_SSL_BACKEND=yes
     else
       as_fn_error $? "pkg-config: Could not find rustls" "$LINENO" 5
     fi
@@ -28752,6 +28762,15 @@ printf "%s\n" "$as_me: Added $LIB_RUSTLS to CURL_LIBRARY_PATH" >&6;}
   fi
 
   test -z "$ssl_msg" || ssl_backends="${ssl_backends:+$ssl_backends, }$ssl_msg"
+
+  if test X"$OPT_RUSTLS" != Xno &&
+    test "$RUSTLS_ENABLED" != "1"; then
+    { printf "%s\n" "$as_me:${as_lineno-$LINENO}: OPT_RUSTLS: $OPT_RUSTLS" >&5
+printf "%s\n" "$as_me: OPT_RUSTLS: $OPT_RUSTLS" >&6;}
+    { printf "%s\n" "$as_me:${as_lineno-$LINENO}: RUSTLS_ENABLED: $RUSTLS_ENABLED" >&5
+printf "%s\n" "$as_me: RUSTLS_ENABLED: $RUSTLS_ENABLED" >&6;}
+    as_fn_error $? "--with-rustls was given but Rustls could not be detected" "$LINENO" 5
+  fi
 fi
 
 
@@ -30271,9 +30290,6 @@ else
   CURL_LT_SHLIB_USE_VERSIONED_SYMBOLS_TRUE='#'
   CURL_LT_SHLIB_USE_VERSIONED_SYMBOLS_FALSE=
 fi
-
-
-CURL_PLIST_VERSION="$CURLVERSION"
 
 
 
@@ -40850,7 +40866,7 @@ printf %s "checking if ioctlsocket FIONBIO is compilable... " >&6; }
 int main (void)
 {
 
-        int flags = 0;
+        unsigned long flags = 0;
         if(0 != ioctlsocket(0, FIONBIO, &flags))
           return 1;
 
@@ -44248,7 +44264,8 @@ printf "%s\n" "$as_me: WARNING: cannot determine non-blocking socket method." >&
   fi
 
 
-# Extract the first word of "perl", so it can be a program name with args.
+if test "x$BUILD_DOCS" != "x0" -o "x$USE_MANUAL" != "x0"; then
+  # Extract the first word of "perl", so it can be a program name with args.
 set dummy perl; ac_word=$2
 { printf "%s\n" "$as_me:${as_lineno-$LINENO}: checking for $ac_word" >&5
 printf %s "checking for $ac_word... " >&6; }
@@ -44296,11 +44313,9 @@ fi
 
 
 
-if test -z "$PERL"; then
-    { printf "%s\n" "$as_me:${as_lineno-$LINENO}: WARNING: disabling documentation" >&5
-printf "%s\n" "$as_me: WARNING: disabling documentation" >&2;}
-  BUILD_DOCS=0
-  curl_docs_msg="no"
+  if test -z "$PERL"; then
+    as_fn_error $? "perl was not found, needed for docs and manual" "$LINENO" 5
+  fi
 fi
 
  if test x"$BUILD_DOCS" = x1; then
@@ -44718,6 +44733,9 @@ rm -f core conftest.err conftest.$ac_objext conftest.beam \
 
 printf "%s\n" "#define USE_ARES 1" >>confdefs.h
 
+
+printf "%s\n" "#define CARES_NO_DEPRECATED 1" >>confdefs.h
+
       USE_ARES=1
 
       curl_res_msg="c-ares"
@@ -44924,6 +44942,25 @@ printf "%s\n" "#define USE_THREADS_WIN32 1" >>confdefs.h
     as_fn_error $? "Threaded resolver enabled but no thread library found" "$LINENO" 5
   fi
 fi
+
+ac_fn_c_check_header_compile "$LINENO" "dirent.h" "ac_cv_header_dirent_h" "$ac_includes_default"
+if test "x$ac_cv_header_dirent_h" = xyes
+then :
+
+printf "%s\n" "#define HAVE_DIRENT_H 1" >>confdefs.h
+
+    ac_fn_c_check_func "$LINENO" "opendir" "ac_cv_func_opendir"
+if test "x$ac_cv_func_opendir" = xyes
+then :
+
+printf "%s\n" "#define HAVE_OPENDIR 1" >>confdefs.h
+
+fi
+
+
+
+fi
+
 
 
       { printf "%s\n" "$as_me:${as_lineno-$LINENO}: checking convert -I options to -isystem" >&5
@@ -45214,54 +45251,6 @@ else $as_nop
 printf "%s\n" "yes" >&6; }
 
 fi
-
-
-
-    OPT_NTLM_WB="default"
-  # Check whether --enable-ntlm-wb was given.
-if test ${enable_ntlm_wb+y}
-then :
-  enableval=$enable_ntlm_wb; OPT_NTLM_WB=$enableval
-fi
-
-  want_ntlm_wb_file="/usr/bin/ntlm_auth"
-  case "$OPT_NTLM_WB" in
-    no)
-            want_ntlm_wb="no"
-      ;;
-    default)
-            want_ntlm_wb="yes"
-      ;;
-    *)
-            want_ntlm_wb="yes"
-      if test -n "$enableval" && test "$enableval" != "yes"; then
-        want_ntlm_wb_file="$enableval"
-      fi
-      ;;
-  esac
-
-
-
-      { printf "%s\n" "$as_me:${as_lineno-$LINENO}: checking whether to enable NTLM delegation to winbind's helper" >&5
-printf %s "checking whether to enable NTLM delegation to winbind's helper... " >&6; }
-  if test "$curl_cv_native_windows" = "yes" ||
-    test "x$SSL_ENABLED" = "x"; then
-    want_ntlm_wb_file=""
-    want_ntlm_wb="no"
-  elif test "x$ac_cv_func_fork" != "xyes"; then
-        want_ntlm_wb="no"
-  fi
-  { printf "%s\n" "$as_me:${as_lineno-$LINENO}: result: $want_ntlm_wb" >&5
-printf "%s\n" "$want_ntlm_wb" >&6; }
-  if test "$want_ntlm_wb" = "yes"; then
-
-printf "%s\n" "#define NTLM_WB_ENABLED 1" >>confdefs.h
-
-
-printf "%s\n" "#define NTLM_WB_FILE \"$want_ntlm_wb_file\"" >>confdefs.h
-
-    NTLM_WB_ENABLED=1
-  fi
 
 
 { printf "%s\n" "$as_me:${as_lineno-$LINENO}: checking whether to enable TLS-SRP authentication" >&5
@@ -45738,6 +45727,16 @@ printf "%s\n" "#define CURL_DISABLE_HSTS 1" >>confdefs.h
 
 fi
 
+
+if test "x$want_httpsrr" != "xno"; then
+  { printf "%s\n" "$as_me:${as_lineno-$LINENO}: result: HTTPSRR support is available" >&5
+printf "%s\n" "HTTPSRR support is available" >&6; }
+
+printf "%s\n" "#define USE_HTTPSRR 1" >>confdefs.h
+
+  experimental="$experimental HTTPSRR"
+fi
+
 if test "x$want_ech" != "xno"; then
   { printf "%s\n" "$as_me:${as_lineno-$LINENO}: checking whether ECH support is available" >&5
 printf %s "checking whether ECH support is available... " >&6; }
@@ -45745,23 +45744,53 @@ printf %s "checking whether ECH support is available... " >&6; }
     ECH_ENABLED=0
   ECH_SUPPORT=''
 
-      if test "x$OPENSSL_ENABLED" = "x1"; then
+    if test "x$OPENSSL_ENABLED" = "x1"; then
 
-  for ac_func in SSL_get_ech_status
+  for ac_func in SSL_ech_set1_echconfig
 do :
-  ac_fn_c_check_func "$LINENO" "SSL_get_ech_status" "ac_cv_func_SSL_get_ech_status"
-if test "x$ac_cv_func_SSL_get_ech_status" = xyes
+  ac_fn_c_check_func "$LINENO" "SSL_ech_set1_echconfig" "ac_cv_func_SSL_ech_set1_echconfig"
+if test "x$ac_cv_func_SSL_ech_set1_echconfig" = xyes
 then :
-  printf "%s\n" "#define HAVE_SSL_GET_ECH_STATUS 1" >>confdefs.h
- ECH_SUPPORT="ECH support available (OpenSSL with SSL_get_ech_status)"
+  printf "%s\n" "#define HAVE_SSL_ECH_SET1_ECHCONFIG 1" >>confdefs.h
+ ECH_SUPPORT="ECH support available via OpenSSL with SSL_ech_set1_echconfig"
       ECH_ENABLED=1
 fi
 
 done
+  fi
+    if test "x$OPENSSL_ENABLED" = "x1"; then
 
-    fi
+  for ac_func in SSL_set1_ech_config_list
+do :
+  ac_fn_c_check_func "$LINENO" "SSL_set1_ech_config_list" "ac_cv_func_SSL_set1_ech_config_list"
+if test "x$ac_cv_func_SSL_set1_ech_config_list" = xyes
+then :
+  printf "%s\n" "#define HAVE_SSL_SET1_ECH_CONFIG_LIST 1" >>confdefs.h
+ ECH_SUPPORT="ECH support available via boringssl with SSL_set1_ech_config_list"
+      ECH_ENABLED=1
+fi
+
+done
+  fi
+  if test "x$WOLFSSL_ENABLED" = "x1"; then
+
+  for ac_func in wolfSSL_CTX_GenerateEchConfig
+do :
+  ac_fn_c_check_func "$LINENO" "wolfSSL_CTX_GenerateEchConfig" "ac_cv_func_wolfSSL_CTX_GenerateEchConfig"
+if test "x$ac_cv_func_wolfSSL_CTX_GenerateEchConfig" = xyes
+then :
+  printf "%s\n" "#define HAVE_WOLFSSL_CTX_GENERATEECHCONFIG 1" >>confdefs.h
+ ECH_SUPPORT="ECH support available via WolfSSL with wolfSSL_CTX_GenerateEchConfig"
+      ECH_ENABLED=1
+fi
+
+done
+  fi
 
     if test "x$ECH_ENABLED" = "x1"; then
+
+printf "%s\n" "#define USE_HTTPSRR 1" >>confdefs.h
+
 
 printf "%s\n" "#define USE_ECH 1" >>confdefs.h
 
@@ -45959,11 +45988,6 @@ if test "x$CURL_DISABLE_NTLM" != "x1"; then
   if test "x$use_curl_ntlm_core" = "xyes" \
       -o "x$USE_WINDOWS_SSPI" = "x1"; then
     SUPPORT_FEATURES="$SUPPORT_FEATURES NTLM"
-
-    if test "x$CURL_DISABLE_HTTP" != "x1" -a \
-        "x$NTLM_WB_ENABLED" = "x1"; then
-      SUPPORT_FEATURES="$SUPPORT_FEATURES NTLM_WB"
-    fi
   fi
 fi
 
@@ -46017,10 +46041,6 @@ printf "%s\n" "no" >&6; }
 else
   { printf "%s\n" "$as_me:${as_lineno-$LINENO}: result: no" >&5
 printf "%s\n" "no" >&6; }
-fi
-
-if test "x$ECH_ENABLED" = "x1"; then
-  SUPPORT_FEATURES="$SUPPORT_FEATURES ECH"
 fi
 
 if test ${ac_cv_sizeof_curl_off_t} -gt 4; then
@@ -46345,7 +46365,7 @@ if test "x$want_curldebug_assumed" = "xyes" &&
   ac_configure_args="$ac_configure_args --enable-curldebug"
 fi
 
-ac_config_files="$ac_config_files Makefile docs/Makefile docs/examples/Makefile docs/libcurl/Makefile docs/libcurl/opts/Makefile docs/cmdline-opts/Makefile include/Makefile include/curl/Makefile src/Makefile lib/Makefile scripts/Makefile lib/libcurl.vers lib/libcurl.plist tests/Makefile tests/config tests/certs/Makefile tests/certs/scripts/Makefile tests/data/Makefile tests/server/Makefile tests/libtest/Makefile tests/unit/Makefile tests/http/config.ini tests/http/Makefile tests/http/clients/Makefile packages/Makefile packages/vms/Makefile curl-config libcurl.pc"
+ac_config_files="$ac_config_files Makefile docs/Makefile docs/examples/Makefile docs/libcurl/Makefile docs/libcurl/opts/Makefile docs/cmdline-opts/Makefile include/Makefile include/curl/Makefile src/Makefile lib/Makefile scripts/Makefile lib/libcurl.vers tests/Makefile tests/config tests/certs/Makefile tests/certs/scripts/Makefile tests/data/Makefile tests/server/Makefile tests/libtest/Makefile tests/unit/Makefile tests/http/config.ini tests/http/Makefile tests/http/clients/Makefile packages/Makefile packages/vms/Makefile curl-config libcurl.pc"
 
 cat >confcache <<\_ACEOF
 # This file is a shell script that caches the results of configure
@@ -47531,7 +47551,6 @@ do
     "lib/Makefile") CONFIG_FILES="$CONFIG_FILES lib/Makefile" ;;
     "scripts/Makefile") CONFIG_FILES="$CONFIG_FILES scripts/Makefile" ;;
     "lib/libcurl.vers") CONFIG_FILES="$CONFIG_FILES lib/libcurl.vers" ;;
-    "lib/libcurl.plist") CONFIG_FILES="$CONFIG_FILES lib/libcurl.plist" ;;
     "tests/Makefile") CONFIG_FILES="$CONFIG_FILES tests/Makefile" ;;
     "tests/config") CONFIG_FILES="$CONFIG_FILES tests/config" ;;
     "tests/certs/Makefile") CONFIG_FILES="$CONFIG_FILES tests/certs/Makefile" ;;

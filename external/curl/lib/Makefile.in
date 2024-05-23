@@ -179,7 +179,7 @@ am__configure_deps = $(am__aclocal_m4_deps) $(CONFIGURE_DEPENDENCIES) \
 DIST_COMMON = $(srcdir)/Makefile.am $(am__DIST_COMMON)
 mkinstalldirs = $(install_sh) -d
 CONFIG_HEADER = curl_config.h
-CONFIG_CLEAN_FILES = libcurl.vers libcurl.plist
+CONFIG_CLEAN_FILES = libcurl.vers
 CONFIG_CLEAN_VPATH_FILES =
 am__vpath_adj_setup = srcdirstrip=`echo "$(srcdir)" | sed 's|.|.|g'`;
 am__vpath_adj = case $$p in \
@@ -217,45 +217,44 @@ am__libcurl_la_SOURCES_DIST = altsvc.c amigaos.c asyn-ares.c \
 	cfilters.c conncache.c connect.c content_encoding.c cookie.c \
 	curl_addrinfo.c curl_des.c curl_endian.c curl_fnmatch.c \
 	curl_get_line.c curl_gethostname.c curl_gssapi.c \
-	curl_memrchr.c curl_multibyte.c curl_ntlm_core.c \
-	curl_ntlm_wb.c curl_path.c curl_range.c curl_rtmp.c \
-	curl_sasl.c curl_sha512_256.c curl_sspi.c curl_threads.c \
-	curl_trc.c cw-out.c dict.c doh.c dynbuf.c dynhds.c easy.c \
-	easygetopt.c easyoptions.c escape.c file.c fileinfo.c fopen.c \
-	formdata.c ftp.c ftplistparser.c getenv.c getinfo.c gopher.c \
-	hash.c headers.c hmac.c hostasyn.c hostip.c hostip4.c \
-	hostip6.c hostsyn.c hsts.c http.c http1.c http2.c \
-	http_aws_sigv4.c http_chunks.c http_digest.c http_negotiate.c \
-	http_ntlm.c http_proxy.c idn.c if2ip.c imap.c inet_ntop.c \
-	inet_pton.c krb5.c ldap.c llist.c macos.c md4.c md5.c \
-	memdebug.c mime.c mprintf.c mqtt.c multi.c netrc.c nonblock.c \
-	noproxy.c openldap.c parsedate.c pingpong.c pop3.c progress.c \
-	psl.c rand.c rename.c request.c rtsp.c select.c sendf.c \
-	setopt.c sha256.c share.c slist.c smb.c smtp.c socketpair.c \
-	socks.c socks_gssapi.c socks_sspi.c speedcheck.c splay.c \
-	strcase.c strdup.c strerror.c strtok.c strtoofft.c \
-	system_win32.c telnet.c tftp.c timediff.c timeval.c transfer.c \
-	url.c urlapi.c version.c version_win32.c warnless.c ws.c \
-	vauth/cleartext.c vauth/cram.c vauth/digest.c \
-	vauth/digest_sspi.c vauth/gsasl.c vauth/krb5_gssapi.c \
-	vauth/krb5_sspi.c vauth/ntlm.c vauth/ntlm_sspi.c \
-	vauth/oauth2.c vauth/spnego_gssapi.c vauth/spnego_sspi.c \
-	vauth/vauth.c vtls/bearssl.c vtls/gtls.c vtls/hostcheck.c \
-	vtls/keylog.c vtls/mbedtls.c vtls/mbedtls_threadlock.c \
-	vtls/openssl.c vtls/rustls.c vtls/schannel.c \
-	vtls/schannel_verify.c vtls/sectransp.c vtls/vtls.c \
-	vtls/wolfssl.c vtls/x509asn1.c vquic/curl_msh3.c \
-	vquic/curl_ngtcp2.c vquic/curl_osslq.c vquic/curl_quiche.c \
-	vquic/vquic.c vquic/vquic-tls.c vssh/libssh.c vssh/libssh2.c \
-	vssh/wolfssh.c altsvc.h amigaos.h arpa_telnet.h asyn.h bufq.h \
-	bufref.h c-hyper.h cf-h1-proxy.h cf-h2-proxy.h cf-haproxy.h \
-	cf-https-connect.h cf-socket.h cfilters.h conncache.h \
-	connect.h content_encoding.h cookie.h curl_addrinfo.h \
-	curl_base64.h curl_ctype.h curl_des.h curl_endian.h \
-	curl_fnmatch.h curl_get_line.h curl_gethostname.h \
-	curl_gssapi.h curl_hmac.h curl_krb5.h curl_ldap.h curl_md4.h \
-	curl_md5.h curl_memory.h curl_memrchr.h curl_multibyte.h \
-	curl_ntlm_core.h curl_ntlm_wb.h curl_path.h curl_printf.h \
+	curl_memrchr.c curl_multibyte.c curl_ntlm_core.c curl_path.c \
+	curl_range.c curl_rtmp.c curl_sasl.c curl_sha512_256.c \
+	curl_sspi.c curl_threads.c curl_trc.c cw-out.c dict.c \
+	dllmain.c doh.c dynbuf.c dynhds.c easy.c easygetopt.c \
+	easyoptions.c escape.c file.c fileinfo.c fopen.c formdata.c \
+	ftp.c ftplistparser.c getenv.c getinfo.c gopher.c hash.c \
+	headers.c hmac.c hostasyn.c hostip.c hostip4.c hostip6.c \
+	hostsyn.c hsts.c http.c http1.c http2.c http_aws_sigv4.c \
+	http_chunks.c http_digest.c http_negotiate.c http_ntlm.c \
+	http_proxy.c idn.c if2ip.c imap.c inet_ntop.c inet_pton.c \
+	krb5.c ldap.c llist.c macos.c md4.c md5.c memdebug.c mime.c \
+	mprintf.c mqtt.c multi.c netrc.c nonblock.c noproxy.c \
+	openldap.c parsedate.c pingpong.c pop3.c progress.c psl.c \
+	rand.c rename.c request.c rtsp.c select.c sendf.c setopt.c \
+	sha256.c share.c slist.c smb.c smtp.c socketpair.c socks.c \
+	socks_gssapi.c socks_sspi.c speedcheck.c splay.c strcase.c \
+	strdup.c strerror.c strtok.c strtoofft.c system_win32.c \
+	telnet.c tftp.c timediff.c timeval.c transfer.c url.c urlapi.c \
+	version.c version_win32.c warnless.c ws.c vauth/cleartext.c \
+	vauth/cram.c vauth/digest.c vauth/digest_sspi.c vauth/gsasl.c \
+	vauth/krb5_gssapi.c vauth/krb5_sspi.c vauth/ntlm.c \
+	vauth/ntlm_sspi.c vauth/oauth2.c vauth/spnego_gssapi.c \
+	vauth/spnego_sspi.c vauth/vauth.c vtls/bearssl.c \
+	vtls/cipher_suite.c vtls/gtls.c vtls/hostcheck.c vtls/keylog.c \
+	vtls/mbedtls.c vtls/mbedtls_threadlock.c vtls/openssl.c \
+	vtls/rustls.c vtls/schannel.c vtls/schannel_verify.c \
+	vtls/sectransp.c vtls/vtls.c vtls/wolfssl.c vtls/x509asn1.c \
+	vquic/curl_msh3.c vquic/curl_ngtcp2.c vquic/curl_osslq.c \
+	vquic/curl_quiche.c vquic/vquic.c vquic/vquic-tls.c \
+	vssh/libssh.c vssh/libssh2.c vssh/wolfssh.c altsvc.h amigaos.h \
+	arpa_telnet.h asyn.h bufq.h bufref.h c-hyper.h cf-h1-proxy.h \
+	cf-h2-proxy.h cf-haproxy.h cf-https-connect.h cf-socket.h \
+	cfilters.h conncache.h connect.h content_encoding.h cookie.h \
+	curl_addrinfo.h curl_base64.h curl_ctype.h curl_des.h \
+	curl_endian.h curl_fnmatch.h curl_get_line.h \
+	curl_gethostname.h curl_gssapi.h curl_hmac.h curl_krb5.h \
+	curl_ldap.h curl_md4.h curl_md5.h curl_memory.h curl_memrchr.h \
+	curl_multibyte.h curl_ntlm_core.h curl_path.h curl_printf.h \
 	curl_range.h curl_rtmp.h curl_sasl.h curl_setup.h \
 	curl_setup_once.h curl_sha256.h curl_sha512_256.h curl_sspi.h \
 	curl_threads.h curl_trc.h curlx.h cw-out.h dict.h doh.h \
@@ -274,13 +273,13 @@ am__libcurl_la_SOURCES_DIST = altsvc.c amigaos.c asyn-ares.c \
 	telnet.h tftp.h timediff.h timeval.h transfer.h url.h \
 	urlapi-int.h urldata.h version_win32.h warnless.h ws.h \
 	vauth/digest.h vauth/ntlm.h vauth/vauth.h vtls/bearssl.h \
-	vtls/gtls.h vtls/hostcheck.h vtls/keylog.h vtls/mbedtls.h \
-	vtls/mbedtls_threadlock.h vtls/openssl.h vtls/rustls.h \
-	vtls/schannel.h vtls/schannel_int.h vtls/sectransp.h \
-	vtls/vtls.h vtls/vtls_int.h vtls/wolfssl.h vtls/x509asn1.h \
-	vquic/curl_msh3.h vquic/curl_ngtcp2.h vquic/curl_osslq.h \
-	vquic/curl_quiche.h vquic/vquic.h vquic/vquic_int.h \
-	vquic/vquic-tls.h vssh/ssh.h libcurl.rc
+	vtls/cipher_suite.h vtls/gtls.h vtls/hostcheck.h vtls/keylog.h \
+	vtls/mbedtls.h vtls/mbedtls_threadlock.h vtls/openssl.h \
+	vtls/rustls.h vtls/schannel.h vtls/schannel_int.h \
+	vtls/sectransp.h vtls/vtls.h vtls/vtls_int.h vtls/wolfssl.h \
+	vtls/x509asn1.h vquic/curl_msh3.h vquic/curl_ngtcp2.h \
+	vquic/curl_osslq.h vquic/curl_quiche.h vquic/vquic.h \
+	vquic/vquic_int.h vquic/vquic-tls.h vssh/ssh.h libcurl.rc
 am__objects_1 = libcurl_la-altsvc.lo libcurl_la-amigaos.lo \
 	libcurl_la-asyn-ares.lo libcurl_la-asyn-thread.lo \
 	libcurl_la-base64.lo libcurl_la-bufq.lo libcurl_la-bufref.lo \
@@ -294,13 +293,13 @@ am__objects_1 = libcurl_la-altsvc.lo libcurl_la-amigaos.lo \
 	libcurl_la-curl_fnmatch.lo libcurl_la-curl_get_line.lo \
 	libcurl_la-curl_gethostname.lo libcurl_la-curl_gssapi.lo \
 	libcurl_la-curl_memrchr.lo libcurl_la-curl_multibyte.lo \
-	libcurl_la-curl_ntlm_core.lo libcurl_la-curl_ntlm_wb.lo \
-	libcurl_la-curl_path.lo libcurl_la-curl_range.lo \
-	libcurl_la-curl_rtmp.lo libcurl_la-curl_sasl.lo \
-	libcurl_la-curl_sha512_256.lo libcurl_la-curl_sspi.lo \
-	libcurl_la-curl_threads.lo libcurl_la-curl_trc.lo \
-	libcurl_la-cw-out.lo libcurl_la-dict.lo libcurl_la-doh.lo \
-	libcurl_la-dynbuf.lo libcurl_la-dynhds.lo libcurl_la-easy.lo \
+	libcurl_la-curl_ntlm_core.lo libcurl_la-curl_path.lo \
+	libcurl_la-curl_range.lo libcurl_la-curl_rtmp.lo \
+	libcurl_la-curl_sasl.lo libcurl_la-curl_sha512_256.lo \
+	libcurl_la-curl_sspi.lo libcurl_la-curl_threads.lo \
+	libcurl_la-curl_trc.lo libcurl_la-cw-out.lo libcurl_la-dict.lo \
+	libcurl_la-dllmain.lo libcurl_la-doh.lo libcurl_la-dynbuf.lo \
+	libcurl_la-dynhds.lo libcurl_la-easy.lo \
 	libcurl_la-easygetopt.lo libcurl_la-easyoptions.lo \
 	libcurl_la-escape.lo libcurl_la-file.lo libcurl_la-fileinfo.lo \
 	libcurl_la-fopen.lo libcurl_la-formdata.lo libcurl_la-ftp.lo \
@@ -347,7 +346,8 @@ am__objects_2 = vauth/libcurl_la-cleartext.lo vauth/libcurl_la-cram.lo \
 	vauth/libcurl_la-ntlm_sspi.lo vauth/libcurl_la-oauth2.lo \
 	vauth/libcurl_la-spnego_gssapi.lo \
 	vauth/libcurl_la-spnego_sspi.lo vauth/libcurl_la-vauth.lo
-am__objects_3 = vtls/libcurl_la-bearssl.lo vtls/libcurl_la-gtls.lo \
+am__objects_3 = vtls/libcurl_la-bearssl.lo \
+	vtls/libcurl_la-cipher_suite.lo vtls/libcurl_la-gtls.lo \
 	vtls/libcurl_la-hostcheck.lo vtls/libcurl_la-keylog.lo \
 	vtls/libcurl_la-mbedtls.lo \
 	vtls/libcurl_la-mbedtls_threadlock.lo \
@@ -393,20 +393,21 @@ am__objects_11 = libcurlu_la-altsvc.lo libcurlu_la-amigaos.lo \
 	libcurlu_la-curl_get_line.lo libcurlu_la-curl_gethostname.lo \
 	libcurlu_la-curl_gssapi.lo libcurlu_la-curl_memrchr.lo \
 	libcurlu_la-curl_multibyte.lo libcurlu_la-curl_ntlm_core.lo \
-	libcurlu_la-curl_ntlm_wb.lo libcurlu_la-curl_path.lo \
-	libcurlu_la-curl_range.lo libcurlu_la-curl_rtmp.lo \
-	libcurlu_la-curl_sasl.lo libcurlu_la-curl_sha512_256.lo \
-	libcurlu_la-curl_sspi.lo libcurlu_la-curl_threads.lo \
-	libcurlu_la-curl_trc.lo libcurlu_la-cw-out.lo \
-	libcurlu_la-dict.lo libcurlu_la-doh.lo libcurlu_la-dynbuf.lo \
-	libcurlu_la-dynhds.lo libcurlu_la-easy.lo \
-	libcurlu_la-easygetopt.lo libcurlu_la-easyoptions.lo \
-	libcurlu_la-escape.lo libcurlu_la-file.lo \
-	libcurlu_la-fileinfo.lo libcurlu_la-fopen.lo \
-	libcurlu_la-formdata.lo libcurlu_la-ftp.lo \
-	libcurlu_la-ftplistparser.lo libcurlu_la-getenv.lo \
-	libcurlu_la-getinfo.lo libcurlu_la-gopher.lo \
-	libcurlu_la-hash.lo libcurlu_la-headers.lo libcurlu_la-hmac.lo \
+	libcurlu_la-curl_path.lo libcurlu_la-curl_range.lo \
+	libcurlu_la-curl_rtmp.lo libcurlu_la-curl_sasl.lo \
+	libcurlu_la-curl_sha512_256.lo libcurlu_la-curl_sspi.lo \
+	libcurlu_la-curl_threads.lo libcurlu_la-curl_trc.lo \
+	libcurlu_la-cw-out.lo libcurlu_la-dict.lo \
+	libcurlu_la-dllmain.lo libcurlu_la-doh.lo \
+	libcurlu_la-dynbuf.lo libcurlu_la-dynhds.lo \
+	libcurlu_la-easy.lo libcurlu_la-easygetopt.lo \
+	libcurlu_la-easyoptions.lo libcurlu_la-escape.lo \
+	libcurlu_la-file.lo libcurlu_la-fileinfo.lo \
+	libcurlu_la-fopen.lo libcurlu_la-formdata.lo \
+	libcurlu_la-ftp.lo libcurlu_la-ftplistparser.lo \
+	libcurlu_la-getenv.lo libcurlu_la-getinfo.lo \
+	libcurlu_la-gopher.lo libcurlu_la-hash.lo \
+	libcurlu_la-headers.lo libcurlu_la-hmac.lo \
 	libcurlu_la-hostasyn.lo libcurlu_la-hostip.lo \
 	libcurlu_la-hostip4.lo libcurlu_la-hostip6.lo \
 	libcurlu_la-hostsyn.lo libcurlu_la-hsts.lo libcurlu_la-http.lo \
@@ -449,7 +450,8 @@ am__objects_12 = vauth/libcurlu_la-cleartext.lo \
 	vauth/libcurlu_la-ntlm_sspi.lo vauth/libcurlu_la-oauth2.lo \
 	vauth/libcurlu_la-spnego_gssapi.lo \
 	vauth/libcurlu_la-spnego_sspi.lo vauth/libcurlu_la-vauth.lo
-am__objects_13 = vtls/libcurlu_la-bearssl.lo vtls/libcurlu_la-gtls.lo \
+am__objects_13 = vtls/libcurlu_la-bearssl.lo \
+	vtls/libcurlu_la-cipher_suite.lo vtls/libcurlu_la-gtls.lo \
 	vtls/libcurlu_la-hostcheck.lo vtls/libcurlu_la-keylog.lo \
 	vtls/libcurlu_la-mbedtls.lo \
 	vtls/libcurlu_la-mbedtls_threadlock.lo \
@@ -516,7 +518,6 @@ am__depfiles_remade = ./$(DEPDIR)/libcurl_la-altsvc.Plo \
 	./$(DEPDIR)/libcurl_la-curl_memrchr.Plo \
 	./$(DEPDIR)/libcurl_la-curl_multibyte.Plo \
 	./$(DEPDIR)/libcurl_la-curl_ntlm_core.Plo \
-	./$(DEPDIR)/libcurl_la-curl_ntlm_wb.Plo \
 	./$(DEPDIR)/libcurl_la-curl_path.Plo \
 	./$(DEPDIR)/libcurl_la-curl_range.Plo \
 	./$(DEPDIR)/libcurl_la-curl_rtmp.Plo \
@@ -526,7 +527,9 @@ am__depfiles_remade = ./$(DEPDIR)/libcurl_la-altsvc.Plo \
 	./$(DEPDIR)/libcurl_la-curl_threads.Plo \
 	./$(DEPDIR)/libcurl_la-curl_trc.Plo \
 	./$(DEPDIR)/libcurl_la-cw-out.Plo \
-	./$(DEPDIR)/libcurl_la-dict.Plo ./$(DEPDIR)/libcurl_la-doh.Plo \
+	./$(DEPDIR)/libcurl_la-dict.Plo \
+	./$(DEPDIR)/libcurl_la-dllmain.Plo \
+	./$(DEPDIR)/libcurl_la-doh.Plo \
 	./$(DEPDIR)/libcurl_la-dynbuf.Plo \
 	./$(DEPDIR)/libcurl_la-dynhds.Plo \
 	./$(DEPDIR)/libcurl_la-easy.Plo \
@@ -645,7 +648,6 @@ am__depfiles_remade = ./$(DEPDIR)/libcurl_la-altsvc.Plo \
 	./$(DEPDIR)/libcurlu_la-curl_memrchr.Plo \
 	./$(DEPDIR)/libcurlu_la-curl_multibyte.Plo \
 	./$(DEPDIR)/libcurlu_la-curl_ntlm_core.Plo \
-	./$(DEPDIR)/libcurlu_la-curl_ntlm_wb.Plo \
 	./$(DEPDIR)/libcurlu_la-curl_path.Plo \
 	./$(DEPDIR)/libcurlu_la-curl_range.Plo \
 	./$(DEPDIR)/libcurlu_la-curl_rtmp.Plo \
@@ -656,6 +658,7 @@ am__depfiles_remade = ./$(DEPDIR)/libcurl_la-altsvc.Plo \
 	./$(DEPDIR)/libcurlu_la-curl_trc.Plo \
 	./$(DEPDIR)/libcurlu_la-cw-out.Plo \
 	./$(DEPDIR)/libcurlu_la-dict.Plo \
+	./$(DEPDIR)/libcurlu_la-dllmain.Plo \
 	./$(DEPDIR)/libcurlu_la-doh.Plo \
 	./$(DEPDIR)/libcurlu_la-dynbuf.Plo \
 	./$(DEPDIR)/libcurlu_la-dynhds.Plo \
@@ -795,6 +798,7 @@ am__depfiles_remade = ./$(DEPDIR)/libcurl_la-altsvc.Plo \
 	vssh/$(DEPDIR)/libcurlu_la-libssh2.Plo \
 	vssh/$(DEPDIR)/libcurlu_la-wolfssh.Plo \
 	vtls/$(DEPDIR)/libcurl_la-bearssl.Plo \
+	vtls/$(DEPDIR)/libcurl_la-cipher_suite.Plo \
 	vtls/$(DEPDIR)/libcurl_la-gtls.Plo \
 	vtls/$(DEPDIR)/libcurl_la-hostcheck.Plo \
 	vtls/$(DEPDIR)/libcurl_la-keylog.Plo \
@@ -809,6 +813,7 @@ am__depfiles_remade = ./$(DEPDIR)/libcurl_la-altsvc.Plo \
 	vtls/$(DEPDIR)/libcurl_la-wolfssl.Plo \
 	vtls/$(DEPDIR)/libcurl_la-x509asn1.Plo \
 	vtls/$(DEPDIR)/libcurlu_la-bearssl.Plo \
+	vtls/$(DEPDIR)/libcurlu_la-cipher_suite.Plo \
 	vtls/$(DEPDIR)/libcurlu_la-gtls.Plo \
 	vtls/$(DEPDIR)/libcurlu_la-hostcheck.Plo \
 	vtls/$(DEPDIR)/libcurlu_la-keylog.Plo \
@@ -868,8 +873,7 @@ am__define_uniq_tagged_files = \
   done | $(am__uniquify_input)`
 am__DIST_COMMON = $(srcdir)/Makefile.in $(srcdir)/Makefile.inc \
 	$(srcdir)/Makefile.soname $(srcdir)/curl_config.h.in \
-	$(srcdir)/libcurl.plist.in $(srcdir)/libcurl.vers.in \
-	$(top_srcdir)/depcomp
+	$(srcdir)/libcurl.vers.in $(top_srcdir)/depcomp
 DISTFILES = $(DIST_COMMON) $(DIST_SOURCES) $(TEXINFOS) $(EXTRA_DIST)
 ACLOCAL = @ACLOCAL@
 AMTAR = @AMTAR@
@@ -919,7 +923,6 @@ CURL_DISABLE_TFTP = @CURL_DISABLE_TFTP@
 CURL_LT_SHLIB_VERSIONED_FLAVOUR = @CURL_LT_SHLIB_VERSIONED_FLAVOUR@
 CURL_NETWORK_AND_TIME_LIBS = @CURL_NETWORK_AND_TIME_LIBS@
 CURL_NETWORK_LIBS = @CURL_NETWORK_LIBS@
-CURL_PLIST_VERSION = @CURL_PLIST_VERSION@
 CURL_WITH_MULTI_SSL = @CURL_WITH_MULTI_SSL@
 CYGPATH_W = @CYGPATH_W@
 DEFAULT_SSL_BACKEND = @DEFAULT_SSL_BACKEND@
@@ -1043,6 +1046,7 @@ USE_WOLFSSH = @USE_WOLFSSH@
 USE_WOLFSSL = @USE_WOLFSSL@
 VERSION = @VERSION@
 VERSIONNUM = @VERSIONNUM@
+VSFTPD = @VSFTPD@
 ZLIB_LIBS = @ZLIB_LIBS@
 ZSH_FUNCTIONS_DIR = @ZSH_FUNCTIONS_DIR@
 abs_builddir = @abs_builddir@
@@ -1125,11 +1129,10 @@ top_srcdir = @top_srcdir@
 ###########################################################################
 AUTOMAKE_OPTIONS = foreign nostdinc
 CMAKE_DIST = CMakeLists.txt curl_config.h.cmake
-EXTRA_DIST = Makefile.mk config-win32.h config-win32ce.h config-plan9.h    \
- config-riscos.h config-mac.h curl_config.h.in config-dos.h                \
- libcurl.plist libcurl.rc config-amigaos.h config-win32ce.h                \
- config-os400.h setup-os400.h $(CMAKE_DIST) setup-win32.h .checksrc \
- Makefile.soname
+EXTRA_DIST = Makefile.mk config-win32.h config-win32ce.h config-plan9.h \
+ config-riscos.h config-mac.h curl_config.h.in config-dos.h libcurl.rc  \
+ config-amigaos.h config-win32ce.h config-os400.h setup-os400.h         \
+ $(CMAKE_DIST) setup-win32.h .checksrc Makefile.soname
 
 lib_LTLIBRARIES = libcurl.la
 @BUILD_UNITTESTS_FALSE@noinst_LTLIBRARIES = 
@@ -1175,6 +1178,7 @@ LIB_VAUTH_HFILES = \
 
 LIB_VTLS_CFILES = \
   vtls/bearssl.c            \
+  vtls/cipher_suite.c       \
   vtls/gtls.c               \
   vtls/hostcheck.c          \
   vtls/keylog.c             \
@@ -1191,6 +1195,7 @@ LIB_VTLS_CFILES = \
 
 LIB_VTLS_HFILES = \
   vtls/bearssl.h            \
+  vtls/cipher_suite.h       \
   vtls/gtls.h               \
   vtls/hostcheck.h          \
   vtls/keylog.h             \
@@ -1260,7 +1265,6 @@ LIB_CFILES = \
   curl_memrchr.c     \
   curl_multibyte.c   \
   curl_ntlm_core.c   \
-  curl_ntlm_wb.c     \
   curl_path.c        \
   curl_range.c       \
   curl_rtmp.c        \
@@ -1271,6 +1275,7 @@ LIB_CFILES = \
   curl_trc.c         \
   cw-out.c           \
   dict.c             \
+  dllmain.c          \
   doh.c              \
   dynbuf.c           \
   dynhds.c           \
@@ -1402,7 +1407,6 @@ LIB_HFILES = \
   curl_memrchr.h     \
   curl_multibyte.h   \
   curl_ntlm_core.h   \
-  curl_ntlm_wb.h     \
   curl_path.h        \
   curl_printf.h      \
   curl_range.h       \
@@ -1584,8 +1588,6 @@ distclean-hdr:
 	-rm -f curl_config.h stamp-h1
 libcurl.vers: $(top_builddir)/config.status $(srcdir)/libcurl.vers.in
 	cd $(top_builddir) && $(SHELL) ./config.status $(subdir)/$@
-libcurl.plist: $(top_builddir)/config.status $(srcdir)/libcurl.plist.in
-	cd $(top_builddir) && $(SHELL) ./config.status $(subdir)/$@
 
 install-libLTLIBRARIES: $(lib_LTLIBRARIES)
 	@$(NORMAL_INSTALL)
@@ -1671,6 +1673,8 @@ vtls/$(DEPDIR)/$(am__dirstamp):
 	@$(MKDIR_P) vtls/$(DEPDIR)
 	@: > vtls/$(DEPDIR)/$(am__dirstamp)
 vtls/libcurl_la-bearssl.lo: vtls/$(am__dirstamp) \
+	vtls/$(DEPDIR)/$(am__dirstamp)
+vtls/libcurl_la-cipher_suite.lo: vtls/$(am__dirstamp) \
 	vtls/$(DEPDIR)/$(am__dirstamp)
 vtls/libcurl_la-gtls.lo: vtls/$(am__dirstamp) \
 	vtls/$(DEPDIR)/$(am__dirstamp)
@@ -1758,6 +1762,8 @@ vauth/libcurlu_la-spnego_sspi.lo: vauth/$(am__dirstamp) \
 vauth/libcurlu_la-vauth.lo: vauth/$(am__dirstamp) \
 	vauth/$(DEPDIR)/$(am__dirstamp)
 vtls/libcurlu_la-bearssl.lo: vtls/$(am__dirstamp) \
+	vtls/$(DEPDIR)/$(am__dirstamp)
+vtls/libcurlu_la-cipher_suite.lo: vtls/$(am__dirstamp) \
 	vtls/$(DEPDIR)/$(am__dirstamp)
 vtls/libcurlu_la-gtls.lo: vtls/$(am__dirstamp) \
 	vtls/$(DEPDIR)/$(am__dirstamp)
@@ -1849,7 +1855,6 @@ distclean-compile:
 @AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/libcurl_la-curl_memrchr.Plo@am__quote@ # am--include-marker
 @AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/libcurl_la-curl_multibyte.Plo@am__quote@ # am--include-marker
 @AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/libcurl_la-curl_ntlm_core.Plo@am__quote@ # am--include-marker
-@AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/libcurl_la-curl_ntlm_wb.Plo@am__quote@ # am--include-marker
 @AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/libcurl_la-curl_path.Plo@am__quote@ # am--include-marker
 @AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/libcurl_la-curl_range.Plo@am__quote@ # am--include-marker
 @AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/libcurl_la-curl_rtmp.Plo@am__quote@ # am--include-marker
@@ -1860,6 +1865,7 @@ distclean-compile:
 @AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/libcurl_la-curl_trc.Plo@am__quote@ # am--include-marker
 @AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/libcurl_la-cw-out.Plo@am__quote@ # am--include-marker
 @AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/libcurl_la-dict.Plo@am__quote@ # am--include-marker
+@AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/libcurl_la-dllmain.Plo@am__quote@ # am--include-marker
 @AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/libcurl_la-doh.Plo@am__quote@ # am--include-marker
 @AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/libcurl_la-dynbuf.Plo@am__quote@ # am--include-marker
 @AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/libcurl_la-dynhds.Plo@am__quote@ # am--include-marker
@@ -1982,7 +1988,6 @@ distclean-compile:
 @AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/libcurlu_la-curl_memrchr.Plo@am__quote@ # am--include-marker
 @AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/libcurlu_la-curl_multibyte.Plo@am__quote@ # am--include-marker
 @AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/libcurlu_la-curl_ntlm_core.Plo@am__quote@ # am--include-marker
-@AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/libcurlu_la-curl_ntlm_wb.Plo@am__quote@ # am--include-marker
 @AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/libcurlu_la-curl_path.Plo@am__quote@ # am--include-marker
 @AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/libcurlu_la-curl_range.Plo@am__quote@ # am--include-marker
 @AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/libcurlu_la-curl_rtmp.Plo@am__quote@ # am--include-marker
@@ -1993,6 +1998,7 @@ distclean-compile:
 @AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/libcurlu_la-curl_trc.Plo@am__quote@ # am--include-marker
 @AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/libcurlu_la-cw-out.Plo@am__quote@ # am--include-marker
 @AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/libcurlu_la-dict.Plo@am__quote@ # am--include-marker
+@AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/libcurlu_la-dllmain.Plo@am__quote@ # am--include-marker
 @AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/libcurlu_la-doh.Plo@am__quote@ # am--include-marker
 @AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/libcurlu_la-dynbuf.Plo@am__quote@ # am--include-marker
 @AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/libcurlu_la-dynhds.Plo@am__quote@ # am--include-marker
@@ -2132,6 +2138,7 @@ distclean-compile:
 @AMDEP_TRUE@@am__include@ @am__quote@vssh/$(DEPDIR)/libcurlu_la-libssh2.Plo@am__quote@ # am--include-marker
 @AMDEP_TRUE@@am__include@ @am__quote@vssh/$(DEPDIR)/libcurlu_la-wolfssh.Plo@am__quote@ # am--include-marker
 @AMDEP_TRUE@@am__include@ @am__quote@vtls/$(DEPDIR)/libcurl_la-bearssl.Plo@am__quote@ # am--include-marker
+@AMDEP_TRUE@@am__include@ @am__quote@vtls/$(DEPDIR)/libcurl_la-cipher_suite.Plo@am__quote@ # am--include-marker
 @AMDEP_TRUE@@am__include@ @am__quote@vtls/$(DEPDIR)/libcurl_la-gtls.Plo@am__quote@ # am--include-marker
 @AMDEP_TRUE@@am__include@ @am__quote@vtls/$(DEPDIR)/libcurl_la-hostcheck.Plo@am__quote@ # am--include-marker
 @AMDEP_TRUE@@am__include@ @am__quote@vtls/$(DEPDIR)/libcurl_la-keylog.Plo@am__quote@ # am--include-marker
@@ -2146,6 +2153,7 @@ distclean-compile:
 @AMDEP_TRUE@@am__include@ @am__quote@vtls/$(DEPDIR)/libcurl_la-wolfssl.Plo@am__quote@ # am--include-marker
 @AMDEP_TRUE@@am__include@ @am__quote@vtls/$(DEPDIR)/libcurl_la-x509asn1.Plo@am__quote@ # am--include-marker
 @AMDEP_TRUE@@am__include@ @am__quote@vtls/$(DEPDIR)/libcurlu_la-bearssl.Plo@am__quote@ # am--include-marker
+@AMDEP_TRUE@@am__include@ @am__quote@vtls/$(DEPDIR)/libcurlu_la-cipher_suite.Plo@am__quote@ # am--include-marker
 @AMDEP_TRUE@@am__include@ @am__quote@vtls/$(DEPDIR)/libcurlu_la-gtls.Plo@am__quote@ # am--include-marker
 @AMDEP_TRUE@@am__include@ @am__quote@vtls/$(DEPDIR)/libcurlu_la-hostcheck.Plo@am__quote@ # am--include-marker
 @AMDEP_TRUE@@am__include@ @am__quote@vtls/$(DEPDIR)/libcurlu_la-keylog.Plo@am__quote@ # am--include-marker
@@ -2386,13 +2394,6 @@ libcurl_la-curl_ntlm_core.lo: curl_ntlm_core.c
 @AMDEP_TRUE@@am__fastdepCC_FALSE@	DEPDIR=$(DEPDIR) $(CCDEPMODE) $(depcomp) @AMDEPBACKSLASH@
 @am__fastdepCC_FALSE@	$(AM_V_CC@am__nodep@)$(LIBTOOL) $(AM_V_lt) --tag=CC $(AM_LIBTOOLFLAGS) $(LIBTOOLFLAGS) --mode=compile $(CC) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(libcurl_la_CPPFLAGS) $(CPPFLAGS) $(libcurl_la_CFLAGS) $(CFLAGS) -c -o libcurl_la-curl_ntlm_core.lo `test -f 'curl_ntlm_core.c' || echo '$(srcdir)/'`curl_ntlm_core.c
 
-libcurl_la-curl_ntlm_wb.lo: curl_ntlm_wb.c
-@am__fastdepCC_TRUE@	$(AM_V_CC)$(LIBTOOL) $(AM_V_lt) --tag=CC $(AM_LIBTOOLFLAGS) $(LIBTOOLFLAGS) --mode=compile $(CC) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(libcurl_la_CPPFLAGS) $(CPPFLAGS) $(libcurl_la_CFLAGS) $(CFLAGS) -MT libcurl_la-curl_ntlm_wb.lo -MD -MP -MF $(DEPDIR)/libcurl_la-curl_ntlm_wb.Tpo -c -o libcurl_la-curl_ntlm_wb.lo `test -f 'curl_ntlm_wb.c' || echo '$(srcdir)/'`curl_ntlm_wb.c
-@am__fastdepCC_TRUE@	$(AM_V_at)$(am__mv) $(DEPDIR)/libcurl_la-curl_ntlm_wb.Tpo $(DEPDIR)/libcurl_la-curl_ntlm_wb.Plo
-@AMDEP_TRUE@@am__fastdepCC_FALSE@	$(AM_V_CC)source='curl_ntlm_wb.c' object='libcurl_la-curl_ntlm_wb.lo' libtool=yes @AMDEPBACKSLASH@
-@AMDEP_TRUE@@am__fastdepCC_FALSE@	DEPDIR=$(DEPDIR) $(CCDEPMODE) $(depcomp) @AMDEPBACKSLASH@
-@am__fastdepCC_FALSE@	$(AM_V_CC@am__nodep@)$(LIBTOOL) $(AM_V_lt) --tag=CC $(AM_LIBTOOLFLAGS) $(LIBTOOLFLAGS) --mode=compile $(CC) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(libcurl_la_CPPFLAGS) $(CPPFLAGS) $(libcurl_la_CFLAGS) $(CFLAGS) -c -o libcurl_la-curl_ntlm_wb.lo `test -f 'curl_ntlm_wb.c' || echo '$(srcdir)/'`curl_ntlm_wb.c
-
 libcurl_la-curl_path.lo: curl_path.c
 @am__fastdepCC_TRUE@	$(AM_V_CC)$(LIBTOOL) $(AM_V_lt) --tag=CC $(AM_LIBTOOLFLAGS) $(LIBTOOLFLAGS) --mode=compile $(CC) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(libcurl_la_CPPFLAGS) $(CPPFLAGS) $(libcurl_la_CFLAGS) $(CFLAGS) -MT libcurl_la-curl_path.lo -MD -MP -MF $(DEPDIR)/libcurl_la-curl_path.Tpo -c -o libcurl_la-curl_path.lo `test -f 'curl_path.c' || echo '$(srcdir)/'`curl_path.c
 @am__fastdepCC_TRUE@	$(AM_V_at)$(am__mv) $(DEPDIR)/libcurl_la-curl_path.Tpo $(DEPDIR)/libcurl_la-curl_path.Plo
@@ -2462,6 +2463,13 @@ libcurl_la-dict.lo: dict.c
 @AMDEP_TRUE@@am__fastdepCC_FALSE@	$(AM_V_CC)source='dict.c' object='libcurl_la-dict.lo' libtool=yes @AMDEPBACKSLASH@
 @AMDEP_TRUE@@am__fastdepCC_FALSE@	DEPDIR=$(DEPDIR) $(CCDEPMODE) $(depcomp) @AMDEPBACKSLASH@
 @am__fastdepCC_FALSE@	$(AM_V_CC@am__nodep@)$(LIBTOOL) $(AM_V_lt) --tag=CC $(AM_LIBTOOLFLAGS) $(LIBTOOLFLAGS) --mode=compile $(CC) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(libcurl_la_CPPFLAGS) $(CPPFLAGS) $(libcurl_la_CFLAGS) $(CFLAGS) -c -o libcurl_la-dict.lo `test -f 'dict.c' || echo '$(srcdir)/'`dict.c
+
+libcurl_la-dllmain.lo: dllmain.c
+@am__fastdepCC_TRUE@	$(AM_V_CC)$(LIBTOOL) $(AM_V_lt) --tag=CC $(AM_LIBTOOLFLAGS) $(LIBTOOLFLAGS) --mode=compile $(CC) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(libcurl_la_CPPFLAGS) $(CPPFLAGS) $(libcurl_la_CFLAGS) $(CFLAGS) -MT libcurl_la-dllmain.lo -MD -MP -MF $(DEPDIR)/libcurl_la-dllmain.Tpo -c -o libcurl_la-dllmain.lo `test -f 'dllmain.c' || echo '$(srcdir)/'`dllmain.c
+@am__fastdepCC_TRUE@	$(AM_V_at)$(am__mv) $(DEPDIR)/libcurl_la-dllmain.Tpo $(DEPDIR)/libcurl_la-dllmain.Plo
+@AMDEP_TRUE@@am__fastdepCC_FALSE@	$(AM_V_CC)source='dllmain.c' object='libcurl_la-dllmain.lo' libtool=yes @AMDEPBACKSLASH@
+@AMDEP_TRUE@@am__fastdepCC_FALSE@	DEPDIR=$(DEPDIR) $(CCDEPMODE) $(depcomp) @AMDEPBACKSLASH@
+@am__fastdepCC_FALSE@	$(AM_V_CC@am__nodep@)$(LIBTOOL) $(AM_V_lt) --tag=CC $(AM_LIBTOOLFLAGS) $(LIBTOOLFLAGS) --mode=compile $(CC) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(libcurl_la_CPPFLAGS) $(CPPFLAGS) $(libcurl_la_CFLAGS) $(CFLAGS) -c -o libcurl_la-dllmain.lo `test -f 'dllmain.c' || echo '$(srcdir)/'`dllmain.c
 
 libcurl_la-doh.lo: doh.c
 @am__fastdepCC_TRUE@	$(AM_V_CC)$(LIBTOOL) $(AM_V_lt) --tag=CC $(AM_LIBTOOLFLAGS) $(LIBTOOLFLAGS) --mode=compile $(CC) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(libcurl_la_CPPFLAGS) $(CPPFLAGS) $(libcurl_la_CFLAGS) $(CFLAGS) -MT libcurl_la-doh.lo -MD -MP -MF $(DEPDIR)/libcurl_la-doh.Tpo -c -o libcurl_la-doh.lo `test -f 'doh.c' || echo '$(srcdir)/'`doh.c
@@ -3219,6 +3227,13 @@ vtls/libcurl_la-bearssl.lo: vtls/bearssl.c
 @AMDEP_TRUE@@am__fastdepCC_FALSE@	DEPDIR=$(DEPDIR) $(CCDEPMODE) $(depcomp) @AMDEPBACKSLASH@
 @am__fastdepCC_FALSE@	$(AM_V_CC@am__nodep@)$(LIBTOOL) $(AM_V_lt) --tag=CC $(AM_LIBTOOLFLAGS) $(LIBTOOLFLAGS) --mode=compile $(CC) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(libcurl_la_CPPFLAGS) $(CPPFLAGS) $(libcurl_la_CFLAGS) $(CFLAGS) -c -o vtls/libcurl_la-bearssl.lo `test -f 'vtls/bearssl.c' || echo '$(srcdir)/'`vtls/bearssl.c
 
+vtls/libcurl_la-cipher_suite.lo: vtls/cipher_suite.c
+@am__fastdepCC_TRUE@	$(AM_V_CC)$(LIBTOOL) $(AM_V_lt) --tag=CC $(AM_LIBTOOLFLAGS) $(LIBTOOLFLAGS) --mode=compile $(CC) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(libcurl_la_CPPFLAGS) $(CPPFLAGS) $(libcurl_la_CFLAGS) $(CFLAGS) -MT vtls/libcurl_la-cipher_suite.lo -MD -MP -MF vtls/$(DEPDIR)/libcurl_la-cipher_suite.Tpo -c -o vtls/libcurl_la-cipher_suite.lo `test -f 'vtls/cipher_suite.c' || echo '$(srcdir)/'`vtls/cipher_suite.c
+@am__fastdepCC_TRUE@	$(AM_V_at)$(am__mv) vtls/$(DEPDIR)/libcurl_la-cipher_suite.Tpo vtls/$(DEPDIR)/libcurl_la-cipher_suite.Plo
+@AMDEP_TRUE@@am__fastdepCC_FALSE@	$(AM_V_CC)source='vtls/cipher_suite.c' object='vtls/libcurl_la-cipher_suite.lo' libtool=yes @AMDEPBACKSLASH@
+@AMDEP_TRUE@@am__fastdepCC_FALSE@	DEPDIR=$(DEPDIR) $(CCDEPMODE) $(depcomp) @AMDEPBACKSLASH@
+@am__fastdepCC_FALSE@	$(AM_V_CC@am__nodep@)$(LIBTOOL) $(AM_V_lt) --tag=CC $(AM_LIBTOOLFLAGS) $(LIBTOOLFLAGS) --mode=compile $(CC) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(libcurl_la_CPPFLAGS) $(CPPFLAGS) $(libcurl_la_CFLAGS) $(CFLAGS) -c -o vtls/libcurl_la-cipher_suite.lo `test -f 'vtls/cipher_suite.c' || echo '$(srcdir)/'`vtls/cipher_suite.c
+
 vtls/libcurl_la-gtls.lo: vtls/gtls.c
 @am__fastdepCC_TRUE@	$(AM_V_CC)$(LIBTOOL) $(AM_V_lt) --tag=CC $(AM_LIBTOOLFLAGS) $(LIBTOOLFLAGS) --mode=compile $(CC) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(libcurl_la_CPPFLAGS) $(CPPFLAGS) $(libcurl_la_CFLAGS) $(CFLAGS) -MT vtls/libcurl_la-gtls.lo -MD -MP -MF vtls/$(DEPDIR)/libcurl_la-gtls.Tpo -c -o vtls/libcurl_la-gtls.lo `test -f 'vtls/gtls.c' || echo '$(srcdir)/'`vtls/gtls.c
 @am__fastdepCC_TRUE@	$(AM_V_at)$(am__mv) vtls/$(DEPDIR)/libcurl_la-gtls.Tpo vtls/$(DEPDIR)/libcurl_la-gtls.Plo
@@ -3569,13 +3584,6 @@ libcurlu_la-curl_ntlm_core.lo: curl_ntlm_core.c
 @AMDEP_TRUE@@am__fastdepCC_FALSE@	DEPDIR=$(DEPDIR) $(CCDEPMODE) $(depcomp) @AMDEPBACKSLASH@
 @am__fastdepCC_FALSE@	$(AM_V_CC@am__nodep@)$(LIBTOOL) $(AM_V_lt) --tag=CC $(AM_LIBTOOLFLAGS) $(LIBTOOLFLAGS) --mode=compile $(CC) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(libcurlu_la_CPPFLAGS) $(CPPFLAGS) $(libcurlu_la_CFLAGS) $(CFLAGS) -c -o libcurlu_la-curl_ntlm_core.lo `test -f 'curl_ntlm_core.c' || echo '$(srcdir)/'`curl_ntlm_core.c
 
-libcurlu_la-curl_ntlm_wb.lo: curl_ntlm_wb.c
-@am__fastdepCC_TRUE@	$(AM_V_CC)$(LIBTOOL) $(AM_V_lt) --tag=CC $(AM_LIBTOOLFLAGS) $(LIBTOOLFLAGS) --mode=compile $(CC) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(libcurlu_la_CPPFLAGS) $(CPPFLAGS) $(libcurlu_la_CFLAGS) $(CFLAGS) -MT libcurlu_la-curl_ntlm_wb.lo -MD -MP -MF $(DEPDIR)/libcurlu_la-curl_ntlm_wb.Tpo -c -o libcurlu_la-curl_ntlm_wb.lo `test -f 'curl_ntlm_wb.c' || echo '$(srcdir)/'`curl_ntlm_wb.c
-@am__fastdepCC_TRUE@	$(AM_V_at)$(am__mv) $(DEPDIR)/libcurlu_la-curl_ntlm_wb.Tpo $(DEPDIR)/libcurlu_la-curl_ntlm_wb.Plo
-@AMDEP_TRUE@@am__fastdepCC_FALSE@	$(AM_V_CC)source='curl_ntlm_wb.c' object='libcurlu_la-curl_ntlm_wb.lo' libtool=yes @AMDEPBACKSLASH@
-@AMDEP_TRUE@@am__fastdepCC_FALSE@	DEPDIR=$(DEPDIR) $(CCDEPMODE) $(depcomp) @AMDEPBACKSLASH@
-@am__fastdepCC_FALSE@	$(AM_V_CC@am__nodep@)$(LIBTOOL) $(AM_V_lt) --tag=CC $(AM_LIBTOOLFLAGS) $(LIBTOOLFLAGS) --mode=compile $(CC) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(libcurlu_la_CPPFLAGS) $(CPPFLAGS) $(libcurlu_la_CFLAGS) $(CFLAGS) -c -o libcurlu_la-curl_ntlm_wb.lo `test -f 'curl_ntlm_wb.c' || echo '$(srcdir)/'`curl_ntlm_wb.c
-
 libcurlu_la-curl_path.lo: curl_path.c
 @am__fastdepCC_TRUE@	$(AM_V_CC)$(LIBTOOL) $(AM_V_lt) --tag=CC $(AM_LIBTOOLFLAGS) $(LIBTOOLFLAGS) --mode=compile $(CC) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(libcurlu_la_CPPFLAGS) $(CPPFLAGS) $(libcurlu_la_CFLAGS) $(CFLAGS) -MT libcurlu_la-curl_path.lo -MD -MP -MF $(DEPDIR)/libcurlu_la-curl_path.Tpo -c -o libcurlu_la-curl_path.lo `test -f 'curl_path.c' || echo '$(srcdir)/'`curl_path.c
 @am__fastdepCC_TRUE@	$(AM_V_at)$(am__mv) $(DEPDIR)/libcurlu_la-curl_path.Tpo $(DEPDIR)/libcurlu_la-curl_path.Plo
@@ -3645,6 +3653,13 @@ libcurlu_la-dict.lo: dict.c
 @AMDEP_TRUE@@am__fastdepCC_FALSE@	$(AM_V_CC)source='dict.c' object='libcurlu_la-dict.lo' libtool=yes @AMDEPBACKSLASH@
 @AMDEP_TRUE@@am__fastdepCC_FALSE@	DEPDIR=$(DEPDIR) $(CCDEPMODE) $(depcomp) @AMDEPBACKSLASH@
 @am__fastdepCC_FALSE@	$(AM_V_CC@am__nodep@)$(LIBTOOL) $(AM_V_lt) --tag=CC $(AM_LIBTOOLFLAGS) $(LIBTOOLFLAGS) --mode=compile $(CC) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(libcurlu_la_CPPFLAGS) $(CPPFLAGS) $(libcurlu_la_CFLAGS) $(CFLAGS) -c -o libcurlu_la-dict.lo `test -f 'dict.c' || echo '$(srcdir)/'`dict.c
+
+libcurlu_la-dllmain.lo: dllmain.c
+@am__fastdepCC_TRUE@	$(AM_V_CC)$(LIBTOOL) $(AM_V_lt) --tag=CC $(AM_LIBTOOLFLAGS) $(LIBTOOLFLAGS) --mode=compile $(CC) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(libcurlu_la_CPPFLAGS) $(CPPFLAGS) $(libcurlu_la_CFLAGS) $(CFLAGS) -MT libcurlu_la-dllmain.lo -MD -MP -MF $(DEPDIR)/libcurlu_la-dllmain.Tpo -c -o libcurlu_la-dllmain.lo `test -f 'dllmain.c' || echo '$(srcdir)/'`dllmain.c
+@am__fastdepCC_TRUE@	$(AM_V_at)$(am__mv) $(DEPDIR)/libcurlu_la-dllmain.Tpo $(DEPDIR)/libcurlu_la-dllmain.Plo
+@AMDEP_TRUE@@am__fastdepCC_FALSE@	$(AM_V_CC)source='dllmain.c' object='libcurlu_la-dllmain.lo' libtool=yes @AMDEPBACKSLASH@
+@AMDEP_TRUE@@am__fastdepCC_FALSE@	DEPDIR=$(DEPDIR) $(CCDEPMODE) $(depcomp) @AMDEPBACKSLASH@
+@am__fastdepCC_FALSE@	$(AM_V_CC@am__nodep@)$(LIBTOOL) $(AM_V_lt) --tag=CC $(AM_LIBTOOLFLAGS) $(LIBTOOLFLAGS) --mode=compile $(CC) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(libcurlu_la_CPPFLAGS) $(CPPFLAGS) $(libcurlu_la_CFLAGS) $(CFLAGS) -c -o libcurlu_la-dllmain.lo `test -f 'dllmain.c' || echo '$(srcdir)/'`dllmain.c
 
 libcurlu_la-doh.lo: doh.c
 @am__fastdepCC_TRUE@	$(AM_V_CC)$(LIBTOOL) $(AM_V_lt) --tag=CC $(AM_LIBTOOLFLAGS) $(LIBTOOLFLAGS) --mode=compile $(CC) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(libcurlu_la_CPPFLAGS) $(CPPFLAGS) $(libcurlu_la_CFLAGS) $(CFLAGS) -MT libcurlu_la-doh.lo -MD -MP -MF $(DEPDIR)/libcurlu_la-doh.Tpo -c -o libcurlu_la-doh.lo `test -f 'doh.c' || echo '$(srcdir)/'`doh.c
@@ -4402,6 +4417,13 @@ vtls/libcurlu_la-bearssl.lo: vtls/bearssl.c
 @AMDEP_TRUE@@am__fastdepCC_FALSE@	DEPDIR=$(DEPDIR) $(CCDEPMODE) $(depcomp) @AMDEPBACKSLASH@
 @am__fastdepCC_FALSE@	$(AM_V_CC@am__nodep@)$(LIBTOOL) $(AM_V_lt) --tag=CC $(AM_LIBTOOLFLAGS) $(LIBTOOLFLAGS) --mode=compile $(CC) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(libcurlu_la_CPPFLAGS) $(CPPFLAGS) $(libcurlu_la_CFLAGS) $(CFLAGS) -c -o vtls/libcurlu_la-bearssl.lo `test -f 'vtls/bearssl.c' || echo '$(srcdir)/'`vtls/bearssl.c
 
+vtls/libcurlu_la-cipher_suite.lo: vtls/cipher_suite.c
+@am__fastdepCC_TRUE@	$(AM_V_CC)$(LIBTOOL) $(AM_V_lt) --tag=CC $(AM_LIBTOOLFLAGS) $(LIBTOOLFLAGS) --mode=compile $(CC) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(libcurlu_la_CPPFLAGS) $(CPPFLAGS) $(libcurlu_la_CFLAGS) $(CFLAGS) -MT vtls/libcurlu_la-cipher_suite.lo -MD -MP -MF vtls/$(DEPDIR)/libcurlu_la-cipher_suite.Tpo -c -o vtls/libcurlu_la-cipher_suite.lo `test -f 'vtls/cipher_suite.c' || echo '$(srcdir)/'`vtls/cipher_suite.c
+@am__fastdepCC_TRUE@	$(AM_V_at)$(am__mv) vtls/$(DEPDIR)/libcurlu_la-cipher_suite.Tpo vtls/$(DEPDIR)/libcurlu_la-cipher_suite.Plo
+@AMDEP_TRUE@@am__fastdepCC_FALSE@	$(AM_V_CC)source='vtls/cipher_suite.c' object='vtls/libcurlu_la-cipher_suite.lo' libtool=yes @AMDEPBACKSLASH@
+@AMDEP_TRUE@@am__fastdepCC_FALSE@	DEPDIR=$(DEPDIR) $(CCDEPMODE) $(depcomp) @AMDEPBACKSLASH@
+@am__fastdepCC_FALSE@	$(AM_V_CC@am__nodep@)$(LIBTOOL) $(AM_V_lt) --tag=CC $(AM_LIBTOOLFLAGS) $(LIBTOOLFLAGS) --mode=compile $(CC) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(libcurlu_la_CPPFLAGS) $(CPPFLAGS) $(libcurlu_la_CFLAGS) $(CFLAGS) -c -o vtls/libcurlu_la-cipher_suite.lo `test -f 'vtls/cipher_suite.c' || echo '$(srcdir)/'`vtls/cipher_suite.c
+
 vtls/libcurlu_la-gtls.lo: vtls/gtls.c
 @am__fastdepCC_TRUE@	$(AM_V_CC)$(LIBTOOL) $(AM_V_lt) --tag=CC $(AM_LIBTOOLFLAGS) $(LIBTOOLFLAGS) --mode=compile $(CC) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(libcurlu_la_CPPFLAGS) $(CPPFLAGS) $(libcurlu_la_CFLAGS) $(CFLAGS) -MT vtls/libcurlu_la-gtls.lo -MD -MP -MF vtls/$(DEPDIR)/libcurlu_la-gtls.Tpo -c -o vtls/libcurlu_la-gtls.lo `test -f 'vtls/gtls.c' || echo '$(srcdir)/'`vtls/gtls.c
 @am__fastdepCC_TRUE@	$(AM_V_at)$(am__mv) vtls/$(DEPDIR)/libcurlu_la-gtls.Tpo vtls/$(DEPDIR)/libcurlu_la-gtls.Plo
@@ -4730,7 +4752,6 @@ distclean: distclean-am
 	-rm -f ./$(DEPDIR)/libcurl_la-curl_memrchr.Plo
 	-rm -f ./$(DEPDIR)/libcurl_la-curl_multibyte.Plo
 	-rm -f ./$(DEPDIR)/libcurl_la-curl_ntlm_core.Plo
-	-rm -f ./$(DEPDIR)/libcurl_la-curl_ntlm_wb.Plo
 	-rm -f ./$(DEPDIR)/libcurl_la-curl_path.Plo
 	-rm -f ./$(DEPDIR)/libcurl_la-curl_range.Plo
 	-rm -f ./$(DEPDIR)/libcurl_la-curl_rtmp.Plo
@@ -4741,6 +4762,7 @@ distclean: distclean-am
 	-rm -f ./$(DEPDIR)/libcurl_la-curl_trc.Plo
 	-rm -f ./$(DEPDIR)/libcurl_la-cw-out.Plo
 	-rm -f ./$(DEPDIR)/libcurl_la-dict.Plo
+	-rm -f ./$(DEPDIR)/libcurl_la-dllmain.Plo
 	-rm -f ./$(DEPDIR)/libcurl_la-doh.Plo
 	-rm -f ./$(DEPDIR)/libcurl_la-dynbuf.Plo
 	-rm -f ./$(DEPDIR)/libcurl_la-dynhds.Plo
@@ -4863,7 +4885,6 @@ distclean: distclean-am
 	-rm -f ./$(DEPDIR)/libcurlu_la-curl_memrchr.Plo
 	-rm -f ./$(DEPDIR)/libcurlu_la-curl_multibyte.Plo
 	-rm -f ./$(DEPDIR)/libcurlu_la-curl_ntlm_core.Plo
-	-rm -f ./$(DEPDIR)/libcurlu_la-curl_ntlm_wb.Plo
 	-rm -f ./$(DEPDIR)/libcurlu_la-curl_path.Plo
 	-rm -f ./$(DEPDIR)/libcurlu_la-curl_range.Plo
 	-rm -f ./$(DEPDIR)/libcurlu_la-curl_rtmp.Plo
@@ -4874,6 +4895,7 @@ distclean: distclean-am
 	-rm -f ./$(DEPDIR)/libcurlu_la-curl_trc.Plo
 	-rm -f ./$(DEPDIR)/libcurlu_la-cw-out.Plo
 	-rm -f ./$(DEPDIR)/libcurlu_la-dict.Plo
+	-rm -f ./$(DEPDIR)/libcurlu_la-dllmain.Plo
 	-rm -f ./$(DEPDIR)/libcurlu_la-doh.Plo
 	-rm -f ./$(DEPDIR)/libcurlu_la-dynbuf.Plo
 	-rm -f ./$(DEPDIR)/libcurlu_la-dynhds.Plo
@@ -5013,6 +5035,7 @@ distclean: distclean-am
 	-rm -f vssh/$(DEPDIR)/libcurlu_la-libssh2.Plo
 	-rm -f vssh/$(DEPDIR)/libcurlu_la-wolfssh.Plo
 	-rm -f vtls/$(DEPDIR)/libcurl_la-bearssl.Plo
+	-rm -f vtls/$(DEPDIR)/libcurl_la-cipher_suite.Plo
 	-rm -f vtls/$(DEPDIR)/libcurl_la-gtls.Plo
 	-rm -f vtls/$(DEPDIR)/libcurl_la-hostcheck.Plo
 	-rm -f vtls/$(DEPDIR)/libcurl_la-keylog.Plo
@@ -5027,6 +5050,7 @@ distclean: distclean-am
 	-rm -f vtls/$(DEPDIR)/libcurl_la-wolfssl.Plo
 	-rm -f vtls/$(DEPDIR)/libcurl_la-x509asn1.Plo
 	-rm -f vtls/$(DEPDIR)/libcurlu_la-bearssl.Plo
+	-rm -f vtls/$(DEPDIR)/libcurlu_la-cipher_suite.Plo
 	-rm -f vtls/$(DEPDIR)/libcurlu_la-gtls.Plo
 	-rm -f vtls/$(DEPDIR)/libcurlu_la-hostcheck.Plo
 	-rm -f vtls/$(DEPDIR)/libcurlu_la-keylog.Plo
@@ -5113,7 +5137,6 @@ maintainer-clean: maintainer-clean-am
 	-rm -f ./$(DEPDIR)/libcurl_la-curl_memrchr.Plo
 	-rm -f ./$(DEPDIR)/libcurl_la-curl_multibyte.Plo
 	-rm -f ./$(DEPDIR)/libcurl_la-curl_ntlm_core.Plo
-	-rm -f ./$(DEPDIR)/libcurl_la-curl_ntlm_wb.Plo
 	-rm -f ./$(DEPDIR)/libcurl_la-curl_path.Plo
 	-rm -f ./$(DEPDIR)/libcurl_la-curl_range.Plo
 	-rm -f ./$(DEPDIR)/libcurl_la-curl_rtmp.Plo
@@ -5124,6 +5147,7 @@ maintainer-clean: maintainer-clean-am
 	-rm -f ./$(DEPDIR)/libcurl_la-curl_trc.Plo
 	-rm -f ./$(DEPDIR)/libcurl_la-cw-out.Plo
 	-rm -f ./$(DEPDIR)/libcurl_la-dict.Plo
+	-rm -f ./$(DEPDIR)/libcurl_la-dllmain.Plo
 	-rm -f ./$(DEPDIR)/libcurl_la-doh.Plo
 	-rm -f ./$(DEPDIR)/libcurl_la-dynbuf.Plo
 	-rm -f ./$(DEPDIR)/libcurl_la-dynhds.Plo
@@ -5246,7 +5270,6 @@ maintainer-clean: maintainer-clean-am
 	-rm -f ./$(DEPDIR)/libcurlu_la-curl_memrchr.Plo
 	-rm -f ./$(DEPDIR)/libcurlu_la-curl_multibyte.Plo
 	-rm -f ./$(DEPDIR)/libcurlu_la-curl_ntlm_core.Plo
-	-rm -f ./$(DEPDIR)/libcurlu_la-curl_ntlm_wb.Plo
 	-rm -f ./$(DEPDIR)/libcurlu_la-curl_path.Plo
 	-rm -f ./$(DEPDIR)/libcurlu_la-curl_range.Plo
 	-rm -f ./$(DEPDIR)/libcurlu_la-curl_rtmp.Plo
@@ -5257,6 +5280,7 @@ maintainer-clean: maintainer-clean-am
 	-rm -f ./$(DEPDIR)/libcurlu_la-curl_trc.Plo
 	-rm -f ./$(DEPDIR)/libcurlu_la-cw-out.Plo
 	-rm -f ./$(DEPDIR)/libcurlu_la-dict.Plo
+	-rm -f ./$(DEPDIR)/libcurlu_la-dllmain.Plo
 	-rm -f ./$(DEPDIR)/libcurlu_la-doh.Plo
 	-rm -f ./$(DEPDIR)/libcurlu_la-dynbuf.Plo
 	-rm -f ./$(DEPDIR)/libcurlu_la-dynhds.Plo
@@ -5396,6 +5420,7 @@ maintainer-clean: maintainer-clean-am
 	-rm -f vssh/$(DEPDIR)/libcurlu_la-libssh2.Plo
 	-rm -f vssh/$(DEPDIR)/libcurlu_la-wolfssh.Plo
 	-rm -f vtls/$(DEPDIR)/libcurl_la-bearssl.Plo
+	-rm -f vtls/$(DEPDIR)/libcurl_la-cipher_suite.Plo
 	-rm -f vtls/$(DEPDIR)/libcurl_la-gtls.Plo
 	-rm -f vtls/$(DEPDIR)/libcurl_la-hostcheck.Plo
 	-rm -f vtls/$(DEPDIR)/libcurl_la-keylog.Plo
@@ -5410,6 +5435,7 @@ maintainer-clean: maintainer-clean-am
 	-rm -f vtls/$(DEPDIR)/libcurl_la-wolfssl.Plo
 	-rm -f vtls/$(DEPDIR)/libcurl_la-x509asn1.Plo
 	-rm -f vtls/$(DEPDIR)/libcurlu_la-bearssl.Plo
+	-rm -f vtls/$(DEPDIR)/libcurlu_la-cipher_suite.Plo
 	-rm -f vtls/$(DEPDIR)/libcurlu_la-gtls.Plo
 	-rm -f vtls/$(DEPDIR)/libcurlu_la-hostcheck.Plo
 	-rm -f vtls/$(DEPDIR)/libcurlu_la-keylog.Plo

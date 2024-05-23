@@ -1012,6 +1012,9 @@ Introduced in 7.51.0. See libcurl-errors(3).
 ## CURLE_WRITE_ERROR
 Introduced in 7.1. See libcurl-errors(3).
 
+## CURLE_ECH_REQUIRED
+Introduced in 8.8.0. See libcurl-errors(3).
+
 ## CURLFILETYPE_DEVICE_BLOCK
 Introduced in 7.21.0. See CURLOPT_CHUNK_BGN_FUNCTION(3).
 
@@ -1842,6 +1845,9 @@ Introduced in 7.76.0. See CURLOPT_DOH_SSL_VERIFYSTATUS(3).
 
 ## CURLOPT_DOH_URL
 Introduced in 7.62.0. See CURLOPT_DOH_URL(3).
+
+## CURLOPT_ECH
+Introduced in 8.8.0. See CURLOPT_ECH(3).
 
 ## CURLOPT_EGDSOCKET
 Introduced in 7.7. Deprecated since 7.84.0.
@@ -3178,6 +3184,9 @@ Introduced in 7.62.0. See curl_url_get(3).
 ## CURLU_DISALLOW_USER
 Introduced in 7.62.0. See curl_url_get(3).
 
+## CURLU_GET_EMPTY
+Introduced in 8.8.0. See curl_url_get(3).
+
 ## CURLU_GUESS_SCHEME
 Introduced in 7.62.0. See curl_url_get(3).
 
@@ -3381,6 +3390,9 @@ Introduced in 7.77.0. See curl_version_info(3).
 
 ## CURLVERSION_THIRD
 Introduced in 7.12.0. See curl_version_info(3).
+
+## CURLVERSION_TWELFTH
+Introduced in 8.8.0. See curl_version_info(3).
 
 ## CURLWARNING
 Introduced in 7.66.0.

@@ -51,6 +51,7 @@ CURL_CHECK_OPTION_CURLDEBUG
 CURL_CHECK_OPTION_SYMBOL_HIDING
 CURL_CHECK_OPTION_ARES
 CURL_CHECK_OPTION_RT
+CURL_CHECK_OPTION_HTTPSRR
 CURL_CHECK_OPTION_ECH
 
 XC_CHECK_PATH_SEPARATOR
@@ -309,7 +310,7 @@ AS_HELP_STRING([--with-test-nghttpx=PATH],[where to find nghttpx for testing]),
 )
 AC_SUBST(TEST_NGHTTPX)
 
-CADDY=caddy
+CADDY=/usr/bin/caddy
 AC_ARG_WITH(test-caddy,dnl
 AS_HELP_STRING([--with-test-caddy=PATH],[where to find caddy for testing]),
   CADDY=$withval
@@ -318,6 +319,16 @@ AS_HELP_STRING([--with-test-caddy=PATH],[where to find caddy for testing]),
   fi
 )
 AC_SUBST(CADDY)
+
+VSFTPD=/usr/sbin/vsftpd
+AC_ARG_WITH(test-vsftpd,dnl
+AS_HELP_STRING([--with-test-vsftpd=PATH],[where to find vsftpd for testing]),
+  VSFTPD=$withval
+  if test X"$OPT_VSFTPD" = "Xno" ; then
+      VSFTPD=""
+  fi
+)
+AC_SUBST(VSFTPD)
 
 dnl we'd like a httpd+apachectl as test server
 dnl
@@ -495,9 +506,6 @@ else
 fi
 AC_SUBST(REQUIRE_LIB_DEPS)
 AM_CONDITIONAL(USE_EXPLICIT_LIB_DEPS, test x$REQUIRE_LIB_DEPS = xyes)
-
-dnl check if there's a way to force code inline
-AC_C_INLINE
 
 dnl **********************************************************************
 dnl platform/compiler/architecture specific checks/flags
@@ -999,28 +1007,6 @@ AS_HELP_STRING([--disable-mqtt],[Disable MQTT support]),
 )
 
 dnl **********************************************************************
-dnl Check whether to build documentation
-dnl **********************************************************************
-
-AC_MSG_CHECKING([whether to build documentation])
-AC_ARG_ENABLE(docs,
-AS_HELP_STRING([--enable-docs],[Enable documentation])
-AS_HELP_STRING([--disable-docs],[Disable documentation]),
-[ case "$enableval" in
-  no)
-       AC_MSG_RESULT(no)
-       BUILD_DOCS=0
-       curl_docs_msg="no"
-       ;;
-  *)   AC_MSG_RESULT(yes)
-       BUILD_DOCS=1
-       ;;
-  esac ],
-       AC_MSG_RESULT(yes)
-       BUILD_DOCS=1
-)
-
-dnl **********************************************************************
 dnl Check for built-in manual
 dnl **********************************************************************
 
@@ -1041,6 +1027,31 @@ AS_HELP_STRING([--disable-manual],[Disable built-in manual]),
 )
 dnl The actual use of the USE_MANUAL variable is done much later in this
 dnl script to allow other actions to disable it as well.
+
+dnl **********************************************************************
+dnl Check whether to build documentation
+dnl **********************************************************************
+
+AC_MSG_CHECKING([whether to build documentation])
+AC_ARG_ENABLE(docs,
+AS_HELP_STRING([--enable-docs],[Enable documentation])
+AS_HELP_STRING([--disable-docs],[Disable documentation]),
+[ case "$enableval" in
+  no)
+       AC_MSG_RESULT(no)
+       BUILD_DOCS=0
+       dnl disable manual too because it needs built documentation
+       USE_MANUAL=0
+       curl_docs_msg="no"
+       ;;
+  *)   AC_MSG_RESULT(yes)
+       BUILD_DOCS=1
+       ;;
+  esac ],
+       AC_MSG_RESULT(yes)
+       BUILD_DOCS=1
+)
+
 
 dnl ************************************************************
 dnl disable C code generation support
@@ -1697,7 +1708,7 @@ int main(void)
 
 if test "$ipv6" = yes; then
   curl_ipv6_msg="enabled"
-  AC_DEFINE(ENABLE_IPV6, 1, [Define if you want to enable IPv6 support])
+  AC_DEFINE(USE_IPV6, 1, [Define if you want to enable IPv6 support])
   IPV6_ENABLED=1
   AC_SUBST(IPV6_ENABLED)
 
@@ -2494,10 +2505,6 @@ AC_SUBST([CURL_LT_SHLIB_VERSIONED_FLAVOUR],
   ["$versioned_symbols_flavour"])
 AM_CONDITIONAL([CURL_LT_SHLIB_USE_VERSIONED_SYMBOLS],
   [test "x$versioned_symbols" = 'xyes'])
-
-dnl Update .plist file with current version
-AC_SUBST([CURL_PLIST_VERSION],
-  ["$CURLVERSION"])
 
 dnl -------------------------------------------------
 dnl check winidn option before other IDN libraries
@@ -3826,15 +3833,14 @@ AC_CHECK_DECL([fseeko],
 
 CURL_CHECK_NONBLOCKING_SOCKET
 
-AC_PATH_PROG( PERL, perl, ,
-  $PATH:/usr/local/bin/perl:/usr/bin/:/usr/local/bin )
-AC_SUBST(PERL)
+if test "x$BUILD_DOCS" != "x0" -o "x$USE_MANUAL" != "x0"; then
+  AC_PATH_PROG( PERL, perl, ,
+    $PATH:/usr/local/bin/perl:/usr/bin/:/usr/local/bin )
+  AC_SUBST(PERL)
 
-if test -z "$PERL"; then
-  dnl if perl was not found then disable building docs
-  AC_MSG_WARN([disabling documentation])
-  BUILD_DOCS=0
-  curl_docs_msg="no"
+  if test -z "$PERL"; then
+    AC_MSG_ERROR([perl was not found, needed for docs and manual])
+  fi
 fi
 
 dnl set variable for use in automakefile(s)
@@ -3984,6 +3990,12 @@ if test "$want_thres" = "yes" && test "x$USE_THREADS_POSIX" != "x1"; then
     AC_MSG_ERROR([Threaded resolver enabled but no thread library found])
   fi
 fi
+
+AC_CHECK_HEADER(dirent.h,
+  [ AC_DEFINE(HAVE_DIRENT_H, 1, [if you have <dirent.h>])
+    AC_CHECK_FUNC(opendir, AC_DEFINE(HAVE_OPENDIR, 1, [if you have opendir]) )
+  ]
+)
 
 CURL_CONVERT_INCLUDE_TO_ISYSTEM
 
@@ -4175,10 +4187,6 @@ AS_HELP_STRING([--disable-ntlm],[Disable NTLM support]),
   esac ],
        AC_MSG_RESULT(yes)
 )
-
-CURL_CHECK_OPTION_NTLM_WB
-
-CURL_CHECK_NTLM_WB
 
 dnl ************************************************************
 dnl disable TLS-SRP authentication
@@ -4537,6 +4545,16 @@ if test "x$hsts" != "xyes"; then
   AC_DEFINE(CURL_DISABLE_HSTS, 1, [disable alt-svc])
 fi
 
+
+dnl *************************************************************
+dnl check whether HTTPSRR support if desired
+dnl
+if test "x$want_httpsrr" != "xno"; then
+  AC_MSG_RESULT([HTTPSRR support is available])
+  AC_DEFINE(USE_HTTPSRR, 1, [enable HTTPS RR support])
+  experimental="$experimental HTTPSRR"
+fi
+
 dnl *************************************************************
 dnl check whether ECH support, if desired, is actually available
 dnl
@@ -4547,18 +4565,28 @@ if test "x$want_ech" != "xno"; then
   ECH_ENABLED=0
   ECH_SUPPORT=''
 
-  dnl OpenSSL with a chosen ECH function should be enough
-  dnl so more exhaustive checking seems unnecessary for now
+  dnl check for OpenSSL
   if test "x$OPENSSL_ENABLED" = "x1"; then
-    AC_CHECK_FUNCS(SSL_get_ech_status,
-      ECH_SUPPORT="ECH support available (OpenSSL with SSL_get_ech_status)"
+    AC_CHECK_FUNCS(SSL_ech_set1_echconfig,
+      ECH_SUPPORT="ECH support available via OpenSSL with SSL_ech_set1_echconfig"
       ECH_ENABLED=1)
-
-  dnl add 'elif' chain here for additional implementations
+  fi
+  dnl check for boringssl equivalent
+  if test "x$OPENSSL_ENABLED" = "x1"; then
+    AC_CHECK_FUNCS(SSL_set1_ech_config_list,
+      ECH_SUPPORT="ECH support available via boringssl with SSL_set1_ech_config_list"
+      ECH_ENABLED=1)
+  fi
+  if test "x$WOLFSSL_ENABLED" = "x1"; then
+    AC_CHECK_FUNCS(wolfSSL_CTX_GenerateEchConfig,
+      ECH_SUPPORT="ECH support available via WolfSSL with wolfSSL_CTX_GenerateEchConfig"
+      ECH_ENABLED=1)
   fi
 
   dnl now deal with whatever we found
   if test "x$ECH_ENABLED" = "x1"; then
+    dnl force pre-requisites for ECH
+    AC_DEFINE(USE_HTTPSRR, 1, [force HTTPS RR support for ECH])
     AC_DEFINE(USE_ECH, 1, [if ECH support is available])
     AC_MSG_RESULT($ECH_SUPPORT)
     experimental="$experimental ECH"
@@ -4726,11 +4754,6 @@ if test "x$CURL_DISABLE_NTLM" != "x1"; then
   if test "x$use_curl_ntlm_core" = "xyes" \
       -o "x$USE_WINDOWS_SSPI" = "x1"; then
     SUPPORT_FEATURES="$SUPPORT_FEATURES NTLM"
-
-    if test "x$CURL_DISABLE_HTTP" != "x1" -a \
-        "x$NTLM_WB_ENABLED" = "x1"; then
-      SUPPORT_FEATURES="$SUPPORT_FEATURES NTLM_WB"
-    fi
   fi
 fi
 
@@ -4779,10 +4802,6 @@ if test "x$CURL_DISABLE_HTTP" != "x1"; then
   fi
 else
   AC_MSG_RESULT([no])
-fi
-
-if test "x$ECH_ENABLED" = "x1"; then
-  SUPPORT_FEATURES="$SUPPORT_FEATURES ECH"
 fi
 
 if test ${ac_cv_sizeof_curl_off_t} -gt 4; then
@@ -4948,7 +4967,6 @@ AC_CONFIG_FILES([Makefile \
            lib/Makefile \
            scripts/Makefile \
            lib/libcurl.vers \
-           lib/libcurl.plist \
            tests/Makefile \
            tests/config \
            tests/certs/Makefile \

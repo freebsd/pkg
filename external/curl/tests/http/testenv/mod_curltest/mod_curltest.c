@@ -21,6 +21,8 @@
  * SPDX-License-Identifier: curl
  *
  ***************************************************************************/
+#include <assert.h>
+
 #include <apr_optional.h>
 #include <apr_optional_hooks.h>
 #include <apr_strings.h>
@@ -38,6 +40,7 @@ static int curltest_echo_handler(request_rec *r);
 static int curltest_put_handler(request_rec *r);
 static int curltest_tweak_handler(request_rec *r);
 static int curltest_1_1_required(request_rec *r);
+static int curltest_sslinfo_handler(request_rec *r);
 
 AP_DECLARE_MODULE(curltest) = {
   STANDARD20_MODULE_STUFF,
@@ -86,6 +89,7 @@ static void curltest_hooks(apr_pool_t *pool)
   ap_hook_handler(curltest_put_handler, NULL, NULL, APR_HOOK_MIDDLE);
   ap_hook_handler(curltest_tweak_handler, NULL, NULL, APR_HOOK_MIDDLE);
   ap_hook_handler(curltest_1_1_required, NULL, NULL, APR_HOOK_MIDDLE);
+  ap_hook_handler(curltest_sslinfo_handler, NULL, NULL, APR_HOOK_MIDDLE);
 }
 
 #define SECS_PER_HOUR      (60*60)
@@ -181,6 +185,7 @@ static int curltest_echo_handler(request_rec *r)
   apr_status_t rv;
   char buffer[8192];
   const char *ct;
+  apr_off_t die_after_len = -1, total_read_len = 0;
   long l;
 
   if(strcmp(r->handler, "curltest-echo")) {
@@ -191,10 +196,34 @@ static int curltest_echo_handler(request_rec *r)
   }
 
   ap_log_rerror(APLOG_MARK, APLOG_TRACE1, 0, r, "echo_handler: processing");
+  if(r->args) {
+    apr_array_header_t *args = NULL;
+    int i;
+    args = apr_cstr_split(r->args, "&", 1, r->pool);
+    for(i = 0; i < args->nelts; ++i) {
+      char *s, *val, *arg = APR_ARRAY_IDX(args, i, char*);
+      s = strchr(arg, '=');
+      if(s) {
+        *s = '\0';
+        val = s + 1;
+        if(!strcmp("die_after", arg)) {
+          die_after_len = (apr_off_t)apr_atoi64(val);
+        }
+      }
+    }
+  }
+
   r->status = 200;
-  r->clength = -1;
-  r->chunked = 1;
-  apr_table_unset(r->headers_out, "Content-Length");
+  if(die_after_len >= 0) {
+    r->clength = die_after_len + 1;
+    r->chunked = 0;
+    apr_table_set(r->headers_out, "Content-Length", apr_ltoa(r->pool, (long)r->clength));
+  }
+  else {
+    r->clength = -1;
+    r->chunked = 1;
+    apr_table_unset(r->headers_out, "Content-Length");
+  }
   /* Discourage content-encodings */
   apr_table_unset(r->headers_out, "Content-Encoding");
   apr_table_setn(r->subprocess_env, "no-brotli", "1");
@@ -208,6 +237,14 @@ static int curltest_echo_handler(request_rec *r)
   if((rv = ap_setup_client_block(r, REQUEST_CHUNKED_DECHUNK))) goto cleanup;
   if(ap_should_client_block(r)) {
     while(0 < (l = ap_get_client_block(r, &buffer[0], sizeof(buffer)))) {
+      total_read_len += l;
+      if(die_after_len >= 0 && total_read_len >= die_after_len) {
+        ap_log_rerror(APLOG_MARK, APLOG_INFO, 0, r,
+                      "echo_handler: dying after %ld bytes as requested",
+                      (long)total_read_len);
+        r->connection->keepalive = AP_CONN_CLOSE;
+        return DONE;
+      }
       ap_log_rerror(APLOG_MARK, APLOG_TRACE1, 0, r,
                     "echo_handler: copying %ld bytes from request body", l);
       rv = apr_brigade_write(bb, NULL, NULL, buffer, l);
@@ -265,7 +302,11 @@ static int curltest_tweak_handler(request_rec *r)
   if(strcmp(r->handler, "curltest-tweak")) {
     return DECLINED;
   }
-  if(r->method_number != M_GET && r->method_number != M_POST) {
+  if(r->method_number == M_DELETE) {
+    http_status = 204;
+    chunks = 0;
+  }
+  else if(r->method_number != M_GET && r->method_number != M_POST) {
     return DECLINED;
   }
 
@@ -580,6 +621,117 @@ static int curltest_1_1_required(request_rec *r)
   rv = ap_pass_brigade(r->output_filters, bb);
 
 cleanup:
+  if(rv == APR_SUCCESS
+     || r->status != HTTP_OK
+     || c->aborted) {
+    ap_log_rerror(APLOG_MARK, APLOG_TRACE1, rv, r, "1_1_handler: done");
+    return OK;
+  }
+  else {
+    /* no way to know what type of error occurred */
+    ap_log_rerror(APLOG_MARK, APLOG_TRACE1, rv, r, "1_1_handler failed");
+    return AP_FILTER_ERROR;
+  }
+  return DECLINED;
+}
+
+static int brigade_env_var(request_rec *r, apr_bucket_brigade *bb,
+                           const char *name)
+{
+  const char *s;
+  s = apr_table_get(r->subprocess_env, name);
+  if(s)
+    return apr_brigade_printf(bb, NULL, NULL, ",\n  \"%s\": \"%s\"", name, s);
+  return 0;
+}
+
+static int curltest_sslinfo_handler(request_rec *r)
+{
+  conn_rec *c = r->connection;
+  apr_bucket_brigade *bb;
+  apr_bucket *b;
+  apr_status_t rv;
+  apr_array_header_t *args = NULL;
+  const char *request_id = NULL;
+  int close_conn = 0;
+  long l;
+  int i;
+
+  if(strcmp(r->handler, "curltest-sslinfo")) {
+    return DECLINED;
+  }
+  if(r->method_number != M_GET) {
+    return DECLINED;
+  }
+
+  if(r->args) {
+    apr_array_header_t *args = apr_cstr_split(r->args, "&", 1, r->pool);
+    for(i = 0; i < args->nelts; ++i) {
+      char *s, *val, *arg = APR_ARRAY_IDX(args, i, char*);
+      s = strchr(arg, '=');
+      if(s) {
+        *s = '\0';
+        val = s + 1;
+        if(!strcmp("id", arg)) {
+          /* just an id for repeated requests with curl's url globbing */
+          request_id = val;
+          continue;
+        }
+      }
+      else if(!strcmp("close", arg)) {
+        /* we are asked to close the connection */
+        close_conn = 1;
+        continue;
+      }
+      ap_log_rerror(APLOG_MARK, APLOG_ERR, 0, r, "query parameter not "
+                    "understood: '%s' in %s",
+                    arg, r->args);
+      ap_die(HTTP_BAD_REQUEST, r);
+      return OK;
+    }
+  }
+
+  ap_log_rerror(APLOG_MARK, APLOG_TRACE1, 0, r, "sslinfo: processing");
+  r->status = 200;
+  r->clength = -1;
+  r->chunked = 1;
+  apr_table_unset(r->headers_out, "Content-Length");
+  /* Discourage content-encodings */
+  apr_table_unset(r->headers_out, "Content-Encoding");
+  apr_table_setn(r->subprocess_env, "no-brotli", "1");
+  apr_table_setn(r->subprocess_env, "no-gzip", "1");
+
+  ap_set_content_type(r, "application/json");
+
+  bb = apr_brigade_create(r->pool, c->bucket_alloc);
+
+  apr_brigade_puts(bb, NULL, NULL, "{\n  \"Name\": \"SSL-Information\"");
+  brigade_env_var(r, bb, "HTTPS");
+  brigade_env_var(r, bb, "SSL_PROTOCOL");
+  brigade_env_var(r, bb, "SSL_CIPHER");
+  brigade_env_var(r, bb, "SSL_SESSION_ID");
+  brigade_env_var(r, bb, "SSL_SESSION_RESUMED");
+  brigade_env_var(r, bb, "SSL_SRP_USER");
+  brigade_env_var(r, bb, "SSL_SRP_USERINFO");
+  brigade_env_var(r, bb, "SSL_TLS_SNI");
+  apr_brigade_puts(bb, NULL, NULL, "}\n");
+
+  /* flush response */
+  b = apr_bucket_flush_create(c->bucket_alloc);
+  APR_BRIGADE_INSERT_TAIL(bb, b);
+  rv = ap_pass_brigade(r->output_filters, bb);
+  if (APR_SUCCESS != rv) goto cleanup;
+
+  /* we are done */
+  b = apr_bucket_eos_create(c->bucket_alloc);
+  APR_BRIGADE_INSERT_TAIL(bb, b);
+  ap_log_rerror(APLOG_MARK, APLOG_TRACE1, 0, r, "1_1_handler: request read");
+
+  rv = ap_pass_brigade(r->output_filters, bb);
+
+cleanup:
+  if(close_conn)
+    r->connection->keepalive = AP_CONN_CLOSE;
   if(rv == APR_SUCCESS
      || r->status != HTTP_OK
      || c->aborted) {

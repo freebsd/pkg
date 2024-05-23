@@ -271,7 +271,6 @@ CURL_DISABLE_TFTP = @CURL_DISABLE_TFTP@
 CURL_LT_SHLIB_VERSIONED_FLAVOUR = @CURL_LT_SHLIB_VERSIONED_FLAVOUR@
 CURL_NETWORK_AND_TIME_LIBS = @CURL_NETWORK_AND_TIME_LIBS@
 CURL_NETWORK_LIBS = @CURL_NETWORK_LIBS@
-CURL_PLIST_VERSION = @CURL_PLIST_VERSION@
 CURL_WITH_MULTI_SSL = @CURL_WITH_MULTI_SSL@
 CYGPATH_W = @CYGPATH_W@
 DEFAULT_SSL_BACKEND = @DEFAULT_SSL_BACKEND@
@@ -393,6 +392,7 @@ USE_WOLFSSH = @USE_WOLFSSH@
 USE_WOLFSSL = @USE_WOLFSSL@
 VERSION = @VERSION@
 VERSIONNUM = @VERSIONNUM@
+VSFTPD = @VSFTPD@
 ZLIB_LIBS = @ZLIB_LIBS@
 ZSH_FUNCTIONS_DIR = @ZSH_FUNCTIONS_DIR@
 abs_builddir = @abs_builddir@
@@ -470,14 +470,49 @@ TESTSCRIPTS = \
  test1544.pl  \
  test971.pl
 
-EXTRA_DIST = appveyor.pm azure.pm CMakeLists.txt devtest.pl             \
- dictserver.py directories.pm FILEFORMAT.md processhelp.pm ftpserver.pl \
- getpart.pm globalconfig.pm http-server.pl http2-server.pl              \
- http3-server.pl memanalyze.pl negtelnetserver.py pathhelp.pm README.md \
- rtspserver.pl runner.pm runtests.1 runtests.pl secureserver.pl         \
- serverhelp.pm servers.pm smbserver.py sshhelp.pm sshserver.pl          \
- stunnel.pem testcurl.1 testcurl.pl testutil.pm tftpserver.pl util.py   \
- valgrind.pm valgrind.supp $(TESTSCRIPTS)
+EXTRA_DIST = \
+ CMakeLists.txt     \
+ FILEFORMAT.md      \
+ README.md          \
+ appveyor.pm        \
+ azure.pm           \
+ conftest.py        \
+ devtest.pl         \
+ dictserver.py      \
+ directories.pm     \
+ ech_combos.py      \
+ ech_tests.sh       \
+ ftpserver.pl       \
+ getpart.pm         \
+ globalconfig.pm    \
+ http-server.pl     \
+ http2-server.pl    \
+ http3-server.pl    \
+ memanalyze.pl      \
+ negtelnetserver.py \
+ nghttpx.conf       \
+ pathhelp.pm        \
+ processhelp.pm     \
+ requirements.txt   \
+ rtspserver.pl      \
+ runner.pm          \
+ runtests.1         \
+ runtests.pl        \
+ secureserver.pl    \
+ serverhelp.pm      \
+ servers.pm         \
+ smbserver.py       \
+ sshhelp.pm         \
+ sshserver.pl       \
+ stunnel.pem        \
+ testcurl.1         \
+ testcurl.pl        \
+ testutil.pm        \
+ tftpserver.pl      \
+ util.py            \
+ valgrind.pm        \
+ valgrind.supp      \
+ $(TESTSCRIPTS)
 
 DISTCLEANFILES = configurehelp.pm
 @BUILD_UNITTESTS_FALSE@BUILD_UNIT = 
@@ -518,9 +553,9 @@ $(srcdir)/Makefile.in: @MAINTAINER_MODE_TRUE@ $(srcdir)/Makefile.am  $(am__confi
 	      exit 1;; \
 	  esac; \
 	done; \
-	echo ' cd $(top_srcdir) && $(AUTOMAKE) --foreign tests/Makefile'; \
+	echo ' cd $(top_srcdir) && $(AUTOMAKE) --gnu tests/Makefile'; \
 	$(am__cd) $(top_srcdir) && \
-	  $(AUTOMAKE) --foreign tests/Makefile
+	  $(AUTOMAKE) --gnu tests/Makefile
 Makefile: $(srcdir)/Makefile.in $(top_builddir)/config.status
 	@case '$?' in \
 	  *config.status*) \
