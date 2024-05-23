@@ -272,7 +272,6 @@ CURL_DISABLE_TFTP = @CURL_DISABLE_TFTP@
 CURL_LT_SHLIB_VERSIONED_FLAVOUR = @CURL_LT_SHLIB_VERSIONED_FLAVOUR@
 CURL_NETWORK_AND_TIME_LIBS = @CURL_NETWORK_AND_TIME_LIBS@
 CURL_NETWORK_LIBS = @CURL_NETWORK_LIBS@
-CURL_PLIST_VERSION = @CURL_PLIST_VERSION@
 CURL_WITH_MULTI_SSL = @CURL_WITH_MULTI_SSL@
 CYGPATH_W = @CYGPATH_W@
 DEFAULT_SSL_BACKEND = @DEFAULT_SSL_BACKEND@
@@ -394,6 +393,7 @@ USE_WOLFSSH = @USE_WOLFSSH@
 USE_WOLFSSL = @USE_WOLFSSL@
 VERSION = @VERSION@
 VERSIONNUM = @VERSIONNUM@
+VSFTPD = @VSFTPD@
 ZLIB_LIBS = @ZLIB_LIBS@
 ZSH_FUNCTIONS_DIR = @ZSH_FUNCTIONS_DIR@
 abs_builddir = @abs_builddir@
@@ -453,7 +453,6 @@ top_srcdir = @top_srcdir@
 AUTOMAKE_OPTIONS = foreign no-dependencies
 MANPAGE = curl.1
 ASCIIPAGE = curl.txt
-man_MANS = $(MANPAGE)
 SUPPORT = \
   _AUTHORS.md \
   _BUGS.md \
@@ -521,6 +520,7 @@ DPAGES = \
   doh-insecure.md \
   doh-url.md \
   dump-header.md \
+  ech.md \
   egd-file.md \
   engine.md \
   etag-compare.md \
@@ -740,8 +740,10 @@ GEN = $(GN_$(V))
 GN_0 = @echo "  GENERATE" $@;
 GN_1 = 
 GN_ = $(GN_0)
-MANAGEN = $(abs_top_srcdir)/scripts/managen
+MANAGEN = $(top_srcdir)/scripts/managen
+INCDIR = $(top_srcdir)/include
 @BUILD_DOCS_TRUE@CLEANFILES = $(MANPAGE) $(ASCIIPAGE)
+@BUILD_DOCS_TRUE@man_MANS = $(MANPAGE)
 all: all-am
 
 .SUFFIXES:
@@ -990,10 +992,10 @@ uninstall-man: uninstall-man1
 @BUILD_DOCS_TRUE@all: $(MANPAGE) $(ASCIIPAGE)
 
 $(MANPAGE): $(DPAGES) $(SUPPORT) mainpage.idx Makefile.inc $(MANAGEN)
-	$(GEN)(rm -f $(MANPAGE) && (cd $(srcdir) && @PERL@ $(MANAGEN) mainpage $(DPAGES)) > manpage.tmp.$$$$ && mv manpage.tmp.$$$$ $(MANPAGE))
+	$(GEN)(rm -f $(MANPAGE) && @PERL@ $(MANAGEN) -d $(srcdir) -I $(INCDIR) mainpage $(DPAGES) > manpage.tmp.$$$$ && mv manpage.tmp.$$$$ $(MANPAGE))
 
 $(ASCIIPAGE): $(DPAGES) $(SUPPORT) mainpage.idx Makefile.inc $(MANAGEN)
-	$(GEN)(rm -f $(ASCIIPAGE) && (cd $(srcdir) && @PERL@ $(MANAGEN) ascii $(DPAGES)) > asciipage.tmp.$$$$ && mv asciipage.tmp.$$$$ $(ASCIIPAGE))
+	$(GEN)(rm -f $(ASCIIPAGE) && @PERL@ $(MANAGEN) -d $(srcdir) -I $(INCDIR) ascii $(DPAGES) > asciipage.tmp.$$$$ && mv asciipage.tmp.$$$$ $(ASCIIPAGE))
 
 listhelp:
 	$(MANAGEN) listhelp $(DPAGES) > $(top_builddir)/src/tool_listhelp.c

@@ -147,22 +147,23 @@ noinst_PROGRAMS = chkhostname$(EXEEXT) libauthretry$(EXEEXT) \
 	lib1568$(EXEEXT) lib1569$(EXEEXT) lib1591$(EXEEXT) \
 	lib1592$(EXEEXT) lib1593$(EXEEXT) lib1594$(EXEEXT) \
 	lib1596$(EXEEXT) lib1597$(EXEEXT) lib1598$(EXEEXT) \
-	lib1662$(EXEEXT) lib1900$(EXEEXT) lib1903$(EXEEXT) \
-	lib1905$(EXEEXT) lib1906$(EXEEXT) lib1907$(EXEEXT) \
-	lib1908$(EXEEXT) lib1910$(EXEEXT) lib1911$(EXEEXT) \
-	lib1912$(EXEEXT) lib1913$(EXEEXT) lib1915$(EXEEXT) \
-	lib1916$(EXEEXT) lib1917$(EXEEXT) lib1918$(EXEEXT) \
-	lib1919$(EXEEXT) lib1933$(EXEEXT) lib1934$(EXEEXT) \
-	lib1935$(EXEEXT) lib1936$(EXEEXT) lib1937$(EXEEXT) \
-	lib1938$(EXEEXT) lib1939$(EXEEXT) lib1940$(EXEEXT) \
-	lib1945$(EXEEXT) lib1946$(EXEEXT) lib1947$(EXEEXT) \
-	lib1948$(EXEEXT) lib1955$(EXEEXT) lib1956$(EXEEXT) \
-	lib1957$(EXEEXT) lib1958$(EXEEXT) lib1959$(EXEEXT) \
-	lib1960$(EXEEXT) lib1964$(EXEEXT) lib1970$(EXEEXT) \
-	lib1971$(EXEEXT) lib1972$(EXEEXT) lib1973$(EXEEXT) \
-	lib1974$(EXEEXT) lib1975$(EXEEXT) lib2301$(EXEEXT) \
-	lib2302$(EXEEXT) lib2304$(EXEEXT) lib2305$(EXEEXT) \
-	lib2306$(EXEEXT) lib2402$(EXEEXT) lib2404$(EXEEXT) \
+	lib1662$(EXEEXT) lib1900$(EXEEXT) lib1901$(EXEEXT) \
+	lib1903$(EXEEXT) lib1905$(EXEEXT) lib1906$(EXEEXT) \
+	lib1907$(EXEEXT) lib1908$(EXEEXT) lib1910$(EXEEXT) \
+	lib1911$(EXEEXT) lib1912$(EXEEXT) lib1913$(EXEEXT) \
+	lib1915$(EXEEXT) lib1916$(EXEEXT) lib1917$(EXEEXT) \
+	lib1918$(EXEEXT) lib1919$(EXEEXT) lib1933$(EXEEXT) \
+	lib1934$(EXEEXT) lib1935$(EXEEXT) lib1936$(EXEEXT) \
+	lib1937$(EXEEXT) lib1938$(EXEEXT) lib1939$(EXEEXT) \
+	lib1940$(EXEEXT) lib1945$(EXEEXT) lib1946$(EXEEXT) \
+	lib1947$(EXEEXT) lib1948$(EXEEXT) lib1955$(EXEEXT) \
+	lib1956$(EXEEXT) lib1957$(EXEEXT) lib1958$(EXEEXT) \
+	lib1959$(EXEEXT) lib1960$(EXEEXT) lib1964$(EXEEXT) \
+	lib1970$(EXEEXT) lib1971$(EXEEXT) lib1972$(EXEEXT) \
+	lib1973$(EXEEXT) lib1974$(EXEEXT) lib1975$(EXEEXT) \
+	lib2301$(EXEEXT) lib2302$(EXEEXT) lib2304$(EXEEXT) \
+	lib2305$(EXEEXT) lib2306$(EXEEXT) lib2308$(EXEEXT) \
+	lib2402$(EXEEXT) lib2404$(EXEEXT) lib2405$(EXEEXT) \
 	lib2502$(EXEEXT) lib3010$(EXEEXT) lib3025$(EXEEXT) \
 	lib3026$(EXEEXT) lib3027$(EXEEXT) lib3100$(EXEEXT) \
 	lib3101$(EXEEXT) lib3102$(EXEEXT) lib3103$(EXEEXT)
@@ -552,6 +553,10 @@ am_lib1900_OBJECTS = lib1900.$(OBJEXT) $(am__objects_2)
 lib1900_OBJECTS = $(am_lib1900_OBJECTS)
 lib1900_LDADD = $(LDADD)
 lib1900_DEPENDENCIES = $(am__DEPENDENCIES_1)
+am_lib1901_OBJECTS = lib1901.$(OBJEXT) $(am__objects_2)
+lib1901_OBJECTS = $(am_lib1901_OBJECTS)
+lib1901_LDADD = $(LDADD)
+lib1901_DEPENDENCIES = $(am__DEPENDENCIES_1)
 am_lib1903_OBJECTS = lib1903.$(OBJEXT) $(am__objects_2) \
 	$(am__objects_3) $(am__objects_4)
 lib1903_OBJECTS = $(am_lib1903_OBJECTS)
@@ -725,6 +730,9 @@ lib2305_DEPENDENCIES = $(am__DEPENDENCIES_1)
 am_lib2306_OBJECTS = lib2306.$(OBJEXT) $(am__objects_2)
 lib2306_OBJECTS = $(am_lib2306_OBJECTS)
 lib2306_DEPENDENCIES = $(am__DEPENDENCIES_1)
+am_lib2308_OBJECTS = lib2308.$(OBJEXT) $(am__objects_2)
+lib2308_OBJECTS = $(am_lib2308_OBJECTS)
+lib2308_DEPENDENCIES = $(am__DEPENDENCIES_1)
 am_lib2402_OBJECTS = lib2402.$(OBJEXT) $(am__objects_2) \
 	$(am__objects_3) $(am__objects_4)
 lib2402_OBJECTS = $(am_lib2402_OBJECTS)
@@ -733,6 +741,10 @@ am_lib2404_OBJECTS = lib2404.$(OBJEXT) $(am__objects_2) \
 	$(am__objects_3) $(am__objects_4)
 lib2404_OBJECTS = $(am_lib2404_OBJECTS)
 lib2404_DEPENDENCIES = $(am__DEPENDENCIES_1)
+am_lib2405_OBJECTS = lib2405.$(OBJEXT) $(am__objects_2) \
+	$(am__objects_3) $(am__objects_4)
+lib2405_OBJECTS = $(am_lib2405_OBJECTS)
+lib2405_DEPENDENCIES = $(am__DEPENDENCIES_1)
 am_lib2502_OBJECTS = lib2502.$(OBJEXT) $(am__objects_2) \
 	$(am__objects_3) $(am__objects_4)
 lib2502_OBJECTS = $(am_lib2502_OBJECTS)
@@ -1348,98 +1360,100 @@ am__depfiles_remade = ../../lib/$(DEPDIR)/curl_gethostname.Po \
 	./$(DEPDIR)/lib1596-first.Po ./$(DEPDIR)/lib1596-lib1594.Po \
 	./$(DEPDIR)/lib1596-testutil.Po ./$(DEPDIR)/lib1597.Po \
 	./$(DEPDIR)/lib1598.Po ./$(DEPDIR)/lib1662.Po \
-	./$(DEPDIR)/lib1900.Po ./$(DEPDIR)/lib1903.Po \
-	./$(DEPDIR)/lib1905.Po ./$(DEPDIR)/lib1906.Po \
-	./$(DEPDIR)/lib1907.Po ./$(DEPDIR)/lib1908.Po \
-	./$(DEPDIR)/lib1910.Po ./$(DEPDIR)/lib1911.Po \
-	./$(DEPDIR)/lib1912.Po ./$(DEPDIR)/lib1913.Po \
-	./$(DEPDIR)/lib1915.Po ./$(DEPDIR)/lib1916.Po \
-	./$(DEPDIR)/lib1917-first.Po ./$(DEPDIR)/lib1917-lib1916.Po \
-	./$(DEPDIR)/lib1918.Po ./$(DEPDIR)/lib1919.Po \
-	./$(DEPDIR)/lib1933.Po ./$(DEPDIR)/lib1934.Po \
-	./$(DEPDIR)/lib1935.Po ./$(DEPDIR)/lib1936.Po \
-	./$(DEPDIR)/lib1937.Po ./$(DEPDIR)/lib1938.Po \
-	./$(DEPDIR)/lib1939.Po ./$(DEPDIR)/lib1940.Po \
-	./$(DEPDIR)/lib1945.Po ./$(DEPDIR)/lib1946-first.Po \
-	./$(DEPDIR)/lib1946-lib1940.Po ./$(DEPDIR)/lib1947.Po \
-	./$(DEPDIR)/lib1948.Po ./$(DEPDIR)/lib1955.Po \
-	./$(DEPDIR)/lib1956.Po ./$(DEPDIR)/lib1957.Po \
-	./$(DEPDIR)/lib1958.Po ./$(DEPDIR)/lib1959.Po \
-	./$(DEPDIR)/lib1960.Po ./$(DEPDIR)/lib1964.Po \
-	./$(DEPDIR)/lib1970.Po ./$(DEPDIR)/lib1971.Po \
-	./$(DEPDIR)/lib1972.Po ./$(DEPDIR)/lib1973.Po \
-	./$(DEPDIR)/lib1974.Po ./$(DEPDIR)/lib1975.Po \
-	./$(DEPDIR)/lib2301.Po ./$(DEPDIR)/lib2302.Po \
-	./$(DEPDIR)/lib2304.Po ./$(DEPDIR)/lib2305.Po \
-	./$(DEPDIR)/lib2306.Po ./$(DEPDIR)/lib2402.Po \
-	./$(DEPDIR)/lib2404.Po ./$(DEPDIR)/lib2502.Po \
-	./$(DEPDIR)/lib3010.Po ./$(DEPDIR)/lib3025.Po \
-	./$(DEPDIR)/lib3026.Po ./$(DEPDIR)/lib3027.Po \
-	./$(DEPDIR)/lib3100.Po ./$(DEPDIR)/lib3101.Po \
-	./$(DEPDIR)/lib3102.Po ./$(DEPDIR)/lib3103.Po \
-	./$(DEPDIR)/lib500.Po ./$(DEPDIR)/lib501.Po \
-	./$(DEPDIR)/lib502.Po ./$(DEPDIR)/lib503.Po \
-	./$(DEPDIR)/lib504.Po ./$(DEPDIR)/lib505.Po \
-	./$(DEPDIR)/lib506.Po ./$(DEPDIR)/lib507.Po \
-	./$(DEPDIR)/lib508.Po ./$(DEPDIR)/lib509.Po \
-	./$(DEPDIR)/lib510.Po ./$(DEPDIR)/lib511.Po \
-	./$(DEPDIR)/lib512.Po ./$(DEPDIR)/lib513.Po \
-	./$(DEPDIR)/lib514.Po ./$(DEPDIR)/lib515.Po \
-	./$(DEPDIR)/lib516.Po ./$(DEPDIR)/lib517.Po \
-	./$(DEPDIR)/lib518.Po ./$(DEPDIR)/lib519.Po \
-	./$(DEPDIR)/lib520.Po ./$(DEPDIR)/lib521.Po \
-	./$(DEPDIR)/lib523.Po ./$(DEPDIR)/lib524.Po \
-	./$(DEPDIR)/lib525.Po ./$(DEPDIR)/lib526-first.Po \
-	./$(DEPDIR)/lib526-lib526.Po ./$(DEPDIR)/lib526-testutil.Po \
-	./$(DEPDIR)/lib527-first.Po ./$(DEPDIR)/lib527-lib526.Po \
-	./$(DEPDIR)/lib527-testutil.Po ./$(DEPDIR)/lib529-first.Po \
-	./$(DEPDIR)/lib529-lib525.Po ./$(DEPDIR)/lib529-testutil.Po \
-	./$(DEPDIR)/lib530.Po ./$(DEPDIR)/lib532-first.Po \
-	./$(DEPDIR)/lib532-lib526.Po ./$(DEPDIR)/lib532-testutil.Po \
-	./$(DEPDIR)/lib533.Po ./$(DEPDIR)/lib536.Po \
-	./$(DEPDIR)/lib537.Po ./$(DEPDIR)/lib539.Po \
-	./$(DEPDIR)/lib540.Po ./$(DEPDIR)/lib541.Po \
-	./$(DEPDIR)/lib542.Po ./$(DEPDIR)/lib543.Po \
-	./$(DEPDIR)/lib544.Po ./$(DEPDIR)/lib545-first.Po \
-	./$(DEPDIR)/lib545-lib544.Po ./$(DEPDIR)/lib547.Po \
-	./$(DEPDIR)/lib548-first.Po ./$(DEPDIR)/lib548-lib547.Po \
-	./$(DEPDIR)/lib549.Po ./$(DEPDIR)/lib552.Po \
-	./$(DEPDIR)/lib553.Po ./$(DEPDIR)/lib554.Po \
-	./$(DEPDIR)/lib555.Po ./$(DEPDIR)/lib556.Po \
-	./$(DEPDIR)/lib557.Po ./$(DEPDIR)/lib558.Po \
-	./$(DEPDIR)/lib559.Po ./$(DEPDIR)/lib560.Po \
-	./$(DEPDIR)/lib562.Po ./$(DEPDIR)/lib564.Po \
-	./$(DEPDIR)/lib565-first.Po ./$(DEPDIR)/lib565-lib510.Po \
-	./$(DEPDIR)/lib566.Po ./$(DEPDIR)/lib567.Po \
-	./$(DEPDIR)/lib568.Po ./$(DEPDIR)/lib569.Po \
-	./$(DEPDIR)/lib570.Po ./$(DEPDIR)/lib571.Po \
-	./$(DEPDIR)/lib572.Po ./$(DEPDIR)/lib573.Po \
-	./$(DEPDIR)/lib574.Po ./$(DEPDIR)/lib575.Po \
-	./$(DEPDIR)/lib576.Po ./$(DEPDIR)/lib578.Po \
-	./$(DEPDIR)/lib579.Po ./$(DEPDIR)/lib582.Po \
-	./$(DEPDIR)/lib583.Po ./$(DEPDIR)/lib584-first.Po \
-	./$(DEPDIR)/lib584-lib589.Po ./$(DEPDIR)/lib585-first.Po \
-	./$(DEPDIR)/lib585-lib500.Po ./$(DEPDIR)/lib585-testtrace.Po \
-	./$(DEPDIR)/lib585-testutil.Po ./$(DEPDIR)/lib586.Po \
-	./$(DEPDIR)/lib587-first.Po ./$(DEPDIR)/lib587-lib554.Po \
-	./$(DEPDIR)/lib589.Po ./$(DEPDIR)/lib590.Po \
-	./$(DEPDIR)/lib591.Po ./$(DEPDIR)/lib597.Po \
-	./$(DEPDIR)/lib598.Po ./$(DEPDIR)/lib599.Po \
-	./$(DEPDIR)/lib643.Po ./$(DEPDIR)/lib645-first.Po \
-	./$(DEPDIR)/lib645-lib643.Po ./$(DEPDIR)/lib650.Po \
-	./$(DEPDIR)/lib651.Po ./$(DEPDIR)/lib652.Po \
-	./$(DEPDIR)/lib653.Po ./$(DEPDIR)/lib654.Po \
-	./$(DEPDIR)/lib655.Po ./$(DEPDIR)/lib658.Po \
-	./$(DEPDIR)/lib659.Po ./$(DEPDIR)/lib661.Po \
-	./$(DEPDIR)/lib666.Po ./$(DEPDIR)/lib667.Po \
-	./$(DEPDIR)/lib668.Po ./$(DEPDIR)/lib670-first.Po \
-	./$(DEPDIR)/lib670-lib670.Po ./$(DEPDIR)/lib670-testutil.Po \
-	./$(DEPDIR)/lib670.Po ./$(DEPDIR)/lib671-first.Po \
-	./$(DEPDIR)/lib671-lib670.Po ./$(DEPDIR)/lib671-testutil.Po \
-	./$(DEPDIR)/lib672-first.Po ./$(DEPDIR)/lib672-lib670.Po \
-	./$(DEPDIR)/lib672-testutil.Po ./$(DEPDIR)/lib674.Po \
-	./$(DEPDIR)/lib676.Po ./$(DEPDIR)/lib677.Po \
-	./$(DEPDIR)/lib678.Po ./$(DEPDIR)/libauthretry.Po \
+	./$(DEPDIR)/lib1900.Po ./$(DEPDIR)/lib1901.Po \
+	./$(DEPDIR)/lib1903.Po ./$(DEPDIR)/lib1905.Po \
+	./$(DEPDIR)/lib1906.Po ./$(DEPDIR)/lib1907.Po \
+	./$(DEPDIR)/lib1908.Po ./$(DEPDIR)/lib1910.Po \
+	./$(DEPDIR)/lib1911.Po ./$(DEPDIR)/lib1912.Po \
+	./$(DEPDIR)/lib1913.Po ./$(DEPDIR)/lib1915.Po \
+	./$(DEPDIR)/lib1916.Po ./$(DEPDIR)/lib1917-first.Po \
+	./$(DEPDIR)/lib1917-lib1916.Po ./$(DEPDIR)/lib1918.Po \
+	./$(DEPDIR)/lib1919.Po ./$(DEPDIR)/lib1933.Po \
+	./$(DEPDIR)/lib1934.Po ./$(DEPDIR)/lib1935.Po \
+	./$(DEPDIR)/lib1936.Po ./$(DEPDIR)/lib1937.Po \
+	./$(DEPDIR)/lib1938.Po ./$(DEPDIR)/lib1939.Po \
+	./$(DEPDIR)/lib1940.Po ./$(DEPDIR)/lib1945.Po \
+	./$(DEPDIR)/lib1946-first.Po ./$(DEPDIR)/lib1946-lib1940.Po \
+	./$(DEPDIR)/lib1947.Po ./$(DEPDIR)/lib1948.Po \
+	./$(DEPDIR)/lib1955.Po ./$(DEPDIR)/lib1956.Po \
+	./$(DEPDIR)/lib1957.Po ./$(DEPDIR)/lib1958.Po \
+	./$(DEPDIR)/lib1959.Po ./$(DEPDIR)/lib1960.Po \
+	./$(DEPDIR)/lib1964.Po ./$(DEPDIR)/lib1970.Po \
+	./$(DEPDIR)/lib1971.Po ./$(DEPDIR)/lib1972.Po \
+	./$(DEPDIR)/lib1973.Po ./$(DEPDIR)/lib1974.Po \
+	./$(DEPDIR)/lib1975.Po ./$(DEPDIR)/lib2301.Po \
+	./$(DEPDIR)/lib2302.Po ./$(DEPDIR)/lib2304.Po \
+	./$(DEPDIR)/lib2305.Po ./$(DEPDIR)/lib2306.Po \
+	./$(DEPDIR)/lib2308.Po ./$(DEPDIR)/lib2402.Po \
+	./$(DEPDIR)/lib2404.Po ./$(DEPDIR)/lib2405.Po \
+	./$(DEPDIR)/lib2502.Po ./$(DEPDIR)/lib3010.Po \
+	./$(DEPDIR)/lib3025.Po ./$(DEPDIR)/lib3026.Po \
+	./$(DEPDIR)/lib3027.Po ./$(DEPDIR)/lib3100.Po \
+	./$(DEPDIR)/lib3101.Po ./$(DEPDIR)/lib3102.Po \
+	./$(DEPDIR)/lib3103.Po ./$(DEPDIR)/lib500.Po \
+	./$(DEPDIR)/lib501.Po ./$(DEPDIR)/lib502.Po \
+	./$(DEPDIR)/lib503.Po ./$(DEPDIR)/lib504.Po \
+	./$(DEPDIR)/lib505.Po ./$(DEPDIR)/lib506.Po \
+	./$(DEPDIR)/lib507.Po ./$(DEPDIR)/lib508.Po \
+	./$(DEPDIR)/lib509.Po ./$(DEPDIR)/lib510.Po \
+	./$(DEPDIR)/lib511.Po ./$(DEPDIR)/lib512.Po \
+	./$(DEPDIR)/lib513.Po ./$(DEPDIR)/lib514.Po \
+	./$(DEPDIR)/lib515.Po ./$(DEPDIR)/lib516.Po \
+	./$(DEPDIR)/lib517.Po ./$(DEPDIR)/lib518.Po \
+	./$(DEPDIR)/lib519.Po ./$(DEPDIR)/lib520.Po \
+	./$(DEPDIR)/lib521.Po ./$(DEPDIR)/lib523.Po \
+	./$(DEPDIR)/lib524.Po ./$(DEPDIR)/lib525.Po \
+	./$(DEPDIR)/lib526-first.Po ./$(DEPDIR)/lib526-lib526.Po \
+	./$(DEPDIR)/lib526-testutil.Po ./$(DEPDIR)/lib527-first.Po \
+	./$(DEPDIR)/lib527-lib526.Po ./$(DEPDIR)/lib527-testutil.Po \
+	./$(DEPDIR)/lib529-first.Po ./$(DEPDIR)/lib529-lib525.Po \
+	./$(DEPDIR)/lib529-testutil.Po ./$(DEPDIR)/lib530.Po \
+	./$(DEPDIR)/lib532-first.Po ./$(DEPDIR)/lib532-lib526.Po \
+	./$(DEPDIR)/lib532-testutil.Po ./$(DEPDIR)/lib533.Po \
+	./$(DEPDIR)/lib536.Po ./$(DEPDIR)/lib537.Po \
+	./$(DEPDIR)/lib539.Po ./$(DEPDIR)/lib540.Po \
+	./$(DEPDIR)/lib541.Po ./$(DEPDIR)/lib542.Po \
+	./$(DEPDIR)/lib543.Po ./$(DEPDIR)/lib544.Po \
+	./$(DEPDIR)/lib545-first.Po ./$(DEPDIR)/lib545-lib544.Po \
+	./$(DEPDIR)/lib547.Po ./$(DEPDIR)/lib548-first.Po \
+	./$(DEPDIR)/lib548-lib547.Po ./$(DEPDIR)/lib549.Po \
+	./$(DEPDIR)/lib552.Po ./$(DEPDIR)/lib553.Po \
+	./$(DEPDIR)/lib554.Po ./$(DEPDIR)/lib555.Po \
+	./$(DEPDIR)/lib556.Po ./$(DEPDIR)/lib557.Po \
+	./$(DEPDIR)/lib558.Po ./$(DEPDIR)/lib559.Po \
+	./$(DEPDIR)/lib560.Po ./$(DEPDIR)/lib562.Po \
+	./$(DEPDIR)/lib564.Po ./$(DEPDIR)/lib565-first.Po \
+	./$(DEPDIR)/lib565-lib510.Po ./$(DEPDIR)/lib566.Po \
+	./$(DEPDIR)/lib567.Po ./$(DEPDIR)/lib568.Po \
+	./$(DEPDIR)/lib569.Po ./$(DEPDIR)/lib570.Po \
+	./$(DEPDIR)/lib571.Po ./$(DEPDIR)/lib572.Po \
+	./$(DEPDIR)/lib573.Po ./$(DEPDIR)/lib574.Po \
+	./$(DEPDIR)/lib575.Po ./$(DEPDIR)/lib576.Po \
+	./$(DEPDIR)/lib578.Po ./$(DEPDIR)/lib579.Po \
+	./$(DEPDIR)/lib582.Po ./$(DEPDIR)/lib583.Po \
+	./$(DEPDIR)/lib584-first.Po ./$(DEPDIR)/lib584-lib589.Po \
+	./$(DEPDIR)/lib585-first.Po ./$(DEPDIR)/lib585-lib500.Po \
+	./$(DEPDIR)/lib585-testtrace.Po ./$(DEPDIR)/lib585-testutil.Po \
+	./$(DEPDIR)/lib586.Po ./$(DEPDIR)/lib587-first.Po \
+	./$(DEPDIR)/lib587-lib554.Po ./$(DEPDIR)/lib589.Po \
+	./$(DEPDIR)/lib590.Po ./$(DEPDIR)/lib591.Po \
+	./$(DEPDIR)/lib597.Po ./$(DEPDIR)/lib598.Po \
+	./$(DEPDIR)/lib599.Po ./$(DEPDIR)/lib643.Po \
+	./$(DEPDIR)/lib645-first.Po ./$(DEPDIR)/lib645-lib643.Po \
+	./$(DEPDIR)/lib650.Po ./$(DEPDIR)/lib651.Po \
+	./$(DEPDIR)/lib652.Po ./$(DEPDIR)/lib653.Po \
+	./$(DEPDIR)/lib654.Po ./$(DEPDIR)/lib655.Po \
+	./$(DEPDIR)/lib658.Po ./$(DEPDIR)/lib659.Po \
+	./$(DEPDIR)/lib661.Po ./$(DEPDIR)/lib666.Po \
+	./$(DEPDIR)/lib667.Po ./$(DEPDIR)/lib668.Po \
+	./$(DEPDIR)/lib670-first.Po ./$(DEPDIR)/lib670-lib670.Po \
+	./$(DEPDIR)/lib670-testutil.Po ./$(DEPDIR)/lib670.Po \
+	./$(DEPDIR)/lib671-first.Po ./$(DEPDIR)/lib671-lib670.Po \
+	./$(DEPDIR)/lib671-testutil.Po ./$(DEPDIR)/lib672-first.Po \
+	./$(DEPDIR)/lib672-lib670.Po ./$(DEPDIR)/lib672-testutil.Po \
+	./$(DEPDIR)/lib674.Po ./$(DEPDIR)/lib676.Po \
+	./$(DEPDIR)/lib677.Po ./$(DEPDIR)/lib678.Po \
+	./$(DEPDIR)/libauthretry.Po \
 	./$(DEPDIR)/libhostname_la-sethostname.Plo \
 	./$(DEPDIR)/libntlmconnect.Po ./$(DEPDIR)/libprereq.Po \
 	./$(DEPDIR)/libstubgss_la-stub_gssapi.Plo \
@@ -1487,22 +1501,23 @@ SOURCES = $(libhostname_la_SOURCES) $(libstubgss_la_SOURCES) \
 	$(lib1568_SOURCES) $(lib1569_SOURCES) $(lib1591_SOURCES) \
 	$(lib1592_SOURCES) $(lib1593_SOURCES) $(lib1594_SOURCES) \
 	$(lib1596_SOURCES) $(lib1597_SOURCES) $(lib1598_SOURCES) \
-	$(lib1662_SOURCES) $(lib1900_SOURCES) $(lib1903_SOURCES) \
-	$(lib1905_SOURCES) $(lib1906_SOURCES) $(lib1907_SOURCES) \
-	$(lib1908_SOURCES) $(lib1910_SOURCES) $(lib1911_SOURCES) \
-	$(lib1912_SOURCES) $(lib1913_SOURCES) $(lib1915_SOURCES) \
-	$(lib1916_SOURCES) $(lib1917_SOURCES) $(lib1918_SOURCES) \
-	$(lib1919_SOURCES) $(lib1933_SOURCES) $(lib1934_SOURCES) \
-	$(lib1935_SOURCES) $(lib1936_SOURCES) $(lib1937_SOURCES) \
-	$(lib1938_SOURCES) $(lib1939_SOURCES) $(lib1940_SOURCES) \
-	$(lib1945_SOURCES) $(lib1946_SOURCES) $(lib1947_SOURCES) \
-	$(lib1948_SOURCES) $(lib1955_SOURCES) $(lib1956_SOURCES) \
-	$(lib1957_SOURCES) $(lib1958_SOURCES) $(lib1959_SOURCES) \
-	$(lib1960_SOURCES) $(lib1964_SOURCES) $(lib1970_SOURCES) \
-	$(lib1971_SOURCES) $(lib1972_SOURCES) $(lib1973_SOURCES) \
-	$(lib1974_SOURCES) $(lib1975_SOURCES) $(lib2301_SOURCES) \
-	$(lib2302_SOURCES) $(lib2304_SOURCES) $(lib2305_SOURCES) \
-	$(lib2306_SOURCES) $(lib2402_SOURCES) $(lib2404_SOURCES) \
+	$(lib1662_SOURCES) $(lib1900_SOURCES) $(lib1901_SOURCES) \
+	$(lib1903_SOURCES) $(lib1905_SOURCES) $(lib1906_SOURCES) \
+	$(lib1907_SOURCES) $(lib1908_SOURCES) $(lib1910_SOURCES) \
+	$(lib1911_SOURCES) $(lib1912_SOURCES) $(lib1913_SOURCES) \
+	$(lib1915_SOURCES) $(lib1916_SOURCES) $(lib1917_SOURCES) \
+	$(lib1918_SOURCES) $(lib1919_SOURCES) $(lib1933_SOURCES) \
+	$(lib1934_SOURCES) $(lib1935_SOURCES) $(lib1936_SOURCES) \
+	$(lib1937_SOURCES) $(lib1938_SOURCES) $(lib1939_SOURCES) \
+	$(lib1940_SOURCES) $(lib1945_SOURCES) $(lib1946_SOURCES) \
+	$(lib1947_SOURCES) $(lib1948_SOURCES) $(lib1955_SOURCES) \
+	$(lib1956_SOURCES) $(lib1957_SOURCES) $(lib1958_SOURCES) \
+	$(lib1959_SOURCES) $(lib1960_SOURCES) $(lib1964_SOURCES) \
+	$(lib1970_SOURCES) $(lib1971_SOURCES) $(lib1972_SOURCES) \
+	$(lib1973_SOURCES) $(lib1974_SOURCES) $(lib1975_SOURCES) \
+	$(lib2301_SOURCES) $(lib2302_SOURCES) $(lib2304_SOURCES) \
+	$(lib2305_SOURCES) $(lib2306_SOURCES) $(lib2308_SOURCES) \
+	$(lib2402_SOURCES) $(lib2404_SOURCES) $(lib2405_SOURCES) \
 	$(lib2502_SOURCES) $(lib3010_SOURCES) $(lib3025_SOURCES) \
 	$(lib3026_SOURCES) $(lib3027_SOURCES) $(lib3100_SOURCES) \
 	$(lib3101_SOURCES) $(lib3102_SOURCES) $(lib3103_SOURCES) \
@@ -1566,22 +1581,23 @@ DIST_SOURCES = $(libhostname_la_SOURCES) \
 	$(lib1568_SOURCES) $(lib1569_SOURCES) $(lib1591_SOURCES) \
 	$(lib1592_SOURCES) $(lib1593_SOURCES) $(lib1594_SOURCES) \
 	$(lib1596_SOURCES) $(lib1597_SOURCES) $(lib1598_SOURCES) \
-	$(lib1662_SOURCES) $(lib1900_SOURCES) $(lib1903_SOURCES) \
-	$(lib1905_SOURCES) $(lib1906_SOURCES) $(lib1907_SOURCES) \
-	$(lib1908_SOURCES) $(lib1910_SOURCES) $(lib1911_SOURCES) \
-	$(lib1912_SOURCES) $(lib1913_SOURCES) $(lib1915_SOURCES) \
-	$(lib1916_SOURCES) $(lib1917_SOURCES) $(lib1918_SOURCES) \
-	$(lib1919_SOURCES) $(lib1933_SOURCES) $(lib1934_SOURCES) \
-	$(lib1935_SOURCES) $(lib1936_SOURCES) $(lib1937_SOURCES) \
-	$(lib1938_SOURCES) $(lib1939_SOURCES) $(lib1940_SOURCES) \
-	$(lib1945_SOURCES) $(lib1946_SOURCES) $(lib1947_SOURCES) \
-	$(lib1948_SOURCES) $(lib1955_SOURCES) $(lib1956_SOURCES) \
-	$(lib1957_SOURCES) $(lib1958_SOURCES) $(lib1959_SOURCES) \
-	$(lib1960_SOURCES) $(lib1964_SOURCES) $(lib1970_SOURCES) \
-	$(lib1971_SOURCES) $(lib1972_SOURCES) $(lib1973_SOURCES) \
-	$(lib1974_SOURCES) $(lib1975_SOURCES) $(lib2301_SOURCES) \
-	$(lib2302_SOURCES) $(lib2304_SOURCES) $(lib2305_SOURCES) \
-	$(lib2306_SOURCES) $(lib2402_SOURCES) $(lib2404_SOURCES) \
+	$(lib1662_SOURCES) $(lib1900_SOURCES) $(lib1901_SOURCES) \
+	$(lib1903_SOURCES) $(lib1905_SOURCES) $(lib1906_SOURCES) \
+	$(lib1907_SOURCES) $(lib1908_SOURCES) $(lib1910_SOURCES) \
+	$(lib1911_SOURCES) $(lib1912_SOURCES) $(lib1913_SOURCES) \
+	$(lib1915_SOURCES) $(lib1916_SOURCES) $(lib1917_SOURCES) \
+	$(lib1918_SOURCES) $(lib1919_SOURCES) $(lib1933_SOURCES) \
+	$(lib1934_SOURCES) $(lib1935_SOURCES) $(lib1936_SOURCES) \
+	$(lib1937_SOURCES) $(lib1938_SOURCES) $(lib1939_SOURCES) \
+	$(lib1940_SOURCES) $(lib1945_SOURCES) $(lib1946_SOURCES) \
+	$(lib1947_SOURCES) $(lib1948_SOURCES) $(lib1955_SOURCES) \
+	$(lib1956_SOURCES) $(lib1957_SOURCES) $(lib1958_SOURCES) \
+	$(lib1959_SOURCES) $(lib1960_SOURCES) $(lib1964_SOURCES) \
+	$(lib1970_SOURCES) $(lib1971_SOURCES) $(lib1972_SOURCES) \
+	$(lib1973_SOURCES) $(lib1974_SOURCES) $(lib1975_SOURCES) \
+	$(lib2301_SOURCES) $(lib2302_SOURCES) $(lib2304_SOURCES) \
+	$(lib2305_SOURCES) $(lib2306_SOURCES) $(lib2308_SOURCES) \
+	$(lib2402_SOURCES) $(lib2404_SOURCES) $(lib2405_SOURCES) \
 	$(lib2502_SOURCES) $(lib3010_SOURCES) $(lib3025_SOURCES) \
 	$(lib3026_SOURCES) $(lib3027_SOURCES) $(lib3100_SOURCES) \
 	$(lib3101_SOURCES) $(lib3102_SOURCES) $(lib3103_SOURCES) \
@@ -1692,7 +1708,6 @@ CURL_DISABLE_TFTP = @CURL_DISABLE_TFTP@
 CURL_LT_SHLIB_VERSIONED_FLAVOUR = @CURL_LT_SHLIB_VERSIONED_FLAVOUR@
 CURL_NETWORK_AND_TIME_LIBS = @CURL_NETWORK_AND_TIME_LIBS@
 CURL_NETWORK_LIBS = @CURL_NETWORK_LIBS@
-CURL_PLIST_VERSION = @CURL_PLIST_VERSION@
 CURL_WITH_MULTI_SSL = @CURL_WITH_MULTI_SSL@
 CYGPATH_W = @CYGPATH_W@
 DEFAULT_SSL_BACKEND = @DEFAULT_SSL_BACKEND@
@@ -1816,6 +1831,7 @@ USE_WOLFSSH = @USE_WOLFSSH@
 USE_WOLFSSL = @USE_WOLFSSL@
 VERSION = @VERSION@
 VERSIONNUM = @VERSIONNUM@
+VSFTPD = @VSFTPD@
 ZLIB_LIBS = @ZLIB_LIBS@
 ZSH_FUNCTIONS_DIR = @ZSH_FUNCTIONS_DIR@
 abs_builddir = @abs_builddir@
@@ -2249,6 +2265,7 @@ lib1598_LDADD = $(TESTUTIL_LIBS)
 lib1662_SOURCES = lib1662.c $(SUPPORTFILES) $(TESTUTIL) $(WARNLESS)
 lib1662_LDADD = $(TESTUTIL_LIBS)
 lib1900_SOURCES = lib1900.c $(SUPPORTFILES)
+lib1901_SOURCES = lib1901.c $(SUPPORTFILES)
 lib1903_SOURCES = lib1903.c $(SUPPORTFILES) $(TESTUTIL) $(WARNLESS)
 lib1903_LDADD = $(TESTUTIL_LIBS)
 lib1905_SOURCES = lib1905.c $(SUPPORTFILES) $(TESTUTIL) $(WARNLESS)
@@ -2335,10 +2352,14 @@ lib2305_SOURCES = lib2305.c $(SUPPORTFILES) $(TESTUTIL) $(TSTTRACE) $(MULTIBYTE)
 lib2305_LDADD = $(TESTUTIL_LIBS)
 lib2306_SOURCES = lib2306.c $(SUPPORTFILES)
 lib2306_LDADD = $(TESTUTIL_LIBS)
+lib2308_SOURCES = lib2308.c $(SUPPORTFILES)
+lib2308_LDADD = $(TESTUTIL_LIBS)
 lib2402_SOURCES = lib2402.c $(SUPPORTFILES) $(TESTUTIL) $(WARNLESS)
 lib2402_LDADD = $(TESTUTIL_LIBS)
 lib2404_SOURCES = lib2404.c $(SUPPORTFILES) $(TESTUTIL) $(WARNLESS)
 lib2404_LDADD = $(TESTUTIL_LIBS)
+lib2405_SOURCES = lib2405.c $(SUPPORTFILES) $(TESTUTIL) $(WARNLESS)
+lib2405_LDADD = $(TESTUTIL_LIBS)
 lib2502_SOURCES = lib2502.c $(SUPPORTFILES) $(TESTUTIL) $(WARNLESS)
 lib2502_LDADD = $(TESTUTIL_LIBS)
 lib3010_SOURCES = lib3010.c $(SUPPORTFILES) $(TESTUTIL) $(WARNLESS)
@@ -2772,6 +2793,10 @@ lib1900$(EXEEXT): $(lib1900_OBJECTS) $(lib1900_DEPENDENCIES) $(EXTRA_lib1900_DEP
 	@rm -f lib1900$(EXEEXT)
 	$(AM_V_CCLD)$(LINK) $(lib1900_OBJECTS) $(lib1900_LDADD) $(LIBS)
 
+lib1901$(EXEEXT): $(lib1901_OBJECTS) $(lib1901_DEPENDENCIES) $(EXTRA_lib1901_DEPENDENCIES) 
+	@rm -f lib1901$(EXEEXT)
+	$(AM_V_CCLD)$(LINK) $(lib1901_OBJECTS) $(lib1901_LDADD) $(LIBS)
+
 lib1903$(EXEEXT): $(lib1903_OBJECTS) $(lib1903_DEPENDENCIES) $(EXTRA_lib1903_DEPENDENCIES) 
 	@rm -f lib1903$(EXEEXT)
 	$(AM_V_CCLD)$(LINK) $(lib1903_OBJECTS) $(lib1903_LDADD) $(LIBS)
@@ -2956,6 +2981,10 @@ lib2306$(EXEEXT): $(lib2306_OBJECTS) $(lib2306_DEPENDENCIES) $(EXTRA_lib2306_DEP
 	@rm -f lib2306$(EXEEXT)
 	$(AM_V_CCLD)$(LINK) $(lib2306_OBJECTS) $(lib2306_LDADD) $(LIBS)
 
+lib2308$(EXEEXT): $(lib2308_OBJECTS) $(lib2308_DEPENDENCIES) $(EXTRA_lib2308_DEPENDENCIES) 
+	@rm -f lib2308$(EXEEXT)
+	$(AM_V_CCLD)$(LINK) $(lib2308_OBJECTS) $(lib2308_LDADD) $(LIBS)
+
 lib2402$(EXEEXT): $(lib2402_OBJECTS) $(lib2402_DEPENDENCIES) $(EXTRA_lib2402_DEPENDENCIES) 
 	@rm -f lib2402$(EXEEXT)
 	$(AM_V_CCLD)$(LINK) $(lib2402_OBJECTS) $(lib2402_LDADD) $(LIBS)
@@ -2963,6 +2992,10 @@ lib2402$(EXEEXT): $(lib2402_OBJECTS) $(lib2402_DEPENDENCIES) $(EXTRA_lib2402_DEP
 lib2404$(EXEEXT): $(lib2404_OBJECTS) $(lib2404_DEPENDENCIES) $(EXTRA_lib2404_DEPENDENCIES) 
 	@rm -f lib2404$(EXEEXT)
 	$(AM_V_CCLD)$(LINK) $(lib2404_OBJECTS) $(lib2404_LDADD) $(LIBS)
+
+lib2405$(EXEEXT): $(lib2405_OBJECTS) $(lib2405_DEPENDENCIES) $(EXTRA_lib2405_DEPENDENCIES) 
+	@rm -f lib2405$(EXEEXT)
+	$(AM_V_CCLD)$(LINK) $(lib2405_OBJECTS) $(lib2405_LDADD) $(LIBS)
 
 lib2502$(EXEEXT): $(lib2502_OBJECTS) $(lib2502_DEPENDENCIES) $(EXTRA_lib2502_DEPENDENCIES) 
 	@rm -f lib2502$(EXEEXT)
@@ -3604,6 +3637,7 @@ distclean-compile:
 @AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/lib1598.Po@am__quote@ # am--include-marker
 @AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/lib1662.Po@am__quote@ # am--include-marker
 @AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/lib1900.Po@am__quote@ # am--include-marker
+@AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/lib1901.Po@am__quote@ # am--include-marker
 @AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/lib1903.Po@am__quote@ # am--include-marker
 @AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/lib1905.Po@am__quote@ # am--include-marker
 @AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/lib1906.Po@am__quote@ # am--include-marker
@@ -3650,8 +3684,10 @@ distclean-compile:
 @AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/lib2304.Po@am__quote@ # am--include-marker
 @AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/lib2305.Po@am__quote@ # am--include-marker
 @AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/lib2306.Po@am__quote@ # am--include-marker
+@AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/lib2308.Po@am__quote@ # am--include-marker
 @AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/lib2402.Po@am__quote@ # am--include-marker
 @AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/lib2404.Po@am__quote@ # am--include-marker
+@AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/lib2405.Po@am__quote@ # am--include-marker
 @AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/lib2502.Po@am__quote@ # am--include-marker
 @AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/lib3010.Po@am__quote@ # am--include-marker
 @AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/lib3025.Po@am__quote@ # am--include-marker
@@ -5587,6 +5623,7 @@ distclean: distclean-am
 	-rm -f ./$(DEPDIR)/lib1598.Po
 	-rm -f ./$(DEPDIR)/lib1662.Po
 	-rm -f ./$(DEPDIR)/lib1900.Po
+	-rm -f ./$(DEPDIR)/lib1901.Po
 	-rm -f ./$(DEPDIR)/lib1903.Po
 	-rm -f ./$(DEPDIR)/lib1905.Po
 	-rm -f ./$(DEPDIR)/lib1906.Po
@@ -5633,8 +5670,10 @@ distclean: distclean-am
 	-rm -f ./$(DEPDIR)/lib2304.Po
 	-rm -f ./$(DEPDIR)/lib2305.Po
 	-rm -f ./$(DEPDIR)/lib2306.Po
+	-rm -f ./$(DEPDIR)/lib2308.Po
 	-rm -f ./$(DEPDIR)/lib2402.Po
 	-rm -f ./$(DEPDIR)/lib2404.Po
+	-rm -f ./$(DEPDIR)/lib2405.Po
 	-rm -f ./$(DEPDIR)/lib2502.Po
 	-rm -f ./$(DEPDIR)/lib3010.Po
 	-rm -f ./$(DEPDIR)/lib3025.Po
@@ -5952,6 +5991,7 @@ maintainer-clean: maintainer-clean-am
 	-rm -f ./$(DEPDIR)/lib1598.Po
 	-rm -f ./$(DEPDIR)/lib1662.Po
 	-rm -f ./$(DEPDIR)/lib1900.Po
+	-rm -f ./$(DEPDIR)/lib1901.Po
 	-rm -f ./$(DEPDIR)/lib1903.Po
 	-rm -f ./$(DEPDIR)/lib1905.Po
 	-rm -f ./$(DEPDIR)/lib1906.Po
@@ -5998,8 +6038,10 @@ maintainer-clean: maintainer-clean-am
 	-rm -f ./$(DEPDIR)/lib2304.Po
 	-rm -f ./$(DEPDIR)/lib2305.Po
 	-rm -f ./$(DEPDIR)/lib2306.Po
+	-rm -f ./$(DEPDIR)/lib2308.Po
 	-rm -f ./$(DEPDIR)/lib2402.Po
 	-rm -f ./$(DEPDIR)/lib2404.Po
+	-rm -f ./$(DEPDIR)/lib2405.Po
 	-rm -f ./$(DEPDIR)/lib2502.Po
 	-rm -f ./$(DEPDIR)/lib3010.Po
 	-rm -f ./$(DEPDIR)/lib3025.Po

@@ -108,7 +108,7 @@ static void memory_tracking_init(void)
 {
   char *env;
   /* if CURL_MEMDEBUG is set, this starts memory tracking message logging */
-  env = curlx_getenv("CURL_MEMDEBUG");
+  env = curl_getenv("CURL_MEMDEBUG");
   if(env) {
     /* use the value as file name */
     char fname[CURL_MT_LOGFNAME_BUFSIZE];
@@ -122,7 +122,7 @@ static void memory_tracking_init(void)
        without an alloc! */
   }
   /* if CURL_MEMLIMIT is set, this enables fail-on-alloc-number-N feature */
-  env = curlx_getenv("CURL_MEMLIMIT");
+  env = curl_getenv("CURL_MEMLIMIT");
   if(env) {
     char *endptr;
     long num = strtol(env, &endptr, 10);
@@ -249,7 +249,7 @@ int main(int argc, char *argv[])
   result = win32_init();
   if(result) {
     errorf(&global, "(%d) Windows-specific init failed", result);
-    return result;
+    return (int)result;
   }
 #endif
 

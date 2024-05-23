@@ -160,12 +160,13 @@ am__EXEEXT_1 = unit1300$(EXEEXT) unit1302$(EXEEXT) unit1303$(EXEEXT) \
 	unit1605$(EXEEXT) unit1606$(EXEEXT) unit1607$(EXEEXT) \
 	unit1608$(EXEEXT) unit1609$(EXEEXT) unit1610$(EXEEXT) \
 	unit1611$(EXEEXT) unit1612$(EXEEXT) unit1614$(EXEEXT) \
-	unit1615$(EXEEXT) unit1620$(EXEEXT) unit1621$(EXEEXT) \
-	unit1650$(EXEEXT) unit1651$(EXEEXT) unit1652$(EXEEXT) \
-	unit1653$(EXEEXT) unit1654$(EXEEXT) unit1655$(EXEEXT) \
-	unit1660$(EXEEXT) unit1661$(EXEEXT) unit2600$(EXEEXT) \
-	unit2601$(EXEEXT) unit2602$(EXEEXT) unit2603$(EXEEXT) \
-	unit3200$(EXEEXT)
+	unit1615$(EXEEXT) unit1616$(EXEEXT) unit1620$(EXEEXT) \
+	unit1621$(EXEEXT) unit1650$(EXEEXT) unit1651$(EXEEXT) \
+	unit1652$(EXEEXT) unit1653$(EXEEXT) unit1654$(EXEEXT) \
+	unit1655$(EXEEXT) unit1660$(EXEEXT) unit1661$(EXEEXT) \
+	unit2600$(EXEEXT) unit2601$(EXEEXT) unit2602$(EXEEXT) \
+	unit2603$(EXEEXT) unit2604$(EXEEXT) unit3200$(EXEEXT) \
+	unit3205$(EXEEXT)
 PROGRAMS = $(noinst_PROGRAMS)
 am__dirstamp = $(am__leading_dot)dirstamp
 am__objects_1 = ../libtest/first.$(OBJEXT)
@@ -328,6 +329,11 @@ unit1615_OBJECTS = $(am_unit1615_OBJECTS)
 unit1615_LDADD = $(LDADD)
 unit1615_DEPENDENCIES = $(top_builddir)/src/libcurltool.la \
 	$(top_builddir)/lib/libcurlu.la
+am_unit1616_OBJECTS = unit1616.$(OBJEXT) $(am__objects_1)
+unit1616_OBJECTS = $(am_unit1616_OBJECTS)
+unit1616_LDADD = $(LDADD)
+unit1616_DEPENDENCIES = $(top_builddir)/src/libcurltool.la \
+	$(top_builddir)/lib/libcurlu.la
 am_unit1620_OBJECTS = unit1620.$(OBJEXT) $(am__objects_1)
 unit1620_OBJECTS = $(am_unit1620_OBJECTS)
 unit1620_LDADD = $(LDADD)
@@ -398,10 +404,20 @@ unit2603_OBJECTS = $(am_unit2603_OBJECTS)
 unit2603_LDADD = $(LDADD)
 unit2603_DEPENDENCIES = $(top_builddir)/src/libcurltool.la \
 	$(top_builddir)/lib/libcurlu.la
+am_unit2604_OBJECTS = unit2604.$(OBJEXT) $(am__objects_1)
+unit2604_OBJECTS = $(am_unit2604_OBJECTS)
+unit2604_LDADD = $(LDADD)
+unit2604_DEPENDENCIES = $(top_builddir)/src/libcurltool.la \
+	$(top_builddir)/lib/libcurlu.la
 am_unit3200_OBJECTS = unit3200.$(OBJEXT) $(am__objects_1)
 unit3200_OBJECTS = $(am_unit3200_OBJECTS)
 unit3200_LDADD = $(LDADD)
 unit3200_DEPENDENCIES = $(top_builddir)/src/libcurltool.la \
+	$(top_builddir)/lib/libcurlu.la
+am_unit3205_OBJECTS = unit3205.$(OBJEXT) $(am__objects_1)
+unit3205_OBJECTS = $(am_unit3205_OBJECTS)
+unit3205_LDADD = $(LDADD)
+unit3205_DEPENDENCIES = $(top_builddir)/src/libcurltool.la \
 	$(top_builddir)/lib/libcurlu.la
 AM_V_P = $(am__v_P_@AM_V@)
 am__v_P_ = $(am__v_P_@AM_DEFAULT_V@)
@@ -434,14 +450,16 @@ am__depfiles_remade = ../libtest/$(DEPDIR)/first.Po \
 	./$(DEPDIR)/unit1608.Po ./$(DEPDIR)/unit1609.Po \
 	./$(DEPDIR)/unit1610.Po ./$(DEPDIR)/unit1611.Po \
 	./$(DEPDIR)/unit1612.Po ./$(DEPDIR)/unit1614.Po \
-	./$(DEPDIR)/unit1615.Po ./$(DEPDIR)/unit1620.Po \
-	./$(DEPDIR)/unit1621.Po ./$(DEPDIR)/unit1650.Po \
-	./$(DEPDIR)/unit1651.Po ./$(DEPDIR)/unit1652.Po \
-	./$(DEPDIR)/unit1653.Po ./$(DEPDIR)/unit1654.Po \
-	./$(DEPDIR)/unit1655.Po ./$(DEPDIR)/unit1660.Po \
-	./$(DEPDIR)/unit1661.Po ./$(DEPDIR)/unit2600.Po \
-	./$(DEPDIR)/unit2601.Po ./$(DEPDIR)/unit2602.Po \
-	./$(DEPDIR)/unit2603.Po ./$(DEPDIR)/unit3200.Po
+	./$(DEPDIR)/unit1615.Po ./$(DEPDIR)/unit1616.Po \
+	./$(DEPDIR)/unit1620.Po ./$(DEPDIR)/unit1621.Po \
+	./$(DEPDIR)/unit1650.Po ./$(DEPDIR)/unit1651.Po \
+	./$(DEPDIR)/unit1652.Po ./$(DEPDIR)/unit1653.Po \
+	./$(DEPDIR)/unit1654.Po ./$(DEPDIR)/unit1655.Po \
+	./$(DEPDIR)/unit1660.Po ./$(DEPDIR)/unit1661.Po \
+	./$(DEPDIR)/unit2600.Po ./$(DEPDIR)/unit2601.Po \
+	./$(DEPDIR)/unit2602.Po ./$(DEPDIR)/unit2603.Po \
+	./$(DEPDIR)/unit2604.Po ./$(DEPDIR)/unit3200.Po \
+	./$(DEPDIR)/unit3205.Po
 am__mv = mv -f
 COMPILE = $(CC) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(AM_CPPFLAGS) \
 	$(CPPFLAGS) $(AM_CFLAGS) $(CFLAGS)
@@ -471,12 +489,13 @@ SOURCES = $(unit1300_SOURCES) $(unit1302_SOURCES) $(unit1303_SOURCES) \
 	$(unit1605_SOURCES) $(unit1606_SOURCES) $(unit1607_SOURCES) \
 	$(unit1608_SOURCES) $(unit1609_SOURCES) $(unit1610_SOURCES) \
 	$(unit1611_SOURCES) $(unit1612_SOURCES) $(unit1614_SOURCES) \
-	$(unit1615_SOURCES) $(unit1620_SOURCES) $(unit1621_SOURCES) \
-	$(unit1650_SOURCES) $(unit1651_SOURCES) $(unit1652_SOURCES) \
-	$(unit1653_SOURCES) $(unit1654_SOURCES) $(unit1655_SOURCES) \
-	$(unit1660_SOURCES) $(unit1661_SOURCES) $(unit2600_SOURCES) \
-	$(unit2601_SOURCES) $(unit2602_SOURCES) $(unit2603_SOURCES) \
-	$(unit3200_SOURCES)
+	$(unit1615_SOURCES) $(unit1616_SOURCES) $(unit1620_SOURCES) \
+	$(unit1621_SOURCES) $(unit1650_SOURCES) $(unit1651_SOURCES) \
+	$(unit1652_SOURCES) $(unit1653_SOURCES) $(unit1654_SOURCES) \
+	$(unit1655_SOURCES) $(unit1660_SOURCES) $(unit1661_SOURCES) \
+	$(unit2600_SOURCES) $(unit2601_SOURCES) $(unit2602_SOURCES) \
+	$(unit2603_SOURCES) $(unit2604_SOURCES) $(unit3200_SOURCES) \
+	$(unit3205_SOURCES)
 DIST_SOURCES = $(unit1300_SOURCES) $(unit1302_SOURCES) \
 	$(unit1303_SOURCES) $(unit1304_SOURCES) $(unit1305_SOURCES) \
 	$(unit1307_SOURCES) $(unit1308_SOURCES) $(unit1309_SOURCES) \
@@ -487,12 +506,13 @@ DIST_SOURCES = $(unit1300_SOURCES) $(unit1302_SOURCES) \
 	$(unit1604_SOURCES) $(unit1605_SOURCES) $(unit1606_SOURCES) \
 	$(unit1607_SOURCES) $(unit1608_SOURCES) $(unit1609_SOURCES) \
 	$(unit1610_SOURCES) $(unit1611_SOURCES) $(unit1612_SOURCES) \
-	$(unit1614_SOURCES) $(unit1615_SOURCES) $(unit1620_SOURCES) \
-	$(unit1621_SOURCES) $(unit1650_SOURCES) $(unit1651_SOURCES) \
-	$(unit1652_SOURCES) $(unit1653_SOURCES) $(unit1654_SOURCES) \
-	$(unit1655_SOURCES) $(unit1660_SOURCES) $(unit1661_SOURCES) \
-	$(unit2600_SOURCES) $(unit2601_SOURCES) $(unit2602_SOURCES) \
-	$(unit2603_SOURCES) $(unit3200_SOURCES)
+	$(unit1614_SOURCES) $(unit1615_SOURCES) $(unit1616_SOURCES) \
+	$(unit1620_SOURCES) $(unit1621_SOURCES) $(unit1650_SOURCES) \
+	$(unit1651_SOURCES) $(unit1652_SOURCES) $(unit1653_SOURCES) \
+	$(unit1654_SOURCES) $(unit1655_SOURCES) $(unit1660_SOURCES) \
+	$(unit1661_SOURCES) $(unit2600_SOURCES) $(unit2601_SOURCES) \
+	$(unit2602_SOURCES) $(unit2603_SOURCES) $(unit2604_SOURCES) \
+	$(unit3200_SOURCES) $(unit3205_SOURCES)
 am__can_run_installinfo = \
   case $$AM_UPDATE_INFO_DIR in \
     n|no|NO) false;; \
@@ -564,7 +584,6 @@ CURL_DISABLE_TFTP = @CURL_DISABLE_TFTP@
 CURL_LT_SHLIB_VERSIONED_FLAVOUR = @CURL_LT_SHLIB_VERSIONED_FLAVOUR@
 CURL_NETWORK_AND_TIME_LIBS = @CURL_NETWORK_AND_TIME_LIBS@
 CURL_NETWORK_LIBS = @CURL_NETWORK_LIBS@
-CURL_PLIST_VERSION = @CURL_PLIST_VERSION@
 CURL_WITH_MULTI_SSL = @CURL_WITH_MULTI_SSL@
 CYGPATH_W = @CYGPATH_W@
 DEFAULT_SSL_BACKEND = @DEFAULT_SSL_BACKEND@
@@ -688,6 +707,7 @@ USE_WOLFSSH = @USE_WOLFSSH@
 USE_WOLFSSL = @USE_WOLFSSL@
 VERSION = @VERSION@
 VERSIONNUM = @VERSIONNUM@
+VSFTPD = @VSFTPD@
 ZLIB_LIBS = @ZLIB_LIBS@
 ZSH_FUNCTIONS_DIR = @ZSH_FUNCTIONS_DIR@
 abs_builddir = @abs_builddir@
@@ -801,12 +821,13 @@ UNITPROGS = unit1300          unit1302 unit1303 unit1304 unit1305 unit1307 \
  unit1330 unit1394 unit1395 unit1396 unit1397 unit1398 \
  unit1399 \
  unit1600 unit1601 unit1602 unit1603 unit1604 unit1605 unit1606 unit1607 \
- unit1608 unit1609 unit1610 unit1611 unit1612 unit1614 unit1615 \
+ unit1608 unit1609 unit1610 unit1611 unit1612 unit1614 unit1615 unit1616 \
  unit1620 unit1621 \
  unit1650 unit1651 unit1652 unit1653 unit1654 unit1655 \
  unit1660 unit1661 \
- unit2600 unit2601 unit2602 unit2603 \
- unit3200
+ unit2600 unit2601 unit2602 unit2603 unit2604 \
+ unit3200 \
+ unit3205
 
 unit1300_SOURCES = unit1300.c $(UNITFILES)
 unit1302_SOURCES = unit1302.c $(UNITFILES)
@@ -839,6 +860,7 @@ unit1611_SOURCES = unit1611.c $(UNITFILES)
 unit1612_SOURCES = unit1612.c $(UNITFILES)
 unit1614_SOURCES = unit1614.c $(UNITFILES)
 unit1615_SOURCES = unit1615.c $(UNITFILES)
+unit1616_SOURCES = unit1616.c $(UNITFILES)
 unit1620_SOURCES = unit1620.c $(UNITFILES)
 unit1621_SOURCES = unit1621.c $(UNITFILES)
 unit1650_SOURCES = unit1650.c $(UNITFILES)
@@ -853,7 +875,9 @@ unit2600_SOURCES = unit2600.c $(UNITFILES)
 unit2601_SOURCES = unit2601.c $(UNITFILES)
 unit2602_SOURCES = unit2602.c $(UNITFILES)
 unit2603_SOURCES = unit2603.c $(UNITFILES)
+unit2604_SOURCES = unit2604.c $(UNITFILES)
 unit3200_SOURCES = unit3200.c $(UNITFILES)
+unit3205_SOURCES = unit3205.c $(UNITFILES)
 all: all-am
 
 .SUFFIXES:
@@ -1030,6 +1054,10 @@ unit1615$(EXEEXT): $(unit1615_OBJECTS) $(unit1615_DEPENDENCIES) $(EXTRA_unit1615
 	@rm -f unit1615$(EXEEXT)
 	$(AM_V_CCLD)$(LINK) $(unit1615_OBJECTS) $(unit1615_LDADD) $(LIBS)
 
+unit1616$(EXEEXT): $(unit1616_OBJECTS) $(unit1616_DEPENDENCIES) $(EXTRA_unit1616_DEPENDENCIES) 
+	@rm -f unit1616$(EXEEXT)
+	$(AM_V_CCLD)$(LINK) $(unit1616_OBJECTS) $(unit1616_LDADD) $(LIBS)
+
 unit1620$(EXEEXT): $(unit1620_OBJECTS) $(unit1620_DEPENDENCIES) $(EXTRA_unit1620_DEPENDENCIES) 
 	@rm -f unit1620$(EXEEXT)
 	$(AM_V_CCLD)$(LINK) $(unit1620_OBJECTS) $(unit1620_LDADD) $(LIBS)
@@ -1086,9 +1114,17 @@ unit2603$(EXEEXT): $(unit2603_OBJECTS) $(unit2603_DEPENDENCIES) $(EXTRA_unit2603
 	@rm -f unit2603$(EXEEXT)
 	$(AM_V_CCLD)$(LINK) $(unit2603_OBJECTS) $(unit2603_LDADD) $(LIBS)
 
+unit2604$(EXEEXT): $(unit2604_OBJECTS) $(unit2604_DEPENDENCIES) $(EXTRA_unit2604_DEPENDENCIES) 
+	@rm -f unit2604$(EXEEXT)
+	$(AM_V_CCLD)$(LINK) $(unit2604_OBJECTS) $(unit2604_LDADD) $(LIBS)
+
 unit3200$(EXEEXT): $(unit3200_OBJECTS) $(unit3200_DEPENDENCIES) $(EXTRA_unit3200_DEPENDENCIES) 
 	@rm -f unit3200$(EXEEXT)
 	$(AM_V_CCLD)$(LINK) $(unit3200_OBJECTS) $(unit3200_LDADD) $(LIBS)
+
+unit3205$(EXEEXT): $(unit3205_OBJECTS) $(unit3205_DEPENDENCIES) $(EXTRA_unit3205_DEPENDENCIES) 
+	@rm -f unit3205$(EXEEXT)
+	$(AM_V_CCLD)$(LINK) $(unit3205_OBJECTS) $(unit3205_LDADD) $(LIBS)
 
 mostlyclean-compile:
 	-rm -f *.$(OBJEXT)
@@ -1129,6 +1165,7 @@ distclean-compile:
 @AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/unit1612.Po@am__quote@ # am--include-marker
 @AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/unit1614.Po@am__quote@ # am--include-marker
 @AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/unit1615.Po@am__quote@ # am--include-marker
+@AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/unit1616.Po@am__quote@ # am--include-marker
 @AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/unit1620.Po@am__quote@ # am--include-marker
 @AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/unit1621.Po@am__quote@ # am--include-marker
 @AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/unit1650.Po@am__quote@ # am--include-marker
@@ -1143,7 +1180,9 @@ distclean-compile:
 @AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/unit2601.Po@am__quote@ # am--include-marker
 @AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/unit2602.Po@am__quote@ # am--include-marker
 @AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/unit2603.Po@am__quote@ # am--include-marker
+@AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/unit2604.Po@am__quote@ # am--include-marker
 @AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/unit3200.Po@am__quote@ # am--include-marker
+@AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/unit3205.Po@am__quote@ # am--include-marker
 
 $(am__depfiles_remade):
 	@$(MKDIR_P) $(@D)
@@ -1339,6 +1378,7 @@ distclean: distclean-am
 	-rm -f ./$(DEPDIR)/unit1612.Po
 	-rm -f ./$(DEPDIR)/unit1614.Po
 	-rm -f ./$(DEPDIR)/unit1615.Po
+	-rm -f ./$(DEPDIR)/unit1616.Po
 	-rm -f ./$(DEPDIR)/unit1620.Po
 	-rm -f ./$(DEPDIR)/unit1621.Po
 	-rm -f ./$(DEPDIR)/unit1650.Po
@@ -1353,7 +1393,9 @@ distclean: distclean-am
 	-rm -f ./$(DEPDIR)/unit2601.Po
 	-rm -f ./$(DEPDIR)/unit2602.Po
 	-rm -f ./$(DEPDIR)/unit2603.Po
+	-rm -f ./$(DEPDIR)/unit2604.Po
 	-rm -f ./$(DEPDIR)/unit3200.Po
+	-rm -f ./$(DEPDIR)/unit3205.Po
 	-rm -f Makefile
 distclean-am: clean-am distclean-compile distclean-generic \
 	distclean-tags
@@ -1431,6 +1473,7 @@ maintainer-clean: maintainer-clean-am
 	-rm -f ./$(DEPDIR)/unit1612.Po
 	-rm -f ./$(DEPDIR)/unit1614.Po
 	-rm -f ./$(DEPDIR)/unit1615.Po
+	-rm -f ./$(DEPDIR)/unit1616.Po
 	-rm -f ./$(DEPDIR)/unit1620.Po
 	-rm -f ./$(DEPDIR)/unit1621.Po
 	-rm -f ./$(DEPDIR)/unit1650.Po
@@ -1445,7 +1488,9 @@ maintainer-clean: maintainer-clean-am
 	-rm -f ./$(DEPDIR)/unit2601.Po
 	-rm -f ./$(DEPDIR)/unit2602.Po
 	-rm -f ./$(DEPDIR)/unit2603.Po
+	-rm -f ./$(DEPDIR)/unit2604.Po
 	-rm -f ./$(DEPDIR)/unit3200.Po
+	-rm -f ./$(DEPDIR)/unit3205.Po
 	-rm -f Makefile
 maintainer-clean-am: distclean-am maintainer-clean-generic
 

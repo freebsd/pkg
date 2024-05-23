@@ -1,3 +1,9 @@
+<!--
+Copyright (C) Daniel Stenberg, <daniel@haxx.se>, et al.
+
+SPDX-License-Identifier: curl
+-->
+
 # The curl bug bounty
 
 The curl project runs a bug bounty program in association with
@@ -60,6 +66,13 @@ infrastructure.
 
 The curl security team is the sole arbiter if a reported flaw is subject to a
 bounty or not.
+
+## Third parties
+
+The curl bug bounty does not cover flaws in third party dependencies
+(libraries) used by curl or libcurl. If the bug triggers because of curl
+behaving wrongly or abusing a third party dependency, the problem is rather in
+curl and not in the dependency and then the bounty might cover the problem.
 
 ## How are vulnerabilities graded?
 
