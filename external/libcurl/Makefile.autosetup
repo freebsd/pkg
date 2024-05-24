@@ -1,8 +1,8 @@
 include @builddir@/mk/defs.mk
 
 LIB=	curl
-.PATH:	$(top_srcdir)/external/curl/lib/
-VPATH=	$(top_srcdir)/external/curl/lib/
+.PATH:	$(top_srcdir)/external/curl/lib
+VPATH=	$(top_srcdir)/external/curl/lib
 .PATH:	$(top_srcdir)/external/curl/lib/vtls
 VPATH+=	$(top_srcdir)/external/curl/lib/vtls
 .PATH:	$(top_srcdir)/external/curl/lib/vauth
@@ -95,8 +95,8 @@ SRCS=	\
 	altsvc.c \
 	curl_sha512_256.c \
 	cw-out.c \
-	request.c
-
+	request.c \
+	socketpair.c
 
 LOCAL_CFLAGS=	-DHAVE_CONFIG_H \
 		-DBUILDING_LIBCURL \
