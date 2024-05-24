@@ -1021,7 +1021,7 @@ print_jobs_summary(struct pkg_jobs *jobs, const char *msg, ...)
 		if (tll_length(disp[type]) != 0) {
 			/* Space between each section. */
 			if (!first)
-				puts("");
+				putchar('\n');
 			else
 				first = false;
 			if (msg != NULL) {
@@ -1050,36 +1050,29 @@ print_jobs_summary(struct pkg_jobs *jobs, const char *msg, ...)
 	limbytes = pkg_object_int(pkg_config_get("WARN_SIZE_LIMIT"));
 	bytes_change = (size_t)llabs(newsize - oldsize);
 
-	puts("");
+	putchar('\n');
 	if (sum.delete > 0) {
 		printf("Number of packages to be removed: %d\n", sum.delete);
-	}
-	if (sum.install > 0) {
+	} else if (sum.install > 0) {
 		printf("Number of packages to be installed: %d\n", sum.install);
-	}
-	if (sum.upgrade > 0) {
+	} else if (sum.upgrade > 0) {
 		printf("Number of packages to be upgraded: %d\n", sum.upgrade);
-	}
-	if (sum.reinstall > 0) {
+	} else if (sum.reinstall > 0) {
 		printf("Number of packages to be reinstalled: %d\n",
 		    sum.reinstall);
-	}
-	if (sum.downgrade > 0) {
+	} else xif (sum.downgrade > 0) {
 		printf("Number of packages to be downgraded: %d\n",
 		    sum.downgrade);
-	}
-	if (sum.fetch > 0) {
+	} else if (sum.fetch > 0) {
 		printf("Number of packages to be fetched: %d\n", sum.fetch);
-	}
-	if (sum.group_install > 0) {
+	} else if (sum.group_install > 0) {
 		printf("Number of groups to be installed: %d\n", sum.group_install);
-	}
-	if (sum.group_upgrade > 0) {
+	} else if (sum.group_upgrade > 0) {
 		printf("Number of groups to be upgraded: %d\n", sum.group_upgrade);
 	}
 	/* Add an extra line before the size output. */
 	if (bytes_change > limbytes || dlsize)
-		puts("");
+		putchar('\n');
 
 	if (bytes_change > limbytes) {
 		if (oldsize > newsize) {
