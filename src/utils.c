@@ -1060,7 +1060,7 @@ print_jobs_summary(struct pkg_jobs *jobs, const char *msg, ...)
 	} else if (sum.reinstall > 0) {
 		printf("Number of packages to be reinstalled: %d\n",
 		    sum.reinstall);
-	} else xif (sum.downgrade > 0) {
+	} else if (sum.downgrade > 0) {
 		printf("Number of packages to be downgraded: %d\n",
 		    sum.downgrade);
 	} else if (sum.fetch > 0) {
