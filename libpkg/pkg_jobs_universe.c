@@ -683,6 +683,7 @@ pkg_jobs_update_universe_item_priority(struct pkg_jobs_universe *universe,
 	}
 
 	LL_FOREACH(item, it) {
+		bool is_group = false;
 		if ((item->next != NULL || item->prev != NULL) &&
 		    it->pkg->type != PKG_INSTALLED &&
 		    (type == PKG_PRIORITY_UPDATE_CONFLICT ||
@@ -699,9 +700,19 @@ pkg_jobs_update_universe_item_priority(struct pkg_jobs_universe *universe,
 		if (it->priority > priority)
 			continue;
 
-		is_local = it->pkg->type == PKG_INSTALLED ? "local" : "remote";
-		pkg_debug(2, "universe: update %s priority of %s(%s): %d -> %d, reason: %d",
-		    is_local, it->pkg->uid, it->pkg->version, it->priority, priority, type);
+		if (it->pkg->type == PKG_GROUP_INSTALLED || it->pkg->type == PKG_GROUP_REMOTE)
+			is_group = true;
+
+		if (it->pkg->type == PKG_INSTALLED || it->pkg->type == PKG_GROUP_INSTALLED)
+			is_local = "local";
+		else
+			is_local = "remote";
+		if (is_group)
+			pkg_debug(2, "universe: update %s priority of %s: %d -> %d, reason: %d",
+			    is_local, it->pkg->uid, it->priority, priority, type);
+		else
+			pkg_debug(2, "universe: update %s priority of %s(%s): %d -> %d, reason: %d",
+			    is_local, it->pkg->uid, it->pkg->version, it->priority, priority, type);
 		it->priority = priority;
 
 		if (type == PKG_PRIORITY_UPDATE_DELETE) {
