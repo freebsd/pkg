@@ -1051,25 +1051,24 @@ print_jobs_summary(struct pkg_jobs *jobs, const char *msg, ...)
 	bytes_change = (size_t)llabs(newsize - oldsize);
 
 	putchar('\n');
-	if (sum.delete > 0) {
+	if (sum.delete > 0)
 		printf("Number of packages to be removed: %d\n", sum.delete);
-	} else if (sum.install > 0) {
+	if (sum.install > 0)
 		printf("Number of packages to be installed: %d\n", sum.install);
-	} else if (sum.upgrade > 0) {
+	if (sum.upgrade > 0)
 		printf("Number of packages to be upgraded: %d\n", sum.upgrade);
-	} else if (sum.reinstall > 0) {
+	if (sum.reinstall > 0)
 		printf("Number of packages to be reinstalled: %d\n",
 		    sum.reinstall);
-	} else if (sum.downgrade > 0) {
+	if (sum.downgrade > 0)
 		printf("Number of packages to be downgraded: %d\n",
 		    sum.downgrade);
-	} else if (sum.fetch > 0) {
+	if (sum.fetch > 0)
 		printf("Number of packages to be fetched: %d\n", sum.fetch);
-	} else if (sum.group_install > 0) {
+	if (sum.group_install > 0)
 		printf("Number of groups to be installed: %d\n", sum.group_install);
-	} else if (sum.group_upgrade > 0) {
+	if (sum.group_upgrade > 0)
 		printf("Number of groups to be upgraded: %d\n", sum.group_upgrade);
-	}
 	/* Add an extra line before the size output. */
 	if (bytes_change > limbytes || dlsize)
 		putchar('\n');
