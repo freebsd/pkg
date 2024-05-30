@@ -123,7 +123,8 @@ pkg_repo_binary_group_it_next(struct pkg_repo_it *it, struct pkg **pkg_p, unsign
 {
 	int ret;
 	struct pkg_repo_group *prg;
-	const ucl_object_t *o, *el;
+	const ucl_object_t *o, *el, *ar;
+	ucl_object_iter_t oit = NULL;
 
 	prg = it->data;
 	if (prg->index == ucl_array_size(prg->groups))
@@ -139,6 +140,10 @@ pkg_repo_binary_group_it_next(struct pkg_repo_it *it, struct pkg **pkg_p, unsign
 	xasprintf(&(*pkg_p)->uid, "@%s", (*pkg_p)->name);
 	o = ucl_object_find_key(el, "comment");
 	xasprintf(&(*pkg_p)->comment, ucl_object_tostring(o));
+	ar = ucl_object_find_key(el, "depends");
+	while ((o = ucl_iterate_object(ar, &oit, true))) {
+		pkg_adddep(*pkg_p, ucl_object_tostring(o), NULL, NULL, false);
+	}
 	pkg_kv_add(&(*pkg_p)->annotations, "repository",   it->repo->name, "annotation");
 
 	return (EPKG_OK);
