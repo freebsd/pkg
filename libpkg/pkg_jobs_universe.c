@@ -25,6 +25,8 @@
 #include "pkg_config.h"
 #endif
 
+#define dbg(x, ...) pkg_dbg(PKG_DBG_UNIVERSE, x, __VA_ARGS__)
+
 #include <sys/param.h>
 #include <sys/types.h>
 
@@ -157,7 +159,7 @@ pkg_jobs_universe_add_pkg(struct pkg_jobs_universe *universe, struct pkg *pkg,
 	pkg_validate(pkg, universe->j->db);
 
 	if (pkg->digest == NULL) {
-		pkg_debug(3, "no digest found for package %s (%s-%s)",
+		dbg(3, "no digest found for package %s (%s-%s)",
 		    pkg->uid, pkg->name, pkg->version);
 		if (pkg_checksum_calculate(pkg, universe->j->db, false, true, false) != EPKG_OK) {
 			if (found != NULL)
@@ -198,7 +200,7 @@ pkg_jobs_universe_add_pkg(struct pkg_jobs_universe *universe, struct pkg *pkg,
 		return (EPKG_LOCKED);
 	}
 
-	pkg_debug(2, "universe: add new %s pkg: %s, (%s-%s:%s)",
+	dbg(2, "add new %s pkg: %s, (%s-%s:%s)",
 	    (pkg->type == PKG_INSTALLED ? "local" : "remote"), pkg->uid,
 	    pkg->name, pkg->version, pkg->digest);
 
@@ -245,7 +247,7 @@ pkg_jobs_universe_process_deps(struct pkg_jobs_universe *universe,
 	rpkg = NULL;
 
 	if (flags & DEPS_FLAG_REVERSE) {
-		pkg_debug(4, "Processing rdeps for %s (%s)", pkg->uid, pkg->type == PKG_INSTALLED ? "installed" : "remote");
+		dbg(4, "Processing rdeps for %s (%s)", pkg->uid, pkg->type == PKG_INSTALLED ? "installed" : "remote");
 		if (pkg->type != PKG_INSTALLED) {
 			lpkg = pkg_jobs_universe_get_local(universe, pkg->uid, 0);
 			if (lpkg != NULL && lpkg != pkg)
@@ -254,12 +256,12 @@ pkg_jobs_universe_process_deps(struct pkg_jobs_universe *universe,
 		deps_func = pkg_rdeps;
 	}
 	else {
-		pkg_debug(4, "Processing deps for %s", pkg->uid);
+		dbg(4, "Processing deps for %s", pkg->uid);
 		deps_func = pkg_deps;
 	}
 
 	while (deps_func(pkg, &d) == EPKG_OK) {
-		pkg_debug(4, "Processing *deps for %s: %s", pkg->uid, d->uid);
+		dbg(4, "Processing *deps for %s: %s", pkg->uid, d->uid);
 		if (pkghash_get(universe->items, d->uid) != NULL)
 			continue;
 
@@ -421,7 +423,7 @@ pkg_jobs_universe_handle_provide(struct pkg_jobs_universe *universe,
 		/* Skip seen packages */
 		if (unit == NULL) {
 			if (rpkg->digest == NULL) {
-				pkg_debug(3, "no digest found for package %s", rpkg->uid);
+				dbg(3, "no digest found for package %s", rpkg->uid);
 				if (pkg_checksum_calculate(rpkg,
 				    universe->j->db, false, true, false) != EPKG_OK) {
 					return (EPKG_FATAL);
@@ -447,13 +449,13 @@ pkg_jobs_universe_handle_provide(struct pkg_jobs_universe *universe,
 			DL_APPEND(prhead, pr);
 			pkghash_safe_add(universe->provides, pr->provide,
 			    prhead, NULL);
-			pkg_debug (4, "universe: add new provide %s-%s(%s) for require %s",
+			pkg_debug (4, "add new provide %s-%s(%s) for require %s",
 					pr->un->pkg->name, pr->un->pkg->version,
 					pr->un->pkg->type == PKG_INSTALLED ? "l" : "r",
 					pr->provide);
 		} else {
 			DL_APPEND(prhead, pr);
-			pkg_debug (4, "universe: append provide %s-%s(%s) for require %s",
+			pkg_debug (4, "append provide %s-%s(%s) for require %s",
 					pr->un->pkg->name, pr->un->pkg->version,
 					pr->un->pkg->type == PKG_INSTALLED ? "l" : "r",
 					pr->provide);
@@ -482,7 +484,7 @@ pkg_jobs_universe_process_shlibs(struct pkg_jobs_universe *universe,
 			pkgdb_it_free(it);
 
 			if (rc != EPKG_OK) {
-				pkg_debug(1, "cannot find local packages that provide library %s "
+				dbg(1, "cannot find local packages that provide library %s "
 						"required for %s",
 						s->item, pkg->name);
 			}
@@ -496,7 +498,7 @@ pkg_jobs_universe_process_shlibs(struct pkg_jobs_universe *universe,
 			pkgdb_it_free(it);
 
 			if (rc != EPKG_OK) {
-				pkg_debug(1, "cannot find remote packages that provide library %s "
+				dbg(1, "cannot find remote packages that provide library %s "
 						"required for %s",
 				    s->item, pkg->name);
 			}
@@ -524,7 +526,7 @@ pkg_jobs_universe_process_provides_requires(struct pkg_jobs_universe *universe,
 			pkgdb_it_free(it);
 
 			if (rc != EPKG_OK) {
-				pkg_debug(1, "cannot find local packages that provide %s "
+				dbg(1, "cannot find local packages that provide %s "
 						"required for %s",
 						r->item, pkg->name);
 			}
@@ -539,7 +541,7 @@ pkg_jobs_universe_process_provides_requires(struct pkg_jobs_universe *universe,
 			pkgdb_it_free(it);
 
 			if (rc != EPKG_OK) {
-				pkg_debug(1, "cannot find remote packages that provide %s "
+				dbg(1, "cannot find remote packages that provide %s "
 						"required for %s",
 				    r->item, pkg->name);
 				return (rc);
@@ -559,7 +561,7 @@ pkg_jobs_universe_process_item(struct pkg_jobs_universe *universe, struct pkg *p
 	pkg_jobs_t type = universe->j->type;
 	struct pkg_job_universe_item *found;
 
-	pkg_debug(4, "Processing item %s\n", pkg->uid);
+	dbg(4, "Processing item %s\n", pkg->uid);
 
 	job_flags = universe->j->flags;
 
@@ -673,12 +675,12 @@ pkg_jobs_update_universe_item_priority(struct pkg_jobs_universe *universe,
 	int (*rdeps_func)(const struct pkg *pkg, struct pkg_dep **d);
 
 	if (priority > RECURSION_LIMIT) {
-		pkg_debug(1, "recursion limit has been reached, something is bad"
+		dbg(1, "recursion limit has been reached, something is bad"
 					" with dependencies/conflicts graph");
 		return;
 	}
 	else if (priority + 10 > RECURSION_LIMIT) {
-		pkg_debug(2, "approaching recursion limit at %d, while processing of"
+		dbg(2, "approaching recursion limit at %d, while processing of"
 		    " package %s", priority, item->pkg->uid);
 	}
 
@@ -693,7 +695,7 @@ pkg_jobs_update_universe_item_priority(struct pkg_jobs_universe *universe,
 			 * that remote packages should not contain conflicts (they should be
 			 * resolved in request prior to calling of this function)
 			 */
-			pkg_debug(4, "skip update priority for %s-%s",
+			dbg(4, "skip update priority for %s-%s",
 			    it->pkg->uid, it->pkg->digest);
 			continue;
 		}
@@ -708,10 +710,10 @@ pkg_jobs_update_universe_item_priority(struct pkg_jobs_universe *universe,
 		else
 			is_local = "remote";
 		if (is_group)
-			pkg_debug(2, "universe: update %s priority of %s: %d -> %d, reason: %d",
+			dbg(2, "update %s priority of %s: %d -> %d, reason: %d",
 			    is_local, it->pkg->uid, it->priority, priority, type);
 		else
-			pkg_debug(2, "universe: update %s priority of %s(%s): %d -> %d, reason: %d",
+			dbg(2, "update %s priority of %s(%s): %d -> %d, reason: %d",
 			    is_local, it->pkg->uid, it->pkg->version, it->priority, priority, type);
 		it->priority = priority;
 
@@ -1121,7 +1123,7 @@ pkg_jobs_universe_process_upgrade_chains(struct pkg_jobs *j)
 		}
 
 		if (local != NULL && local->pkg->locked) {
-			pkg_debug(1, "removing %s from the request as it is locked",
+			dbg(1, "removing %s from the request as it is locked",
 				local->pkg->uid);
 			pkghash_del(j->request_add, req->item->pkg->uid);
 			pkg_jobs_request_free(req);
