@@ -460,9 +460,8 @@ pkg_adddep_chain(struct pkg_dep *chain,
 
 	assert(pkg != NULL);
 	assert(name != NULL && name[0] != '\0');
-	assert(origin != NULL && origin[0] != '\0');
 
-	pkg_debug(3, "Pkg: add a new dependency origin: %s, name: %s", origin, name);
+	pkg_debug(3, "Pkg: add a new dependency origin: %s, name: %s", origin ? origin : "", name);
 	if (pkghash_get(pkg->depshash, name) != NULL) {
 		pkg_emit_error("%s: duplicate dependency listing: %s",
 		    pkg->name, name);
@@ -470,7 +469,8 @@ pkg_adddep_chain(struct pkg_dep *chain,
 	}
 
 	d = xcalloc(1, sizeof(*d));
-	d->origin = xstrdup(origin);
+	if (origin != NULL && origin[0] != '\0')
+		d->origin = xstrdup(origin);
 	d->name = xstrdup(name);
 	if (version != NULL && version[0] != '\0')
 		d->version = xstrdup(version);
@@ -496,12 +496,12 @@ pkg_addrdep(struct pkg *pkg, const char *name, const char *origin, const char *v
 
 	assert(pkg != NULL);
 	assert(name != NULL && name[0] != '\0');
-	assert(origin != NULL && origin[0] != '\0');
 
-	pkg_debug(3, "Pkg: add a new reverse dependency origin: %s, name: %s", origin, name);
+	pkg_debug(3, "Pkg: add a new reverse dependency origin: %s, name: %s", origin ? origin : "", name);
 
 	d = xcalloc(1, sizeof(*d));
-	d->origin = xstrdup(origin);
+	if (origin != NULL && origin[0] != '\0')
+		d->origin = xstrdup(origin);
 	d->name = xstrdup(name);
 	if (version != NULL && version[0] != '\0')
 		d->version = xstrdup(version);
