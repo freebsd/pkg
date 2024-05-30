@@ -33,6 +33,8 @@
 #include "pkg_config.h"
 #endif
 
+#define dbg(x, ...) pkg_dbg(PKG_DBG_JOBS, x, __VA_ARGS__)
+
 #include <bsd_compat.h>
 
 #include <sys/param.h>
@@ -2148,6 +2150,7 @@ pkg_jobs_handle_delete(struct pkg_solved *ps, struct pkg_jobs *j)
 static int
 pkg_jobs_execute(struct pkg_jobs *j)
 {
+	dbg(1, "execute");
 	struct pkg *p;
 	int retcode = EPKG_FATAL;
 	pkg_plugin_hook_t pre, post;
@@ -2235,6 +2238,7 @@ pkg_jobs_execute(struct pkg_jobs *j)
 
 cleanup:
 	pkgdb_release_lock(j->db, PKGDB_LOCK_EXCLUSIVE);
+	dbg(1, "execute done");
 
 	return (retcode);
 }
