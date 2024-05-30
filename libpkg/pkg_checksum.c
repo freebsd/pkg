@@ -228,9 +228,13 @@ pkg_checksum_generate(struct pkg *pkg, char *dest, size_t destlen,
 	}
 
 	while (pkg_deps(pkg, &dep) == EPKG_OK) {
-		xasprintf(&olduid, "%s~%s", dep->name, dep->origin);
-		tll_push_back(entries, pkg_kv_new("depend", olduid));
-		free(olduid);
+		if (is_group) {
+			tll_push_back(entries, pkg_kv_new("depend", dep->name));
+		} else {
+			xasprintf(&olduid, "%s~%s", dep->name, dep->origin);
+			tll_push_back(entries, pkg_kv_new("depend", olduid));
+			free(olduid);
+		}
 	}
 
 	tll_foreach(pkg->provides, p) {
