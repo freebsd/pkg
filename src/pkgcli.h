@@ -102,6 +102,10 @@ int exec_lock(int, char **);
 int exec_unlock(int, char **);
 void usage_lock(void);
 
+/* pkg ps */
+int exec_ps(int, char **);
+void usage_ps(void);
+
 /* pkg query */
 int exec_query(int, char **);
 void usage_query(void);
