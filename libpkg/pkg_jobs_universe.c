@@ -449,13 +449,13 @@ pkg_jobs_universe_handle_provide(struct pkg_jobs_universe *universe,
 			DL_APPEND(prhead, pr);
 			pkghash_safe_add(universe->provides, pr->provide,
 			    prhead, NULL);
-			pkg_debug (4, "add new provide %s-%s(%s) for require %s",
+			dbg(4, "add new provide %s-%s(%s) for require %s",
 					pr->un->pkg->name, pr->un->pkg->version,
 					pr->un->pkg->type == PKG_INSTALLED ? "l" : "r",
 					pr->provide);
 		} else {
 			DL_APPEND(prhead, pr);
-			pkg_debug (4, "append provide %s-%s(%s) for require %s",
+			dbg(4, "append provide %s-%s(%s) for require %s",
 					pr->un->pkg->name, pr->un->pkg->version,
 					pr->un->pkg->type == PKG_INSTALLED ? "l" : "r",
 					pr->provide);
@@ -1159,7 +1159,7 @@ pkg_jobs_universe_process_upgrade_chains(struct pkg_jobs *j)
 			 */
 			if (local != NULL && STREQ(local->pkg->digest, selected->pkg->digest) &&
 				(j->flags & PKG_FLAG_FORCE) == 0) {
-				pkg_debug (1, "removing %s from the request as it is the "
+				dbg(1, "removing %s from the request as it is the "
 								"same as local", selected->pkg->uid);
 				continue;
 			}
