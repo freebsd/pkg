@@ -1832,7 +1832,10 @@ pkg_jobs_apply_replacements(struct pkg_jobs *j)
 	sqlite3_stmt *stmt;
 	int ret;
 
-	dbg(4, "jobs: running '%s'", sql);
+	if (j->universe->uid_replaces == NULL)
+		return;
+
+	dbg(4, "running '%s'", sql);
 	ret = sqlite3_prepare_v2(j->db->sqlite, sql, -1, &stmt, NULL);
 	if (ret != SQLITE_OK) {
 		ERROR_SQLITE(j->db->sqlite, sql);
