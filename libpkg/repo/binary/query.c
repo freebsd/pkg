@@ -646,6 +646,8 @@ pkg_repo_binary_ensure_loaded(struct pkg_repo *repo,
 	char path[MAXPATHLEN];
 	int rc;
 
+	if (pkg->type == PKG_GROUP_REMOTE)
+		return (EPKG_OK);
 	flags &= PKG_LOAD_FILES|PKG_LOAD_DIRS;
 	/*
 	 * If info is already present, done.
