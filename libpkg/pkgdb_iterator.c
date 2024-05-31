@@ -38,6 +38,8 @@
 #include "pkg_config.h"
 #endif
 
+#define dbg(x, ...) pkg_dbg(PKG_DBG_DATABASE, x, __VA_ARGS__)
+
 #include <assert.h>
 #include <errno.h>
 #include <regex.h>
@@ -276,7 +278,7 @@ pkgdb_load_deps(sqlite3 *sqlite, struct pkg *pkg)
 	sqlite3_finalize(stmt);
 
 	if (pkg->dep_formula) {
-		pkg_debug(4, "Pkgdb: reading package formula '%s'", pkg->dep_formula);
+		dbg(4, "Pkgdb: reading package formula '%s'", pkg->dep_formula);
 
 		f = pkg_deps_parse_formula (pkg->dep_formula);
 
@@ -322,7 +324,7 @@ pkgdb_load_deps(sqlite3 *sqlite, struct pkg *pkg)
 									if(STREQ(optit->opt, sqlite3_column_text(opt_stmt, 0))) {
 										if ((!STREQ(sqlite3_column_text(opt_stmt, 1), "on") && !optit->on)
 											|| (!STREQ(sqlite3_column_text(opt_stmt, 1), "off") && optit->on)) {
-											pkg_debug(4, "incompatible option for"
+											dbg(4, "incompatible option for"
 													"%s: %s",
 													sqlite3_column_text(opt_stmt, 1),
 													optit->opt);
@@ -768,7 +770,7 @@ pkgdb_load_options(sqlite3 *sqlite, struct pkg *pkg)
 		opt_sql       = optionsql[i].sql;
 		pkg_addtagval = optionsql[i].pkg_addtagval;
 
-		pkg_debug(4, "Pkgdb> adding option");
+		dbg(4, "adding option");
 		ret = load_tag_val(sqlite, pkg, opt_sql, PKG_LOAD_OPTIONS,
 				   pkg_addtagval, PKG_OPTIONS);
 		if (ret != EPKG_OK)

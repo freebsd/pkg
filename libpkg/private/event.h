@@ -62,7 +62,8 @@ typedef enum {
 	PKG_DBG_SOLVER = (1UL << 6),
 	PKG_DBG_JOBS = (1UL << 7),
 	PKG_DBG_UNIVERSE = (1UL << 8),
-	PKG_DBG_PACKAGE = (1UL << 8),
+	PKG_DBG_PACKAGE = (1UL << 9),
+	PKG_DBG_DATABASE = (1UL << 10),
 	PKG_DBG_ALL = (1UL << 63),
 } pkg_debug_flags;
 
@@ -82,6 +83,7 @@ static const struct pkg_dbg_flags debug_flags[] = {
 	{ PKG_DBG_JOBS, "jobs"},
 	{ PKG_DBG_UNIVERSE, "universe" },
 	{ PKG_DBG_PACKAGE, "package" },
+	{ PKG_DBG_DATABASE, "db" },
 	{ PKG_DBG_ALL, "all" },
 };
 
