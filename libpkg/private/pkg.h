@@ -787,6 +787,7 @@ char *pkg_checksum_generate_file(const char *path, pkg_checksum_type_t type);
 char *pkg_checksum_generate_fileat(int fd, const char *path,
     pkg_checksum_type_t type);
 
+int pkg_add_group(struct pkg *pkg);
 int pkg_add_upgrade(struct pkgdb *db, const char *path, unsigned flags,
     const char *location, struct pkg *rp, struct pkg *lp, struct triggers *);
 int pkg_add_from_remote(struct pkgdb *db, const char *path, unsigned flags,

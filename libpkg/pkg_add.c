@@ -1487,6 +1487,48 @@ pkg_add_upgrade(struct pkgdb *db, const char *path, unsigned flags,
 	return pkg_add_common(db, path, flags, location, rp, lp, t);
 }
 
+static int
+pkg_group_dump(int fd, struct pkg *pkg)
+{
+	ucl_object_t *o, *seq;
+	struct pkg_dep	*dep = NULL;
+
+	if (pkg->type != PKG_GROUP_REMOTE)
+		return (EPKG_FATAL);
+	o = ucl_object_typed_new(UCL_OBJECT);
+	ucl_object_insert_key(o, ucl_object_fromstring(pkg->name), "name", 0, false);
+	ucl_object_insert_key(o, ucl_object_fromstring(pkg->comment), "comment", 0, false);
+	seq = ucl_object_typed_new(UCL_ARRAY);
+	while (pkg_deps(pkg, &dep) == EPKG_OK)
+		ucl_array_append(seq, ucl_object_fromstring(dep->name));
+	ucl_object_insert_key(o, seq, "depends", 0, false);
+	ucl_object_emit_fd(o, UCL_EMIT_CONFIG, fd);
+	return (EPKG_OK);
+}
+
+int
+pkg_add_group(struct pkg *pkg)
+{
+	char temp[MAXPATHLEN];
+	int dfd = pkg_get_dbdirfd();
+	mkdirat(dfd, "groups", 0755);
+	int gfd = openat(dfd, "groups", O_DIRECTORY|O_EXEC);
+	hidden_tempfile(temp, MAXPATHLEN, pkg->name);
+	int fd = openat(gfd, temp, O_CREAT|O_EXCL|O_WRONLY, 0644);
+	if (fd == -1) {
+		pkg_emit_errno("impossible to create group file %s", pkg->name);
+		return (EPKG_FATAL);
+	}
+	pkg_group_dump(fd, pkg);
+	close(fd);
+	if (renameat(gfd, temp, gfd, pkg->name) == -1) {
+		unlinkat(gfd, temp, 0);
+		pkg_emit_errno("impossible to create group file %s", pkg->name);
+		return (EPKG_FATAL);
+	}
+	return (EPKG_OK);
+}
+
 int
 pkg_add_fromdir(struct pkg *pkg, const char *src)
 {

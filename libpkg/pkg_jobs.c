@@ -2075,6 +2075,7 @@ pkg_jobs_handle_install(struct pkg_solved *ps, struct pkg_jobs *j)
 	int flags = 0;
 	int retcode = EPKG_FATAL;
 
+	dbg(2, "begin %s", __func__);
 	/*
 	 * For a split upgrade, pass along the old package even though it's
 	 * already deleted, since we need it in order to merge configuration
@@ -2121,11 +2122,14 @@ pkg_jobs_handle_install(struct pkg_solved *ps, struct pkg_jobs *j)
 	if (new->automatic || (j->flags & PKG_FLAG_AUTOMATIC) == PKG_FLAG_AUTOMATIC)
 		flags |= PKG_ADD_AUTOMATIC;
 
-	if (old != NULL)
+	if (new->type == PKG_GROUP_REMOTE)
+		retcode = pkg_add_group(new);
+	else if (old != NULL)
 		retcode = pkg_add_upgrade(j->db, target, flags, NULL, new, old, &j->triggers);
 	else
 		retcode = pkg_add_from_remote(j->db, target, flags, NULL, new, &j->triggers);
 
+	dbg(2, "end %s:", __func__);
 	return (retcode);
 }
 
