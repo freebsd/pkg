@@ -808,7 +808,7 @@ pkg_addoption(struct pkg *pkg, const char *key, const char *value)
 	   default value or description for an option but no actual
 	   value. */
 
-	dbg(2,"Pkg> adding options: %s = %s", key, value);
+	dbg(2,"adding options: %s = %s", key, value);
 	if (pkghash_get(pkg->optionshash, key) != NULL) {
 		if (ctx.developer_mode) {
 			pkg_emit_error("duplicate options listing: %s, fatal (developer mode)", key);
