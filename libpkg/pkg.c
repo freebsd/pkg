@@ -23,6 +23,8 @@
 #include "private/pkgdb.h"
 #include "private/utils.h"
 
+#define dbg(x, ...) pkg_dbg(PKG_DBG_PACKAGE, x, __VA_ARGS__)
+
 int
 pkg_new(struct pkg **pkg, pkg_t type)
 {
@@ -461,7 +463,7 @@ pkg_adddep_chain(struct pkg_dep *chain,
 	assert(pkg != NULL);
 	assert(name != NULL && name[0] != '\0');
 
-	pkg_debug(3, "Pkg: add a new dependency origin: %s, name: %s", origin ? origin : "", name);
+	dbg(3, "add a new dependency origin: %s, name: %s", origin ? origin : "", name);
 	if (pkghash_get(pkg->depshash, name) != NULL) {
 		pkg_emit_error("%s: duplicate dependency listing: %s",
 		    pkg->name, name);
@@ -497,7 +499,7 @@ pkg_addrdep(struct pkg *pkg, const char *name, const char *origin, const char *v
 	assert(pkg != NULL);
 	assert(name != NULL && name[0] != '\0');
 
-	pkg_debug(3, "Pkg: add a new reverse dependency origin: %s, name: %s", origin ? origin : "", name);
+	dbg(3, "add a new reverse dependency origin: %s, name: %s", origin ? origin : "", name);
 
 	d = xcalloc(1, sizeof(*d));
 	if (origin != NULL && origin[0] != '\0')
@@ -532,7 +534,7 @@ pkg_addfile_attr(struct pkg *pkg, const char *path, const char *sum,
 	assert(path != NULL && path[0] != '\0');
 
 	path = pkg_absolutepath(path, abspath, sizeof(abspath), false);
-	pkg_debug(3, "Pkg: add new file '%s'", path);
+	dbg(3, "add new file '%s'", path);
 
 	if (check_duplicates && pkghash_get(pkg->filehash, path) != NULL) {
 		if (ctx.developer_mode) {
@@ -575,7 +577,7 @@ pkg_addconfig_file(struct pkg *pkg, const char *path, const char *content)
 	char abspath[MAXPATHLEN];
 
 	path = pkg_absolutepath(path, abspath, sizeof(abspath), false);
-	pkg_debug(3, "Pkg: add new config file '%s'", path);
+	dbg(3, "add new config file '%s'", path);
 
 	if (pkghash_get(pkg->config_files_hash, path) != NULL) {
 		pkg_emit_error("duplicate file listing: %s", path);
@@ -638,7 +640,7 @@ pkg_adddir_attr(struct pkg *pkg, const char *path, const char *uname,
 		return (EPKG_OK);
 	}
 	path = pkg_absolutepath(path, abspath, sizeof(abspath), false);
-	pkg_debug(3, "Pkg: add new directory '%s'", path);
+	dbg(3, "add new directory '%s'", path);
 	if (check_duplicates && pkghash_get(pkg->dirhash, path) != NULL) {
 		if (ctx.developer_mode) {
 			pkg_emit_error("duplicate directory listing: %s, fatal (developer mode)", path);
@@ -705,7 +707,7 @@ pkg_addluascript_fileat(int fd, struct pkg *pkg, const char *filename)
 	assert(pkg != NULL);
 	assert(filename != NULL);
 
-	pkg_debug(1, "Adding script from: '%s'", filename);
+	dbg(1, "Adding script from: '%s'", filename);
 
 	if ((ret = file_to_bufferat(fd, filename, &data, &sz)) != EPKG_OK)
 		return (ret);
@@ -741,7 +743,7 @@ pkg_addscript_fileat(int fd, struct pkg *pkg, const char *filename)
 	assert(pkg != NULL);
 	assert(filename != NULL);
 
-	pkg_debug(1, "Adding script from: '%s'", filename);
+	dbg(1, "Adding script from: '%s'", filename);
 
 	if ((ret = file_to_bufferat(fd, filename, &data, &sz)) != EPKG_OK)
 		return (ret);
@@ -806,7 +808,7 @@ pkg_addoption(struct pkg *pkg, const char *key, const char *value)
 	   default value or description for an option but no actual
 	   value. */
 
-	pkg_debug(2,"Pkg> adding options: %s = %s", key, value);
+	dbg(2,"Pkg> adding options: %s = %s", key, value);
 	if (pkghash_get(pkg->optionshash, key) != NULL) {
 		if (ctx.developer_mode) {
 			pkg_emit_error("duplicate options listing: %s, fatal (developer mode)", key);
@@ -907,7 +909,7 @@ pkg_addshlib_required(struct pkg *pkg, const char *name)
 
 	tll_push_back(pkg->shlibs_required, xstrdup(name));
 
-	pkg_debug(3, "added shlib deps for %s on %s", pkg->name, name);
+	dbg(3, "added shlib deps for %s on %s", pkg->name, name);
 
 	return (EPKG_OK);
 }
@@ -930,7 +932,7 @@ pkg_addshlib_provided(struct pkg *pkg, const char *name)
 
 	tll_push_back(pkg->shlibs_provided, xstrdup(name));
 
-	pkg_debug(3, "added shlib provide %s for %s", name, pkg->name);
+	dbg(3, "added shlib provide %s for %s", name, pkg->name);
 
 	return (EPKG_OK);
 }
@@ -950,7 +952,7 @@ pkg_addconflict(struct pkg *pkg, const char *uniqueid)
 
 	c = xcalloc(1, sizeof(*c));
 	c->uid = xstrdup(uniqueid);
-	pkg_debug(3, "Pkg: add a new conflict origin: %s, with %s", pkg->uid, uniqueid);
+	dbg(3, "add a new conflict origin: %s, with %s", pkg->uid, uniqueid);
 
 	pkghash_safe_add(pkg->conflictshash, c->uid, c, NULL);
 	DL_APPEND(pkg->conflicts, c);
