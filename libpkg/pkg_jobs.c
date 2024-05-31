@@ -229,7 +229,7 @@ pkg_jobs_maybe_match_file(struct job_pattern *jp, const char *pattern)
 				/* Dot pos is one character after the dot */
 				int len = dot_pos - pattern;
 
-				pkg_debug(1, "Jobs> Adding file: %s", pattern);
+				dbg(2, "Adding file: %s", pattern);
 				jp->flags |= PKG_PATTERN_FLAG_FILE;
 				jp->path = pkg_path;
 				jp->pattern = xmalloc(len);
@@ -329,7 +329,7 @@ pkg_jobs_add_req_from_universe(pkghash **head, struct pkg_job_universe_item *un,
 		req = xcalloc(1, sizeof(*req));
 		new_req = true;
 		req->automatic = automatic;
-		pkg_debug(4, "add new uid %s to the request", un->pkg->uid);
+		dbg(4, "add new uid %s to the request", un->pkg->uid);
 	}
 	else {
 		if (req->item->unit == un) {
@@ -381,7 +381,7 @@ pkg_jobs_add_req(struct pkg_jobs *j, struct pkg *pkg)
 		assert(pkg->type == PKG_INSTALLED);
 	}
 
-	pkg_debug(4, "universe: add package %s-%s to the request", pkg->name,
+	dbg(4, "add package %s-%s to the request", pkg->name,
 			pkg->version);
 	rc = pkg_jobs_universe_add_pkg(j->universe, pkg, false, &un);
 
@@ -598,7 +598,7 @@ pkg_jobs_set_execute_priority(struct pkg_jobs *j, struct pkg_solved *solved)
 			solved->xlink = ts;
 			tll_push_back(j->jobs, ts);
 			j->count++;
-			pkg_debug(2, "split upgrade request for %s",
+			dbg(2, "split upgrade request for %s",
 			   ts->items[0]->pkg->uid);
 			return (EPKG_CONFLICT);
 		}
@@ -902,7 +902,7 @@ pkg_jobs_try_remote_candidate(struct pkg_jobs *j, const char *cond, const char *
 	while (pkgdb_it_next(it, &p, flags) == EPKG_OK) {
 		xstring_renew(qmsg);
 		if (pkg_jobs_has_replacement(j, p->uid)) {
-			pkg_debug(1, "replacement %s is already used", p->uid);
+			dbg(1, "replacement %s is already used", p->uid);
 		}
 	}
 
@@ -1036,7 +1036,7 @@ pkg_jobs_find_upgrade(struct pkg_jobs *j, const char *pattern, match_t m)
 				return (EPKG_END);
 		}
 
-		pkg_debug(2, "non-automatic package with pattern %s has not been found in "
+		dbg(2, "non-automatic package with pattern %s has not been found in "
 				"remote repo", pattern);
 		rc = pkg_jobs_universe_add_pkg(j->universe, p, false, &unit);
 		if (rc == EPKG_OK) {
@@ -1367,7 +1367,7 @@ pkg_jobs_propagate_automatic(struct pkg_jobs *j)
 			if ((req == NULL || req->automatic) &&
 			    unit->pkg->type != PKG_INSTALLED) {
 				automatic = true;
-				pkg_debug(2, "set automatic flag for %s", unit->pkg->uid);
+				dbg(2, "set automatic flag for %s", unit->pkg->uid);
 				unit->pkg->automatic = automatic;
 			}
 			else {
@@ -1411,7 +1411,7 @@ pkg_jobs_propagate_automatic(struct pkg_jobs *j)
 				req = pkghash_get_value(j->request_add, unit->pkg->uid);
 				if ((req == NULL || req->automatic)) {
 					automatic = true;
-					pkg_debug(2, "set automatic flag for %s", unit->pkg->uid);
+					dbg(2, "set automatic flag for %s", unit->pkg->uid);
 					LL_FOREACH(unit, cur) {
 						cur->pkg->automatic = automatic;
 					}
@@ -1431,7 +1431,7 @@ pkg_jobs_find_deinstall_request(struct pkg_job_universe_item *item,
 	struct pkg *pkg = item->pkg;
 
 	if (rec_level > 128) {
-		pkg_debug(2, "cannot find deinstall request after 128 iterations for %s,"
+		dbg(2, "cannot find deinstall request after 128 iterations for %s,"
 		    "circular dependency maybe", pkg->uid);
 		return (NULL);
 	}
@@ -1832,7 +1832,7 @@ pkg_jobs_apply_replacements(struct pkg_jobs *j)
 	sqlite3_stmt *stmt;
 	int ret;
 
-	pkg_debug(4, "jobs: running '%s'", sql);
+	dbg(4, "jobs: running '%s'", sql);
 	ret = sqlite3_prepare_v2(j->db->sqlite, sql, -1, &stmt, NULL);
 	if (ret != SQLITE_OK) {
 		ERROR_SQLITE(j->db->sqlite, sql);
@@ -1840,7 +1840,7 @@ pkg_jobs_apply_replacements(struct pkg_jobs *j)
 	}
 
 	LL_FOREACH(j->universe->uid_replaces, r) {
-		pkg_debug(4, "changing uid %s -> %s", r->old_uid, r->new_uid);
+		dbg(4, "changing uid %s -> %s", r->old_uid, r->new_uid);
 		sqlite3_bind_text(stmt, 1, r->new_uid, -1, SQLITE_TRANSIENT);
 		sqlite3_bind_text(stmt, 2, r->old_uid, -1, SQLITE_TRANSIENT);
 
@@ -2461,7 +2461,7 @@ pkg_jobs_check_conflicts(struct pkg_jobs *j)
 			added ++;
 	}
 
-	pkg_debug(1, "check integrity for %d items added", added);
+	dbg(1, "check integrity for %d items added", added);
 
 	pkg_emit_integritycheck_finished(j->conflicts_registered);
 	if (j->conflicts_registered > 0)
