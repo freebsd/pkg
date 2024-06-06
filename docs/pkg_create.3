@@ -43,7 +43,7 @@ which should be freed by the caller using
 .Fn pkg_create_free .
 .Pp
 .Fn pkg_create_set_format
-will define the compresion format to use.
+will define the compression format to use.
 By default
 .Qq txz
 except if specified otherwise in
@@ -77,8 +77,8 @@ a local file already exists.
 The default behaviour is to overwrite.
 .Pp
 .Fn pkg_create_set_rootdir
-tells the program where to find the root used for packaging (also called
-sometime staging area).
+Tells the program where to find the root directory used for packaging (it is
+also known as staging area).
 If none is provided pkg will consider
 .Sq Va / .
 .Pp
