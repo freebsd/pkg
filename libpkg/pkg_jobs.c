@@ -1922,15 +1922,6 @@ solve_with_sat_solver(struct pkg_jobs *j)
 	if (sat_solver != NULL)
 		return (solve_with_external_sat_solver(problem, sat_solver));
 
-	if ((dotfile = pkg_object_string(pkg_config_get("DOT_FILE")))
-		!= NULL) {
-		dot = fopen(dotfile, "we");
-
-		if (dot == NULL) {
-			pkg_emit_errno("fopen", dotfile);
-		}
-	}
-
 	ret = pkg_solve_sat_problem(problem);
 	if (ret == EPKG_AGAIN) {
 		pkg_solve_problem_free(problem);
