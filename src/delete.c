@@ -191,7 +191,7 @@ exec_delete(int argc, char **argv)
 	}
 
 	if (pkg_jobs_has_lockedpkgs(jobs)) {
-		printf("The following package(s) are locked and may not ");
+		printf("The following package(s) are locked or vital and may not ");
 		printf("be removed:\n\n");
 		pkg_jobs_iter_lockedpkgs(jobs, print_pkg, &locked_pkgs);
 		putchar('\n');

@@ -103,7 +103,7 @@ lock_delete_body() {
 	    pkg lock -y sqlite3
 
 	atf_check \
-	    -o match:".*locked and may not be removed.*" \
+	    -o match:".*locked or vital and may not be removed.*" \
 	    -o match:"sqlite3.*" \
 	    -e empty \
 	    -s exit:7 \

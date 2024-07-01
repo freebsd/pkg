@@ -1,5 +1,7 @@
 /*-
  * Copyright (c) 2013-2017 Vsevolod Stakhov <vsevolod@FreeBSD.org>
+ * Copyright (c) 2024 Serenity Cyber Security, LLC <license@futurecrew.ru>
+ *                    Author: Gleb Popov <arrowd@FreeBSD.org>
  * All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without
@@ -633,6 +635,7 @@ pkg_solve_process_universe_variable(struct pkg_solve_problem *problem,
 	struct pkg_jobs *j = problem->j;
 	struct pkg_job_request *jreq = NULL;
 	bool chain_added = false;
+	bool force = j->flags & PKG_FLAG_FORCE;
 
 	LL_FOREACH(var, cur_var) {
 		pkg = cur_var->unit->pkg;
@@ -1121,7 +1124,7 @@ reiterate:
 		for (i = 0; i < problem->nvars; i ++) {
 			struct pkg_solve_variable *var = &problem->variables[i];
 
-			if (var->flags & PKG_VAR_TOP) {
+			if (var->flags & PKG_VAR_TOP || var->unit->pkg->vital) {
 				if (var->flags & PKG_VAR_FAILED) {
 					var->flags ^= PKG_VAR_INSTALL | PKG_VAR_FAILED;
 				}
