@@ -239,9 +239,6 @@ Checking integrity... done (1 conflicting)
 Checking integrity... done (0 conflicting)
 The following 6 package(s) will be affected (of 0 checked):
 
-Installed packages to be REMOVED:
-	ruby20-gems: 1.0
-
 New packages to be INSTALLED:
 	ruby21-gems: 1.0
 
@@ -252,6 +249,9 @@ Installed packages to be REINSTALLED:
 	puppet-1.0 (direct dependency changed: ruby)
 	rubygem-hiera-1.0 (direct dependency changed: ruby)
 	rubygem-ruby-augeas-1.0 (direct dependency changed: ruby)
+
+Installed packages to be REMOVED:
+	ruby20-gems: 1.0
 
 Number of packages to be removed: 1
 Number of packages to be installed: 1

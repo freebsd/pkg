@@ -138,14 +138,14 @@ Cannot solve problem using SAT solver, trying another plan
 Checking integrity... done (0 conflicting)
 The following 3 package(s) will be affected (of 0 checked):
 
-Installed packages to be REMOVED:
-	bar: 1.0
-
 New packages to be INSTALLED:
 	bar1: 1.1
 
 Installed packages to be UPGRADED:
 	foo: 1.0 -> 1.0_1
+
+Installed packages to be REMOVED:
+	bar: 1.0
 
 Number of packages to be removed: 1
 Number of packages to be installed: 1
@@ -317,15 +317,15 @@ Cannot solve problem using SAT solver, trying another plan
 Checking integrity... done (0 conflicting)
 The following 4 package(s) will be affected (of 0 checked):
 
-Installed packages to be REMOVED:
-	bar: 1.0
-	other: 1.0
-
 New packages to be INSTALLED:
 	bar1: 1.1
 
 Installed packages to be UPGRADED:
 	foo: 1.0 -> 1.0_1
+
+Installed packages to be REMOVED:
+	bar: 1.0
+	other: 1.0
 
 Number of packages to be removed: 2
 Number of packages to be installed: 1
@@ -444,11 +444,11 @@ Checking integrity... done (1 conflicting)
 Checking integrity... done (0 conflicting)
 The following 2 package(s) will be affected (of 0 checked):
 
-Installed packages to be REMOVED:
-	test: 1
-
 New packages to be INSTALLED:
 	test2: 1
+
+Installed packages to be REMOVED:
+	test: 1
 
 Number of packages to be removed: 1
 Number of packages to be installed: 1
