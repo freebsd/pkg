@@ -1512,7 +1512,7 @@ pkg_add_group(struct pkg *pkg)
 	char temp[MAXPATHLEN];
 	int dfd = pkg_get_dbdirfd();
 	mkdirat(dfd, "groups", 0755);
-	int gfd = openat(dfd, "groups", O_DIRECTORY|O_EXEC);
+	int gfd = openat(dfd, "groups", O_DIRECTORY|O_CLOEXEC);
 	hidden_tempfile(temp, MAXPATHLEN, pkg->name);
 	int fd = openat(gfd, temp, O_CREAT|O_EXCL|O_WRONLY, 0644);
 	if (fd == -1) {
