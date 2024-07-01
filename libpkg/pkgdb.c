@@ -809,7 +809,7 @@ pkgdb_open_repos(struct pkgdb *db, const char *reponame)
 	struct pkg_repo *r = NULL;
 
 	while (pkg_repos(&r) == EPKG_OK) {
-		if (!r->enable) {
+		if (!r->enable && reponame == NULL) {
 			continue;
 		}
 
