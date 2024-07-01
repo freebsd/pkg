@@ -1390,8 +1390,10 @@ pkg_add_common(struct pkgdb *db, const char *path, unsigned flags,
 	if (retcode != EPKG_OK)
 		goto cleanup;
 	if ((flags & PKG_ADD_NOSCRIPT) == 0) {
-		pkg_lua_script_run(pkg, PKG_LUA_POST_INSTALL, (local != NULL));
-		pkg_script_run(pkg, PKG_SCRIPT_POST_INSTALL, (local != NULL));
+		if ((retcode = pkg_lua_script_run(pkg, PKG_LUA_POST_INSTALL, (local != NULL))) != EPKG_OK)
+			goto cleanup;
+		if ((retcode = pkg_script_run(pkg, PKG_SCRIPT_POST_INSTALL, (local != NULL))) != EPKG_OK)
+			goto cleanup;
 	}
 
 	/*
