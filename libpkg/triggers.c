@@ -1,6 +1,6 @@
 /*-
  * Copyright (c) 2020-2022 Baptiste Daroussin <bapt@FreeBSD.org>
- * 
+ *
  * Redistribution and use in source and binary forms, with or without
  * modification, are permitted provided that the following conditions
  * are met:
@@ -10,7 +10,7 @@
  * 2. Redistributions in binary form must reproduce the above copyright
  *    notice, this list of conditions and the following disclaimer in the
  *    documentation and/or other materials provided with the distribution.
- * 
+ *
  * THIS SOFTWARE IS PROVIDED BY THE AUTHOR(S) ``AS IS'' AND ANY EXPRESS OR
  * IMPLIED WARRANTIES, INCLUDING, BUT NOT LIMITED TO, THE IMPLIED WARRANTIES
  * OF MERCHANTABILITY AND FITNESS FOR A PARTICULAR PURPOSE ARE DISCLAIMED.
@@ -448,7 +448,6 @@ trigger_execute_lua(const char *script, bool sandbox, pkghash *args)
 		lua_override_ios(L, sandbox);
 		static const luaL_Reg pkg_lib[] = {
 			{ "print_msg", lua_print_msg },
-			{ "prefixed_path", lua_prefix_path },
 			{ "filecmp", lua_pkg_filecmp },
 			{ "copy", lua_pkg_copy },
 			{ "stat", lua_stat },
@@ -622,7 +621,7 @@ exec_deferred(int dfd, const char *name)
 		pkg_errno("Unable to open the trigger '%s'", name);
 		return;
 	}
-	
+
 	char *line = NULL;
 	size_t linecap = 0;
 	ssize_t linelen;
