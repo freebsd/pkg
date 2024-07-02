@@ -521,6 +521,12 @@ static struct config_entry c[] = {
 		"COMPRESSION_THREADS",
 		"-1",
 		"Set the default number of threads used for compression",
+	},
+	{
+		PKG_BOOL,
+		"PKG_REINSTALL_ON_OPTIONS_CHANGE",
+		"TRUE",
+		"Decide if packages gets reinstalled when local options does not match remote one",
 	}
 };
 

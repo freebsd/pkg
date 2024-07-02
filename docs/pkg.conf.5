@@ -15,7 +15,7 @@
 .\"     @(#)pkg.1
 .\" $FreeBSD$
 .\"
-.Dd November 24, 2023
+.Dd July 02, 2024
 .Dt PKG.CONF 5
 .Os
 .Sh NAME
@@ -375,6 +375,10 @@ If set to 0,
 .Va hw.ncpu
 is used.
 Default: 0.
+.It Cm PKG_REINSTALL_ON_OPTIONS_CHANGE
+Reinstall packages if options changed between the local version and the
+remote version.
+Default: true
 .El
 .Sh REPOSITORY CONFIGURATION
 To use a repository you will need at least one repository

@@ -1175,6 +1175,8 @@ pkg_jobs_need_upgrade(struct pkg *rp, struct pkg *lp)
 
 	/* compare options */
 	for (;;) {
+		if (!pkg_object_bool(pkg_config_get("PKG_REINSTALL_ON_OPTIONS_CHANGE")))
+			break;
 		ret1 = pkg_options(rp, &ro);
 		ret2 = pkg_options(lp, &lo);
 		if (ret1 != ret2) {
