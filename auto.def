@@ -44,7 +44,7 @@ if {[opt-str default-format fmt]} {
 	    "default" { user-error "Invalid format $fmt" }
 	define DEFAULT_COMPRESSION $comp
 } else {
-	define DEFAULT_COMPRESSION TXZ
+	define DEFAULT_COMPRESSION TZS
 }
 
 cc-check-tools ar ranlib strip
