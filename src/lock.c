@@ -2,7 +2,7 @@
  * Copyright (c) 2012-2014 Matthew Seaman <matthew@FreeBSD.org>
  * Copyright (c) 2015 Baptiste Daroussin <bapt@FreeBSD.org>
  * All rights reserved.
- * 
+ *
  * Redistribution and use in source and binary forms, with or without
  * modification, are permitted provided that the following conditions
  * are met:
@@ -12,7 +12,7 @@
  * 2. Redistributions in binary form must reproduce the above copyright
  *    notice, this list of conditions and the following disclaimer in the
  *    documentation and/or other materials provided with the distribution.
- * 
+ *
  * THIS SOFTWARE IS PROVIDED BY THE AUTHOR(S) ``AS IS'' AND ANY EXPRESS OR
  * IMPLIED WARRANTIES, INCLUDING, BUT NOT LIMITED TO, THE IMPLIED WARRANTIES
  * OF MERCHANTABILITY AND FITNESS FOR A PARTICULAR PURPOSE ARE DISCLAIMED.
@@ -104,6 +104,7 @@ do_lock_unlock(struct pkgdb *db, int match, const char *pkgname,
 	int		 exitcode = EXIT_SUCCESS;
 	bool		 gotone = false;
 	tll(struct pkg *)pkgs = tll_init();
+	int (*lockfct)(struct pkgdb *db, struct pkg *pkg) = action == LOCK ? do_lock : do_unlock;
 
 	if (pkgdb_obtain_lock(db, PKGDB_LOCK_EXCLUSIVE) != EPKG_OK) {
 		pkgdb_close(db);
@@ -123,11 +124,7 @@ do_lock_unlock(struct pkgdb *db, int match, const char *pkgname,
 		pkg = NULL;
 	}
 	tll_foreach(pkgs, p) {
-		if (action == LOCK)
-			retcode = do_lock(db, p->item);
-		else
-			retcode = do_unlock(db, p->item);
-
+		retcode = lockfct(db, p->item);
 		if (retcode != EPKG_OK) {
 			exitcode = EXIT_FAILURE;
 			goto cleanup;
