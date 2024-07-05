@@ -4,7 +4,8 @@
 
 tests_init \
 	lock \
-	lock_delete
+	lock_delete \
+	unlock_all
 
 lock_setup() {
 	for pkg in 'png' 'sqlite3' ; do
@@ -114,4 +115,18 @@ lock_delete_body() {
 	    -e empty \
 	    -s exit:0 \
 	    pkg lock -l
+}
+
+unlock_all_body()
+{
+	mkdir target
+	for i in "a" "b" "c" "d"; do
+		atf_check -s exit:0 sh ${RESOURCEDIR}/test_subr.sh new_pkg "$i" "$i" "1" "prefix"
+		atf_check -o ignore pkg register -M $i.ucl
+	done
+	atf_check -o ignore pkg lock -y a
+	atf_check -o ignore pkg lock -y d
+	atf_check -o ignore pkg unlock -ay
+	atf_check -o inline:"No locked packages were found\n" \
+		-s exit:1 pkg lock -l
 }

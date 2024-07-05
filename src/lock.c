@@ -1,7 +1,6 @@
 /*-
  * Copyright (c) 2012-2014 Matthew Seaman <matthew@FreeBSD.org>
- * Copyright (c) 2015 Baptiste Daroussin <bapt@FreeBSD.org>
- * All rights reserved.
+ * Copyright (c) 2015-2024 Baptiste Daroussin <bapt@FreeBSD.org>
  *
  * Redistribution and use in source and binary forms, with or without
  * modification, are permitted provided that the following conditions
@@ -36,14 +35,9 @@
 
 #include "pkgcli.h"
 
-enum action {
-	LOCK,
-	UNLOCK,
-};
-
-static int exec_lock_unlock(int, char**, enum action);
-static int do_lock(struct pkgdb *db, struct pkg *pkg);
-static int do_unlock(struct pkgdb *db, struct pkg *pkg);
+static int exec_lock_unlock(int, char**, int (*lockfct)(struct pkgdb *, struct pkg *, bool batch));
+static int do_lock(struct pkgdb *db, struct pkg *pkg, bool batch);
+static int do_unlock(struct pkgdb *db, struct pkg *pkg, bool batch);
 
 void
 usage_lock(void)
@@ -55,9 +49,11 @@ usage_lock(void)
 }
 
 static int
-do_lock(struct pkgdb *db, struct pkg *pkg)
+do_lock(struct pkgdb *db, struct pkg *pkg, bool batch)
 {
 	if (pkg_is_locked(pkg)) {
+		if (batch)
+			return (EPKG_OK);
 		if (!quiet)
 			pkg_printf("%n-%v: already locked\n",
 			       pkg, pkg);
@@ -76,9 +72,11 @@ do_lock(struct pkgdb *db, struct pkg *pkg)
 
 
 static int
-do_unlock(struct pkgdb *db, struct pkg *pkg)
+do_unlock(struct pkgdb *db, struct pkg *pkg, bool batch)
 {
 	if (!pkg_is_locked(pkg)) {
+		if (batch)
+			return (EPKG_OK);
 		if (!quiet)
 			pkg_printf("%n-%v: already unlocked\n", pkg, pkg);
 		return (EPKG_FATAL);
@@ -96,7 +94,7 @@ do_unlock(struct pkgdb *db, struct pkg *pkg)
 
 static int
 do_lock_unlock(struct pkgdb *db, int match, const char *pkgname,
-    enum action action)
+    int (*lockfct)(struct pkgdb *, struct pkg *, bool))
 {
 	struct pkgdb_it	*it = NULL;
 	struct pkg	*pkg = NULL;
@@ -104,7 +102,6 @@ do_lock_unlock(struct pkgdb *db, int match, const char *pkgname,
 	int		 exitcode = EXIT_SUCCESS;
 	bool		 gotone = false;
 	tll(struct pkg *)pkgs = tll_init();
-	int (*lockfct)(struct pkgdb *db, struct pkg *pkg) = action == LOCK ? do_lock : do_unlock;
 
 	if (pkgdb_obtain_lock(db, PKGDB_LOCK_EXCLUSIVE) != EPKG_OK) {
 		pkgdb_close(db);
@@ -124,7 +121,7 @@ do_lock_unlock(struct pkgdb *db, int match, const char *pkgname,
 		pkg = NULL;
 	}
 	tll_foreach(pkgs, p) {
-		retcode = lockfct(db, p->item);
+		retcode = lockfct(db, p->item, match != MATCH_EXACT);
 		if (retcode != EPKG_OK) {
 			exitcode = EXIT_FAILURE;
 			goto cleanup;
@@ -147,13 +144,13 @@ cleanup:
 int
 exec_lock(int argc, char **argv)
 {
-	return (exec_lock_unlock(argc, argv, LOCK));
+	return (exec_lock_unlock(argc, argv, do_lock));
 }
 
 int
 exec_unlock(int argc, char **argv)
 {
-	return (exec_lock_unlock(argc, argv, UNLOCK));
+	return (exec_lock_unlock(argc, argv, do_unlock));
 }
 
 static int
@@ -192,7 +189,7 @@ list_locked(struct pkgdb *db, bool has_locked)
 }
 
 static int
-exec_lock_unlock(int argc, char **argv, enum action action)
+exec_lock_unlock(int argc, char **argv, int (*lockfct)(struct pkgdb *, struct pkg *, bool))
 {
 	struct pkgdb	*db = NULL;
 	int		 match = MATCH_EXACT;
@@ -291,10 +288,10 @@ exec_lock_unlock(int argc, char **argv, enum action action)
 
 	if (!read_only) {
 		if (match == MATCH_ALL) {
-			exitcode = do_lock_unlock(db, match, NULL, action);
+			exitcode = do_lock_unlock(db, match, NULL, lockfct);
 		} else {
 			for (i = 0; i < argc; i++) {
-				exitcode = do_lock_unlock(db, match, argv[i], action);
+				exitcode = do_lock_unlock(db, match, argv[i], lockfct);
 			}
 		}
 	}
