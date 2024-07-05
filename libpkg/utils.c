@@ -383,7 +383,7 @@ is_valid_os_version(struct pkg *pkg)
 							"Newer FreeBSD version for package %s:\n"
 							"To ignore this error set IGNORE_OSVERSION=yes\n"
 							"- package: %d\n"
-							"- running kernel: %d\n"
+							"- running userland: %d\n"
 							"Ignore the mismatch and continue? ", pkg->name,
 							fbsdver, ctx.osversion);
 					ret = pkg_emit_query_yesno(false, query_buf);
