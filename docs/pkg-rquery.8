@@ -14,7 +14,7 @@
 .\"
 .\"     @(#)pkg.8
 .\"
-.Dd October 06, 2022
+.Dd July 7, 2024
 .Dt PKG-RQUERY 8
 .Os
 .Sh NAME
@@ -81,11 +81,11 @@ option) on the command line will be interpreted.
 .It Fl r Ar reponame , Fl -repository Ar reponame
 Query for data about packages from only the named repository,
 irrespective of the configured
-.Dq active
+.Dq enabled
 status from
 .Pa repo.conf .
 By default all repository catalogues marked
-.Dq active
+.Dq enabled
 are queried.
 .It Fl g , Fl -glob
 Treat
