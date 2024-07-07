@@ -14,7 +14,7 @@
 .\"
 .\"     @(#)pkg.8
 .\"
-.Dd November 18, 2014
+.Dd July 7, 2024
 .Dt PKG-SEARCH 8
 .Os
 .Sh NAME
@@ -172,12 +172,10 @@ section for details.
 .It Fl r Ar reponame , Cm --repository Ar reponame
 Search for packages from only the named repository,
 irrespective of the configured
-.Dq active
+.Dq enabled
 status from
 .Pa repo.conf .
-By default all repository catalogues marked
-.Dq active
-are searched.
+By default, catalogues for all enabled repositories are searched.
 .It Fl R , Fl -raw
 Display the full manifest (raw) from the matching packages.
 .It Fl S Ar search , Cm --search Ar search
