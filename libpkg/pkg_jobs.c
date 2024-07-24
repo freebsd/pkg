@@ -1491,6 +1491,7 @@ jobs_solve_deinstall(struct pkg_jobs *j)
 	struct job_pattern *jp;
 	struct pkg *pkg = NULL;
 	struct pkgdb_it *it;
+	bool force = (j->flags & PKG_FLAG_FORCE);
 	LL_FOREACH(j->patterns, jp) {
 		if ((it = pkgdb_query(j->db, jp->pattern, jp->match)) == NULL)
 			return (EPKG_FATAL);
@@ -1502,7 +1503,7 @@ jobs_solve_deinstall(struct pkg_jobs *j)
 		while (pkgdb_it_next(it, &pkg, PKG_LOAD_BASIC|PKG_LOAD_RDEPS|
 		    PKG_LOAD_DEPS|PKG_LOAD_ANNOTATIONS|PKG_LOAD_PROVIDES|
 		    PKG_LOAD_SHLIBS_PROVIDED) == EPKG_OK) {
-			if(pkg->locked || pkg->vital) {
+			if(pkg->locked || (pkg->vital && !force)) {
 				if (tsearch(pkg, &j->lockedpkgs, comp) == NULL) {
 					pkgdb_it_free(it);
 					return (EPKG_FATAL);
