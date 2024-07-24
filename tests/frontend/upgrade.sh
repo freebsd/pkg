@@ -322,7 +322,20 @@ Checking integrity... done (1 conflicting)
   - myplop-2 conflicts with mymeta-1 on ${TMPDIR}/file-pkg-1/file
 Cannot solve problem using SAT solver, trying another plan
 Checking integrity... done (0 conflicting)
-Your packages are up to date.
+The following 2 package(s) will be affected (of 0 checked):
+
+Installed packages to be UPGRADED:
+	myplop: 1 -> 2
+
+Installed packages to be REMOVED:
+	mymeta: 1
+
+Number of packages to be removed: 1
+Number of packages to be upgraded: 1
 "
-	atf_check -o inline:"${OUTPUT}" pkg -o REPOS_DIR="$TMPDIR/repoconf" -r ${TMPDIR}/target -o PKG_CACHEDIR="$TMPDIR" upgrade -y
+	ERROR="pkg: Cannot delete vital package: mymeta!
+pkg: If you are sure you want to remove mymeta
+pkg: unset the 'vital' flag with: pkg set -v 0 mymeta
+"
+	atf_check -o inline:"${OUTPUT}" -e inline:"${ERROR}" -s exit:3 pkg -o REPOS_DIR="$TMPDIR/repoconf" -r ${TMPDIR}/target -o PKG_CACHEDIR="$TMPDIR" upgrade -y
 }
