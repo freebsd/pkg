@@ -136,11 +136,13 @@ DPAGES = \
   include.md \
   insecure.md \
   interface.md \
+  ip-tos.md \
   ipfs-gateway.md \
   ipv4.md \
   ipv6.md \
   json.md \
   junk-session-cookies.md \
+  keepalive-cnt.md \
   keepalive-time.md \
   key-type.md \
   key.md \
@@ -161,6 +163,7 @@ DPAGES = \
   max-redirs.md \
   max-time.md \
   metalink.md \
+  mptcp.md \
   negotiate.md \
   netrc-file.md \
   netrc-optional.md \
@@ -302,5 +305,6 @@ DPAGES = \
   variable.md \
   verbose.md \
   version.md \
+  vlan-priority.md \
   write-out.md \
   xattr.md

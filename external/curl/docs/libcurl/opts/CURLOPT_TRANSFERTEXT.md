@@ -8,6 +8,7 @@ See-also:
   - CURLOPT_CRLF (3)
 Protocol:
   - All
+Added-in: 7.1.1
 ---
 
 # NAME
@@ -38,6 +39,8 @@ simply sets the mode to ASCII and performs a standard transfer.
 
 0, disabled
 
+# %PROTOCOLS%
+
 # EXAMPLE
 
 ~~~c
@@ -54,9 +57,7 @@ int main(void)
 }
 ~~~
 
-# AVAILABILITY
-
-Along with FTP
+# %AVAILABILITY%
 
 # RETURN VALUE
 

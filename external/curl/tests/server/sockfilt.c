@@ -152,7 +152,7 @@ enum sockmode {
   ACTIVE_DISCONNECT  /* as a client, disconnected from server */
 };
 
-#ifdef _WIN32
+#if defined(_WIN32) && !defined(CURL_WINDOWS_APP)
 /*
  * read-wrapper to support reading from stdin on Windows.
  */
@@ -420,7 +420,7 @@ static bool read_data_block(unsigned char *buffer, ssize_t maxlen,
 }
 
 
-#ifdef USE_WINSOCK
+#if defined(USE_WINSOCK) && !defined(CURL_WINDOWS_APP)
 /*
  * WinSock select() does not support standard file descriptors,
  * it can only check SOCKETs. The following function is an attempt
@@ -921,10 +921,9 @@ static bool disc_handshake(void)
       }
       else if(!memcmp("DATA", buffer, 4)) {
         /* We must read more data to stay in sync */
+        logmsg("Throwing away data bytes");
         if(!read_data_block(buffer, sizeof(buffer), &buffer_len))
           return FALSE;
-
-        logmsg("Throwing again %zd data bytes", buffer_len);
 
       }
       else if(!memcmp("QUIT", buffer, 4)) {

@@ -15,6 +15,7 @@ TLS-backend:
   - mbedTLS
   - Schannel
   - wolfSSL
+Added-in: 7.9.3
 ---
 
 # NAME
@@ -46,6 +47,8 @@ option.
 
 NULL
 
+# %PROTOCOLS%
+
 # EXAMPLE
 
 ~~~c
@@ -64,9 +67,7 @@ int main(void)
 }
 ~~~
 
-# AVAILABILITY
-
-If built TLS enabled.
+# %AVAILABILITY%
 
 # RETURN VALUE
 

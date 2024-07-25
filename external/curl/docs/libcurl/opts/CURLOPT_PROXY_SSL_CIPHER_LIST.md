@@ -20,6 +20,7 @@ TLS-backend:
   - wolfSSL
   - GnuTLS
   - mbedTLS
+Added-in: 7.52.0
 ---
 
 # NAME
@@ -47,7 +48,7 @@ For OpenSSL and GnuTLS valid examples of cipher lists include **RC4-SHA**,
 **SHA1+DES**, **TLSv1** and **DEFAULT**. The default list is normally
 set when you compile OpenSSL.
 
-For WolfSSL, valid examples of cipher lists include **ECDHE-RSA-RC4-SHA**,
+For wolfSSL, valid examples of cipher lists include **ECDHE-RSA-RC4-SHA**,
 **AES256-SHA:AES256-SHA256**, etc.
 
 For mbedTLS and BearSSL, valid examples of cipher lists include
@@ -67,7 +68,9 @@ option.
 
 # DEFAULT
 
-NULL, use internal default
+NULL, use internal built-in list.
+
+# %PROTOCOLS%
 
 # EXAMPLE
 
@@ -86,11 +89,7 @@ int main(void)
 }
 ~~~
 
-# AVAILABILITY
-
-Added in 7.52.0, in 7.83.0 for BearSSL, in 8.8.0 for mbedTLS
-
-If built TLS enabled.
+# %AVAILABILITY%
 
 # RETURN VALUE
 

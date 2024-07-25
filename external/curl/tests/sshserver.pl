@@ -847,8 +847,8 @@ if ($sshdid =~ /OpenSSH-Windows/) {
 }
 elsif (pathhelp::os_is_win()) {
     # Ensure to use MinGW/Cygwin paths
-    $identity_config = pathhelp::build_sys_abs_path($identity_config);
-    $knownhosts_config = pathhelp::build_sys_abs_path($knownhosts_config);
+    $identity_config = pathhelp::build_sys_abs_path($identity);
+    $knownhosts_config = pathhelp::build_sys_abs_path($knownhosts);
 }
 else {
     $identity_config = abs_path(pp($identity));

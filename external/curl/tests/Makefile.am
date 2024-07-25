@@ -40,6 +40,8 @@ TESTSCRIPTS = \
  test1275.pl  \
  test1276.pl  \
  test1477.pl  \
+ test1486.pl  \
+ test1488.pl  \
  test1544.pl  \
  test971.pl
 
@@ -162,7 +164,7 @@ checksrc:
 	(cd server && $(MAKE) checksrc)
 	(cd http && $(MAKE) checksrc)
 
-if CURLDEBUG
+if DEBUGBUILD
 # for debug builds, we scan the sources on all regular make invokes
 all-local: checksrc
 endif

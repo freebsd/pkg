@@ -1563,7 +1563,7 @@ AC_DEFUN([CURL_CHECK_FUNC_GETADDRINFO], [
 #elif defined(_XOPEN_SOURCE) && (_XOPEN_SOURCE >= 700)
           return 0;
 #else
-          force compilation error
+          #error force compilation error
 #endif
         ]])
       ],[
@@ -5004,7 +5004,7 @@ $2
   fi
   AC_MSG_RESULT($r)
   dnl lowercase and underscore instead of space
-  tname=$(echo "ac_cv_sizeof_$1" | tr A-Z a-z | tr " " "_")
+  tname=`echo "ac_cv_sizeof_$1" | tr A-Z a-z | tr " " "_"`
   eval "$tname=$r"
 
   AC_DEFINE_UNQUOTED(TYPE, [$r], [Size of $1 in number of bytes])

@@ -12,6 +12,7 @@ See-also:
   - CURLOPT_USERPWD (3)
 Protocol:
   - HTTP
+Added-in: 7.10.4
 ---
 
 # NAME
@@ -52,6 +53,8 @@ again and again as the following hosts can keep redirecting to new hosts.
 
 0
 
+# %PROTOCOLS%
+
 # EXAMPLE
 
 ~~~c
@@ -67,9 +70,7 @@ int main(void)
 }
 ~~~
 
-# AVAILABILITY
-
-Along with HTTP
+# %AVAILABILITY%
 
 # RETURN VALUE
 

@@ -293,7 +293,7 @@ if test "x$OPT_OPENSSL" != xno; then
         AC_MSG_RESULT([no])
     ])
 
-    AC_MSG_CHECKING([for libressl])
+    AC_MSG_CHECKING([for LibreSSL])
     AC_COMPILE_IFELSE([
       AC_LANG_PROGRAM([[
 #include <openssl/opensslv.h>
@@ -303,8 +303,8 @@ if test "x$OPT_OPENSSL" != xno; then
     ],[
       AC_MSG_RESULT([yes])
       AC_DEFINE_UNQUOTED(HAVE_LIBRESSL, 1,
-        [Define to 1 if using libressl.])
-      ssl_msg="libressl"
+        [Define to 1 if using LibreSSL.])
+      ssl_msg="LibreSSL"
     ],[
       AC_MSG_RESULT([no])
     ])
@@ -351,6 +351,7 @@ if test "x$OPT_OPENSSL" != xno; then
        fi
     fi
     check_for_ca_bundle=1
+    LIBCURL_PC_REQUIRES_PRIVATE="$LIBCURL_PC_REQUIRES_PRIVATE openssl"
   fi
 
   test -z "$ssl_msg" || ssl_backends="${ssl_backends:+$ssl_backends, }$ssl_msg"
@@ -428,11 +429,14 @@ dnl ---
 dnl We may use OpenSSL QUIC.
 dnl ---
 if test "$OPENSSL_ENABLED" = "1"; then
-  AC_MSG_CHECKING([for QUIC support in OpenSSL])
+  AC_MSG_CHECKING([for QUIC support and OpenSSL >= 3.3])
   AC_LINK_IFELSE([
     AC_LANG_PROGRAM([[
 #include <openssl/ssl.h>
     ]],[[
+      #if (OPENSSL_VERSION_NUMBER < 0x30300000L)
+      #error need at least version 3.3.0
+      #endif
       OSSL_QUIC_client_method();
     ]])
   ],[

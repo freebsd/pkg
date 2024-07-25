@@ -9,6 +9,7 @@ See-also:
   - libcurl (3)
 Protocol:
   - All
+Added-in: 8.3
 ---
 
 # NAME
@@ -108,6 +109,8 @@ Traces reading of upload data from the application in order to send it to the se
 
 Traces writing of download data, received from the server, to the application.
 
+# %PROTOCOLS%
+
 # EXAMPLE
 
 ~~~c
@@ -131,9 +134,7 @@ of an enabled component appears at the beginning in brackets.
 ...
 ~~~
 
-# AVAILABILITY
-
-Added in 8.3
+# %AVAILABILITY%
 
 # RETURN VALUE
 

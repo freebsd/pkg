@@ -12,6 +12,7 @@ See-also:
   - libcurl-ws (3)
 Protocol:
   - WS
+Added-in: 7.86.0
 ---
 
 # NAME
@@ -89,6 +90,8 @@ fragment like this, the *fragsize* must be provided with the total
 expected fragment size in the first call and it needs to be zero in subsequent
 calls.
 
+# %PROTOCOLS%
+
 # EXAMPLE
 
 ~~~c
@@ -111,9 +114,7 @@ int main(void)
 }
 ~~~
 
-# AVAILABILITY
-
-Added in 7.86.0.
+# %AVAILABILITY%
 
 # RETURN VALUE
 

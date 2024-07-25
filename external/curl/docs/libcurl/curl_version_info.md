@@ -8,6 +8,7 @@ See-also:
   - curl_version (3)
 Protocol:
   - All
+Added-in: 7.10.0
 ---
 
 # NAME
@@ -369,6 +370,8 @@ supports HTTP GSS-Negotiate (added in 7.10.6, deprecated in 7.38.0)
 
 supports Kerberos V4 (when using FTP). Legacy bit. Deprecated since 7.33.0.
 
+# %PROTOCOLS%
+
 # EXAMPLE
 
 ~~~c
@@ -382,9 +385,7 @@ int main(void)
 }
 ~~~
 
-# AVAILABILITY
-
-Added in 7.10
+# %AVAILABILITY%
 
 # RETURN VALUE
 

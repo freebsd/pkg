@@ -8,6 +8,7 @@ See-also:
   - CURLOPT_TIMEOUT (3)
 Protocol:
   - All
+Added-in: 7.10
 ---
 
 # NAME
@@ -46,6 +47,8 @@ corner cases when they may still happen, contrary to our desire.
 
 0
 
+# %PROTOCOLS%
+
 # EXAMPLE
 
 ~~~c
@@ -65,9 +68,7 @@ int main(void)
 }
 ~~~
 
-# AVAILABILITY
-
-Added in 7.10
+# %AVAILABILITY%
 
 # RETURN VALUE
 

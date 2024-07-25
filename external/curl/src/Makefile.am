@@ -45,10 +45,6 @@ AM_CPPFLAGS = -I$(top_srcdir)/include        \
 
 bin_PROGRAMS = curl
 
-if BUILD_DOCS
-SUBDIRS = ../docs
-endif
-
 if USE_CPPFLAG_CURL_STATICLIB
 AM_CPPFLAGS += -DCURL_STATICLIB
 endif
@@ -145,7 +141,7 @@ checksrc:
 	$(CHECKSRC)(@PERL@ $(top_srcdir)/scripts/checksrc.pl -D$(srcdir) \
 	-W$(srcdir)/tool_hugehelp.c $(srcdir)/*.[ch])
 
-if CURLDEBUG
+if DEBUGBUILD
 # for debug builds, we scan the sources on all regular make invokes
 all-local: checksrc
 endif

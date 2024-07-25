@@ -12,6 +12,7 @@ See-also:
   - libcurl-multi (3)
   - libcurl-security (3)
   - libcurl-thread (3)
+Added-in: n/a
 ---
 # libcurl symbols
 
@@ -24,7 +25,7 @@ since that version no new code should be written to use the symbol as it is
 marked for getting removed in a future.
 
 The last version that featured the specific symbol. Using the symbol in source
-code will make it no longer compile error-free after that specified version.
+code makes it no longer compile error-free after that specified version.
 
 This man page is automatically generated from the symbols-in-versions file.
 
@@ -2584,6 +2585,9 @@ Introduced in 7.25.0. See CURLOPT_TCP_KEEPIDLE(3).
 ## CURLOPT_TCP_KEEPINTVL
 Introduced in 7.25.0. See CURLOPT_TCP_KEEPINTVL(3).
 
+## CURLOPT_TCP_KEEPCNT
+Introduced in 8.9.0. See CURLOPT_TCP_KEEPCNT(3).
+
 ## CURLOPT_TCP_NODELAY
 Introduced in 7.11.2. See CURLOPT_TCP_NODELAY(3).
 
@@ -3195,6 +3199,9 @@ Introduced in 7.67.0. See curl_url_get(3).
 
 ## CURLU_NO_DEFAULT_PORT
 Introduced in 7.62.0. See curl_url_get(3).
+
+## CURLU_NO_GUESS_SCHEME
+Introduced in 8.9.0. See curl_url_get(3).
 
 ## CURLU_NON_SUPPORT_SCHEME
 Introduced in 7.62.0. See curl_url_get(3).

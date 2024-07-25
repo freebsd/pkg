@@ -1,4 +1,5 @@
 #!/usr/bin/env python3
+#!/usr/bin/env python3
 # -*- coding: utf-8 -*-
 #***************************************************************************
 #                                  _   _ ____  _
@@ -246,6 +247,7 @@ class Httpd:
                 f'ErrorLog {self._error_log}',
                 f'LogLevel {self._get_log_level()}',
                 f'StartServers 4',
+                f'ReadBufferSize 16000',
                 f'H2MinWorkers 16',
                 f'H2MaxWorkers 256',
                 f'H2Direct on',
@@ -255,6 +257,13 @@ class Httpd:
                 f'Listen {self.env.proxys_port}',
                 f'TypesConfig "{self._conf_dir}/mime.types',
                 f'SSLSessionCache "shmcb:ssl_gcache_data(32000)"',
+                (f'SSLCipherSuite SSL'
+                 f' ECDHE-ECDSA-AES128-GCM-SHA256:ECDHE-RSA-AES128-GCM-SHA256'
+                 f':ECDHE-ECDSA-CHACHA20-POLY1305:ECDHE-RSA-CHACHA20-POLY1305'
+                ),
+                (f'SSLCipherSuite TLSv1.3'
+                 f' TLS_AES_128_GCM_SHA256:TLS_CHACHA20_POLY1305_SHA256'
+                ),
             ]
             if 'base' in self._extra_configs:
                 conf.extend(self._extra_configs['base'])
@@ -301,6 +310,18 @@ class Httpd:
             conf.extend(self._curltest_conf(domain1))
             if domain1 in self._extra_configs:
                 conf.extend(self._extra_configs[domain1])
+            conf.extend([
+                f'</VirtualHost>',
+                f'',
+            ])
+            conf.extend([  # plain http host for domain2
+                f'<VirtualHost *:{self.env.http_port}>',
+                f'    ServerName {domain2}',
+                f'    ServerAlias localhost',
+                f'    DocumentRoot "{self._docs_dir}"',
+                f'    Protocols h2c http/1.1',
+            ])
+            conf.extend(self._curltest_conf(domain2))
             conf.extend([
                 f'</VirtualHost>',
                 f'',

@@ -11,6 +11,7 @@ See-also:
   - CURLOPT_HTTP09_ALLOWED (3)
   - CURLOPT_HTTP200ALIASES (3)
   - CURLOPT_SSLVERSION (3)
+Added-in: 7.9.1
 ---
 
 # NAME
@@ -89,6 +90,8 @@ Since curl 7.62.0: CURL_HTTP_VERSION_2TLS
 
 Before that: CURL_HTTP_VERSION_1_1
 
+# %PROTOCOLS%
+
 # EXAMPLE
 
 ~~~c
@@ -108,9 +111,7 @@ int main(void)
 }
 ~~~
 
-# AVAILABILITY
-
-Along with HTTP
+# %AVAILABILITY%
 
 # RETURN VALUE
 
