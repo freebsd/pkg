@@ -1,3 +1,23 @@
+Changes from 1.21.99.1 to 1.21.99.2
+- audit: add -d to audit packages in a specified directory
+- bug fix: fix upgrade with symlinks becoming directories
+- debug: implement debug flags to allow to cherrypick the debug flags to print
+- check: remove -B and -r options
+- compression: allow to defined the number of threads to use with zstd and xz
+- curl: update to 8.9.0
+- http: add support for HTTP_PROXY_AUTH
+- periodic: remove compat_vars
+- info: fix json formatted output
+- manpages: lots of fixes and improvements
+- install/upgrade: now removed packaages are printed at the bottom of the list of changes
+- using -r <repo> now always enable the repository specified
+- periodic: provide a mechanism to ignore jails via prefix matching
+- upgrade: allow the used to ignore options changes in the triggers to reinstall a package
+- lock/unlock: fix batch operations
+- osversion: fix confusing message
+- new attempt at better handling vital during upgrades
+- sqlite: update to 3.46.0
+
 Changes from 1.21.99.0 to 1.21.99.1
 - fix regression in HANDLE_RC_SCRIPTS option (off by default)
 - fix processing entries spiner
