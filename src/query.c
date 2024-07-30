@@ -794,6 +794,7 @@ analyse_query_string(char *qstr, struct query_flags *q_flags, const unsigned int
 	unsigned int i, j, k;
 	unsigned int valid_flag = 0;
 	unsigned int valid_opts = 0;
+	size_t len;
 
 	j = 0; /* shut up scanbuild */
 
@@ -817,7 +818,8 @@ analyse_query_string(char *qstr, struct query_flags *q_flags, const unsigned int
 						qstr++;
 						valid_opts = 0;
 
-						for (j = 0; j < strlen(q_flags[i].options); j++) {
+						len = strlen(q_flags[i].options);
+						for (j = 0; j < len; j++) {
 							if (qstr[0] == q_flags[i].options[j]) {
 								valid_opts = 1;
 								break;
@@ -827,7 +829,8 @@ analyse_query_string(char *qstr, struct query_flags *q_flags, const unsigned int
 						if (valid_opts == 0) {
 							fprintf(stderr, "Invalid query: '%%%c' should be followed by:", q_flags[i].flag);
 
-							for (j = 0; j < strlen(q_flags[i].options); j++)
+							len = strlen(q_flags[i].options);
+							for (j = 0; j < len; j++)
 								fprintf(stderr, " %c%c", q_flags[i].options[j],
 										q_flags[i].options[j + 1] == '\0' ?
 										'\n' : ',');
