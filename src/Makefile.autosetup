@@ -70,6 +70,10 @@ OTHER_LIBS+=	-lresolv
 @if HAVE_LIBMD
 OTHER_LIBS+=	-lmd
 @endif
+@if HAVE_LIBPROCSTAT
+SRCS+=		ps.c
+OTHER_LIBS+=	-lprocstat -lkvm
+@endif
 
 @if libmachista
 LOCAL_LDFLAGS=	$(LIBPKGFLAT) $(LIBS) $(OTHER_LIBS) -lresolv
