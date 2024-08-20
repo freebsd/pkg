@@ -397,7 +397,7 @@ pkg_delete_dir(struct pkg *pkg, struct pkg_dir *dir)
 	prefix_rel = pkg->prefix;
 	prefix_rel++;
 	len = strlen(prefix_rel);
-	while (prefix_rel[len - 1] == '/')
+	while (len > 0 && prefix_rel[len - 1] == '/')
 		len--;
 
 	if ((strncmp(prefix_rel, path, len) == 0) && path[len] == '/') {
