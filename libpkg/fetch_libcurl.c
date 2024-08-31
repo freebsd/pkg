@@ -445,8 +445,10 @@ do_retry:
 	if (ctx.debug_flags & PKG_DBG_FETCH && ctx.debug_level >= 1) {
 		const char *lurl = NULL;
 		curl_easy_getinfo(cl, CURLINFO_EFFECTIVE_URL, &lurl);
-		pkg_dbg(PKG_DBG_FETCH, 2, "CURL> attempting to fetch from %s, left retry %ld\n",
-				lurl, retry);
+		if (lurl) {
+			pkg_dbg(PKG_DBG_FETCH, 2, "CURL> attempting to fetch from %s\n", lurl);
+		}
+		pkg_dbg(PKG_DBG_FETCH, 2, "CURL> retries left: %ld\n", retry);
 	}
 	curl_easy_setopt(cl, CURLOPT_HTTPAUTH, (long)CURLAUTH_ANY);
 	if (userpasswd != NULL) {
