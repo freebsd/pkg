@@ -40,12 +40,28 @@ file_open(struct pkg_repo *repo, struct fetch_item *fi)
 {
 	struct stat st;
 	const char *u = fi->url;
+	size_t len = strlen(u);
 
-	if (strlen(u) > 5)
+	if (len > 5)
 		u += 5; /* file: */
-	if (*u != '/') {
+	if (len < 8) {
+		pkg_emit_error("Invalid url: %s'\n', "
+		    "file://<absolutepath> expected", fi->url);
+		return (EPKG_FATAL);
+	}
+	if (strncmp(u, "//", 2) != 0) {
 		pkg_emit_error("invalid url: '%s'\n", fi->url);
 		return (EPKG_FATAL);
+	}
+	u+=2;
+	/* if we don't have a '/' it means we have a host we should ignore */
+	if (*u != '/') {
+		u = strchr(u+1, '/');
+		if (u == NULL) {
+			pkg_emit_error("Invalid url: %s'\n', "
+					"file://<absolutepath> expected", fi->url);
+			return (EPKG_FATAL);
+		}
 	}
 	if (stat(u, &st) == -1) {
 		if (!repo->silent)
