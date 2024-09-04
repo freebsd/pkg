@@ -1,31 +1,31 @@
 image: debian/testing
 packages:
-  - libsqlite3-dev                                                                                               
-  - libbsd-dev                                                                                               
-  - libarchive-tools                                                                                               
-  - libarchive-dev                                                                                               
-  - libssl-dev                                                                                               
-  - liblzma-dev                                                                                               
-  - liblua5.2-dev                                                                                               
+  - libsqlite3-dev
+  - libbsd-dev
+  - libarchive-tools
+  - libarchive-dev
+  - libssl-dev
+  - liblzma-dev
+  - liblua5.2-dev
   - liblzo2-dev
   - libattr1-dev
-  - libacl1-dev                                                                                                
-  - libatf-dev                                                                                                
+  - libacl1-dev
+  - libatf-dev
   - kyua
   - atf-sh
-  - build-essential                                                                                               
-  - zlib1g-dev                                                                                               
-  - libbz2-dev                                                                                                                                                                                  
+  - build-essential
+  - zlib1g-dev
+  - libbz2-dev
   - python3
   - pkg-config
   - m4
-sources:                                                                                                    
+sources:
   - https://github.com/freebsd/pkg
 tasks:
   - configure: |
       mkdir build
       cd build
-      ../pkg/configure
+      ../pkg/configure --default-format=txz
   - build: |
       cd build
       make
