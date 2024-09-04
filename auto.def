@@ -19,7 +19,7 @@ options {
 	with-asan => "build with libasan support"
 	with-lsan => "build with liblsan support"
 	with-ubsan => "Build with libubsan support"
-	default-format:txz => "Default compression format: tzst, txz (default), tbz, tar"
+	default-format:txz => "Default compression format: tzst (default), txz, tbz, tar"
 }
 
 if {[opt-str pkgconfigdir dir]} {
