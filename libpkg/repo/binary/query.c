@@ -387,7 +387,7 @@ pkg_repo_binary_search_how(match_t match)
 		if (pkgdb_case_sensitive())
 			how = "%s GLOB ?1";
 		else
-			how = "%s GLOB ?1 COLLATE NOCASE";
+			how = "lower(%s) GLOB lower(?1)";
 		break;
 	case MATCH_REGEX:
 		how = "%s REGEXP ?1";

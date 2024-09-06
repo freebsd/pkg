@@ -109,12 +109,12 @@ pkgdb_get_pattern_query(const char *pattern, match_t match)
 				comp = "WHERE (categories.name || substr(origin, instr(origin, '/')) || '@' || flavor GLOB ?1)";
 		} else  {
 			if (checkorigin == NULL)
-				comp = " WHERE (p.name GLOB ?1 COLLATE NOCASE "
-					"OR p.name || '-' || version GLOB ?1 COLLATE NOCASE)";
+				comp = " WHERE (lower(p.name) GLOB lower(?1)  "
+					"OR lower(p.name || '-' || version) GLOB lower(?1) )";
 			else if (checkflavor == NULL)
-				comp = " WHERE (origin GLOB ?1 COLLATE NOCASE OR categories.name || substr(origin, instr(origin, '/')) GLOB ?1 COLLATE NOCASE)";
+				comp = " WHERE (lower(origin) GLOB lower(?1) OR lower(categories.name || substr(origin, instr(origin, '/'))) GLOB lower(?1))";
 			else
-				comp = "WHERE (categories.name || substr(origin, instr(origin, '/')) || '@' || flavor GLOB ?1 COLLATE NOCASE)";
+				comp = "WHERE (lower(categories.name || substr(origin, instr(origin, '/')) || '@' || flavor) GLOB lower(?1))";
 		}
 		break;
 	case MATCH_REGEX:
