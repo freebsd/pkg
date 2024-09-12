@@ -30,23 +30,25 @@ set -eu
 version="${1:-}"
 
 if [ -z "$version" ]; then
-  echo "Specify a version number!"
-  exit
+    echo "Specify a version number!"
+    exit
 fi
 
 timestamp="${2:-$(date -u +%s)}"
 
-make distclean
+if test -f Makefile; then
+    make distclean
+fi
 docker build \
        --build-arg SOURCE_DATE_EPOCH="$timestamp" \
        --build-arg UID="$(id -u)" \
        --build-arg GID="$(id -g)" \
        -t curl/curl .
 
-docker run --rm -it -u "$(id -u):$(id -g)" \
+docker run --rm -u "$(id -u):$(id -g)" \
        -v "$(pwd):/usr/src" -w /usr/src curl/curl sh -c "
   set -e
   autoreconf -fi
   ./configure --without-ssl --without-libpsl
   make -sj8
-  ./maketgz $version"
+  ./scripts/maketgz $version"

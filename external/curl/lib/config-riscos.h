@@ -63,9 +63,6 @@
 /* Define this to 'int' if ssize_t is not an available typedefed type */
 #undef ssize_t
 
-/* Define this as a suitable file to read random data from */
-#undef RANDOM_FILE
-
 /* Define if you have the alarm function. */
 #define HAVE_ALARM
 
@@ -203,13 +200,6 @@
 
 /* Version number of package */
 #undef VERSION
-
-/* Define if on AIX 3.
-   System headers sometimes define this.
-   We just want to avoid a redefinition error message.  */
-#ifndef _ALL_SOURCE
-# undef _ALL_SOURCE
-#endif
 
 /* Number of bits in a file offset, on hosts where this is settable. */
 #undef _FILE_OFFSET_BITS

@@ -47,9 +47,6 @@
 #include <netinet/tcp.h> /* for TCP_NODELAY */
 #endif
 
-#define ENABLE_CURLX_PRINTF
-/* make the curlx header define all printf() functions to use the curlx_*
-   versions instead */
 #include "curlx.h" /* from the private lib dir */
 #include "getpart.h"
 #include "inet_pton.h"
@@ -109,7 +106,7 @@ struct httprequest {
   bool auth;      /* Authorization header present in the incoming request */
   size_t cl;      /* Content-Length of the incoming request */
   bool digest;    /* Authorization digest header found */
-  bool ntlm;      /* Authorization ntlm header found */
+  bool ntlm;      /* Authorization NTLM header found */
   int delay;      /* if non-zero, delay this number of msec after connect */
   int writedelay; /* if non-zero, delay this number of milliseconds between
                      writes in the response */
@@ -2243,7 +2240,7 @@ int main(int argc, char *argv[])
          protocol_type, socket_type, location_str);
 
   /* start accepting connections */
-  rc = listen(sock, 5);
+  rc = listen(sock, 50);
   if(0 != rc) {
     error = SOCKERRNO;
     logmsg("listen() failed with error: (%d) %s", error, sstrerror(error));
@@ -2334,8 +2331,8 @@ int main(int argc, char *argv[])
       curl_socket_t msgsock;
       do {
         msgsock = accept_connection(sock);
-        logmsg("accept_connection %" CURL_FORMAT_SOCKET_T
-               " returned %" CURL_FORMAT_SOCKET_T, sock, msgsock);
+        logmsg("accept_connection %" FMT_SOCKET_T
+               " returned %" FMT_SOCKET_T, sock, msgsock);
         if(CURL_SOCKET_BAD == msgsock)
           goto sws_cleanup;
         if(req->delay)

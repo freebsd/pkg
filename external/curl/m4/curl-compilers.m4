@@ -148,7 +148,7 @@ AC_DEFUN([CURL_CHECK_COMPILER_DEC_C], [
   CURL_CHECK_DEF([__DECC], [], [silent])
   CURL_CHECK_DEF([__DECC_VER], [], [silent])
   if test "$curl_cv_have_def___DECC" = "yes" &&
-    test "$curl_cv_have_def___DECC_VER" = "yes"; then
+     test "$curl_cv_have_def___DECC_VER" = "yes"; then
     AC_MSG_RESULT([yes])
     compiler_id="DEC_C"
     flags_dbg_yes="-g2"
@@ -185,7 +185,7 @@ AC_DEFUN([CURL_CHECK_COMPILER_GNU_C], [
     compiler_id="GNU_C"
     AC_MSG_CHECKING([compiler version])
     # strip '-suffix' parts, e.g. Ubuntu Windows cross-gcc returns '10-win32'
-    gccver=`$CC -dumpversion | sed -E 's/-.+$//'`
+    gccver=`$CC -dumpversion | "$SED" 's/-.\{1,\}$//'`
     gccvhi=`echo $gccver | cut -d . -f1`
     if echo $gccver | grep -F '.' >/dev/null; then
       gccvlo=`echo $gccver | cut -d . -f2`
@@ -569,7 +569,7 @@ AC_DEFUN([CURL_SET_COMPILER_BASIC_OPTS], [
         #
       INTEL_UNIX_C)
         #
-        dnl On unix this compiler uses gcc's header files, so
+        dnl On Unix this compiler uses gcc's header files, so
         dnl we select ANSI C89 dialect plus GNU extensions.
         tmp_CFLAGS="$tmp_CFLAGS -std=gnu89"
         dnl Change some warnings into errors
@@ -852,13 +852,13 @@ AC_DEFUN([CURL_SET_COMPILER_WARNING_OPTS], [
             CURL_ADD_COMPILER_WARNINGS([tmp_CFLAGS], [enum-conversion])
             CURL_ADD_COMPILER_WARNINGS([tmp_CFLAGS], [sometimes-uninitialized])
             case $host_os in
-            cygwin* | mingw*)
-              dnl skip missing-variable-declarations warnings for cygwin and
-              dnl mingw because the libtool wrapper executable causes them
-              ;;
-            *)
-              CURL_ADD_COMPILER_WARNINGS([tmp_CFLAGS], [missing-variable-declarations])
-              ;;
+              cygwin* | mingw*)
+                dnl skip missing-variable-declarations warnings for Cygwin and
+                dnl MinGW because the libtool wrapper executable causes them
+                ;;
+              *)
+                CURL_ADD_COMPILER_WARNINGS([tmp_CFLAGS], [missing-variable-declarations])
+                ;;
             esac
           fi
           #
@@ -1032,7 +1032,7 @@ AC_DEFUN([CURL_SET_COMPILER_WARNING_OPTS], [
           #
           dnl Only gcc 4.5 or later
           if test "$compiler_num" -ge "405"; then
-            dnl Only windows targets
+            dnl Only Windows targets
             if test "$curl_cv_native_windows" = "yes"; then
               tmp_CFLAGS="$tmp_CFLAGS -Wno-pedantic-ms-format"
             fi
@@ -1068,7 +1068,7 @@ AC_DEFUN([CURL_SET_COMPILER_WARNING_OPTS], [
             CURL_ADD_COMPILER_WARNINGS([tmp_CFLAGS], [duplicated-branches])
             CURL_ADD_COMPILER_WARNINGS([tmp_CFLAGS], [restrict])
             CURL_ADD_COMPILER_WARNINGS([tmp_CFLAGS], [alloc-zero])
-            tmp_CFLAGS="$tmp_CFLAGS -Wformat-overflow=2"
+            tmp_CFLAGS="$tmp_CFLAGS -Wno-format-overflow"
             tmp_CFLAGS="$tmp_CFLAGS -Wformat-truncation=2"
             tmp_CFLAGS="$tmp_CFLAGS -Wimplicit-fallthrough"
           fi
@@ -1424,10 +1424,10 @@ AC_DEFUN([CURL_CHECK_COMPILER_SYMBOL_HIDING], [
         $tmp_EXTERN char *dummy(char *buff);
         char *dummy(char *buff)
         {
-         if(buff)
-           return ++buff;
-         else
-           return buff;
+          if(buff)
+            return ++buff;
+          else
+            return buff;
         }
       ]],[[
         char b[16];

@@ -13,30 +13,6 @@
 # PARTICULAR PURPOSE.
 
 @SET_MAKE@
-
-#***************************************************************************
-#                                  _   _ ____  _
-#  Project                     ___| | | |  _ \| |
-#                             / __| | | | |_) | |
-#                            | (__| |_| |  _ <| |___
-#                             \___|\___/|_| \_\_____|
-#
-# Copyright (C) Daniel Stenberg, <daniel@haxx.se>, et al.
-#
-# This software is licensed as described in the file COPYING, which
-# you should have received as part of this distribution. The terms
-# are also available at https://curl.se/docs/copyright.html.
-#
-# You may opt to use, copy, modify, merge, publish, distribute and/or sell
-# copies of the Software, and permit persons to whom the Software is
-# furnished to do so, under the terms of the COPYING file.
-#
-# This software is distributed on an "AS IS" basis, WITHOUT WARRANTY OF ANY
-# KIND, either express or implied.
-#
-# SPDX-License-Identifier: curl
-#
-###########################################################################
 VPATH = @srcdir@
 am__is_gnu_make = { \
   if test -z '$(MAKELEVEL)'; then \
@@ -165,7 +141,7 @@ am__can_run_installinfo = \
     *) (install-info --version) >/dev/null 2>&1;; \
   esac
 am__tagged_files = $(HEADERS) $(SOURCES) $(TAGS_FILES) $(LISP)
-am__DIST_COMMON = $(srcdir)/Makefile.in $(srcdir)/Makefile.inc
+am__DIST_COMMON = $(srcdir)/Makefile.in
 DISTFILES = $(DIST_COMMON) $(DIST_SOURCES) $(TEXINFOS) $(EXTRA_DIST)
 ACLOCAL = @ACLOCAL@
 AMTAR = @AMTAR@
@@ -188,11 +164,11 @@ CFLAG_CURL_SYMBOL_HIDING = @CFLAG_CURL_SYMBOL_HIDING@
 CONFIGURE_OPTIONS = @CONFIGURE_OPTIONS@
 CPP = @CPP@
 CPPFLAGS = @CPPFLAGS@
-CPPFLAG_CURL_STATICLIB = @CPPFLAG_CURL_STATICLIB@
 CSCOPE = @CSCOPE@
 CTAGS = @CTAGS@
 CURLVERSION = @CURLVERSION@
 CURL_CA_BUNDLE = @CURL_CA_BUNDLE@
+CURL_CA_EMBED = @CURL_CA_EMBED@
 CURL_CFLAG_EXTRAS = @CURL_CFLAG_EXTRAS@
 CURL_DISABLE_DICT = @CURL_DISABLE_DICT@
 CURL_DISABLE_FILE = @CURL_DISABLE_FILE@
@@ -238,7 +214,6 @@ HAVE_BROTLI = @HAVE_BROTLI@
 HAVE_GNUTLS_SRP = @HAVE_GNUTLS_SRP@
 HAVE_LDAP_SSL = @HAVE_LDAP_SSL@
 HAVE_LIBZ = @HAVE_LIBZ@
-HAVE_OPENSSL_QUIC = @HAVE_OPENSSL_QUIC@
 HAVE_OPENSSL_SRP = @HAVE_OPENSSL_SRP@
 HAVE_PROTO_BSDSOCKET_H = @HAVE_PROTO_BSDSOCKET_H@
 HAVE_ZSTD = @HAVE_ZSTD@
@@ -254,8 +229,10 @@ IPV6_ENABLED = @IPV6_ENABLED@
 LCOV = @LCOV@
 LD = @LD@
 LDFLAGS = @LDFLAGS@
-LIBCURL_LIBS = @LIBCURL_LIBS@
-LIBCURL_NO_SHARED = @LIBCURL_NO_SHARED@
+LIBCURL_PC_CFLAGS = @LIBCURL_PC_CFLAGS@
+LIBCURL_PC_CFLAGS_PRIVATE = @LIBCURL_PC_CFLAGS_PRIVATE@
+LIBCURL_PC_LIBS = @LIBCURL_PC_LIBS@
+LIBCURL_PC_LIBS_PRIVATE = @LIBCURL_PC_LIBS_PRIVATE@
 LIBCURL_PC_REQUIRES = @LIBCURL_PC_REQUIRES@
 LIBCURL_PC_REQUIRES_PRIVATE = @LIBCURL_PC_REQUIRES_PRIVATE@
 LIBOBJS = @LIBOBJS@
@@ -288,10 +265,8 @@ PKGADD_NAME = @PKGADD_NAME@
 PKGADD_PKG = @PKGADD_PKG@
 PKGADD_VENDOR = @PKGADD_VENDOR@
 PKGCONFIG = @PKGCONFIG@
-RANDOM_FILE = @RANDOM_FILE@
 RANLIB = @RANLIB@
 RC = @RC@
-REQUIRE_LIB_DEPS = @REQUIRE_LIB_DEPS@
 SED = @SED@
 SET_MAKE = @SET_MAKE@
 SHELL = @SHELL@
@@ -302,6 +277,7 @@ STRIP = @STRIP@
 SUPPORT_FEATURES = @SUPPORT_FEATURES@
 SUPPORT_PROTOCOLS = @SUPPORT_PROTOCOLS@
 TEST_NGHTTPX = @TEST_NGHTTPX@
+USE_APPLE_IDN = @USE_APPLE_IDN@
 USE_ARES = @USE_ARES@
 USE_BEARSSL = @USE_BEARSSL@
 USE_GNUTLS = @USE_GNUTLS@
@@ -310,6 +286,7 @@ USE_LIBPSL = @USE_LIBPSL@
 USE_LIBRTMP = @USE_LIBRTMP@
 USE_LIBSSH = @USE_LIBSSH@
 USE_LIBSSH2 = @USE_LIBSSH2@
+USE_LIBUV = @USE_LIBUV@
 USE_MBEDTLS = @USE_MBEDTLS@
 USE_MSH3 = @USE_MSH3@
 USE_NGHTTP2 = @USE_NGHTTP2@
@@ -402,7 +379,7 @@ test30 test31 test32 test33 test34 test35 test36 test37 test38 test39   \
 test40 test41 test42 test43 test44 test45 test46 test47 test48 test49   \
 test50 test51 test52 test53 test54 test55 test56 test57 test58 test59   \
 test60 test61 test62 test63 test64 test65 test66 test67 test68 test69   \
-test70 test71 test72 test73 test74 test75 test76 test77 test78 test79   \
+test70 test71 test72 test73 test74 test75        test77 test78 test79   \
 test80 test81 test82 test83 test84 test85 test86 test87 test88 test89   \
 test90 test91 test92 test93 test94 test95 test96 test97 test98 test99   \
 test100 test101 test102 test103 test104 test105 test106 test107 test108 \
@@ -446,6 +423,7 @@ test435 test436 test437 test438 test439 test440 test441 test442 test443 \
 test444 test445 test446 test447 test448 test449 test450 test451 test452 \
 test453 test454 test455 test456 test457 test458 test459 test460 test461 \
 test462 test463 test467 test468 test469 test470 test471 test472 test473 \
+test474 test475 test476 \
 \
 test490 test491 test492 test493 test494 test495 test496 test497 test498 \
 test499 test500 test501 test502 test503 test504 test505 test506 test507 \
@@ -469,7 +447,7 @@ test652 test653 test654 test655 test656 test658 test659 test660 test661 \
 test662 test663 test664 test665 test666 test667 test668 test669 test670 \
 test671 test672 test673 test674 test675 test676 test677 test678 test679 \
 test680 test681 test682 test683 test684 test685 test686 test687 test688 \
-test689 \
+test689 test690 test691 \
 \
 test700 test701 test702 test703 test704 test705 test706 test707 test708 \
 test709 test710 test711 test712 test713 test714 test715 test716 test717 \
@@ -498,8 +476,8 @@ test952 test953 test954 test955 test956 test957 test958 test959 test960 \
 test961 test962 test963 test964 test965 test966 test967 test968 test969 \
 test970 test971 test972 test973 test974 test975 test976 test977 test978 \
 test979 test980 test981 test982 test983 test984 test985 test986 test987 \
-test988 test989 test990 test991 test992 \
-\
+test988 test989 test990 test991 test992 test993 test994 test995 test996 \
+test997 \
 test1000 test1001 test1002 test1003 test1004 test1005 test1006 test1007 \
 test1008 test1009 test1010 test1011 test1012 test1013 test1014 test1015 \
 test1016 test1017 test1018 test1019 test1020 test1021 test1022 test1023 \
@@ -538,7 +516,7 @@ test1271 test1272 test1273 test1274 test1275 test1276 test1277 test1278 \
 test1279 test1280 test1281 test1282 test1283 test1284 test1285 test1286 \
 test1287 test1288 test1289 test1290 test1291 test1292 test1293 test1294 \
 test1295 test1296 test1297 test1298 test1299 test1300 test1301 test1302 \
-test1303 test1304 test1305 test1306 test1307 test1308 test1309 test1310 \
+test1303 test1304 test1305 test1306 test1307 test1308 test1309          \
 test1311 test1312 test1313 test1314 test1315 test1316 test1317 test1318 \
 test1319 test1320 test1321 test1322 test1323 test1324 test1325 test1326 \
 test1327 test1328 test1329 test1330 test1331 test1332 test1333 test1334 \
@@ -561,7 +539,7 @@ test1455 test1456 test1457 test1458 test1459 test1460 test1461 test1462 \
 test1463 test1464 test1465 test1466 test1467 test1468 test1469 test1470 \
 test1471 test1472 test1473 test1474 test1475 test1476 test1477 test1478 \
 test1479 test1480 test1481 test1482 test1483 test1484 test1485 test1486 \
-test1487 test1488 \
+test1487 test1488 test1489 \
 \
 test1500 test1501 test1502 test1503 test1504 test1505 test1506 test1507 \
 test1508 test1509 test1510 test1511 test1512 test1513 test1514 test1515 \
@@ -583,14 +561,15 @@ test1620 test1621 \
 \
 test1630 test1631 test1632 test1633 test1634 test1635 \
 \
-test1650 test1651 test1652 test1653 test1654 test1655 \
+test1650 test1651 test1652 test1653 test1654 test1655 test1656 \
 test1660 test1661 test1662 test1663 \
 \
 test1670 test1671 \
 \
 test1680 test1681 test1682 test1683 \
 \
-test1700 test1701 test1702 test1703 test1704 test1705 test1706 \
+test1700 test1701 test1702 test1703 test1704 test1705 test1706 test1707 \
+test1708 test1709 test1710 \
 \
 test1800 test1801 \
 \
@@ -601,13 +580,13 @@ test1916 test1917 test1918 test1919 \
 test1933 test1934 test1935 test1936 test1937 test1938 test1939 test1940 \
 test1941 test1942 test1943 test1944 test1945 test1946 test1947 test1948 \
 test1955 test1956 test1957 test1958 test1959 test1960 test1964 \
-test1970 test1971 test1972 test1973 test1974 test1975 \
+test1970 test1971 test1972 test1973 test1974 test1975 test1976 \
 \
 test2000 test2001 test2002 test2003 test2004 \
 \
                                                                test2023 \
 test2024 test2025 test2026 test2027 test2028 test2029 test2030 test2031 \
-test2032 test2033 test2034 test2035 test2036 test2037 test2038 test2039 \
+test2032 test2033 test2034 test2035          test2037 test2038 test2039 \
 test2040 test2041 test2042 test2043 test2044 test2045 test2046 test2047 \
 test2048 test2049 test2050 test2051 test2052 test2053 test2054 test2055 \
 test2056 test2057 test2058 test2059 test2060 test2061 test2062 test2063 \
@@ -635,15 +614,13 @@ test3024 test3025 test3026 test3027 test3028 test3029 test3030 \
 \
 test3100 test3101 test3102 test3103 \
 test3200 \
-test3201 test3202 test3203 test3204 test3205
+test3201 test3202 test3203 test3204 test3205 test3207
 
-
-# TESTCASES are taken from Makefile.inc
-EXTRA_DIST = $(TESTCASES) DISABLED CMakeLists.txt
+EXTRA_DIST = $(TESTCASES) DISABLED
 all: all-am
 
 .SUFFIXES:
-$(srcdir)/Makefile.in: @MAINTAINER_MODE_TRUE@ $(srcdir)/Makefile.am $(srcdir)/Makefile.inc $(am__configure_deps)
+$(srcdir)/Makefile.in: @MAINTAINER_MODE_TRUE@ $(srcdir)/Makefile.am  $(am__configure_deps)
 	@for dep in $?; do \
 	  case '$(am__configure_deps)' in \
 	    *$$dep*) \
@@ -663,7 +640,6 @@ Makefile: $(srcdir)/Makefile.in $(top_builddir)/config.status
 	    echo ' cd $(top_builddir) && $(SHELL) ./config.status $(subdir)/$@ $(am__maybe_remake_depfiles)'; \
 	    cd $(top_builddir) && $(SHELL) ./config.status $(subdir)/$@ $(am__maybe_remake_depfiles);; \
 	esac;
-$(srcdir)/Makefile.inc $(am__empty):
 
 $(top_builddir)/config.status: $(top_srcdir)/configure $(CONFIG_STATUS_DEPENDENCIES)
 	cd $(top_builddir) && $(MAKE) $(AM_MAKEFLAGS) am--refresh
@@ -857,7 +833,7 @@ uninstall-am:
 # SPDX-License-Identifier: curl
 #
 ###########################################################################
-iall:
+all:
 install:
 test:
 

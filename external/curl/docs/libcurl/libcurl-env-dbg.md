@@ -64,6 +64,15 @@ Trace logging behavior as an alternative to calling curl_global_trace(3).
 
 Example: **CURL_DEBUG=http/2** means trace details about HTTP/2 handling.
 
+In the curl command line tool, built with `--enable-debug`, this environment
+variable adds to arguments like `--verbose`, `-vvv`. At least a single `-v`
+is needed to make the run emit trace output, but when it does, the contents
+of `CURL_DEBUG` are added and can override existing options.
+
+Example: **CURL_DEBUG=tcp,-http/2 curl -vv url** means trace protocol details,
+triggered by `-vv`, add tracing of TCP in addition and remove tracing of
+HTTP/2.
+
 ## CURL_DEBUG_SIZE
 
 Fake the size returned by CURLINFO_HEADER_SIZE and CURLINFO_REQUEST_SIZE.
@@ -98,7 +107,7 @@ the current.
 
 ## CURL_TIME
 
-Fake unix timestamp to use for AltSvc, HSTS and CURLINFO variables that are
+Fake Unix timestamp to use for AltSvc, HSTS and CURLINFO variables that are
 time related.
 
 This variable can also be used to fake the data returned by some CURLINFO
@@ -110,10 +119,6 @@ case the value is not a timestamp.
 LDAP tracing is enabled if this variable exists and its value is 1 or greater.
 
 OpenLDAP tracing is separate. Refer to CURL_OPENLDAP_TRACE.
-
-## CURL_NTLM_WB_FILE
-
-Debug-version of the *ntlm-wb* executable.
 
 ## CURL_OPENLDAP_TRACE
 

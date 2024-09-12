@@ -23,22 +23,32 @@
 ###########################################################################
 set(CMAKE_UNITY_BUILD OFF)
 
-add_custom_target(testdeps)
-add_subdirectory(data)
-add_subdirectory(libtest)
-add_subdirectory(server)
-add_subdirectory(unit)
+find_program(TEST_NGHTTPX "nghttpx")
+if(NOT TEST_NGHTTPX)
+  set(TEST_NGHTTPX "nghttpx")
+endif()
+mark_as_advanced(TEST_NGHTTPX)
+# Consumed variables: TEST_NGHTTPX
+configure_file("config.in" "${CMAKE_CURRENT_BINARY_DIR}/config" @ONLY)
 
-function(add_runtests targetname test_flags)
+add_custom_target(testdeps)
+add_subdirectory(http)
+add_subdirectory(http/clients)
+add_subdirectory(server)
+add_subdirectory(libtest)
+add_subdirectory(unit)
+add_subdirectory(certs EXCLUDE_FROM_ALL)
+
+function(add_runtests _targetname _test_flags)
   # Use a special '$TFLAGS' placeholder as last argument which will be
   # replaced by the contents of the environment variable in runtests.pl.
   # This is a workaround for CMake's limitation where commands executed by
   # 'make' or 'ninja' cannot portably reference environment variables.
-  string(REPLACE " " ";" test_flags_list "${test_flags}")
-  add_custom_target(${targetname}
+  string(REPLACE " " ";" _test_flags_list "${_test_flags}")
+  add_custom_target(${_targetname}
     COMMAND
       "${PERL_EXECUTABLE}" "${CMAKE_CURRENT_SOURCE_DIR}/runtests.pl"
-      ${test_flags_list}
+      ${_test_flags_list}
       "\$TFLAGS"
     DEPENDS testdeps
     VERBATIM USES_TERMINAL
@@ -48,7 +58,7 @@ endfunction()
 # Create configurehelp.pm, used by tests needing to run the C preprocessor.
 if(MSVC OR CMAKE_COMPILER_IS_GNUCC OR CMAKE_C_COMPILER_ID MATCHES "Clang")
   set(_cpp_cmd "\"${CMAKE_C_COMPILER}\" -E")
-  if(APPLE AND NOT CMAKE_OSX_SYSROOT STREQUAL "")
+  if(APPLE AND CMAKE_OSX_SYSROOT)
     set(_cpp_cmd "${_cpp_cmd} -isysroot ${CMAKE_OSX_SYSROOT}")
   endif()
   # Add header directories, like autotools builds do.
@@ -84,11 +94,30 @@ use vars qw(
 1;
 ")
 
+# Save build info for test runner to pick up and log
+file(WRITE "${CMAKE_CURRENT_BINARY_DIR}/buildinfo.txt" "# This is a generated file.  Do not edit.
+configure.tool: cmake
+configure.command: ${CMAKE_COMMAND}
+configure.version: ${CMAKE_VERSION}
+configure.os: ${CMAKE_SYSTEM}
+configure.args:${_cmake_args}
+configure.generator: ${CMAKE_GENERATOR}
+configure.make: ${CMAKE_MAKE_PROGRAM}
+host.os: ${CMAKE_HOST_SYSTEM_NAME}
+host.cpu: ${CMAKE_HOST_SYSTEM_PROCESSOR}
+target: ${CMAKE_C_COMPILER_TARGET}
+target.os: ${CMAKE_SYSTEM_NAME}
+target.cpu: ${CMAKE_SYSTEM_PROCESSOR}
+target.flags:${_target_flags}
+compiler: ${CMAKE_C_COMPILER_ID}
+compiler.version: ${CMAKE_C_COMPILER_VERSION}
+")
+
 add_runtests(test-quiet     "-a -s")
 add_runtests(test-am        "-a -am")
 add_runtests(test-full      "-a -p -r")
-# ~flaky means that it'll ignore results of tests using the flaky keyword
+# ~flaky means that it ignores results of tests using the flaky keyword
 add_runtests(test-nonflaky  "-a -p ~flaky ~timing-dependent")
-add_runtests(test-ci        "-a -p ~flaky ~timing-dependent -r -rm")
+add_runtests(test-ci        "-a -p ~flaky ~timing-dependent -r -rm -j2")
 add_runtests(test-torture   "-a -t")
 add_runtests(test-event     "-a -e")

@@ -114,9 +114,8 @@ build_triplet = @build@
 host_triplet = @host@
 @DOING_NATIVE_WINDOWS_TRUE@am__append_1 = -DCURL_STATICLIB
 noinst_PROGRAMS = getpart$(EXEEXT) resolve$(EXEEXT) rtspd$(EXEEXT) \
-	sockfilt$(EXEEXT) sws$(EXEEXT) tftpd$(EXEEXT) \
-	fake_ntlm$(EXEEXT) socksd$(EXEEXT) disabled$(EXEEXT) \
-	mqttd$(EXEEXT)
+	sockfilt$(EXEEXT) sws$(EXEEXT) tftpd$(EXEEXT) socksd$(EXEEXT) \
+	disabled$(EXEEXT) mqttd$(EXEEXT)
 subdir = tests/server
 ACLOCAL_M4 = $(top_srcdir)/aclocal.m4
 am__aclocal_m4_deps = $(top_srcdir)/m4/curl-amissl.m4 \
@@ -160,29 +159,7 @@ am__v_lt_ = $(am__v_lt_@AM_DEFAULT_V@)
 am__v_lt_0 = --silent
 am__v_lt_1 = 
 am__dirstamp = $(am__leading_dot)dirstamp
-am__objects_1 = ../../lib/fake_ntlm-mprintf.$(OBJEXT) \
-	../../lib/fake_ntlm-nonblock.$(OBJEXT) \
-	../../lib/fake_ntlm-strtoofft.$(OBJEXT) \
-	../../lib/fake_ntlm-warnless.$(OBJEXT) \
-	../../lib/fake_ntlm-timediff.$(OBJEXT) \
-	../../lib/fake_ntlm-dynbuf.$(OBJEXT) \
-	../../lib/fake_ntlm-strdup.$(OBJEXT) \
-	../../lib/fake_ntlm-strcase.$(OBJEXT) \
-	../../lib/fake_ntlm-curl_multibyte.$(OBJEXT)
-am__objects_2 =
-am__objects_3 = fake_ntlm-getpart.$(OBJEXT) \
-	../../lib/fake_ntlm-base64.$(OBJEXT) \
-	../../lib/fake_ntlm-memdebug.$(OBJEXT)
-am__objects_4 = fake_ntlm-util.$(OBJEXT)
-am_fake_ntlm_OBJECTS = $(am__objects_1) $(am__objects_2) \
-	$(am__objects_3) $(am__objects_4) \
-	fake_ntlm-fake_ntlm.$(OBJEXT)
-fake_ntlm_OBJECTS = $(am_fake_ntlm_OBJECTS)
-fake_ntlm_DEPENDENCIES =
-fake_ntlm_LINK = $(LIBTOOL) $(AM_V_lt) --tag=CC $(AM_LIBTOOLFLAGS) \
-	$(LIBTOOLFLAGS) --mode=link $(CCLD) $(fake_ntlm_CFLAGS) \
-	$(CFLAGS) $(AM_LDFLAGS) $(LDFLAGS) -o $@
-am__objects_5 = ../../lib/getpart-mprintf.$(OBJEXT) \
+am__objects_1 = ../../lib/getpart-mprintf.$(OBJEXT) \
 	../../lib/getpart-nonblock.$(OBJEXT) \
 	../../lib/getpart-strtoofft.$(OBJEXT) \
 	../../lib/getpart-warnless.$(OBJEXT) \
@@ -191,17 +168,18 @@ am__objects_5 = ../../lib/getpart-mprintf.$(OBJEXT) \
 	../../lib/getpart-strdup.$(OBJEXT) \
 	../../lib/getpart-strcase.$(OBJEXT) \
 	../../lib/getpart-curl_multibyte.$(OBJEXT)
-am__objects_6 = getpart-getpart.$(OBJEXT) \
+am__objects_2 =
+am__objects_3 = getpart-getpart.$(OBJEXT) \
 	../../lib/getpart-base64.$(OBJEXT) \
 	../../lib/getpart-memdebug.$(OBJEXT)
-am_getpart_OBJECTS = $(am__objects_5) $(am__objects_2) \
-	$(am__objects_6) getpart-testpart.$(OBJEXT)
+am_getpart_OBJECTS = $(am__objects_1) $(am__objects_2) \
+	$(am__objects_3) getpart-testpart.$(OBJEXT)
 getpart_OBJECTS = $(am_getpart_OBJECTS)
 getpart_DEPENDENCIES =
 getpart_LINK = $(LIBTOOL) $(AM_V_lt) --tag=CC $(AM_LIBTOOLFLAGS) \
 	$(LIBTOOLFLAGS) --mode=link $(CCLD) $(getpart_CFLAGS) \
 	$(CFLAGS) $(AM_LDFLAGS) $(LDFLAGS) -o $@
-am__objects_7 = ../../lib/mqttd-mprintf.$(OBJEXT) \
+am__objects_4 = ../../lib/mqttd-mprintf.$(OBJEXT) \
 	../../lib/mqttd-nonblock.$(OBJEXT) \
 	../../lib/mqttd-strtoofft.$(OBJEXT) \
 	../../lib/mqttd-warnless.$(OBJEXT) \
@@ -210,19 +188,19 @@ am__objects_7 = ../../lib/mqttd-mprintf.$(OBJEXT) \
 	../../lib/mqttd-strdup.$(OBJEXT) \
 	../../lib/mqttd-strcase.$(OBJEXT) \
 	../../lib/mqttd-curl_multibyte.$(OBJEXT)
-am__objects_8 = mqttd-getpart.$(OBJEXT) \
+am__objects_5 = mqttd-getpart.$(OBJEXT) \
 	../../lib/mqttd-base64.$(OBJEXT) \
 	../../lib/mqttd-memdebug.$(OBJEXT)
-am__objects_9 = mqttd-util.$(OBJEXT)
-am_mqttd_OBJECTS = $(am__objects_7) $(am__objects_2) $(am__objects_8) \
-	$(am__objects_9) mqttd-mqttd.$(OBJEXT) \
+am__objects_6 = mqttd-util.$(OBJEXT)
+am_mqttd_OBJECTS = $(am__objects_4) $(am__objects_2) $(am__objects_5) \
+	$(am__objects_6) mqttd-mqttd.$(OBJEXT) \
 	../../lib/mqttd-inet_pton.$(OBJEXT)
 mqttd_OBJECTS = $(am_mqttd_OBJECTS)
 mqttd_DEPENDENCIES =
 mqttd_LINK = $(LIBTOOL) $(AM_V_lt) --tag=CC $(AM_LIBTOOLFLAGS) \
 	$(LIBTOOLFLAGS) --mode=link $(CCLD) $(mqttd_CFLAGS) $(CFLAGS) \
 	$(AM_LDFLAGS) $(LDFLAGS) -o $@
-am__objects_10 = ../../lib/resolve-mprintf.$(OBJEXT) \
+am__objects_7 = ../../lib/resolve-mprintf.$(OBJEXT) \
 	../../lib/resolve-nonblock.$(OBJEXT) \
 	../../lib/resolve-strtoofft.$(OBJEXT) \
 	../../lib/resolve-warnless.$(OBJEXT) \
@@ -231,18 +209,18 @@ am__objects_10 = ../../lib/resolve-mprintf.$(OBJEXT) \
 	../../lib/resolve-strdup.$(OBJEXT) \
 	../../lib/resolve-strcase.$(OBJEXT) \
 	../../lib/resolve-curl_multibyte.$(OBJEXT)
-am__objects_11 = resolve-getpart.$(OBJEXT) \
+am__objects_8 = resolve-getpart.$(OBJEXT) \
 	../../lib/resolve-base64.$(OBJEXT) \
 	../../lib/resolve-memdebug.$(OBJEXT)
-am__objects_12 = resolve-util.$(OBJEXT)
-am_resolve_OBJECTS = $(am__objects_10) $(am__objects_2) \
-	$(am__objects_11) $(am__objects_12) resolve-resolve.$(OBJEXT)
+am__objects_9 = resolve-util.$(OBJEXT)
+am_resolve_OBJECTS = $(am__objects_7) $(am__objects_2) \
+	$(am__objects_8) $(am__objects_9) resolve-resolve.$(OBJEXT)
 resolve_OBJECTS = $(am_resolve_OBJECTS)
 resolve_DEPENDENCIES =
 resolve_LINK = $(LIBTOOL) $(AM_V_lt) --tag=CC $(AM_LIBTOOLFLAGS) \
 	$(LIBTOOLFLAGS) --mode=link $(CCLD) $(resolve_CFLAGS) \
 	$(CFLAGS) $(AM_LDFLAGS) $(LDFLAGS) -o $@
-am__objects_13 = ../../lib/rtspd-mprintf.$(OBJEXT) \
+am__objects_10 = ../../lib/rtspd-mprintf.$(OBJEXT) \
 	../../lib/rtspd-nonblock.$(OBJEXT) \
 	../../lib/rtspd-strtoofft.$(OBJEXT) \
 	../../lib/rtspd-warnless.$(OBJEXT) \
@@ -251,18 +229,18 @@ am__objects_13 = ../../lib/rtspd-mprintf.$(OBJEXT) \
 	../../lib/rtspd-strdup.$(OBJEXT) \
 	../../lib/rtspd-strcase.$(OBJEXT) \
 	../../lib/rtspd-curl_multibyte.$(OBJEXT)
-am__objects_14 = rtspd-getpart.$(OBJEXT) \
+am__objects_11 = rtspd-getpart.$(OBJEXT) \
 	../../lib/rtspd-base64.$(OBJEXT) \
 	../../lib/rtspd-memdebug.$(OBJEXT)
-am__objects_15 = rtspd-util.$(OBJEXT)
-am_rtspd_OBJECTS = $(am__objects_13) $(am__objects_2) \
-	$(am__objects_14) $(am__objects_15) rtspd-rtspd.$(OBJEXT)
+am__objects_12 = rtspd-util.$(OBJEXT)
+am_rtspd_OBJECTS = $(am__objects_10) $(am__objects_2) \
+	$(am__objects_11) $(am__objects_12) rtspd-rtspd.$(OBJEXT)
 rtspd_OBJECTS = $(am_rtspd_OBJECTS)
 rtspd_DEPENDENCIES =
 rtspd_LINK = $(LIBTOOL) $(AM_V_lt) --tag=CC $(AM_LIBTOOLFLAGS) \
 	$(LIBTOOLFLAGS) --mode=link $(CCLD) $(rtspd_CFLAGS) $(CFLAGS) \
 	$(AM_LDFLAGS) $(LDFLAGS) -o $@
-am__objects_16 = ../../lib/sockfilt-mprintf.$(OBJEXT) \
+am__objects_13 = ../../lib/sockfilt-mprintf.$(OBJEXT) \
 	../../lib/sockfilt-nonblock.$(OBJEXT) \
 	../../lib/sockfilt-strtoofft.$(OBJEXT) \
 	../../lib/sockfilt-warnless.$(OBJEXT) \
@@ -271,12 +249,12 @@ am__objects_16 = ../../lib/sockfilt-mprintf.$(OBJEXT) \
 	../../lib/sockfilt-strdup.$(OBJEXT) \
 	../../lib/sockfilt-strcase.$(OBJEXT) \
 	../../lib/sockfilt-curl_multibyte.$(OBJEXT)
-am__objects_17 = sockfilt-getpart.$(OBJEXT) \
+am__objects_14 = sockfilt-getpart.$(OBJEXT) \
 	../../lib/sockfilt-base64.$(OBJEXT) \
 	../../lib/sockfilt-memdebug.$(OBJEXT)
-am__objects_18 = sockfilt-util.$(OBJEXT)
-am_sockfilt_OBJECTS = $(am__objects_16) $(am__objects_2) \
-	$(am__objects_17) $(am__objects_18) \
+am__objects_15 = sockfilt-util.$(OBJEXT)
+am_sockfilt_OBJECTS = $(am__objects_13) $(am__objects_2) \
+	$(am__objects_14) $(am__objects_15) \
 	sockfilt-sockfilt.$(OBJEXT) \
 	../../lib/sockfilt-inet_pton.$(OBJEXT)
 sockfilt_OBJECTS = $(am_sockfilt_OBJECTS)
@@ -284,7 +262,7 @@ sockfilt_DEPENDENCIES =
 sockfilt_LINK = $(LIBTOOL) $(AM_V_lt) --tag=CC $(AM_LIBTOOLFLAGS) \
 	$(LIBTOOLFLAGS) --mode=link $(CCLD) $(sockfilt_CFLAGS) \
 	$(CFLAGS) $(AM_LDFLAGS) $(LDFLAGS) -o $@
-am__objects_19 = ../../lib/socksd-mprintf.$(OBJEXT) \
+am__objects_16 = ../../lib/socksd-mprintf.$(OBJEXT) \
 	../../lib/socksd-nonblock.$(OBJEXT) \
 	../../lib/socksd-strtoofft.$(OBJEXT) \
 	../../lib/socksd-warnless.$(OBJEXT) \
@@ -293,19 +271,19 @@ am__objects_19 = ../../lib/socksd-mprintf.$(OBJEXT) \
 	../../lib/socksd-strdup.$(OBJEXT) \
 	../../lib/socksd-strcase.$(OBJEXT) \
 	../../lib/socksd-curl_multibyte.$(OBJEXT)
-am__objects_20 = socksd-getpart.$(OBJEXT) \
+am__objects_17 = socksd-getpart.$(OBJEXT) \
 	../../lib/socksd-base64.$(OBJEXT) \
 	../../lib/socksd-memdebug.$(OBJEXT)
-am__objects_21 = socksd-util.$(OBJEXT)
-am_socksd_OBJECTS = $(am__objects_19) $(am__objects_2) \
-	$(am__objects_20) $(am__objects_21) socksd-socksd.$(OBJEXT) \
+am__objects_18 = socksd-util.$(OBJEXT)
+am_socksd_OBJECTS = $(am__objects_16) $(am__objects_2) \
+	$(am__objects_17) $(am__objects_18) socksd-socksd.$(OBJEXT) \
 	../../lib/socksd-inet_pton.$(OBJEXT)
 socksd_OBJECTS = $(am_socksd_OBJECTS)
 socksd_DEPENDENCIES =
 socksd_LINK = $(LIBTOOL) $(AM_V_lt) --tag=CC $(AM_LIBTOOLFLAGS) \
 	$(LIBTOOLFLAGS) --mode=link $(CCLD) $(socksd_CFLAGS) $(CFLAGS) \
 	$(AM_LDFLAGS) $(LDFLAGS) -o $@
-am__objects_22 = ../../lib/sws-mprintf.$(OBJEXT) \
+am__objects_19 = ../../lib/sws-mprintf.$(OBJEXT) \
 	../../lib/sws-nonblock.$(OBJEXT) \
 	../../lib/sws-strtoofft.$(OBJEXT) \
 	../../lib/sws-warnless.$(OBJEXT) \
@@ -313,18 +291,18 @@ am__objects_22 = ../../lib/sws-mprintf.$(OBJEXT) \
 	../../lib/sws-dynbuf.$(OBJEXT) ../../lib/sws-strdup.$(OBJEXT) \
 	../../lib/sws-strcase.$(OBJEXT) \
 	../../lib/sws-curl_multibyte.$(OBJEXT)
-am__objects_23 = sws-getpart.$(OBJEXT) ../../lib/sws-base64.$(OBJEXT) \
+am__objects_20 = sws-getpart.$(OBJEXT) ../../lib/sws-base64.$(OBJEXT) \
 	../../lib/sws-memdebug.$(OBJEXT)
-am__objects_24 = sws-util.$(OBJEXT)
-am_sws_OBJECTS = $(am__objects_22) $(am__objects_2) $(am__objects_23) \
-	$(am__objects_24) sws-sws.$(OBJEXT) \
+am__objects_21 = sws-util.$(OBJEXT)
+am_sws_OBJECTS = $(am__objects_19) $(am__objects_2) $(am__objects_20) \
+	$(am__objects_21) sws-sws.$(OBJEXT) \
 	../../lib/sws-inet_pton.$(OBJEXT)
 sws_OBJECTS = $(am_sws_OBJECTS)
 sws_DEPENDENCIES =
 sws_LINK = $(LIBTOOL) $(AM_V_lt) --tag=CC $(AM_LIBTOOLFLAGS) \
 	$(LIBTOOLFLAGS) --mode=link $(CCLD) $(sws_CFLAGS) $(CFLAGS) \
 	$(AM_LDFLAGS) $(LDFLAGS) -o $@
-am__objects_25 = ../../lib/tftpd-mprintf.$(OBJEXT) \
+am__objects_22 = ../../lib/tftpd-mprintf.$(OBJEXT) \
 	../../lib/tftpd-nonblock.$(OBJEXT) \
 	../../lib/tftpd-strtoofft.$(OBJEXT) \
 	../../lib/tftpd-warnless.$(OBJEXT) \
@@ -333,12 +311,12 @@ am__objects_25 = ../../lib/tftpd-mprintf.$(OBJEXT) \
 	../../lib/tftpd-strdup.$(OBJEXT) \
 	../../lib/tftpd-strcase.$(OBJEXT) \
 	../../lib/tftpd-curl_multibyte.$(OBJEXT)
-am__objects_26 = tftpd-getpart.$(OBJEXT) \
+am__objects_23 = tftpd-getpart.$(OBJEXT) \
 	../../lib/tftpd-base64.$(OBJEXT) \
 	../../lib/tftpd-memdebug.$(OBJEXT)
-am__objects_27 = tftpd-util.$(OBJEXT)
-am_tftpd_OBJECTS = $(am__objects_25) $(am__objects_2) \
-	$(am__objects_26) $(am__objects_27) tftpd-tftpd.$(OBJEXT)
+am__objects_24 = tftpd-util.$(OBJEXT)
+am_tftpd_OBJECTS = $(am__objects_22) $(am__objects_2) \
+	$(am__objects_23) $(am__objects_24) tftpd-tftpd.$(OBJEXT)
 tftpd_OBJECTS = $(am_tftpd_OBJECTS)
 tftpd_DEPENDENCIES =
 tftpd_LINK = $(LIBTOOL) $(AM_V_lt) --tag=CC $(AM_LIBTOOLFLAGS) \
@@ -359,18 +337,7 @@ am__v_at_1 =
 DEFAULT_INCLUDES = 
 depcomp = $(SHELL) $(top_srcdir)/depcomp
 am__maybe_remake_depfiles = depfiles
-am__depfiles_remade = ../../lib/$(DEPDIR)/fake_ntlm-base64.Po \
-	../../lib/$(DEPDIR)/fake_ntlm-curl_multibyte.Po \
-	../../lib/$(DEPDIR)/fake_ntlm-dynbuf.Po \
-	../../lib/$(DEPDIR)/fake_ntlm-memdebug.Po \
-	../../lib/$(DEPDIR)/fake_ntlm-mprintf.Po \
-	../../lib/$(DEPDIR)/fake_ntlm-nonblock.Po \
-	../../lib/$(DEPDIR)/fake_ntlm-strcase.Po \
-	../../lib/$(DEPDIR)/fake_ntlm-strdup.Po \
-	../../lib/$(DEPDIR)/fake_ntlm-strtoofft.Po \
-	../../lib/$(DEPDIR)/fake_ntlm-timediff.Po \
-	../../lib/$(DEPDIR)/fake_ntlm-warnless.Po \
-	../../lib/$(DEPDIR)/getpart-base64.Po \
+am__depfiles_remade = ../../lib/$(DEPDIR)/getpart-base64.Po \
 	../../lib/$(DEPDIR)/getpart-curl_multibyte.Po \
 	../../lib/$(DEPDIR)/getpart-dynbuf.Po \
 	../../lib/$(DEPDIR)/getpart-memdebug.Po \
@@ -463,8 +430,6 @@ am__depfiles_remade = ../../lib/$(DEPDIR)/fake_ntlm-base64.Po \
 	../../lib/$(DEPDIR)/tftpd-timediff.Po \
 	../../lib/$(DEPDIR)/tftpd-warnless.Po \
 	./$(DEPDIR)/disabled-disabled.Po \
-	./$(DEPDIR)/fake_ntlm-fake_ntlm.Po \
-	./$(DEPDIR)/fake_ntlm-getpart.Po ./$(DEPDIR)/fake_ntlm-util.Po \
 	./$(DEPDIR)/getpart-getpart.Po ./$(DEPDIR)/getpart-testpart.Po \
 	./$(DEPDIR)/mqttd-getpart.Po ./$(DEPDIR)/mqttd-mqttd.Po \
 	./$(DEPDIR)/mqttd-util.Po ./$(DEPDIR)/resolve-getpart.Po \
@@ -496,14 +461,12 @@ AM_V_CCLD = $(am__v_CCLD_@AM_V@)
 am__v_CCLD_ = $(am__v_CCLD_@AM_DEFAULT_V@)
 am__v_CCLD_0 = @echo "  CCLD    " $@;
 am__v_CCLD_1 = 
-SOURCES = $(disabled_SOURCES) $(fake_ntlm_SOURCES) $(getpart_SOURCES) \
-	$(mqttd_SOURCES) $(resolve_SOURCES) $(rtspd_SOURCES) \
-	$(sockfilt_SOURCES) $(socksd_SOURCES) $(sws_SOURCES) \
-	$(tftpd_SOURCES)
-DIST_SOURCES = $(disabled_SOURCES) $(fake_ntlm_SOURCES) \
-	$(getpart_SOURCES) $(mqttd_SOURCES) $(resolve_SOURCES) \
-	$(rtspd_SOURCES) $(sockfilt_SOURCES) $(socksd_SOURCES) \
-	$(sws_SOURCES) $(tftpd_SOURCES)
+SOURCES = $(disabled_SOURCES) $(getpart_SOURCES) $(mqttd_SOURCES) \
+	$(resolve_SOURCES) $(rtspd_SOURCES) $(sockfilt_SOURCES) \
+	$(socksd_SOURCES) $(sws_SOURCES) $(tftpd_SOURCES)
+DIST_SOURCES = $(disabled_SOURCES) $(getpart_SOURCES) $(mqttd_SOURCES) \
+	$(resolve_SOURCES) $(rtspd_SOURCES) $(sockfilt_SOURCES) \
+	$(socksd_SOURCES) $(sws_SOURCES) $(tftpd_SOURCES)
 am__can_run_installinfo = \
   case $$AM_UPDATE_INFO_DIR in \
     n|no|NO) false;; \
@@ -550,11 +513,11 @@ CFLAG_CURL_SYMBOL_HIDING = @CFLAG_CURL_SYMBOL_HIDING@
 CONFIGURE_OPTIONS = @CONFIGURE_OPTIONS@
 CPP = @CPP@
 CPPFLAGS = @CPPFLAGS@
-CPPFLAG_CURL_STATICLIB = @CPPFLAG_CURL_STATICLIB@
 CSCOPE = @CSCOPE@
 CTAGS = @CTAGS@
 CURLVERSION = @CURLVERSION@
 CURL_CA_BUNDLE = @CURL_CA_BUNDLE@
+CURL_CA_EMBED = @CURL_CA_EMBED@
 CURL_CFLAG_EXTRAS = @CURL_CFLAG_EXTRAS@
 CURL_DISABLE_DICT = @CURL_DISABLE_DICT@
 CURL_DISABLE_FILE = @CURL_DISABLE_FILE@
@@ -600,7 +563,6 @@ HAVE_BROTLI = @HAVE_BROTLI@
 HAVE_GNUTLS_SRP = @HAVE_GNUTLS_SRP@
 HAVE_LDAP_SSL = @HAVE_LDAP_SSL@
 HAVE_LIBZ = @HAVE_LIBZ@
-HAVE_OPENSSL_QUIC = @HAVE_OPENSSL_QUIC@
 HAVE_OPENSSL_SRP = @HAVE_OPENSSL_SRP@
 HAVE_PROTO_BSDSOCKET_H = @HAVE_PROTO_BSDSOCKET_H@
 HAVE_ZSTD = @HAVE_ZSTD@
@@ -616,8 +578,10 @@ IPV6_ENABLED = @IPV6_ENABLED@
 LCOV = @LCOV@
 LD = @LD@
 LDFLAGS = @LDFLAGS@
-LIBCURL_LIBS = @LIBCURL_LIBS@
-LIBCURL_NO_SHARED = @LIBCURL_NO_SHARED@
+LIBCURL_PC_CFLAGS = @LIBCURL_PC_CFLAGS@
+LIBCURL_PC_CFLAGS_PRIVATE = @LIBCURL_PC_CFLAGS_PRIVATE@
+LIBCURL_PC_LIBS = @LIBCURL_PC_LIBS@
+LIBCURL_PC_LIBS_PRIVATE = @LIBCURL_PC_LIBS_PRIVATE@
 LIBCURL_PC_REQUIRES = @LIBCURL_PC_REQUIRES@
 LIBCURL_PC_REQUIRES_PRIVATE = @LIBCURL_PC_REQUIRES_PRIVATE@
 LIBOBJS = @LIBOBJS@
@@ -652,10 +616,8 @@ PKGADD_NAME = @PKGADD_NAME@
 PKGADD_PKG = @PKGADD_PKG@
 PKGADD_VENDOR = @PKGADD_VENDOR@
 PKGCONFIG = @PKGCONFIG@
-RANDOM_FILE = @RANDOM_FILE@
 RANLIB = @RANLIB@
 RC = @RC@
-REQUIRE_LIB_DEPS = @REQUIRE_LIB_DEPS@
 SED = @SED@
 SET_MAKE = @SET_MAKE@
 SHELL = @SHELL@
@@ -666,6 +628,7 @@ STRIP = @STRIP@
 SUPPORT_FEATURES = @SUPPORT_FEATURES@
 SUPPORT_PROTOCOLS = @SUPPORT_PROTOCOLS@
 TEST_NGHTTPX = @TEST_NGHTTPX@
+USE_APPLE_IDN = @USE_APPLE_IDN@
 USE_ARES = @USE_ARES@
 USE_BEARSSL = @USE_BEARSSL@
 USE_GNUTLS = @USE_GNUTLS@
@@ -674,6 +637,7 @@ USE_LIBPSL = @USE_LIBPSL@
 USE_LIBRTMP = @USE_LIBRTMP@
 USE_LIBSSH = @USE_LIBSSH@
 USE_LIBSSH2 = @USE_LIBSSH2@
+USE_LIBUV = @USE_LIBUV@
 USE_MBEDTLS = @USE_MBEDTLS@
 USE_MSH3 = @USE_MSH3@
 USE_NGHTTP2 = @USE_NGHTTP2@
@@ -880,15 +844,10 @@ tftpd_SOURCES = $(CURLX_SRCS) $(CURLX_HDRS) $(USEFUL) $(UTIL) \
 
 tftpd_LDADD = @CURL_NETWORK_AND_TIME_LIBS@
 tftpd_CFLAGS = $(AM_CFLAGS)
-fake_ntlm_SOURCES = $(CURLX_SRCS) $(CURLX_HDRS) $(USEFUL) $(UTIL) \
- fake_ntlm.c
-
-fake_ntlm_LDADD = @CURL_NETWORK_AND_TIME_LIBS@
-fake_ntlm_CFLAGS = $(AM_CFLAGS)
 disabled_SOURCES = disabled.c
 
 # Makefile.inc provides neat definitions
-EXTRA_DIST = base64.pl Makefile.inc CMakeLists.txt
+EXTRA_DIST = base64.pl CMakeLists.txt
 CHECKSRC = $(CS_$(V))
 CS_0 = @echo "  RUN     " $@;
 CS_1 = 
@@ -946,32 +905,6 @@ disabled$(EXEEXT): $(disabled_OBJECTS) $(disabled_DEPENDENCIES) $(EXTRA_disabled
 ../../lib/$(DEPDIR)/$(am__dirstamp):
 	@$(MKDIR_P) ../../lib/$(DEPDIR)
 	@: > ../../lib/$(DEPDIR)/$(am__dirstamp)
-../../lib/fake_ntlm-mprintf.$(OBJEXT): ../../lib/$(am__dirstamp) \
-	../../lib/$(DEPDIR)/$(am__dirstamp)
-../../lib/fake_ntlm-nonblock.$(OBJEXT): ../../lib/$(am__dirstamp) \
-	../../lib/$(DEPDIR)/$(am__dirstamp)
-../../lib/fake_ntlm-strtoofft.$(OBJEXT): ../../lib/$(am__dirstamp) \
-	../../lib/$(DEPDIR)/$(am__dirstamp)
-../../lib/fake_ntlm-warnless.$(OBJEXT): ../../lib/$(am__dirstamp) \
-	../../lib/$(DEPDIR)/$(am__dirstamp)
-../../lib/fake_ntlm-timediff.$(OBJEXT): ../../lib/$(am__dirstamp) \
-	../../lib/$(DEPDIR)/$(am__dirstamp)
-../../lib/fake_ntlm-dynbuf.$(OBJEXT): ../../lib/$(am__dirstamp) \
-	../../lib/$(DEPDIR)/$(am__dirstamp)
-../../lib/fake_ntlm-strdup.$(OBJEXT): ../../lib/$(am__dirstamp) \
-	../../lib/$(DEPDIR)/$(am__dirstamp)
-../../lib/fake_ntlm-strcase.$(OBJEXT): ../../lib/$(am__dirstamp) \
-	../../lib/$(DEPDIR)/$(am__dirstamp)
-../../lib/fake_ntlm-curl_multibyte.$(OBJEXT):  \
-	../../lib/$(am__dirstamp) ../../lib/$(DEPDIR)/$(am__dirstamp)
-../../lib/fake_ntlm-base64.$(OBJEXT): ../../lib/$(am__dirstamp) \
-	../../lib/$(DEPDIR)/$(am__dirstamp)
-../../lib/fake_ntlm-memdebug.$(OBJEXT): ../../lib/$(am__dirstamp) \
-	../../lib/$(DEPDIR)/$(am__dirstamp)
-
-fake_ntlm$(EXEEXT): $(fake_ntlm_OBJECTS) $(fake_ntlm_DEPENDENCIES) $(EXTRA_fake_ntlm_DEPENDENCIES) 
-	@rm -f fake_ntlm$(EXEEXT)
-	$(AM_V_CCLD)$(fake_ntlm_LINK) $(fake_ntlm_OBJECTS) $(fake_ntlm_LDADD) $(LIBS)
 ../../lib/getpart-mprintf.$(OBJEXT): ../../lib/$(am__dirstamp) \
 	../../lib/$(DEPDIR)/$(am__dirstamp)
 ../../lib/getpart-nonblock.$(OBJEXT): ../../lib/$(am__dirstamp) \
@@ -1196,17 +1129,6 @@ mostlyclean-compile:
 distclean-compile:
 	-rm -f *.tab.c
 
-@AMDEP_TRUE@@am__include@ @am__quote@../../lib/$(DEPDIR)/fake_ntlm-base64.Po@am__quote@ # am--include-marker
-@AMDEP_TRUE@@am__include@ @am__quote@../../lib/$(DEPDIR)/fake_ntlm-curl_multibyte.Po@am__quote@ # am--include-marker
-@AMDEP_TRUE@@am__include@ @am__quote@../../lib/$(DEPDIR)/fake_ntlm-dynbuf.Po@am__quote@ # am--include-marker
-@AMDEP_TRUE@@am__include@ @am__quote@../../lib/$(DEPDIR)/fake_ntlm-memdebug.Po@am__quote@ # am--include-marker
-@AMDEP_TRUE@@am__include@ @am__quote@../../lib/$(DEPDIR)/fake_ntlm-mprintf.Po@am__quote@ # am--include-marker
-@AMDEP_TRUE@@am__include@ @am__quote@../../lib/$(DEPDIR)/fake_ntlm-nonblock.Po@am__quote@ # am--include-marker
-@AMDEP_TRUE@@am__include@ @am__quote@../../lib/$(DEPDIR)/fake_ntlm-strcase.Po@am__quote@ # am--include-marker
-@AMDEP_TRUE@@am__include@ @am__quote@../../lib/$(DEPDIR)/fake_ntlm-strdup.Po@am__quote@ # am--include-marker
-@AMDEP_TRUE@@am__include@ @am__quote@../../lib/$(DEPDIR)/fake_ntlm-strtoofft.Po@am__quote@ # am--include-marker
-@AMDEP_TRUE@@am__include@ @am__quote@../../lib/$(DEPDIR)/fake_ntlm-timediff.Po@am__quote@ # am--include-marker
-@AMDEP_TRUE@@am__include@ @am__quote@../../lib/$(DEPDIR)/fake_ntlm-warnless.Po@am__quote@ # am--include-marker
 @AMDEP_TRUE@@am__include@ @am__quote@../../lib/$(DEPDIR)/getpart-base64.Po@am__quote@ # am--include-marker
 @AMDEP_TRUE@@am__include@ @am__quote@../../lib/$(DEPDIR)/getpart-curl_multibyte.Po@am__quote@ # am--include-marker
 @AMDEP_TRUE@@am__include@ @am__quote@../../lib/$(DEPDIR)/getpart-dynbuf.Po@am__quote@ # am--include-marker
@@ -1300,9 +1222,6 @@ distclean-compile:
 @AMDEP_TRUE@@am__include@ @am__quote@../../lib/$(DEPDIR)/tftpd-timediff.Po@am__quote@ # am--include-marker
 @AMDEP_TRUE@@am__include@ @am__quote@../../lib/$(DEPDIR)/tftpd-warnless.Po@am__quote@ # am--include-marker
 @AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/disabled-disabled.Po@am__quote@ # am--include-marker
-@AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/fake_ntlm-fake_ntlm.Po@am__quote@ # am--include-marker
-@AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/fake_ntlm-getpart.Po@am__quote@ # am--include-marker
-@AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/fake_ntlm-util.Po@am__quote@ # am--include-marker
 @AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/getpart-getpart.Po@am__quote@ # am--include-marker
 @AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/getpart-testpart.Po@am__quote@ # am--include-marker
 @AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/mqttd-getpart.Po@am__quote@ # am--include-marker
@@ -1370,202 +1289,6 @@ disabled-disabled.obj: disabled.c
 @AMDEP_TRUE@@am__fastdepCC_FALSE@	$(AM_V_CC)source='disabled.c' object='disabled-disabled.obj' libtool=no @AMDEPBACKSLASH@
 @AMDEP_TRUE@@am__fastdepCC_FALSE@	DEPDIR=$(DEPDIR) $(CCDEPMODE) $(depcomp) @AMDEPBACKSLASH@
 @am__fastdepCC_FALSE@	$(AM_V_CC@am__nodep@)$(CC) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(disabled_CPPFLAGS) $(CPPFLAGS) $(AM_CFLAGS) $(CFLAGS) -c -o disabled-disabled.obj `if test -f 'disabled.c'; then $(CYGPATH_W) 'disabled.c'; else $(CYGPATH_W) '$(srcdir)/disabled.c'; fi`
-
-../../lib/fake_ntlm-mprintf.o: ../../lib/mprintf.c
-@am__fastdepCC_TRUE@	$(AM_V_CC)$(CC) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(AM_CPPFLAGS) $(CPPFLAGS) $(fake_ntlm_CFLAGS) $(CFLAGS) -MT ../../lib/fake_ntlm-mprintf.o -MD -MP -MF ../../lib/$(DEPDIR)/fake_ntlm-mprintf.Tpo -c -o ../../lib/fake_ntlm-mprintf.o `test -f '../../lib/mprintf.c' || echo '$(srcdir)/'`../../lib/mprintf.c
-@am__fastdepCC_TRUE@	$(AM_V_at)$(am__mv) ../../lib/$(DEPDIR)/fake_ntlm-mprintf.Tpo ../../lib/$(DEPDIR)/fake_ntlm-mprintf.Po
-@AMDEP_TRUE@@am__fastdepCC_FALSE@	$(AM_V_CC)source='../../lib/mprintf.c' object='../../lib/fake_ntlm-mprintf.o' libtool=no @AMDEPBACKSLASH@
-@AMDEP_TRUE@@am__fastdepCC_FALSE@	DEPDIR=$(DEPDIR) $(CCDEPMODE) $(depcomp) @AMDEPBACKSLASH@
-@am__fastdepCC_FALSE@	$(AM_V_CC@am__nodep@)$(CC) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(AM_CPPFLAGS) $(CPPFLAGS) $(fake_ntlm_CFLAGS) $(CFLAGS) -c -o ../../lib/fake_ntlm-mprintf.o `test -f '../../lib/mprintf.c' || echo '$(srcdir)/'`../../lib/mprintf.c
-
-../../lib/fake_ntlm-mprintf.obj: ../../lib/mprintf.c
-@am__fastdepCC_TRUE@	$(AM_V_CC)$(CC) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(AM_CPPFLAGS) $(CPPFLAGS) $(fake_ntlm_CFLAGS) $(CFLAGS) -MT ../../lib/fake_ntlm-mprintf.obj -MD -MP -MF ../../lib/$(DEPDIR)/fake_ntlm-mprintf.Tpo -c -o ../../lib/fake_ntlm-mprintf.obj `if test -f '../../lib/mprintf.c'; then $(CYGPATH_W) '../../lib/mprintf.c'; else $(CYGPATH_W) '$(srcdir)/../../lib/mprintf.c'; fi`
-@am__fastdepCC_TRUE@	$(AM_V_at)$(am__mv) ../../lib/$(DEPDIR)/fake_ntlm-mprintf.Tpo ../../lib/$(DEPDIR)/fake_ntlm-mprintf.Po
-@AMDEP_TRUE@@am__fastdepCC_FALSE@	$(AM_V_CC)source='../../lib/mprintf.c' object='../../lib/fake_ntlm-mprintf.obj' libtool=no @AMDEPBACKSLASH@
-@AMDEP_TRUE@@am__fastdepCC_FALSE@	DEPDIR=$(DEPDIR) $(CCDEPMODE) $(depcomp) @AMDEPBACKSLASH@
-@am__fastdepCC_FALSE@	$(AM_V_CC@am__nodep@)$(CC) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(AM_CPPFLAGS) $(CPPFLAGS) $(fake_ntlm_CFLAGS) $(CFLAGS) -c -o ../../lib/fake_ntlm-mprintf.obj `if test -f '../../lib/mprintf.c'; then $(CYGPATH_W) '../../lib/mprintf.c'; else $(CYGPATH_W) '$(srcdir)/../../lib/mprintf.c'; fi`
-
-../../lib/fake_ntlm-nonblock.o: ../../lib/nonblock.c
-@am__fastdepCC_TRUE@	$(AM_V_CC)$(CC) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(AM_CPPFLAGS) $(CPPFLAGS) $(fake_ntlm_CFLAGS) $(CFLAGS) -MT ../../lib/fake_ntlm-nonblock.o -MD -MP -MF ../../lib/$(DEPDIR)/fake_ntlm-nonblock.Tpo -c -o ../../lib/fake_ntlm-nonblock.o `test -f '../../lib/nonblock.c' || echo '$(srcdir)/'`../../lib/nonblock.c
-@am__fastdepCC_TRUE@	$(AM_V_at)$(am__mv) ../../lib/$(DEPDIR)/fake_ntlm-nonblock.Tpo ../../lib/$(DEPDIR)/fake_ntlm-nonblock.Po
-@AMDEP_TRUE@@am__fastdepCC_FALSE@	$(AM_V_CC)source='../../lib/nonblock.c' object='../../lib/fake_ntlm-nonblock.o' libtool=no @AMDEPBACKSLASH@
-@AMDEP_TRUE@@am__fastdepCC_FALSE@	DEPDIR=$(DEPDIR) $(CCDEPMODE) $(depcomp) @AMDEPBACKSLASH@
-@am__fastdepCC_FALSE@	$(AM_V_CC@am__nodep@)$(CC) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(AM_CPPFLAGS) $(CPPFLAGS) $(fake_ntlm_CFLAGS) $(CFLAGS) -c -o ../../lib/fake_ntlm-nonblock.o `test -f '../../lib/nonblock.c' || echo '$(srcdir)/'`../../lib/nonblock.c
-
-../../lib/fake_ntlm-nonblock.obj: ../../lib/nonblock.c
-@am__fastdepCC_TRUE@	$(AM_V_CC)$(CC) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(AM_CPPFLAGS) $(CPPFLAGS) $(fake_ntlm_CFLAGS) $(CFLAGS) -MT ../../lib/fake_ntlm-nonblock.obj -MD -MP -MF ../../lib/$(DEPDIR)/fake_ntlm-nonblock.Tpo -c -o ../../lib/fake_ntlm-nonblock.obj `if test -f '../../lib/nonblock.c'; then $(CYGPATH_W) '../../lib/nonblock.c'; else $(CYGPATH_W) '$(srcdir)/../../lib/nonblock.c'; fi`
-@am__fastdepCC_TRUE@	$(AM_V_at)$(am__mv) ../../lib/$(DEPDIR)/fake_ntlm-nonblock.Tpo ../../lib/$(DEPDIR)/fake_ntlm-nonblock.Po
-@AMDEP_TRUE@@am__fastdepCC_FALSE@	$(AM_V_CC)source='../../lib/nonblock.c' object='../../lib/fake_ntlm-nonblock.obj' libtool=no @AMDEPBACKSLASH@
-@AMDEP_TRUE@@am__fastdepCC_FALSE@	DEPDIR=$(DEPDIR) $(CCDEPMODE) $(depcomp) @AMDEPBACKSLASH@
-@am__fastdepCC_FALSE@	$(AM_V_CC@am__nodep@)$(CC) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(AM_CPPFLAGS) $(CPPFLAGS) $(fake_ntlm_CFLAGS) $(CFLAGS) -c -o ../../lib/fake_ntlm-nonblock.obj `if test -f '../../lib/nonblock.c'; then $(CYGPATH_W) '../../lib/nonblock.c'; else $(CYGPATH_W) '$(srcdir)/../../lib/nonblock.c'; fi`
-
-../../lib/fake_ntlm-strtoofft.o: ../../lib/strtoofft.c
-@am__fastdepCC_TRUE@	$(AM_V_CC)$(CC) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(AM_CPPFLAGS) $(CPPFLAGS) $(fake_ntlm_CFLAGS) $(CFLAGS) -MT ../../lib/fake_ntlm-strtoofft.o -MD -MP -MF ../../lib/$(DEPDIR)/fake_ntlm-strtoofft.Tpo -c -o ../../lib/fake_ntlm-strtoofft.o `test -f '../../lib/strtoofft.c' || echo '$(srcdir)/'`../../lib/strtoofft.c
-@am__fastdepCC_TRUE@	$(AM_V_at)$(am__mv) ../../lib/$(DEPDIR)/fake_ntlm-strtoofft.Tpo ../../lib/$(DEPDIR)/fake_ntlm-strtoofft.Po
-@AMDEP_TRUE@@am__fastdepCC_FALSE@	$(AM_V_CC)source='../../lib/strtoofft.c' object='../../lib/fake_ntlm-strtoofft.o' libtool=no @AMDEPBACKSLASH@
-@AMDEP_TRUE@@am__fastdepCC_FALSE@	DEPDIR=$(DEPDIR) $(CCDEPMODE) $(depcomp) @AMDEPBACKSLASH@
-@am__fastdepCC_FALSE@	$(AM_V_CC@am__nodep@)$(CC) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(AM_CPPFLAGS) $(CPPFLAGS) $(fake_ntlm_CFLAGS) $(CFLAGS) -c -o ../../lib/fake_ntlm-strtoofft.o `test -f '../../lib/strtoofft.c' || echo '$(srcdir)/'`../../lib/strtoofft.c
-
-../../lib/fake_ntlm-strtoofft.obj: ../../lib/strtoofft.c
-@am__fastdepCC_TRUE@	$(AM_V_CC)$(CC) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(AM_CPPFLAGS) $(CPPFLAGS) $(fake_ntlm_CFLAGS) $(CFLAGS) -MT ../../lib/fake_ntlm-strtoofft.obj -MD -MP -MF ../../lib/$(DEPDIR)/fake_ntlm-strtoofft.Tpo -c -o ../../lib/fake_ntlm-strtoofft.obj `if test -f '../../lib/strtoofft.c'; then $(CYGPATH_W) '../../lib/strtoofft.c'; else $(CYGPATH_W) '$(srcdir)/../../lib/strtoofft.c'; fi`
-@am__fastdepCC_TRUE@	$(AM_V_at)$(am__mv) ../../lib/$(DEPDIR)/fake_ntlm-strtoofft.Tpo ../../lib/$(DEPDIR)/fake_ntlm-strtoofft.Po
-@AMDEP_TRUE@@am__fastdepCC_FALSE@	$(AM_V_CC)source='../../lib/strtoofft.c' object='../../lib/fake_ntlm-strtoofft.obj' libtool=no @AMDEPBACKSLASH@
-@AMDEP_TRUE@@am__fastdepCC_FALSE@	DEPDIR=$(DEPDIR) $(CCDEPMODE) $(depcomp) @AMDEPBACKSLASH@
-@am__fastdepCC_FALSE@	$(AM_V_CC@am__nodep@)$(CC) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(AM_CPPFLAGS) $(CPPFLAGS) $(fake_ntlm_CFLAGS) $(CFLAGS) -c -o ../../lib/fake_ntlm-strtoofft.obj `if test -f '../../lib/strtoofft.c'; then $(CYGPATH_W) '../../lib/strtoofft.c'; else $(CYGPATH_W) '$(srcdir)/../../lib/strtoofft.c'; fi`
-
-../../lib/fake_ntlm-warnless.o: ../../lib/warnless.c
-@am__fastdepCC_TRUE@	$(AM_V_CC)$(CC) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(AM_CPPFLAGS) $(CPPFLAGS) $(fake_ntlm_CFLAGS) $(CFLAGS) -MT ../../lib/fake_ntlm-warnless.o -MD -MP -MF ../../lib/$(DEPDIR)/fake_ntlm-warnless.Tpo -c -o ../../lib/fake_ntlm-warnless.o `test -f '../../lib/warnless.c' || echo '$(srcdir)/'`../../lib/warnless.c
-@am__fastdepCC_TRUE@	$(AM_V_at)$(am__mv) ../../lib/$(DEPDIR)/fake_ntlm-warnless.Tpo ../../lib/$(DEPDIR)/fake_ntlm-warnless.Po
-@AMDEP_TRUE@@am__fastdepCC_FALSE@	$(AM_V_CC)source='../../lib/warnless.c' object='../../lib/fake_ntlm-warnless.o' libtool=no @AMDEPBACKSLASH@
-@AMDEP_TRUE@@am__fastdepCC_FALSE@	DEPDIR=$(DEPDIR) $(CCDEPMODE) $(depcomp) @AMDEPBACKSLASH@
-@am__fastdepCC_FALSE@	$(AM_V_CC@am__nodep@)$(CC) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(AM_CPPFLAGS) $(CPPFLAGS) $(fake_ntlm_CFLAGS) $(CFLAGS) -c -o ../../lib/fake_ntlm-warnless.o `test -f '../../lib/warnless.c' || echo '$(srcdir)/'`../../lib/warnless.c
-
-../../lib/fake_ntlm-warnless.obj: ../../lib/warnless.c
-@am__fastdepCC_TRUE@	$(AM_V_CC)$(CC) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(AM_CPPFLAGS) $(CPPFLAGS) $(fake_ntlm_CFLAGS) $(CFLAGS) -MT ../../lib/fake_ntlm-warnless.obj -MD -MP -MF ../../lib/$(DEPDIR)/fake_ntlm-warnless.Tpo -c -o ../../lib/fake_ntlm-warnless.obj `if test -f '../../lib/warnless.c'; then $(CYGPATH_W) '../../lib/warnless.c'; else $(CYGPATH_W) '$(srcdir)/../../lib/warnless.c'; fi`
-@am__fastdepCC_TRUE@	$(AM_V_at)$(am__mv) ../../lib/$(DEPDIR)/fake_ntlm-warnless.Tpo ../../lib/$(DEPDIR)/fake_ntlm-warnless.Po
-@AMDEP_TRUE@@am__fastdepCC_FALSE@	$(AM_V_CC)source='../../lib/warnless.c' object='../../lib/fake_ntlm-warnless.obj' libtool=no @AMDEPBACKSLASH@
-@AMDEP_TRUE@@am__fastdepCC_FALSE@	DEPDIR=$(DEPDIR) $(CCDEPMODE) $(depcomp) @AMDEPBACKSLASH@
-@am__fastdepCC_FALSE@	$(AM_V_CC@am__nodep@)$(CC) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(AM_CPPFLAGS) $(CPPFLAGS) $(fake_ntlm_CFLAGS) $(CFLAGS) -c -o ../../lib/fake_ntlm-warnless.obj `if test -f '../../lib/warnless.c'; then $(CYGPATH_W) '../../lib/warnless.c'; else $(CYGPATH_W) '$(srcdir)/../../lib/warnless.c'; fi`
-
-../../lib/fake_ntlm-timediff.o: ../../lib/timediff.c
-@am__fastdepCC_TRUE@	$(AM_V_CC)$(CC) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(AM_CPPFLAGS) $(CPPFLAGS) $(fake_ntlm_CFLAGS) $(CFLAGS) -MT ../../lib/fake_ntlm-timediff.o -MD -MP -MF ../../lib/$(DEPDIR)/fake_ntlm-timediff.Tpo -c -o ../../lib/fake_ntlm-timediff.o `test -f '../../lib/timediff.c' || echo '$(srcdir)/'`../../lib/timediff.c
-@am__fastdepCC_TRUE@	$(AM_V_at)$(am__mv) ../../lib/$(DEPDIR)/fake_ntlm-timediff.Tpo ../../lib/$(DEPDIR)/fake_ntlm-timediff.Po
-@AMDEP_TRUE@@am__fastdepCC_FALSE@	$(AM_V_CC)source='../../lib/timediff.c' object='../../lib/fake_ntlm-timediff.o' libtool=no @AMDEPBACKSLASH@
-@AMDEP_TRUE@@am__fastdepCC_FALSE@	DEPDIR=$(DEPDIR) $(CCDEPMODE) $(depcomp) @AMDEPBACKSLASH@
-@am__fastdepCC_FALSE@	$(AM_V_CC@am__nodep@)$(CC) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(AM_CPPFLAGS) $(CPPFLAGS) $(fake_ntlm_CFLAGS) $(CFLAGS) -c -o ../../lib/fake_ntlm-timediff.o `test -f '../../lib/timediff.c' || echo '$(srcdir)/'`../../lib/timediff.c
-
-../../lib/fake_ntlm-timediff.obj: ../../lib/timediff.c
-@am__fastdepCC_TRUE@	$(AM_V_CC)$(CC) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(AM_CPPFLAGS) $(CPPFLAGS) $(fake_ntlm_CFLAGS) $(CFLAGS) -MT ../../lib/fake_ntlm-timediff.obj -MD -MP -MF ../../lib/$(DEPDIR)/fake_ntlm-timediff.Tpo -c -o ../../lib/fake_ntlm-timediff.obj `if test -f '../../lib/timediff.c'; then $(CYGPATH_W) '../../lib/timediff.c'; else $(CYGPATH_W) '$(srcdir)/../../lib/timediff.c'; fi`
-@am__fastdepCC_TRUE@	$(AM_V_at)$(am__mv) ../../lib/$(DEPDIR)/fake_ntlm-timediff.Tpo ../../lib/$(DEPDIR)/fake_ntlm-timediff.Po
-@AMDEP_TRUE@@am__fastdepCC_FALSE@	$(AM_V_CC)source='../../lib/timediff.c' object='../../lib/fake_ntlm-timediff.obj' libtool=no @AMDEPBACKSLASH@
-@AMDEP_TRUE@@am__fastdepCC_FALSE@	DEPDIR=$(DEPDIR) $(CCDEPMODE) $(depcomp) @AMDEPBACKSLASH@
-@am__fastdepCC_FALSE@	$(AM_V_CC@am__nodep@)$(CC) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(AM_CPPFLAGS) $(CPPFLAGS) $(fake_ntlm_CFLAGS) $(CFLAGS) -c -o ../../lib/fake_ntlm-timediff.obj `if test -f '../../lib/timediff.c'; then $(CYGPATH_W) '../../lib/timediff.c'; else $(CYGPATH_W) '$(srcdir)/../../lib/timediff.c'; fi`
-
-../../lib/fake_ntlm-dynbuf.o: ../../lib/dynbuf.c
-@am__fastdepCC_TRUE@	$(AM_V_CC)$(CC) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(AM_CPPFLAGS) $(CPPFLAGS) $(fake_ntlm_CFLAGS) $(CFLAGS) -MT ../../lib/fake_ntlm-dynbuf.o -MD -MP -MF ../../lib/$(DEPDIR)/fake_ntlm-dynbuf.Tpo -c -o ../../lib/fake_ntlm-dynbuf.o `test -f '../../lib/dynbuf.c' || echo '$(srcdir)/'`../../lib/dynbuf.c
-@am__fastdepCC_TRUE@	$(AM_V_at)$(am__mv) ../../lib/$(DEPDIR)/fake_ntlm-dynbuf.Tpo ../../lib/$(DEPDIR)/fake_ntlm-dynbuf.Po
-@AMDEP_TRUE@@am__fastdepCC_FALSE@	$(AM_V_CC)source='../../lib/dynbuf.c' object='../../lib/fake_ntlm-dynbuf.o' libtool=no @AMDEPBACKSLASH@
-@AMDEP_TRUE@@am__fastdepCC_FALSE@	DEPDIR=$(DEPDIR) $(CCDEPMODE) $(depcomp) @AMDEPBACKSLASH@
-@am__fastdepCC_FALSE@	$(AM_V_CC@am__nodep@)$(CC) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(AM_CPPFLAGS) $(CPPFLAGS) $(fake_ntlm_CFLAGS) $(CFLAGS) -c -o ../../lib/fake_ntlm-dynbuf.o `test -f '../../lib/dynbuf.c' || echo '$(srcdir)/'`../../lib/dynbuf.c
-
-../../lib/fake_ntlm-dynbuf.obj: ../../lib/dynbuf.c
-@am__fastdepCC_TRUE@	$(AM_V_CC)$(CC) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(AM_CPPFLAGS) $(CPPFLAGS) $(fake_ntlm_CFLAGS) $(CFLAGS) -MT ../../lib/fake_ntlm-dynbuf.obj -MD -MP -MF ../../lib/$(DEPDIR)/fake_ntlm-dynbuf.Tpo -c -o ../../lib/fake_ntlm-dynbuf.obj `if test -f '../../lib/dynbuf.c'; then $(CYGPATH_W) '../../lib/dynbuf.c'; else $(CYGPATH_W) '$(srcdir)/../../lib/dynbuf.c'; fi`
-@am__fastdepCC_TRUE@	$(AM_V_at)$(am__mv) ../../lib/$(DEPDIR)/fake_ntlm-dynbuf.Tpo ../../lib/$(DEPDIR)/fake_ntlm-dynbuf.Po
-@AMDEP_TRUE@@am__fastdepCC_FALSE@	$(AM_V_CC)source='../../lib/dynbuf.c' object='../../lib/fake_ntlm-dynbuf.obj' libtool=no @AMDEPBACKSLASH@
-@AMDEP_TRUE@@am__fastdepCC_FALSE@	DEPDIR=$(DEPDIR) $(CCDEPMODE) $(depcomp) @AMDEPBACKSLASH@
-@am__fastdepCC_FALSE@	$(AM_V_CC@am__nodep@)$(CC) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(AM_CPPFLAGS) $(CPPFLAGS) $(fake_ntlm_CFLAGS) $(CFLAGS) -c -o ../../lib/fake_ntlm-dynbuf.obj `if test -f '../../lib/dynbuf.c'; then $(CYGPATH_W) '../../lib/dynbuf.c'; else $(CYGPATH_W) '$(srcdir)/../../lib/dynbuf.c'; fi`
-
-../../lib/fake_ntlm-strdup.o: ../../lib/strdup.c
-@am__fastdepCC_TRUE@	$(AM_V_CC)$(CC) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(AM_CPPFLAGS) $(CPPFLAGS) $(fake_ntlm_CFLAGS) $(CFLAGS) -MT ../../lib/fake_ntlm-strdup.o -MD -MP -MF ../../lib/$(DEPDIR)/fake_ntlm-strdup.Tpo -c -o ../../lib/fake_ntlm-strdup.o `test -f '../../lib/strdup.c' || echo '$(srcdir)/'`../../lib/strdup.c
-@am__fastdepCC_TRUE@	$(AM_V_at)$(am__mv) ../../lib/$(DEPDIR)/fake_ntlm-strdup.Tpo ../../lib/$(DEPDIR)/fake_ntlm-strdup.Po
-@AMDEP_TRUE@@am__fastdepCC_FALSE@	$(AM_V_CC)source='../../lib/strdup.c' object='../../lib/fake_ntlm-strdup.o' libtool=no @AMDEPBACKSLASH@
-@AMDEP_TRUE@@am__fastdepCC_FALSE@	DEPDIR=$(DEPDIR) $(CCDEPMODE) $(depcomp) @AMDEPBACKSLASH@
-@am__fastdepCC_FALSE@	$(AM_V_CC@am__nodep@)$(CC) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(AM_CPPFLAGS) $(CPPFLAGS) $(fake_ntlm_CFLAGS) $(CFLAGS) -c -o ../../lib/fake_ntlm-strdup.o `test -f '../../lib/strdup.c' || echo '$(srcdir)/'`../../lib/strdup.c
-
-../../lib/fake_ntlm-strdup.obj: ../../lib/strdup.c
-@am__fastdepCC_TRUE@	$(AM_V_CC)$(CC) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(AM_CPPFLAGS) $(CPPFLAGS) $(fake_ntlm_CFLAGS) $(CFLAGS) -MT ../../lib/fake_ntlm-strdup.obj -MD -MP -MF ../../lib/$(DEPDIR)/fake_ntlm-strdup.Tpo -c -o ../../lib/fake_ntlm-strdup.obj `if test -f '../../lib/strdup.c'; then $(CYGPATH_W) '../../lib/strdup.c'; else $(CYGPATH_W) '$(srcdir)/../../lib/strdup.c'; fi`
-@am__fastdepCC_TRUE@	$(AM_V_at)$(am__mv) ../../lib/$(DEPDIR)/fake_ntlm-strdup.Tpo ../../lib/$(DEPDIR)/fake_ntlm-strdup.Po
-@AMDEP_TRUE@@am__fastdepCC_FALSE@	$(AM_V_CC)source='../../lib/strdup.c' object='../../lib/fake_ntlm-strdup.obj' libtool=no @AMDEPBACKSLASH@
-@AMDEP_TRUE@@am__fastdepCC_FALSE@	DEPDIR=$(DEPDIR) $(CCDEPMODE) $(depcomp) @AMDEPBACKSLASH@
-@am__fastdepCC_FALSE@	$(AM_V_CC@am__nodep@)$(CC) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(AM_CPPFLAGS) $(CPPFLAGS) $(fake_ntlm_CFLAGS) $(CFLAGS) -c -o ../../lib/fake_ntlm-strdup.obj `if test -f '../../lib/strdup.c'; then $(CYGPATH_W) '../../lib/strdup.c'; else $(CYGPATH_W) '$(srcdir)/../../lib/strdup.c'; fi`
-
-../../lib/fake_ntlm-strcase.o: ../../lib/strcase.c
-@am__fastdepCC_TRUE@	$(AM_V_CC)$(CC) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(AM_CPPFLAGS) $(CPPFLAGS) $(fake_ntlm_CFLAGS) $(CFLAGS) -MT ../../lib/fake_ntlm-strcase.o -MD -MP -MF ../../lib/$(DEPDIR)/fake_ntlm-strcase.Tpo -c -o ../../lib/fake_ntlm-strcase.o `test -f '../../lib/strcase.c' || echo '$(srcdir)/'`../../lib/strcase.c
-@am__fastdepCC_TRUE@	$(AM_V_at)$(am__mv) ../../lib/$(DEPDIR)/fake_ntlm-strcase.Tpo ../../lib/$(DEPDIR)/fake_ntlm-strcase.Po
-@AMDEP_TRUE@@am__fastdepCC_FALSE@	$(AM_V_CC)source='../../lib/strcase.c' object='../../lib/fake_ntlm-strcase.o' libtool=no @AMDEPBACKSLASH@
-@AMDEP_TRUE@@am__fastdepCC_FALSE@	DEPDIR=$(DEPDIR) $(CCDEPMODE) $(depcomp) @AMDEPBACKSLASH@
-@am__fastdepCC_FALSE@	$(AM_V_CC@am__nodep@)$(CC) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(AM_CPPFLAGS) $(CPPFLAGS) $(fake_ntlm_CFLAGS) $(CFLAGS) -c -o ../../lib/fake_ntlm-strcase.o `test -f '../../lib/strcase.c' || echo '$(srcdir)/'`../../lib/strcase.c
-
-../../lib/fake_ntlm-strcase.obj: ../../lib/strcase.c
-@am__fastdepCC_TRUE@	$(AM_V_CC)$(CC) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(AM_CPPFLAGS) $(CPPFLAGS) $(fake_ntlm_CFLAGS) $(CFLAGS) -MT ../../lib/fake_ntlm-strcase.obj -MD -MP -MF ../../lib/$(DEPDIR)/fake_ntlm-strcase.Tpo -c -o ../../lib/fake_ntlm-strcase.obj `if test -f '../../lib/strcase.c'; then $(CYGPATH_W) '../../lib/strcase.c'; else $(CYGPATH_W) '$(srcdir)/../../lib/strcase.c'; fi`
-@am__fastdepCC_TRUE@	$(AM_V_at)$(am__mv) ../../lib/$(DEPDIR)/fake_ntlm-strcase.Tpo ../../lib/$(DEPDIR)/fake_ntlm-strcase.Po
-@AMDEP_TRUE@@am__fastdepCC_FALSE@	$(AM_V_CC)source='../../lib/strcase.c' object='../../lib/fake_ntlm-strcase.obj' libtool=no @AMDEPBACKSLASH@
-@AMDEP_TRUE@@am__fastdepCC_FALSE@	DEPDIR=$(DEPDIR) $(CCDEPMODE) $(depcomp) @AMDEPBACKSLASH@
-@am__fastdepCC_FALSE@	$(AM_V_CC@am__nodep@)$(CC) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(AM_CPPFLAGS) $(CPPFLAGS) $(fake_ntlm_CFLAGS) $(CFLAGS) -c -o ../../lib/fake_ntlm-strcase.obj `if test -f '../../lib/strcase.c'; then $(CYGPATH_W) '../../lib/strcase.c'; else $(CYGPATH_W) '$(srcdir)/../../lib/strcase.c'; fi`
-
-../../lib/fake_ntlm-curl_multibyte.o: ../../lib/curl_multibyte.c
-@am__fastdepCC_TRUE@	$(AM_V_CC)$(CC) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(AM_CPPFLAGS) $(CPPFLAGS) $(fake_ntlm_CFLAGS) $(CFLAGS) -MT ../../lib/fake_ntlm-curl_multibyte.o -MD -MP -MF ../../lib/$(DEPDIR)/fake_ntlm-curl_multibyte.Tpo -c -o ../../lib/fake_ntlm-curl_multibyte.o `test -f '../../lib/curl_multibyte.c' || echo '$(srcdir)/'`../../lib/curl_multibyte.c
-@am__fastdepCC_TRUE@	$(AM_V_at)$(am__mv) ../../lib/$(DEPDIR)/fake_ntlm-curl_multibyte.Tpo ../../lib/$(DEPDIR)/fake_ntlm-curl_multibyte.Po
-@AMDEP_TRUE@@am__fastdepCC_FALSE@	$(AM_V_CC)source='../../lib/curl_multibyte.c' object='../../lib/fake_ntlm-curl_multibyte.o' libtool=no @AMDEPBACKSLASH@
-@AMDEP_TRUE@@am__fastdepCC_FALSE@	DEPDIR=$(DEPDIR) $(CCDEPMODE) $(depcomp) @AMDEPBACKSLASH@
-@am__fastdepCC_FALSE@	$(AM_V_CC@am__nodep@)$(CC) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(AM_CPPFLAGS) $(CPPFLAGS) $(fake_ntlm_CFLAGS) $(CFLAGS) -c -o ../../lib/fake_ntlm-curl_multibyte.o `test -f '../../lib/curl_multibyte.c' || echo '$(srcdir)/'`../../lib/curl_multibyte.c
-
-../../lib/fake_ntlm-curl_multibyte.obj: ../../lib/curl_multibyte.c
-@am__fastdepCC_TRUE@	$(AM_V_CC)$(CC) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(AM_CPPFLAGS) $(CPPFLAGS) $(fake_ntlm_CFLAGS) $(CFLAGS) -MT ../../lib/fake_ntlm-curl_multibyte.obj -MD -MP -MF ../../lib/$(DEPDIR)/fake_ntlm-curl_multibyte.Tpo -c -o ../../lib/fake_ntlm-curl_multibyte.obj `if test -f '../../lib/curl_multibyte.c'; then $(CYGPATH_W) '../../lib/curl_multibyte.c'; else $(CYGPATH_W) '$(srcdir)/../../lib/curl_multibyte.c'; fi`
-@am__fastdepCC_TRUE@	$(AM_V_at)$(am__mv) ../../lib/$(DEPDIR)/fake_ntlm-curl_multibyte.Tpo ../../lib/$(DEPDIR)/fake_ntlm-curl_multibyte.Po
-@AMDEP_TRUE@@am__fastdepCC_FALSE@	$(AM_V_CC)source='../../lib/curl_multibyte.c' object='../../lib/fake_ntlm-curl_multibyte.obj' libtool=no @AMDEPBACKSLASH@
-@AMDEP_TRUE@@am__fastdepCC_FALSE@	DEPDIR=$(DEPDIR) $(CCDEPMODE) $(depcomp) @AMDEPBACKSLASH@
-@am__fastdepCC_FALSE@	$(AM_V_CC@am__nodep@)$(CC) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(AM_CPPFLAGS) $(CPPFLAGS) $(fake_ntlm_CFLAGS) $(CFLAGS) -c -o ../../lib/fake_ntlm-curl_multibyte.obj `if test -f '../../lib/curl_multibyte.c'; then $(CYGPATH_W) '../../lib/curl_multibyte.c'; else $(CYGPATH_W) '$(srcdir)/../../lib/curl_multibyte.c'; fi`
-
-fake_ntlm-getpart.o: getpart.c
-@am__fastdepCC_TRUE@	$(AM_V_CC)$(CC) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(AM_CPPFLAGS) $(CPPFLAGS) $(fake_ntlm_CFLAGS) $(CFLAGS) -MT fake_ntlm-getpart.o -MD -MP -MF $(DEPDIR)/fake_ntlm-getpart.Tpo -c -o fake_ntlm-getpart.o `test -f 'getpart.c' || echo '$(srcdir)/'`getpart.c
-@am__fastdepCC_TRUE@	$(AM_V_at)$(am__mv) $(DEPDIR)/fake_ntlm-getpart.Tpo $(DEPDIR)/fake_ntlm-getpart.Po
-@AMDEP_TRUE@@am__fastdepCC_FALSE@	$(AM_V_CC)source='getpart.c' object='fake_ntlm-getpart.o' libtool=no @AMDEPBACKSLASH@
-@AMDEP_TRUE@@am__fastdepCC_FALSE@	DEPDIR=$(DEPDIR) $(CCDEPMODE) $(depcomp) @AMDEPBACKSLASH@
-@am__fastdepCC_FALSE@	$(AM_V_CC@am__nodep@)$(CC) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(AM_CPPFLAGS) $(CPPFLAGS) $(fake_ntlm_CFLAGS) $(CFLAGS) -c -o fake_ntlm-getpart.o `test -f 'getpart.c' || echo '$(srcdir)/'`getpart.c
-
-fake_ntlm-getpart.obj: getpart.c
-@am__fastdepCC_TRUE@	$(AM_V_CC)$(CC) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(AM_CPPFLAGS) $(CPPFLAGS) $(fake_ntlm_CFLAGS) $(CFLAGS) -MT fake_ntlm-getpart.obj -MD -MP -MF $(DEPDIR)/fake_ntlm-getpart.Tpo -c -o fake_ntlm-getpart.obj `if test -f 'getpart.c'; then $(CYGPATH_W) 'getpart.c'; else $(CYGPATH_W) '$(srcdir)/getpart.c'; fi`
-@am__fastdepCC_TRUE@	$(AM_V_at)$(am__mv) $(DEPDIR)/fake_ntlm-getpart.Tpo $(DEPDIR)/fake_ntlm-getpart.Po
-@AMDEP_TRUE@@am__fastdepCC_FALSE@	$(AM_V_CC)source='getpart.c' object='fake_ntlm-getpart.obj' libtool=no @AMDEPBACKSLASH@
-@AMDEP_TRUE@@am__fastdepCC_FALSE@	DEPDIR=$(DEPDIR) $(CCDEPMODE) $(depcomp) @AMDEPBACKSLASH@
-@am__fastdepCC_FALSE@	$(AM_V_CC@am__nodep@)$(CC) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(AM_CPPFLAGS) $(CPPFLAGS) $(fake_ntlm_CFLAGS) $(CFLAGS) -c -o fake_ntlm-getpart.obj `if test -f 'getpart.c'; then $(CYGPATH_W) 'getpart.c'; else $(CYGPATH_W) '$(srcdir)/getpart.c'; fi`
-
-../../lib/fake_ntlm-base64.o: ../../lib/base64.c
-@am__fastdepCC_TRUE@	$(AM_V_CC)$(CC) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(AM_CPPFLAGS) $(CPPFLAGS) $(fake_ntlm_CFLAGS) $(CFLAGS) -MT ../../lib/fake_ntlm-base64.o -MD -MP -MF ../../lib/$(DEPDIR)/fake_ntlm-base64.Tpo -c -o ../../lib/fake_ntlm-base64.o `test -f '../../lib/base64.c' || echo '$(srcdir)/'`../../lib/base64.c
-@am__fastdepCC_TRUE@	$(AM_V_at)$(am__mv) ../../lib/$(DEPDIR)/fake_ntlm-base64.Tpo ../../lib/$(DEPDIR)/fake_ntlm-base64.Po
-@AMDEP_TRUE@@am__fastdepCC_FALSE@	$(AM_V_CC)source='../../lib/base64.c' object='../../lib/fake_ntlm-base64.o' libtool=no @AMDEPBACKSLASH@
-@AMDEP_TRUE@@am__fastdepCC_FALSE@	DEPDIR=$(DEPDIR) $(CCDEPMODE) $(depcomp) @AMDEPBACKSLASH@
-@am__fastdepCC_FALSE@	$(AM_V_CC@am__nodep@)$(CC) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(AM_CPPFLAGS) $(CPPFLAGS) $(fake_ntlm_CFLAGS) $(CFLAGS) -c -o ../../lib/fake_ntlm-base64.o `test -f '../../lib/base64.c' || echo '$(srcdir)/'`../../lib/base64.c
-
-../../lib/fake_ntlm-base64.obj: ../../lib/base64.c
-@am__fastdepCC_TRUE@	$(AM_V_CC)$(CC) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(AM_CPPFLAGS) $(CPPFLAGS) $(fake_ntlm_CFLAGS) $(CFLAGS) -MT ../../lib/fake_ntlm-base64.obj -MD -MP -MF ../../lib/$(DEPDIR)/fake_ntlm-base64.Tpo -c -o ../../lib/fake_ntlm-base64.obj `if test -f '../../lib/base64.c'; then $(CYGPATH_W) '../../lib/base64.c'; else $(CYGPATH_W) '$(srcdir)/../../lib/base64.c'; fi`
-@am__fastdepCC_TRUE@	$(AM_V_at)$(am__mv) ../../lib/$(DEPDIR)/fake_ntlm-base64.Tpo ../../lib/$(DEPDIR)/fake_ntlm-base64.Po
-@AMDEP_TRUE@@am__fastdepCC_FALSE@	$(AM_V_CC)source='../../lib/base64.c' object='../../lib/fake_ntlm-base64.obj' libtool=no @AMDEPBACKSLASH@
-@AMDEP_TRUE@@am__fastdepCC_FALSE@	DEPDIR=$(DEPDIR) $(CCDEPMODE) $(depcomp) @AMDEPBACKSLASH@
-@am__fastdepCC_FALSE@	$(AM_V_CC@am__nodep@)$(CC) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(AM_CPPFLAGS) $(CPPFLAGS) $(fake_ntlm_CFLAGS) $(CFLAGS) -c -o ../../lib/fake_ntlm-base64.obj `if test -f '../../lib/base64.c'; then $(CYGPATH_W) '../../lib/base64.c'; else $(CYGPATH_W) '$(srcdir)/../../lib/base64.c'; fi`
-
-../../lib/fake_ntlm-memdebug.o: ../../lib/memdebug.c
-@am__fastdepCC_TRUE@	$(AM_V_CC)$(CC) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(AM_CPPFLAGS) $(CPPFLAGS) $(fake_ntlm_CFLAGS) $(CFLAGS) -MT ../../lib/fake_ntlm-memdebug.o -MD -MP -MF ../../lib/$(DEPDIR)/fake_ntlm-memdebug.Tpo -c -o ../../lib/fake_ntlm-memdebug.o `test -f '../../lib/memdebug.c' || echo '$(srcdir)/'`../../lib/memdebug.c
-@am__fastdepCC_TRUE@	$(AM_V_at)$(am__mv) ../../lib/$(DEPDIR)/fake_ntlm-memdebug.Tpo ../../lib/$(DEPDIR)/fake_ntlm-memdebug.Po
-@AMDEP_TRUE@@am__fastdepCC_FALSE@	$(AM_V_CC)source='../../lib/memdebug.c' object='../../lib/fake_ntlm-memdebug.o' libtool=no @AMDEPBACKSLASH@
-@AMDEP_TRUE@@am__fastdepCC_FALSE@	DEPDIR=$(DEPDIR) $(CCDEPMODE) $(depcomp) @AMDEPBACKSLASH@
-@am__fastdepCC_FALSE@	$(AM_V_CC@am__nodep@)$(CC) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(AM_CPPFLAGS) $(CPPFLAGS) $(fake_ntlm_CFLAGS) $(CFLAGS) -c -o ../../lib/fake_ntlm-memdebug.o `test -f '../../lib/memdebug.c' || echo '$(srcdir)/'`../../lib/memdebug.c
-
-../../lib/fake_ntlm-memdebug.obj: ../../lib/memdebug.c
-@am__fastdepCC_TRUE@	$(AM_V_CC)$(CC) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(AM_CPPFLAGS) $(CPPFLAGS) $(fake_ntlm_CFLAGS) $(CFLAGS) -MT ../../lib/fake_ntlm-memdebug.obj -MD -MP -MF ../../lib/$(DEPDIR)/fake_ntlm-memdebug.Tpo -c -o ../../lib/fake_ntlm-memdebug.obj `if test -f '../../lib/memdebug.c'; then $(CYGPATH_W) '../../lib/memdebug.c'; else $(CYGPATH_W) '$(srcdir)/../../lib/memdebug.c'; fi`
-@am__fastdepCC_TRUE@	$(AM_V_at)$(am__mv) ../../lib/$(DEPDIR)/fake_ntlm-memdebug.Tpo ../../lib/$(DEPDIR)/fake_ntlm-memdebug.Po
-@AMDEP_TRUE@@am__fastdepCC_FALSE@	$(AM_V_CC)source='../../lib/memdebug.c' object='../../lib/fake_ntlm-memdebug.obj' libtool=no @AMDEPBACKSLASH@
-@AMDEP_TRUE@@am__fastdepCC_FALSE@	DEPDIR=$(DEPDIR) $(CCDEPMODE) $(depcomp) @AMDEPBACKSLASH@
-@am__fastdepCC_FALSE@	$(AM_V_CC@am__nodep@)$(CC) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(AM_CPPFLAGS) $(CPPFLAGS) $(fake_ntlm_CFLAGS) $(CFLAGS) -c -o ../../lib/fake_ntlm-memdebug.obj `if test -f '../../lib/memdebug.c'; then $(CYGPATH_W) '../../lib/memdebug.c'; else $(CYGPATH_W) '$(srcdir)/../../lib/memdebug.c'; fi`
-
-fake_ntlm-util.o: util.c
-@am__fastdepCC_TRUE@	$(AM_V_CC)$(CC) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(AM_CPPFLAGS) $(CPPFLAGS) $(fake_ntlm_CFLAGS) $(CFLAGS) -MT fake_ntlm-util.o -MD -MP -MF $(DEPDIR)/fake_ntlm-util.Tpo -c -o fake_ntlm-util.o `test -f 'util.c' || echo '$(srcdir)/'`util.c
-@am__fastdepCC_TRUE@	$(AM_V_at)$(am__mv) $(DEPDIR)/fake_ntlm-util.Tpo $(DEPDIR)/fake_ntlm-util.Po
-@AMDEP_TRUE@@am__fastdepCC_FALSE@	$(AM_V_CC)source='util.c' object='fake_ntlm-util.o' libtool=no @AMDEPBACKSLASH@
-@AMDEP_TRUE@@am__fastdepCC_FALSE@	DEPDIR=$(DEPDIR) $(CCDEPMODE) $(depcomp) @AMDEPBACKSLASH@
-@am__fastdepCC_FALSE@	$(AM_V_CC@am__nodep@)$(CC) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(AM_CPPFLAGS) $(CPPFLAGS) $(fake_ntlm_CFLAGS) $(CFLAGS) -c -o fake_ntlm-util.o `test -f 'util.c' || echo '$(srcdir)/'`util.c
-
-fake_ntlm-util.obj: util.c
-@am__fastdepCC_TRUE@	$(AM_V_CC)$(CC) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(AM_CPPFLAGS) $(CPPFLAGS) $(fake_ntlm_CFLAGS) $(CFLAGS) -MT fake_ntlm-util.obj -MD -MP -MF $(DEPDIR)/fake_ntlm-util.Tpo -c -o fake_ntlm-util.obj `if test -f 'util.c'; then $(CYGPATH_W) 'util.c'; else $(CYGPATH_W) '$(srcdir)/util.c'; fi`
-@am__fastdepCC_TRUE@	$(AM_V_at)$(am__mv) $(DEPDIR)/fake_ntlm-util.Tpo $(DEPDIR)/fake_ntlm-util.Po
-@AMDEP_TRUE@@am__fastdepCC_FALSE@	$(AM_V_CC)source='util.c' object='fake_ntlm-util.obj' libtool=no @AMDEPBACKSLASH@
-@AMDEP_TRUE@@am__fastdepCC_FALSE@	DEPDIR=$(DEPDIR) $(CCDEPMODE) $(depcomp) @AMDEPBACKSLASH@
-@am__fastdepCC_FALSE@	$(AM_V_CC@am__nodep@)$(CC) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(AM_CPPFLAGS) $(CPPFLAGS) $(fake_ntlm_CFLAGS) $(CFLAGS) -c -o fake_ntlm-util.obj `if test -f 'util.c'; then $(CYGPATH_W) 'util.c'; else $(CYGPATH_W) '$(srcdir)/util.c'; fi`
-
-fake_ntlm-fake_ntlm.o: fake_ntlm.c
-@am__fastdepCC_TRUE@	$(AM_V_CC)$(CC) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(AM_CPPFLAGS) $(CPPFLAGS) $(fake_ntlm_CFLAGS) $(CFLAGS) -MT fake_ntlm-fake_ntlm.o -MD -MP -MF $(DEPDIR)/fake_ntlm-fake_ntlm.Tpo -c -o fake_ntlm-fake_ntlm.o `test -f 'fake_ntlm.c' || echo '$(srcdir)/'`fake_ntlm.c
-@am__fastdepCC_TRUE@	$(AM_V_at)$(am__mv) $(DEPDIR)/fake_ntlm-fake_ntlm.Tpo $(DEPDIR)/fake_ntlm-fake_ntlm.Po
-@AMDEP_TRUE@@am__fastdepCC_FALSE@	$(AM_V_CC)source='fake_ntlm.c' object='fake_ntlm-fake_ntlm.o' libtool=no @AMDEPBACKSLASH@
-@AMDEP_TRUE@@am__fastdepCC_FALSE@	DEPDIR=$(DEPDIR) $(CCDEPMODE) $(depcomp) @AMDEPBACKSLASH@
-@am__fastdepCC_FALSE@	$(AM_V_CC@am__nodep@)$(CC) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(AM_CPPFLAGS) $(CPPFLAGS) $(fake_ntlm_CFLAGS) $(CFLAGS) -c -o fake_ntlm-fake_ntlm.o `test -f 'fake_ntlm.c' || echo '$(srcdir)/'`fake_ntlm.c
-
-fake_ntlm-fake_ntlm.obj: fake_ntlm.c
-@am__fastdepCC_TRUE@	$(AM_V_CC)$(CC) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(AM_CPPFLAGS) $(CPPFLAGS) $(fake_ntlm_CFLAGS) $(CFLAGS) -MT fake_ntlm-fake_ntlm.obj -MD -MP -MF $(DEPDIR)/fake_ntlm-fake_ntlm.Tpo -c -o fake_ntlm-fake_ntlm.obj `if test -f 'fake_ntlm.c'; then $(CYGPATH_W) 'fake_ntlm.c'; else $(CYGPATH_W) '$(srcdir)/fake_ntlm.c'; fi`
-@am__fastdepCC_TRUE@	$(AM_V_at)$(am__mv) $(DEPDIR)/fake_ntlm-fake_ntlm.Tpo $(DEPDIR)/fake_ntlm-fake_ntlm.Po
-@AMDEP_TRUE@@am__fastdepCC_FALSE@	$(AM_V_CC)source='fake_ntlm.c' object='fake_ntlm-fake_ntlm.obj' libtool=no @AMDEPBACKSLASH@
-@AMDEP_TRUE@@am__fastdepCC_FALSE@	DEPDIR=$(DEPDIR) $(CCDEPMODE) $(depcomp) @AMDEPBACKSLASH@
-@am__fastdepCC_FALSE@	$(AM_V_CC@am__nodep@)$(CC) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(AM_CPPFLAGS) $(CPPFLAGS) $(fake_ntlm_CFLAGS) $(CFLAGS) -c -o fake_ntlm-fake_ntlm.obj `if test -f 'fake_ntlm.c'; then $(CYGPATH_W) 'fake_ntlm.c'; else $(CYGPATH_W) '$(srcdir)/fake_ntlm.c'; fi`
 
 ../../lib/getpart-mprintf.o: ../../lib/mprintf.c
 @am__fastdepCC_TRUE@	$(AM_V_CC)$(CC) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(AM_CPPFLAGS) $(CPPFLAGS) $(getpart_CFLAGS) $(CFLAGS) -MT ../../lib/getpart-mprintf.o -MD -MP -MF ../../lib/$(DEPDIR)/getpart-mprintf.Tpo -c -o ../../lib/getpart-mprintf.o `test -f '../../lib/mprintf.c' || echo '$(srcdir)/'`../../lib/mprintf.c
@@ -3310,18 +3033,7 @@ clean-am: clean-generic clean-libtool clean-noinstPROGRAMS \
 	mostlyclean-am
 
 distclean: distclean-am
-		-rm -f ../../lib/$(DEPDIR)/fake_ntlm-base64.Po
-	-rm -f ../../lib/$(DEPDIR)/fake_ntlm-curl_multibyte.Po
-	-rm -f ../../lib/$(DEPDIR)/fake_ntlm-dynbuf.Po
-	-rm -f ../../lib/$(DEPDIR)/fake_ntlm-memdebug.Po
-	-rm -f ../../lib/$(DEPDIR)/fake_ntlm-mprintf.Po
-	-rm -f ../../lib/$(DEPDIR)/fake_ntlm-nonblock.Po
-	-rm -f ../../lib/$(DEPDIR)/fake_ntlm-strcase.Po
-	-rm -f ../../lib/$(DEPDIR)/fake_ntlm-strdup.Po
-	-rm -f ../../lib/$(DEPDIR)/fake_ntlm-strtoofft.Po
-	-rm -f ../../lib/$(DEPDIR)/fake_ntlm-timediff.Po
-	-rm -f ../../lib/$(DEPDIR)/fake_ntlm-warnless.Po
-	-rm -f ../../lib/$(DEPDIR)/getpart-base64.Po
+		-rm -f ../../lib/$(DEPDIR)/getpart-base64.Po
 	-rm -f ../../lib/$(DEPDIR)/getpart-curl_multibyte.Po
 	-rm -f ../../lib/$(DEPDIR)/getpart-dynbuf.Po
 	-rm -f ../../lib/$(DEPDIR)/getpart-memdebug.Po
@@ -3414,9 +3126,6 @@ distclean: distclean-am
 	-rm -f ../../lib/$(DEPDIR)/tftpd-timediff.Po
 	-rm -f ../../lib/$(DEPDIR)/tftpd-warnless.Po
 	-rm -f ./$(DEPDIR)/disabled-disabled.Po
-	-rm -f ./$(DEPDIR)/fake_ntlm-fake_ntlm.Po
-	-rm -f ./$(DEPDIR)/fake_ntlm-getpart.Po
-	-rm -f ./$(DEPDIR)/fake_ntlm-util.Po
 	-rm -f ./$(DEPDIR)/getpart-getpart.Po
 	-rm -f ./$(DEPDIR)/getpart-testpart.Po
 	-rm -f ./$(DEPDIR)/mqttd-getpart.Po
@@ -3485,18 +3194,7 @@ install-ps-am:
 installcheck-am:
 
 maintainer-clean: maintainer-clean-am
-		-rm -f ../../lib/$(DEPDIR)/fake_ntlm-base64.Po
-	-rm -f ../../lib/$(DEPDIR)/fake_ntlm-curl_multibyte.Po
-	-rm -f ../../lib/$(DEPDIR)/fake_ntlm-dynbuf.Po
-	-rm -f ../../lib/$(DEPDIR)/fake_ntlm-memdebug.Po
-	-rm -f ../../lib/$(DEPDIR)/fake_ntlm-mprintf.Po
-	-rm -f ../../lib/$(DEPDIR)/fake_ntlm-nonblock.Po
-	-rm -f ../../lib/$(DEPDIR)/fake_ntlm-strcase.Po
-	-rm -f ../../lib/$(DEPDIR)/fake_ntlm-strdup.Po
-	-rm -f ../../lib/$(DEPDIR)/fake_ntlm-strtoofft.Po
-	-rm -f ../../lib/$(DEPDIR)/fake_ntlm-timediff.Po
-	-rm -f ../../lib/$(DEPDIR)/fake_ntlm-warnless.Po
-	-rm -f ../../lib/$(DEPDIR)/getpart-base64.Po
+		-rm -f ../../lib/$(DEPDIR)/getpart-base64.Po
 	-rm -f ../../lib/$(DEPDIR)/getpart-curl_multibyte.Po
 	-rm -f ../../lib/$(DEPDIR)/getpart-dynbuf.Po
 	-rm -f ../../lib/$(DEPDIR)/getpart-memdebug.Po
@@ -3589,9 +3287,6 @@ maintainer-clean: maintainer-clean-am
 	-rm -f ../../lib/$(DEPDIR)/tftpd-timediff.Po
 	-rm -f ../../lib/$(DEPDIR)/tftpd-warnless.Po
 	-rm -f ./$(DEPDIR)/disabled-disabled.Po
-	-rm -f ./$(DEPDIR)/fake_ntlm-fake_ntlm.Po
-	-rm -f ./$(DEPDIR)/fake_ntlm-getpart.Po
-	-rm -f ./$(DEPDIR)/fake_ntlm-util.Po
 	-rm -f ./$(DEPDIR)/getpart-getpart.Po
 	-rm -f ./$(DEPDIR)/getpart-testpart.Po
 	-rm -f ./$(DEPDIR)/mqttd-getpart.Po

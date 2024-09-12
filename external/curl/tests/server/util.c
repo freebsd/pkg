@@ -28,7 +28,7 @@
 #include <netinet/in.h>
 #endif
 #ifdef _XOPEN_SOURCE_EXTENDED
-/* This define is "almost" required to build on HPUX 11 */
+/* This define is "almost" required to build on HP-UX 11 */
 #include <arpa/inet.h>
 #endif
 #ifdef HAVE_NETDB_H
@@ -40,9 +40,6 @@
 #include <sys/poll.h>
 #endif
 
-#define ENABLE_CURLX_PRINTF
-/* make the curlx header define all printf() functions to use the curlx_*
-   versions instead */
 #include "curlx.h" /* from the private lib dir */
 #include "getpart.h"
 #include "util.h"
@@ -143,7 +140,7 @@ static const char *win32_strerror(int err, char *buf, size_t buflen)
   return buf;
 }
 
-/* use instead of perror() on generic windows */
+/* use instead of perror() on generic Windows */
 void win32_perror(const char *msg)
 {
   char buf[512];
@@ -166,7 +163,7 @@ void win32_init(void)
 
   if(err) {
     perror("Winsock init failed");
-    logmsg("Error initialising winsock -- aborting");
+    logmsg("Error initialising Winsock -- aborting");
     exit(1);
   }
 
@@ -190,7 +187,7 @@ void win32_cleanup(void)
   _flushall();
 }
 
-/* socket-safe strerror (works on WinSock errors, too */
+/* socket-safe strerror (works on Winsock errors, too */
 const char *sstrerror(int err)
 {
   static char buf[512];
@@ -469,6 +466,13 @@ long timediff(struct timeval newer, struct timeval older)
 
 typedef void (*SIGHANDLER_T)(int);
 
+#if defined(_MSC_VER) && _MSC_VER == 1600
+/* Workaround for warning C4306:
+   'type cast' : conversion from 'int' to 'void (__cdecl *)(int)' */
+#undef SIG_ERR
+#define SIG_ERR  ((SIGHANDLER_T)(size_t)-1)
+#endif
+
 #ifdef SIGHUP
 static SIGHANDLER_T old_sighup_handler  = SIG_ERR;
 #endif
@@ -550,7 +554,7 @@ static void exit_signal_handler(int signum)
  * They are included for ANSI compatibility. Therefore, you can set
  * signal handlers for these signals by using signal, and you can also
  * explicitly generate these signals by calling raise. Source:
- * https://docs.microsoft.com/de-de/cpp/c-runtime-library/reference/signal
+ * https://docs.microsoft.com/en-us/cpp/c-runtime-library/reference/signal
  */
 static BOOL WINAPI ctrl_event_handler(DWORD dwCtrlType)
 {
@@ -690,7 +694,7 @@ static SIGHANDLER_T set_signal(int signum, SIGHANDLER_T handler,
 void install_signal_handlers(bool keep_sigalrm)
 {
 #ifdef _WIN32
-  /* setup windows exit event before any signal can trigger */
+  /* setup Windows exit event before any signal can trigger */
   exit_event = CreateEvent(NULL, TRUE, FALSE, NULL);
   if(!exit_event)
     logmsg("cannot create exit event");

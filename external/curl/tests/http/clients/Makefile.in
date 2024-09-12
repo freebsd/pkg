@@ -136,10 +136,10 @@ POST_UNINSTALL = :
 build_triplet = @build@
 host_triplet = @host@
 @USE_CPPFLAG_CURL_STATICLIB_TRUE@am__append_1 = -DCURL_STATICLIB
-check_PROGRAMS = h2-serverpush$(EXEEXT) h2-download$(EXEEXT) \
-	ws-data$(EXEEXT) ws-pingpong$(EXEEXT) \
-	h2-upgrade-extreme$(EXEEXT) tls-session-reuse$(EXEEXT) \
-	h2-pausing$(EXEEXT) upload-pausing$(EXEEXT)
+check_PROGRAMS = h2-download$(EXEEXT) h2-pausing$(EXEEXT) \
+	h2-serverpush$(EXEEXT) h2-upgrade-extreme$(EXEEXT) \
+	tls-session-reuse$(EXEEXT) upload-pausing$(EXEEXT) \
+	ws-data$(EXEEXT) ws-pingpong$(EXEEXT)
 subdir = tests/http/clients
 ACLOCAL_M4 = $(top_srcdir)/aclocal.m4
 am__aclocal_m4_deps = $(top_srcdir)/m4/curl-amissl.m4 \
@@ -177,10 +177,7 @@ CONFIG_CLEAN_VPATH_FILES =
 h2_download_SOURCES = h2-download.c
 h2_download_OBJECTS = h2-download.$(OBJEXT)
 h2_download_LDADD = $(LDADD)
-@USE_EXPLICIT_LIB_DEPS_FALSE@h2_download_DEPENDENCIES =  \
-@USE_EXPLICIT_LIB_DEPS_FALSE@	$(LIBDIR)/libcurl.la
-@USE_EXPLICIT_LIB_DEPS_TRUE@h2_download_DEPENDENCIES =  \
-@USE_EXPLICIT_LIB_DEPS_TRUE@	$(LIBDIR)/libcurl.la
+h2_download_DEPENDENCIES = $(LIBDIR)/libcurl.la
 AM_V_lt = $(am__v_lt_@AM_V@)
 am__v_lt_ = $(am__v_lt_@AM_DEFAULT_V@)
 am__v_lt_0 = --silent
@@ -188,52 +185,31 @@ am__v_lt_1 =
 h2_pausing_SOURCES = h2-pausing.c
 h2_pausing_OBJECTS = h2-pausing.$(OBJEXT)
 h2_pausing_LDADD = $(LDADD)
-@USE_EXPLICIT_LIB_DEPS_FALSE@h2_pausing_DEPENDENCIES =  \
-@USE_EXPLICIT_LIB_DEPS_FALSE@	$(LIBDIR)/libcurl.la
-@USE_EXPLICIT_LIB_DEPS_TRUE@h2_pausing_DEPENDENCIES =  \
-@USE_EXPLICIT_LIB_DEPS_TRUE@	$(LIBDIR)/libcurl.la
+h2_pausing_DEPENDENCIES = $(LIBDIR)/libcurl.la
 h2_serverpush_SOURCES = h2-serverpush.c
 h2_serverpush_OBJECTS = h2-serverpush.$(OBJEXT)
 h2_serverpush_LDADD = $(LDADD)
-@USE_EXPLICIT_LIB_DEPS_FALSE@h2_serverpush_DEPENDENCIES =  \
-@USE_EXPLICIT_LIB_DEPS_FALSE@	$(LIBDIR)/libcurl.la
-@USE_EXPLICIT_LIB_DEPS_TRUE@h2_serverpush_DEPENDENCIES =  \
-@USE_EXPLICIT_LIB_DEPS_TRUE@	$(LIBDIR)/libcurl.la
+h2_serverpush_DEPENDENCIES = $(LIBDIR)/libcurl.la
 h2_upgrade_extreme_SOURCES = h2-upgrade-extreme.c
 h2_upgrade_extreme_OBJECTS = h2-upgrade-extreme.$(OBJEXT)
 h2_upgrade_extreme_LDADD = $(LDADD)
-@USE_EXPLICIT_LIB_DEPS_FALSE@h2_upgrade_extreme_DEPENDENCIES =  \
-@USE_EXPLICIT_LIB_DEPS_FALSE@	$(LIBDIR)/libcurl.la
-@USE_EXPLICIT_LIB_DEPS_TRUE@h2_upgrade_extreme_DEPENDENCIES =  \
-@USE_EXPLICIT_LIB_DEPS_TRUE@	$(LIBDIR)/libcurl.la
+h2_upgrade_extreme_DEPENDENCIES = $(LIBDIR)/libcurl.la
 tls_session_reuse_SOURCES = tls-session-reuse.c
 tls_session_reuse_OBJECTS = tls-session-reuse.$(OBJEXT)
 tls_session_reuse_LDADD = $(LDADD)
-@USE_EXPLICIT_LIB_DEPS_FALSE@tls_session_reuse_DEPENDENCIES =  \
-@USE_EXPLICIT_LIB_DEPS_FALSE@	$(LIBDIR)/libcurl.la
-@USE_EXPLICIT_LIB_DEPS_TRUE@tls_session_reuse_DEPENDENCIES =  \
-@USE_EXPLICIT_LIB_DEPS_TRUE@	$(LIBDIR)/libcurl.la
+tls_session_reuse_DEPENDENCIES = $(LIBDIR)/libcurl.la
 upload_pausing_SOURCES = upload-pausing.c
 upload_pausing_OBJECTS = upload-pausing.$(OBJEXT)
 upload_pausing_LDADD = $(LDADD)
-@USE_EXPLICIT_LIB_DEPS_FALSE@upload_pausing_DEPENDENCIES =  \
-@USE_EXPLICIT_LIB_DEPS_FALSE@	$(LIBDIR)/libcurl.la
-@USE_EXPLICIT_LIB_DEPS_TRUE@upload_pausing_DEPENDENCIES =  \
-@USE_EXPLICIT_LIB_DEPS_TRUE@	$(LIBDIR)/libcurl.la
+upload_pausing_DEPENDENCIES = $(LIBDIR)/libcurl.la
 ws_data_SOURCES = ws-data.c
 ws_data_OBJECTS = ws-data.$(OBJEXT)
 ws_data_LDADD = $(LDADD)
-@USE_EXPLICIT_LIB_DEPS_FALSE@ws_data_DEPENDENCIES =  \
-@USE_EXPLICIT_LIB_DEPS_FALSE@	$(LIBDIR)/libcurl.la
-@USE_EXPLICIT_LIB_DEPS_TRUE@ws_data_DEPENDENCIES =  \
-@USE_EXPLICIT_LIB_DEPS_TRUE@	$(LIBDIR)/libcurl.la
+ws_data_DEPENDENCIES = $(LIBDIR)/libcurl.la
 ws_pingpong_SOURCES = ws-pingpong.c
 ws_pingpong_OBJECTS = ws-pingpong.$(OBJEXT)
 ws_pingpong_LDADD = $(LDADD)
-@USE_EXPLICIT_LIB_DEPS_FALSE@ws_pingpong_DEPENDENCIES =  \
-@USE_EXPLICIT_LIB_DEPS_FALSE@	$(LIBDIR)/libcurl.la
-@USE_EXPLICIT_LIB_DEPS_TRUE@ws_pingpong_DEPENDENCIES =  \
-@USE_EXPLICIT_LIB_DEPS_TRUE@	$(LIBDIR)/libcurl.la
+ws_pingpong_DEPENDENCIES = $(LIBDIR)/libcurl.la
 AM_V_P = $(am__v_P_@AM_V@)
 am__v_P_ = $(am__v_P_@AM_DEFAULT_V@)
 am__v_P_0 = false
@@ -327,11 +303,11 @@ CFLAG_CURL_SYMBOL_HIDING = @CFLAG_CURL_SYMBOL_HIDING@
 CONFIGURE_OPTIONS = @CONFIGURE_OPTIONS@
 CPP = @CPP@
 CPPFLAGS = @CPPFLAGS@
-CPPFLAG_CURL_STATICLIB = @CPPFLAG_CURL_STATICLIB@
 CSCOPE = @CSCOPE@
 CTAGS = @CTAGS@
 CURLVERSION = @CURLVERSION@
 CURL_CA_BUNDLE = @CURL_CA_BUNDLE@
+CURL_CA_EMBED = @CURL_CA_EMBED@
 CURL_CFLAG_EXTRAS = @CURL_CFLAG_EXTRAS@
 CURL_DISABLE_DICT = @CURL_DISABLE_DICT@
 CURL_DISABLE_FILE = @CURL_DISABLE_FILE@
@@ -377,7 +353,6 @@ HAVE_BROTLI = @HAVE_BROTLI@
 HAVE_GNUTLS_SRP = @HAVE_GNUTLS_SRP@
 HAVE_LDAP_SSL = @HAVE_LDAP_SSL@
 HAVE_LIBZ = @HAVE_LIBZ@
-HAVE_OPENSSL_QUIC = @HAVE_OPENSSL_QUIC@
 HAVE_OPENSSL_SRP = @HAVE_OPENSSL_SRP@
 HAVE_PROTO_BSDSOCKET_H = @HAVE_PROTO_BSDSOCKET_H@
 HAVE_ZSTD = @HAVE_ZSTD@
@@ -393,8 +368,10 @@ IPV6_ENABLED = @IPV6_ENABLED@
 LCOV = @LCOV@
 LD = @LD@
 LDFLAGS = @LDFLAGS@
-LIBCURL_LIBS = @LIBCURL_LIBS@
-LIBCURL_NO_SHARED = @LIBCURL_NO_SHARED@
+LIBCURL_PC_CFLAGS = @LIBCURL_PC_CFLAGS@
+LIBCURL_PC_CFLAGS_PRIVATE = @LIBCURL_PC_CFLAGS_PRIVATE@
+LIBCURL_PC_LIBS = @LIBCURL_PC_LIBS@
+LIBCURL_PC_LIBS_PRIVATE = @LIBCURL_PC_LIBS_PRIVATE@
 LIBCURL_PC_REQUIRES = @LIBCURL_PC_REQUIRES@
 LIBCURL_PC_REQUIRES_PRIVATE = @LIBCURL_PC_REQUIRES_PRIVATE@
 LIBOBJS = @LIBOBJS@
@@ -429,10 +406,8 @@ PKGADD_NAME = @PKGADD_NAME@
 PKGADD_PKG = @PKGADD_PKG@
 PKGADD_VENDOR = @PKGADD_VENDOR@
 PKGCONFIG = @PKGCONFIG@
-RANDOM_FILE = @RANDOM_FILE@
 RANLIB = @RANLIB@
 RC = @RC@
-REQUIRE_LIB_DEPS = @REQUIRE_LIB_DEPS@
 SED = @SED@
 SET_MAKE = @SET_MAKE@
 SHELL = @SHELL@
@@ -443,6 +418,7 @@ STRIP = @STRIP@
 SUPPORT_FEATURES = @SUPPORT_FEATURES@
 SUPPORT_PROTOCOLS = @SUPPORT_PROTOCOLS@
 TEST_NGHTTPX = @TEST_NGHTTPX@
+USE_APPLE_IDN = @USE_APPLE_IDN@
 USE_ARES = @USE_ARES@
 USE_BEARSSL = @USE_BEARSSL@
 USE_GNUTLS = @USE_GNUTLS@
@@ -451,6 +427,7 @@ USE_LIBPSL = @USE_LIBPSL@
 USE_LIBRTMP = @USE_LIBRTMP@
 USE_LIBSSH = @USE_LIBSSH@
 USE_LIBSSH2 = @USE_LIBSSH2@
+USE_LIBUV = @USE_LIBUV@
 USE_MBEDTLS = @USE_MBEDTLS@
 USE_MSH3 = @USE_MSH3@
 USE_NGHTTP2 = @USE_NGHTTP2@
@@ -535,6 +512,7 @@ top_build_prefix = @top_build_prefix@
 top_builddir = @top_builddir@
 top_srcdir = @top_srcdir@
 AUTOMAKE_OPTIONS = foreign nostdinc
+EXTRA_DIST = CMakeLists.txt
 
 # Specify our include paths here, and do it relative to $(top_srcdir) and
 # $(top_builddir), to ensure that these paths which belong to the library
@@ -548,10 +526,9 @@ AM_CPPFLAGS = -I$(top_srcdir)/include -I$(top_builddir)/lib \
 	-I$(top_srcdir)/lib -DCURL_DISABLE_DEPRECATION \
 	-DCURL_NO_OLDIES $(am__append_1)
 LIBDIR = $(top_builddir)/lib
-@USE_EXPLICIT_LIB_DEPS_FALSE@LDADD = $(LIBDIR)/libcurl.la
 
 # Dependencies
-@USE_EXPLICIT_LIB_DEPS_TRUE@LDADD = $(LIBDIR)/libcurl.la @LIBCURL_LIBS@
+LDADD = $(LIBDIR)/libcurl.la @LIBCURL_PC_LIBS_PRIVATE@
 CHECKSRC = $(CS_$(V))
 CS_0 = @echo "  RUN     " $@;
 CS_1 = 
@@ -906,7 +883,7 @@ uninstall-am:
 .PRECIOUS: Makefile
 
 
-# Makefile.inc provides the check_PROGRAMS and COMPLICATED_EXAMPLES defines
+# Makefile.inc provides the check_PROGRAMS define
 
 all: $(check_PROGRAMS)
 

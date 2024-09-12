@@ -525,7 +525,7 @@ Introduced in 7.56.0. See curl_version_info(3).
 Introduced in 7.10.6. See curl_version_info(3).
 
 ## CURL_VERSION_NTLM_WB
-Introduced in 7.22.0. See curl_version_info(3).
+Introduced in 7.22.0. Deprecated since 8.8.0.
 
 ## CURL_VERSION_PSL
 Introduced in 7.47.0. See curl_version_info(3).
@@ -624,7 +624,7 @@ Introduced in 7.10.6. See CURLOPT_HTTPAUTH(3).
 Introduced in 7.10.6. See CURLOPT_HTTPAUTH(3).
 
 ## CURLAUTH_NTLM_WB
-Introduced in 7.22.0. See CURLOPT_HTTPAUTH(3).
+Introduced in 7.22.0. Deprecated since 8.8.0.
 
 ## CURLAUTH_ONLY
 Introduced in 7.21.3. See CURLOPT_HTTPAUTH(3).
@@ -1378,6 +1378,9 @@ Introduced in 7.4.1.
 
 ## CURLINFO_PRETRANSFER_TIME_T
 Introduced in 7.61.0.
+
+## CURLINFO_POSTTRANSFER_TIME_T
+Introduced in 8.10.0.
 
 ## CURLINFO_PRIMARY_IP
 Introduced in 7.19.0.

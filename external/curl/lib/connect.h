@@ -46,9 +46,14 @@ void Curl_shutdown_start(struct Curl_easy *data, int sockindex,
                          struct curltime *nowp);
 
 /* return how much time there is left to shutdown the connection at
- * sockindex. */
+ * sockindex. Returns 0 if there is no limit or shutdown has not started. */
 timediff_t Curl_shutdown_timeleft(struct connectdata *conn, int sockindex,
                                   struct curltime *nowp);
+
+/* return how much time there is left to shutdown the connection.
+ * Returns 0 if there is no limit or shutdown has not started. */
+timediff_t Curl_conn_shutdown_timeleft(struct connectdata *conn,
+                                       struct curltime *nowp);
 
 void Curl_shutdown_clear(struct Curl_easy *data, int sockindex);
 
@@ -66,9 +71,6 @@ curl_socket_t Curl_getconnectinfo(struct Curl_easy *data,
 
 bool Curl_addr2string(struct sockaddr *sa, curl_socklen_t salen,
                       char *addr, int *port);
-
-void Curl_persistconninfo(struct Curl_easy *data, struct connectdata *conn,
-                          struct ip_quadruple *ip);
 
 /*
  * Curl_conncontrol() marks the end of a connection/stream. The 'closeit'

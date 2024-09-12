@@ -37,6 +37,9 @@ GN_1 =
 GN_ = $(GN_0)
 
 MANAGEN=$(top_srcdir)/scripts/managen
+MAXLINE=$(top_srcdir)/scripts/maxline
+
+# Maximum number of columns accepted in the ASCII version of the manpage
 INCDIR=$(top_srcdir)/include
 
 if BUILD_DOCS

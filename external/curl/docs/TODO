@@ -22,6 +22,7 @@
  1.3 struct lifreq
  1.4 alt-svc sharing
  1.5 get rid of PATH_MAX
+ 1.6 thread-safe sharing
  1.8 CURLOPT_RESOLVE for any port number
  1.9 Cache negative name resolves
  1.10 auto-detect proxy
@@ -62,9 +63,7 @@
 
  4. FTP
  4.1 HOST
- 4.2 Alter passive/active on failure and retry
  4.4 Support CURLOPT_PREQUOTE for directories listings
- 4.5 ASCII support
  4.6 GSSAPI via Windows SSPI
  4.7 STAT for LIST without data connection
  4.8 Passive transfer could try other IP addresses
@@ -147,13 +146,12 @@
  18. Command line tool
  18.1 sync
  18.2 glob posts
- 18.3 -h option
  18.4 --proxycommand
  18.5 UTF-8 filenames in Content-Disposition
  18.6 Option to make -Z merge lined based outputs on stdout
  18.7 specify which response codes that make -f/--fail return error
  18.9 Choose the name of file in braces for complex URLs
- 18.10 improve how curl works in a windows console window
+ 18.10 improve how curl works in a Windows console window
  18.11 Windows: set attribute 'archive' for completed downloads
  18.12 keep running, read instructions from pipe/socket
  18.13 Acknowledge Ratelimit headers
@@ -178,7 +176,6 @@
  19.3 Do not use GNU libtool on OpenBSD
  19.4 Package curl for Windows in a signed installer
  19.5 make configure use --cache-file more and better
- 19.6 build curl with Windows Unicode support
 
  20. Test suite
  20.1 SSL tunnel
@@ -191,9 +188,13 @@
  21. MQTT
  21.1 Support rate-limiting
  21.2 Support MQTTS
+ 21.3 Handle network blocks
 
  22. TFTP
  22.1 TFTP does not convert LF to CRLF for mode=netascii
+
+ 23. Gopher
+ 23.1 Handle network blocks
 
 ==============================================================================
 
@@ -202,7 +203,7 @@
 1.1 TFO support on Windows
 
  libcurl supports the CURLOPT_TCP_FASTOPEN option since 7.49.0 for Linux and
- Mac OS. Windows supports TCP Fast Open starting with Windows 10, version 1607
+ macOS. Windows supports TCP Fast Open starting with Windows 10, version 1607
  and we should add support for it.
 
  TCP Fast Open is supported on several platforms but not on Windows. Work on
@@ -246,6 +247,13 @@
  Currently the libssh2 SSH based code uses it, but to remove PATH_MAX from
  there we need libssh2 to properly tell us when we pass in a too small buffer
  and its current API (as of libssh2 1.2.7) does not.
+
+1.6 thread-safe sharing
+
+ Using the share interface users can share some data between easy handles but
+ several of the sharing options are documented as not safe and supported to
+ share between multiple concurrent threads. Fixing this would enable more
+ users to share data in more powerful ways.
 
 1.8 CURLOPT_RESOLVE for any port number
 
@@ -338,7 +346,7 @@
 
 1.17 Add support for IRIs
 
- IRIs (RFC 3987) allow localized, non-ascii, names in the URL. To properly
+ IRIs (RFC 3987) allow localized, non-ASCII, names in the URL. To properly
  support this, curl/libcurl would need to translate/encode the given input
  from the input string encoding into percent encoded output "over the wire".
 
@@ -458,7 +466,7 @@
  Make sure we do not ever loop because of non-blocking sockets returning
  EWOULDBLOCK or similar. Blocking cases include:
 
- - Name resolves on non-windows unless c-ares or the threaded resolver is used.
+ - Name resolves on non-Windows unless c-ares or the threaded resolver is used.
 
  - The threaded resolver may block on cleanup:
  https://github.com/curl/curl/issues/4852
@@ -473,6 +481,8 @@
  protocols SFTP, SMTP, FTP. Fixing multi_done() for this is a worthy task.
 
  - curl_multi_remove_handle for any of the above. See section 2.3.
+
+ - Calling curl_ws_send() from a callback
 
 2.2 Better support for same name resolves
 
@@ -550,24 +560,12 @@
 
  https://datatracker.ietf.org/doc/html/rfc7151
 
-4.2 Alter passive/active on failure and retry
-
- When trying to connect passively to a server which only supports active
- connections, libcurl returns CURLE_FTP_WEIRD_PASV_REPLY and closes the
- connection. There could be a way to fallback to an active connection (and
- vice versa). https://curl.se/bug/feature.cgi?id=1754793
-
 4.4 Support CURLOPT_PREQUOTE for directions listings
 
  The lack of support is mostly an oversight and requires the FTP state machine
  to get updated to get fixed.
 
  https://github.com/curl/curl/issues/8602
-
-4.5 ASCII support
-
- FTP ASCII transfers do not follow RFC 959. They do not convert the data
- accordingly.
 
 4.6 GSSAPI via Windows SSPI
 
@@ -751,7 +749,7 @@
 
 10.4 Certificate-Based Authentication
 
- LDAPS not possible with MAC and Windows with Certificate-Based Authentication
+ LDAPS not possible with macOS and Windows with Certificate-Based Authentication
 
  https://github.com/curl/curl/issues/9641
 
@@ -818,8 +816,6 @@
  By changing the order of TLS extensions provided in the TLS handshake, it is
  sometimes possible to circumvent TLS fingerprinting by servers. The TLS
  extension order is of course not the only way to fingerprint a client.
-
- See https://github.com/curl/curl/issues/8119
 
 13.5 Export session ids
 
@@ -1029,12 +1025,6 @@
  Globbing support for -d and -F, as in 'curl -d "name=foo[0-9]" URL'.
  This is easily scripted though.
 
-18.3 -h option
-
- Support "curl -h --insecure" etc to output the manpage section for the
- --insecure command line option in the terminal. Should be possible to work
- with either long or short versions of command line options.
-
 18.4 --proxycommand
 
  Allow the user to make curl run a command and use its stdio to make requests
@@ -1077,7 +1067,7 @@
 
  See https://github.com/curl/curl/issues/221
 
-18.10 improve how curl works in a windows console window
+18.10 improve how curl works in a Windows console window
 
  If you pull the scrollbar when transferring with curl in a Windows console
  window, the transfer is interrupted and can get disconnected. This can
@@ -1238,7 +1228,7 @@
 
  -J/--remote-header-name does not decode %-encoded filenames. RFC 6266 details
  how it should be done. The can of worm is basically that we have no charset
- handling in curl and ascii >=128 is a challenge for us. Not to mention that
+ handling in curl and ASCII >=128 is a challenge for us. Not to mention that
  decoding also means that we need to check for nastiness that is attempted,
  like "../" sequences and the like. Probably everything to the left of any
  embedded slashes should be cut off.
@@ -1306,13 +1296,6 @@
 
  See https://github.com/curl/curl/issues/7753
 
-19.6 build curl with Windows Unicode support
-
- The user wants an easier way to tell autotools to build curl with Windows
- Unicode support, like ./configure --enable-windows-unicode
-
- See https://github.com/curl/curl/issues/7229
-
 20. Test suite
 
 20.1 SSL tunnel
@@ -1333,7 +1316,7 @@
 
 20.4 more platforms supported
 
- Make the test suite work on more platforms. OpenBSD and Mac OS. Remove
+ Make the test suite work on more platforms. OpenBSD and macOS. Remove
  fork()s and it should become even more portable.
 
 20.6 Use the RFC 6265 test suite
@@ -1363,6 +1346,12 @@
 
 21.2 Support MQTTS
 
+21.3 Handle network blocks
+
+  Running test suite with
+  `CURL_DBG_SOCK_WBLOCK=90 ./runtests.pl -a mqtt` makes several
+  MQTT test cases fail where they should not.
+
 22. TFTP
 
 22.1 TFTP does not convert LF to CRLF for mode=netascii
@@ -1373,3 +1362,11 @@
  for them.
 
  See https://github.com/curl/curl/issues/12655
+
+23. Gopher
+
+23.1 Handle network blocks
+
+  Running test suite with
+  `CURL_DBG_SOCK_WBLOCK=90 ./runtests.pl -a 1200 to 1300` makes several
+  Gopher test cases fail where they should not.

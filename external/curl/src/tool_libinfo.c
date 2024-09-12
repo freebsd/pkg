@@ -25,8 +25,6 @@
 
 #include "strcase.h"
 
-#define ENABLE_CURLX_PRINTF
-/* use our own printf() functions */
 #include "curlx.h"
 
 #include "tool_libinfo.h"
@@ -124,6 +122,7 @@ static struct feature_name_presentp {
 
 static const char *fnames[sizeof(maybe_feature) / sizeof(maybe_feature[0])];
 const char * const *feature_names = fnames;
+size_t feature_count;
 
 /*
  * libcurl_info_init: retrieves runtime information about libcurl,
@@ -182,6 +181,7 @@ CURLcode get_libcurl_info(void)
           *p->feature_presentp = TRUE;
         break;
       }
+    ++feature_count;
   }
 
   return CURLE_OK;

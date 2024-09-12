@@ -99,9 +99,6 @@
 #include <netdb.h>
 #endif
 
-#define ENABLE_CURLX_PRINTF
-/* make the curlx header define all printf() functions to use the curlx_*
-   versions instead */
 #include "curlx.h" /* from the private lib dir */
 #include "getpart.h"
 #include "inet_pton.h"
@@ -422,11 +419,11 @@ static bool read_data_block(unsigned char *buffer, ssize_t maxlen,
 
 #if defined(USE_WINSOCK) && !defined(CURL_WINDOWS_APP)
 /*
- * WinSock select() does not support standard file descriptors,
+ * Winsock select() does not support standard file descriptors,
  * it can only check SOCKETs. The following function is an attempt
  * to re-create a select() function with support for other handle types.
  *
- * select() function with support for WINSOCK2 sockets and all
+ * select() function with support for Winsock2 sockets and all
  * other handle types supported by WaitForMultipleObjectsEx() as
  * well as disk files, anonymous and names pipes, and character input.
  *
@@ -683,7 +680,7 @@ static int select_ws(int nfds, fd_set *readfds, fd_set *writefds,
   /* loop over the handles in the input descriptor sets */
   nfd = 0; /* number of handled file descriptors */
   nth = 0; /* number of internal waiting threads */
-  nws = 0; /* number of handled WINSOCK sockets */
+  nws = 0; /* number of handled Winsock sockets */
   for(fd = 0; fd < nfds; fd++) {
     wsasock = curlx_sitosk(fd);
     wsaevents.lNetworkEvents = 0;
@@ -829,7 +826,7 @@ static int select_ws(int nfds, fd_set *readfds, fd_set *writefds,
         FD_CLR(wsasock, exceptfds);
       }
       else {
-        /* try to handle the event with the WINSOCK2 functions */
+        /* try to handle the event with the Winsock2 functions */
         wsaevents.lNetworkEvents = 0;
         error = WSAEnumNetworkEvents(wsasock, handle, &wsaevents);
         if(error != SOCKET_ERROR) {
@@ -1158,7 +1155,7 @@ static bool juggle(curl_socket_t *sockfdp,
       curl_socket_t newfd = accept(sockfd, NULL, NULL);
       if(CURL_SOCKET_BAD == newfd) {
         error = SOCKERRNO;
-        logmsg("accept(%" CURL_FORMAT_SOCKET_T ", NULL, NULL) "
+        logmsg("accept(%" FMT_SOCKET_T ", NULL, NULL) "
                "failed with error: (%d) %s", sockfd, error, sstrerror(error));
       }
       else {
@@ -1334,7 +1331,7 @@ static curl_socket_t sockdaemon(curl_socket_t sock,
   rc = listen(sock, 5);
   if(0 != rc) {
     error = SOCKERRNO;
-    logmsg("listen(%" CURL_FORMAT_SOCKET_T ", 5) failed with error: (%d) %s",
+    logmsg("listen(%" FMT_SOCKET_T ", 5) failed with error: (%d) %s",
            sock, error, sstrerror(error));
     sclose(sock);
     return CURL_SOCKET_BAD;

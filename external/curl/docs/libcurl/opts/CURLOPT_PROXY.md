@@ -41,6 +41,12 @@ defaults to using port 1080 for proxies.
 The proxy string may be prefixed with [scheme]:// to specify which kind of
 proxy is used.
 
+Using this option multiple times makes the last set string override the
+previous ones. Set it to NULL to disable its use again.
+
+The application does not have to keep the string around after setting this
+option.
+
 ## http://
 
 HTTP Proxy. Default when no scheme or proxy type is specified.
@@ -48,7 +54,7 @@ HTTP Proxy. Default when no scheme or proxy type is specified.
 ## https://
 
 HTTPS Proxy. (Added in 7.52.0 for OpenSSL and GnuTLS Since 7.87.0, it
-also works for BearSSL, mbedTLS, rustls, Schannel, Secure Transport and
+also works for BearSSL, mbedTLS, Rustls, Schannel, Secure Transport and
 wolfSSL.)
 
 This uses HTTP/1 by default. Setting CURLOPT_PROXYTYPE(3) to
