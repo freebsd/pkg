@@ -39,6 +39,7 @@
 #include <paths.h>
 #include <poll.h>
 #include <netdb.h>
+#include <time.h>
 
 #include <bsd_compat.h>
 
@@ -341,7 +342,7 @@ ssh_close(void *data)
 static int
 ssh_writev(int fd, struct iovec *iov, int iovcnt, int64_t tmout)
 {
-	struct timeval now, timeout, delta;
+	struct timespec now, timeout, delta;
 	struct pollfd pfd;
 	ssize_t wlen, total;
 	int deltams;
@@ -352,21 +353,21 @@ ssh_writev(int fd, struct iovec *iov, int iovcnt, int64_t tmout)
 	if (tmout > 0) {
 		pfd.fd = fd;
 		pfd.events = POLLOUT | POLLERR;
-		gettimeofday(&timeout, NULL);
+		clock_gettime(CLOCK_REALTIME, &timeout);
 		timeout.tv_sec += tmout;
 	}
 
 	total = 0;
 	while (iovcnt > 0) {
 		while (tmout && pfd.revents == 0) {
-			gettimeofday(&now, NULL);
-			if (!timercmp(&timeout, &now, >)) {
+			clock_gettime(CLOCK_REALTIME, &now);
+			if (!timespeccmp(&timeout, &now, >)) {
 				errno = ETIMEDOUT;
 				return (-1);
 			}
-			timersub(&timeout, &now, &delta);
+			timespecsub(&timeout, &now, &delta);
 			deltams = delta.tv_sec * 1000 +
-				delta.tv_usec / 1000;
+				delta.tv_nsec / 1000000;
 			errno = 0;
 			pfd.revents = 0;
 			while (poll(&pfd, 1, deltams) == -1) {
@@ -423,7 +424,7 @@ static int
 ssh_read(void *data, char *buf, int len)
 {
 	struct pkg_repo *repo = (struct pkg_repo *) data;
-	struct timeval now, timeout, delta;
+	struct timespec now, timeout, delta;
 	struct pollfd pfd;
 	ssize_t rlen;
 	int deltams;
@@ -431,7 +432,7 @@ ssh_read(void *data, char *buf, int len)
 	pkg_dbg(PKG_DBG_FETCH, 1, "SSH> start reading");
 
 	if (repo->fetcher->timeout > 0) {
-		gettimeofday(&timeout, NULL);
+		clock_gettime(CLOCK_REALTIME, &timeout);
 		timeout.tv_sec += repo->fetcher->timeout;
 	}
 
@@ -456,14 +457,14 @@ ssh_read(void *data, char *buf, int len)
 
 		/* only EAGAIN should get here */
 		if (repo->fetcher->timeout > 0) {
-			gettimeofday(&now, NULL);
-			if (!timercmp(&timeout, &now, >)) {
+			clock_gettime(CLOCK_REALTIME, &now);
+			if (!timespeccmp(&timeout, &now, >)) {
 				errno = ETIMEDOUT;
 				return (-1);
 			}
-			timersub(&timeout, &now, &delta);
+			timespecsub(&timeout, &now, &delta);
 			deltams = delta.tv_sec * 1000 +
-			    delta.tv_usec / 1000;
+			    delta.tv_nsec / 1000000;
 		}
 
 		errno = 0;
