@@ -194,11 +194,7 @@ int
 set_attrsat(int fd, const char *path, mode_t perm, uid_t uid, gid_t gid,
     const struct timespec *ats, const struct timespec *mts)
 {
-
-	struct timeval tv[2];
 	struct stat st;
-	int fdcwd;
-#ifdef HAVE_UTIMENSAT
 	struct timespec times[2];
 
 	times[0] = *ats;
@@ -207,39 +203,6 @@ set_attrsat(int fd, const char *path, mode_t perm, uid_t uid, gid_t gid,
 	    AT_SYMLINK_NOFOLLOW) == -1 && errno != EOPNOTSUPP){
 		pkg_fatal_errno("Fail to set time on %s", path);
 	}
-	if (errno == EOPNOTSUPP) {
-#endif
-
-	tv[0].tv_sec = ats->tv_sec;
-	tv[0].tv_usec = ats->tv_nsec / 1000;
-	tv[1].tv_sec = mts->tv_sec;
-	tv[1].tv_usec = mts->tv_nsec / 1000;
-
-	if ((fdcwd = open(".", O_DIRECTORY|O_CLOEXEC)) == -1) {
-		pkg_fatal_errno("Failed to open .%s", "");
-	}
-	fchdir(fd);
-
-	if (lutimes(RELATIVE_PATH(path), tv) == -1) {
-
-		if (errno != ENOSYS) {
-			close(fdcwd);
-			pkg_fatal_errno("Fail to set time on %s", path);
-		}
-		else {
-			/* Fallback to utimes */
-			if (utimes(RELATIVE_PATH(path), tv) == -1) {
-				close(fdcwd);
-				pkg_fatal_errno("Fail to set time(fallback) on "
-				    "%s", path);
-			}
-		}
-	}
-	fchdir(fdcwd);
-	close(fdcwd);
-#ifdef HAVE_UTIMENSAT
-	}
-#endif
 
 	if (getenv("INSTALL_AS_USER") == NULL) {
 		if (fchownat(fd, RELATIVE_PATH(path), uid, gid,
