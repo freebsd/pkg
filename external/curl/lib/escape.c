@@ -60,14 +60,14 @@ char *curl_easy_escape(struct Curl_easy *data, const char *string,
   struct dynbuf d;
   (void)data;
 
-  if(inlength < 0)
+  if(!string || (inlength < 0))
     return NULL;
-
-  Curl_dyn_init(&d, CURL_MAX_INPUT_LENGTH * 3);
 
   length = (inlength?(size_t)inlength:strlen(string));
   if(!length)
     return strdup("");
+
+  Curl_dyn_init(&d, length * 3 + 1);
 
   while(length--) {
     /* treat the characters unsigned */
@@ -181,7 +181,7 @@ char *curl_easy_unescape(struct Curl_easy *data, const char *string,
 {
   char *str = NULL;
   (void)data;
-  if(length >= 0) {
+  if(string && (length >= 0)) {
     size_t inputlen = (size_t)length;
     size_t outputlen;
     CURLcode res = Curl_urldecode(string, inputlen, &str, &outputlen,

@@ -26,8 +26,6 @@
 
 #include "strcase.h"
 
-#define ENABLE_CURLX_PRINTF
-/* use our own printf() functions */
 #include "curlx.h"
 
 #include "tool_cfgable.h"
@@ -182,7 +180,6 @@ fail:
  */
 CURLcode get_url_file_name(char **filename, const char *url)
 {
-  const char *pc, *pc2;
   CURLU *uh = curl_url();
   char *path = NULL;
   CURLUcode uerr;
@@ -195,20 +192,29 @@ CURLcode get_url_file_name(char **filename, const char *url)
   uerr = curl_url_set(uh, CURLUPART_URL, url, CURLU_GUESS_SCHEME);
   if(!uerr) {
     uerr = curl_url_get(uh, CURLUPART_PATH, &path, 0);
+    curl_url_cleanup(uh);
+    uh = NULL;
     if(!uerr) {
-      curl_url_cleanup(uh);
-
-      pc = strrchr(path, '/');
-      pc2 = strrchr(pc ? pc + 1 : path, '\\');
-      if(pc2)
-        pc = pc2;
+      int i;
+      char *pc = NULL, *pc2 = NULL;
+      for(i = 0; i < 2; i++) {
+        pc = strrchr(path, '/');
+        pc2 = strrchr(pc ? pc + 1 : path, '\\');
+        if(pc2)
+          pc = pc2;
+        if(pc && !pc[1] && !i) {
+          /* if the path ends with slash, try removing the trailing one
+             and get the last directory part */
+          *pc = 0;
+        }
+      }
 
       if(pc)
         /* duplicate the string beyond the slash */
         pc++;
       else
         /* no slash => empty string */
-        pc = "";
+        pc = (char *)"";
 
       *filename = strdup(pc);
       curl_free(path);

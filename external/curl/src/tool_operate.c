@@ -49,8 +49,17 @@
 #  include <netinet/in.h>
 #endif
 
-#define ENABLE_CURLX_PRINTF
-/* use our own printf() functions */
+#ifdef HAVE_UV_H
+/* Hack for Unity mode */
+#ifdef HEADER_CURL_MEMDEBUG_H
+#undef HEADER_CURL_MEMDEBUG_H
+#undef freeaddrinfo
+#undef getaddrinfo
+#endif
+/* this is for libuv-enabled debug builds only */
+#include <uv.h>
+#endif
+
 #include "curlx.h"
 
 #include "tool_binmode.h"
@@ -93,6 +102,10 @@
 #endif
 
 #include "memdebug.h" /* keep this as LAST include */
+
+#ifdef CURL_CA_EMBED
+extern const unsigned char curl_ca_embed[];
+#endif
 
 #ifndef O_BINARY
 /* since O_BINARY as used in bitmasks, setting it to zero makes it usable in
@@ -154,10 +167,10 @@ static bool is_pkcs11_uri(const char *string)
 #ifdef IP_TOS
 static int get_address_family(curl_socket_t sockfd)
 {
-  struct sockaddr_storage addr;
-  socklen_t addrlen = sizeof(addr);
+  struct sockaddr addr;
+  curl_socklen_t addrlen = sizeof(addr);
   if(getsockname(sockfd, (struct sockaddr *)&addr, &addrlen) == 0)
-    return addr.ss_family;
+    return addr.sa_family;
   return AF_UNSPEC;
 }
 #endif
@@ -181,12 +194,12 @@ static int sockopt_callback(void *clientp, curl_socket_t curlfd,
       result = setsockopt(curlfd, SOL_IP, IP_TOS, (void *)&tos, sizeof(tos));
 #endif
       break;
+#if defined(IPV6_TCLASS) && defined(AF_INET6)
     case AF_INET6:
-#ifdef IPV6_TCLASS
       result = setsockopt(curlfd, IPPROTO_IPV6, IPV6_TCLASS,
                           (void *)&tos, sizeof(tos));
-#endif
       break;
+#endif
     }
     if(result < 0) {
       int error = errno;
@@ -455,6 +468,9 @@ static CURLcode post_per_transfer(struct GlobalConfig *global,
 
   if(per->infdopen)
     close(per->infd);
+
+  if(per->skip)
+    goto skip;
 
 #ifdef __VMS
   if(is_vms_shell()) {
@@ -727,7 +743,7 @@ noretry:
     curl_easy_getinfo(curl, CURLINFO_FILETIME_T, &filetime);
     setfiletime(filetime, outs->filename, global);
   }
-
+skip:
   /* Write the --write-out data before cleanup but after result is final */
   if(config->writeout)
     ourWriteOut(config, per, result);
@@ -824,14 +840,14 @@ static CURLcode single_transfer(struct GlobalConfig *global,
         httpgetfields = state->httpgetfields = config->postfields;
         config->postfields = NULL;
         if(SetHTTPrequest(config,
-                          (config->no_body?HTTPREQ_HEAD:HTTPREQ_GET),
+                          (config->no_body?TOOL_HTTPREQ_HEAD:TOOL_HTTPREQ_GET),
                           &config->httpreq)) {
           result = CURLE_FAILED_INIT;
         }
       }
     }
     else {
-      if(SetHTTPrequest(config, HTTPREQ_SIMPLEPOST, &config->httpreq))
+      if(SetHTTPrequest(config, TOOL_HTTPREQ_SIMPLEPOST, &config->httpreq))
         result = CURLE_FAILED_INIT;
     }
     if(result) {
@@ -933,6 +949,7 @@ static CURLcode single_transfer(struct GlobalConfig *global,
         urlnum = state->urlnum;
 
       if(state->up < state->infilenum) {
+        char ssl_ver[80] = "no ssl";
         struct per_transfer *per = NULL;
         struct OutStruct *outs;
         struct OutStruct *heads;
@@ -1034,7 +1051,7 @@ static CURLcode single_transfer(struct GlobalConfig *global,
             result = CURLE_OUT_OF_MEMORY;
             break;
           }
-          if(SetHTTPrequest(config, HTTPREQ_PUT, &config->httpreq)) {
+          if(SetHTTPrequest(config, TOOL_HTTPREQ_PUT, &config->httpreq)) {
             Curl_safefree(per->uploadfile);
             curl_easy_cleanup(curl);
             result = CURLE_FAILED_INIT;
@@ -1053,7 +1070,12 @@ static CURLcode single_transfer(struct GlobalConfig *global,
         /* Single header file for all URLs */
         if(config->headerfile) {
           /* open file for output: */
-          if(strcmp(config->headerfile, "-")) {
+          if(!strcmp(config->headerfile, "%")) {
+            heads->stream = stderr;
+            /* use binary mode for protocol header output */
+            set_binmode(heads->stream);
+          }
+          else if(strcmp(config->headerfile, "-")) {
             FILE *newfile;
 
             /*
@@ -1143,9 +1165,13 @@ static CURLcode single_transfer(struct GlobalConfig *global,
               break;
             }
             if(!*per->outfile && !config->content_disposition) {
-              errorf(global, "Remote filename has no length");
-              result = CURLE_WRITE_ERROR;
-              break;
+              free(per->outfile);
+              per->outfile = strdup("curl_response");
+              if(!per->outfile) {
+                result = CURLE_OUT_OF_MEMORY;
+                break;
+              }
+              warnf(global, "No remote file name, uses \"%s\"", per->outfile);
             }
           }
           else if(state->urls) {
@@ -1184,6 +1210,15 @@ static CURLcode single_transfer(struct GlobalConfig *global,
               break;
           }
 
+          if(per->outfile && config->skip_existing) {
+            struct_stat fileinfo;
+            if(!stat(per->outfile, &fileinfo)) {
+              /* file is present */
+              notef(global, "skips transfer, \"%s\" exists locally",
+                    per->outfile);
+              per->skip = TRUE;
+            }
+          }
           if((urlnode->flags & GETOUT_USEREMOTE)
              && config->content_disposition) {
             /* Our header callback MIGHT set the filename */
@@ -1486,7 +1521,7 @@ static CURLcode single_transfer(struct GlobalConfig *global,
         my_setopt(curl, CURLOPT_TIMEOUT_MS, config->timeout_ms);
 
         switch(config->httpreq) {
-        case HTTPREQ_SIMPLEPOST:
+        case TOOL_HTTPREQ_SIMPLEPOST:
           if(config->resume_from) {
             errorf(global, "cannot mix --continue-at with --data");
             result = CURLE_FAILED_INIT;
@@ -1498,7 +1533,7 @@ static CURLcode single_transfer(struct GlobalConfig *global,
                       (curl_off_t)curlx_dyn_len(&config->postdata));
           }
           break;
-        case HTTPREQ_MIMEPOST:
+        case TOOL_HTTPREQ_MIMEPOST:
           /* free previous remainders */
           curl_mime_free(config->mimepost);
           config->mimepost = NULL;
@@ -1624,6 +1659,14 @@ static CURLcode single_transfer(struct GlobalConfig *global,
             my_setopt(curl, CURLOPT_SSH_COMPRESSION, 1L);
         }
 
+        {
+          /* get current SSL backend, chop off multissl */
+          const char *v = curl_version_info(CURLVERSION_NOW)->ssl_version;
+          if(v)
+            msnprintf(ssl_ver, sizeof(ssl_ver),
+                      "%.*s", (int) strcspn(v, " "), v);
+        }
+
         if(config->cacert)
           my_setopt_str(curl, CURLOPT_CAINFO, config->cacert);
         if(config->proxy_cacert)
@@ -1632,9 +1675,10 @@ static CURLcode single_transfer(struct GlobalConfig *global,
         if(config->capath) {
           result = res_setopt_str(curl, CURLOPT_CAPATH, config->capath);
           if(result == CURLE_NOT_BUILT_IN) {
-            warnf(global, "ignoring %s, not supported by libcurl",
-                  capath_from_env?
-                  "SSL_CERT_DIR environment variable":"--capath");
+            warnf(global, "ignoring %s, not supported by libcurl with %s",
+                  capath_from_env ?
+                  "SSL_CERT_DIR environment variable" : "--capath",
+                  ssl_ver);
           }
           else if(result)
             break;
@@ -1649,13 +1693,46 @@ static CURLcode single_transfer(struct GlobalConfig *global,
           if((result == CURLE_NOT_BUILT_IN) ||
              (result == CURLE_UNKNOWN_OPTION)) {
             if(config->proxy_capath) {
-              warnf(global,
-                    "ignoring --proxy-capath, not supported by libcurl");
+              warnf(global, "ignoring %s, not supported by libcurl with %s",
+                    config->proxy_capath ?
+                    "--proxy-capath" : "--capath",
+                    ssl_ver);
             }
           }
           else if(result)
             break;
         }
+
+#ifdef CURL_CA_EMBED
+        if(!config->cacert && !config->capath) {
+          struct curl_blob blob;
+          blob.data = (void *)curl_ca_embed;
+          blob.len = strlen((const char *)curl_ca_embed);
+          blob.flags = CURL_BLOB_NOCOPY;
+          notef(config->global,
+                "Using embedded CA bundle (%zu bytes)",
+                blob.len);
+          result = curl_easy_setopt(curl, CURLOPT_CAINFO_BLOB, &blob);
+          if(result == CURLE_NOT_BUILT_IN) {
+            warnf(global, "ignoring %s, not supported by libcurl with %s",
+                  "embedded CA bundle", ssl_ver);
+          }
+        }
+        if(!config->proxy_cacert && !config->proxy_capath) {
+          struct curl_blob blob;
+          blob.data = (void *)curl_ca_embed;
+          blob.len = strlen((const char *)curl_ca_embed);
+          blob.flags = CURL_BLOB_NOCOPY;
+          notef(config->global,
+                "Using embedded CA bundle, for proxies (%zu bytes)",
+                blob.len);
+          result = curl_easy_setopt(curl, CURLOPT_PROXY_CAINFO_BLOB, &blob);
+          if(result == CURLE_NOT_BUILT_IN) {
+            warnf(global, "ignoring %s, not supported by libcurl with %s",
+                  "embedded CA bundle", ssl_ver);
+          }
+        }
+#endif
 
         if(config->crlfile)
           my_setopt_str(curl, CURLOPT_CRLFILE, config->crlfile);
@@ -1664,8 +1741,20 @@ static CURLcode single_transfer(struct GlobalConfig *global,
         else if(config->crlfile) /* CURLOPT_PROXY_CRLFILE default is crlfile */
           my_setopt_str(curl, CURLOPT_PROXY_CRLFILE, config->crlfile);
 
-        if(config->pinnedpubkey)
-          my_setopt_str(curl, CURLOPT_PINNEDPUBLICKEY, config->pinnedpubkey);
+        if(config->pinnedpubkey) {
+          result = res_setopt_str(curl, CURLOPT_PINNEDPUBLICKEY,
+                                  config->pinnedpubkey);
+          if(result == CURLE_NOT_BUILT_IN)
+            warnf(global, "ignoring %s, not supported by libcurl with %s",
+                  "--pinnedpubkey", ssl_ver);
+        }
+        if(config->proxy_pinnedpubkey) {
+          result = res_setopt_str(curl, CURLOPT_PROXY_PINNEDPUBLICKEY,
+                                  config->proxy_pinnedpubkey);
+          if(result == CURLE_NOT_BUILT_IN)
+            warnf(global, "ignoring %s, not supported by libcurl with %s",
+                  "--proxy-pinnedpubkey", ssl_ver);
+        }
 
         if(config->ssl_ec_curves)
           my_setopt_str(curl, CURLOPT_SSL_EC_CURVES, config->ssl_ec_curves);
@@ -1982,19 +2071,34 @@ static CURLcode single_transfer(struct GlobalConfig *global,
         if(config->doh_url)
           my_setopt_str(curl, CURLOPT_DOH_URL, config->doh_url);
 
-        if(config->cipher_list)
-          my_setopt_str(curl, CURLOPT_SSL_CIPHER_LIST, config->cipher_list);
-
-        if(config->proxy_cipher_list)
-          my_setopt_str(curl, CURLOPT_PROXY_SSL_CIPHER_LIST,
-                        config->proxy_cipher_list);
-
-        if(config->cipher13_list)
-          my_setopt_str(curl, CURLOPT_TLS13_CIPHERS, config->cipher13_list);
-
-        if(config->proxy_cipher13_list)
-          my_setopt_str(curl, CURLOPT_PROXY_TLS13_CIPHERS,
-                        config->proxy_cipher13_list);
+        if(config->cipher_list) {
+          result = res_setopt_str(curl, CURLOPT_SSL_CIPHER_LIST,
+                                  config->cipher_list);
+          if(result == CURLE_NOT_BUILT_IN)
+            warnf(global, "ignoring %s, not supported by libcurl with %s",
+                  "--ciphers", ssl_ver);
+        }
+        if(config->proxy_cipher_list) {
+          result = res_setopt_str(curl, CURLOPT_PROXY_SSL_CIPHER_LIST,
+                                  config->proxy_cipher_list);
+          if(result == CURLE_NOT_BUILT_IN)
+            warnf(global, "ignoring %s, not supported by libcurl with %s",
+                  "--proxy-ciphers", ssl_ver);
+        }
+        if(config->cipher13_list) {
+          result = res_setopt_str(curl, CURLOPT_TLS13_CIPHERS,
+                                  config->cipher13_list);
+          if(result == CURLE_NOT_BUILT_IN)
+            warnf(global, "ignoring %s, not supported by libcurl with %s",
+                  "--tls13-ciphers", ssl_ver);
+        }
+        if(config->proxy_cipher13_list) {
+          result = res_setopt_str(curl, CURLOPT_PROXY_TLS13_CIPHERS,
+                                  config->proxy_cipher13_list);
+          if(result == CURLE_NOT_BUILT_IN)
+            warnf(global, "ignoring %s, not supported by libcurl with %s",
+                  "--proxy-tls13-ciphers", ssl_ver);
+        }
 
         /* new in libcurl 7.9.2: */
         if(config->disable_epsv)
@@ -2389,6 +2493,10 @@ static CURLcode add_parallel_transfers(struct GlobalConfig *global,
     (void)curl_easy_setopt(per->curl, CURLOPT_XFERINFOFUNCTION, xferinfo_cb);
     (void)curl_easy_setopt(per->curl, CURLOPT_XFERINFODATA, per);
     (void)curl_easy_setopt(per->curl, CURLOPT_NOPROGRESS, 0L);
+#ifdef DEBUGBUILD
+    if(getenv("CURL_FORBID_REUSE"))
+      (void)curl_easy_setopt(per->curl, CURLOPT_FORBID_REUSE, 1L);
+#endif
 
     mcode = curl_multi_add_handle(multi, per->curl);
     if(mcode) {
@@ -2413,136 +2521,386 @@ static CURLcode add_parallel_transfers(struct GlobalConfig *global,
   return CURLE_OK;
 }
 
-static CURLcode parallel_transfers(struct GlobalConfig *global,
-                                   CURLSH *share)
-{
+struct parastate {
+  struct GlobalConfig *global;
   CURLM *multi;
-  CURLMcode mcode = CURLM_OK;
-  CURLcode result = CURLE_OK;
-  int still_running = 1;
-  struct timeval start = tvnow();
+  CURLSH *share;
+  CURLMcode mcode;
+  CURLcode result;
+  int still_running;
+  struct timeval start;
   bool more_transfers;
   bool added_transfers;
   /* wrapitup is set TRUE after a critical error occurs to end all transfers */
-  bool wrapitup = FALSE;
+  bool wrapitup;
   /* wrapitup_processed is set TRUE after the per transfer abort flag is set */
-  bool wrapitup_processed = FALSE;
-  time_t tick = time(NULL);
+  bool wrapitup_processed;
+  time_t tick;
+};
 
-  multi = curl_multi_init();
-  if(!multi)
-    return CURLE_OUT_OF_MEMORY;
+#if defined(DEBUGBUILD) && defined(USE_LIBUV)
 
-  result = add_parallel_transfers(global, multi, share,
-                                  &more_transfers, &added_transfers);
-  if(result) {
-    curl_multi_cleanup(multi);
-    return result;
+#define DEBUG_UV    0
+
+/* object to pass to the callbacks */
+struct datauv {
+  uv_timer_t timeout;
+  uv_loop_t *loop;
+  struct parastate *s;
+};
+
+struct contextuv {
+  uv_poll_t poll_handle;
+  curl_socket_t sockfd;
+  struct datauv *uv;
+};
+
+static CURLcode check_finished(struct parastate *s);
+
+static void check_multi_info(struct datauv *uv)
+{
+  CURLcode result;
+
+  result = check_finished(uv->s);
+  if(result && !uv->s->result)
+    uv->s->result = result;
+
+  if(uv->s->more_transfers) {
+    result = add_parallel_transfers(uv->s->global, uv->s->multi,
+                                    uv->s->share,
+                                    &uv->s->more_transfers,
+                                    &uv->s->added_transfers);
+    if(result && !uv->s->result)
+      uv->s->result = result;
+    if(result)
+      uv_stop(uv->loop);
+  }
+}
+
+/* callback from libuv on socket activity */
+static void on_uv_socket(uv_poll_t *req, int status, int events)
+{
+  int flags = 0;
+  struct contextuv *c = (struct contextuv *) req->data;
+  (void)status;
+  if(events & UV_READABLE)
+    flags |= CURL_CSELECT_IN;
+  if(events & UV_WRITABLE)
+    flags |= CURL_CSELECT_OUT;
+
+  curl_multi_socket_action(c->uv->s->multi, c->sockfd, flags,
+                           &c->uv->s->still_running);
+}
+
+/* callback from libuv when timeout expires */
+static void on_uv_timeout(uv_timer_t *req)
+{
+  struct datauv *uv = (struct datauv *) req->data;
+#if DEBUG_UV
+  fprintf(tool_stderr, "parallel_event: on_uv_timeout\n");
+#endif
+  if(uv && uv->s) {
+    curl_multi_socket_action(uv->s->multi, CURL_SOCKET_TIMEOUT, 0,
+                             &uv->s->still_running);
+    check_multi_info(uv);
+  }
+}
+
+/* callback from libcurl to update the timeout expiry */
+static int cb_timeout(CURLM *multi, long timeout_ms,
+                      struct datauv *uv)
+{
+  (void)multi;
+#if DEBUG_UV
+  fprintf(tool_stderr, "parallel_event: cb_timeout=%ld\n", timeout_ms);
+#endif
+  if(timeout_ms < 0)
+    uv_timer_stop(&uv->timeout);
+  else {
+    if(timeout_ms == 0)
+      timeout_ms = 1; /* 0 means call curl_multi_socket_action asap but NOT
+                         within the callback itself */
+    uv_timer_start(&uv->timeout, on_uv_timeout, timeout_ms,
+                   0); /* do not repeat */
+  }
+  return 0;
+}
+
+static struct contextuv *create_context(curl_socket_t sockfd,
+                                        struct datauv *uv)
+{
+  struct contextuv *c;
+
+  c = (struct contextuv *) malloc(sizeof(*c));
+
+  c->sockfd = sockfd;
+  c->uv = uv;
+
+  uv_poll_init_socket(uv->loop, &c->poll_handle, sockfd);
+  c->poll_handle.data = c;
+
+  return c;
+}
+
+static void close_cb(uv_handle_t *handle)
+{
+  struct contextuv *c = (struct contextuv *) handle->data;
+  free(c);
+}
+
+static void destroy_context(struct contextuv *c)
+{
+  uv_close((uv_handle_t *) &c->poll_handle, close_cb);
+}
+
+/* callback from libcurl to update socket activity to wait for */
+static int cb_socket(CURL *easy, curl_socket_t s, int action,
+                     struct datauv *uv,
+                     void *socketp)
+{
+  struct contextuv *c;
+  int events = 0;
+  (void)easy;
+
+  switch(action) {
+  case CURL_POLL_IN:
+  case CURL_POLL_OUT:
+  case CURL_POLL_INOUT:
+    c = socketp ?
+      (struct contextuv *) socketp : create_context(s, uv);
+
+    curl_multi_assign(uv->s->multi, s, c);
+
+    if(action != CURL_POLL_IN)
+      events |= UV_WRITABLE;
+    if(action != CURL_POLL_OUT)
+      events |= UV_READABLE;
+
+    uv_poll_start(&c->poll_handle, events, on_uv_socket);
+    break;
+  case CURL_POLL_REMOVE:
+    if(socketp) {
+      c = (struct contextuv *)socketp;
+      uv_poll_stop(&c->poll_handle);
+      destroy_context(c);
+      curl_multi_assign(uv->s->multi, s, NULL);
+      /* check if we can do more now */
+      check_multi_info(uv);
+    }
+    break;
+  default:
+    abort();
   }
 
-  while(!mcode && (still_running || more_transfers)) {
-    /* If stopping prematurely (eg due to a --fail-early condition) then signal
-       that any transfers in the multi should abort (via progress callback). */
-    if(wrapitup) {
-      if(!still_running)
-        break;
-      if(!wrapitup_processed) {
+  return 0;
+}
+
+static CURLcode parallel_event(struct parastate *s)
+{
+  CURLcode result = CURLE_OK;
+  struct datauv uv = { 0 };
+
+  s->result = CURLE_OK;
+  uv.s = s;
+  uv.loop = uv_default_loop();
+  uv_timer_init(uv.loop, &uv.timeout);
+  uv.timeout.data = &uv;
+
+  /* setup event callbacks */
+  curl_multi_setopt(s->multi, CURLMOPT_SOCKETFUNCTION, cb_socket);
+  curl_multi_setopt(s->multi, CURLMOPT_SOCKETDATA, &uv);
+  curl_multi_setopt(s->multi, CURLMOPT_TIMERFUNCTION, cb_timeout);
+  curl_multi_setopt(s->multi, CURLMOPT_TIMERDATA, &uv);
+
+  /* kickstart the thing */
+  curl_multi_socket_action(s->multi, CURL_SOCKET_TIMEOUT, 0,
+                           &s->still_running);
+
+  while(!s->mcode && (s->still_running || s->more_transfers)) {
+#if DEBUG_UV
+    fprintf(tool_stderr, "parallel_event: uv_run(), mcode=%d, %d running, "
+            "%d more\n", s->mcode, uv.s->still_running, s->more_transfers);
+#endif
+    uv_run(uv.loop, UV_RUN_DEFAULT);
+#if DEBUG_UV
+    fprintf(tool_stderr, "parallel_event: uv_run() returned\n");
+#endif
+
+    result = check_finished(s);
+    if(result && !s->result)
+      s->result = result;
+
+    /* early exit called */
+    if(s->wrapitup) {
+      if(s->still_running && !s->wrapitup_processed) {
         struct per_transfer *per;
         for(per = transfers; per; per = per->next) {
           if(per->added)
             per->abort = TRUE;
         }
-        wrapitup_processed = TRUE;
+        s->wrapitup_processed = TRUE;
       }
+      break;
     }
 
-    mcode = curl_multi_poll(multi, NULL, 0, 1000, NULL);
-    if(!mcode)
-      mcode = curl_multi_perform(multi, &still_running);
-
-    progress_meter(global, &start, FALSE);
-
-    if(!mcode) {
-      int rc;
-      CURLMsg *msg;
-      bool checkmore = FALSE;
-      do {
-        msg = curl_multi_info_read(multi, &rc);
-        if(msg) {
-          bool retry;
-          long delay;
-          struct per_transfer *ended;
-          CURL *easy = msg->easy_handle;
-          CURLcode tres = msg->data.result;
-          curl_easy_getinfo(easy, CURLINFO_PRIVATE, (void *)&ended);
-          curl_multi_remove_handle(multi, easy);
-
-          if(ended->abort && (tres == CURLE_ABORTED_BY_CALLBACK) &&
-             ended->errorbuffer) {
-            msnprintf(ended->errorbuffer, CURL_ERROR_SIZE,
-                      "Transfer aborted due to critical error "
-                      "in another transfer");
-          }
-          tres = post_per_transfer(global, ended, tres, &retry, &delay);
-          progress_finalize(ended); /* before it goes away */
-          all_added--; /* one fewer added */
-          checkmore = TRUE;
-          if(retry) {
-            ended->added = FALSE; /* add it again */
-            /* we delay retries in full integer seconds only */
-            ended->startat = delay ? time(NULL) + delay/1000 : 0;
-          }
-          else {
-            /* result receives this transfer's error unless the transfer was
-               marked for abort due to a critical error in another transfer */
-            if(tres && (!ended->abort || !result))
-              result = tres;
-            if(is_fatal_error(result) || (result && global->fail_early))
-              wrapitup = TRUE;
-            (void)del_per_transfer(ended);
-          }
-        }
-      } while(msg);
-      if(wrapitup) {
-        if(still_running)
-          continue;
-        else
-          break;
-      }
-      if(!checkmore) {
-        time_t tock = time(NULL);
-        if(tick != tock) {
-          checkmore = TRUE;
-          tick = tock;
-        }
-      }
-      if(checkmore) {
-        /* one or more transfers completed, add more! */
-        CURLcode tres = add_parallel_transfers(global, multi, share,
-                                               &more_transfers,
-                                               &added_transfers);
-        if(tres)
-          result = tres;
-        if(added_transfers)
-          /* we added new ones, make sure the loop does not exit yet */
-          still_running = 1;
-      }
-      if(is_fatal_error(result) || (result && global->fail_early))
-        wrapitup = TRUE;
+    if(s->more_transfers) {
+      result = add_parallel_transfers(s->global, s->multi, s->share,
+                                      &s->more_transfers, &s->added_transfers);
+      if(result && !s->result)
+        s->result = result;
     }
   }
 
-  (void)progress_meter(global, &start, TRUE);
+#if DEBUG_UV
+  fprintf(tool_stderr, "DONE parallel_event -> %d, mcode=%d, %d running, "
+          "%d more\n",
+          s->result, s->mcode, uv.s->still_running, s->more_transfers);
+#endif
+  return s->result;
+}
+
+#endif
+
+static CURLcode check_finished(struct parastate *s)
+{
+  CURLcode result = CURLE_OK;
+  int rc;
+  CURLMsg *msg;
+  bool checkmore = FALSE;
+  struct GlobalConfig *global = s->global;
+  progress_meter(global, &s->start, FALSE);
+  do {
+    msg = curl_multi_info_read(s->multi, &rc);
+    if(msg) {
+      bool retry;
+      long delay;
+      struct per_transfer *ended;
+      CURL *easy = msg->easy_handle;
+      CURLcode tres = msg->data.result;
+      curl_easy_getinfo(easy, CURLINFO_PRIVATE, (void *)&ended);
+      curl_multi_remove_handle(s->multi, easy);
+
+      if(ended->abort && (tres == CURLE_ABORTED_BY_CALLBACK) &&
+         ended->errorbuffer) {
+        msnprintf(ended->errorbuffer, CURL_ERROR_SIZE,
+                  "Transfer aborted due to critical error "
+                  "in another transfer");
+      }
+      tres = post_per_transfer(global, ended, tres, &retry, &delay);
+      progress_finalize(ended); /* before it goes away */
+      all_added--; /* one fewer added */
+      checkmore = TRUE;
+      if(retry) {
+        ended->added = FALSE; /* add it again */
+        /* we delay retries in full integer seconds only */
+        ended->startat = delay ? time(NULL) + delay/1000 : 0;
+      }
+      else {
+        /* result receives this transfer's error unless the transfer was
+           marked for abort due to a critical error in another transfer */
+        if(tres && (!ended->abort || !result))
+          result = tres;
+        if(is_fatal_error(result) || (result && global->fail_early))
+          s->wrapitup = TRUE;
+        (void)del_per_transfer(ended);
+      }
+    }
+  } while(msg);
+  if(!s->wrapitup) {
+    if(!checkmore) {
+      time_t tock = time(NULL);
+      if(s->tick != tock) {
+        checkmore = TRUE;
+        s->tick = tock;
+      }
+    }
+    if(checkmore) {
+      /* one or more transfers completed, add more! */
+      CURLcode tres = add_parallel_transfers(global, s->multi, s->share,
+                                             &s->more_transfers,
+                                             &s->added_transfers);
+      if(tres)
+        result = tres;
+      if(s->added_transfers)
+        /* we added new ones, make sure the loop does not exit yet */
+        s->still_running = 1;
+    }
+    if(is_fatal_error(result) || (result && global->fail_early))
+      s->wrapitup = TRUE;
+  }
+  return result;
+}
+
+static CURLcode parallel_transfers(struct GlobalConfig *global,
+                                   CURLSH *share)
+{
+  CURLcode result;
+  struct parastate p;
+  struct parastate *s = &p;
+  s->share = share;
+  s->mcode = CURLM_OK;
+  s->result = CURLE_OK;
+  s->still_running = 1;
+  s->start = tvnow();
+  s->wrapitup = FALSE;
+  s->wrapitup_processed = FALSE;
+  s->tick = time(NULL);
+  s->global = global;
+  s->multi = curl_multi_init();
+  if(!s->multi)
+    return CURLE_OUT_OF_MEMORY;
+
+  result = add_parallel_transfers(global, s->multi, s->share,
+                                  &s->more_transfers, &s->added_transfers);
+  if(result) {
+    curl_multi_cleanup(s->multi);
+    return result;
+  }
+
+#ifdef DEBUGBUILD
+  if(global->test_event_based)
+#ifdef USE_LIBUV
+    result = parallel_event(s);
+#else
+    errorf(global, "Testing --parallel event-based requires libuv");
+#endif
+  else
+#endif
+  while(!s->mcode && (s->still_running || s->more_transfers)) {
+    /* If stopping prematurely (eg due to a --fail-early condition) then signal
+       that any transfers in the multi should abort (via progress callback). */
+    if(s->wrapitup) {
+      if(!s->still_running)
+        break;
+      if(!s->wrapitup_processed) {
+        struct per_transfer *per;
+        for(per = transfers; per; per = per->next) {
+          if(per->added)
+            per->abort = TRUE;
+        }
+        s->wrapitup_processed = TRUE;
+      }
+    }
+
+    s->mcode = curl_multi_poll(s->multi, NULL, 0, 1000, NULL);
+    if(!s->mcode)
+      s->mcode = curl_multi_perform(s->multi, &s->still_running);
+
+    if(!s->mcode)
+      result = check_finished(s);
+  }
+
+  (void)progress_meter(global, &s->start, TRUE);
 
   /* Make sure to return some kind of error if there was a multi problem */
-  if(mcode) {
-    result = (mcode == CURLM_OUT_OF_MEMORY) ? CURLE_OUT_OF_MEMORY :
+  if(s->mcode) {
+    result = (s->mcode == CURLM_OUT_OF_MEMORY) ? CURLE_OUT_OF_MEMORY :
       /* The other multi errors should never happen, so return
          something suitably generic */
       CURLE_BAD_FUNCTION_ARGUMENT;
   }
 
-  curl_multi_cleanup(multi);
+  curl_multi_cleanup(s->multi);
 
   return result;
 }
@@ -2567,25 +2925,29 @@ static CURLcode serial_transfers(struct GlobalConfig *global,
     long delay_ms;
     bool bailout = FALSE;
     struct timeval start;
-    result = pre_transfer(global, per);
-    if(result)
-      break;
 
-    if(global->libcurl) {
-      result = easysrc_perform();
+    start = tvnow();
+    if(!per->skip) {
+      result = pre_transfer(global, per);
       if(result)
         break;
-    }
-    start = tvnow();
-#ifdef DEBUGBUILD
-    if(getenv("CURL_FORBID_REUSE"))
-      (void)curl_easy_setopt(per->curl, CURLOPT_FORBID_REUSE, 1L);
 
-    if(global->test_event_based)
-      result = curl_easy_perform_ev(per->curl);
-    else
+      if(global->libcurl) {
+        result = easysrc_perform();
+        if(result)
+          break;
+      }
+
+#ifdef DEBUGBUILD
+      if(getenv("CURL_FORBID_REUSE"))
+        (void)curl_easy_setopt(per->curl, CURLOPT_FORBID_REUSE, 1L);
+
+      if(global->test_event_based)
+        result = curl_easy_perform_ev(per->curl);
+      else
 #endif
-      result = curl_easy_perform(per->curl);
+        result = curl_easy_perform(per->curl);
+    }
 
     returncode = post_per_transfer(global, per, result, &retry, &delay_ms);
     if(retry) {
@@ -2648,10 +3010,10 @@ static CURLcode transfer_per_config(struct GlobalConfig *global,
     return CURLE_FAILED_INIT;
   }
 
-  /* On WIN32 we cannot set the path to curl-ca-bundle.crt at compile time. We
-   * look for the file in two ways:
+  /* On Windows we cannot set the path to curl-ca-bundle.crt at compile time.
+   * We look for the file in two ways:
    * 1: look at the environment variable CURL_CA_BUNDLE for a path
-   * 2: if #1 is not found, use the windows API function SearchPath()
+   * 2: if #1 is not found, use the Windows API function SearchPath()
    *    to find it along the app's path (includes app's dir and CWD)
    *
    * We support the environment variable thing for non-Windows platforms
@@ -2842,6 +3204,12 @@ CURLcode operate(struct GlobalConfig *global, int argc, argv_item_t argv[])
       /* Check if we were asked to list the SSL engines */
       else if(res == PARAM_ENGINES_REQUESTED)
         tool_list_engines();
+      /* Check if we were asked to dump the embedded CA bundle */
+      else if(res == PARAM_CA_EMBED_REQUESTED) {
+#ifdef CURL_CA_EMBED
+        printf("%s", curl_ca_embed);
+#endif
+      }
       else if(res == PARAM_LIBCURL_UNSUPPORTED_PROTOCOL)
         result = CURLE_UNSUPPORTED_PROTOCOL;
       else if(res == PARAM_READ_ERROR)

@@ -580,8 +580,8 @@ dnl hosts have it, but AIX 4.3 is one known exception.
 AC_DEFUN([TYPE_SOCKADDR_STORAGE],
 [
    AC_CHECK_TYPE([struct sockaddr_storage],
-        AC_DEFINE(HAVE_STRUCT_SOCKADDR_STORAGE, 1,
-                  [if struct sockaddr_storage is defined]), ,
+     AC_DEFINE(HAVE_STRUCT_SOCKADDR_STORAGE, 1,
+       [if struct sockaddr_storage is defined]), ,
    [
 #undef inline
 #ifdef _WIN32
@@ -645,9 +645,9 @@ $curl_includes_bsdsocket
   ])
   #
   if test "$curl_cv_recv" = "yes"; then
-      AC_DEFINE_UNQUOTED(HAVE_RECV, 1,
-        [Define to 1 if you have the recv function.])
-      curl_cv_func_recv="yes"
+    AC_DEFINE_UNQUOTED(HAVE_RECV, 1,
+      [Define to 1 if you have the recv function.])
+    curl_cv_func_recv="yes"
   else
     AC_MSG_ERROR([Unable to link function recv])
   fi
@@ -1089,26 +1089,6 @@ AC_DEFUN([CURL_CHECK_LIBS_CONNECT], [
 ])
 
 
-dnl CURL_DEFINE_UNQUOTED (VARIABLE, [VALUE])
-dnl -------------------------------------------------
-dnl Like AC_DEFINE_UNQUOTED this macro will define a C preprocessor
-dnl symbol that can be further used in custom template configuration
-dnl files. This macro, unlike AC_DEFINE_UNQUOTED, does not use a third
-dnl argument for the description. Symbol definitions done with this
-dnl macro are intended to be exclusively used in handcrafted *.h.in
-dnl template files. Contrary to what AC_DEFINE_UNQUOTED does, this one
-dnl prevents autoheader generation and insertion of symbol template
-dnl stub and definition into the first configuration header file. Do
-dnl not use this macro as a replacement for AC_DEFINE_UNQUOTED, each
-dnl one serves different functional needs.
-
-AC_DEFUN([CURL_DEFINE_UNQUOTED], [
-cat >>confdefs.h <<_EOF
-[@%:@define] $1 ifelse($#, 2, [$2], 1)
-_EOF
-])
-
-
 dnl CURL_CHECK_FUNC_SELECT
 dnl -------------------------------------------------
 dnl Test if the socket select() function is available.
@@ -1217,7 +1197,7 @@ AC_DEFUN([CURL_CHECK_CA_BUNDLE], [
 
   AC_ARG_WITH(ca-bundle,
 AS_HELP_STRING([--with-ca-bundle=FILE],
-[Path to a file containing CA certificates (example: /etc/ca-bundle.crt)])
+  [Path to a file containing CA certificates (example: /etc/ca-bundle.crt)])
 AS_HELP_STRING([--without-ca-bundle], [Don't use a default CA bundle]),
   [
     want_ca="$withval"
@@ -1228,7 +1208,7 @@ AS_HELP_STRING([--without-ca-bundle], [Don't use a default CA bundle]),
   [ want_ca="unset" ])
   AC_ARG_WITH(ca-path,
 AS_HELP_STRING([--with-ca-path=DIRECTORY],
-[Path to a directory containing CA certificates stored individually, with \
+  [Path to a directory containing CA certificates stored individually, with \
 their filenames in a hash format. This option can be used with the OpenSSL, \
 GnuTLS, mbedTLS and wolfSSL backends. Refer to OpenSSL c_rehash for details. \
 (example: /etc/certificates)])
@@ -1338,10 +1318,10 @@ AS_HELP_STRING([--without-ca-path], [Don't use a default CA path]),
     AC_MSG_RESULT([no])
   fi
 
-  AC_MSG_CHECKING([whether to use builtin CA store of SSL library])
+  AC_MSG_CHECKING([whether to use built-in CA store of SSL library])
   AC_ARG_WITH(ca-fallback,
-AS_HELP_STRING([--with-ca-fallback], [Use the built in CA store of the SSL library])
-AS_HELP_STRING([--without-ca-fallback], [Don't use the built in CA store of the SSL library]),
+AS_HELP_STRING([--with-ca-fallback], [Use the built-in CA store of the SSL library])
+AS_HELP_STRING([--without-ca-fallback], [Don't use the built-in CA store of the SSL library]),
   [
     if test "x$with_ca_fallback" != "xyes" -a "x$with_ca_fallback" != "xno"; then
       AC_MSG_ERROR([--with-ca-fallback only allows yes or no as parameter])
@@ -1353,17 +1333,48 @@ AS_HELP_STRING([--without-ca-fallback], [Don't use the built in CA store of the 
     if test "x$OPENSSL_ENABLED" != "x1" -a "x$GNUTLS_ENABLED" != "x1"; then
       AC_MSG_ERROR([--with-ca-fallback only works with OpenSSL or GnuTLS])
     fi
-    AC_DEFINE_UNQUOTED(CURL_CA_FALLBACK, 1, [define "1" to use built in CA store of SSL library ])
+    AC_DEFINE_UNQUOTED(CURL_CA_FALLBACK, 1, [define "1" to use built-in CA store of SSL library ])
+  fi
+])
+
+
+dnl CURL_CHECK_CA_EMBED
+dnl -------------------------------------------------
+dnl Check if a ca-bundle should be embedded
+
+AC_DEFUN([CURL_CHECK_CA_EMBED], [
+
+  AC_MSG_CHECKING([CA cert bundle path to embed])
+
+  AC_ARG_WITH(ca-embed,
+AS_HELP_STRING([--with-ca-embed=FILE],
+  [Path to a file containing CA certificates (example: /etc/ca-bundle.crt)])
+AS_HELP_STRING([--without-ca-embed], [Don't embed a default CA bundle]),
+  [
+    want_ca_embed="$withval"
+    if test "x$want_ca_embed" = "xyes"; then
+      AC_MSG_ERROR([--with-ca-embed=FILE requires a path to the CA bundle])
+    fi
+  ],
+  [ want_ca_embed="unset" ])
+
+  CURL_CA_EMBED=''
+  if test "x$want_ca_embed" != "xno" -a "x$want_ca_embed" != "xunset" -a -f "$want_ca_embed"; then
+    CURL_CA_EMBED='"'$want_ca_embed'"'
+    AC_SUBST(CURL_CA_EMBED)
+    AC_MSG_RESULT([$want_ca_embed])
+  else
+    AC_MSG_RESULT([no])
   fi
 ])
 
 dnl CURL_CHECK_WIN32_LARGEFILE
 dnl -------------------------------------------------
-dnl Check if curl's WIN32 large file will be used
+dnl Check if curl's Win32 large file will be used
 
 AC_DEFUN([CURL_CHECK_WIN32_LARGEFILE], [
   AC_REQUIRE([CURL_CHECK_NATIVE_WINDOWS])dnl
-  AC_MSG_CHECKING([whether build target supports WIN32 file API])
+  AC_MSG_CHECKING([whether build target supports Win32 file API])
   curl_win32_file_api="no"
   if test "$curl_cv_native_windows" = "yes"; then
     if test x"$enable_largefile" != "xno"; then
@@ -1373,7 +1384,7 @@ AC_DEFUN([CURL_CHECK_WIN32_LARGEFILE], [
 #if !defined(_WIN32_WCE) && (defined(__MINGW32__) || defined(_MSC_VER))
           int dummy=1;
 #else
-          WIN32 large file API not supported.
+          Win32 large file API not supported.
 #endif
         ]])
       ],[
@@ -1387,7 +1398,7 @@ AC_DEFUN([CURL_CHECK_WIN32_LARGEFILE], [
 #if defined(_WIN32_WCE) || defined(__MINGW32__) || defined(_MSC_VER)
           int dummy=1;
 #else
-          WIN32 small file API not supported.
+          Win32 small file API not supported.
 #endif
         ]])
       ],[
@@ -1416,11 +1427,11 @@ AC_DEFUN([CURL_CHECK_WIN32_LARGEFILE], [
 
 dnl CURL_CHECK_WIN32_CRYPTO
 dnl -------------------------------------------------
-dnl Check if curl's WIN32 crypto lib can be used
+dnl Check if curl's Win32 crypto lib can be used
 
 AC_DEFUN([CURL_CHECK_WIN32_CRYPTO], [
   AC_REQUIRE([CURL_CHECK_NATIVE_WINDOWS])dnl
-  AC_MSG_CHECKING([whether build target supports WIN32 crypto API])
+  AC_MSG_CHECKING([whether build target supports Win32 crypto API])
   curl_win32_crypto_api="no"
   if test "$curl_cv_native_windows" = "yes"; then
     AC_COMPILE_IFELSE([
@@ -1464,10 +1475,10 @@ dnl variable while checking PKG_CONFIG_LIBDIR
 dnl
 
 AC_DEFUN([CURL_EXPORT_PCDIR], [
-    if test -n "$1"; then
-      PKG_CONFIG_LIBDIR="$1"
-      export PKG_CONFIG_LIBDIR
-    fi
+  if test -n "$1"; then
+    PKG_CONFIG_LIBDIR="$1"
+    export PKG_CONFIG_LIBDIR
+  fi
 ])
 
 dnl CURL_CHECK_PKGCONFIG ($module, [$pcdir])
@@ -1482,28 +1493,28 @@ dnl Optionally PKG_CONFIG_LIBDIR may be given as $pcdir.
 dnl
 
 AC_DEFUN([CURL_CHECK_PKGCONFIG], [
-    if test -n "$PKG_CONFIG"; then
-      PKGCONFIG="$PKG_CONFIG"
+  if test -n "$PKG_CONFIG"; then
+    PKGCONFIG="$PKG_CONFIG"
+  else
+    AC_PATH_TOOL([PKGCONFIG], [pkg-config], [no],
+      [$PATH:/usr/bin:/usr/local/bin])
+  fi
+
+  if test "x$PKGCONFIG" != "xno"; then
+    AC_MSG_CHECKING([for $1 options with pkg-config])
+    dnl ask pkg-config about $1
+    itexists=`CURL_EXPORT_PCDIR([$2]) dnl
+      $PKGCONFIG --exists $1 >/dev/null 2>&1 && echo 1`
+
+    if test -z "$itexists"; then
+      dnl pkg-config does not have info about the given module! set the
+      dnl variable to 'no'
+      PKGCONFIG="no"
+      AC_MSG_RESULT([no])
     else
-      AC_PATH_TOOL([PKGCONFIG], [pkg-config], [no],
-        [$PATH:/usr/bin:/usr/local/bin])
+      AC_MSG_RESULT([found])
     fi
-
-    if test "x$PKGCONFIG" != "xno"; then
-      AC_MSG_CHECKING([for $1 options with pkg-config])
-      dnl ask pkg-config about $1
-      itexists=`CURL_EXPORT_PCDIR([$2]) dnl
-        $PKGCONFIG --exists $1 >/dev/null 2>&1 && echo 1`
-
-      if test -z "$itexists"; then
-        dnl pkg-config does not have info about the given module! set the
-        dnl variable to 'no'
-        PKGCONFIG="no"
-        AC_MSG_RESULT([no])
-      else
-        AC_MSG_RESULT([found])
-      fi
-    fi
+  fi
 ])
 
 
@@ -1546,6 +1557,59 @@ use vars qw(
 1;
 _EOF
 ])
+
+
+dnl CURL_GENERATE_BUILDINFO_TXT
+dnl -------------------------------------------------
+dnl Save build info for test runner to pick up and log
+
+AC_DEFUN([CURL_GENERATE_BUILDINFO_TXT], [
+  curl_pflags=""
+  case $host in
+    *-apple-*) curl_pflags="${curl_pflags} APPLE";;
+  esac
+  if test "$curl_cv_native_windows" = 'yes'; then
+    curl_pflags="${curl_pflags} WIN32"
+  else
+    case $host in
+      *-*-*bsd*|*-*-aix*|*-*-hpux*|*-*-interix*|*-*-irix*|*-*-linux*|*-*-solaris*|*-*-sunos*|*-apple-*|*-*-cygwin*|*-*-msys*)
+        curl_pflags="${curl_pflags} UNIX";;
+    esac
+  fi
+  case $host_os in
+    cygwin*|msys*) curl_pflags="${curl_pflags} CYGWIN";;
+  esac
+  case $host_os in
+    msys*) curl_pflags="${curl_pflags} MSYS";;
+  esac
+  if test "x$compiler_id" = 'xGNU_C'; then
+    curl_pflags="${curl_pflags} GCC"
+  fi
+  case $host_os in
+    mingw*) curl_pflags="${curl_pflags} MINGW";;
+  esac
+  if test "x$cross_compiling" = 'xyes'; then
+    curl_pflags="${curl_pflags} CROSS"
+  fi
+  squeeze curl_pflags
+  cat >./tests/buildinfo.txt <<_EOF
+[@%:@] This is a generated file.  Do not edit.
+configure.tool: configure
+configure.args: $ac_configure_args
+host: $build
+host.os: $build_os
+host.cpu: $build_cpu
+host.vendor: $build_vendor
+target: $host
+target.os: $host_os
+target.cpu: $host_cpu
+target.vendor: $host_vendor
+target.flags: $curl_pflags
+compiler: $compiler_id
+compiler.version: $compiler_num
+_EOF
+])
+
 
 dnl CURL_CPP_P
 dnl
@@ -1645,7 +1709,7 @@ AC_DEFUN([CURL_SUPPORTS_BUILTIN_AVAILABLE], [
   ],[
     AC_MSG_RESULT([yes])
     AC_DEFINE_UNQUOTED(HAVE_BUILTIN_AVAILABLE, 1,
-        [Define to 1 if you have the __builtin_available function.])
+      [Define to 1 if you have the __builtin_available function.])
   ],[
     AC_MSG_RESULT([no])
   ])

@@ -25,8 +25,6 @@
 
 #include "strcase.h"
 
-#define ENABLE_CURLX_PRINTF
-/* use our own printf() functions */
 #include "curlx.h"
 
 #include "tool_cfgable.h"
@@ -96,7 +94,7 @@ int SetHTTPrequest(struct OperationConfig *config, HttpReq req, HttpReq *store)
     "PUT (-T, --upload-file)"
   };
 
-  if((*store == HTTPREQ_UNSPEC) ||
+  if((*store == TOOL_HTTPREQ_UNSPEC) ||
      (*store == req)) {
     *store = req;
     return 0;

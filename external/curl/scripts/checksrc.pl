@@ -50,6 +50,7 @@ my @ignore_line;
 my %warnings_extended = (
     'COPYRIGHTYEAR'    => 'copyright year incorrect',
     'STRERROR',        => 'strerror() detected',
+    'STRNCPY',         => 'strncpy() detected',
     'STDERR',          => 'stderr detected',
     );
 
@@ -115,9 +116,20 @@ sub readskiplist {
 # and since that's already handled via !checksrc! commands there is probably
 # little use to add it.
 sub readlocalfile {
+    my ($file) = @_;
     my $i = 0;
+    my $rcfile;
 
-    open(my $rcfile, "<", "$dir/.checksrc") or return;
+    if(($dir eq ".") && $file =~ /\//) {
+        my $ldir;
+        if($file =~ /(.*)\//) {
+            $ldir = $1;
+            open($rcfile, "<", "$dir/$ldir/.checksrc") or return;
+        }
+    }
+    else {
+        open($rcfile, "<", "$dir/.checksrc") or return;
+    }
 
     while(<$rcfile>) {
         $windows_os ? $_ =~ s/\r?\n$// : chomp;
@@ -264,7 +276,7 @@ if(!$file) {
 }
 
 readskiplist();
-readlocalfile();
+readlocalfile($file);
 
 do {
     if("$wlist" !~ / $file /) {
@@ -735,6 +747,18 @@ sub scanfile {
                 if($1 !~ /^ *\#/) {
                     # skip preprocessor lines
                     checkwarn("STRERROR",
+                              $line, length($1), $file, $ol,
+                              "use of $2 is banned");
+                }
+            }
+        }
+        if($warnings{"STRNCPY"}) {
+            # scan for use of banned strncpy. This is not a BANNEDFUNC to
+            # allow for individual enable/disable of this warning.
+            if($l =~ /^(.*\W)(strncpy)\s*\(/x) {
+                if($1 !~ /^ *\#/) {
+                    # skip preprocessor lines
+                    checkwarn("STRNCPY",
                               $line, length($1), $file, $ol,
                               "use of $2 is banned");
                 }

@@ -71,6 +71,10 @@ transfer is started.
 The application does not have to keep the string around after setting this
 option.
 
+Using this option multiple times makes the last set string override the
+previous ones. Set it to NULL to disable its use again. Note however that
+libcurl needs a URL set to be able to performed a transfer.
+
 The parser used for handling the URL set with CURLOPT_URL(3) is the same
 that curl_url_set(3) uses.
 
@@ -81,7 +85,7 @@ expected to be a sequence of characters using an ASCII compatible encoding.
 
 If libcurl is built with IDN support, the server name part of the URL can use
 an "international name" by using the current encoding (according to locale) or
-UTF-8 (when winidn is used; or a Windows Unicode build using libidn2).
+UTF-8 (when WinIDN is used; or a Windows Unicode build using libidn2).
 
 If libcurl is built without IDN support, the server name is used exactly as
 specified when passed to the name resolver functions.

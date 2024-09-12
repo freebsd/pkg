@@ -197,7 +197,7 @@ Transitional Processing. The two standards have a huge overlap but differ
 slightly, perhaps most famously in how they deal with the German "double s"
 (`ß`).
 
-When winidn is used, curl uses IDNA 2003 Transitional Processing, like the rest
+When WinIDN is used, curl uses IDNA 2003 Transitional Processing, like the rest
 of Windows.
 
 ## Port number
@@ -226,7 +226,7 @@ directory listing for the root / home directory is returned.
 FTP servers typically put the user in its "home directory" after login, which
 then differs between users. To explicitly specify the root directory of an FTP
 server, start the path with double slash `//` or `/%2f` (2F is the hexadecimal
-value of the ascii code for the slash).
+value of the ASCII code for the slash).
 
 ## FILE
 
