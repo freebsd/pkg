@@ -80,6 +80,10 @@
 #include <bsd/libutil.h>
 #endif
 
+#ifdef HAVE_BSD_SYS_TIME_H
+#include <bsd/sys/time.h>
+#endif
+
 #include <sys/stat.h>
 #include "endian_util.h"
 
