@@ -846,17 +846,28 @@ void pkg_repo_create_set_groups(struct pkg_repo_create *prc, const char *);
 int pkg_repo_create(struct pkg_repo_create *, char *path);
 
 /**
- * Test if the EUID has sufficient privilege to carry out some
- * operation (mode is a bitmap indicating READ, WRITE, CREATE) on the
- * databases indicated in the database bitmap.
+ * Flags for accessing pkg database
  */
 #define PKGDB_MODE_READ		(0x1<<0)
 #define PKGDB_MODE_WRITE	(0x1<<1)
 #define PKGDB_MODE_CREATE	(0x1<<2)
 
+/**
+ * What repos should we open: local or remote
+ */
 #define PKGDB_DB_LOCAL		(0x1<<0)
 #define PKGDB_DB_REPO		(0x1<<1)
-int pkgdb_access(unsigned mode, unsigned database);
+/**
+ * Test if the EUID has sufficient privilege to carry out some
+ * operation (mode is a bitmap indicating READ, WRITE, CREATE) on the
+ * databases indicated in the database bitmap.
+ *
+ * It also accepts a number of arguments representing pkg repositories requested
+ * to be opened. This list *MUST* be terminated with `NULL` repo.
+ * If no repositories are specified (e.g. when NULL is the first argument,
+ * then all repositories are tried to be accessed).
+ */
+int pkgdb_access(unsigned mode, unsigned database, ...);
 
 /**
  * Open the local package database.

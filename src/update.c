@@ -4,7 +4,7 @@
  * Copyright (c) 2011-2012 Marin Atanasov Nikolov <dnaeon@gmail.com>
  * Copyright (c) 2014 Matthew Seaman <matthew@FreeBSD.org>
  * All rights reserved.
- * 
+ *
  * Redistribution and use in source and binary forms, with or without
  * modification, are permitted provided that the following conditions
  * are met:
@@ -14,7 +14,7 @@
  * 2. Redistributions in binary form must reproduce the above copyright
  *    notice, this list of conditions and the following disclaimer in the
  *    documentation and/or other materials provided with the distribution.
- * 
+ *
  * THIS SOFTWARE IS PROVIDED BY THE AUTHOR(S) ``AS IS'' AND ANY EXPRESS OR
  * IMPLIED WARRANTIES, INCLUDING, BUT NOT LIMITED TO, THE IMPLIED WARRANTIES
  * OF MERCHANTABILITY AND FITNESS FOR A PARTICULAR PURPOSE ARE DISCLAIMED.
@@ -52,7 +52,7 @@ pkgcli_update(bool force, bool strict, const char *reponame)
 
 	/* Only auto update if the user has write access. */
 	if (pkgdb_access(PKGDB_MODE_READ|PKGDB_MODE_WRITE|PKGDB_MODE_CREATE,
-	    PKGDB_DB_REPO) == EPKG_ENOACCESS)
+	    PKGDB_DB_REPO, reponame, NULL) == EPKG_ENOACCESS)
 		return (EPKG_OK);
 
 	if (pkg_repos_total_count() == 0) {
@@ -166,7 +166,7 @@ exec_update(int argc, char **argv)
 	}
 
 	ret = pkgdb_access(PKGDB_MODE_WRITE|PKGDB_MODE_CREATE,
-			   PKGDB_DB_REPO);
+			   PKGDB_DB_REPO, reponame, NULL);
 	if (ret == EPKG_ENOACCESS) {
 		warnx("Insufficient privileges to update the repository "
 		      "catalogue.");

@@ -145,7 +145,7 @@ exec_fetch(int argc, char **argv)
 	else
 		mode = PKGDB_MODE_READ;
 
-	retcode = pkgdb_access(mode, PKGDB_DB_REPO);
+	retcode = pkgdb_access(mode, PKGDB_DB_REPO, reponame, NULL);
 
 	if (retcode == EPKG_ENOACCESS) {
 		warnx("Insufficient privileges to access repo catalogue");

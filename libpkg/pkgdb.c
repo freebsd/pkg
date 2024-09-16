@@ -711,7 +711,7 @@ out:
 }
 
 int
-pkgdb_access(unsigned mode, unsigned database)
+pkgdb_access(unsigned mode, unsigned database, ...)
 {
 	int			 retval = EPKG_OK;
 
@@ -734,6 +734,7 @@ pkgdb_access(unsigned mode, unsigned database)
 	 *
 	 * EPKG_OK: We can go ahead
 	 */
+
 
 	if ((mode & ~(PKGDB_MODE_READ|PKGDB_MODE_WRITE|PKGDB_MODE_CREATE))
 	    != 0)
@@ -763,22 +764,45 @@ pkgdb_access(unsigned mode, unsigned database)
 	}
 
 	if ((database & PKGDB_DB_REPO) != 0) {
+		va_list	ap;
 		struct pkg_repo	*r = NULL;
+		const char	*dbname;
+		ucl_object_t *repos_seen = ucl_object_typed_new(UCL_OBJECT);
+
+		va_start(ap, database);
+		while((dbname = va_arg(ap, const char *)) != NULL) {
+			ucl_object_insert_key(repos_seen, ucl_object_typed_new(UCL_BOOLEAN),
+			    dbname, strlen(dbname), false);
+		}
+		va_end(ap);
 
 		while (pkg_repos(&r) == EPKG_OK) {
 			/* Ignore any repos marked as inactive */
 			if (!pkg_repo_enabled(r))
 				continue;
 
+			if (repos_seen->len > 0 && r->name &&
+			    !ucl_object_lookup(repos_seen, r->name)) {
+				/* Skip what is not needed */
+				continue;
+			}
+
 			retval = r->ops->access(r, mode);
 			if (retval != EPKG_OK) {
 				if (retval == EPKG_ENODB &&
-				    mode == PKGDB_MODE_READ)
+				    !(mode & PKGDB_MODE_READ)) {
 					pkg_emit_error("Repository %s missing."
-					    " 'pkg update' required", r->name);
+						       " 'pkg update' required",
+					    r->name);
+				}
+
+				ucl_object_unref(repos_seen);
+
 				return (retval);
 			}
 		}
+
+		ucl_object_unref(repos_seen);
 	}
 	return (retval);
 }
