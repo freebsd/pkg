@@ -5,7 +5,7 @@
  * Copyright (c) 2012-2013 Bryan Drewery <bdrewery@FreeBSD.org>
  * Copyright (c) 2014 Matthew Seaman <matthew@FreeBSD.org>
  * All rights reserved.
- * 
+ *
  * Redistribution and use in source and binary forms, with or without
  * modification, are permitted provided that the following conditions
  * are met:
@@ -15,7 +15,7 @@
  * 2. Redistributions in binary form must reproduce the above copyright
  *    notice, this list of conditions and the following disclaimer in the
  *    documentation and/or other materials provided with the distribution.
- * 
+ *
  * THIS SOFTWARE IS PROVIDED BY THE AUTHOR(S) ``AS IS'' AND ANY EXPRESS OR
  * IMPLIED WARRANTIES, INCLUDING, BUT NOT LIMITED TO, THE IMPLIED WARRANTIES
  * OF MERCHANTABILITY AND FITNESS FOR A PARTICULAR PURPOSE ARE DISCLAIMED.
@@ -44,7 +44,7 @@ typedef struct _cliopt {
 	char key;
 } cliopt;
 
-/* an option string should not be a prefix of any other option string */ 
+/* an option string should not be a prefix of any other option string */
 static const cliopt search_label[] = {
 	{ "comment",     'c'  },
 	{ "description", 'd'  },
@@ -77,7 +77,7 @@ static const cliopt modifiers[] = {
 	{ "version",              'v'  },
 	{ "www",                  'w'  },
 	{ NULL,                   '\0' },
-};	
+};
 
 static char
 match_optarg(const cliopt *optlist, const char *opt)
@@ -415,7 +415,7 @@ exec_search(int argc, char **argv)
 		quiet = false;
 	}
 
-	ret = pkgdb_access(PKGDB_MODE_READ, PKGDB_DB_REPO);
+	ret = pkgdb_access(PKGDB_MODE_READ, PKGDB_DB_REPO, reponame, NULL);
 	switch(ret) {
 	case EPKG_ENOACCESS:
 		warnx("Insufficient privileges to query the package database");
