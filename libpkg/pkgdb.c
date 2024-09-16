@@ -790,7 +790,7 @@ pkgdb_access(unsigned mode, unsigned database, ...)
 			retval = r->ops->access(r, mode);
 			if (retval != EPKG_OK) {
 				if (retval == EPKG_ENODB &&
-				    !(mode & PKGDB_MODE_READ)) {
+				    (mode & PKGDB_MODE_READ) != PKGDB_MODE_READ) {
 					pkg_emit_error("Repository %s missing."
 						       " 'pkg update' required",
 					    r->name);
