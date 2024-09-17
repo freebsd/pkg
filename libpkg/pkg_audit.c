@@ -272,8 +272,8 @@ pkg_audit_fetch(const char *src, const char *dest)
 
 	/* Call sandboxed */
 	retcode = pkg_emit_sandbox_call(pkg_audit_sandboxed_extract, fd, &cbdata);
-	ts[0].tv_sec = st.st_mtim.tv_sec;
-	ts[1].tv_sec = st.st_mtim.tv_sec;
+	ts[0].tv_sec = st.st_mtime;
+	ts[1].tv_sec = st.st_mtime;
 	futimens(outfd, ts);
 
 cleanup:
