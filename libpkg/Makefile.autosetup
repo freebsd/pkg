@@ -103,7 +103,6 @@ STATIC_LIBS=	@REPOS_STATIC_LIBS@ \
 		$(top_builddir)/external/blake2/libblake2.a \
 		$(top_builddir)/external/liblua/liblua.a \
 		$(top_builddir)/compat/libbsd_compat.a \
-		$(top_builddir)/external/libcurl/libcurl.a \
 		$(top_builddir)/external/libder/libder.a \
 		$(top_builddir)/external/libecc/libecc.a \
 		lib$(LIB).a
@@ -167,6 +166,7 @@ LOCAL_LDFLAGS+=	@PKG_LIBCURL_LDFLAGS@ @PKG_LIBCURL_LIBS@
 @else
 LOCAL_CFLAGS+=	-I$(top_srcdir)/external/curl/include
 LOCAL_LDFLAGS+=	-L$(top_builddir)/external/libcurl -lcurl_pic
+STATIC_LIBS+=	$(top_builddir)/external/libcurl/libcurl.a
 @endif
 
 VPATH=	$(top_srcdir)/libpkg
