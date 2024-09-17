@@ -92,8 +92,6 @@ LOCAL_LDFLAGS=	@waflags@ \
 		-L$(top_builddir)/external/libder -lder_pic \
 		-L$(top_builddir)/external/libecc -lecc_pic \
 		@nowaflags@ \
-		-lssl \
-		-lcrypto \
 		-lm
 
 STATIC_LIBS=	@REPOS_STATIC_LIBS@ \
@@ -149,6 +147,13 @@ LOCAL_CFLAGS+=	@PKG_LIBARCHIVE_CFLAGS@
 LOCAL_LDFLAGS+=	@PKG_LIBARCHIVE_LDFLAGS@ @PKG_LIBARCHIVE_LIBS@
 @else
 LOCAL_LDFLAGS+=	-larchive
+@endif
+
+@if PKG_OPENSSL_LIBS
+LOCAL_CFLAGS+=	@PKG_OPENSSL_CFLAGS@
+LOCAL_LDFLAGS+=	@PKG_OPENSSL_LDFLAGS@ @PKG_OPENSSL_LIBS@
+@else
+LOCAL_LDFLAGS+=	-lssl -lcrypto
 @endif
 
 @if PKG_LIBLDNS_LIBS
