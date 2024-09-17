@@ -322,16 +322,16 @@ exec_upgrade(int argc, char **argv)
 
 	if (dry_run && !auto_update)
 		retcode = pkgdb_access(PKGDB_MODE_READ,
-				       PKGDB_DB_LOCAL|PKGDB_DB_REPO);
+				       PKGDB_DB_LOCAL|PKGDB_DB_REPO, reponame, NULL);
 	else
 		retcode = pkgdb_access(PKGDB_MODE_READ  |
 				       PKGDB_MODE_WRITE |
 				       PKGDB_MODE_CREATE,
-				       PKGDB_DB_LOCAL|PKGDB_DB_REPO);
+				       PKGDB_DB_LOCAL|PKGDB_DB_REPO, reponame, NULL);
 	if (retcode == EPKG_ENOACCESS && dry_run) {
 		auto_update = false;
 		retcode = pkgdb_access(PKGDB_MODE_READ,
-				       PKGDB_DB_LOCAL|PKGDB_DB_REPO);
+				       PKGDB_DB_LOCAL|PKGDB_DB_REPO, reponame, NULL);
 	}
 
 	if (retcode == EPKG_ENOACCESS) {
