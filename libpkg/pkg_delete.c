@@ -268,7 +268,7 @@ pkg_effective_rmdir(struct pkgdb *db, struct pkg *pkg)
 {
 	char prefix_r[MAXPATHLEN];
 
-	snprintf(prefix_r, sizeof(prefix_r), "%s", pkg->prefix + 1);
+	snprintf(prefix_r, sizeof(prefix_r), "%s", pkg->prefix[0] ? pkg->prefix + 1 : "");
 	tll_foreach(pkg->dir_to_del, d)
 		rmdir_p(db, pkg, d->item, prefix_r);
 }
