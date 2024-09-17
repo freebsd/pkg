@@ -38,6 +38,12 @@
 #include <machine/endian.h>
 #endif
 
+#ifdef __APPLE__
+#include <libkern/OSByteOrder.h>
+#define be32toh(n) OSSwapBigToHostInt32(n)
+#define le32toh(n) OSSwapLittleToHostInt32(n)
+#endif
+
 #include <assert.h>
 #include <ctype.h>
 #include <dirent.h>
@@ -117,7 +123,7 @@ shlib_list_add(pkghash **shlib_list, const char *dir,
 	strlcpy(sl->path, dir, path_len);
 	dir_len = strlcat(sl->path, "/", path_len);
 	strlcat(sl->path, shlib_file, path_len);
-	
+
 	sl->name = sl->path + dir_len;
 
 	pkghash_safe_add(*shlib_list, sl->name, sl, free);
@@ -266,7 +272,7 @@ int shlib_list_from_rpath(const char *rpath_str, const char *dirpath)
 	int		i, numdirs;
 	int		ret;
 	const char     *c, *cstart;
-	
+
 	/* The special token $ORIGIN should be replaced by the
 	   dirpath: adjust buflen calculation to account for this */
 
@@ -306,7 +312,7 @@ int shlib_list_from_rpath(const char *rpath_str, const char *dirpath)
 	return (ret);
 }
 
-int 
+int
 shlib_list_from_elf_hints(const char *hintsfile)
 {
 #if defined __FreeBSD__ || defined __DragonFly__
