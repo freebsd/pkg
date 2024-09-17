@@ -18,4 +18,8 @@ LOCAL_CFLAGS=	-I$(top_srcdir)/libpkg \
 
 VPATH=	$(top_srcdir)/libpkg/repo/binary
 
+@if HAVE_PKG_LIBARCHIVE
+LOCAL_CFLAGS+=	@PKG_LIBARCHIVE_CFLAGS@
+@endif
+
 include $(MK)/static-lib.mk

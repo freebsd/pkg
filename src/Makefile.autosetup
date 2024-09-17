@@ -51,6 +51,7 @@ OTHER_LIBS=	@EXTRA_LIBS@ -lssl -lcrypto
 
 @if HAVE_PKG_LIBARCHIVE
 OTHER_LIBS+=	@PKG_LIBARCHIVE_LDFLAGS@ @PKG_LIBARCHIVE_LIBS_STATIC@
+LOCAL_CFLAGS+=	@PKG_LIBARCHIVE_CFLAGS@
 @else
 OTHER_LIBS+=	-larchive -lbz2 -lz -llzma @ZSTDLIB@
 @endif
@@ -75,7 +76,7 @@ OTHER_LIBS+=	-lmd
 LOCAL_LDFLAGS=	$(LIBPKGFLAT) $(LIBS) $(OTHER_LIBS) -lresolv
 STATIC_LDFLAGS=	$(LIBPKGFLAT) $(LIBS) $(OTHER_LIBS) -lresolv
 # OSX doesn't support static binaries, sigh
-STATIC_ARG= 
+STATIC_ARG=
 @else
 LOCAL_LDFLAGS=	-Wl,-Bstatic \
 		@waflags@ $(LIBPKGFLAT) @nowaflags@ \
