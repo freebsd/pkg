@@ -3,7 +3,7 @@
  * Copyright (c) 2011-2012 Julien Laffaye <jlaffaye@FreeBSD.org>
  * All rights reserved.
  * Copyright (c) 2021 Kyle Evans <kevans@FreeBSD.org>
- * 
+ *
  * Redistribution and use in source and binary forms, with or without
  * modification, are permitted provided that the following conditions
  * are met:
@@ -13,7 +13,7 @@
  * 2. Redistributions in binary form must reproduce the above copyright
  *    notice, this list of conditions and the following disclaimer in the
  *    documentation and/or other materials provided with the distribution.
- * 
+ *
  * THIS SOFTWARE IS PROVIDED BY THE AUTHOR(S) ``AS IS'' AND ANY EXPRESS OR
  * IMPLIED WARRANTIES, INCLUDING, BUT NOT LIMITED TO, THE IMPLIED WARRANTIES
  * OF MERCHANTABILITY AND FITNESS FOR A PARTICULAR PURPOSE ARE DISCLAIMED.
@@ -813,6 +813,18 @@ _generate_private_key(struct ecc_sign_ctx *keyinfo)
 	return (EPKG_OK);
 }
 
+static inline void
+_specific_explicit_bzero(uint8_t *buf, size_t bufsz)
+{
+
+#ifdef __APPLE__
+	memset_s(buf, bufsz, 0, bufsz);
+#else
+	explicit_bzero(buf, bufsz);
+#endif
+}
+
+
 static int
 _load_private_key(struct ecc_sign_ctx *keyinfo)
 {
@@ -887,7 +899,7 @@ _load_private_key(struct ecc_sign_ctx *keyinfo)
 	}
 
 out:
-	explicit_bzero(keybuf, sizeof(keybuf));
+	_specific_explicit_bzero(keybuf, sizeof(keybuf));
 	free(filedata);
 	if (fd != -1)
 		close(fd);
@@ -1253,7 +1265,7 @@ ecc_free(struct pkgsign_ctx *sctx)
 {
 	struct ecc_sign_ctx *keyinfo = ECC_CTX(sctx);
 
-	explicit_bzero(&keyinfo->keypair, sizeof(keyinfo->keypair));
+	_specific_explicit_bzero(&keyinfo->keypair, sizeof(keyinfo->keypair));
 }
 
 const struct pkgsign_ops pkgsign_ecc = {
