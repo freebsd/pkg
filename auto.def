@@ -18,8 +18,9 @@ options {
 	with-coverage => "build with llvm coverage support"
 	with-asan => "build with libasan support"
 	with-lsan => "build with liblsan support"
-	with-ubsan => "Build with libubsan support"
-	with-libcurl => "Build with external libcurl"
+	with-ubsan => "build with libubsan support"
+	with-libcurl => "build with external libcurl"
+	with-openssl.pc => "build with openssl getting flags via pc files"
 	default-format:txz => "Default compression format: tzst (default), txz, tbz, tar"
 }
 
@@ -344,6 +345,12 @@ if {[pkg-config-init 0]} {
 			cc-with { -libs { -larchive }} {
 				cc-check-functions archive_write_add_filter_zstd
 			}
+		}
+	}
+
+	if {[opt-bool with-openssl.pc]} {
+		if {![pkg-config openssl]} {
+			user-error "Unable to find openssl"
 		}
 	}
 }
