@@ -1,9 +1,12 @@
 include @builddir@/mk/defs.mk
-DIRS=	blake2 picosat linenoise sqlite libucl liblua yxml libcurl libder libecc
+DIRS=	blake2 picosat linenoise sqlite libucl liblua yxml libder libecc
 @if libmachista
 DIRS+=	libmachista
 @endif
 @if libelf-internal
 DIRS+=	libelf
+@endif
+@if !PKG_LIBCURL_LIBS
+DIRS+=	libcurl
 @endif
 include $(MK)/dir.mk

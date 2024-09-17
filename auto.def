@@ -19,6 +19,7 @@ options {
 	with-asan => "build with libasan support"
 	with-lsan => "build with liblsan support"
 	with-ubsan => "Build with libubsan support"
+	with-libcurl => "Build with external libcurl"
 	default-format:txz => "Default compression format: tzst (default), txz, tbz, tar"
 }
 
@@ -328,6 +329,11 @@ if {[pkg-config-init 0]} {
 			user-error "Unable to find libldns"
 		} else {
 			define PKG_LIBDNS_LIBS_STATIC [exec pkg-config --static --libs-only-l libldns]
+		}
+	}
+	if {[opt-bool with-libcurl]} {
+		if {![pkg-config libcurl]} {
+			user-error "Unable to find libcurl"
 		}
 	}
 	if {[opt-bool with-libarchive.pc]} {

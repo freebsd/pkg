@@ -62,7 +62,6 @@ LOCAL_CFLAGS=	-I$(top_srcdir)/compat \
 		-I$(top_srcdir)/external/yxml \
 		-I$(top_srcdir)/external/include \
 		-I$(top_srcdir)/external/libucl/include \
-		-I$(top_srcdir)/external/curl/include \
 		-I$(top_srcdir)/external/lua/src \
 		-I$(top_srcdir)/external/liblua/ \
 		-I$(top_srcdir)/external/libder/libder \
@@ -89,7 +88,6 @@ LOCAL_LDFLAGS=	@waflags@ \
 		-L$(top_builddir)/external/yxml -lyxml_pic \
 		-L$(top_builddir)/external/blake2 -lblake2_pic \
 		-L$(top_builddir)/compat -lbsd_compat_pic \
-		-L$(top_builddir)/external/libcurl -lcurl_pic \
 		-L$(top_builddir)/external/liblua -llua_pic \
 		-L$(top_builddir)/external/libder -lder_pic \
 		-L$(top_builddir)/external/libecc -lecc_pic \
@@ -156,6 +154,14 @@ LOCAL_LDFLAGS+=	-larchive
 @if PKG_LIBLDNS_LIBS
 LOCAL_CFLAGS+=	@PKG_LIBLDNS_CFLAGS@
 LOCAL_LDFLAGS+=	@PKG_LIBLDNS_LDFLAGS@ @PKG_LIBLDNS_LIBS@
+@endif
+
+@if PKG_LIBCURL_LIBS
+LOCAL_CFLAGS+=	@PKG_LIBCURL_CFLAGS@
+LOCAL_LDFLAGS+=	@PKG_LIBCURL_LDFLAGS@ @PKG_LIBCURL_LIBS@
+@else
+LOCAL_CFLAGS+=	-I$(top_srcdir)/external/curl/include
+LOCAL_LDFLAGS+=	-L$(top_builddir)/external/libcurl -lcurl_pic
 @endif
 
 VPATH=	$(top_srcdir)/libpkg
