@@ -814,7 +814,7 @@ _generate_private_key(struct ecc_sign_ctx *keyinfo)
 }
 
 static inline void
-_specific_explicit_bzero(uint8_t *buf, size_t bufsz)
+_specific_explicit_bzero(void *buf, size_t bufsz)
 {
 
 #ifdef __APPLE__
