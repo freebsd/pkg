@@ -47,7 +47,7 @@ LOCAL_CFLAGS=	-I$(top_srcdir)/compat \
 		-DHAVE_CONFIG_H \
 		-Werror=switch
 LIBPKGFLAT=	-L$(top_builddir)/libpkg -lpkg_flat
-OTHER_LIBS=	@EXTRA_LIBS@ -lssl -lcrypto
+OTHER_LIBS=	@EXTRA_LIBS@ -lm -pthread
 
 @if HAVE_PKG_LIBARCHIVE
 OTHER_LIBS+=	@PKG_LIBARCHIVE_LDFLAGS@ @PKG_LIBARCHIVE_LIBS_STATIC@
@@ -55,21 +55,33 @@ LOCAL_CFLAGS+=	@PKG_LIBARCHIVE_CFLAGS@
 @else
 OTHER_LIBS+=	-larchive -lbz2 -lz -llzma @ZSTDLIB@
 @endif
-OTHER_LIBS+=	-lm -pthread
+
 @if HAVE_LIBUTIL
 OTHER_LIBS+=	-lutil
 @endif
+
 @if HAVE_LIBFTS
 OTHER_LIBS+=	-lfts
 @endif
+
 @if HAVE_LIBDL
 OTHER_LIBS+=	-ldl
 @endif
+
 @if HAVE_LIBRESOLV
 OTHER_LIBS+=	-lresolv
 @endif
+
 @if HAVE_LIBMD
 OTHER_LIBS+=	-lmd
+@endif
+
+@if PKG_OPENSSL_LIBS
+LOCAL_CFLAGS+=	@PKG_OPENSSL_CFLAGS@
+LOCAL_LDFLAGS+=	@PKG_OPENSSL_LDFLAGS@
+OTHER_LIBS+=	@PKG_OPENSSL_LIBS@
+@else
+OTHER_LIBS+=	-lssl -lcrypto
 @endif
 
 @if libmachista
