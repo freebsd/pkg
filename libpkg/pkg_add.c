@@ -2,6 +2,8 @@
  * Copyright (c) 2011-2022 Baptiste Daroussin <bapt@FreeBSD.org>
  * Copyright (c) 2011-2012 Julien Laffaye <jlaffaye@FreeBSD.org>
  * Copyright (c) 2016, Vsevolod Stakhov
+ * Copyright (c) 2024, Future Crew, LLC
+ *                     Author: Gleb Popov <arrowd@FreeBSD.org>
  *
  * Redistribution and use in source and binary forms, with or without
  * modification, are permitted provided that the following conditions
@@ -40,6 +42,7 @@
 #include <pwd.h>
 #include <grp.h>
 #include <sys/time.h>
+#include <sys/wait.h>
 #include <time.h>
 #include <xstring.h>
 #include <tllist.h>
@@ -56,14 +59,143 @@
 #define NOCHANGESFLAGS	(UF_IMMUTABLE | UF_APPEND | SF_IMMUTABLE | SF_APPEND)
 #endif
 
+struct external_merge_tmp_file {
+	int fd;
+	const char *template;
+	char path[MAXPATHLEN];
+	const char *content;
+	size_t content_len;
+};
+
+static merge_status
+merge_with_external_tool(const char *merge_tool, struct pkg_config_file *lcf,
+    size_t lcf_len, struct pkg_config_file *rcf, char *localconf, char **mergedconf)
+{
+	pid_t wait_res;
+	int status;
+	FILE *inout[2];
+
+	char *tmpdir = getenv("TMPDIR");
+	if (tmpdir == NULL)
+		tmpdir = "/tmp";
+
+	int output_fd;
+	char output_path[MAXPATHLEN];
+	off_t output_sz;
+
+	strlcpy(output_path, tmpdir, sizeof(output_path));
+	strlcat(output_path, "/OUTPUT.XXXXXXXXXX", sizeof(output_path));
+	output_fd = mkstemp(output_path);
+	if (output_fd == -1) {
+		pkg_emit_error("Can't create %s", output_path);
+		return MERGE_FAILED;
+	}
+	close(output_fd);
+
+	struct external_merge_tmp_file tmp_files[] = {
+		{-1, "/BASE.XXXXXXXXXX", {0}, lcf->content, lcf_len},
+		{-1, "/LOCAL.XXXXXXXXXX", {0}, localconf, strlen(localconf)},
+		{-1, "/REMOTE.XXXXXXXXXX", {0}, rcf->content, strlen(rcf->content)}
+	};
+	bool tmp_files_ok = true;
+	for (int i = 0; i < NELEM(tmp_files); i++) {
+		int copied = strlcpy(tmp_files[i].path, tmpdir, sizeof(tmp_files[i].path));
+		if (copied >= sizeof(tmp_files[i].path)) {
+			pkg_emit_error("Temporary path too long: %s", tmp_files[i].path);
+			return MERGE_FAILED;
+		}
+		copied = strlcat(tmp_files[i].path, tmp_files[i].template, sizeof(tmp_files[i].path));
+		if (copied >= sizeof(tmp_files[i].path)) {
+			pkg_emit_error("Temporary path too long: %s", tmp_files[i].path);
+			return MERGE_FAILED;
+		}
+
+		tmp_files[i].fd = mkstemp(tmp_files[i].path);
+		if (tmp_files[i].fd == -1) {
+			pkg_emit_error("Can't create %s", tmp_files[i].path);
+			tmp_files_ok = false;
+			break;
+		}
+		if (write(tmp_files[i].fd, tmp_files[i].content, tmp_files[i].content_len) == -1) {
+			pkg_emit_error("Failed to write %s", tmp_files[i].path);
+			tmp_files_ok = false;
+			break;
+		}
+		close(tmp_files[i].fd);
+		tmp_files[i].fd = -1;
+	}
+	if (!tmp_files_ok) {
+		for (int i = 0; i < NELEM(tmp_files); i++) {
+			if (tmp_files[i].fd != -1)
+				close(tmp_files[i].fd);
+			if (strlen(tmp_files[i].path))
+				unlink(tmp_files[i].path);
+		}
+		return MERGE_FAILED;
+	}
+
+	char command[MAXPATHLEN];
+	for (int i = 0; *merge_tool != '\0'; i++, merge_tool++) {
+		if (*merge_tool != '%') {
+			command[i] = *merge_tool;
+			continue;
+		}
+		merge_tool++;
+		int tmp_files_index;
+		switch (*merge_tool) {
+		case 'b':
+			tmp_files_index = 0;
+			break;
+		case 'l':
+			tmp_files_index = 1;
+			break;
+		case 'r':
+			tmp_files_index = 2;
+			break;
+		case 'n':
+			i += strlcpy(&command[i], RELATIVE_PATH(rcf->path), sizeof(command) - i) - 1;
+			continue;
+		case 'o':
+			i += strlcpy(&command[i], output_path, sizeof(command) - i) - 1;
+			continue;
+		default:
+			pkg_emit_error("Unknown format string in the MERGETOOL command");
+			merge_tool--;
+			continue;
+		}
+		i += strlcpy(&command[i], tmp_files[tmp_files_index].path, sizeof(command) - i) - 1;
+	}
+
+	pid_t pid = process_spawn_pipe(inout, command);
+	wait_res = waitpid(pid, &status, 0);
+
+	fclose(inout[0]);
+	fclose(inout[1]);
+	for (int i = 0; i < sizeof(tmp_files); i++) {
+		unlink(tmp_files[i].path);
+	}
+
+	if (wait_res == -1 || WIFSIGNALED(status) || WEXITSTATUS(status)) {
+		unlink(output_path);
+		pkg_emit_error("External merge tool failed, retrying with builtin algorithm");
+		return MERGE_FAILED;
+	}
+
+	file_to_bufferat(AT_FDCWD, output_path, mergedconf, &output_sz);
+	unlink(output_path);
+
+	return MERGE_SUCCESS;
+}
+
 static void
 attempt_to_merge(int rootfd, struct pkg_config_file *rcf, struct pkg *local,
-    bool merge)
+    bool merge, const char *merge_tool)
 {
 	const struct pkg_file *lf = NULL;
 	struct stat st;
 	xstring *newconf;
 	struct pkg_config_file *lcf = NULL;
+	size_t lcf_len;
 
 	char *localconf = NULL;
 	off_t sz;
@@ -94,26 +226,32 @@ attempt_to_merge(int rootfd, struct pkg_config_file *rcf, struct pkg *local,
 
 	pkg_debug(2, "size: %jd vs %jd", (intmax_t)sz, (intmax_t)strlen(lcf->content));
 
-	if (sz == strlen(lcf->content)) {
+	lcf_len = strlen(lcf->content);
+	if (sz == lcf_len) {
 		pkg_debug(2, "Ancient vanilla and deployed conf are the same size testing checksum");
 		localsum = pkg_checksum_data(localconf, sz,
 		    PKG_HASH_TYPE_SHA256_HEX);
 		if (localsum && STREQ(localsum, lf->sum)) {
 			pkg_debug(2, "Checksum are the same %jd", (intmax_t)strlen(localconf));
-			free(localconf);
 			free(localsum);
-			return;
+			goto ret;
 		}
 		free(localsum);
 		pkg_debug(2, "Checksum are different %jd", (intmax_t)strlen(localconf));
 	}
 	rcf->status = MERGE_FAILED;
 	if (!merge) {
-		free(localconf);
-		return;
+		goto ret;
 	}
 
 	pkg_debug(1, "Attempting to merge %s", rcf->path);
+	if (merge_tool) {
+		char* mergedconf = NULL;
+		rcf->status = merge_with_external_tool(merge_tool, lcf, lcf_len, rcf, localconf, &mergedconf);
+		rcf->newcontent = mergedconf;
+		if (rcf->status == MERGE_SUCCESS)
+			goto ret;
+	}
 	newconf = xstring_new();
 	if (merge_3way(lcf->content, localconf, rcf->content, newconf) != 0) {
 		xstring_free(newconf);
@@ -123,6 +261,7 @@ attempt_to_merge(int rootfd, struct pkg_config_file *rcf, struct pkg *local,
 		rcf->newcontent = conf;
 		rcf->status = MERGE_SUCCESS;
 	}
+ret:
 	free(localconf);
 }
 
@@ -645,6 +784,7 @@ create_regfile(struct pkg *pkg, struct pkg_file *f, struct archive *a,
 		if (f->config) {
 			const char *cfdata;
 			bool merge = pkg_object_bool(pkg_config_get("AUTOMERGE"));
+			const char *merge_tool = pkg_object_string(pkg_config_get("MERGETOOL"));
 
 			pkg_debug(1, "Populating config_file %s", f->path);
 			len = archive_entry_size(ae);
@@ -652,7 +792,7 @@ create_regfile(struct pkg *pkg, struct pkg_file *f, struct archive *a,
 			archive_read_data(a, f->config->content, len);
 			f->config->content[len] = '\0';
 			cfdata = f->config->content;
-			attempt_to_merge(pkg->rootfd, f->config, local, merge);
+			attempt_to_merge(pkg->rootfd, f->config, local, merge, merge_tool);
 			if (f->config->status == MERGE_SUCCESS)
 				cfdata = f->config->newcontent;
 			dprintf(fd, "%s", cfdata);
