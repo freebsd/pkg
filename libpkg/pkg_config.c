@@ -367,6 +367,12 @@ static struct config_entry c[] = {
 	},
 	{
 		PKG_STRING,
+		"MERGETOOL",
+		NULL,
+		"Path to a program to be used for solving conflicts during the 3-way merging"
+	},
+	{
+		PKG_STRING,
 		"VERSION_SOURCE",
 		NULL,
 		"Version source for pkg-version (I, P, R), default is auto detect"
