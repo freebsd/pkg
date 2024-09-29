@@ -253,10 +253,10 @@ Fetch packages from a remote repository.
 .It Ic info
 Display information about installed packages and package files.
 .It Ic install
-Install a package from a remote package repository.
-If a package is found in more than one remote repository,
-then installation happens from the first one.
-Downloading a package is tried from each package repository in turn,
+Install a package from a package repository or a local archive.
+If a package is found in more than one repository, then the 
+first one is used.
+If not local, then download is attempted from each repository,
 until the package is successfully fetched.
 .It Ic lock
 Prevent modification or deletion of a package.
