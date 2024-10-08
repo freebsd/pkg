@@ -2,6 +2,8 @@
  * Copyright (c) 2014, Vsevolod Stakhov
  * Copyright (c) 2012-2024 Baptiste Daroussin <bapt@FreeBSD.org>
  * Copyright (c) 2012 Julien Laffaye <jlaffaye@FreeBSD.org>
+ * Copyright (c) 2024 Serenity Cyber Security, LLC
+ *                    Author: Gleb Popov <arrowd@FreeBSD.org>
  * All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without
@@ -498,18 +500,18 @@ rollback_repo(void *data)
 }
 
 static void
-save_groups(struct pkg_repo *repo, ucl_object_t *groups)
+save_ucl(struct pkg_repo *repo, ucl_object_t *obj, const char* dst_name)
 {
-	if (groups == NULL)
+	if (obj == NULL)
 		return;
 	if (repo->dfd == -1 && pkg_repo_open(repo) == EPKG_FATAL)
 		return;
-	int fd = openat(repo->dfd, "groups.ucl", O_CREAT|O_TRUNC|O_RDWR, 0644);
+	int fd = openat(repo->dfd, dst_name, O_CREAT|O_TRUNC|O_RDWR, 0644);
 	if (fd == -1) {
-		pkg_emit_errno("openat", "repo groups");
+		pkg_emit_errno("openat", "repo save_ucl");
 		return;
 	}
-	ucl_object_emit_fd(groups, UCL_EMIT_JSON_COMPACT, fd);
+	ucl_object_emit_fd(obj, UCL_EMIT_JSON_COMPACT, fd);
 	close(fd);
 }
 
@@ -636,8 +638,8 @@ pkg_repo_binary_update_proceed(const char *name, struct pkg_repo *repo,
 				break;
 		}
 		pkg_emit_progress_tick(cnt, nbel);
-		save_groups(repo,
-		    ucl_object_ref(ucl_object_find_key(data, "groups")));
+		save_ucl(repo,
+		    ucl_object_ref(ucl_object_find_key(data, "groups")), "groups.ucl");
 	}
 
 	if (rc == EPKG_OK)
