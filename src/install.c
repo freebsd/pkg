@@ -176,12 +176,13 @@ exec_install(int argc, char **argv)
 	else
 		repo_type = PKGDB_DB_LOCAL|PKGDB_DB_REPO;
 
-	retcode = pkgdb_access(mode, repo_type);
+	/* It is safe to use both `reponame` and `NULL` here */
+	retcode = pkgdb_access(mode, repo_type, reponame, NULL);
 
 	if (retcode == EPKG_ENOACCESS && dry_run) {
 		auto_update = false;
 		retcode = pkgdb_access(PKGDB_MODE_READ,
-				       repo_type);
+				       repo_type, reponame, NULL);
 	}
 
 	if (retcode == EPKG_ENOACCESS) {
