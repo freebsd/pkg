@@ -256,7 +256,9 @@ cleanup:
 		killemall.rk_sig = SIGKILL;
 		killemall.rk_flags = 0;
 		if (procctl(P_PID, mypid, PROC_REAP_KILL, &killemall) != 0) {
-			pkg_errno("%s", "Fail to kill all processes");
+			if (errno != ESRCH || killemall.rk_killed != 0 ) {
+				pkg_errno("%s", "Fail to kill all processes");
+			}
 		}
 	}
 	procctl(P_PID, mypid, PROC_REAP_RELEASE, NULL);
