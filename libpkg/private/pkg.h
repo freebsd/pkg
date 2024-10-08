@@ -311,6 +311,7 @@ struct pkg_repo_create {
 	const char *metafile;
 	struct pkg_repo_meta *meta;
 	ucl_object_t *groups;
+	ucl_object_t *expired_packages;
 	struct {
 		char **argv;
 		int argc;
