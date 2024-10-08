@@ -1327,8 +1327,10 @@ pkg_add_port(struct pkgdb *db, struct pkg *pkg, const char *input_path,
 
 	if (!testing) {
 		/* Execute pre-install scripts */
-		pkg_lua_script_run(pkg, PKG_LUA_PRE_INSTALL, false);
-		pkg_script_run(pkg, PKG_SCRIPT_PRE_INSTALL, false);
+		if ((rc = pkg_lua_script_run(pkg, PKG_LUA_PRE_INSTALL, false)) != EPKG_OK)
+			goto cleanup;
+		if ((rc = pkg_script_run(pkg, PKG_SCRIPT_PRE_INSTALL, false)) != EPKG_OK)
+			goto cleanup;
 
 		if (input_path != NULL) {
 			pkg_register_cleanup_callback(pkg_rollback_cb, pkg);
@@ -1342,8 +1344,10 @@ pkg_add_port(struct pkgdb *db, struct pkg *pkg, const char *input_path,
 		}
 
 		/* Execute post-install scripts */
-		pkg_lua_script_run(pkg, PKG_LUA_POST_INSTALL, false);
-		pkg_script_run(pkg, PKG_SCRIPT_POST_INSTALL, false);
+		if ((rc = pkg_lua_script_run(pkg, PKG_LUA_POST_INSTALL, false)) != EPKG_OK)
+			goto cleanup;
+		if ((rc = pkg_script_run(pkg, PKG_SCRIPT_POST_INSTALL, false)) != EPKG_OK)
+			goto cleanup;
 	}
 
 	if (rc == EPKG_OK) {
