@@ -640,6 +640,9 @@ pkg_repo_binary_update_proceed(const char *name, struct pkg_repo *repo,
 		pkg_emit_progress_tick(cnt, nbel);
 		save_ucl(repo,
 		    ucl_object_ref(ucl_object_find_key(data, "groups")), "groups.ucl");
+		save_ucl(repo,
+		    ucl_object_ref(ucl_object_find_key(data, "expired_packages")),
+		    "expired_packages.ucl");
 	}
 
 	if (rc == EPKG_OK)
