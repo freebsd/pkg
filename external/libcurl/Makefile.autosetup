@@ -23,6 +23,7 @@ SRCS=	\
 	cookie.c \
 	curl_addrinfo.c \
 	curl_get_line.c \
+	curl_memrchr.c \
 	curl_threads.c \
 	curl_trc.c \
 	dynbuf.c \
