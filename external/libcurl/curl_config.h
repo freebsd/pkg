@@ -417,8 +417,11 @@
 /* #undef HAVE_MACH_ABSOLUTE_TIME */
 
 /* Define to 1 if you have the memrchr function or macro. */
+#if defined(_DARWIN_C_SOURCE) || defined (__APPLE__)
+/* #undef HAVE_MEMRCHR */
+#else
 #define HAVE_MEMRCHR 1
-
+#endif
 /* Define to 1 if you have the MSG_NOSIGNAL flag. */
 #define HAVE_MSG_NOSIGNAL 1
 
