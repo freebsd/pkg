@@ -183,16 +183,18 @@ job_status_begin(xstring *msg)
 void
 progressbar_start(const char *pmsg)
 {
-	free(progress_message);
-	progress_message = NULL;
+	if (progress_message) {
+		free(progress_message);
+		progress_message = NULL;
+	}
 
 	if (quiet)
 		return;
 	if (pmsg != NULL)
-		progress_message = strdup(pmsg);
+		progress_message = xstrdup(pmsg);
 	else {
 		fflush(msg_buf->fp);
-		progress_message = strdup(msg_buf->buf);
+		progress_message = xstrdup(msg_buf->buf);
 	}
 	last_progress_percent = -1;
 	last_tick = 0;
