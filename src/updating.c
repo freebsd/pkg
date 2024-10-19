@@ -194,18 +194,21 @@ matcher(const char *affects, const char *origin, bool ignorecase)
 			}
 		}
 		if (found == 0) {
-			ent = malloc(sizeof(struct regex_cache));
-			if (ent == NULL)
-				goto err;
+			if ((ent = malloc(sizeof(struct regex_cache))) == NULL) {
+				ret = 0;
+				goto out;
+			}
 			if ((ent->pattern = strdup(words[i])) == NULL) {
 				free(ent);
-				goto err;
+				ret = 0;
+				goto out;
 			}
 			re = convert_re(words[i]);
 			if (re == NULL) {
 				free(ent->pattern);
 				free(ent);
-				goto err;
+				ret = 0;
+				goto out;
 			}
 			regcomp(&ent->reg, re, (ignorecase) ? REG_ICASE|REG_EXTENDED : REG_EXTENDED);
 			free(re);
@@ -217,13 +220,10 @@ matcher(const char *affects, const char *origin, bool ignorecase)
 		}
 	}
 
+out:
 	free(words);
 	free(buf);
-	return ret;
- err:
-	free(words);
-	free(buf);
-	return 0;
+	return (ret);
 }
 
 int
