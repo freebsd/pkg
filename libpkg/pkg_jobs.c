@@ -870,20 +870,6 @@ pkg_jobs_process_remote_pkg(struct pkg_jobs *j, struct pkg *rp,
 	return (nrit != NULL ? EPKG_OK : EPKG_FATAL);
 }
 
-static bool
-pkg_jobs_has_replacement(struct pkg_jobs *j, const char *uid)
-{
-	struct pkg_job_replace *cur;
-
-	LL_FOREACH(j->universe->uid_replaces, cur) {
-		if (STREQ(cur->new_uid, uid)) {
-			return (true);
-		}
-	}
-
-	return (false);
-}
-
 static int
 pkg_jobs_try_remote_candidate(struct pkg_jobs *j, const char *cond, const char *pattern, match_t m)
 {
@@ -901,9 +887,6 @@ pkg_jobs_try_remote_candidate(struct pkg_jobs *j, const char *cond, const char *
 
 	while (pkgdb_it_next(it, &p, flags) == EPKG_OK) {
 		xstring_renew(qmsg);
-		if (pkg_jobs_has_replacement(j, p->uid)) {
-			dbg(1, "replacement %s is already used", p->uid);
-		}
 	}
 
 
@@ -1825,40 +1808,6 @@ jobs_solve_fetch(struct pkg_jobs *j)
 	return (EPKG_OK);
 }
 
-static void
-pkg_jobs_apply_replacements(struct pkg_jobs *j)
-{
-	struct pkg_job_replace *r;
-	static const char sql[] = ""
-		"UPDATE packages SET name=?1 "
-		" WHERE name=?2;" ;
-	sqlite3_stmt *stmt;
-	int ret;
-
-	if (j->universe->uid_replaces == NULL)
-		return;
-
-	dbg(4, "running '%s'", sql);
-	ret = sqlite3_prepare_v2(j->db->sqlite, sql, -1, &stmt, NULL);
-	if (ret != SQLITE_OK) {
-		ERROR_SQLITE(j->db->sqlite, sql);
-		return;
-	}
-
-	LL_FOREACH(j->universe->uid_replaces, r) {
-		dbg(4, "changing uid %s -> %s", r->old_uid, r->new_uid);
-		sqlite3_bind_text(stmt, 1, r->new_uid, -1, SQLITE_TRANSIENT);
-		sqlite3_bind_text(stmt, 2, r->old_uid, -1, SQLITE_TRANSIENT);
-
-		if (sqlite3_step(stmt) != SQLITE_DONE)
-			ERROR_STMT_SQLITE(j->db->sqlite, stmt);
-
-		sqlite3_reset(stmt);
-	}
-
-	sqlite3_finalize(stmt);
-}
-
 static int
 solve_with_external_cudf_solver(struct pkg_jobs *j, const char *solver)
 {
@@ -1999,8 +1948,6 @@ pkg_jobs_solve(struct pkg_jobs *j)
 
 	if (ret != EPKG_OK)
 		return (ret);
-
-	pkg_jobs_apply_replacements(j);
 
 	/* Check if we need to fetch and re-run the solver */
 	tll_foreach(j->jobs, job) {

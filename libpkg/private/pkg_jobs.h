@@ -75,17 +75,10 @@ struct pkg_job_provide {
 	struct pkg_job_provide *next, *prev;
 };
 
-struct pkg_job_replace {
-	char *new_uid;
-	char *old_uid;
-	struct pkg_job_replace *next;
-};
-
 struct pkg_jobs_universe {
 	pkghash *items;		/* package uid, pkg_job_universe_item */
 	pkghash *seen;		/* package digest, pkg_job_universe_item */
 	pkghash *provides;	/* shlibs, pkg_job_provide */
-	struct pkg_job_replace *uid_replaces;
 	struct pkg_jobs *j;
 	size_t nitems;
 };
@@ -183,13 +176,6 @@ struct pkg_job_universe_item* pkg_jobs_universe_find(struct pkg_jobs_universe
  */
 int pkg_jobs_universe_add_pkg(struct pkg_jobs_universe *universe,
 	struct pkg *pkg, bool force, struct pkg_job_universe_item **found);
-
-/*
- * Change uid for universe item
- */
-void pkg_jobs_universe_change_uid(struct pkg_jobs_universe *universe,
-	struct pkg_job_universe_item *unit,
-	const char *new_uid, bool update_rdeps);
 
 /*
  * Find local package in db or universe

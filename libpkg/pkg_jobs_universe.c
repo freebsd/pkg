@@ -827,14 +827,6 @@ pkg_jobs_universe_provide_free(struct pkg_job_provide *pr)
 	}
 }
 
-static void
-pkg_jobs_universe_replacement_free(struct pkg_job_replace *r)
-{
-	free(r->new_uid);
-	free(r->old_uid);
-	free(r);
-}
-
 void
 pkg_jobs_universe_free(struct pkg_jobs_universe *universe)
 {
@@ -856,7 +848,6 @@ pkg_jobs_universe_free(struct pkg_jobs_universe *universe)
 	while (pkghash_next(&it))
 		pkg_jobs_universe_provide_free(it.value);
 	pkghash_destroy(universe->provides);
-	LL_FREE(universe->uid_replaces, pkg_jobs_universe_replacement_free);
 }
 
 struct pkg_jobs_universe *
@@ -874,58 +865,6 @@ struct pkg_job_universe_item *
 pkg_jobs_universe_find(struct pkg_jobs_universe *universe, const char *uid)
 {
 	return (pkghash_get_value(universe->items, uid));
-}
-
-void
-pkg_jobs_universe_change_uid(struct pkg_jobs_universe *universe,
-	struct pkg_job_universe_item *unit,
-	const char *new_uid, bool update_rdeps)
-{
-	struct pkg_dep *rd = NULL, *d = NULL;
-	struct pkg_job_universe_item *found, *tmp;
-
-	struct pkg *lp;
-	struct pkg_job_replace *replacement;
-
-	if (update_rdeps) {
-		/* For all rdeps update deps accordingly */
-		while (pkg_rdeps(unit->pkg, &rd) == EPKG_OK) {
-			found = pkg_jobs_universe_find(universe, rd->uid);
-			if (found == NULL) {
-				lp = pkg_jobs_universe_get_local(universe, rd->uid, 0);
-				/* XXX */
-				assert(lp != NULL);
-				pkg_jobs_universe_process_item(universe, lp, &found);
-			}
-
-			if (found != NULL) {
-				while (pkg_deps(found->pkg, &d) == EPKG_OK) {
-					if (STREQ(d->uid, unit->pkg->uid)) {
-						free(d->uid);
-						d->uid = xstrdup(new_uid);
-					}
-				}
-			}
-		}
-	}
-
-	replacement = xcalloc(1, sizeof(*replacement));
-	replacement->old_uid = xstrdup(unit->pkg->uid);
-	replacement->new_uid = xstrdup(new_uid);
-	LL_PREPEND(universe->uid_replaces, replacement);
-
-	tmp = pkghash_delete(universe->items, unit->pkg->uid);
-	if (tmp != NULL)
-		tmp->inhash = false;
-	free(unit->pkg->uid);
-	unit->pkg->uid = xstrdup(new_uid);
-
-	found = pkghash_get_value(universe->items, new_uid);
-	if (found != NULL)
-		DL_APPEND(found, unit);
-	else
-		pkghash_safe_add(universe->items, new_uid, unit, NULL);
-
 }
 
 static struct pkg_job_universe_item *
