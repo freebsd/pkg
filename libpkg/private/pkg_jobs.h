@@ -200,11 +200,6 @@ int pkg_conflicts_append_chain(struct pkg_job_universe_item *it,
 	struct pkg_jobs *j);
 
 /*
- * Perform integrity check for the jobs specified
- */
-int pkg_conflicts_integrity_check(struct pkg_jobs *j);
-
-/*
  * Check whether `rp` is an upgrade for `lp`
  */
 bool pkg_jobs_need_upgrade(struct pkg *rp, struct pkg *lp);
