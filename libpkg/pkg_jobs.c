@@ -1965,22 +1965,22 @@ pkg_jobs_solve(struct pkg_jobs *j)
 	}
 
 	if (j->solved == 1 && !j->need_fetch && j->type != PKG_JOBS_FETCH) {
-		int rc;
-		bool has_conflicts = false;
 		do {
-			j->conflicts_registered = 0;
-			rc = pkg_jobs_check_conflicts(j);
-			if (rc == EPKG_CONFLICT) {
-				/* Cleanup results */
+			int rc = pkg_jobs_check_conflicts(j);
+			if (rc == EPKG_OK) {
+				break;
+			} else if (rc == EPKG_CONFLICT) {
+				/* Cleanup solver results */
 				tll_free_and_free(j->jobs, free);
 				j->count = 0;
-				has_conflicts = true;
-				pkg_jobs_solve(j);
+				rc = pkg_jobs_solve(j);
+				if (rc != EPKG_OK) {
+					return (rc);
+				}
+			} else {
+				return (rc);
 			}
-			else if (rc == EPKG_OK && !has_conflicts) {
-				break;
-			}
-		} while (j->conflicts_registered > 0);
+		} while (1);
 	}
 
 	return (ret);
@@ -2201,7 +2201,6 @@ int
 pkg_jobs_apply(struct pkg_jobs *j)
 {
 	int rc;
-	bool has_conflicts = false;
 
 	if (!j->solved) {
 		pkg_emit_error("The jobs hasn't been solved");
@@ -2220,27 +2219,30 @@ pkg_jobs_apply(struct pkg_jobs *j)
 			if (rc == EPKG_OK) {
 				/* Check local conflicts in the first run */
 				if (j->solved == 1) {
+					bool found_conflicts = false;
 					do {
-						j->conflicts_registered = 0;
 						rc = pkg_jobs_check_conflicts(j);
-						if (rc == EPKG_CONFLICT) {
-							/* Cleanup results */
+						if (rc == EPKG_OK) {
+							break;
+						} else if (rc == EPKG_CONFLICT) {
+							/* Cleanup solver results */
 							tll_free_and_free(j->jobs, free);
 							j->count = 0;
-							has_conflicts = true;
+							found_conflicts = true;
 							rc = pkg_jobs_solve(j);
+							if (rc != EPKG_OK) {
+								return (rc);
+							}
+						} else {
+							return (rc);
 						}
-						else if (rc == EPKG_OK && !has_conflicts) {
-							rc = pkg_jobs_execute(j);
-							break;
-						}
-					} while (j->conflicts_registered > 0);
+					} while (1);
 
-					if (has_conflicts) {
-						if (j->conflicts_registered == 0)
-							pkg_jobs_set_priorities(j);
-
-						return (EPKG_CONFLICT);
+					if (found_conflicts) {
+						pkg_jobs_set_priorities(j);
+						rc = EPKG_CONFLICT;
+					} else {
+						rc = pkg_jobs_execute(j);
 					}
 				}
 				else {
