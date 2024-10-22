@@ -101,7 +101,7 @@ pkg_jobs_new(struct pkg_jobs **j, pkg_jobs_t t, struct pkgdb *db)
 
 	(*j)->db = db;
 	(*j)->type = t;
-	(*j)->solved = 0;
+	(*j)->solved = false;
 	(*j)->pinning = true;
 	(*j)->flags = PKG_FLAG_NONE;
 	(*j)->conservative = pkg_object_bool(pkg_config_get("CONSERVATIVE_UPGRADE"));
@@ -1500,7 +1500,7 @@ jobs_solve_deinstall(struct pkg_jobs *j)
 		pkgdb_it_free(it);
 	}
 
-	j->solved = 1;
+	j->solved = true;
 
 	return (pkg_jobs_process_delete_request(j));
 }
@@ -1611,6 +1611,8 @@ jobs_solve_full_upgrade(struct pkg_jobs *j)
 	unsigned flags = PKG_LOAD_BASIC|PKG_LOAD_OPTIONS|PKG_LOAD_DEPS|PKG_LOAD_REQUIRES|
 			PKG_LOAD_SHLIBS_REQUIRED|PKG_LOAD_ANNOTATIONS|PKG_LOAD_CONFLICTS;
 
+	assert(!j->solved);
+
 	candidates = pkg_jobs_find_install_candidates(j);
 	jcount = tll_length(*candidates);
 
@@ -1661,6 +1663,8 @@ jobs_solve_partial_upgrade(struct pkg_jobs *j)
 	bool error_found = false;
 	int retcode;
 	pkghash_it it;
+
+	assert(!j->solved);
 
 	LL_FOREACH(j->patterns, jp) {
 		retcode = pkg_jobs_find_remote_pattern(j, jp);
@@ -1725,7 +1729,7 @@ jobs_solve_install_upgrade(struct pkg_jobs *j)
 		return (EPKG_FATAL);
 	}
 
-	if (j->solved == 0) {
+	if (!j->solved) {
 		if (j->patterns == NULL) {
 			retcode = jobs_solve_full_upgrade(j);
 			if (retcode != EPKG_OK)
@@ -1757,7 +1761,7 @@ jobs_solve_install_upgrade(struct pkg_jobs *j)
 
 order:
 
-	j->solved ++;
+	j->solved = true;
 
 	return (EPKG_OK);
 }
@@ -1771,6 +1775,8 @@ jobs_solve_fetch(struct pkg_jobs *j)
 	struct pkg_job_request *req;
 	pkghash_it hit;
 	pkg_error_t rc;
+
+	assert(!j->solved);
 
 	if ((j->flags & PKG_FLAG_UPGRADES_FOR_INSTALLED) == PKG_FLAG_UPGRADES_FOR_INSTALLED) {
 		if ((it = pkgdb_query(j->db, NULL, MATCH_ALL)) == NULL)
@@ -1803,7 +1809,7 @@ jobs_solve_fetch(struct pkg_jobs *j)
 		}
 	}
 
-	j->solved ++;
+	j->solved = true;
 
 	return (EPKG_OK);
 }
@@ -1867,7 +1873,7 @@ solve_with_sat_solver(struct pkg_jobs *j)
 	problem = pkg_solve_jobs_to_sat(j);
 	if (problem == NULL) {
 		pkg_emit_error("cannot convert job to SAT problem");
-		j->solved = 0;
+		j->solved = false;
 		return (EPKG_FATAL);
 	}
 
@@ -1883,7 +1889,7 @@ solve_with_sat_solver(struct pkg_jobs *j)
 	if (ret == EPKG_FATAL) {
 		pkg_emit_error("cannot solve job using SAT solver");
 		pkg_solve_problem_free(problem);
-		j->solved = 0;
+		j->solved = false;
 	} else {
 		ret = pkg_solve_sat_to_jobs(problem);
 	}
@@ -1955,7 +1961,7 @@ pkg_jobs_check_and_solve_conflicts(struct pkg_jobs *j, bool *found_conflicts)
 	int rc;
 
 	/* An inital solver run must be completed before this function is called */
-	assert(j->solved != 0);
+	assert(j->solved);
 
 	while ((rc = pkg_jobs_check_conflicts(j)) == EPKG_CONFLICT) {
 		if (found_conflicts) {
@@ -1981,7 +1987,11 @@ pkg_jobs_solve(struct pkg_jobs *j)
 	if (ret != EPKG_OK)
 		return (ret);
 
-	/* Check if we need to fetch and re-run the solver */
+	/*
+	 * We can avoid asking the user for confirmation twice in the case of
+	 * conflicts if we can check for and solve conflicts without first
+	 * needing to fetch.
+	 */
 	tll_foreach(j->jobs, job) {
 		struct pkg *p;
 
@@ -2234,19 +2244,13 @@ pkg_jobs_apply(struct pkg_jobs *j)
 			rc = pkg_jobs_fetch(j);
 			pkg_plugins_hook_run(PKG_PLUGIN_HOOK_POST_FETCH, j, j->db);
 			if (rc == EPKG_OK) {
-				/* Check local conflicts in the first run */
-				if (j->solved == 1) {
-					bool found_conflicts = false;
-					rc = pkg_jobs_check_and_solve_conflicts(j, &found_conflicts);
-					if (found_conflicts) {
-						pkg_jobs_set_priorities(j);
-						rc = EPKG_CONFLICT;
-					} else if (rc == EPKG_OK) {
-						rc = pkg_jobs_execute(j);
-					}
-				}
-				else {
-					/* Not the first run, conflicts are resolved already */
+				j->need_fetch = false;
+				bool found_conflicts = false;
+				rc = pkg_jobs_check_and_solve_conflicts(j, &found_conflicts);
+				if (found_conflicts) {
+					pkg_jobs_set_priorities(j);
+					rc = EPKG_CONFLICT;
+				} else if (rc == EPKG_OK) {
 					rc = pkg_jobs_execute(j);
 				}
 			}

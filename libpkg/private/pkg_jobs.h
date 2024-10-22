@@ -102,7 +102,7 @@ struct pkg_jobs {
 	struct pkgdb	*db;
 	pkg_jobs_t	 type;
 	pkg_flags	 flags;
-	int		 solved;
+	bool solved;
 	int count;
 	int total;
 	int conflicts_registered;
