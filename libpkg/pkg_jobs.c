@@ -1904,8 +1904,8 @@ solve_with_sat_solver(struct pkg_jobs *j)
 	return (ret);
 }
 
-int
-pkg_jobs_solve(struct pkg_jobs *j)
+static int
+pkg_jobs_run_solver(struct pkg_jobs *j)
 {
 	int ret;
 	const char *cudf_solver;
@@ -1946,6 +1946,14 @@ pkg_jobs_solve(struct pkg_jobs *j)
 
 	pkgdb_end_solver(j->db);
 
+	return (ret);
+}
+
+int
+pkg_jobs_solve(struct pkg_jobs *j)
+{
+	int ret = pkg_jobs_run_solver(j);
+
 	if (ret != EPKG_OK)
 		return (ret);
 
@@ -1964,7 +1972,7 @@ pkg_jobs_solve(struct pkg_jobs *j)
 		}
 	}
 
-	if (j->solved == 1 && !j->need_fetch && j->type != PKG_JOBS_FETCH) {
+	if (!j->need_fetch && j->type != PKG_JOBS_FETCH) {
 		do {
 			int rc = pkg_jobs_check_conflicts(j);
 			if (rc == EPKG_OK) {
@@ -1973,7 +1981,7 @@ pkg_jobs_solve(struct pkg_jobs *j)
 				/* Cleanup solver results */
 				tll_free_and_free(j->jobs, free);
 				j->count = 0;
-				rc = pkg_jobs_solve(j);
+				rc = pkg_jobs_run_solver(j);
 				if (rc != EPKG_OK) {
 					return (rc);
 				}
@@ -2229,7 +2237,7 @@ pkg_jobs_apply(struct pkg_jobs *j)
 							tll_free_and_free(j->jobs, free);
 							j->count = 0;
 							found_conflicts = true;
-							rc = pkg_jobs_solve(j);
+							rc = pkg_jobs_run_solver(j);
 							if (rc != EPKG_OK) {
 								return (rc);
 							}
