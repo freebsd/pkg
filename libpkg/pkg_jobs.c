@@ -1949,6 +1949,30 @@ pkg_jobs_run_solver(struct pkg_jobs *j)
 	return (ret);
 }
 
+static int
+pkg_jobs_check_and_solve_conflicts(struct pkg_jobs *j, bool *found_conflicts)
+{
+	int rc;
+
+	/* An inital solver run must be completed before this function is called */
+	assert(j->solved != 0);
+
+	while ((rc = pkg_jobs_check_conflicts(j)) == EPKG_CONFLICT) {
+		if (found_conflicts) {
+			*found_conflicts = true;
+		}
+		/* Cleanup solver results */
+		tll_free_and_free(j->jobs, free);
+		j->count = 0;
+		rc = pkg_jobs_run_solver(j);
+		if (rc != EPKG_OK) {
+			break;
+		}
+	}
+
+	return (rc);
+}
+
 int
 pkg_jobs_solve(struct pkg_jobs *j)
 {
@@ -1973,22 +1997,7 @@ pkg_jobs_solve(struct pkg_jobs *j)
 	}
 
 	if (!j->need_fetch && j->type != PKG_JOBS_FETCH) {
-		do {
-			int rc = pkg_jobs_check_conflicts(j);
-			if (rc == EPKG_OK) {
-				break;
-			} else if (rc == EPKG_CONFLICT) {
-				/* Cleanup solver results */
-				tll_free_and_free(j->jobs, free);
-				j->count = 0;
-				rc = pkg_jobs_run_solver(j);
-				if (rc != EPKG_OK) {
-					return (rc);
-				}
-			} else {
-				return (rc);
-			}
-		} while (1);
+		ret = pkg_jobs_check_and_solve_conflicts(j, NULL);
 	}
 
 	return (ret);
@@ -2228,28 +2237,11 @@ pkg_jobs_apply(struct pkg_jobs *j)
 				/* Check local conflicts in the first run */
 				if (j->solved == 1) {
 					bool found_conflicts = false;
-					do {
-						rc = pkg_jobs_check_conflicts(j);
-						if (rc == EPKG_OK) {
-							break;
-						} else if (rc == EPKG_CONFLICT) {
-							/* Cleanup solver results */
-							tll_free_and_free(j->jobs, free);
-							j->count = 0;
-							found_conflicts = true;
-							rc = pkg_jobs_run_solver(j);
-							if (rc != EPKG_OK) {
-								return (rc);
-							}
-						} else {
-							return (rc);
-						}
-					} while (1);
-
+					rc = pkg_jobs_check_and_solve_conflicts(j, &found_conflicts);
 					if (found_conflicts) {
 						pkg_jobs_set_priorities(j);
 						rc = EPKG_CONFLICT;
-					} else {
+					} else if (rc == EPKG_OK) {
 						rc = pkg_jobs_execute(j);
 					}
 				}
