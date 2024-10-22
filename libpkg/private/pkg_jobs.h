@@ -39,6 +39,11 @@
 struct pkg_jobs;
 struct job_pattern;
 
+/*
+ * Each item in pkg_jobs_universe->items is the head of a doubly linked list
+ * and has inhash set to true. Other items with the same uid are added to
+ * this doubly linked list and have inhash set to false.
+ */
 struct pkg_job_universe_item {
 	struct pkg *pkg;
 	int priority;
