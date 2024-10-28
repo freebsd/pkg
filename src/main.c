@@ -96,6 +96,9 @@ static struct commands {
 	{ "install", "Installs packages from remote package repositories and local archives", exec_install, usage_install},
 	{ "lock", "Locks package against modifications or deletion", exec_lock, usage_lock},
 	{ "plugins", "Manages plugins and displays information about plugins", exec_plugins, usage_plugins},
+#ifdef HAVE_LIBPROCSTAT
+	{ "ps", "List running processes using deleted binaries and libraries", exec_ps, usage_ps},
+#endif
 	{ "query", "Queries information about installed packages", exec_query, usage_query},
 	{ "register", "Registers a package into the local database", exec_register, usage_register},
 	{ "remove", "Deletes packages from the database and the system", exec_delete, usage_delete},

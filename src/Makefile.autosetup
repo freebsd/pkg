@@ -75,6 +75,10 @@ OTHER_LIBS+=	-lresolv
 @if HAVE_LIBMD
 OTHER_LIBS+=	-lmd
 @endif
+@if HAVE_LIBPROCSTAT
+SRCS+=		ps.c
+OTHER_LIBS+=	-lprocstat -lkvm
+@endif
 
 @if PKG_OPENSSL_LIBS
 LOCAL_CFLAGS+=	@PKG_OPENSSL_CFLAGS@
