@@ -2,7 +2,7 @@
  * Copyright (c) 2011-2012 Baptiste Daroussin <bapt@FreeBSD.org>
  * Copyright (c) 2011-2012 Julien Laffaye <jlaffaye@FreeBSD.org>
  * All rights reserved.
- * 
+ *
  * Redistribution and use in source and binary forms, with or without
  * modification, are permitted provided that the following conditions
  * are met:
@@ -12,7 +12,7 @@
  * 2. Redistributions in binary form must reproduce the above copyright
  *    notice, this list of conditions and the following disclaimer in the
  *    documentation and/or other materials provided with the distribution.
- * 
+ *
  * THIS SOFTWARE IS PROVIDED BY THE AUTHOR(S) ``AS IS'' AND ANY EXPRESS OR
  * IMPLIED WARRANTIES, INCLUDING, BUT NOT LIMITED TO, THE IMPLIED WARRANTIES
  * OF MERCHANTABILITY AND FITNESS FOR A PARTICULAR PURPOSE ARE DISCLAIMED.
@@ -121,7 +121,7 @@ exec_add(int argc, char **argv)
 	retcode = pkgdb_access(PKGDB_MODE_READ  |
 			       PKGDB_MODE_WRITE |
 			       PKGDB_MODE_CREATE,
-			       PKGDB_DB_LOCAL);
+			       PKGDB_DB_LOCAL, NULL);
 	if (retcode == EPKG_ENOACCESS) {
 		warnx("Insufficient privileges to add packages");
 		return (EXIT_FAILURE);
@@ -188,7 +188,7 @@ exec_add(int argc, char **argv)
 	}
 	pkgdb_release_lock(db, PKGDB_LOCK_EXCLUSIVE);
 	pkgdb_close(db);
-	
+
 	if(failedpkgcount > 0) {
 		fflush(failedpkgs->fp);
 		printf("\nFailed to install the following %d package(s): %s\n", failedpkgcount, failedpkgs->buf);

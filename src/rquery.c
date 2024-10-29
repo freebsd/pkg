@@ -205,7 +205,7 @@ exec_rquery(int argc, char **argv)
 		}
 	}
 
-	ret = pkgdb_access(PKGDB_MODE_READ, PKGDB_DB_REPO);
+	ret = pkgdb_access(PKGDB_MODE_READ, PKGDB_DB_REPO, reponame, NULL);
 	if (ret == EPKG_ENOACCESS) {
 		warnx("Insufficient privileges to query the package database");
 		xstring_free(sqlcond);
