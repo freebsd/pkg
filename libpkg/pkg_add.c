@@ -1017,6 +1017,10 @@ pkg_extract_finalize(struct pkg *pkg, tempdirs_t *tempdirs)
 
 	if (tempdirs != NULL) {
 		tll_foreach(*tempdirs, t) {
+			if (fstatat(pkg->rootfd, RELATIVE_PATH(t->item->name),
+			    &st, AT_SYMLINK_NOFOLLOW) == 0)
+				unlinkat(pkg->rootfd,
+				    RELATIVE_PATH(t->item->name), 0);
 			if (renameat(pkg->rootfd, RELATIVE_PATH(t->item->temp),
 			    pkg->rootfd, RELATIVE_PATH(t->item->name)) != 0) {
 				pkg_fatal_errno("Fail to rename %s -> %s",
