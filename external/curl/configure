@@ -28914,7 +28914,7 @@ fi
 
   CURL_CA_EMBED=''
   if test "x$want_ca_embed" != "xno" -a "x$want_ca_embed" != "xunset" -a -f "$want_ca_embed"; then
-    CURL_CA_EMBED='"'$want_ca_embed'"'
+    CURL_CA_EMBED="$want_ca_embed"
 
     { printf "%s\n" "$as_me:${as_lineno-$LINENO}: result: $want_ca_embed" >&5
 printf "%s\n" "$want_ca_embed" >&6; }

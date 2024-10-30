@@ -505,6 +505,11 @@ if(WIN32 OR CURL_USE_SECTRANSP OR CURL_USE_SCHANNEL OR CURL_USE_MBEDTLS OR CURL_
   set(_openssl_default OFF)
 endif()
 cmake_dependent_option(CURL_USE_OPENSSL "Enable OpenSSL for SSL/TLS" ${_openssl_default} CURL_ENABLE_SSL OFF)
+option(USE_OPENSSL_QUIC "Use OpenSSL and nghttp3 libraries for HTTP/3 support" OFF)
+if(USE_OPENSSL_QUIC AND NOT CURL_USE_OPENSSL)
+  message(WARNING "OpenSSL QUIC has been requested, but without enabling OpenSSL. Will not enable QUIC.")
+  set(USE_OPENSSL_QUIC OFF)
+endif()
 option(CURL_DISABLE_OPENSSL_AUTO_LOAD_CONFIG "Disable automatic loading of OpenSSL configuration" OFF)
 
 count_true(_enabled_ssl_options_count
@@ -900,7 +905,6 @@ if(USE_MSH3)
   list(APPEND LIBCURL_PC_REQUIRES_PRIVATE "libmsh3")
 endif()
 
-option(USE_OPENSSL_QUIC "Use openssl and nghttp3 libraries for HTTP/3 support" OFF)
 if(USE_OPENSSL_QUIC)
   if(USE_NGTCP2 OR USE_QUICHE OR USE_MSH3)
     message(FATAL_ERROR "Only one HTTP/3 backend can be selected!")
@@ -1902,7 +1906,7 @@ _add_if("NTLM"          NOT (CURL_DISABLE_NTLM) AND
                         (_use_curl_ntlm_core OR USE_WINDOWS_SSPI))
 _add_if("TLS-SRP"       USE_TLS_SRP)
 _add_if("HTTP2"         USE_NGHTTP2)
-_add_if("HTTP3"         USE_NGTCP2 OR USE_QUICHE OR USE_OPENSSL_QUIC)
+_add_if("HTTP3"         USE_NGTCP2 OR USE_QUICHE OR USE_MSH3 OR USE_OPENSSL_QUIC)
 _add_if("MultiSSL"      CURL_WITH_MULTI_SSL)
 _add_if("HTTPS-proxy"   _ssl_enabled AND (USE_OPENSSL OR USE_GNUTLS
                         OR USE_SCHANNEL OR USE_RUSTLS OR USE_BEARSSL OR
