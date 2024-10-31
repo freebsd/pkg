@@ -397,7 +397,7 @@ cleanup:
 	return (NULL);
 }
 
-#ifdef __linux__
+#if defined (__linux__) || defined(_DARWIN_C_SOURCE) || defined (__APPLE__)
 typedef const FTSENT *FTSENTP;
 #else
 typedef const FTSENT *const FTSENTP;
