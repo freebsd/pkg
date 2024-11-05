@@ -1279,7 +1279,6 @@ pkg_solve_insert_res_job (struct pkg_solve_variable *var,
 				dbg(3, "pkg_solve: schedule upgrade of %s from %s to %s",
 					del_var->uid, del_var->digest, add_var->digest);
 			}
-			j->count ++;
 		}
 
 		/*
@@ -1299,7 +1298,6 @@ pkg_solve_insert_res_job (struct pkg_solve_variable *var,
 				tll_push_back(j->jobs, res);
 				dbg(3, "schedule deletion of %s %s",
 					cur_var->uid, cur_var->digest);
-				j->count ++;
 			}
 		}
 	}

@@ -408,13 +408,11 @@ pkg_jobs_cudf_add_package(struct pkg_jobs *j, struct pkg_cudf_entry *entry)
 			pkg_debug(3, "pkg_cudf: schedule installation of %s(%d)",
 					entry->uid, ver);
 			pkg_jobs_cudf_insert_res_job (&j->jobs, selected, NULL, PKG_SOLVED_INSTALL);
-			j->count ++;
 		}
 		else if (!entry->installed && selected->pkg->type == PKG_INSTALLED) {
 			pkg_debug(3, "pkg_cudf: schedule removing of %s(%d)",
 					entry->uid, ver);
 			pkg_jobs_cudf_insert_res_job (&j->jobs, selected, NULL, PKG_SOLVED_DELETE);
-			j->count ++;
 		}
 	}
 	else {
@@ -431,7 +429,6 @@ pkg_jobs_cudf_add_package(struct pkg_jobs *j, struct pkg_cudf_entry *entry)
 		/* XXX: this is a hack due to iterators stupidity */
 		selected->pkg->old_version = old->pkg->version;
 		pkg_jobs_cudf_insert_res_job (&j->jobs, selected, old, PKG_SOLVED_UPGRADE);
-		j->count ++;
 	}
 
 	return (EPKG_OK);
