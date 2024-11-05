@@ -103,7 +103,6 @@ struct pkg_jobs {
 	pkg_jobs_t	 type;
 	pkg_flags	 flags;
 	bool solved;
-	int count;
 	int total;
 	int conflicts_registered;
 	bool need_fetch;

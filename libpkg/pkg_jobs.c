@@ -597,7 +597,6 @@ pkg_jobs_set_execute_priority(struct pkg_jobs *j, struct pkg_solved *solved)
 			solved->type = PKG_SOLVED_UPGRADE_INSTALL;
 			solved->xlink = ts;
 			tll_push_back(j->jobs, ts);
-			j->count++;
 			dbg(2, "split upgrade request for %s",
 			   ts->items[0]->pkg->uid);
 			return (EPKG_CONFLICT);
@@ -1969,7 +1968,6 @@ pkg_jobs_check_and_solve_conflicts(struct pkg_jobs *j, bool *found_conflicts)
 		}
 		/* Cleanup solver results */
 		tll_free_and_free(j->jobs, free);
-		j->count = 0;
 		rc = pkg_jobs_run_solver(j);
 		if (rc != EPKG_OK) {
 			break;
@@ -2018,7 +2016,7 @@ pkg_jobs_count(struct pkg_jobs *j)
 {
 	assert(j != NULL);
 
-	return (j->count);
+	return (tll_length(j->jobs));
 }
 
 int
