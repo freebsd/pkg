@@ -43,6 +43,7 @@ SRCS=	backup_lib.c \
 	pkg_attributes.c \
 	pkg_delete.c \
 	pkg_jobs.c \
+	pkg_jobs_schedule.c \
 	pkg_repo_create.c \
 	pkg_version.c \
 	rcscripts.c \

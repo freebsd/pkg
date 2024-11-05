@@ -572,90 +572,6 @@ pkg_jobs_process_delete_request(struct pkg_jobs *j)
 	return (rc);
 }
 
-static int
-pkg_jobs_set_execute_priority(struct pkg_jobs *j, struct pkg_solved *solved)
-{
-	struct pkg_solved *ts;
-
-	if (solved->type == PKG_SOLVED_UPGRADE && solved->items[1]->pkg->conflicts != NULL) {
-		/*
-		 * We have an upgrade request that has some conflicting packages, therefore
-		 * update priorities of local packages and try to update priorities of remote ones
-		 */
-		if (solved->items[0]->priority == 0)
-			pkg_jobs_update_conflict_priority(j->universe, solved);
-
-		if (solved->items[1]->priority > solved->items[0]->priority) {
-			/*
-			 * Split conflicting upgrade request into delete -> upgrade request
-			 */
-			ts = xcalloc(1, sizeof(struct pkg_solved));
-			ts->type = PKG_SOLVED_UPGRADE_REMOVE;
-			ts->items[0] = solved->items[1];
-			ts->xlink = solved;
-			solved->items[1] = NULL;
-			solved->type = PKG_SOLVED_UPGRADE_INSTALL;
-			solved->xlink = ts;
-			tll_push_back(j->jobs, ts);
-			dbg(2, "split upgrade request for %s",
-			   ts->items[0]->pkg->uid);
-			return (EPKG_CONFLICT);
-		}
-	}
-	else if (solved->type == PKG_SOLVED_DELETE) {
-		if (solved->items[0]->priority == 0)
-			pkg_jobs_update_universe_priority(j->universe, solved->items[0],
-					PKG_PRIORITY_UPDATE_DELETE);
-	}
-	else if (solved->items[0]->priority == 0) {
-		pkg_jobs_update_universe_priority(j->universe, solved->items[0],
-				PKG_PRIORITY_UPDATE_REQUEST);
-	}
-
-	return (EPKG_OK);
-}
-
-static bool
-pkg_jobs_is_delete(struct pkg_solved *req)
-{
-	return (req->type == PKG_SOLVED_DELETE ||
-	    req->type == PKG_SOLVED_UPGRADE_REMOVE);
-}
-
-static int
-pkg_jobs_sort_priority(struct pkg_solved *r1, struct pkg_solved *r2)
-{
-	if (r1->items[0]->priority == r2->items[0]->priority) {
-		if (pkg_jobs_is_delete(r1) && !pkg_jobs_is_delete(r2))
-			return (-1);
-		if (pkg_jobs_is_delete(r2) && !pkg_jobs_is_delete(r1))
-			return (1);
-
-		return (0);
-	}
-	return (r2->items[0]->priority - r1->items[0]->priority);
-}
-
-static void
-pkg_jobs_set_priorities(struct pkg_jobs *j)
-{
-	struct pkg_solved *req;
-
-iter_again:
-	tll_foreach(j->jobs, r) {
-		req = r->item;
-		req->items[0]->priority = 0;
-		if (req->items[1] != NULL)
-			req->items[1]->priority = 0;
-	}
-	tll_foreach(j->jobs, r) {
-		if (pkg_jobs_set_execute_priority(j, r->item) == EPKG_CONFLICT)
-			goto iter_again;
-	}
-
-	tll_sort(j->jobs, pkg_jobs_sort_priority);
-}
-
 static bool pkg_jobs_test_automatic(struct pkg_jobs *j, struct pkg *p);
 
 static bool
@@ -2156,7 +2072,9 @@ pkg_jobs_execute(struct pkg_jobs *j)
 
 	pkg_plugins_hook_run(pre, j, j->db);
 
-	pkg_jobs_set_priorities(j);
+	retcode = pkg_jobs_schedule(j);
+	if (retcode != EPKG_OK)
+		return (retcode);
 
 	tll_foreach(j->jobs, _p) {
 		struct pkg_solved *ps = _p->item;
@@ -2246,7 +2164,6 @@ pkg_jobs_apply(struct pkg_jobs *j)
 				bool found_conflicts = false;
 				rc = pkg_jobs_check_and_solve_conflicts(j, &found_conflicts);
 				if (found_conflicts) {
-					pkg_jobs_set_priorities(j);
 					rc = EPKG_CONFLICT;
 				} else if (rc == EPKG_OK) {
 					rc = pkg_jobs_execute(j);
