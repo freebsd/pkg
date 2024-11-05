@@ -46,9 +46,9 @@ struct job_pattern;
  */
 struct pkg_job_universe_item {
 	struct pkg *pkg;
-	int priority;
 	bool processed;
 	bool inhash;
+	bool cudf_emit_skip;
 	struct pkg_job_universe_item *next, *prev;
 };
 
@@ -66,12 +66,20 @@ struct pkg_job_request {
 	bool automatic;
 };
 
+enum pkg_solved_cycle_mark {
+	PKG_SOLVED_CYCLE_MARK_NONE,	/* Not yet checked */
+	PKG_SOLVED_CYCLE_MARK_DONE,	/* Finished checking */
+	PKG_SOLVED_CYCLE_MARK_PATH,	/* In the path currently being checked */
+};
+
 struct pkg_solved {
 	struct pkg_job_universe_item *items[2]; /* to-add/to-delete */
 	struct pkg_solved *xlink;	/* link split jobs together */
 	pkg_solved_t type;
+	enum pkg_solved_cycle_mark mark;/* scheduling cycle detection */
+	struct pkg_solved *path_next;	/* scheduling cycle detection */
 };
-typedef tll(struct pkg_solved *) pkg_solved;
+typedef tll(struct pkg_solved *) pkg_solved_list;
 
 struct pkg_job_provide {
 	struct pkg_job_universe_item *un;
@@ -98,7 +106,7 @@ struct pkg_jobs {
 	struct pkg_jobs_universe *universe;
 	pkghash	*request_add;
 	pkghash	*request_delete;
-	pkg_solved	 jobs;
+	pkg_solved_list	 jobs;
 	struct pkgdb	*db;
 	pkg_jobs_t	 type;
 	pkg_flags	 flags;
@@ -231,6 +239,11 @@ struct pkg_job_universe_item *
 pkg_jobs_universe_select_candidate(struct pkg_job_universe_item *chain,
 	struct pkg_job_universe_item *local, bool conservative,
 	const char *reponame, bool pinning);
+
+/*
+ * Determine execution order and sort the pkg_jobs->jobs list.
+ */
+int pkg_jobs_schedule(struct pkg_jobs *j);
 
 /*
  * Free job request (with all candidates)
