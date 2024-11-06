@@ -215,10 +215,10 @@ Installed packages to be REINSTALLED:
 	pkgD-1.0 [repoB]
 
 Number of packages to be reinstalled: 2
-${JAILED}[1/2] Reinstalling pkgD-1.0...
-${JAILED}[1/2] Extracting pkgD-1.0:  done
-${JAILED}[2/2] Reinstalling pkgA-1.0...
-${JAILED}[2/2] Extracting pkgA-1.0:  done
+${JAILED}[1/2] Reinstalling pkgA-1.0...
+${JAILED}[1/2] Extracting pkgA-1.0:  done
+${JAILED}[2/2] Reinstalling pkgD-1.0...
+${JAILED}[2/2] Extracting pkgD-1.0:  done
 "
 
         atf_check \
