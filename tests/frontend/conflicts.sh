@@ -178,6 +178,13 @@ Number of packages to be upgraded: 1
 # foo is upgraded to new dep on bar1-1.0 & bar is updated to 2.0
 # other still depends on bar1-1.0
 # bar1 and bar conflict with each other
+# install arp, which also depends on new bar1-1.0
+#
+# This also tests that other is deleted before the first half of the split
+# upgrade foo job and arp is installed after the second half despite the default
+# lexicographical job ordering when there are no hard ordering requirements.
+# This behavior minimizes the distance between the split halves of an upgrade in
+# the execution order.
 more_complex_choice_body()
 {
 	echo "bar-1.0" > file1
@@ -272,6 +279,7 @@ files: {
 }
 EOF
 
+	# Upgrade foo
 	atf_check \
 		-o empty \
 		-e empty \
@@ -288,11 +296,28 @@ deps: {
 }
 EOF
 
+	# Create arp
 	atf_check \
 		-o empty \
 		-e empty \
 		-s exit:0 \
 		pkg create -M ./foo.ucl -o ./repo/
+
+	atf_check -s exit:0 sh ${RESOURCEDIR}/test_subr.sh new_pkg arp arp 1.0_1 "${TMPDIR}"
+	cat << EOF >> arp.ucl
+deps: {
+	bar1: {
+		origin: "bar1",
+		version: "1.1"
+	}
+}
+EOF
+
+	atf_check \
+		-o empty \
+		-e empty \
+		-s exit:0 \
+		pkg create -M ./arp.ucl -o ./repo/
 
 	atf_check \
 		-o inline:"Creating repository in ./repo:  done\nPacking files for repository:  done\n" \
@@ -309,16 +334,13 @@ EOF
 OUTPUT="Updating local repository catalogue...
 local repository is up to date.
 All repositories are up to date.
-Checking for upgrades (2 candidates):  done
-Processing candidates (2 candidates):  done
-Checking integrity... done (2 conflicting)
+Checking integrity... done (1 conflicting)
   - bar1-1.1 conflicts with bar-1.0 on ${TMPDIR}/file1
-  - bar1-1.1 conflicts with bar-2.0 on ${TMPDIR}/file1
-Cannot solve problem using SAT solver, trying another plan
 Checking integrity... done (0 conflicting)
-The following 4 package(s) will be affected (of 0 checked):
+The following 5 package(s) will be affected (of 0 checked):
 
 New packages to be INSTALLED:
+	arp: 1.0_1
 	bar1: 1.1
 
 Installed packages to be UPGRADED:
@@ -329,22 +351,23 @@ Installed packages to be REMOVED:
 	other: 1.0
 
 Number of packages to be removed: 2
-Number of packages to be installed: 1
+Number of packages to be installed: 2
 Number of packages to be upgraded: 1
-[1/4] Deinstalling other-1.0...
-[2/4] Deinstalling foo-1.0...
-[3/4] Deinstalling bar-1.0...
-[3/4] Deleting files for bar-1.0:  done
-[4/4] Installing bar1-1.1...
-[4/4] Extracting bar1-1.1:  done
-[4/4] Installing foo-1.0_1...
+[1/5] Deinstalling other-1.0...
+[2/5] Deinstalling foo-1.0...
+[3/5] Deinstalling bar-1.0...
+[3/5] Deleting files for bar-1.0:  done
+[4/5] Installing bar1-1.1...
+[4/5] Extracting bar1-1.1:  done
+[4/5] Installing foo-1.0_1...
+[5/5] Installing arp-1.0_1...
 "
 
 	atf_check \
 		-o inline:"${OUTPUT}" \
 		-e empty \
 		-s exit:0 \
-		pkg -C ./pkg.conf upgrade -y
+		pkg -C ./pkg.conf install -y arp
 
 	atf_check \
 		-o match:"foo-1.0_1" \
