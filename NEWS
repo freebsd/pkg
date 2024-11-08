@@ -1,3 +1,19 @@
+Changes from 1.21.99.2 to 1.21.99.3
+- alias: prime-origins is now uniq
+- curl: improve debug output
+- file protocol now respects rfc8089 definition
+- fix glob search case sensitive support
+- update curl to latest version
+- update sqlite to latest version
+- update lua to latest version
+- time: remove usage of deprecated functions
+- allow to build against an external libcurl
+- fix build with external libarchive
+- improve portability
+- add support to use an external 3-way merge tool for @config files
+- rework the job scheduler, the new jobs scheduler:
+  all known to date scheduler issues are fixed with this new scheduler
+
 Changes from 1.21.99.1 to 1.21.99.2
 - audit: add -d to audit packages in a specified directory
 - bug fix: fix upgrade with symlinks becoming directories
