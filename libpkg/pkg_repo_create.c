@@ -365,7 +365,11 @@ pkg_create_repo_thread(void *arg)
 			ucl_object_emit_streamline_add_object(te->ctx, o);
 			ucl_object_emit_fd(o, UCL_EMIT_JSON_COMPACT, te->mfd);
 			dprintf(te->mfd, "\n");
+#if defined(_DARWIN_C_SOURCE) || defined(__APPLE__)
+			fcntl(te->mfd, F_FULLFSYNC);
+#else
 			fdatasync(te->mfd);
+#endif
 			ucl_object_unref(o);
 
 			pthread_mutex_unlock(&te->flock);
@@ -397,7 +401,7 @@ cleanup:
 	return (NULL);
 }
 
-#ifdef __linux__
+#if defined (__linux__) || defined(_DARWIN_C_SOURCE) || defined (__APPLE__)
 typedef const FTSENT *FTSENTP;
 #else
 typedef const FTSENT *const FTSENTP;
