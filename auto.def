@@ -336,6 +336,9 @@ if {[pkg-config-init 0]} {
 		if {![pkg-config libcurl]} {
 			user-error "Unable to find libcurl"
 		}
+		user-notice LIBCURL_CFLAGS=[get-define PKG_LIBCURL_CFLAGS]
+		user-notice LIBCURL_LDLAGS=[get-define PKG_LIBCURL_LDFLAGS]
+		user-notice LIBCURL_LIBS=[get-define PKG_LIBCURL_LIBS]
 	}
 	if {[opt-bool with-libarchive.pc]} {
 		if {![pkg-config libarchive]} {
@@ -346,12 +349,18 @@ if {[pkg-config-init 0]} {
 				cc-check-functions archive_write_add_filter_zstd
 			}
 		}
+		user-notice LIBARCHIVE_CFLAGS=[get-define PKG_LIBARCHIVE_CFLAGS]
+		user-notice LIBARCHIVE_LDLAGS=[get-define PKG_LIBARCHIVE_LDFLAGS]
+		user-notice LIBARCHIVE_LIBS=[get-define PKG_LIBARCHIVE_LIBS]
 	}
 
 	if {[opt-bool with-openssl.pc]} {
 		if {![pkg-config openssl]} {
 			user-error "Unable to find openssl"
 		}
+		user-notice OPENSSL_CFLAGS=[get-define PKG_OPENSSL_CFLAGS]
+		user-notice OPENSSL_LDLAGS=[get-define PKG_OPENSSL_LDFLAGS]
+		user-notice OPENSSL_LIBS=[get-define PKG_OPENSSL_LIBS]
 	}
 }
 

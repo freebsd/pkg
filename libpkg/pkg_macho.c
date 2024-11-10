@@ -107,7 +107,7 @@ analyse_macho(struct pkg *pkg, const char *fpath,
 			xasprintf(&libname, "%s.%s", march->mat_install_name, ai->name);
 			pkg_addshlib_provided(pkg, libname);
 			is_shlib = true;
-		}
+		
 
 		/* Now find all dependencies */
 		for (macho_loadcmd_t *cmd = march->mat_loadcmds; cmd != NULL; cmd = cmd->next) {
@@ -139,6 +139,7 @@ analyse_macho(struct pkg *pkg, const char *fpath,
 			xasprintf(&libname, "%s.%s", cmd->mlt_install_name, ai->name);
 
 			action(actdata, pkg, fpath, libname, is_shlib);
+		}
 		}
 	}
 
@@ -331,7 +332,7 @@ pkg_arch_to_legacy(const char *arch, char *dest, size_t sz)
 	/* Map the architecture name to its CPU type */
 	ai = NXGetArchInfoFromName(arch + i);
 	if (ai == NULL) {
-		pkg_emit_error("could not find architecture info for %s", arch + i);
+		// pkg_emit_error("could not find architecture info for %s", arch + i);
 		return EPKG_FATAL;
 	}
 
