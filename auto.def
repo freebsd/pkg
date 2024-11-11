@@ -101,6 +101,7 @@ cc-with { -libs { -llzma }} {
 	}
 }
 if {[string match *-freebsd* [get-define host]]} {
+	define pkg_freebsd
 	cc-with { -libs { -lmd }} {
 		if {![cc-check-functions SHA256_Data]} {
 			user-error "Unable to find libmd"

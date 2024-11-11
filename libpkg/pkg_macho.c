@@ -332,7 +332,7 @@ pkg_arch_to_legacy(const char *arch, char *dest, size_t sz)
 	/* Map the architecture name to its CPU type */
 	ai = NXGetArchInfoFromName(arch + i);
 	if (ai == NULL) {
-		// pkg_emit_error("could not find architecture info for %s", arch + i);
+		pkg_emit_error("could not find architecture info for %s", arch + i);
 		return EPKG_FATAL;
 	}
 
