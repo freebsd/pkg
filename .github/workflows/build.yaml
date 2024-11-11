@@ -1,0 +1,179 @@
+name: build
+# GitHub action to compile pkg on ubuntu-24.04, ubuntu-latest/22.04 (amd64) and macos-latest (arm64)
+#  * set-up prerequisites
+#  * configure && make && make check && make install
+#  * upload installed binaries as well as kyua reports as build artefact
+#
+# We run in a matrix with os/number of workers, to demonstrate the errors on MacOSX when running 
+# pkg repo multi-threaded.
+# Intended to increase awareness in issues with MacOS builds of pkg.
+
+
+on:
+    pull_request:
+        branches:
+            - main
+    push:
+    workflow_dispatch:
+
+permissions:
+    contents: read
+
+jobs:
+    build:
+        name: build ${{ matrix.workers-count }} ${{ matrix.build-os }} ${{ matrix.compiler }}
+        runs-on: "${{ matrix.build-os }}"
+        strategy:
+            fail-fast: false
+            matrix:
+                build-os:
+                - ubuntu-24.04
+                - ubuntu-latest
+                - macos-latest
+                workers-count:
+                - 0
+                - 1
+                exclude:
+                  - build-os: ubuntu-24.04
+                    workers-count: 1
+                  - build-os: ubuntu-latest
+                    workers-count: 1
+                include:
+                - build-os: macos-latest
+                  compiler: clang-19
+                  pkgs: 
+                  - pkg-config
+                  - libarchive 
+                  - llvm@19
+                  llvm-bindir: /opt/homebrew/opt/llvm@19/bin
+                - build-os: ubuntu-24.04
+                  compiler: clang-18
+                  pkgs: 
+                  - clang-18
+                  - libcurl4-openssl-dev
+                  - libsqlite3-dev
+                  - libbsd-dev
+                  - libarchive-tools
+                  - libarchive-dev
+                  - libssl-dev
+                  - liblzma-dev
+                  - liblua5.2-dev
+                  - liblzo2-dev
+                  - libattr1-dev
+                  - libacl1-dev
+                  - libatf-dev
+                  - kyua
+                  - atf-sh
+                  - build-essential
+                  - zlib1g-dev
+                  - libbz2-dev
+                  - python3
+                  - pkg-config
+                  - m4
+                  llvm-bindir: /usr/lib/llvm-18/bin
+
+                - build-os: ubuntu-latest 
+                  compiler: clang-15
+                  pkgs: 
+                  - clang-15
+                  - libcurl4-openssl-dev
+                  - libsqlite3-dev
+                  - libbsd-dev
+                  - libarchive-tools
+                  - libarchive-dev
+                  - libssl-dev
+                  - liblzma-dev
+                  - liblua5.2-dev
+                  - liblzo2-dev
+                  - libattr1-dev
+                  - libacl1-dev
+                  - libatf-dev
+                  - kyua
+                  - atf-sh
+                  - build-essential
+                  - zlib1g-dev
+                  - libbz2-dev
+                  - python3
+                  - pkg-config
+                  - m4
+                  llvm-bindir: /usr/lib/llvm-15/bin
+        steps:
+        - name: install packages (macOS)
+          if: runner.os == 'macOS'
+          run: |
+            # on MacOS we build with 
+            #   * latest clang@19 from brew (system provided clang lacks sanitizers)
+            #   * ld from system
+            #   * libarchive from brew (system provided libarchive has issues)
+            #   * openssl from brew
+            #   * libcurl from system
+            #
+
+            brew update --quiet || true
+            HOMEBREW_NO_INSTALLED_DEPENDENTS_CHECK=Y brew install ${{ join(matrix.pkgs, ' ') }}
+
+            # kyua was kicked out of brew due to lack of activity
+            # we patch away the disabled line and install the last built binary version
+            curl https://raw.githubusercontent.com/Homebrew/homebrew-core/master/Formula/k/kyua.rb | sed 's/[[:space:]]*disable.*$//'  > kyua.rb
+            brew install --formula ./kyua.rb
+
+            echo PKG_CONFIG_PATH=$(brew --prefix libarchive)/lib/pkgconfig >> "${GITHUB_ENV}"
+        - name: install packages (Linux)
+          if: runner.os == 'Linux'
+          run: |
+            sudo apt-get update --quiet || true
+            sudo apt-get -yq --no-install-suggests --no-install-recommends install ${{ join(matrix.pkgs, ' ') }}
+        - uses: actions/checkout@v4
+          with:
+            path: src.pkg
+        - name: setup environment
+          run: |
+            echo "CC=${{ matrix.llvm-bindir }}/clang" >> "${GITHUB_ENV}"
+            echo "CXX=${{ matrix.llvm-bindir }}/clang++" >> "${GITHUB_ENV}"
+            echo "CPP=${{ matrix.llvm-bindir }}/clang-cpp" >> "${GITHUB_ENV}"
+            # this is miracolously not picked up by automake as the default
+            echo "CC_FOR_BUILD=${{ matrix.llvm-bindir }}/clang" >> "${GITHUB_ENV}"
+            echo "BUILD_PKG=${GITHUB_WORKSPACE}/build.pkg" >> "${GITHUB_ENV}"
+            echo "INST_PKG=${GITHUB_WORKSPACE}/inst.pkg" >> "${GITHUB_ENV}"
+
+        - name: build pkg
+          run: |
+            echo Building pkg
+            echo CC="${CC}"
+            echo CPP="${CPP}"
+            echo PKG_CONFIG_PATH="${PKG_CONFIG_PATH}"
+            echo BUILD_PKG="${BUILD_PKG}"
+            echo INST_PKG="${INST_PKG}"
+            mkdir -p "${BUILD_PKG}"
+            cd "${BUILD_PKG}"
+            ${GITHUB_WORKSPACE}/src.pkg/configure --prefix=${INST_PKG} --with-libarchive.pc --with-libcurl --with-openssl.pc
+            make
+
+        - name: test&instal pkg
+          run: |
+            echo Checking and  pkg
+            cd "${BUILD_PKG}"
+            if WORKERS_COUNT=${{ matrix.workers-count }} make check; then
+              echo "All mandatory checks passed"
+              kyua report
+              kyua report-html
+            else
+              kyua report --verbose
+              kyua report-html
+              exit 0
+            fi
+            make install
+
+        - name: tar build & test reports
+          run: |
+            test -d ${INST_PKG} && tar cvf pkg-${{ matrix.build-os }}-${{ matrix.compiler }}.tar -C ${INST_PKG} .
+            tar cvf pkg-${{ matrix.build-os }}-${{ matrix.compiler }}-report${{ matrix.workers-count }}.tar -C "${BUILD_PKG}/html" .
+
+        - name: archive build artefacts
+          uses: actions/upload-artifact@v4
+          with:
+              name: pkg-test${{ matrix.workers-count }}-${{ matrix.build-os }}-${{ matrix.compiler }}
+              path: pkg*.tar
+              compression-level: 0
+              retention-days: 10
+              overwrite: true
