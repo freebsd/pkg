@@ -129,10 +129,6 @@ pkg_create_from_dir(struct pkg *pkg, const char *root,
 		pkg_emit_error("Cannot create an old format package");
 		return (EPKG_FATAL);
 	}
-	/*
-	 * Register shared libraries used by the package if
-	 * SHLIBS enabled in conf.  Deletes shlib info if not.
-	 */
 
 	obj = pkg_emit_object(pkg, PKG_MANIFEST_EMIT_COMPACT);
 	manifest = ucl_object_emit(obj, UCL_EMIT_JSON_COMPACT);
