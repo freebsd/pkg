@@ -151,7 +151,7 @@ add_shlibs_to_pkg(struct pkg *pkg, const char *fpath, const char *name,
 }
 
 static bool
-shlib_valid_abi(const char *fpath, GElf_Ehdr *hdr, const char *abi)
+shlib_valid_abi(const char *fpath, GElf_Ehdr *hdr)
 {
 	int semicolon;
 	const char *p, *t;
@@ -160,13 +160,13 @@ shlib_valid_abi(const char *fpath, GElf_Ehdr *hdr, const char *abi)
 	const char *shlib_arch;
 
 	/*
-	 * ABI string is in format:
+	 * ALTABI string is in format:
 	 * <osname>:<osversion>:<arch>:<wordsize>[.other]
 	 * We need here arch and wordsize only
 	 */
 	arch[0] = '\0';
 	wordsize[0] = '\0';
-	p = abi;
+	p = pkg_object_string(pkg_config_get("ALTABI"));
 	for(semicolon = 0; semicolon < 3 && p != NULL; semicolon ++, p ++) {
 		p = strchr(p, ':');
 		if (p != NULL) {
@@ -265,13 +265,10 @@ analyse_elf(struct pkg *pkg, const char *fpath)
 	size_t numdyn = 0;
 	size_t sh_link = 0;
 	size_t dynidx;
-	const char *myarch;
 	const char *shlib;
 	char *rpath = NULL;
 
 	bool is_shlib = false;
-
-	myarch = pkg_object_string(pkg_config_get("ABI"));
 
 	int fd;
 
@@ -360,7 +357,7 @@ analyse_elf(struct pkg *pkg, const char *fpath)
 		goto cleanup; /* not a dynamically linked elf: no results */
 	}
 
-	if (!shlib_valid_abi(fpath, &elfhdr, myarch)) {
+	if (!shlib_valid_abi(fpath, &elfhdr)) {
 		ret = EPKG_END;
 		goto cleanup; /* Invalid ABI */
 	}
