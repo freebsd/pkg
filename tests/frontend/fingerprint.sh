@@ -13,16 +13,16 @@ setup() {
 	local _fingerprint
 	local _typecmd
 
-	atf_skip_on Darwin Test fails on Darwin
-	atf_skip_on Linux Test fails on Linux
-
 	case "$_type" in
 	rsa)
+		atf_skip_on Linux Test fails on Linux
 		atf_check -o save:repo.pub -e ignore \
 			pkg key --create repo.key
 		_typecmd=""
 		;;
 	ecc)
+		atf_skip_on Darwin Test fails on Darwin
+		atf_skip_on Linux Test fails on Linux
 		atf_check -o ignore -e ignore \
 			openssl ecparam -genkey -name secp256k1 -out repo.key -outform DER
 		chmod 0400 repo.key
