@@ -22,4 +22,9 @@ VPATH=	$(top_srcdir)/libpkg/repo/binary
 LOCAL_CFLAGS+=	@PKG_LIBARCHIVE_CFLAGS@
 @endif
 
+@if HAVE_PKG_LIBCURL
+LOCAL_CFLAGS+=	@PKG_LIBCURL_CFLAGS@
+@endif
+
+
 include $(MK)/static-lib.mk

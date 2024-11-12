@@ -124,7 +124,7 @@ LIBS+=	@PKG_LIBARCHIVE_LDFLAGS@ @PKG_LIBARCHIVE_LIBS@
 @else
 LIBS+=	-L/usr/lib -larchive -lbz2 -lz -llzma
 @endif
-OTHER_LIBS=	-lssl -lcrypto -pthread
+OTHER_LIBS=	-pthread
 @if HAVE_LIBUTIL
 OTHER_LIBS+=	-lutil
 @endif
@@ -144,6 +144,8 @@ LIBS+=	@PKG_LIBCURL_LDFLAGS@ @PKG_LIBCURL_LIBS@
 @if PKG_OPENSSL_LIBS
 CFLAGS+=	@PKG_OPENSSL_CFLAGS@
 LIBS+=	@PKG_OPENSSL_LDFLAGS@ @PKG_OPENSSL_LIBS@
+@else
+OTHER_LIBS+=	-lssl -lcrypto
 @endif
 
 
