@@ -804,6 +804,13 @@ get_socketpair(int *pipe)
 	return (r);
 }
 
+/*
+ * Modify the passed C-String by stripping off the last component delimited by '/'.
+ * Return the string. Return a constant "." when passed NULL or the empty string.
+ * FIXME: This routine corrupts memory when passed the empty string.
+ * FIXME: This routine should propagate NULL.
+ * TODO: Refactor at call sites.
+ */
 char *
 get_dirname(char *d)
 {
