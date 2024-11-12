@@ -32,6 +32,7 @@
 #include <private/lua.h>
 #include <fcntl.h>
 #include <stdlib.h>
+#include <errno.h>
 
 ATF_TC_WITHOUT_HEAD(readdir);
 ATF_TC_WITHOUT_HEAD(stat);
@@ -100,7 +101,7 @@ ATF_TC_BODY(readdir, tc)
 	}
 	atf_utils_wait(p, 0, "", "");
 
-	close(open("testfile", O_CREAT|O_TRUNC));
+	close(open("testfile", O_CREAT|O_TRUNC, 0644));
 	p = atf_utils_fork();
 	if (p == 0) {
 		if (luaL_dostring(L, "if test.readdir(\"testfile\") ~= nil then print(\"nil output\") end")) {
@@ -162,7 +163,7 @@ ATF_TC_BODY(stat, tc)
 	}
 	atf_utils_wait(p, 0, "dir\n", "");
 
-	close(open("testfile", O_CREAT|O_TRUNC));
+	close(open("testfile", O_CREAT|O_TRUNC, 0644));
 	p = atf_utils_fork();
 	if (p == 0) {
 		if (luaL_dostring(L, "st = test.stat(\"testfile\")\nprint(st.type)")) {
@@ -201,7 +202,10 @@ ATF_TC_BODY(print_msg, tc)
 		{ "print_msg", lua_print_msg },
 		{ NULL, NULL },
 	};
-	int fd = open("testfile", O_CREAT|O_TRUNC);
+	int fd = open("testfile", O_CREAT|O_TRUNC|O_WRONLY, 0644);
+
+	ATF_REQUIRE_MSG(-1 != fd, "open failed (%d,%s)", errno, strerror(errno));
+
 	luaL_openlibs(L);
 	lua_override_ios(L, false);
 	luaL_newlib(L, test_lib);
@@ -235,7 +239,10 @@ ATF_TC_BODY(print_msg, tc)
 		exit(lua_tonumber(L, -1));
 	}
 	atf_utils_wait(p, 0, "", "");
-	close(fd);
+	
+	int err = close(fd);
+	ATF_REQUIRE_MSG(0 == err, "close failed (%d,%s)", errno, strerror(errno));
+
 	atf_utils_compare_file("testfile", "bla\n");
 }
 
