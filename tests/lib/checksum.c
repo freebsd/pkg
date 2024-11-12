@@ -26,6 +26,7 @@
 #include <atf-c.h>
 #include <err.h>
 #include <unistd.h>
+#include <errno.h>
 #include <pkg.h>
 #include <private/pkg.h>
 
@@ -131,7 +132,7 @@ ATF_TC_BODY(check_files, tc)
 	free(sum);
 
 	sum=pkg_checksum_generate_file("foo", PKG_HASH_TYPE_SHA256_HEX);
-	ATF_CHECK(pkg_checksum_validate_fileat(AT_FDCWD, "foo", "7d865e959b2466918c9863afca942d0fb89d7c9ac0c99bafc3749504ded97730") == 0);
+	ATF_CHECK_MSG(pkg_checksum_validate_fileat(AT_FDCWD, "foo", "7d865e959b2466918c9863afca942d0fb89d7c9ac0c99bafc3749504ded97730") == 0, "pkg_checksum_validate_fileat failed (%d,%s)", errno, strerror(errno));
 	free(sum);
 
 	ATF_REQUIRE_EQ(pkg_checksum_generate_fileat(AT_FDCWD, "nonexistent", PKG_HASH_TYPE_BLAKE2_BASE32), NULL);
