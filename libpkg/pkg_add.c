@@ -1139,7 +1139,7 @@ pkg_add_check_pkg_archive(struct pkgdb *db, struct pkg *pkg,
 	const char	*arch;
 	int	ret, retcode;
 	struct pkg_dep	*dep = NULL;
-	char	bd[MAXPATHLEN], *basedir = NULL;
+	char	bd[MAXPATHLEN];
 	char	dpath[MAXPATHLEN], *ppath;
 	const char	*ext = NULL;
 	struct pkg	*pkg_inst = NULL;
@@ -1187,8 +1187,14 @@ pkg_add_check_pkg_archive(struct pkgdb *db, struct pkg *pkg,
 	fromstdin = STREQ(path, "-");
 	strlcpy(bd, path, sizeof(bd));
 	if (!fromstdin) {
-		basedir = get_dirname(bd);
-		strlcpy(bd, basedir, sizeof(bd));
+		/* In-place truncate bd to the directory components. */
+		char *basedir = strrchr(bd, '/');
+		if (NULL == basedir) {
+			bd[0]='.';
+			bd[1]='\0';
+		} else {
+			*basedir = '\0';
+		}
 		if ((ext = strrchr(path, '.')) == NULL) {
 			pkg_emit_error("%s has no extension", path);
 			return (EPKG_FATAL);
