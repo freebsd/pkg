@@ -84,6 +84,7 @@
 #include <bsd/sys/time.h>
 #endif
 
+#include <sys/fcntl.h>
 #include <sys/stat.h>
 #include "endian_util.h"
 
