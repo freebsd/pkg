@@ -18,7 +18,7 @@ EOF
 
 	atf_check \
 		-o match:"Unable to update repository test" \
-		-e match:"pkg: file://empty//packagesite.pkg: No such file or directory" \
+		-e match:"Invalid url: 'file://empty//meta.conf'" \
 		-s exit:1 \
 		pkg -R repos update
 }
@@ -28,6 +28,10 @@ file_url_body() {
 	touch meta.conf
 	here=$(pwd)
 
+
+#
+# test file:/empty/, which is invalid
+#
 	cat > repos/test.conf << EOF
 test: {
   url: "file:/empty/",
@@ -40,6 +44,9 @@ EOF
 		-s exit:1 \
 		pkg -R repos update
 
+#
+# test file://here, which is invalid
+#
 	cat > repos/test.conf << EOF
 test: {
   url: "file://here",
@@ -47,11 +54,14 @@ test: {
 EOF
 	atf_check \
 		-o match:"Unable to update repository test" \
-		-e match:"meta.*No such file or directory" \
+		-e match:"Invalid url: 'file://here/meta.conf'" \
 		-s exit:1 \
 		pkg -R repos update
 
 
+#
+# test file://here//path, which is invalid
+#
 	cat > repos/test.conf << EOF
 test: {
   url: "file://here/${here}",
@@ -63,6 +73,9 @@ EOF
 		-s exit:1 \
 		pkg -R repos update
 
+#
+# test file:////path, which is valid
+#
 	cat > repos/test.conf << EOF
 test: {
   url: "file:///${here}",
@@ -75,6 +88,9 @@ EOF
 		-s exit:1 \
 		pkg -R repos update
 
+#
+# test file:///path, which is valid
+#
 	cat > repos/test.conf << EOF
 test: {
   url: "file://${here}",
@@ -87,6 +103,9 @@ EOF
 		-s exit:1 \
 		pkg -R repos update
 
+#
+# test file://path, which is invalid
+#
 	cat > repos/test.conf << EOF
 test: {
   url: "file:/${here}",
@@ -95,7 +114,24 @@ EOF
 
 	atf_check \
 		-o match:"Unable to update repository test" \
-		-e match:"meta.*No such file or directory" \
+		-e match:"Invalid url: 'file:/${here}/meta.conf'" \
 		-s exit:1 \
 		pkg -R repos update
+
+
+#
+# test file://localhost/path, which is a valid
+#
+	cat > repos/test.conf << EOF
+test: {
+  url: "file://localhost${here}",
+}
+EOF
+
+	atf_check \
+		-o match:"Unable to update repository test" \
+		-e not-match:"meta.*No such file or directory" \
+		-s exit:1 \
+		pkg -R repos update
+
 }
