@@ -14,13 +14,14 @@ define VERSION $maj_ver.$med_ver.$min_ver[expr {$dev_ver ? ".$dev_ver" : ""}]
 options {
 	pkgconfigdir:WHERE => "path to the directory where to install pc files"
 	with-ldns => "add support for libldns"
-	with-libarchive.pc => "build with libarchive getting flags via pc files"
+	with-libarchive.pc => "build with libarchive via pkg-config"
 	with-coverage => "build with llvm coverage support"
-	with-asan => "build with libasan support"
-	with-lsan => "build with liblsan support"
-	with-ubsan => "build with libubsan support"
-	with-libcurl => "build with external libcurl"
-	with-openssl.pc => "build with openssl getting flags via pc files"
+	with-asan => "build with Clang AddressSanitizer (non-prod use)"
+	with-lsan => "build with Clang LeakSanitizer (non-prod use)"
+	with-ubsan => "build with Clang UndefinedBehaviorSanitizer (non-prod use)"
+	with-tsan => "build with Clang ThreadSanitizer (non-prod use)"
+	with-libcurl => "build with libcurl via pkg-config"
+	with-openssl.pc => "build with openssl via pkg-config"
 	default-format:txz => "Default compression format: tzst (default), txz, tbz, tar"
 }
 
@@ -279,7 +280,7 @@ cc-check-includes bsd/err.h bsd/libutil.h bsd/readpassphrase.h \
 	bsd/sys/cdefs.h bsd/sys/queue.h bsd/unistd.h
 
 if {[opt-bool with-asan]} {
-	define-append ASAN_CFLAGS -O0 -ggdb -fsanitize=address
+	define-append ASAN_CFLAGS -O0 -g -fsanitize=address
 	define-append ASAN_LDFLAGS -fsanitize=address
 	if {[string match *-linux* [get-define host]]} {
 		# ASAN depends on libdl for dlsym when building with GCC
@@ -289,7 +290,7 @@ if {[opt-bool with-asan]} {
 	undefine HAVE_STATIC
 }
 if {[opt-bool with-lsan]} {
-	define-append LSAN_CFLAGS -O0 -ggdb -fsanitize=leak
+	define-append LSAN_CFLAGS -O0 -g -fsanitize=leak
 	define-append LSAN_LDFLAGS -fsanitize=leak
 	if {[string match *-linux* [get-define host]]} {
 		# LSAN depends on libdl for dlsym when building with GCC
@@ -300,12 +301,17 @@ if {[opt-bool with-lsan]} {
 if {[opt-bool with-ubsan]} {
 	# Avoid alignment error when building with UBSan inside _mum_hash_avx2
 	define-append UBSAN_CFLAGS -D_MUM_UNALIGNED_ACCESS=0
-	define-append UBSAN_CFLAGS -O0 -ggdb -fsanitize=undefined
+	define-append UBSAN_CFLAGS -O0 -g -fsanitize=undefined
 	define-append UBSAN_LDFLAGS -fsanitize=undefined
 	define ubsan 1
 }
+if {[opt-bool with-tsan]} {
+	define-append TSAN_CFLAGS -O1 -g -fsanitize=thread
+	define-append TSAN_LDFLAGS -fsanitize=thread
+	define tsan 1
+}
 if {[opt-bool with-coverage]} {
-	define-append COVERAGE_CFLAGS -O0 -ggdb -fprofile-arcs -ftest-coverage -fprofile-instr-generate -fcoverage-mapping
+	define-append COVERAGE_CFLAGS -O0 -g -fprofile-arcs -ftest-coverage -fprofile-instr-generate -fcoverage-mapping
 	define-append COVERAGE_LDFLAGS -fprofile-instr-generate
 	define coverage 1
 # disable capsicum when coverage is used because coverage does not work in
