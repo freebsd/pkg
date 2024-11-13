@@ -54,14 +54,25 @@ file_open(struct pkg_repo *repo, struct fetch_item *fi)
 		return (EPKG_FATAL);
 	}
 	u+=2;
-	/* if we don't have a '/' it means we have a host we should ignore */
+	/* if we don't have a '/' it means we have a host FQDN component, otherwise just proceed */
+	/* we can fetch local files only, so we accept the localhost FQDN */
+	/* TODO: consider accepting gethostname/getdomainname and combinations of these. */
+	/* TODO: delegate to curl to fetch any URL, btw. curl bails on this as well. */
 	if (*u != '/') {
-		u = strchr(u+1, '/');
-		if (u == NULL) {
-			pkg_emit_error("Invalid url: %s'\n', "
-					"file://<absolutepath> expected", fi->url);
+		char fqdn[256]="";
+		char *path = strchr(u+1, '/');
+		if (path == NULL) {
+			pkg_emit_error("Invalid url: '%s',\n"
+					"file:///<path> or file://localhost/<path> expected.", fi->url);
 			return (EPKG_FATAL);
 		}
+		strncat(fqdn, u, MIN(255, path-u));
+		if (0 != strncmp("localhost", fqdn, sizeof(fqdn))) {
+			pkg_emit_error("Invalid url: '%s'\n"
+					"file:///<path> or file://localhost/<path> expected.", fi->url);
+			return (EPKG_FATAL);
+			}
+		u = path;
 	}
 	if (stat(u, &st) == -1) {
 		if (!repo->silent)
