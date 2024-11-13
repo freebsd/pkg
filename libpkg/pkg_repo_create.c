@@ -823,6 +823,12 @@ pkg_repo_create(struct pkg_repo_create *prc, char *path)
 
 	te.meta = prc->meta;
 
+	/* initialize mutexes & conditions */
+	pthread_mutex_init(&te.nlock, 0);
+	pthread_mutex_init(&te.llock, 0);
+	pthread_mutex_init(&te.flock, 0);
+	pthread_cond_init(&te.cond, 0);
+
 	repopath[0] = path;
 	repopath[1] = NULL;
 
