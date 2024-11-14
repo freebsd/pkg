@@ -593,6 +593,12 @@ connect_evpipe(const char *evpipe) {
 
 }
 
+const char *
+pkg_libversion(void)
+{
+	return PKGVERSION;
+}
+
 int
 pkg_initialized(void)
 {
