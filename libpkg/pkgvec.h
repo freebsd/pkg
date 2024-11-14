@@ -1,3 +1,9 @@
+/*-
+ * Copyright(c) 2024 Baptiste Daroussin <bapt@FreeBSD.org>
+ *
+ * SPDX-License-Identifier: BSD-2-Clause
+ */
+
 #pragma once
 
 #include <stdbool.h>
