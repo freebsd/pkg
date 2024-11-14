@@ -136,6 +136,8 @@ struct pkg_kv {
 	char *value;
 };
 
+typedef pkgvec_t(struct pkg_kv *) pkg_kvl_t;
+
 /**
  * The system-wide pkg(8) status: ie. is it a) installed or otherwise
  * available on the sysem, b) database (local.sqlite) initialised and
@@ -1734,6 +1736,7 @@ struct pkg_kv *pkg_kvlist_next(struct pkg_kvlist_iterator *it);
 struct pkg_stringlist_iterator *pkg_stringlist_iterator(struct pkg_stringlist *l);
 const char *pkg_stringlist_next(struct pkg_stringlist_iterator *it);
 struct pkg_el *pkg_get_element(struct pkg *p, pkg_attr a);
+pkg_kvl_t *pkg_external_libs_version(void);
 
 static inline void
 pkg_get_s(struct pkg *p, pkg_attr a, const char **val)

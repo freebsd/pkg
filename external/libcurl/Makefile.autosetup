@@ -11,6 +11,7 @@ VPATH+=	$(top_srcdir)/external/curl/lib/vauth
 VPATH+=	$(top_srcdir)/external/curl/lib/vquic
 
 SRCS=	\
+	version.c \
 	asyn-thread.c \
 	base64.c \
 	bufref.c \
