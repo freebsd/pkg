@@ -32,8 +32,8 @@ global:
 	pkg_create_installed;
 	pkg_create_new;
 	pkg_create_repo;
-	pkg_create_set_compression_threads;
 	pkg_create_set_compression_level;
+	pkg_create_set_compression_threads;
 	pkg_create_set_expand_manifest;
 	pkg_create_set_format;
 	pkg_create_set_output_dir;
@@ -50,6 +50,7 @@ global:
 	pkg_emit_manifest_file;
 	pkg_event_register;
 	pkg_execute_deferred_triggers;
+	pkg_external_libs_version;
 	pkg_fetch_file;
 	pkg_fetch_file_tmp;
 	pkg_files;
@@ -92,12 +93,20 @@ global:
 	pkg_jobs_new;
 	pkg_jobs_set_destdir;
 	pkg_jobs_set_flags;
+	pkg_jobs_set_repositories;
 	pkg_jobs_set_repository;
 	pkg_jobs_solve;
 	pkg_jobs_total;
 	pkg_jobs_type;
+	pkg_key_create;
+	pkg_key_free;
+	pkg_key_info;
+	pkg_key_new;
+	pkg_key_pubkey;
+	pkg_key_sign_data;
 	pkg_kvlist_iterator;
 	pkg_kvlist_next;
+	pkg_libversion;
 	pkg_license_name;
 	pkg_licenses;
 	pkg_list_count;
@@ -141,6 +150,7 @@ global:
 	pkg_repo_create_free;
 	pkg_repo_create_new;
 	pkg_repo_create_set_create_filelist;
+	pkg_repo_create_set_expired_packages;
 	pkg_repo_create_set_groups;
 	pkg_repo_create_set_hash;
 	pkg_repo_create_set_hash_symlink;
@@ -196,8 +206,10 @@ global:
 	pkg_vprintf;
 	pkg_vsnprintf;
 	pkgdb_access;
+	pkgdb_access2;
 	pkgdb_add_annotation;
 	pkgdb_all_search;
+	pkgdb_all_search2;
 	pkgdb_case_sensitive;
 	pkgdb_close;
 	pkgdb_cmd;
@@ -212,6 +224,7 @@ global:
 	pkgdb_obtain_lock;
 	pkgdb_open;
 	pkgdb_open_all;
+	pkgdb_open_all2;
 	pkgdb_query;
 	pkgdb_query_cond;
 	pkgdb_query_provide;
@@ -222,8 +235,11 @@ global:
 	pkgdb_register_ports;
 	pkgdb_release_lock;
 	pkgdb_repo_query;
+	pkgdb_repo_query2;
 	pkgdb_repo_query_cond;
+	pkgdb_repo_query_cond2;
 	pkgdb_repo_search;
+	pkgdb_repo_search2;
 	pkgdb_set2;
 	pkgdb_set_case_sensitivity;
 	pkgdb_stats;
@@ -232,11 +248,6 @@ global:
 	pkgdb_transaction_rollback;
 	pkgdb_upgrade_lock;
 	ports_parse_plist;
-	pkg_key_new;
-	pkg_key_free;
-	pkg_key_create;
-	pkg_key_pubkey;
-	pkg_key_info;
 # Symbols from libcsu
 	__progname;
 	environ;
