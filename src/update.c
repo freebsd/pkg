@@ -110,7 +110,13 @@ pkgcli_update(bool force, bool strict, c_charv_t *reponames)
 	}
 	else if (update_count == total_count) {
 		if (!quiet) {
-			printf("All repositories are up to date.\n");
+			if (reponames == NULL || reponames->len == 0)
+				printf("All repositories are up to date.\n");
+			else {
+				for (size_t i = 0; i < reponames->len; i++)
+					printf("%s%s", i == 0 ? "" : ", ", reponames->d[i]);
+				printf(" %s up to date.\n", reponames->len == 1 ? "is" : "are");
+			}
 		}
 	}
 	else if (total_count == 1) {
