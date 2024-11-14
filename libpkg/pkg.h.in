@@ -1484,6 +1484,7 @@ void pkg_event_register(pkg_event_cb cb, void *data);
 bool pkg_compiled_for_same_os_major(void);
 int pkg_ini(const char *, const char *, pkg_init_flags);
 int pkg_init(const char *, const char *);
+const char *pkg_libversion(void);
 int pkg_initialized(void);
 void pkg_shutdown(void);
 

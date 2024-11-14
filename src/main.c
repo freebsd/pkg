@@ -58,6 +58,11 @@
 #include <pkg.h>
 #include <tllist.h>
 #include <xmalloc.h>
+#include <curl/curl.h>
+
+#include <archive.h>
+#include <sqlite3.h>
+#include <openssl/crypto.h>
 
 #include "pkgcli.h"
 
@@ -373,6 +378,12 @@ show_version_info(int version)
 
 	if (version == 1)
 		exit(EXIT_SUCCESS);
+
+	printf("%-24s: %s\n", "libpkg", pkg_libversion());
+	printf("%-24s: %s\n", "libcurl", curl_version());
+	printf("%-24s: %s\n", "libarchive", archive_version_string());
+	printf("%-24s: %s\n", "sqlite", sqlite3_libversion());
+	printf("%-24s: %s\n", "openssl", OpenSSL_version(OPENSSL_VERSION));
 
 	config = pkg_config_dump();
 	printf("%s\n", config);
