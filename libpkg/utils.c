@@ -53,6 +53,7 @@
 #include <bsd_compat.h>
 
 #include "pkg.h"
+#include "pkgvec.h"
 #include "private/event.h"
 #include "private/utils.h"
 #include "private/pkg.h"
@@ -1050,3 +1051,18 @@ get_http_auth(void)
 	return (str);
 }
 
+bool
+c_charv_contains(c_charv_t *v, const char *el, bool casesensitive)
+{
+	for (size_t i = 0; i < v->len; i ++) {
+		if (casesensitive) {
+			if (STREQ(v->d[i], el))
+				return (true);
+		} else {
+			if (STRIEQ(v->d[i], el)) {
+				return (true);
+			}
+		}
+	}
+	return (false);
+}
