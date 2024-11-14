@@ -243,7 +243,6 @@ int
 exec_search(int argc, char **argv)
 {
 	const char	*pattern = NULL;
-	const char	*reponame = NULL;
 	int		 ret = EPKG_OK, ch;
 	int		 flags;
 	uint64_t	 opt = 0;
@@ -255,6 +254,7 @@ exec_search(int argc, char **argv)
 	struct pkg	*pkg = NULL;
 	bool		 atleastone = false;
 	bool		 old_quiet;
+	c_charv_t	reponames;
 
 	struct option longopts[] = {
 		{ "case-sensitive",	no_argument,		NULL,	'C' },
@@ -280,6 +280,7 @@ exec_search(int argc, char **argv)
 		{ NULL,			0,			NULL,	0   },
 	};
 
+	pkgvec_init(&reponames);
 	while ((ch = getopt_long(argc, argv, "+CcDdefgiL:opqQ:r:RS:sUx", longopts, NULL)) != -1) {
 		switch (ch) {
 		case 'C':
@@ -322,7 +323,7 @@ exec_search(int argc, char **argv)
 			opt |= modifier_opt(optarg);
 			break;
 		case 'r':
-			reponame = optarg;
+			pkgvec_push(&reponames, optarg);
 			break;
 		case 'R':
 			opt = INFO_RAW;
@@ -415,7 +416,7 @@ exec_search(int argc, char **argv)
 		quiet = false;
 	}
 
-	ret = pkgdb_access(PKGDB_MODE_READ, PKGDB_DB_REPO, reponame, NULL);
+	ret = pkgdb_access2(PKGDB_MODE_READ, PKGDB_DB_REPO, &reponames);
 	switch(ret) {
 	case EPKG_ENOACCESS:
 		warnx("Insufficient privileges to query the package database");
@@ -435,15 +436,15 @@ exec_search(int argc, char **argv)
 	/* first update the remote repositories if needed */
 	old_quiet = quiet;
 	quiet = true;
-	if (auto_update && (ret = pkgcli_update(false, false, reponame)) != EPKG_OK)
+	if (auto_update && (ret = pkgcli_update(false, false, &reponames)) != EPKG_OK)
 		return (ret);
 	quiet = old_quiet;
 
-	if (pkgdb_open_all(&db, PKGDB_REMOTE, reponame) != EPKG_OK)
+	if (pkgdb_open_all2(&db, PKGDB_REMOTE, &reponames) != EPKG_OK)
 		return (EXIT_FAILURE);
 
-	if ((it = pkgdb_repo_search(db, pattern, match, search, search,
-	    reponame)) == NULL) {
+	if ((it = pkgdb_repo_search2(db, pattern, match, search, search,
+	    &reponames)) == NULL) {
 		pkgdb_close(db);
 		return (EXIT_FAILURE);
 	}

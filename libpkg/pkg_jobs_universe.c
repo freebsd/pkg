@@ -130,8 +130,8 @@ pkg_jobs_universe_get_remote(struct pkg_jobs_universe *universe,
 		}
 	}
 
-	if ((it = pkgdb_repo_query(universe->j->db, uid, MATCH_INTERNAL,
-		universe->j->reponame)) == NULL)
+	if ((it = pkgdb_repo_query2(universe->j->db, uid, MATCH_INTERNAL,
+		universe->j->reponames)) == NULL)
 		return (NULL);
 
 	while (pkgdb_it_next(it, &pkg, flag) == EPKG_OK) {
@@ -491,7 +491,7 @@ pkg_jobs_universe_process_shlibs(struct pkg_jobs_universe *universe,
 		}
 		/* Not found, search in the repos */
 		it = pkgdb_repo_shlib_provide(universe->j->db,
-			s->item, universe->j->reponame);
+			s->item, universe->j->reponames);
 
 		if (it != NULL) {
 			rc = pkg_jobs_universe_handle_provide(universe, it, s->item, true, pkg);
@@ -534,7 +534,7 @@ pkg_jobs_universe_process_provides_requires(struct pkg_jobs_universe *universe,
 
 		/* Not found, search in the repos */
 		it = pkgdb_repo_provide(universe->j->db,
-			r->item, universe->j->reponame);
+			r->item, universe->j->reponames);
 
 		if (it != NULL) {
 			rc = pkg_jobs_universe_handle_provide(universe, it, r->item, false, pkg);
@@ -1001,8 +1001,8 @@ pkg_jobs_universe_get_upgrade_candidates(struct pkg_jobs_universe *universe,
 		}
 	}
 
-	if ((it = pkgdb_repo_query(universe->j->db, uid, MATCH_INTERNAL,
-		universe->j->reponame)) == NULL)
+	if ((it = pkgdb_repo_query2(universe->j->db, uid, MATCH_INTERNAL,
+		universe->j->reponames)) == NULL)
 		return (NULL);
 
 	while (pkgdb_it_next(it, &pkg, flag) == EPKG_OK) {

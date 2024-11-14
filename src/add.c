@@ -121,7 +121,7 @@ exec_add(int argc, char **argv)
 	retcode = pkgdb_access(PKGDB_MODE_READ  |
 			       PKGDB_MODE_WRITE |
 			       PKGDB_MODE_CREATE,
-			       PKGDB_DB_LOCAL, NULL);
+			       PKGDB_DB_LOCAL);
 	if (retcode == EPKG_ENOACCESS) {
 		warnx("Insufficient privileges to add packages");
 		return (EXIT_FAILURE);

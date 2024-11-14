@@ -34,6 +34,7 @@
 #include <string.h>
 #include <xstring.h>
 #include <bsd_compat.h>
+#include <pkgvec.h>
 
 #define pkg_warnx(fmt, ...) pkg_fprintf(stderr, "%S: " fmt, getprogname(), __VA_ARGS__, -1)
 #define ll_foreach(head, el) for (el=head; el != NULL; el = (el)->next)
@@ -145,7 +146,7 @@ void usage_triggers(void);
 /* pkg update */
 int exec_update(int, char **);
 void usage_update(void);
-int pkgcli_update(bool, bool, const char *);
+int pkgcli_update(bool, bool, c_charv_t *);
 
 /* pkg updating */
 int exec_updating(int, char **);

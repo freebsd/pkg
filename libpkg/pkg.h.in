@@ -46,6 +46,7 @@ extern "C" {
 #include <stdbool.h>
 #include <stdio.h>
 #include <stdlib.h>
+#include <pkgvec.h>
 
 /* The expected name of the pkg(8) binary executable. */
 #ifndef PKG_EXEC_NAME
@@ -868,7 +869,8 @@ int pkg_repo_create(struct pkg_repo_create *, char *path);
  * If no repositories are specified (e.g. when NULL is the first argument,
  * then all repositories are tried to be accessed).
  */
-int pkgdb_access(unsigned mode, unsigned database, ...);
+int pkgdb_access(unsigned mode, unsigned database);
+int pkgdb_access2(unsigned mode, unsigned database, c_charv_t *databases);
 
 /**
  * Open the local package database.
@@ -884,6 +886,7 @@ int pkgdb_open(struct pkgdb **db, pkgdb_t type);
  * @return An error code
  */
 int pkgdb_open_all(struct pkgdb **db, pkgdb_t type, const char *reponame);
+int pkgdb_open_all2(struct pkgdb **db, pkgdb_t type, c_charv_t *reponames);
 
 /**
  * Locking functions
@@ -931,12 +934,20 @@ struct pkgdb_it * pkgdb_query_cond(struct pkgdb *db, const char *cond,
     const char *pattern, match_t type);
 struct pkgdb_it * pkgdb_repo_query(struct pkgdb *db, const char *pattern,
     match_t type, const char *reponame);
+struct pkgdb_it * pkgdb_repo_query2(struct pkgdb *db, const char *pattern,
+    match_t type, c_charv_t *reponames);
 struct pkgdb_it *pkgdb_repo_query_cond(struct pkgdb *db, const char *cond,
 	const char *pattern, match_t type, const char *reponame);
+struct pkgdb_it *pkgdb_repo_query_cond2(struct pkgdb *db, const char *cond,
+	const char *pattern, match_t type, c_charv_t *reponames);
 struct pkgdb_it * pkgdb_repo_search(struct pkgdb *db, const char *pattern,
     match_t type, pkgdb_field field, pkgdb_field sort, const char *reponame);
+struct pkgdb_it * pkgdb_repo_search2(struct pkgdb *db, const char *pattern,
+    match_t type, pkgdb_field field, pkgdb_field sort, c_charv_t *reponames);
 struct pkgdb_it * pkgdb_all_search(struct pkgdb *db, const char *pattern,
     match_t type, pkgdb_field field, pkgdb_field sort, const char *reponame);
+struct pkgdb_it * pkgdb_all_search2(struct pkgdb *db, const char *pattern,
+    match_t type, pkgdb_field field, pkgdb_field sort, c_charv_t *reponames);
 
 /**
  * @todo Return directly the struct pkg?
@@ -1050,6 +1061,7 @@ void pkg_jobs_free(struct pkg_jobs *jobs);
 int pkg_jobs_add(struct pkg_jobs *j, match_t match, char **argv, int argc);
 int pkg_jobs_solve(struct pkg_jobs *j);
 int pkg_jobs_set_repository(struct pkg_jobs *j, const char *name);
+int pkg_jobs_set_repositories(struct pkg_jobs *j, c_charv_t *names);
 const char* pkg_jobs_destdir(struct pkg_jobs *j);
 int pkg_jobs_set_destdir(struct pkg_jobs *j, const char *name);
 void pkg_jobs_set_flags(struct pkg_jobs *j, pkg_flags f);

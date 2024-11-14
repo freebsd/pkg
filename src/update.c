@@ -41,18 +41,28 @@
 
 #include "pkgcli.h"
 
+static bool
+_find_repo(c_charv_t *reponames, const char *name)
+{
+	for (size_t i = 0; i < reponames->len; i++) {
+		if (STREQ(name, reponames->d[i]))
+			return (true);
+	}
+	return(false);
+}
+
 /**
  * Fetch repository calalogues.
  */
 int
-pkgcli_update(bool force, bool strict, const char *reponame)
+pkgcli_update(bool force, bool strict, c_charv_t *reponames)
 {
 	int retcode = EPKG_FATAL, update_count = 0, total_count = 0;
 	struct pkg_repo *r = NULL;
 
 	/* Only auto update if the user has write access. */
-	if (pkgdb_access(PKGDB_MODE_READ|PKGDB_MODE_WRITE|PKGDB_MODE_CREATE,
-	    PKGDB_DB_REPO, reponame, NULL) == EPKG_ENOACCESS)
+	if (pkgdb_access2(PKGDB_MODE_READ|PKGDB_MODE_WRITE|PKGDB_MODE_CREATE,
+	    PKGDB_DB_REPO, reponames) == EPKG_ENOACCESS)
 		return (EPKG_OK);
 
 	if (pkg_repos_total_count() == 0) {
@@ -61,8 +71,8 @@ pkgcli_update(bool force, bool strict, const char *reponame)
 	}
 
 	while (pkg_repos(&r) == EPKG_OK) {
-		if (reponame != NULL) {
-			if (!STREQ(pkg_repo_name(r), reponame))
+		if (reponames->len > 0 ) {
+			if (!_find_repo(reponames, pkg_repo_name(r)))
 				continue;
 		} else {
 			if (!pkg_repo_enabled(r))
@@ -133,7 +143,7 @@ exec_update(int argc, char **argv)
 {
 	int		 ret;
 	int		 ch;
-	const char	*reponame = NULL;
+	c_charv_t 	reponames;
 
 	struct option longopts[] = {
 		{ "force",	no_argument,		NULL,	'f' },
@@ -142,6 +152,7 @@ exec_update(int argc, char **argv)
 		{ NULL,		0,			NULL,	0   },
 	};
 
+	pkgvec_init(&reponames);
 	while ((ch = getopt_long(argc, argv, "+fqr:", longopts, NULL)) != -1) {
 		switch (ch) {
 		case 'f':
@@ -151,7 +162,7 @@ exec_update(int argc, char **argv)
 			quiet = true;
 			break;
 		case 'r':
-			reponame = optarg;
+			pkgvec_push(&reponames, optarg);
 			break;
 		default:
 			usage_update();
@@ -165,8 +176,8 @@ exec_update(int argc, char **argv)
 		return (EXIT_FAILURE);
 	}
 
-	ret = pkgdb_access(PKGDB_MODE_WRITE|PKGDB_MODE_CREATE,
-			   PKGDB_DB_REPO, reponame, NULL);
+	ret = pkgdb_access2(PKGDB_MODE_WRITE|PKGDB_MODE_CREATE,
+			   PKGDB_DB_REPO, &reponames);
 	if (ret == EPKG_ENOACCESS) {
 		warnx("Insufficient privileges to update the repository "
 		      "catalogue.");
@@ -175,7 +186,7 @@ exec_update(int argc, char **argv)
 		return (EXIT_FAILURE);
 
 	/* For pkg-update update op is strict */
-	ret = pkgcli_update(force, true, reponame);
+	ret = pkgcli_update(force, true, &reponames);
 
 	return ((ret == EPKG_OK) ? EXIT_SUCCESS : EXIT_FAILURE);
 }

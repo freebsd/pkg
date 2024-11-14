@@ -389,7 +389,7 @@ have_indexfile(const char **indexfile, char *filebuf, size_t filebuflen,
 
 	if (show_error && !have_indexfile)
 		warn("Can't access %s", *indexfile);
-	
+
 	return (have_indexfile);
 }
 
@@ -463,7 +463,7 @@ cleanup:
 
 static int
 do_source_remote(unsigned int opt, char limchar, char *pattern, match_t match,
-    bool auto_update, const char *reponame, const char *matchorigin,
+    bool auto_update, c_charv_t *reponames, const char *matchorigin,
     const char *matchname)
 {
 	struct pkgdb	*db = NULL;
@@ -486,14 +486,14 @@ do_source_remote(unsigned int opt, char limchar, char *pattern, match_t match,
 	   user is forced to have a repo.sqlite */
 
 	if (auto_update) {
-		retcode = pkgcli_update(false, false, reponame);
+		retcode = pkgcli_update(false, false, reponames);
 		if (retcode != EPKG_OK)
 			return (retcode);
 		else
 			retcode = EXIT_FAILURE;
 	}
 
-	if (pkgdb_open_all(&db, PKGDB_REMOTE, reponame) != EPKG_OK)
+	if (pkgdb_open_all2(&db, PKGDB_REMOTE, reponames) != EPKG_OK)
 		return (EXIT_FAILURE);
 
 	if (pkgdb_obtain_lock(db, PKGDB_LOCK_READONLY) != EPKG_OK) {
@@ -525,7 +525,7 @@ do_source_remote(unsigned int opt, char limchar, char *pattern, match_t match,
 			continue;
 		}
 
-		it_remote = pkgdb_repo_query(db, is_origin ? origin : name, MATCH_EXACT, reponame);
+		it_remote = pkgdb_repo_query2(db, is_origin ? origin : name, MATCH_EXACT, reponames);
 		if (it_remote == NULL) {
 			retcode = EXIT_FAILURE;
 			goto cleanup;
@@ -798,7 +798,6 @@ exec_version(int argc, char **argv)
 	char		 limchar = '-';
 	const char	*matchorigin = NULL;
 	const char	*matchname = NULL;
-	const char	*reponame = NULL;
 	const char	*portsdir;
 	const char	*indexfile;
 	const char	*versionsource;
@@ -806,6 +805,7 @@ exec_version(int argc, char **argv)
 	match_t		 match = MATCH_ALL;
 	char		*pattern = NULL;
 	int		 ch;
+	c_charv_t	reponames;
 
 	struct option longopts[] = {
 		{ "case-sensitive",	no_argument,		NULL,	'C' },
@@ -831,6 +831,7 @@ exec_version(int argc, char **argv)
 		{ NULL,			0,			NULL,	0   },
 	};
 
+	pkgvec_init(&reponames);
 	while ((ch = getopt_long(argc, argv, "+Ce:g:hIiL:l:n:O:oPqRr:TtUvx:",
 				 longopts, NULL)) != -1) {
 		switch (ch) {
@@ -884,7 +885,7 @@ exec_version(int argc, char **argv)
 			break;
 		case 'r':
 			opt |= VERSION_SOURCE_REMOTE;
-			reponame = optarg;
+			pkgvec_push(&reponames, optarg);
 			break;
 		case 'T':
 			opt |= VERSION_TESTPATTERN;
@@ -979,7 +980,7 @@ exec_version(int argc, char **argv)
 
 	if ( (opt & VERSION_SOURCE_REMOTE) == VERSION_SOURCE_REMOTE )
 		return (do_source_remote(opt, limchar, pattern, match,
-			    auto_update, reponame, matchorigin, matchname));
+			    auto_update, &reponames, matchorigin, matchname));
 
 	if ( (opt & VERSION_SOURCE_PORTS) == VERSION_SOURCE_PORTS ) {
 		if (!have_ports(&portsdir, true))
@@ -1009,7 +1010,7 @@ exec_version(int argc, char **argv)
 	} else {
 		opt |= VERSION_SOURCE_REMOTE;
 		return (do_source_remote(opt, limchar, pattern, match,
-			    auto_update, reponame, matchorigin, matchname));
+			    auto_update, &reponames, matchorigin, matchname));
 	}
 
 	/* NOTREACHED */

@@ -51,6 +51,7 @@
 #include "private/utils.h"
 #include "private/pkg_deps.h"
 #include "tllist.h"
+#include "pkgvec.h"
 
 #include "private/db_upgrades.h"
 
@@ -711,7 +712,14 @@ out:
 }
 
 int
-pkgdb_access(unsigned mode, unsigned database, ...)
+pkgdb_access(unsigned mode, unsigned database)
+{
+
+	return (pkgdb_access2(mode, database, NULL));
+}
+
+int
+pkgdb_access2(unsigned mode, unsigned database, c_charv_t *dbs)
 {
 	int			 retval = EPKG_OK;
 
@@ -764,25 +772,15 @@ pkgdb_access(unsigned mode, unsigned database, ...)
 	}
 
 	if ((database & PKGDB_DB_REPO) != 0) {
-		va_list	ap;
 		struct pkg_repo	*r = NULL;
-		const char	*dbname;
-		ucl_object_t *repos_seen = ucl_object_typed_new(UCL_OBJECT);
-
-		va_start(ap, database);
-		while((dbname = va_arg(ap, const char *)) != NULL) {
-			ucl_object_insert_key(repos_seen, ucl_object_typed_new(UCL_BOOLEAN),
-			    dbname, strlen(dbname), false);
-		}
-		va_end(ap);
 
 		while (pkg_repos(&r) == EPKG_OK) {
 			/* Ignore any repos marked as inactive */
 			if (!pkg_repo_enabled(r))
 				continue;
 
-			if (repos_seen->len > 0 && r->name &&
-			    !ucl_object_lookup(repos_seen, r->name)) {
+			if (dbs != NULL && dbs->len > 0 && r->name &&
+			    !c_charv_contains(dbs, r->name, true)) {
 				/* Skip what is not needed */
 				continue;
 			}
@@ -796,13 +794,9 @@ pkgdb_access(unsigned mode, unsigned database, ...)
 					    r->name);
 				}
 
-				ucl_object_unref(repos_seen);
-
 				return (retval);
 			}
 		}
-
-		ucl_object_unref(repos_seen);
 	}
 	return (retval);
 }
@@ -832,6 +826,9 @@ pkgdb_open_repos(struct pkgdb *db, const char *reponame)
 {
 	struct pkg_repo *r = NULL;
 
+	if (reponame != NULL) {
+		printf("opening reponame: %s\n", reponame);
+	}
 	while (pkg_repos(&r) == EPKG_OK) {
 		if (!r->enable && reponame == NULL) {
 			continue;
@@ -978,6 +975,20 @@ pkgdb_nfs_corruption(sqlite3 *db)
 int
 pkgdb_open_all(struct pkgdb **db_p, pkgdb_t type, const char *reponame)
 {
+	c_charv_t r;
+	int ret;
+
+	pkgvec_init(&r);
+	if (reponame != NULL)
+		pkgvec_push(&r, reponame);
+
+	ret = pkgdb_open_all2(db_p, type, &r);
+	pkgvec_free(&r);
+	return (ret);
+}
+int
+pkgdb_open_all2(struct pkgdb **db_p, pkgdb_t type, c_charv_t *reponames)
+{
 	struct pkgdb	*db = NULL;
 	bool		 reopen = false;
 	bool		 profile = false;
@@ -1065,8 +1076,13 @@ retry:
 	}
 
 	if (type == PKGDB_REMOTE || type == PKGDB_MAYBE_REMOTE) {
-		if (reponame != NULL || pkg_repos_activated_count() > 0) {
-			ret = pkgdb_open_repos(db, reponame);
+		if (pkg_repos_activated_count() > 0) {
+			if (reponames == NULL || reponames->len == 0) {
+				ret = pkgdb_open_repos(db, NULL);
+			} else {
+				for (size_t i = 0; i < reponames->len; i++)
+					ret = pkgdb_open_repos(db, reponames->d[i]);
+			}
 			if (ret != EPKG_OK) {
 				pkgdb_close(db);
 				return (ret);

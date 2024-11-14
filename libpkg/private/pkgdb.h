@@ -114,7 +114,7 @@ const char * pkgdb_get_pattern_query(const char *pattern, match_t match);
  * @return
  */
 struct pkgdb_it *pkgdb_repo_shlib_require(struct pkgdb *db,
-		const char *provide, const char *repo);
+		const char *provide, c_charv_t *repos);
 /**
  * Find requires for a specified provide in repos
  * @param db
@@ -123,13 +123,11 @@ struct pkgdb_it *pkgdb_repo_shlib_require(struct pkgdb *db,
  * @return
  */
 struct pkgdb_it *pkgdb_repo_shlib_provide(struct pkgdb *db,
-		const char *require, const char *repo);
+		const char *require, c_charv_t *repos);
 
-struct pkgdb_it *pkgdb_repo_provide(struct pkgdb *db, const char *require,
-    const char *repo);
+struct pkgdb_it *pkgdb_repo_provide(struct pkgdb *db, const char *require, c_charv_t *repo);
 
-struct pkgdb_it *pkgdb_repo_require(struct pkgdb *db, const char *provide,
-    const char *repo);
+struct pkgdb_it *pkgdb_repo_require(struct pkgdb *db, const char *provide, c_charv_t *repo);
 
 /**
  * Unregister a package from the database

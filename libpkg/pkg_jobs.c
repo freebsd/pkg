@@ -29,6 +29,7 @@
  * THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  */
 
+#include "pkgvec.h"
 #ifdef HAVE_CONFIG_H
 #include "pkg_config.h"
 #endif
@@ -119,14 +120,31 @@ pkg_jobs_set_flags(struct pkg_jobs *j, pkg_flags flags)
 int
 pkg_jobs_set_repository(struct pkg_jobs *j, const char *ident)
 {
-	if ((pkg_repo_find(ident)) == NULL) {
-		pkg_emit_error("Unknown repository: %s", ident);
-		return (EPKG_FATAL);
+	c_charv_t idents;
+	pkgvec_init(&idents);
+	if (ident != NULL)
+		pkgvec_push(&idents, ident);
+	return (pkg_jobs_set_repositories(j, &idents));
+}
+
+int
+pkg_jobs_set_repositories(struct pkg_jobs *j, c_charv_t *idents)
+{
+	int ret = EPKG_OK;
+	if (idents == NULL)
+		return (EPKG_OK);
+	for (size_t i = 0; i < idents->len; i++) {
+		if ((pkg_repo_find(idents->d[i])) == NULL) {
+			pkg_emit_error("Unknown repository: %s", idents->d[i]);
+			ret = EPKG_FATAL;
+		}
 	}
+	if (ret == EPKG_FATAL)
+		return (ret);
 
-	j->reponame = ident;
+	j->reponames = idents;
 
-	return (EPKG_OK);
+	return (ret);
 }
 
 int
@@ -797,7 +815,7 @@ pkg_jobs_try_remote_candidate(struct pkg_jobs *j, const char *cond, const char *
 	int rc = EPKG_FATAL;
 	xstring *qmsg = NULL;
 
-	if ((it = pkgdb_repo_query_cond(j->db, cond, pattern, m, j->reponame)) == NULL)
+	if ((it = pkgdb_repo_query_cond2(j->db, cond, pattern, m, j->reponames)) == NULL)
 		return (EPKG_FATAL);
 
 	while (pkgdb_it_next(it, &p, flags) == EPKG_OK) {
@@ -882,7 +900,7 @@ pkg_jobs_find_upgrade(struct pkg_jobs *j, const char *pattern, match_t m)
 			PKG_LOAD_ANNOTATIONS|PKG_LOAD_CONFLICTS;
 	struct pkg_job_universe_item *unit = NULL;
 
-	if ((it = pkgdb_repo_query(j->db, pattern, m, j->reponame)) == NULL)
+	if ((it = pkgdb_repo_query2(j->db, pattern, m, j->reponames)) == NULL)
 		return (rc);
 
 	/*
@@ -1457,7 +1475,7 @@ pkg_jobs_check_remote_candidate(struct pkg_jobs *j, struct pkg *pkg)
 	if (pkg->digest == NULL)
 		return (true);
 
-	it = pkgdb_repo_query(j->db, pkg->uid, MATCH_INTERNAL, j->reponame);
+	it = pkgdb_repo_query2(j->db, pkg->uid, MATCH_INTERNAL, j->reponames);
 	if (it != NULL) {
 		/*
 		 * If we have the same package in a remote repo, it is not an

@@ -56,7 +56,6 @@ exec_fetch(int argc, char **argv)
 {
 	struct pkgdb	*db = NULL;
 	struct pkg_jobs	*jobs = NULL;
-	const char	*reponame = NULL;
 	const char *destdir = NULL;
 	int		 ch;
 	int		 retcode;
@@ -65,6 +64,7 @@ exec_fetch(int argc, char **argv)
 	unsigned	 mode;
 	match_t		 match = MATCH_EXACT;
 	pkg_flags	 f = PKG_FLAG_NONE;
+	c_charv_t	reponames;
 
 	struct option longopts[] = {
 		{ "all",		no_argument,		NULL,	'a' },
@@ -82,6 +82,7 @@ exec_fetch(int argc, char **argv)
 		{ NULL,			0,			NULL,	0   },
 	};
 
+	pkgvec_init(&reponames);
 	while ((ch = getopt_long(argc, argv, "+aCdgiqr:Uuxyo:", longopts, NULL)) != -1) {
 		switch (ch) {
 		case 'a':
@@ -103,7 +104,7 @@ exec_fetch(int argc, char **argv)
 			quiet = true;
 			break;
 		case 'r':
-			reponame = optarg;
+			pkgvec_push(&reponames, optarg);
 			break;
 		case 'u':
 			f |= PKG_FLAG_UPGRADES_FOR_INSTALLED;
@@ -145,7 +146,7 @@ exec_fetch(int argc, char **argv)
 	else
 		mode = PKGDB_MODE_READ;
 
-	retcode = pkgdb_access(mode, PKGDB_DB_REPO, reponame, NULL);
+	retcode = pkgdb_access2(mode, PKGDB_DB_REPO, &reponames);
 
 	if (retcode == EPKG_ENOACCESS) {
 		warnx("Insufficient privileges to access repo catalogue");
@@ -165,10 +166,10 @@ exec_fetch(int argc, char **argv)
 
 	/* first update the remote repositories if needed */
 	if (auto_update &&
-	    (retcode = pkgcli_update(false, false, reponame)) != EPKG_OK)
+	    (retcode = pkgcli_update(false, false, &reponames)) != EPKG_OK)
 		return (retcode);
 
-	if (pkgdb_open_all(&db, PKGDB_REMOTE, reponame) != EPKG_OK)
+	if (pkgdb_open_all2(&db, PKGDB_REMOTE, &reponames) != EPKG_OK)
 		return (EXIT_FAILURE);
 
 	if (pkgdb_obtain_lock(db, PKGDB_LOCK_READONLY) != EPKG_OK) {
@@ -181,7 +182,7 @@ exec_fetch(int argc, char **argv)
 	if (pkg_jobs_new(&jobs, PKG_JOBS_FETCH, db) != EPKG_OK)
 		goto cleanup;
 
-	if (reponame != NULL && pkg_jobs_set_repository(jobs, reponame) != EPKG_OK)
+	if (pkg_jobs_set_repositories(jobs, &reponames) != EPKG_OK)
 		goto cleanup;
 
 	if (destdir != NULL && pkg_jobs_set_destdir(jobs, destdir) != EPKG_OK)

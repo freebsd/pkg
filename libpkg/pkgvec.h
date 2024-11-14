@@ -4,7 +4,7 @@
 #include <stddef.h>
 
 #define pkgvec_t(Type) \
-  struct { Type *d; int len, cap; }
+  struct { Type *d; size_t len, cap; }
 
 #define pkgvec_init(v) \
 	memset((v), 0, sizeof(*(v)))

@@ -34,6 +34,7 @@
  * THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  */
 
+#include "pkgvec.h"
 #ifdef HAVE_CONFIG_H
 #include "pkg_config.h"
 #endif
@@ -380,9 +381,40 @@ pkgdb_query_provide(struct pkgdb *db, const char *req)
 	return (pkgdb_it_new_sqlite(db, stmt, PKG_INSTALLED, PKGDB_IT_FLAG_ONCE));
 }
 
+static bool
+consider_this_repo(c_charv_t *repos, const char *name)
+{
+	/* All repositories */
+	if (repos == NULL)
+		return (true);
+
+	if (repos->len == 0)
+		return (true);
+
+	return (c_charv_contains(repos, name, true));
+}
+
 struct pkgdb_it *
 pkgdb_repo_query_cond(struct pkgdb *db, const char *cond, const char *pattern, match_t match,
     const char *repo)
+{
+	c_charv_t r;
+	struct pkgdb_it *ret;
+
+	pkgvec_init(&r);
+
+	if (repo != NULL)
+		pkgvec_push(&r, repo);
+
+	ret = pkgdb_repo_query_cond2(db, cond, pattern, match, &r);
+	pkgvec_free(&r);
+
+	return (ret);
+}
+
+struct pkgdb_it *
+pkgdb_repo_query_cond2(struct pkgdb *db, const char *cond, const char *pattern, match_t match,
+    c_charv_t *repos)
 {
 	struct pkgdb_it *it;
 	struct pkg_repo_it *rit;
@@ -392,7 +424,7 @@ pkgdb_repo_query_cond(struct pkgdb *db, const char *cond, const char *pattern, m
 		return (NULL);
 
 	tll_foreach(db->repos, cur) {
-		if (repo == NULL || STRIEQ(cur->item->name, repo)) {
+		if (consider_this_repo(repos, cur->item->name)) {
 			if (pattern != NULL && *pattern == '@')
 				rit = cur->item->ops->groupquery(cur->item, pattern + 1, match);
 			else
@@ -411,8 +443,14 @@ struct pkgdb_it *pkgdb_repo_query(struct pkgdb *db, const char *pattern,
 	return pkgdb_repo_query_cond(db, NULL, pattern, match, repo);
 }
 
+struct pkgdb_it *pkgdb_repo_query2(struct pkgdb *db, const char *pattern,
+	match_t match, c_charv_t *repos)
+{
+	return pkgdb_repo_query_cond2(db, NULL, pattern, match, repos);
+}
+
 struct pkgdb_it *
-pkgdb_repo_shlib_require(struct pkgdb *db, const char *require, const char *repo)
+pkgdb_repo_shlib_require(struct pkgdb *db, const char *require, c_charv_t *repos)
 {
 	struct pkgdb_it *it;
 	struct pkg_repo_it *rit;
@@ -422,7 +460,7 @@ pkgdb_repo_shlib_require(struct pkgdb *db, const char *require, const char *repo
 		return (NULL);
 
 	tll_foreach(db->repos, cur) {
-		if (repo == NULL || STRIEQ(cur->item->name, repo)) {
+		if (consider_this_repo(repos, cur->item->name)) {
 			if (cur->item->ops->shlib_required != NULL) {
 				rit = cur->item->ops->shlib_required(cur->item, require);
 				if (rit != NULL)
@@ -435,7 +473,7 @@ pkgdb_repo_shlib_require(struct pkgdb *db, const char *require, const char *repo
 }
 
 struct pkgdb_it *
-pkgdb_repo_shlib_provide(struct pkgdb *db, const char *require, const char *repo)
+pkgdb_repo_shlib_provide(struct pkgdb *db, const char *require, c_charv_t *repos)
 {
 	struct pkgdb_it *it;
 	struct pkg_repo_it *rit;
@@ -445,7 +483,7 @@ pkgdb_repo_shlib_provide(struct pkgdb *db, const char *require, const char *repo
 		return (NULL);
 
 	tll_foreach(db->repos, cur) {
-		if (repo == NULL || STRIEQ(cur->item->name, repo)) {
+		if (consider_this_repo(repos, cur->item->name)) {
 			if (cur->item->ops->shlib_required != NULL) {
 				rit = cur->item->ops->shlib_provided(cur->item, require);
 				if (rit != NULL)
@@ -458,7 +496,7 @@ pkgdb_repo_shlib_provide(struct pkgdb *db, const char *require, const char *repo
 }
 
 struct pkgdb_it *
-pkgdb_repo_require(struct pkgdb *db, const char *require, const char *repo)
+pkgdb_repo_require(struct pkgdb *db, const char *require, c_charv_t *repo)
 {
 	struct pkgdb_it *it;
 	struct pkg_repo_it *rit;
@@ -468,7 +506,7 @@ pkgdb_repo_require(struct pkgdb *db, const char *require, const char *repo)
 		return (NULL);
 
 	tll_foreach(db->repos, cur) {
-		if (repo == NULL || STRIEQ(cur->item->name, repo)) {
+		if (consider_this_repo(repo, cur->item->name)) {
 			if (cur->item->ops->required != NULL) {
 				rit = cur->item->ops->required(cur->item, require);
 				if (rit != NULL)
@@ -481,7 +519,7 @@ pkgdb_repo_require(struct pkgdb *db, const char *require, const char *repo)
 }
 
 struct pkgdb_it *
-pkgdb_repo_provide(struct pkgdb *db, const char *require, const char *repo)
+pkgdb_repo_provide(struct pkgdb *db, const char *require, c_charv_t *repo)
 {
 	struct pkgdb_it *it;
 	struct pkg_repo_it *rit;
@@ -491,7 +529,7 @@ pkgdb_repo_provide(struct pkgdb *db, const char *require, const char *repo)
 		return (NULL);
 
 	tll_foreach(db->repos, cur) {
-		if (repo == NULL || STRIEQ(cur->item->name, repo)) {
+		if (consider_this_repo(repo, cur->item->name)) {
 			if (cur->item->ops->required != NULL) {
 				rit = cur->item->ops->provided(cur->item, require);
 				if (rit != NULL)
@@ -507,6 +545,23 @@ struct pkgdb_it *
 pkgdb_repo_search(struct pkgdb *db, const char *pattern, match_t match,
     pkgdb_field field, pkgdb_field sort, const char *repo)
 {
+	c_charv_t r;
+	struct pkgdb_it *ret;
+
+	pkgvec_init(&r);
+	if (repo != NULL)
+		pkgvec_push(&r, repo);
+
+	ret = pkgdb_repo_search2(db, pattern, match, field, sort, &r);
+	pkgvec_free(&r);
+
+	return (ret);
+}
+
+struct pkgdb_it *
+pkgdb_repo_search2(struct pkgdb *db, const char *pattern, match_t match,
+    pkgdb_field field, pkgdb_field sort, c_charv_t *repos)
+{
 	struct pkgdb_it *it;
 	struct pkg_repo_it *rit;
 
@@ -515,7 +570,7 @@ pkgdb_repo_search(struct pkgdb *db, const char *pattern, match_t match,
 		return (NULL);
 
 	tll_foreach(db->repos, cur) {
-		if (repo == NULL || STRIEQ(cur->item->name, repo)) {
+		if (consider_this_repo(repos, cur->item->name)) {
 			if (cur->item->ops->search != NULL) {
 				rit = cur->item->ops->search(cur->item, pattern, match,
 					field, sort);
@@ -537,13 +592,33 @@ struct pkgdb_it *
 pkgdb_all_search(struct pkgdb *db, const char *pattern, match_t match,
     pkgdb_field field, pkgdb_field sort, const char *repo)
 {
+	c_charv_t r;
+	struct pkgdb_it *ret;
+
+	pkgvec_init(&r);
+
+	if (repo != NULL)
+		pkgvec_push(&r, repo);
+
+	ret = pkgdb_all_search2(db, pattern, match, field, sort, &r);
+
+	pkgvec_free(&r);
+
+	return (ret);
+}
+
+struct pkgdb_it *
+pkgdb_all_search2(struct pkgdb *db, const char *pattern, match_t match,
+    pkgdb_field field, pkgdb_field sort, c_charv_t *repos)
+{
 	struct pkgdb_it *it;
 	struct pkg_repo_it *rit;
+
 
 	it = pkgdb_query(db, pattern, match);
 
 	tll_foreach(db->repos, cur) {
-		if (repo == NULL || STRIEQ(cur->item->name, repo)) {
+		if (consider_this_repo(repos, cur->item->name)) {
 			if (cur->item->ops->search != NULL) {
 				rit = cur->item->ops->search(cur->item, pattern, match,
 					field, sort);

@@ -238,7 +238,6 @@ exec_upgrade(int argc, char **argv)
 {
 	struct pkgdb	*db = NULL;
 	struct pkg_jobs	*jobs = NULL;
-	const char	*reponame = NULL;
 	int		 retcode;
 	int		 updcode;
 	int		 ch;
@@ -247,6 +246,7 @@ exec_upgrade(int argc, char **argv)
 	int		 done = 0;
 	bool	rc = true;
 	pkg_flags	 f = PKG_FLAG_NONE | PKG_FLAG_PKG_VERSION_TEST;
+	c_charv_t	reponames;
 
 	struct option longopts[] = {
 		{ "case-sensitive",	no_argument,		NULL,	'C' },
@@ -266,6 +266,7 @@ exec_upgrade(int argc, char **argv)
 	};
 
 	nbactions = nbdone = 0;
+	pkgvec_init(&reponames);
 
 	while ((ch = getopt_long(argc, argv, "+CfFgiInqr:Uxyv", longopts, NULL)) != -1) {
 		switch (ch) {
@@ -297,7 +298,7 @@ exec_upgrade(int argc, char **argv)
 			quiet = true;
 			break;
 		case 'r':
-			reponame = optarg;
+			pkgvec_push(&reponames, optarg);
 			break;
 		case 'U':
 			auto_update = false;
@@ -321,17 +322,17 @@ exec_upgrade(int argc, char **argv)
 	argv += optind;
 
 	if (dry_run && !auto_update)
-		retcode = pkgdb_access(PKGDB_MODE_READ,
-				       PKGDB_DB_LOCAL|PKGDB_DB_REPO, reponame, NULL);
+		retcode = pkgdb_access2(PKGDB_MODE_READ,
+				       PKGDB_DB_LOCAL|PKGDB_DB_REPO, &reponames);
 	else
-		retcode = pkgdb_access(PKGDB_MODE_READ  |
+		retcode = pkgdb_access2(PKGDB_MODE_READ  |
 				       PKGDB_MODE_WRITE |
 				       PKGDB_MODE_CREATE,
-				       PKGDB_DB_LOCAL|PKGDB_DB_REPO, reponame, NULL);
+				       PKGDB_DB_LOCAL|PKGDB_DB_REPO, &reponames);
 	if (retcode == EPKG_ENOACCESS && dry_run) {
 		auto_update = false;
-		retcode = pkgdb_access(PKGDB_MODE_READ,
-				       PKGDB_DB_LOCAL|PKGDB_DB_REPO, reponame, NULL);
+		retcode = pkgdb_access2(PKGDB_MODE_READ,
+				       PKGDB_DB_LOCAL|PKGDB_DB_REPO, &reponames);
 	}
 
 	if (retcode == EPKG_ENOACCESS) {
@@ -344,10 +345,10 @@ exec_upgrade(int argc, char **argv)
 
 	/* first update the remote repositories if needed */
 	if (auto_update &&
-	    (updcode = pkgcli_update(false, false, reponame)) != EPKG_OK)
+	    (updcode = pkgcli_update(false, false, &reponames)) != EPKG_OK)
 		return (updcode);
 
-	if (pkgdb_open_all(&db, PKGDB_REMOTE, reponame) != EPKG_OK)
+	if (pkgdb_open_all2(&db, PKGDB_REMOTE, &reponames) != EPKG_OK)
 		return (EXIT_FAILURE);
 
 	if (pkgdb_obtain_lock(db, lock_type) != EPKG_OK) {
@@ -359,7 +360,7 @@ exec_upgrade(int argc, char **argv)
 	if (pkg_jobs_new(&jobs, PKG_JOBS_UPGRADE, db) != EPKG_OK)
 		goto cleanup;
 
-	if (reponame != NULL && pkg_jobs_set_repository(jobs, reponame) != EPKG_OK)
+	if (reponames.len > 0 && pkg_jobs_set_repositories(jobs, &reponames) != EPKG_OK)
 		goto cleanup;
 
 	pkg_jobs_set_flags(jobs, f);

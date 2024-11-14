@@ -56,7 +56,6 @@ exec_install(int argc, char **argv)
 {
 	struct pkgdb	*db = NULL;
 	struct pkg_jobs	*jobs = NULL;
-	const char	*reponame = NULL;
 	int		 retcode;
 	int		 status;
 	int		 updcode = EPKG_OK;
@@ -68,6 +67,7 @@ exec_install(int argc, char **argv)
 	bool		 local_only = false;
 	match_t		 match = MATCH_EXACT;
 	pkg_flags	 f = PKG_FLAG_NONE | PKG_FLAG_PKG_VERSION_TEST;
+	c_charv_t	reponames;
 
 	struct option longopts[] = {
 		{ "automatic",		no_argument,		NULL,	'A' },
@@ -98,6 +98,7 @@ exec_install(int argc, char **argv)
 		quiet = true;
 	}
 
+	pkgvec_init(&reponames);
 	while ((ch = getopt_long(argc, argv, "+ACfFgiIlMnqr:RUxy", longopts, NULL)) != -1) {
 		switch (ch) {
 		case 'A':
@@ -138,7 +139,7 @@ exec_install(int argc, char **argv)
 			quiet = true;
 			break;
 		case 'r':
-			reponame = optarg;
+			pkgvec_push(&reponames, optarg);
 			break;
 		case 'R':
 			f |= PKG_FLAG_RECURSIVE;
@@ -177,12 +178,12 @@ exec_install(int argc, char **argv)
 		repo_type = PKGDB_DB_LOCAL|PKGDB_DB_REPO;
 
 	/* It is safe to use both `reponame` and `NULL` here */
-	retcode = pkgdb_access(mode, repo_type, reponame, NULL);
+	retcode = pkgdb_access2(mode, repo_type, &reponames);
 
 	if (retcode == EPKG_ENOACCESS && dry_run) {
 		auto_update = false;
-		retcode = pkgdb_access(PKGDB_MODE_READ,
-				       repo_type, reponame, NULL);
+		retcode = pkgdb_access2(PKGDB_MODE_READ,
+				       repo_type, &reponames);
 	}
 
 	if (retcode == EPKG_ENOACCESS) {
@@ -193,12 +194,12 @@ exec_install(int argc, char **argv)
 
 	/* first update the remote repositories if needed */
 	if (auto_update && pkg_repos_total_count() > 0 &&
-	    (updcode = pkgcli_update(false, false, reponame)) != EPKG_OK)
+	    (updcode = pkgcli_update(false, false, &reponames)) != EPKG_OK)
 		return (updcode);
 
-	if (pkgdb_open_all(&db,
+	if (pkgdb_open_all2(&db,
 	    local_only ? PKGDB_DEFAULT : PKGDB_MAYBE_REMOTE,
-	    reponame) != EPKG_OK)
+	    &reponames) != EPKG_OK)
 		return (EXIT_FAILURE);
 
 	if (pkgdb_obtain_lock(db, lock_type) != EPKG_OK) {
@@ -211,8 +212,8 @@ exec_install(int argc, char **argv)
 	if (pkg_jobs_new(&jobs, PKG_JOBS_INSTALL, db) != EPKG_OK)
 		goto cleanup;
 
-	if (!local_only && reponame != NULL &&
-			pkg_jobs_set_repository(jobs, reponame) != EPKG_OK)
+	if (!local_only && reponames.len > 0 &&
+			pkg_jobs_set_repositories(jobs, &reponames) != EPKG_OK)
 		goto cleanup;
 
 	pkg_jobs_set_flags(jobs, f);

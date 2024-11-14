@@ -118,10 +118,10 @@ exec_rquery(int argc, char **argv)
 	const char		*portsdir;
 	xstring			*sqlcond = NULL;
 	const unsigned int	 q_flags_len = NELEM(accepted_rquery_flags);
-	const char		*reponame = NULL;
 	bool			 onematched = false;
 	bool			 old_quiet;
 	bool			 index_output = false;
+	c_charv_t		reponames;
 
 	struct option longopts[] = {
 		{ "all",		no_argument,		NULL,	'a' },
@@ -138,6 +138,7 @@ exec_rquery(int argc, char **argv)
 
 	portsdir = pkg_object_string(pkg_config_get("PORTSDIR"));
 
+	pkgvec_init(&reponames);
 	while ((ch = getopt_long(argc, argv, "+aCgiIxe:r:U", longopts, NULL)) != -1) {
 		switch (ch) {
 		case 'a':
@@ -159,7 +160,7 @@ exec_rquery(int argc, char **argv)
 			index_output = true;
 			break;
 		case 'r':
-			reponame = optarg;
+			pkgvec_push(&reponames, optarg);
 			break;
 		case 'U':
 			auto_update = false;
@@ -205,7 +206,7 @@ exec_rquery(int argc, char **argv)
 		}
 	}
 
-	ret = pkgdb_access(PKGDB_MODE_READ, PKGDB_DB_REPO, reponame, NULL);
+	ret = pkgdb_access2(PKGDB_MODE_READ, PKGDB_DB_REPO, &reponames);
 	if (ret == EPKG_ENOACCESS) {
 		warnx("Insufficient privileges to query the package database");
 		xstring_free(sqlcond);
@@ -218,13 +219,13 @@ exec_rquery(int argc, char **argv)
 	/* first update the remote repositories if needed */
 	old_quiet = quiet;
 	quiet = true;
-	if (auto_update && (ret = pkgcli_update(false, false, reponame)) != EPKG_OK) {
+	if (auto_update && (ret = pkgcli_update(false, false, &reponames)) != EPKG_OK) {
 		xstring_free(sqlcond);
 		return (ret);
 	}
 	quiet = old_quiet;
 
-	ret = pkgdb_open_all(&db, PKGDB_REMOTE, reponame);
+	ret = pkgdb_open_all2(&db, PKGDB_REMOTE, &reponames);
 	if (ret != EPKG_OK) {
 		xstring_free(sqlcond);
 		return (EXIT_FAILURE);
@@ -239,7 +240,7 @@ exec_rquery(int argc, char **argv)
 		condition_sql = sqlcond->buf;
 	}
 	if (match == MATCH_ALL) {
-		if ((it = pkgdb_repo_query_cond(db, condition_sql, NULL, match, reponame)) == NULL) {
+		if ((it = pkgdb_repo_query_cond2(db, condition_sql, NULL, match, &reponames)) == NULL) {
 			xstring_free(sqlcond);
 			return (EXIT_FAILURE);
 		}
@@ -259,7 +260,7 @@ exec_rquery(int argc, char **argv)
 		for (i = (index_output ? 0 : 1); i < argc; i++) {
 			pkgname = argv[i];
 
-			if ((it = pkgdb_repo_query_cond(db, condition_sql, pkgname, match, reponame)) == NULL) {
+			if ((it = pkgdb_repo_query_cond2(db, condition_sql, pkgname, match, &reponames)) == NULL) {
 				xstring_free(sqlcond);
 				return (EXIT_FAILURE);
 			}

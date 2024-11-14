@@ -329,7 +329,7 @@ exec_clean(int argc, char **argv)
 		return (errno == ENOENT ? EXIT_SUCCESS : EXIT_FAILURE);
 	}
 
-	retcode = pkgdb_access(PKGDB_MODE_READ, PKGDB_DB_REPO, NULL);
+	retcode = pkgdb_access(PKGDB_MODE_READ, PKGDB_DB_REPO);
 
 	if (retcode == EPKG_ENOACCESS) {
 		warnx("Insufficient privileges to clean old packages");

@@ -132,7 +132,7 @@ struct pkg_jobs {
 	int total;
 	int conflicts_registered;
 	bool need_fetch;
-	const char *reponame;
+	c_charv_t *reponames;
 	const char *destdir;
 	TREE_HEAD(, pkg_jobs_conflict_item) *conflict_items;
 	struct job_pattern *patterns;
