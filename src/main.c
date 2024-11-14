@@ -378,7 +378,7 @@ show_version_info(int version)
 
 	printf("%-24s: %s\n", "libpkg", pkg_libversion());
 
-	lib = pkg_external_lib_version();
+	lib = pkg_external_libs_version();
 	for (size_t i = 0; i < lib->len; i++)
 		printf("%-24s: %s\n", lib->d[i]->key, lib->d[i]->value);
 
