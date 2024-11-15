@@ -58,7 +58,7 @@
 #define PORTSDIR "/usr/ports"
 #endif
 #ifndef DEFAULT_VULNXML_URL
-#define DEFAULT_VULNXML_URL "http://vuxml.freebsd.org/freebsd/vuln.xml.xz"
+#define DEFAULT_VULNXML_URL "https://vuxml.freebsd.org/freebsd/vuln.xml.xz"
 #endif
 
 #ifdef	OSMAJOR
