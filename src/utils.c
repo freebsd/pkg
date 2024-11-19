@@ -5,26 +5,7 @@
  * Copyright (c) 2012-2015 Matthew Seaman <matthew@FreeBSD.org>
  * Copyright (c) 2013-2016 Vsevolod Stakhov <vsevolod@FreeBSD.org>
  *
- * Redistribution and use in source and binary forms, with or without
- * modification, are permitted provided that the following conditions
- * are met:
- * 1. Redistributions of source code must retain the above copyright
- *    notice, this list of conditions and the following disclaimer
- *    in this position and unchanged.
- * 2. Redistributions in binary form must reproduce the above copyright
- *    notice, this list of conditions and the following disclaimer in the
- *    documentation and/or other materials provided with the distribution.
- *
- * THIS SOFTWARE IS PROVIDED BY THE AUTHOR(S) ``AS IS'' AND ANY EXPRESS OR
- * IMPLIED WARRANTIES, INCLUDING, BUT NOT LIMITED TO, THE IMPLIED WARRANTIES
- * OF MERCHANTABILITY AND FITNESS FOR A PARTICULAR PURPOSE ARE DISCLAIMED.
- * IN NO EVENT SHALL THE AUTHOR(S) BE LIABLE FOR ANY DIRECT, INDIRECT,
- * INCIDENTAL, SPECIAL, EXEMPLARY, OR CONSEQUENTIAL DAMAGES (INCLUDING, BUT
- * NOT LIMITED TO, PROCUREMENT OF SUBSTITUTE GOODS OR SERVICES; LOSS OF USE,
- * DATA, OR PROFITS; OR BUSINESS INTERRUPTION) HOWEVER CAUSED AND ON ANY
- * THEORY OF LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY, OR TORT
- * (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF
- * THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
+ * SPDX-License-Identifier: BSD-2-Clause
  */
 
 #ifdef HAVE_CONFIG_H
@@ -1104,4 +1085,64 @@ print_pkg(struct pkg *p, void *ctx)
 	(*counter)++;
 
 	return 0;
+}
+
+void
+print_repository(struct pkg_repo *repo, bool pad)
+{
+	const char	*mirror, *sig;
+
+	switch (pkg_repo_mirror_type(repo)) {
+		case SRV:
+			mirror = "SRV";
+			break;
+		case HTTP:
+			mirror = "HTTP";
+			break;
+		case NOMIRROR:
+			mirror = "NONE";
+			break;
+		default:
+			mirror = "-unknown-";
+			break;
+	}
+	switch (pkg_repo_signature_type(repo)) {
+		case SIG_PUBKEY:
+			sig = "PUBKEY";
+			break;
+		case SIG_FINGERPRINT:
+			sig = "FINGERPRINTS";
+			break;
+		case SIG_NONE:
+			sig = "NONE";
+			break;
+		default:
+			sig = "-unknown-";
+			break;
+	}
+
+	printf("%s%s: { \n    %-16s: \"%s\",\n    %-16s: %s,\n"
+			"    %-16s: %u",
+			pad ? "  " : "",
+			pkg_repo_name(repo),
+			"url", pkg_repo_url(repo),
+			"enabled", pkg_repo_enabled(repo) ? "yes" : "no",
+			"priority", pkg_repo_priority(repo));
+
+	if (pkg_repo_mirror_type(repo) != NOMIRROR)
+		printf(",\n    %-16s: \"%s\"",
+				"mirror_type", mirror);
+	if (pkg_repo_signature_type(repo) != SIG_NONE)
+		printf(",\n    %-16s: \"%s\"",
+				"signature_type", sig);
+	if (pkg_repo_fingerprints(repo) != NULL)
+		printf(",\n    %-16s: \"%s\"",
+				"fingerprints", pkg_repo_fingerprints(repo));
+	if (pkg_repo_key(repo) != NULL)
+		printf(",\n    %-16s: \"%s\"",
+				"pubkey", pkg_repo_key(repo));
+	if (pkg_repo_ip_version(repo) != 0)
+		printf(",\n    %-16s: %u",
+				"ip_version", pkg_repo_ip_version(repo));
+	printf("\n  }\n");
 }
