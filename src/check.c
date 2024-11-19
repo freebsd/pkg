@@ -322,6 +322,10 @@ exec_check(int argc, char **argv)
 	argc -= optind;
 	argv += optind;
 
+	if (!(dcheck || checksums)) {
+		checksums = true;
+		flags |= PKG_LOAD_FILES;
+	}
 	/* Default to all packages if no pkg provided */
 	if (argc == 0 && (dcheck || checksums)) {
 		match = MATCH_ALL;
