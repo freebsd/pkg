@@ -80,7 +80,7 @@ static struct commands {
 	{ "register", "Registers a package into the local database", exec_register, usage_register},
 	{ "remove", "Deletes packages from the database and the system", exec_delete, usage_delete},
 	{ "repo", "Creates a package repository catalogue", exec_repo, usage_repo},
-	{ "repositories", "Show repositories informations", exec_repositories, usage_repositories},
+	{ "repositories", "Show repositories information", exec_repositories, usage_repositories},
 	{ "rquery", "Queries information in repository catalogues", exec_rquery, usage_rquery},
 	{ "search", "Performs a search of package repository catalogues", exec_search, usage_search},
 	{ "set", "Modifies information about packages in the local database", exec_set, usage_set},
