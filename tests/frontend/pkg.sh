@@ -32,7 +32,7 @@ pkg_config_defaults_body()
 	    -o match:'^ *SYSLOG = true;$' \
 	    -o match:'^ *ALTABI = "[a-zA-Z0-9]+:[a-z\.A-Z0-9]+:[a-zA-Z0-9]+:[a-zA-Z0-9:]+";$' \
 	    -o match:'^ *DEVELOPER_MODE = false;$' \
-	    -o match:'^ *VULNXML_SITE = "http://vuxml.freebsd.org/freebsd/vuln.xml.xz";$' \
+	    -o match:'^ *VULNXML_SITE = "https://vuxml.freebsd.org/freebsd/vuln.xml.xz";$' \
 	    -o match:'^ *FETCH_RETRY = 3;$' \
 	    -o match:'^ *PKG_PLUGINS_DIR = ".*lib/pkg/";$' \
 	    -o match:'^ *PKG_ENABLE_PLUGINS = true;$' \
