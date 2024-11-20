@@ -1,3 +1,18 @@
+Changes from 1.21.99.3 to 1.21.99.4
+- ABI detection related fixes
+- Lots of fixs for MacOS
+- Fix host component handling in file:// URLs
+- build system: add --with-tsan support
+- fix threads on MacOS
+- pkg -vv now shows bundled/external libraries version
+- pkg: -r command can be used multiple times to only enable
+  the specified repositories.
+- UI: small improvements in error messages
+- repositories: new pkg repositories command to list configured
+  repositories
+- vuxml: now fetched over https
+- check: now default on the -s option when no options is passed.
+
 Changes from 1.21.99.2 to 1.21.99.3
 - alias: prime-origins is now uniq
 - curl: improve debug output
