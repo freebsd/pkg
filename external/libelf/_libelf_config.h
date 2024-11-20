@@ -36,6 +36,10 @@
 #define	LIBELF_ARCH		EM_386
 #define	LIBELF_BYTEORDER	ELFDATA2LSB
 #define	LIBELF_CLASS		ELFCLASS32
+#elif   defined(__aarch64__)
+#define LIBELF_ARCH             EM_AARCH64
+#define LIBELF_BYTEORDER        ELFDATA2LSB
+#define LIBELF_CLASS            ELFCLASS64
 #endif
 
 #endif	/* __DragonFly__ */
