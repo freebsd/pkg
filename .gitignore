@@ -63,7 +63,6 @@ scripts/sbin/pkg2ng
 /external/libucl/autom4te.cache
 /external/yxml/Makefile
 /external/liblua/Makefile
-/external/libmachista/Makefile
 /external/libfetch/Makefile
 /external/libelf/Makefile
 /external/sqlite/Makefile

@@ -102,7 +102,7 @@ cc-with { -libs { -llzma }} {
 	}
 }
 if {[string match *-freebsd* [get-define host]]} {
-	define pkg_freebsd
+	define pkgos_freebsd
 	cc-with { -libs { -lmd }} {
 		if {![cc-check-functions SHA256_Data]} {
 			user-error "Unable to find libmd"
@@ -213,14 +213,6 @@ if {![cc-check-functions dlclose]} {
 	}
 }
 
-if {![cc-check-functions __res_query]} {
-	cc-with { -libs { -lresolv }} {
-		if {[cc-check-functions __res_query]} {
-			define-feature LIBRESOLV
-		}
-	}
-}
-
 cc-check-includes link.h machine/endian.h osreldate.h readpassphrase.h \
 	sys/procctl.h sys/statfs.h sys/statvfs.h libutil.h
 
@@ -228,7 +220,7 @@ cc-check-includes link.h machine/endian.h osreldate.h readpassphrase.h \
 cc-check-includes dirent.h sys/sockio.h
 
 #endian stuff
-foreach header [list endian.h sys/endian.h] {
+foreach header [list endian.h sys/endian.h machine/endian.h] {
 	if {[cc-check-includes $header]} {
 		cc-with [list -includes $header] {
 			cc-check-decls be16dec be16enc be32dec be32enc be64dec be64enc \
@@ -238,9 +230,10 @@ foreach header [list endian.h sys/endian.h] {
 }
 
 if {[string match *-darwin* [get-define host]]} {
-	define libmachista
+	define pkgos_darwin
 	define waflags ""
 	define nowaflags ""
+	define libelf-internal
 } else {
 # libelf
 	define waflags "-Wl,-whole-archive"
@@ -394,7 +387,7 @@ make-template Makefile.autosetup Makefile
 foreach dir [list external/blake2 external/picosat \
 	external/linenoise external/sqlite \
 	external compat libpkg libpkg/repo libpkg/repo/binary src \
-	external/libucl external/libelf external/libmachista tests docs \
+	external/libucl external/libelf tests docs \
 	external/liblua external/yxml scripts external/libcurl external/libder \
 	external/libecc] {
 	make-template $dir/Makefile.autosetup $dir/Makefile

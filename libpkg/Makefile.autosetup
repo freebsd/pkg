@@ -32,6 +32,8 @@ SRCS=	backup_lib.c \
 	pkg_jobs_conflicts.c pkg_ports.c \
 	pkg_solve.c \
 	pkgdb.c \
+	pkg_elf.c \
+	binfmt_macho.c \
 	ssh.c elfhints.c \
 	pkg_arch.c \
 	pkg_cudf.c \
@@ -117,22 +119,14 @@ LOCAL_LDFLAGS+=	-lfts
 @if HAVE_LIBDL
 LOCAL_LDFLAGS+= -ldl
 @endif
-@if HAVE_LIBRESOLV
-LOCAL_LDFLAGS+= -lresolv
-@endif
 
-@if libmachista
-LOCAL_CFLAGS+= -I$(top_srcdir)/external/libmachista
-STATIC_LIBS+=	$(top_builddir)/external/libmachista/libmachista.a
-LOCAL_LDFLAGS+=	-L$(top_builddir)/external/libmachista -lmachista_pic \
-		-larchive -lresolv
-SRCS+=		pkg_macho.c
-@else
-SRCS+=		pkg_elf.c
-@if pkg_freebsd
+@if pkgos_darwin
+LOCAL_LDFLAGS+=	-lresolv
+@else 
+@if pkgos_freebsd
 LOCAL_LDFLAGS+=	-Wl,--version-script=$(top_srcdir)/libpkg/libpkg.ver,--undefined-version 
 @else
-# --undefined-version is a FreeBSD ld option
+### --undefined-version is a FreeBSD ld option
 LOCAL_LDFLAGS+=	-Wl,--version-script=$(top_srcdir)/libpkg/libpkg.ver
 @endif
 @endif
@@ -185,7 +179,7 @@ all: lib$(LIB)_flat.a
 
 lib$(LIB)$(LIBSOEXT): $(STATIC_LIBS)
 
-@if libmachista
+@if pkgos_darwin
 lib$(LIB)_flat.a: $(STATIC_LIBS)
 	libtool -static -o lib$(LIB)_flat.a $(STATIC_LIBS)
 @else
