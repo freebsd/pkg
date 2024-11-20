@@ -300,8 +300,8 @@ analyse_elf(struct pkg *pkg, const char *fpath)
 		pkg->flags |= PKG_CONTAINS_ELF_OBJECTS;
 
 	if (gelf_getehdr(e, &elfhdr) == NULL) {
-		ret = EPKG_FATAL;
-		pkg_emit_error("getehdr() failed: %s.", elf_errmsg(-1));
+		ret = EPKG_WARN;
+		pkg_debug(1, "getehdr() failed: %s.", elf_errmsg(-1));
 		goto cleanup;
 	}
 
@@ -744,8 +744,8 @@ pkg_get_myarch_elfparse(int fd, char *dest, size_t sz, struct os_info *oi)
 	}
 
 	if (gelf_getehdr(elf, &elfhdr) == NULL) {
-		ret = EPKG_FATAL;
-		pkg_emit_error("getehdr() failed: %s.", elf_errmsg(-1));
+		ret = EPKG_WARN;
+		pkg_debug(1, "getehdr() failed: %s.", elf_errmsg(-1));
 		goto cleanup;
 	}
 
