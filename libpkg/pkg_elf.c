@@ -71,7 +71,6 @@
 #define NT_ABI_TAG 1
 #endif
 
-#define _PATH_UNAME "/usr/bin/uname"
 
 /* FFR: when we support installing a 32bit package on a 64bit host */
 #define _PATH_ELF32_HINTS       "/var/run/ld-elf32.so.hints"
@@ -464,103 +463,6 @@ analyse_fpath(struct pkg *pkg, const char *fpath)
 	return (EPKG_OK);
 }
 
-int
-pkg_analyse_files(struct pkgdb *db __unused, struct pkg *pkg, const char *stage)
-{
-	struct pkg_file *file = NULL;
-	int ret = EPKG_OK;
-	char fpath[MAXPATHLEN +1];
-	const char *lib;
-	bool failures = false;
-
-	if (tll_length(pkg->shlibs_required) != 0) {
-		tll_free_and_free(pkg->shlibs_required, free);
-	}
-
-	if (tll_length(pkg->shlibs_provided) != 0) {
-		tll_free_and_free(pkg->shlibs_provided, free);
-	}
-
-	if (elf_version(EV_CURRENT) == EV_NONE)
-		return (EPKG_FATAL);
-
-	shlib_list_init();
-
-	if (stage != NULL && pkg_object_bool(pkg_config_get("ALLOW_BASE_SHLIBS"))) {
-		/* Do not check the return */
-		shlib_list_from_stage(stage);
-	}
-
-	ret = shlib_list_from_elf_hints(_PATH_ELF_HINTS);
-	if (ret != EPKG_OK)
-		goto cleanup;
-
-	/* Assume no architecture dependence, for contradiction */
-	if (ctx.developer_mode)
-		pkg->flags &= ~(PKG_CONTAINS_ELF_OBJECTS |
-				PKG_CONTAINS_STATIC_LIBS |
-				PKG_CONTAINS_LA);
-
-	while (pkg_files(pkg, &file) == EPKG_OK) {
-		if (stage != NULL)
-			snprintf(fpath, sizeof(fpath), "%s/%s", stage, file->path);
-		else
-			strlcpy(fpath, file->path, sizeof(fpath));
-
-		ret = analyse_elf(pkg, fpath);
-		if (ctx.developer_mode) {
-			if (ret != EPKG_OK && ret != EPKG_END) {
-				failures = true;
-				continue;
-			}
-			analyse_fpath(pkg, fpath);
-		}
-	}
-
-	/*
-	 * Do not depend on libraries that a package provides itself
-	 */
-	tll_foreach(pkg->shlibs_required, s) {
-		if (stringlist_contains(&pkg->shlibs_provided, s->item)) {
-			pkg_debug(2, "remove %s from required shlibs as the "
-			    "package %s provides this library itself",
-			    s->item, pkg->name);
-			tll_remove_and_free(pkg->shlibs_required, s, free);
-			continue;
-		}
-		file = NULL;
-		while (pkg_files(pkg, &file) == EPKG_OK) {
-			if ((lib = strstr(file->path, s->item)) != NULL &&
-			    strlen(lib) == strlen(s->item) && lib[-1] == '/') {
-				pkg_debug(2, "remove %s from required shlibs as "
-				    "the package %s provides this file itself",
-				    s->item, pkg->name);
-
-				tll_remove_and_free(pkg->shlibs_required, s, free);
-				break;
-			}
-		}
-	}
-
-	/*
-	 * if the package is not supposed to provide share libraries then
-	 * drop the provided one
-	 */
-	if (pkg_kv_get(&pkg->annotations, "no_provide_shlib") != NULL) {
-		tll_free_and_free(pkg->shlibs_provided, free);
-	}
-
-	if (failures)
-		goto cleanup;
-
-	ret = EPKG_OK;
-
-cleanup:
-	shlib_list_free();
-
-	return (ret);
-}
-
 static const char *
 elf_corres_to_string(const struct _elf_corres* m, int e)
 {
@@ -815,68 +717,23 @@ elf_note_analyse(Elf_Data *data, GElf_Ehdr *elfhdr, struct os_info *oi)
 }
 
 
-static int
-pkg_get_myarch_elfparse(char *dest, size_t sz, struct os_info *oi)
+int
+pkg_get_myarch_elfparse(int fd, char *dest, size_t sz, struct os_info *oi)
 {
-	char rooted_abi_file[PATH_MAX];
 	Elf *elf = NULL;
 	GElf_Ehdr elfhdr;
 	GElf_Shdr shdr;
 	Elf_Data *data;
 	Elf_Scn *scn = NULL;
-	int fd, i;
 	int ret = EPKG_OK;
-	const char *arch, *abi, *endian_corres_str, *wordsize_corres_str, *fpu;
-	bool checkroot;
-	struct os_info loi;
+	const char *arch,*abi, *endian_corres_str, *wordsize_corres_str, *fpu;
 	size_t dsz;
 
-	const char *abi_files[] = {
-		getenv("ABI_FILE"),
-		_PATH_UNAME,
-		_PATH_BSHELL,
-	};
-
 	arch = NULL;
-
-	if (oi == NULL) {
-		memset(&loi, 0, sizeof(loi));
-		oi = &loi;
-	}
 
 	if (elf_version(EV_CURRENT) == EV_NONE) {
 		pkg_emit_error("ELF library initialization failed: %s",
 		    elf_errmsg(-1));
-		return (EPKG_FATAL);
-	}
-
-	/*
-	 * Perhaps not yet needed, but it may be in the future that there's no
-	 * need to check root under some conditions where there is a rootdir.
-	 * This also helps alleviate some excessive wrapping later.
-	 */
-	checkroot = ctx.pkg_rootdir != NULL;
-	for (fd = -1, i = 0; i < NELEM(abi_files); i++) {
-		if (abi_files[i] == NULL)
-			continue;
-		/*
-		 * Try prepending rootdir and using that if it exists.  If
-		 * ABI_FILE is specified, assume that the consumer didn't want
-		 * it mangled by rootdir.
-		 */
-		if (i > 0 && checkroot && snprintf(rooted_abi_file, PATH_MAX,
-		    "%s/%s", ctx.pkg_rootdir, abi_files[i]) < PATH_MAX) {
-			if ((fd = open(rooted_abi_file, O_RDONLY)) >= 0)
-				break;
-		}
-		if ((fd = open(abi_files[i], O_RDONLY)) >= 0)
-			break;
-		/* if the ABI_FILE was provided we only care about it */
-		if (i == 0)
-			break;
-	}
-	if (fd == -1) {
-		pkg_emit_error("Unable to determine the ABI\n");
 		return (EPKG_FATAL);
 	}
 
@@ -891,7 +748,6 @@ pkg_get_myarch_elfparse(char *dest, size_t sz, struct os_info *oi)
 		pkg_emit_error("getehdr() failed: %s.", elf_errmsg(-1));
 		goto cleanup;
 	}
-
 
 	while ((scn = elf_nextscn(elf, scn)) != NULL) {
 		if (gelf_getshdr(scn, &shdr) != &shdr) {
@@ -1073,119 +929,36 @@ pkg_get_myarch_elfparse(char *dest, size_t sz, struct os_info *oi)
 cleanup:
 	if (elf != NULL)
 		elf_end(elf);
-	if (oi == &loi) {
-		free(oi->name);
-		free(oi->version);
-		free(oi->version_major);
-		free(oi->version_minor);
-		free(oi->arch);
-	}
-	close(fd);
 	return (ret);
 }
 
-int
-pkg_arch_to_legacy(const char *arch, char *dest, size_t sz)
-{
-	int i = 0;
-	struct arch_trans *arch_trans;
+int pkg_analyse_init_elf(const char* stage) {
+	if (elf_version(EV_CURRENT) == EV_NONE)
+		return (EPKG_FATAL);
 
-	memset(dest, '\0', sz);
-	/* Lower case the OS */
-	while (arch[i] != ':' && arch[i] != '\0') {
-		dest[i] = tolower(arch[i]);
-		i++;
+	shlib_list_init();
+
+	if (stage != NULL && pkg_object_bool(pkg_config_get("ALLOW_BASE_SHLIBS"))) {
+		/* Do not check the return */
+		shlib_list_from_stage(stage);
 	}
-	if (arch[i] == '\0')
-		return (0);
 
-	dest[i++] = ':';
-
-	/* Copy the version */
-	while (arch[i] != ':' && arch[i] != '\0') {
-		dest[i] = arch[i];
-		i++;
-	}
-	if (arch[i] == '\0')
-		return (0);
-
-	dest[i++] = ':';
-
-	for (arch_trans = machine_arch_translation; arch_trans->elftype != NULL;
-	    arch_trans++) {
-		if (STREQ(arch + i, arch_trans->archid)) {
-			strlcpy(dest + i, arch_trans->elftype,
-			    sz - (arch + i - dest));
-			return (0);
-		}
-	}
-	strlcpy(dest + i, arch + i, sz - (arch + i  - dest));
-
-	return (0);
+	int ret = shlib_list_from_elf_hints(_PATH_ELF_HINTS);
+	return ret;
 }
 
-int
-pkg_get_myarch_legacy(char *dest, size_t sz)
-{
-	int i, err;
-	size_t dsz;
-
-	err = pkg_get_myarch_elfparse(dest, sz, NULL);
-	if (err)
-		return (err);
-
-	dsz = strlen(dest);
-	for (i = 0; i < dsz; i++)
-		dest[i] = tolower(dest[i]);
-
-	return (0);
+int pkg_analyse_elf(const bool developer_mode, struct pkg *pkg, const char *fpath) {
+		int ret = analyse_elf(pkg, fpath);
+		if (developer_mode) {
+			if (ret != EPKG_OK && ret != EPKG_END) {
+				return EPKG_WARN;
+			}
+			analyse_fpath(pkg, fpath);
+		}
+		return ret;
 }
 
-int
-pkg_get_myarch(char *dest, size_t sz, struct os_info *oi)
-{
-	struct arch_trans *arch_trans;
-	char *arch_tweak;
-	int err;
-
-	err = pkg_get_myarch_elfparse(dest, sz, oi);
-	if (err) {
-		if (oi) {
-			free(oi->name);
-		}
-		return (err);
-	}
-
-#ifdef __DragonFly__
-	size_t dsz;
-
-	dsz = strlen(dest);
-	if (strncasecmp(dest, "DragonFly", 9) == 0) {
-		for (int i = 0; i < dsz; i++)
-			dest[i] = tolower(dest[i]);
-		return (0);
-	}
-#endif
-
-	/* Translate architecture string back to regular OS one */
-	arch_tweak = strchr(dest, ':');
-	if (arch_tweak == NULL)
-		return (0);
-	arch_tweak++;
-	arch_tweak = strchr(arch_tweak, ':');
-	if (arch_tweak == NULL)
-		return (0);
-	arch_tweak++;
-	for (arch_trans = machine_arch_translation; arch_trans->elftype != NULL;
-	    arch_trans++) {
-		if (STREQ(arch_tweak, arch_trans->elftype)) {
-			strlcpy(arch_tweak, arch_trans->archid,
-			    sz - (arch_tweak - dest));
-			oi->arch = xstrdup(arch_tweak);
-			break;
-		}
-	}
-
-	return (0);
+int pkg_analyse_close_elf() {
+	shlib_list_free();
+	return EPKG_OK;
 }
-
