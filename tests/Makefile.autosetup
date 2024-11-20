@@ -137,9 +137,6 @@ OTHER_LIBS+=	-lfts
 @if HAVE_LIBDL
 OTHER_LIBS+=	-ldl
 @endif
-@if HAVE_LIBRESOLV
-OTHER_LIBS+=	-lresolv
-@endif
 @if PKG_LIBCURL_LIBS
 CFLAGS+=	@PKG_LIBCURL_CFLAGS@
 LIBS+=	@PKG_LIBCURL_LDFLAGS@ @PKG_LIBCURL_LIBS@
@@ -153,7 +150,7 @@ OTHER_LIBS+=	-lssl -lcrypto
 
 
 # Hack to determine we are on osx
-@if libmachista
+@if pkgos_darwin
 OTHER_LIBS+=	-lresolv
 @endif
 

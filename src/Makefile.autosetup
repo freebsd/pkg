@@ -69,10 +69,6 @@ OTHER_LIBS+=	-lfts
 OTHER_LIBS+=	-ldl
 @endif
 
-@if HAVE_LIBRESOLV
-OTHER_LIBS+=	-lresolv
-@endif
-
 @if HAVE_LIBMD
 OTHER_LIBS+=	-lmd
 @endif
@@ -89,7 +85,7 @@ LOCAL_CFLAGS+=	@PKG_LIBCURL_CFLAGS@
 OTHER_LIBS+=	@PKG_LIBCURL_LDFLAGS@ @PKG_LIBCURL_LIBS@
 @endif
 
-@if libmachista
+@if pkgos_darwin
 LOCAL_LDFLAGS=	$(LIBPKGFLAT) $(LIBS) $(OTHER_LIBS) -lresolv
 STATIC_LDFLAGS=	$(LIBPKGFLAT) $(LIBS) $(OTHER_LIBS) -lresolv
 # OSX doesn't support static binaries, sigh
