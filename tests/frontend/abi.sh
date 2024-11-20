@@ -2,23 +2,53 @@
 
 . $(atf_get_srcdir)/test_environment.sh
 tests_init \
-	basic
+	elfparse \
+	native \
+	override 
 
-basic_body() {
-	_uname_s="$(uname -s)"
-	_expected="TODO: implement me"
-	if [ "${_uname_s}" = "Darwin" ]; then
-			# The FreeBSD ELF ABI_FILE should is ignored on non-ELF platforms:
-		_expected="${_uname_s}:$(uname -r | cut -d. -f1):$(uname -p)\n"
-	else
-		# Otherwise the ABI should be parsed from the ELF file.
-		_expected="FreeBSD:13:amd64\n"
-	fi
+native_body() {
+	_expected="$(uname -s):$(uname -r | cut -d. -f1):$(uname -p | sed s/x86_64/amd64/)\n"
+	atf_check \
+		-o inline:"${_expected}" \
+		pkg config abi
+
+	_expected="$(uname -s | tolower):$(uname -r | cut -d. -f1):$(uname -p | sed s/x86_64/x86:64/)\n"
+	atf_check \
+		-o inline:"${_expected}" \
+		pkg config altabi
+}
+
+override_body() {
+	_expected="FreeBSD:12:powerpc\n"
+	atf_check \
+		-o inline:"${_expected}" \
+		pkg -o ABI=FreeBSD:12:powerpc config abi
+
+	_expected="freebsd:12:powerpc:32:eb\n"
+	atf_check \
+		-o inline:"${_expected}" \
+		pkg -o ABI=FreeBSD:12:powerpc config altabi
+}
+
+elfparse_body() {
+	# ELF parsing now works across platforms
+	_expected="FreeBSD:13:amd64\n"
 	atf_check \
 		-o inline:"${_expected}" \
 		pkg -o IGNORE_OSMAJOR=1 -o ABI_FILE=$(atf_get_srcdir)/fbsd.bin config abi
 
-#	atf_check \
-#		-o inline:"dragonfly:5.10:x86:64\n" \
-#		pkg -o IGNORE_OSMAJOR=1 -o ABI_FILE=$(atf_get_srcdir)/dfly.bin config abi
+	_expected="freebsd:13:x86:64\n"
+	atf_check \
+		-o inline:"${_expected}" \
+		pkg -o IGNORE_OSMAJOR=1 -o ABI_FILE=$(atf_get_srcdir)/fbsd.bin config altabi
+
+	_expected="DragonFly:5:amd64\n"
+	atf_check \
+		-o inline:"${_expected}" \
+		pkg -o IGNORE_OSMAJOR=1 -o ABI_FILE=$(atf_get_srcdir)/dfly.bin config abi
+
+	_expected="dragonfly:5:x86:64\n"
+	atf_check \
+		-o inline:"${_expected}" \
+		pkg -o IGNORE_OSMAJOR=1 -o ABI_FILE=$(atf_get_srcdir)/dfly.bin config altabi
 }
