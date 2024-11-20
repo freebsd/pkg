@@ -1114,8 +1114,7 @@ pkg_ini(const char *path, const char *reposdir, pkg_init_flags flags)
 	memset(&oi, 0, sizeof(oi));
 	envabi = getenv("ABI");
 	if (envabi == NULL) {
-		pkg_get_myarch(myabi, BUFSIZ, &oi);
-		pkg_get_myarch_legacy(myabi_legacy, BUFSIZ);
+		pkg_get_myarch_with_legacy(myabi, myabi_legacy, BUFSIZ, &oi);
 	} else {
 		strlcpy(myabi, envabi, sizeof(myabi));
 		pkg_arch_to_legacy(myabi, myabi_legacy, BUFSIZ);

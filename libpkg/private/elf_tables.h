@@ -74,38 +74,6 @@ static const struct _elf_corres os_corres[] = {
 #define NT_ARCH	2
 #define NT_GNU_ABI_TAG	1
 
-/* All possibilities on FreeBSD as of 5/26/2014 */
-struct arch_trans {
-	const char *elftype;
-	const char *archid;
-};
 
-static struct arch_trans machine_arch_translation[] = {
-	{ "x86:32", "i386" },
-	{ "x86:64", "amd64" },
-	{ "powerpc:32:eb", "powerpc" },
-	{ "powerpc:64:eb", "powerpc64" },
-	{ "powerpc:64:el", "powerpc64le" },
-	{ "sparc64:64", "sparc64" },
-	{ "ia64:64", "ia64" },
-	/* All the ARM stuff */
-	{ "armv6:32:el:eabi:hardfp", "armv6" },
-	{ "armv7:32:el:eabi:hardfp", "armv7" },
-	{ "aarch64:64", "aarch64" },
-	/* And now MIPS */
-	{ "mips:32:el:o32", "mipsel" },
-	{ "mips:32:el:n32", "mipsn32el" },
-	{ "mips:32:eb:o32", "mips" },
-	{ "mips:32:eb:n32", "mipsn32" },
-	{ "mips:64:el:n64", "mips64el" },
-	{ "mips:64:eb:n64", "mips64" },
-	/* And RISC-V */
-	{ "riscv:32:hf", "riscv32" },
-	{ "riscv:32:sf", "riscv32sf" },
-	{ "riscv:64:hf", "riscv64" },
-	{ "riscv:64:sf", "riscv64sf" },
-
-	{ NULL, NULL }
-};
 
 #endif /* ELF_TABLES_H_ */
