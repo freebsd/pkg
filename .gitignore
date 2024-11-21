@@ -6,7 +6,6 @@
 *.pico
 *.po
 *.Po
-*.So
 *.lo
 *.la
 *.core
@@ -91,6 +90,7 @@ scripts/sbin/pkg2ng
 !/tests/frontend/*.sh
 !/tests/frontend/*.in
 !/tests/frontend/*.binin
+!/tests/frontend/*.so.*
 /tests/frontend/test_environment.sh
 /tests/lua
 /tests/metalog
