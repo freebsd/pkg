@@ -8,11 +8,11 @@ tests_init \
 	override
 
 native_body() {
+	OS=$(uname -s)
 	thisarch=$(uname -p)
-	if [ "$thisarch" = "unknown" ]; then
+	if [ "$thisarch" = "unknown" -o "${OS}" = "Darwin" ]; then
 		thisarch=$(uname -m)
 	fi
-	OS=$(uname -s)
 	if [ "${OS}" = "Linux" ]; then
 		version=$(readelf -n /bin/uname  | awk '/ABI: / { split($NF, a, "."); print a[1]"."a[2] }')
 	else
@@ -77,6 +77,7 @@ elfparse_body() {
 }
 
 machoparse_body() {
+	# Macho-O parsing now works across platforms
 	_expected="Darwin:24:aarch64\n"
 	atf_check \
 		-o inline:"${_expected}" \
