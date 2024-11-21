@@ -59,6 +59,10 @@ ATF_TC_BODY(analyse_elf, tc)
 	ATF_REQUIRE_STREQ(tll_front(p->shlibs_provided), "libtestfbsd.so.1");
 
 	free(binpath);
+	xasprintf(&binpath, "%s/Makefile.autosetup", atf_tc_get_config_var(tc, "srcdir"));
+	ATF_REQUIRE_EQ(pkg_analyse_elf(false, p, binpath), EPKG_END);
+	ATF_REQUIRE_EQ(tll_length(p->shlibs_provided), 1);
+	free(binpath);
 
 }
 
