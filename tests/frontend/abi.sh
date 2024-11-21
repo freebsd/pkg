@@ -4,7 +4,7 @@
 tests_init \
 	elfparse \
 	native \
-	override 
+	override
 
 native_body() {
 	_expected="$(uname -s):$(uname -r | cut -d. -f1):$(uname -p | sed s/x86_64/amd64/)\n"
@@ -12,7 +12,7 @@ native_body() {
 		-o inline:"${_expected}" \
 		pkg config abi
 
-	_expected="$(uname -s | tolower):$(uname -r | cut -d. -f1):$(uname -p | sed s/x86_64/x86:64/)\n"
+	_expected="$(uname -s | tr '[:upper:]' '[:lower:]'):$(uname -r | cut -d. -f1):$(uname -p | sed s/x86_64/x86:64/)\n"
 	atf_check \
 		-o inline:"${_expected}" \
 		pkg config altabi
