@@ -1,13 +1,10 @@
 name: build
-# GitHub action to compile pkg on ubuntu-24.04, ubuntu-latest/22.04 (amd64) and macos-latest (arm64)
+# GitHub action to compile pkg on ubuntu-24.04, ubuntu-latest/22.04 (amd64) and macos-latest (aarch64)
 #  * set-up prerequisites
 #  * configure && make && make check && make install
 #  * upload installed binaries as well as kyua reports as build artefact
 #
-# We run in a matrix with os/number of workers, to demonstrate the errors on MacOSX when running 
-# pkg repo multi-threaded.
-# Intended to increase awareness in issues with MacOS builds of pkg.
-
+# We run in a matrix with os/sanitize flags.
 
 on:
     pull_request:
@@ -21,7 +18,7 @@ permissions:
 
 jobs:
     build:
-        name: build ${{ matrix.workers-count }} ${{ matrix.build-os }} ${{ matrix.compiler }}
+        name: build ${{ join(matrix.sanitize, '+') }} ${{ matrix.build-os }} ${{ matrix.compiler }}
         runs-on: "${{ matrix.build-os }}"
         strategy:
             fail-fast: false
@@ -30,14 +27,20 @@ jobs:
                 - ubuntu-24.04
                 - ubuntu-latest
                 - macos-latest
-                workers-count:
-                - 0
-                - 1
+                sanitize:
+                - ""
+                - [ "asan", "lsan" ]
+                - ubsan
+                - tsan
                 exclude:
-                  - build-os: ubuntu-24.04
-                    workers-count: 1
-                  - build-os: ubuntu-latest
-                    workers-count: 1
+                - build-os: macos-latest
+                  sanitize: ubsan # No space left on device
+                - build-os: ubuntu-latest
+                  sanitize: [ "asan", "lsan" ]
+                - build-os: ubuntu-latest
+                  sanitize: ubsan
+                - build-os: ubuntu-latest
+                  sanitize: tsan
                 include:
                 - build-os: macos-latest
                   compiler: clang-19
@@ -110,7 +113,8 @@ jobs:
             #
 
             brew update --quiet || true
-            HOMEBREW_NO_INSTALLED_DEPENDENTS_CHECK=Y brew install ${{ join(matrix.pkgs, ' ') }}
+            brew remove pkg-config@0.29.2 || true # otherwise we get spurious errors with pkgconf
+            brew install ${{ join(matrix.pkgs, ' ') }}
 
             # kyua was kicked out of brew due to lack of activity
             # we patch away the disabled line and install the last built binary version
@@ -131,14 +135,23 @@ jobs:
             echo "CC=${{ matrix.llvm-bindir }}/clang" >> "${GITHUB_ENV}"
             echo "CXX=${{ matrix.llvm-bindir }}/clang++" >> "${GITHUB_ENV}"
             echo "CPP=${{ matrix.llvm-bindir }}/clang-cpp" >> "${GITHUB_ENV}"
-            # this is miracolously not picked up by automake as the default
+            # this is miraculously not picked up by automake as the default
             echo "CC_FOR_BUILD=${{ matrix.llvm-bindir }}/clang" >> "${GITHUB_ENV}"
             echo "BUILD_PKG=${GITHUB_WORKSPACE}/build.pkg" >> "${GITHUB_ENV}"
             echo "INST_PKG=${GITHUB_WORKSPACE}/inst.pkg" >> "${GITHUB_ENV}"
+            echo "NPROC=`getconf _NPROCESSORS_ONLN 2>/dev/null || getconf NPROCESSORS_ONLN 2>/dev/null || echo 1`" >> "${GITHUB_ENV}"
 
         - name: build pkg
           run: |
-            echo Building pkg
+            CFG_OPTS=""
+            for i in ${{ join(matrix.sanitize, ' ') }}; do
+              CFG_OPTS="${CFG_OPTS} --with-${i}"
+            done
+            echo Building pkg with ${{ matrix.sanitize }} .. ${CFG_OPTS} 
+            echo uname -a: $(uname -a)
+            echo uname -m: $(uname -m)
+            echo uname -p: $(uname -p)
+            echo NPROC="${NPROC}"
             echo CC="${CC}"
             echo CPP="${CPP}"
             echo PKG_CONFIG_PATH="${PKG_CONFIG_PATH}"
@@ -146,33 +159,36 @@ jobs:
             echo INST_PKG="${INST_PKG}"
             mkdir -p "${BUILD_PKG}"
             cd "${BUILD_PKG}"
-            ${GITHUB_WORKSPACE}/src.pkg/configure --prefix=${INST_PKG} --with-libarchive.pc --with-libcurl --with-openssl.pc
-            make
+            ${GITHUB_WORKSPACE}/src.pkg/configure --prefix=${INST_PKG} --with-libarchive.pc --with-libcurl --with-openssl.pc ${CFG_OPTS}
+            make -j${NPROC}
 
-        - name: test&instal pkg
+        - name: test&install pkg
           run: |
-            echo Checking and  pkg
+            echo Checking and installing pkg
             cd "${BUILD_PKG}"
-            if WORKERS_COUNT=${{ matrix.workers-count }} make check; then
+            if make check; then
               echo "All mandatory checks passed"
+              kyua report --results-filter=xfail,broken,failed >> $GITHUB_STEP_SUMMARY
               kyua report
               kyua report-html
             else
+              kyua report --results-filter=xfail,broken,failed >> $GITHUB_STEP_SUMMARY
               kyua report --verbose
               kyua report-html
               exit 0
             fi
+            # only install non-debug builds
             make install
 
         - name: tar build & test reports
           run: |
             test -d ${INST_PKG} && tar cvf pkg-${{ matrix.build-os }}-${{ matrix.compiler }}.tar -C ${INST_PKG} .
-            tar cvf pkg-${{ matrix.build-os }}-${{ matrix.compiler }}-report${{ matrix.workers-count }}.tar -C "${BUILD_PKG}/html" .
+            tar cvf pkg-${{ matrix.build-os }}-${{ matrix.compiler }}-report${{ join(matrix.sanitize, '_') }}.tar -C "${BUILD_PKG}/html" .
 
         - name: archive build artefacts
           uses: actions/upload-artifact@v4
           with:
-              name: pkg-test${{ matrix.workers-count }}-${{ matrix.build-os }}-${{ matrix.compiler }}
+              name: pkg-test${{ join(matrix.sanitize, '_') }}-${{ matrix.build-os }}-${{ matrix.compiler }}
               path: pkg*.tar
               compression-level: 0
               retention-days: 10
