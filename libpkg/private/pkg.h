@@ -643,7 +643,7 @@ struct os_info {
 	char str_osversion[BUFSIZ];
 };
 
-int pkg_get_myarch_with_legacy(char *pkgarch, char* legacy, size_t sz, struct os_info *);
+int pkg_get_myarch_with_legacy(struct os_info *);
 
 /**
  * Remove and unregister the package.

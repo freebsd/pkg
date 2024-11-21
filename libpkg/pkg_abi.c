@@ -2,7 +2,7 @@
  * Copyright (c) 2011-2012 Baptiste Daroussin <bapt@FreeBSD.org>
  * Copyright (c) 2012-2013 Matthew Seaman <matthew@FreeBSD.org>
  * All rights reserved.
- * 
+ *
  * Redistribution and use in source and binary forms, with or without
  * modification, are permitted provided that the following conditions
  * are met:
@@ -12,7 +12,7 @@
  * 2. Redistributions in binary form must reproduce the above copyright
  *    notice, this list of conditions and the following disclaimer in the
  *    documentation and/or other materials provided with the distribution.
- * 
+ *
  * THIS SOFTWARE IS PROVIDED BY THE AUTHOR(S) ``AS IS'' AND ANY EXPRESS OR
  * IMPLIED WARRANTIES, INCLUDING, BUT NOT LIMITED TO, THE IMPLIED WARRANTIES
  * OF MERCHANTABILITY AND FITNESS FOR A PARTICULAR PURPOSE ARE DISCLAIMED.
@@ -85,7 +85,7 @@ static struct arch_trans machine_arch_translation[] = {
 };
 
 static int
-pkg_get_myarch_fromfile(char *dest, size_t sz, struct os_info *oi)
+pkg_get_myarch_fromfile(struct os_info *oi)
 {
 	char rooted_abi_file[PATH_MAX];
 	const char *abi_files[] = {
@@ -93,13 +93,7 @@ pkg_get_myarch_fromfile(char *dest, size_t sz, struct os_info *oi)
 		_PATH_UNAME,
 		_PATH_BSHELL,
 	};
-	struct os_info loi;
 	int i, fd;
-
-	if (oi == NULL) {
-		memset(&loi, 0, sizeof(loi));
-		oi = &loi;
-	}
 
 	/*
 	 * Perhaps not yet needed, but it may be in the future that there's no
@@ -131,53 +125,46 @@ pkg_get_myarch_fromfile(char *dest, size_t sz, struct os_info *oi)
 		return (EPKG_FATAL);
 	}
 
-	int ret = pkg_get_myarch_elfparse(fd, dest, sz, oi);
+	int ret = pkg_get_myarch_elfparse(fd, oi->altabi, sizeof(oi->altabi), oi);
 	if (EPKG_OK != ret) {
 		lseek(fd, 0, SEEK_SET);
-		ret = pkg_get_myarch_macho(fd, dest, sz, oi);
+		ret = pkg_get_myarch_macho(fd, oi->altabi, sizeof(oi->altabi), oi);
 	}
-	
-	if (oi == &loi) {
-		free(oi->name);
-		free(oi->version);
-		free(oi->version_major);
-		free(oi->version_minor);
-		free(oi->arch);
-	}
+
 	close(fd);
 	return ret;
 }
 
 int
-pkg_get_myarch_with_legacy(char *dest, char* dest_legacy, size_t sz, struct os_info *oi)
+pkg_get_myarch_with_legacy(struct os_info *oi)
 {
-	int err = pkg_get_myarch_fromfile(dest_legacy, sz, oi);
+	if (oi == NULL)
+		return (EPKG_FATAL);
+	int err = pkg_get_myarch_fromfile(oi);
 	if (err) {
-		if (oi) {
-			free(oi->name);
-		}
+		free(oi->name);
 		return (err);
 	}
-	strlcpy(dest, dest_legacy, sz);
+	strlcpy(oi->abi, oi->altabi, sizeof(oi->abi));
 
-    for(char *p = dest_legacy; *p; ++p) {
+    for(char *p = oi->altabi; *p; ++p) {
         *p = tolower(*p);
-    }    
+    }
 
 // TODO: When dealing with DragonFly, not only on DragonFly
 #ifdef __DragonFly__
 	size_t dsz;
 
-	dsz = strlen(dest);
-	if (strncasecmp(dest, "DragonFly", 9) == 0) {
+	dsz = strlen(oi->abi);
+	if (strncasecmp(oi->abi, "DragonFly", 9) == 0) {
 		for (int i = 0; i < dsz; i++)
-			dest[i] = tolower(dest[i]);
+			oi->abi[i] = tolower(oi->abi[i]);
 		return (0);
 	}
 #endif
 
 	/* Translate architecture string back to regular OS one */
-	char *arch_tweak = strchr(dest, ':');
+	char *arch_tweak = strchr(oi->abi, ':');
 	if (arch_tweak == NULL)
 		return (0);
 	arch_tweak++;
@@ -189,7 +176,7 @@ pkg_get_myarch_with_legacy(char *dest, char* dest_legacy, size_t sz, struct os_i
 	    arch_trans++) {
 		if (STREQ(arch_tweak, arch_trans->elftype)) {
 			strlcpy(arch_tweak, arch_trans->archid,
-			    sz - (arch_tweak - dest));
+			    sizeof(oi->abi) - (arch_tweak - oi->abi));
 			oi->arch = xstrdup(arch_tweak);
 			break;
 		}
