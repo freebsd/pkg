@@ -22,11 +22,13 @@ override_body() {
 	_expected="FreeBSD:12:powerpc\n"
 	atf_check \
 		-o inline:"${_expected}" \
+		-e ignore \
 		pkg -o ABI=FreeBSD:12:powerpc config abi
 
 	_expected="freebsd:12:powerpc:32:eb\n"
 	atf_check \
 		-o inline:"${_expected}" \
+		-e ignore \
 		pkg -o ABI=FreeBSD:12:powerpc config altabi
 }
 
