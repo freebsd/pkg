@@ -83,13 +83,13 @@ struct pkg_ctx ctx = {
 	.pkg_dbdirfd = -1,
 	.pkg_reposdirfd = -1,
 	.devnullfd = -1,
-	.osversion = 0,
 	.backup_libraries = false,
 	.triggers = true,
 	.compression_format = NULL,
 	.compression_level = -1,
 	.compression_threads = -1,
 	.defer_triggers = false,
+	.oi = NULL,
 };
 
 struct config_entry {

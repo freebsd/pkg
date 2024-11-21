@@ -377,8 +377,8 @@ is_valid_os_version(struct pkg *pkg)
 			    fbsd_version, pkg->name);
 			return (false);
 		}
-		if (fbsdver > ctx.osversion) {
-			if (fbsdver - ctx.osversion < 100000) {
+		if (fbsdver > ctx.oi->osversion) {
+			if (fbsdver - ctx.oi->osversion < 100000) {
 				/* Negligible difference, ask user to enforce */
 				if (osver_mismatch_allowed == -1) {
 					snprintf(query_buf, sizeof(query_buf),
@@ -387,7 +387,7 @@ is_valid_os_version(struct pkg *pkg)
 							"- package: %d\n"
 							"- running userland: %d\n"
 							"Ignore the mismatch and continue? ", pkg->name,
-							fbsdver, ctx.osversion);
+							fbsdver, ctx.oi->osversion);
 					ret = pkg_emit_query_yesno(false, query_buf);
 					osver_mismatch_allowed = ret;
 				}
@@ -400,7 +400,7 @@ is_valid_os_version(struct pkg *pkg)
 					"- package: %d\n"
 					"- running kernel: %d\n",
 					pkg->name,
-					fbsdver, ctx.osversion);
+					fbsdver, ctx.oi->osversion);
 				return (false);
 			}
 		}
