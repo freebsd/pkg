@@ -70,7 +70,10 @@ TESTS_SHELL_BINS= \
 	frontend/dfly.bin \
 	frontend/fbsd.bin \
 	frontend/linux.bin \
-	frontend/macos.bin
+	frontend/macos.bin \
+	frontend/macos106.bin \
+	frontend/macos150.bin \
+	frontend/macosfat.bin
 
 lua_OBJS=	lib/lua.o
 merge_OBJS=	lib/merge.o

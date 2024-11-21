@@ -76,4 +76,34 @@ machoparse_body() {
 	atf_check \
 		-o inline:"${_expected}" \
 		pkg -o IGNORE_OSMAJOR=1 -o ABI_FILE=$(atf_get_srcdir)/macos.bin config altabi
+
+	_expected="Darwin:10:amd64\n"
+	atf_check \
+		-o inline:"${_expected}" \
+		pkg -o IGNORE_OSMAJOR=1 -o ABI_FILE=$(atf_get_srcdir)/macos106.bin config abi
+
+	_expected="darwin:10:x86:64\n"
+	atf_check \
+		-o inline:"${_expected}" \
+		pkg -o IGNORE_OSMAJOR=1 -o ABI_FILE=$(atf_get_srcdir)/macos106.bin config altabi
+
+	_expected="Darwin:24:amd64\n"
+	atf_check \
+		-o inline:"${_expected}" \
+		pkg -o IGNORE_OSMAJOR=1 -o ABI_FILE=$(atf_get_srcdir)/macos150.bin config abi
+
+	_expected="darwin:24:x86:64\n"
+	atf_check \
+		-o inline:"${_expected}" \
+		pkg -o IGNORE_OSMAJOR=1 -o ABI_FILE=$(atf_get_srcdir)/macos150.bin config altabi
+
+	_expected="Darwin:24:amd64\n"
+	atf_check \
+		-o inline:"${_expected}" \
+		pkg -o IGNORE_OSMAJOR=1 -o ABI_FILE=$(atf_get_srcdir)/macosfat.bin config abi
+
+	_expected="darwin:24:x86:64\n"
+	atf_check \
+		-o inline:"${_expected}" \
+		pkg -o IGNORE_OSMAJOR=1 -o ABI_FILE=$(atf_get_srcdir)/macosfat.bin config altabi
 }
