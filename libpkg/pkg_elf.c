@@ -2,7 +2,7 @@
  * Copyright (c) 2011-2012 Baptiste Daroussin <bapt@FreeBSD.org>
  * Copyright (c) 2012-2013 Matthew Seaman <matthew@FreeBSD.org>
  * All rights reserved.
- * 
+ *
  * Redistribution and use in source and binary forms, with or without
  * modification, are permitted provided that the following conditions
  * are met:
@@ -12,7 +12,7 @@
  * 2. Redistributions in binary form must reproduce the above copyright
  *    notice, this list of conditions and the following disclaimer in the
  *    documentation and/or other materials provided with the distribution.
- * 
+ *
  * THIS SOFTWARE IS PROVIDED BY THE AUTHOR(S) ``AS IS'' AND ANY EXPRESS OR
  * IMPLIED WARRANTIES, INCLUDING, BUT NOT LIMITED TO, THE IMPLIED WARRANTIES
  * OF MERCHANTABILITY AND FITNESS FOR A PARTICULAR PURPOSE ARE DISCLAIMED.
@@ -568,7 +568,7 @@ aeabi_parse_arm_attributes(void *data, size_t length)
 
 			/*
 			 * These tag values come from:
-			 * 
+			 *
 			 * Addenda to, and Errata in, the ABI for the
 			 * ARM Architecture. Release 2.08, section 2.3.
 			 */
@@ -600,7 +600,7 @@ aeabi_parse_arm_attributes(void *data, size_t length)
 				MOVE_TAG(1);
 			} else if ((tag >= 7 && tag <= 31) || tag == 34 ||
 			    tag == 36 || tag == 38 || tag == 42 || tag == 44 ||
-			    tag == 64 || tag == 66 || tag == 68 || tag == 70) { 
+			    tag == 64 || tag == 66 || tag == 68 || tag == 70) {
 				/* Skip the uleb128 data */
 				while (*section & (1 << 7) && length != 0)
 					MOVE_TAG(1);
@@ -718,7 +718,7 @@ elf_note_analyse(Elf_Data *data, GElf_Ehdr *elfhdr, struct os_info *oi)
 
 
 int
-pkg_get_myarch_elfparse(int fd, char *dest, size_t sz, struct os_info *oi)
+pkg_get_myarch_elfparse(int fd, struct os_info *oi)
 {
 	Elf *elf = NULL;
 	GElf_Ehdr elfhdr;
@@ -727,6 +727,8 @@ pkg_get_myarch_elfparse(int fd, char *dest, size_t sz, struct os_info *oi)
 	Elf_Scn *scn = NULL;
 	int ret = EPKG_OK;
 	const char *arch,*abi, *endian_corres_str, *wordsize_corres_str, *fpu;
+	char *dest = oi->altabi;
+	size_t sz = sizeof(oi->altabi);
 	size_t dsz;
 
 	arch = NULL;

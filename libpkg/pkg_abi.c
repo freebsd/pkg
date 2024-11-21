@@ -39,12 +39,12 @@
 
 #define _PATH_UNAME "/usr/bin/uname"
 
-int pkg_get_myarch_elfparse(int fd, char *dest, size_t sz, struct os_info *oi);
+int pkg_get_myarch_elfparse(int fd, struct os_info *oi);
 int pkg_analyse_init_elf(const char* stage);
 int pkg_analyse_elf(const bool developer_mode, struct pkg *pkg, const char *fpath);
 int pkg_analyse_close_elf();
 
-int pkg_get_myarch_macho(int fd, char *dest, size_t sz, struct os_info *oi);
+int pkg_get_myarch_macho(int fd, struct os_info *oi);
 int pkg_analyse_init_macho(const char* stage);
 int pkg_analyse_macho(const bool developer_mode, struct pkg *pkg, const char *fpath);
 int pkg_analyse_close_macho();
@@ -125,10 +125,10 @@ pkg_get_myarch_fromfile(struct os_info *oi)
 		return (EPKG_FATAL);
 	}
 
-	int ret = pkg_get_myarch_elfparse(fd, oi->altabi, sizeof(oi->altabi), oi);
+	int ret = pkg_get_myarch_elfparse(fd, oi);
 	if (EPKG_OK != ret) {
 		lseek(fd, 0, SEEK_SET);
-		ret = pkg_get_myarch_macho(fd, oi->altabi, sizeof(oi->altabi), oi);
+		ret = pkg_get_myarch_macho(fd, oi);
 	}
 
 	close(fd);

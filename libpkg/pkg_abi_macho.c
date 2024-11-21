@@ -131,9 +131,11 @@ cputype_to_elfname(const cpu_type_subtype_t cpu)
 
 
 int
-pkg_get_myarch_macho(int fd, char *dest, size_t sz, struct os_info *oi)
+pkg_get_myarch_macho(int fd, struct os_info *oi)
 {
 	ssize_t x;
+	char *dest = oi->altabi;
+	size_t sz = sizeof(oi->altabi);
 
 	macho_file_t *mf = 0;
 	build_version_t *bv = 0;
