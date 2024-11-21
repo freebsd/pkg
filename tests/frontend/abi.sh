@@ -8,12 +8,22 @@ tests_init \
 	override
 
 native_body() {
-	_expected="$(uname -s):$(uname -r | cut -d. -f1):$(uname -p | sed s/x86_64/amd64/)\n"
+	thisarch=$(uname -p)
+	if [ "$thisarch" = "unknonw" ]; then
+		thisarch=$(uname -m)
+	fi
+	OS=$(uname -s)
+	if [ "${OS}" = "Linux" ]; then
+		version=$(readelf -n /bin/uname  | awk '/ABI: / { split($NF, a, "."); print a[1]"."a[2] }')
+	else
+		version=$(uname -r | cut -d. -f1)
+	fi
+	_expected="${OS}:${version}:$(echo $thisarch | sed s/x86_64/amd64/)\n"
 	atf_check \
 		-o inline:"${_expected}" \
 		pkg config abi
 
-	_expected="$(uname -s | tr '[:upper:]' '[:lower:]'):$(uname -r | cut -d. -f1):$(uname -p | sed 's/x86_64/x86:64/; s/amd64/x86:64/')\n"
+	_expected="$(uname -s | tr '[:upper:]' '[:lower:]'):${version}:$(echo $thisarch | sed 's/x86_64/x86:64/; s/amd64/x86:64/')\n"
 	atf_check \
 		-o inline:"${_expected}" \
 		pkg config altabi
