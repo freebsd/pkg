@@ -23,7 +23,17 @@
  * THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  */
 
-#include <endian_util.h>
+#ifdef HAVE_CONFIG_H
+#include "pkg_config.h"
+#endif
+
+#ifdef HAVE_SYS_ENDIAN_H
+#include <sys/endian.h>
+#elif HAVE_ENDIAN_H
+#include <endian.h>
+#elif HAVE_MACHINE_ENDIAN_H
+#include <machine/endian.h>
+#endif
 #include <errno.h>
 #include <fcntl.h>
 #include <stdio.h>
@@ -31,6 +41,7 @@
 #include <string.h>
 #include <unistd.h>
 
+#include <bsd_compat.h>
 #include "private/binfmt_macho.h"
 
 /**
