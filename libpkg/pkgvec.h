@@ -7,6 +7,7 @@
 #pragma once
 
 #include <stdbool.h>
+#include <stdlib.h>
 #include <stddef.h>
 
 #define pkgvec_t(Type) \
@@ -16,31 +17,37 @@
 	memset((v), 0, sizeof(*(v)))
 
 #define pkgvec_free(v) \
-	free((v)->d);
+	do { \
+		free((v)->d); \
+		(v)->d == NULL; \
+		memset((v), 0, sizeof(*(v))); \
+	} while (0)
 
 #define pkgvec_free_and_free(v, free_func)            \
 	do {                                          \
 		for (size_t _i; _i < (v)->len ; _i++) { \
 			free_func((v)->d[_i]);          \
+			(v)->d[_i] = NULL;   \
 		}                                     \
-		free((v)->d);                           \
+		pkgvec_free((v)); \
 	} while(0)
 
 #define pkgvec_first(v) \
 	(v)->d[0]
 
 #define pkgvec_last(v) \
-	(v)->d[d->len -1]
+	(v)->d[(v)->len -1]
 
-#define pkgvec_clear \
+#define pkgvec_clear(v) \
 	(v)->len = 0
 
 #define pkgvec_clear_and_free(v, free_func) \
 	do {                                          \
 		for (size_t _i; _i < (v)->len ; _i++) { \
 			free_func((v)->d[_i]);          \
+			(v)->d[_i] = NULL;   \
 		}                                     \
-		(v)->len = 0                            \
+		(v)->len = 0;                            \
 	} while (0)
 
 #define pkgvec_push(v, _d)                                            \
