@@ -315,9 +315,8 @@ int shlib_list_from_rpath(const char *rpath_str, const char *dirpath)
 int
 shlib_list_from_elf_hints(const char *hintsfile)
 {
-#if defined __FreeBSD__ || defined __DragonFly__
-	read_elf_hints(hintsfile, 1);
-#endif
+	if (ctx.oi->ostype == OS_FREEBSD || ctx.oi->ostype == OS_DRAGONFLY)
+		read_elf_hints(hintsfile, 1);
 
 	return (scan_dirs_for_shlibs(&shlibs, ndirs, dirs, true));
 }

@@ -1114,8 +1114,7 @@ pkg_ini(const char *path, const char *reposdir, pkg_init_flags flags)
 		strlcpy(oi.abi, envabi, sizeof(oi.abi));
 		pkg_arch_to_legacy(oi.abi, oi.altabi, sizeof(oi.abi));
 	}
-	if (oi.ostype == OS_FREEBSD)
-		ctx.osversion = oi.osversion;
+	ctx.oi = &oi;
 	if (parsed != false) {
 		pkg_emit_error("pkg_init() must only be called once");
 		err = EPKG_FATAL;
@@ -1413,9 +1412,6 @@ pkg_ini(const char *path, const char *reposdir, pkg_init_flags flags)
 	}
 
 	dbg(1, "pkg initialized");
-
-	if (oi.ostype == OS_FREEBSD)
-		ctx.osversion = pkg_object_int(pkg_config_get("OSVERSION"));
 
 	/* Start the event pipe */
 	evpipe = pkg_object_string(pkg_config_get("EVENT_PIPE"));

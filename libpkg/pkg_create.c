@@ -565,13 +565,10 @@ fixup_abi(struct pkg *pkg, const char *rootdir, bool testing)
 
 	/* if no arch autodetermine it */
 	if (pkg->abi == NULL) {
-#ifdef __FreeBSD__
-		char *osversion;
-		xasprintf(&osversion, "%d", ctx.osversion);
-		pkg_kv_add(&pkg->annotations, "FreeBSD_version", osversion, "annotation");
-#endif
-		arch = pkg_object_string(pkg_config_get("ABI"));
-		pkg->abi = xstrdup(arch);
+		if (ctx.oi->ostype == OS_FREEBSD) {
+			pkg_kv_add(&pkg->annotations, "FreeBSD_version", xstrdup(ctx.oi->str_osversion), "annotation");
+		}
+		pkg->abi = xstrdup(ctx.oi->abi);
 		defaultarch = true;
 	}
 

@@ -136,6 +136,19 @@ struct pkg_stringlist_iterator {
 	void *cur;
 };
 
+struct os_info {
+	int osversion;
+	int ostype;
+	char *name;
+	char *version;
+	char *version_major;
+	char *version_minor;
+	char *arch;
+	char abi[BUFSIZ];
+	char altabi[BUFSIZ];
+	char str_osversion[BUFSIZ];
+};
+
 struct pkg_ctx {
 	int eventpipe;
 	int64_t debug_level;
@@ -163,6 +176,7 @@ struct pkg_ctx {
 	bool defer_triggers;
 	bool repo_accept_legacy_pkg;
 	ip_version_t ip;
+	struct os_info *oi;
 	bool ischrooted;
 };
 
@@ -623,19 +637,6 @@ typedef enum {
 	PKG_RC_START = 0,
 	PKG_RC_STOP
 } pkg_rc_attr;
-
-struct os_info {
-	int osversion;
-	int ostype;
-	char *name;
-	char *version;
-	char *version_major;
-	char *version_minor;
-	char *arch;
-	char abi[BUFSIZ];
-	char altabi[BUFSIZ];
-	char str_osversion[BUFSIZ];
-};
 
 int pkg_get_myarch_with_legacy(struct os_info *);
 

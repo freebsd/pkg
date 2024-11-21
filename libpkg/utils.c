@@ -358,7 +358,8 @@ is_valid_abi(const char *arch, bool emit_error) {
 bool
 is_valid_os_version(struct pkg *pkg)
 {
-#ifdef __FreeBSD__
+	if (ctx.oi->ostype != OS_FREEBSD)
+		return (true);
 	const char *fbsd_version;
 	const char *errstr = NULL;
 	int fbsdver;
@@ -405,10 +406,6 @@ is_valid_os_version(struct pkg *pkg)
 		}
 	}
 	return (true);
-#else
-	return (true);
-#endif
-
 }
 
 void
