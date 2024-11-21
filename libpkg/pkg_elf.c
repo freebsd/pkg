@@ -700,8 +700,10 @@ elf_note_analyse(Elf_Data *data, GElf_Ehdr *elfhdr, struct os_info *oi)
 		xasprintf(&oi->version, "%d.%d.%d", gnu_abi_tag[1],
 		    gnu_abi_tag[2], gnu_abi_tag[3]);
 	} else {
-		if (oi->osversion == 0)
+		if (oi->osversion == 0) {
 			oi->osversion = version;
+			snprintf(oi->str_osversion, sizeof(oi->str_osversion), "%d", version);
+		}
 #ifdef __DragonFly__
 		xasprintf(&oi->version, "%d.%d", version / 100000, (((version / 100 % 1000)+1)/2)*2);
 #endif

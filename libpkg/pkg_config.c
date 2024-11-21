@@ -1117,7 +1117,6 @@ pkg_ini(const char *path, const char *reposdir, pkg_init_flags flags)
 	}
 #ifdef __FreeBSD__
 	ctx.osversion = oi.osversion;
-	snprintf(oi.str_osversion, sizeof(oi.str_osversion), "%d", oi.osversion);
 #endif
 	if (parsed != false) {
 		pkg_emit_error("pkg_init() must only be called once");
