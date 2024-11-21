@@ -151,17 +151,16 @@ pkg_get_myarch_with_legacy(struct os_info *oi)
         *p = tolower(*p);
     }
 
-// TODO: When dealing with DragonFly, not only on DragonFly
-#ifdef __DragonFly__
-	size_t dsz;
+	if (oi->ostype == OS_DRAGONFLY) {
+		size_t dsz;
 
-	dsz = strlen(oi->abi);
-	if (strncasecmp(oi->abi, "DragonFly", 9) == 0) {
-		for (int i = 0; i < dsz; i++)
-			oi->abi[i] = tolower(oi->abi[i]);
-		return (0);
+		dsz = strlen(oi->abi);
+		if (strncasecmp(oi->abi, "DragonFly", 9) == 0) {
+			for (int i = 0; i < dsz; i++)
+				oi->abi[i] = tolower(oi->abi[i]);
+			return (0);
+		}
 	}
-#endif
 
 	/* Translate architecture string back to regular OS one */
 	char *arch_tweak = strchr(oi->abi, ':');

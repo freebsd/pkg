@@ -886,9 +886,8 @@ load_repo_file(int dfd, const char *repodir, const char *repofile,
 
 	myarch_legacy = pkg_object_string(pkg_config_get("ALTABI"));
 	ucl_parser_register_variable (p, "ALTABI", myarch_legacy);
-#ifdef __FreeBSD__
-	ucl_parser_register_variable(p, "OSVERSION", oi->str_osversion);
-#endif
+	if (oi->ostype == OS_FREEBSD)
+		ucl_parser_register_variable(p, "OSVERSION", oi->str_osversion);
 	if (oi->name != NULL) {
 		ucl_parser_register_variable(p, "OSNAME", oi->name);
 	}
@@ -1115,9 +1114,8 @@ pkg_ini(const char *path, const char *reposdir, pkg_init_flags flags)
 		strlcpy(oi.abi, envabi, sizeof(oi.abi));
 		pkg_arch_to_legacy(oi.abi, oi.altabi, sizeof(oi.abi));
 	}
-#ifdef __FreeBSD__
-	ctx.osversion = oi.osversion;
-#endif
+	if (oi.ostype == OS_FREEBSD)
+		ctx.osversion = oi.osversion;
 	if (parsed != false) {
 		pkg_emit_error("pkg_init() must only be called once");
 		err = EPKG_FATAL;
@@ -1227,9 +1225,8 @@ pkg_ini(const char *path, const char *reposdir, pkg_init_flags flags)
 	p = ucl_parser_new(0);
 	ucl_parser_register_variable (p, "ABI", oi.abi);
 	ucl_parser_register_variable (p, "ALTABI", oi.altabi);
-#ifdef __FreeBSD__
-	ucl_parser_register_variable(p, "OSVERSION", oi.str_osversion);
-#endif
+	if (oi.ostype == OS_FREEBSD)
+		ucl_parser_register_variable(p, "OSVERSION", oi.str_osversion);
 	if (oi.name != NULL) {
 		ucl_parser_register_variable(p, "OSNAME", oi.name);
 	}
@@ -1417,9 +1414,9 @@ pkg_ini(const char *path, const char *reposdir, pkg_init_flags flags)
 
 	dbg(1, "pkg initialized");
 
-#ifdef __FreeBSD__
-	ctx.osversion = pkg_object_int(pkg_config_get("OSVERSION"));
-#endif
+	if (oi.ostype == OS_FREEBSD)
+		ctx.osversion = pkg_object_int(pkg_config_get("OSVERSION"));
+
 	/* Start the event pipe */
 	evpipe = pkg_object_string(pkg_config_get("EVENT_PIPE"));
 	if (evpipe != NULL)

@@ -626,6 +626,7 @@ elf_note_analyse(Elf_Data *data, GElf_Ehdr *elfhdr, struct os_info *oi)
 	char *src;
 	uint32_t gnu_abi_tag[4];
 	char *note_os[6] = {"Linux", "GNU", "Solaris", "FreeBSD", "NetBSD", "Syllable"};
+	int note_ost[6] = {OS_LINUX, OS_GNU, OS_SOLARIS, OS_FREEBSD, OS_NETBSD, OS_SYLLABLE};
 	char *(*pnote_os)[6] = &note_os;
 	char invalid_osname[] = "Unknown";
 	uint32_t version = 0;
@@ -679,15 +680,26 @@ elf_note_analyse(Elf_Data *data, GElf_Ehdr *elfhdr, struct os_info *oi)
 				src += 4;
 			}
 		}
-		if (gnu_abi_tag[0] < 6)
+		if (gnu_abi_tag[0] < 6) {
 			oi->name = xstrdup((*pnote_os)[gnu_abi_tag[0]]);
-		else
+			oi->ostype = note_ost[gnu_abi_tag[0]];
+		} else {
 			oi->name = xstrdup(invalid_osname);
+			oi->ostype = OS_UNKNOWN;
+		}
 	} else {
-		if (note.n_namesz == 0)
+		if (note.n_namesz == 0) {
 			oi->name = xstrdup(invalid_osname);
-		else
+			oi->ostype = OS_UNKNOWN;
+		} else {
 			oi->name = xstrdup(src);
+			if (STREQ(src, "FreeBSD"))
+				oi->ostype = OS_FREEBSD;
+			else if (STREQ(src, "DragonFly"))
+				oi->ostype = OS_DRAGONFLY;
+			else if (STREQ(src, "NetBSD"))
+				oi->ostype = OS_NETBSD;
+		}
 		src += roundup2(note.n_namesz, 4);
 		if (elfhdr->e_ident[EI_DATA] == ELFDATA2MSB)
 			version = be32dec(src);
@@ -704,15 +716,15 @@ elf_note_analyse(Elf_Data *data, GElf_Ehdr *elfhdr, struct os_info *oi)
 			oi->osversion = version;
 			snprintf(oi->str_osversion, sizeof(oi->str_osversion), "%d", version);
 		}
-#ifdef __DragonFly__
-		xasprintf(&oi->version, "%d.%d", version / 100000, (((version / 100 % 1000)+1)/2)*2);
-#endif
-#ifdef __NetBSD__
-		xasprintf(&oi->version, "%d", (version + 1000000) / 100000000);
-#endif
-		xasprintf(&oi->version_major, "%d", version / 100000);
-		xasprintf(&oi->version_minor, "%d", (version / 1000 % 100));
-		xasprintf(&oi->version, "%d", version / 100000);
+		if (oi->ostype == OS_DRAGONFLY) {
+			xasprintf(&oi->version, "%d.%d", version / 100000, (((version / 100 % 1000)+1)/2)*2);
+		} else if (oi->ostype == OS_NETBSD) {
+			xasprintf(&oi->version, "%d", (version + 1000000) / 100000000);
+		} else {
+			xasprintf(&oi->version_major, "%d", version / 100000);
+			xasprintf(&oi->version_minor, "%d", (version / 1000 % 100));
+			xasprintf(&oi->version, "%d", version / 100000);
+		}
 	}
 
 	return (true);

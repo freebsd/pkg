@@ -44,12 +44,12 @@ elfparse_body() {
 		-o inline:"${_expected}" \
 		pkg -o IGNORE_OSMAJOR=1 -o ABI_FILE=$(atf_get_srcdir)/fbsd.bin config altabi
 
-	_expected="DragonFly:5:amd64\n"
+	_expected="dragonfly:5.10:x86:64\n"
 	atf_check \
 		-o inline:"${_expected}" \
 		pkg -o IGNORE_OSMAJOR=1 -o ABI_FILE=$(atf_get_srcdir)/dfly.bin config abi
 
-	_expected="dragonfly:5:x86:64\n"
+	_expected="dragonfly:5.10:x86:64\n"
 	atf_check \
 		-o inline:"${_expected}" \
 		pkg -o IGNORE_OSMAJOR=1 -o ABI_FILE=$(atf_get_srcdir)/dfly.bin config altabi

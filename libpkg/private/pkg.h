@@ -106,6 +106,18 @@ typedef enum {
 	IPV6,
 } ip_version_t;
 
+typedef enum {
+	OS_UNKNOWN = 0,
+	OS_DRAGONFLY,
+	OS_FREEBSD,
+	OS_GNU,
+	OS_LINUX,
+	OS_MACOS,
+	OS_NETBSD,
+	OS_SYLLABLE,
+	OS_SOLARIS,
+} os_type_t;
+
 struct pkg_kvlist {
 	kvlist_t *list;
 };
@@ -614,6 +626,7 @@ typedef enum {
 
 struct os_info {
 	int osversion;
+	int ostype;
 	char *name;
 	char *version;
 	char *version_major;
