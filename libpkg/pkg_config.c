@@ -99,10 +99,7 @@ struct config_entry {
 	const char *desc;
 };
 
-static char myabi[BUFSIZ], myabi_legacy[BUFSIZ];
-#ifdef __FreeBSD__
-static char myosversion[BUFSIZ];
-#endif
+static struct os_info oi = { 0 };
 static struct pkg_repo *repos = NULL;
 ucl_object_t *config = NULL;
 
@@ -176,13 +173,13 @@ static struct config_entry c[] = {
 	{
 		PKG_STRING,
 		"ABI",
-		myabi,
+		oi.abi,
 		"Override the automatically detected ABI",
 	},
 	{
 		PKG_STRING,
 		"ALTABI",
-		myabi_legacy,
+		oi.altabi,
 		"Override the automatically detected old-form ABI",
 	},
 	{
@@ -440,7 +437,7 @@ static struct config_entry c[] = {
 	{
 		PKG_INT,
 		"OSVERSION",
-		myosversion,
+		oi.str_osversion,
 		"FreeBSD OS version",
 	},
 	{
@@ -890,7 +887,7 @@ load_repo_file(int dfd, const char *repodir, const char *repofile,
 	myarch_legacy = pkg_object_string(pkg_config_get("ALTABI"));
 	ucl_parser_register_variable (p, "ALTABI", myarch_legacy);
 #ifdef __FreeBSD__
-	ucl_parser_register_variable(p, "OSVERSION", myosversion);
+	ucl_parser_register_variable(p, "OSVERSION", oi->str_osversion);
 #endif
 	if (oi->name != NULL) {
 		ucl_parser_register_variable(p, "OSNAME", oi->name);
@@ -1098,7 +1095,6 @@ pkg_ini(const char *path, const char *reposdir, pkg_init_flags flags)
 	bool fatal_errors = false;
 	int conffd = -1;
 	char *tmp = NULL;
-	struct os_info oi;
 	size_t ukeylen;
 	int err = EPKG_OK;
 	const char *envabi;
@@ -1114,14 +1110,14 @@ pkg_ini(const char *path, const char *reposdir, pkg_init_flags flags)
 	memset(&oi, 0, sizeof(oi));
 	envabi = getenv("ABI");
 	if (envabi == NULL) {
-		pkg_get_myarch_with_legacy(myabi, myabi_legacy, BUFSIZ, &oi);
+		pkg_get_myarch_with_legacy(oi.abi, oi.altabi, sizeof(oi.abi), &oi);
 	} else {
-		strlcpy(myabi, envabi, sizeof(myabi));
-		pkg_arch_to_legacy(myabi, myabi_legacy, BUFSIZ);
+		strlcpy(oi.abi, envabi, sizeof(oi.abi));
+		pkg_arch_to_legacy(oi.abi, oi.altabi, sizeof(oi.abi));
 	}
 #ifdef __FreeBSD__
 	ctx.osversion = oi.osversion;
-	snprintf(myosversion, sizeof(myosversion), "%d", ctx.osversion);
+	snprintf(oi.str_osversion, sizeof(oi.str_osversion), "%d", oi.osversion);
 #endif
 	if (parsed != false) {
 		pkg_emit_error("pkg_init() must only be called once");
@@ -1230,10 +1226,10 @@ pkg_ini(const char *path, const char *reposdir, pkg_init_flags flags)
 	}
 
 	p = ucl_parser_new(0);
-	ucl_parser_register_variable (p, "ABI", myabi);
-	ucl_parser_register_variable (p, "ALTABI", myabi_legacy);
+	ucl_parser_register_variable (p, "ABI", oi.abi);
+	ucl_parser_register_variable (p, "ALTABI", oi.altabi);
 #ifdef __FreeBSD__
-	ucl_parser_register_variable(p, "OSVERSION", myosversion);
+	ucl_parser_register_variable(p, "OSVERSION", oi.str_osversion);
 #endif
 	if (oi.name != NULL) {
 		ucl_parser_register_variable(p, "OSNAME", oi.name);

@@ -638,6 +638,9 @@ struct os_info {
 	char *version_major;
 	char *version_minor;
 	char *arch;
+	char abi[BUFSIZ];
+	char altabi[BUFSIZ];
+	char str_osversion[BUFSIZ];
 };
 
 int pkg_get_myarch_with_legacy(char *pkgarch, char* legacy, size_t sz, struct os_info *);
