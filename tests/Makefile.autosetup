@@ -13,7 +13,8 @@ TESTS=	\
 	ssh \
 	utils \
 	metalog \
-	vec
+	vec \
+	pkg_elf
 
 TESTS_SH= \
 	frontend/pkg.sh \
@@ -94,6 +95,7 @@ ssh_OBJS=	lib/ssh.o
 utils_OBJS=	lib/utils.o
 metalog_OBJS=	lib/metalog.o
 vec_OBJS=	lib/vec.o
+pkg_elf_OBJS=	lib/pkg_elf.o
 
 SRCS=	\
 	$(packing_OBJS:.o=.c) \
@@ -108,7 +110,8 @@ SRCS=	\
 	$(ssh_OBJS:.o=.c) \
 	$(utils_OBJS:.o=.c) \
 	$(metalog_OBJS:.o=.c) \
-	$(vec_OBJS:.o=.c)
+	$(vec_OBJS:.o=.c) \
+	$(pkg_elf_OBJS:.o=.c)
 
 include $(MK)/common.mk
 

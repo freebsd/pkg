@@ -47,6 +47,7 @@
 #include "pkg.h"
 #include "private/pkg.h"
 #include "private/event.h"
+#include "private/binfmt.h"
 
 static const char * const system_dylib_prefixes[] = {
 	"/System/",
@@ -107,7 +108,7 @@ analyse_macho(struct pkg *pkg, const char *fpath,
 			xasprintf(&libname, "%s.%s", march->mat_install_name, ai->name);
 			pkg_addshlib_provided(pkg, libname);
 			is_shlib = true;
-		
+
 
 		/* Now find all dependencies */
 		for (macho_loadcmd_t *cmd = march->mat_loadcmds; cmd != NULL; cmd = cmd->next) {

@@ -66,6 +66,7 @@
 #include "private/event.h"
 #include "private/elf_tables.h"
 #include "private/ldconfig.h"
+#include "private/binfmt.h"
 
 #ifndef NT_ABI_TAG
 #define NT_ABI_TAG 1
@@ -279,6 +280,12 @@ analyse_elf(struct pkg *pkg, const char *fpath)
 		return (EPKG_END); /* Empty file or sym-link: no results */
 
 	if ((fd = open(fpath, O_RDONLY, 0)) < 0) {
+		return (EPKG_FATAL);
+	}
+
+	if (elf_version(EV_CURRENT) == EV_NONE) {
+		pkg_emit_error("ELF library initialization failed: %s",
+		    elf_errmsg(-1));
 		return (EPKG_FATAL);
 	}
 
