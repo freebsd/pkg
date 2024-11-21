@@ -69,7 +69,8 @@ TESTS_SH= \
 TESTS_SHELL_BINS= \
 	frontend/dfly.bin \
 	frontend/fbsd.bin \
-	frontend/linux.bin
+	frontend/linux.bin \
+	frontend/macos.bin
 
 lua_OBJS=	lib/lua.o
 merge_OBJS=	lib/merge.o

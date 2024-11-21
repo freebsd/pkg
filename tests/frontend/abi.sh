@@ -3,6 +3,7 @@
 . $(atf_get_srcdir)/test_environment.sh
 tests_init \
 	elfparse \
+	machoparse \
 	native \
 	override
 
@@ -63,4 +64,16 @@ elfparse_body() {
 	atf_check \
 		-o inline:"${_expected}" \
 		pkg -o IGNORE_OSMAJOR=1 -o ABI_FILE=$(atf_get_srcdir)/linux.bin config altabi
+}
+
+machoparse_body() {
+	_expected="Darwin:24:aarch64\n"
+	atf_check \
+		-o inline:"${_expected}" \
+		pkg -o IGNORE_OSMAJOR=1 -o ABI_FILE=$(atf_get_srcdir)/macos.bin config abi
+
+	_expected="darwin:24:aarch64:64\n"
+	atf_check \
+		-o inline:"${_expected}" \
+		pkg -o IGNORE_OSMAJOR=1 -o ABI_FILE=$(atf_get_srcdir)/macos.bin config altabi
 }
