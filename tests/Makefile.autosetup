@@ -79,7 +79,10 @@ TESTS_SHELL_BINS= \
 	frontend/macos.bin \
 	frontend/macos106.bin \
 	frontend/macos150.bin \
-	frontend/macosfat.bin
+	frontend/macosfat.bin \
+	frontend/libtestfbsd.so.1 \
+	frontend/libtest2fbsd.so.1 \
+	frontend/libfoo.so.1
 
 lua_OBJS=	lib/lua.o
 merge_OBJS=	lib/merge.o
