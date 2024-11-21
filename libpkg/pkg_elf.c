@@ -709,8 +709,13 @@ elf_note_analyse(Elf_Data *data, GElf_Ehdr *elfhdr, struct os_info *oi)
 
 	free(oi->version);
 	if (version_style == 2) {
-		xasprintf(&oi->version, "%d.%d.%d", gnu_abi_tag[1],
-		    gnu_abi_tag[2], gnu_abi_tag[3]);
+		if (oi->ostype == OS_LINUX) {
+			xasprintf(&oi->version, "%d.%d", gnu_abi_tag[1],
+			    gnu_abi_tag[2]);
+		} else {
+			xasprintf(&oi->version, "%d.%d.%d", gnu_abi_tag[1],
+			    gnu_abi_tag[2], gnu_abi_tag[3]);
+		}
 	} else {
 		if (oi->osversion == 0) {
 			oi->osversion = version;
