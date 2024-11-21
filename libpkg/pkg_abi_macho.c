@@ -34,7 +34,7 @@
 /**
  * Routines to support pkg_abi.c functions when dealing with Mach-O files.
  * Supports getting ABI and ALTABI from the binary's load commands. Cave: picks first binary in FAT collection.
- * Supports getting shared libary information. Picks right binary in FAT collection based on ABI. 
+ * Supports getting shared libary information. Picks right binary in FAT collection based on ABI.
  * Supports FreeBSD naming of architectures.
  */
 
@@ -202,7 +202,7 @@ pkg_get_myarch_macho(int fd, char *dest, size_t sz, struct os_info *oi)
 				break;
 			}
 			if (n - n0 != loadcmdsize) {
-				printf("unprecise read %u != %u", n - n0,
+				printf("unprecise read %u != %zu", n - n0,
 				    loadcmdsize);
 				errno = EINVAL;
 				goto cleanup;
