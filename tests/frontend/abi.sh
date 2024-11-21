@@ -9,7 +9,7 @@ tests_init \
 
 native_body() {
 	thisarch=$(uname -p)
-	if [ "$thisarch" = "unknonw" ]; then
+	if [ "$thisarch" = "unknown" ]; then
 		thisarch=$(uname -m)
 	fi
 	OS=$(uname -s)
