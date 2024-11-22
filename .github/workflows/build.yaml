@@ -33,8 +33,7 @@ jobs:
                 - ubsan
                 - tsan
                 exclude:
-                - build-os: macos-latest
-                  sanitize: ubsan # No space left on device
+                # don't run the sanitizers on Ubuntu 22.04
                 - build-os: ubuntu-latest
                   sanitize: [ "asan", "lsan" ]
                 - build-os: ubuntu-latest
@@ -137,6 +136,7 @@ jobs:
             echo "CPP=${{ matrix.llvm-bindir }}/clang-cpp" >> "${GITHUB_ENV}"
             # this is miraculously not picked up by automake as the default
             echo "CC_FOR_BUILD=${{ matrix.llvm-bindir }}/clang" >> "${GITHUB_ENV}"
+            echo "SRC_PKG=${GITHUB_WORKSPACE}/src.pkg" >> "${GITHUB_ENV}"
             echo "BUILD_PKG=${GITHUB_WORKSPACE}/build.pkg" >> "${GITHUB_ENV}"
             echo "INST_PKG=${GITHUB_WORKSPACE}/inst.pkg" >> "${GITHUB_ENV}"
             echo "NPROC=`getconf _NPROCESSORS_ONLN 2>/dev/null || getconf NPROCESSORS_ONLN 2>/dev/null || echo 1`" >> "${GITHUB_ENV}"
@@ -155,11 +155,13 @@ jobs:
             echo CC="${CC}"
             echo CPP="${CPP}"
             echo PKG_CONFIG_PATH="${PKG_CONFIG_PATH}"
+            echo SRC_PKG="${SRC_PKG}"
             echo BUILD_PKG="${BUILD_PKG}"
             echo INST_PKG="${INST_PKG}"
+
             mkdir -p "${BUILD_PKG}"
             cd "${BUILD_PKG}"
-            ${GITHUB_WORKSPACE}/src.pkg/configure --prefix=${INST_PKG} --with-libarchive.pc --with-libcurl --with-openssl.pc ${CFG_OPTS}
+            ${SRC_PKG}/configure --prefix=${INST_PKG} --with-libarchive.pc --with-libcurl --with-openssl.pc ${CFG_OPTS}
             make -j${NPROC}
 
         - name: test&install pkg
