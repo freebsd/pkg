@@ -18,7 +18,10 @@ native_body() {
 	else
 		version=$(uname -r | cut -d. -f1)
 	fi
-	_expected="${OS}:${version}:$(echo $thisarch | sed s/x86_64/amd64/)\n"
+	if [ "${OS}" = "FreeBSD" ]; then
+		thisarch=$(echo "${thisarch}" | sed s/x86_64/amd64/)
+	fi
+	_expected="${OS}:${version}:${thisarch}\n"
 	atf_check \
 		-o inline:"${_expected}" \
 		pkg config abi
