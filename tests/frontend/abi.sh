@@ -65,12 +65,12 @@ elfparse_body() {
 		-o inline:"${_expected}" \
 		pkg -o IGNORE_OSMAJOR=1 -o ABI_FILE=$(atf_get_srcdir)/dfly.bin config altabi
 
-	_expected="Linux:3.2:amd64\n"
+	_expected="Linux:3.2:x86_64\n"
 	atf_check \
 		-o inline:"${_expected}" \
 		pkg -o IGNORE_OSMAJOR=1 -o ABI_FILE=$(atf_get_srcdir)/linux.bin config abi
 
-	_expected="linux:3.2:x86:64\n"
+	_expected="linux:3.2:x86_64\n"
 	atf_check \
 		-o inline:"${_expected}" \
 		pkg -o IGNORE_OSMAJOR=1 -o ABI_FILE=$(atf_get_srcdir)/linux.bin config altabi

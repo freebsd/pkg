@@ -135,40 +135,16 @@ pkg_get_myarch_with_legacy(struct os_info *oi)
 		free(oi->name);
 		return (err);
 	}
-	strlcpy(oi->abi, oi->altabi, sizeof(oi->abi));
 
-    for(char *p = oi->altabi; *p; ++p) {
-        *p = tolower(*p);
-    }
+	pkg_arch_to_legacy(oi->abi, oi->altabi, sizeof(oi->abi));
 
 	if (oi->ostype == OS_DRAGONFLY) {
 		size_t dsz;
 
 		dsz = strlen(oi->abi);
-		if (strncasecmp(oi->abi, "DragonFly", 9) == 0) {
-			for (int i = 0; i < dsz; i++)
-				oi->abi[i] = tolower(oi->abi[i]);
-			return (0);
-		}
-	}
-
-	/* Translate architecture string back to regular OS one */
-	char *arch_tweak = strchr(oi->abi, ':');
-	if (arch_tweak == NULL)
+		for (int i = 0; i < dsz; i++)
+			oi->abi[i] = tolower(oi->abi[i]);
 		return (0);
-	arch_tweak++;
-	arch_tweak = strchr(arch_tweak, ':');
-	if (arch_tweak == NULL)
-		return (0);
-	arch_tweak++;
-	for (struct arch_trans *arch_trans = machine_arch_translation; arch_trans->elftype != NULL;
-	    arch_trans++) {
-		if (STREQ(arch_tweak, arch_trans->elftype)) {
-			strlcpy(arch_tweak, arch_trans->archid,
-			    sizeof(oi->abi) - (arch_tweak - oi->abi));
-			oi->arch = xstrdup(arch_tweak);
-			break;
-		}
 	}
 
 	return (0);

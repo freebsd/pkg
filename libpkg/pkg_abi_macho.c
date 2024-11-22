@@ -90,52 +90,12 @@ cputype_to_freebsd_machine_arch(const cpu_type_subtype_t cpu)
 	}
 }
 
-static const char *
-cputype_to_elfname(const cpu_type_subtype_t cpu)
-{
-	switch (cpu.type) {
-	case CPU_TYPE_ARM:
-		if (cpu.type_is64) {
-			return "aarch64:64";
-		} else {
-			switch(cpu.subtype_arm) {
-			case CPU_SUBTYPE_ARM_V7:
-			case CPU_SUBTYPE_ARM_V7S:
-			case CPU_SUBTYPE_ARM_V7K:
-			case CPU_SUBTYPE_ARM_V7M:
-			case CPU_SUBTYPE_ARM_V7EM:
-				return "armv7:32:el:eabi:hardfp";
-			case CPU_SUBTYPE_ARM_V6:
-			case CPU_SUBTYPE_ARM_V6M:
-				return "armv6:32:el:eabi:hardfp";
-			default:
-				return "arm:32";
-			}
-		}
-	case CPU_TYPE_POWERPC:
-		if (cpu.type_is64) {
-			return "powerpc:64:eb";
-		} else {
-			return "powerpc:32:eb";
-		}
-	case CPU_TYPE_X86:
-		if (cpu.type_is64) {
-			return "x86:64";
-		} else {
-			return "x86:32";
-		}
-	default:
-		return "other";
-	}
-}
-
-
 int
 pkg_get_myarch_macho(int fd, struct os_info *oi)
 {
 	ssize_t x;
-	char *dest = oi->altabi;
-	size_t sz = sizeof(oi->altabi);
+	char *dest = oi->abi;
+	size_t sz = sizeof(oi->abi);
 
 	macho_file_t *mf = 0;
 	build_version_t *bv = 0;
@@ -219,7 +179,7 @@ pkg_get_myarch_macho(int fd, struct os_info *oi)
 	if (bv) {
 		macho_version_t darwin;
 		map_platform_to_darwin(&darwin, bv->platform, bv->minos);
-		snprintf(dest, sz, "Darwin:%d:%s", darwin.major, cputype_to_elfname(mh.cpu));
+		snprintf(dest, sz, "Darwin:%d:%s", darwin.major, cputype_to_freebsd_machine_arch(mh.cpu));
 		if (oi) {
 			oi->name = xstrdup("Darwin");
 			oi->osversion = darwin.major * 100000 + darwin.minor * 1000 + darwin.patch;

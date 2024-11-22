@@ -1,7 +1,7 @@
 /*-
  * Copyright (c) 2012 Olivier Houchard <cognet@FreeBSD.org>
  * All rights reserved.
- * 
+ *
  * Redistribution and use in source and binary forms, with or without
  * modification, are permitted provided that the following conditions
  * are met:
@@ -11,7 +11,7 @@
  * 2. Redistributions in binary form must reproduce the above copyright
  *    notice, this list of conditions and the following disclaimer in the
  *    documentation and/or other materials provided with the distribution.
- * 
+ *
  * THIS SOFTWARE IS PROVIDED BY THE AUTHOR(S) ``AS IS'' AND ANY EXPRESS OR
  * IMPLIED WARRANTIES, INCLUDING, BUT NOT LIMITED TO, THE IMPLIED WARRANTIES
  * OF MERCHANTABILITY AND FITNESS FOR A PARTICULAR PURPOSE ARE DISCLAIMED.
@@ -31,8 +31,8 @@ struct _elf_corres {
 };
 
 static const struct _elf_corres mach_corres[] = {
-	{ EM_386, "x86" },
-	{ EM_X86_64, "x86" },
+	{ EM_386, "i386" },
+	{ EM_X86_64, "x86_64" },
 	{ EM_AARCH64, "aarch64" },
 	{ EM_ARM, "arm" },
 	{ EM_MIPS, "mips" },

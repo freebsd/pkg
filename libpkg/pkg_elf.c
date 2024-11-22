@@ -1,28 +1,8 @@
 /*-
- * Copyright (c) 2011-2012 Baptiste Daroussin <bapt@FreeBSD.org>
+ * Copyright (c) 2011-2024 Baptiste Daroussin <bapt@FreeBSD.org>
  * Copyright (c) 2012-2013 Matthew Seaman <matthew@FreeBSD.org>
- * All rights reserved.
  *
- * Redistribution and use in source and binary forms, with or without
- * modification, are permitted provided that the following conditions
- * are met:
- * 1. Redistributions of source code must retain the above copyright
- *    notice, this list of conditions and the following disclaimer
- *    in this position and unchanged.
- * 2. Redistributions in binary form must reproduce the above copyright
- *    notice, this list of conditions and the following disclaimer in the
- *    documentation and/or other materials provided with the distribution.
- *
- * THIS SOFTWARE IS PROVIDED BY THE AUTHOR(S) ``AS IS'' AND ANY EXPRESS OR
- * IMPLIED WARRANTIES, INCLUDING, BUT NOT LIMITED TO, THE IMPLIED WARRANTIES
- * OF MERCHANTABILITY AND FITNESS FOR A PARTICULAR PURPOSE ARE DISCLAIMED.
- * IN NO EVENT SHALL THE AUTHOR(S) BE LIABLE FOR ANY DIRECT, INDIRECT,
- * INCIDENTAL, SPECIAL, EXEMPLARY, OR CONSEQUENTIAL DAMAGES (INCLUDING, BUT
- * NOT LIMITED TO, PROCUREMENT OF SUBSTITUTE GOODS OR SERVICES; LOSS OF USE,
- * DATA, OR PROFITS; OR BUSINESS INTERRUPTION) HOWEVER CAUSED AND ON ANY
- * THEORY OF LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY, OR TORT
- * (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF
- * THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
+ * SPDX-License-Identifier: BSD-2-Clause
  */
 
 #ifdef HAVE_CONFIG_H
@@ -166,7 +146,7 @@ shlib_valid_abi(const char *fpath, GElf_Ehdr *hdr)
 	 */
 	arch[0] = '\0';
 	wordsize[0] = '\0';
-	p = pkg_object_string(pkg_config_get("ALTABI"));
+	p = ctx.oi->abi;
 	for(semicolon = 0; semicolon < 3 && p != NULL; semicolon ++, p ++) {
 		p = strchr(p, ':');
 		if (p != NULL) {
@@ -742,7 +722,6 @@ elf_note_analyse(Elf_Data *data, GElf_Ehdr *elfhdr, struct os_info *oi)
 	return (true);
 }
 
-
 int
 pkg_get_myarch_elfparse(int fd, struct os_info *oi)
 {
@@ -753,11 +732,9 @@ pkg_get_myarch_elfparse(int fd, struct os_info *oi)
 	Elf_Scn *scn = NULL;
 	int ret = EPKG_OK;
 	const char *arch,*abi, *endian_corres_str, *wordsize_corres_str, *fpu;
-	char *dest = oi->altabi;
-	size_t sz = sizeof(oi->altabi);
+	char *dest = oi->abi;
+	size_t sz = sizeof(oi->abi);
 	size_t dsz;
-
-	arch = NULL;
 
 	if (elf_version(EV_CURRENT) == EV_NONE) {
 		pkg_emit_error("ELF library initialization failed: %s",
@@ -805,154 +782,15 @@ pkg_get_myarch_elfparse(int fd, struct os_info *oi)
 	wordsize_corres_str = elf_corres_to_string(wordsize_corres,
 	    (int)elfhdr.e_ident[EI_CLASS]);
 
-	arch = elf_corres_to_string(mach_corres, (int) elfhdr.e_machine);
+	if (oi->ostype == OS_FREEBSD && elfhdr.e_machine == EM_X86_64)
+		oi->arch = xstrdup("amd64");
+	else if (oi->ostype == OS_DRAGONFLY && elfhdr.e_machine == EM_X86_64)
+		oi->arch = xstrdup("x86:64");
+	else
+		oi->arch = xstrdup(elf_corres_to_string(mach_corres, (int) elfhdr.e_machine));
 
-	switch (elfhdr.e_machine) {
-	case EM_ARM:
-		endian_corres_str = elf_corres_to_string(endian_corres,
-		    (int)elfhdr.e_ident[EI_DATA]);
-
-		if (elfhdr.e_flags & EF_ARM_VFP_FLOAT)
-			fpu = "hardfp";
-		else
-			fpu = "softfp";
-
-		if ((elfhdr.e_flags & 0xFF000000) != 0) {
-			const char *sh_name = NULL;
-			size_t shstrndx;
-
-			/* This is an EABI file, the conformance level is set */
-			abi = "eabi";
-
-			/* Find which TARGET_ARCH we are building for. */
-			elf_getshdrstrndx(elf, &shstrndx);
-			while ((scn = elf_nextscn(elf, scn)) != NULL) {
-				sh_name = NULL;
-				if (gelf_getshdr(scn, &shdr) != &shdr) {
-					scn = NULL;
-					break;
-				}
-
-				sh_name = elf_strptr(elf, shstrndx,
-				    shdr.sh_name);
-				if (sh_name == NULL)
-					continue;
-				if (STREQ(".ARM.attributes", sh_name))
-					break;
-			}
-			if (scn != NULL && sh_name != NULL) {
-				data = elf_getdata(scn, NULL);
-				/*
-				 * Prior to FreeBSD 10.0 libelf would return
-				 * NULL from elf_getdata on the .ARM.attributes
-				 * section. As this was the first release to
-				 * get armv6 support assume a NULL value means
-				 * arm.
-				 *
-				 * This assumption can be removed when 9.x
-				 * is unsupported.
-				 */
-				if (data != NULL) {
-					arch = aeabi_parse_arm_attributes(
-					    data->d_buf, data->d_size);
-					if (arch == NULL) {
-						ret = EPKG_FATAL;
-						pkg_emit_error(
-						    "unknown ARM ARCH");
-						goto cleanup;
-					}
-				}
-			} else {
-				ret = EPKG_FATAL;
-				pkg_emit_error("Unable to find the "
-				    ".ARM.attributes section");
-				goto cleanup;
-			}
-
-		} else if (elfhdr.e_ident[EI_OSABI] != ELFOSABI_NONE) {
-			/*
-			 * EABI executables all have this field set to
-			 * ELFOSABI_NONE, therefore it must be an oabi file.
-			 */
-			abi = "oabi";
-                } else {
-			/*
-			 * We may have failed to positively detect the ABI,
-			 * set the ABI to unknown. If we end up here one of
-			 * the above cases should be fixed for the binary.
-			 */
-			ret = EPKG_FATAL;
-			pkg_emit_error("unknown ARM ABI");
-			goto cleanup;
-		}
-		dsz = strlen(dest);
-		snprintf(dest + dsz, sz - dsz,
-		    ":%s:%s:%s:%s:%s", arch, wordsize_corres_str,
-		    endian_corres_str, abi, fpu);
-		break;
-	case EM_MIPS:
-		/*
-		 * this is taken from binutils sources:
-		 * include/elf/mips.h
-		 * mapping is figured out from binutils:
-		 * gas/config/tc-mips.c
-		 */
-		switch (elfhdr.e_flags & EF_MIPS_ABI) {
-			case E_MIPS_ABI_O32:
-				abi = "o32";
-				break;
-			case E_MIPS_ABI_N32:
-				abi = "n32";
-				break;
-			default:
-				if (elfhdr.e_ident[EI_DATA] == ELFCLASS32)
-					abi = "o32";
-				else if (elfhdr.e_ident[EI_DATA] == ELFCLASS64)
-					abi = "n64";
-				else
-					abi = "unknown";
-				break;
-		}
-		endian_corres_str = elf_corres_to_string(endian_corres,
-		    (int)elfhdr.e_ident[EI_DATA]);
-
-		dsz = strlen(dest);
-		snprintf(dest + dsz, sz - dsz, ":%s:%s:%s:%s",
-		    arch, wordsize_corres_str, endian_corres_str, abi);
-		break;
-#if defined(EM_RISCV) && defined(EF_RISCV_FLOAT_ABI_MASK)
-	case EM_RISCV:
-		switch (elfhdr.e_flags & EF_RISCV_FLOAT_ABI_MASK) {
-			case EF_RISCV_FLOAT_ABI_SOFT:
-				abi = "sf";
-				break;
-			case EF_RISCV_FLOAT_ABI_DOUBLE:
-				abi = "hf";
-				break;
-			default:
-				abi = "unknown";
-				break;
-		}
-		dsz = strlen(dest);
-		snprintf(dest + dsz, sz - dsz, ":%s:%s:%s",
-		    arch, wordsize_corres_str, abi);
-		break;
-#endif
-	case EM_PPC:
-	case EM_PPC64:
-		endian_corres_str = elf_corres_to_string(endian_corres,
-		    (int)elfhdr.e_ident[EI_DATA]);
-
-		dsz = strlen(dest);
-		snprintf(dest + dsz, sz - dsz, ":%s:%s:%s",
-		    arch, wordsize_corres_str, endian_corres_str);
-		break;
-	default:
-		dsz = strlen(dest);
-		snprintf(dest + dsz, sz - dsz, ":%s:%s",
-		    arch, wordsize_corres_str);
-		break;
-	}
+	dsz = strlen(dest);
+	snprintf(dest + dsz, sz - dsz, ":%s", oi->arch);
 
 cleanup:
 	if (elf != NULL)
