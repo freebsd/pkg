@@ -101,7 +101,7 @@ static struct pkg_manifest_key {
 	{ "abi",                 offsetof(struct pkg, abi),
 			TYPE_SHIFT(UCL_STRING), pkg_string},
 
-	{ "arch",                offsetof(struct pkg, arch),
+	{ "arch",                offsetof(struct pkg, altabi),
 			TYPE_SHIFT(UCL_STRING), pkg_string},
 
 	{ "categories",          MANIFEST_CATEGORIES,
@@ -947,10 +947,10 @@ pkg_emit_object(struct pkg *pkg, short flags)
 	ucl_object_t *map, *seq, *submap;
 	ucl_object_t *top = ucl_object_typed_new(UCL_OBJECT);
 
-	if (pkg->abi == NULL && pkg->arch != NULL)
-		pkg->abi = xstrdup(pkg->arch);
+	if (pkg->abi == NULL && pkg->altabi != NULL)
+		pkg->abi = xstrdup(pkg->altabi);
 	pkg_arch_to_legacy(pkg->abi, legacyarch, BUFSIZ);
-	pkg->arch = xstrdup(legacyarch);
+	pkg->altabi = xstrdup(legacyarch);
 	dbg(4, "Emitting basic metadata");
 	MANIFEST_EXPORT_FIELD(top, pkg, name, string);
 	MANIFEST_EXPORT_FIELD(top, pkg, origin, string);
@@ -959,7 +959,8 @@ pkg_emit_object(struct pkg *pkg, short flags)
 	MANIFEST_EXPORT_FIELD(top, pkg, maintainer, string);
 	MANIFEST_EXPORT_FIELD(top, pkg, www, string);
 	MANIFEST_EXPORT_FIELD(top, pkg, abi, string);
-	MANIFEST_EXPORT_FIELD(top, pkg, arch, string);
+	/* We need to keep altabi named arch in the manifest */
+	ucl_object_insert_key(top, ucl_object_fromstring(pkg->altabi), "arch", 0, false);
 	MANIFEST_EXPORT_FIELD(top, pkg, prefix, string);
 	MANIFEST_EXPORT_FIELD(top, pkg, sum, string);
 	MANIFEST_EXPORT_FIELD(top, pkg, flatsize, int);

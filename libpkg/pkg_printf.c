@@ -2,7 +2,7 @@
  * Copyright (c) 2012-2015 Matthew Seaman <matthew@FreeBSD.org>
  * Copyright (c) 2014-2020 Baptiste Daroussin <bapt@FreeBSD.org>
  * All rights reserved.
- * 
+ *
  * Redistribution and use in source and binary forms, with or without
  * modification, are permitted provided that the following conditions
  * are met:
@@ -12,7 +12,7 @@
  * 2. Redistributions in binary form must reproduce the above copyright
  *    notice, this list of conditions and the following disclaimer in the
  *    documentation and/or other materials provided with the distribution.
- * 
+ *
  * THIS SOFTWARE IS PROVIDED BY THE AUTHOR(S) ``AS IS'' AND ANY EXPRESS OR
  * IMPLIED WARRANTIES, INCLUDING, BUT NOT LIMITED TO, THE IMPLIED WARRANTIES
  * OF MERCHANTABILITY AND FITNESS FOR A PARTICULAR PURPOSE ARE DISCLAIMED.
@@ -68,7 +68,7 @@
  * Dp pkg_dir      Directory permissions
  * Dt pkg_dir      Try flag (@dirrmtry in plist)
  * Du pkg_dir      User owner of directory
- * 
+ *
  * E
  *
  * F  pkg          List of files
@@ -77,7 +77,7 @@
  * Fn pkg_file     File path name
  * Fp pkg_file     File permissions
  * Fs pkg_file     File SHA256 checksum
- * Fu pkg_file     User owner of file 
+ * Fu pkg_file     User owner of file
  *
  * G  pkg          List of groups
  * Gn pkg_group    Group name
@@ -852,7 +852,7 @@ static const struct pkg_printf_fmt	fmt[] = {
  * %A -- Annotations.  Free-form tag+value text that can be added to
  * packages.  Optionally accepts per-field format in %{ %| %} Default
  * %{%An: %Av\n%|%}
- */  
+ */
 xstring *
 format_annotations(xstring *buf, const void *data, struct percent_esc *p)
 {
@@ -1342,7 +1342,7 @@ format_repo_ident(xstring *buf, const void *data, struct percent_esc *p)
  * %O -- Options. list of {option,value} tuples. Optionally accepts
  * following per-field format in %{ %| %}, where %On is replaced by the
  * option name and %Ov by the value.  Default %{%On %Ov\n%|%}
- */ 
+ */
 xstring *
 format_options(xstring *buf, const void *data, struct percent_esc *p)
 {
@@ -1424,7 +1424,7 @@ format_altabi(xstring *buf, const void *data, struct percent_esc *p)
 {
 	const struct pkg	*pkg = data;
 
-	return (string_val(buf, pkg->arch, p));
+	return (string_val(buf, pkg->altabi, p));
 }
 
 /*
@@ -2073,7 +2073,7 @@ gen_format(char *buf, size_t buflen, unsigned flags, const char *tail)
 
 	if (buflen - bp < tlen + 2)
 		return (NULL);
-	
+
 	if (flags & PP_EXPLICIT_PLUS)
 		buf[bp++] = '+';
 
@@ -2533,9 +2533,9 @@ format_trailer(const char *f, struct percent_esc *p)
 				fputc(*f2, p->sep_fmt->fp);
 				fflush(p->sep_fmt->fp);
 			}
-			
+
 		}
-		
+
 		if (done) {
 			f = f1;
 		} else {
@@ -2789,7 +2789,7 @@ read_oct_byte(xstring *buf, const char *f)
 		}
 
 		f++;
-	} 
+	}
 done:
 	fputc(val, buf->fp);
 
@@ -2863,7 +2863,7 @@ process_escape(xstring *buf, const char *f)
 
 const char *
 process_format_trailer(xstring *buf, struct percent_esc *p,
-		       const char *f, const struct pkg *pkg, 
+		       const char *f, const struct pkg *pkg,
 		       const void *data, int count, unsigned context)
 {
 	const char		*fstart;
@@ -3037,7 +3037,7 @@ pkg_vdprintf(int fd, const char * restrict format, va_list ap)
 	fflush(buf->fp);
 	if (buf && strlen(buf->buf) > 0) {
 		count = dprintf(fd, "%s", buf->buf);
-	} else 
+	} else
 		count = -1;
 	if (buf)
 		xstring_free(buf);
@@ -3103,7 +3103,7 @@ pkg_vsnprintf(char * restrict str, size_t size, const char * restrict format,
  * Allocate a string buffer ret sufficiently big to contain formatted
  * data data from pkg as indicated by the format code format
  * @param ret location of pointer to be set to point to buffer containing
- * result 
+ * result
  * @param ... Varargs list of struct pkg etc. supplying the data
  * @param format String with embedded %-escapes indicating what to output
  * @return count of the number of characters printed
@@ -3125,7 +3125,7 @@ pkg_asprintf(char **ret, const char * restrict format, ...)
  * Allocate a string buffer ret sufficiently big to contain formatted
  * data data from pkg as indicated by the format code format
  * @param ret location of pointer to be set to point to buffer containing
- * result 
+ * result
  * @param ap Varargs list of struct pkg etc. supplying the data
  * @param format String with embedded %-escapes indicating what to output
  * @return count of the number of characters printed

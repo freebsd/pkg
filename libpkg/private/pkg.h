@@ -211,7 +211,7 @@ struct pkg {
 	char			*old_version;
 	char			*maintainer;
 	char			*www;
-	char			*arch;
+	char			*altabi;
 	char			*abi;
 	char			*uid;
 	char			*digest;

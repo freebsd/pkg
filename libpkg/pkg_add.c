@@ -1145,7 +1145,7 @@ pkg_add_check_pkg_archive(struct pkgdb *db, struct pkg *pkg,
 	struct pkg	*pkg_inst = NULL;
 	bool	fromstdin;
 
-	arch = pkg->abi != NULL ? pkg->abi : pkg->arch;
+	arch = pkg->abi != NULL ? pkg->abi : pkg->altabi;
 
 	if (!is_valid_abi(arch, true) && (flags & PKG_ADD_FORCE) == 0) {
 		return (EPKG_FATAL);

@@ -141,7 +141,7 @@ pkg_repo_binary_add_pkg(struct pkg *pkg, sqlite3 *sqlite, bool forced)
 	const char		*arch;
 	int64_t			 package_id;
 
-	arch = pkg->abi != NULL ? pkg->abi : pkg->arch;
+	arch = pkg->abi != NULL ? pkg->abi : pkg->altabi;
 
 try_again:
 	if ((ret = pkg_repo_binary_run_prstatement(PKG,
@@ -380,7 +380,7 @@ pkg_repo_binary_add_from_ucl(sqlite3 *sqlite, ucl_object_t *o, struct pkg_repo *
 
 	if (pkg->digest == NULL || !pkg_checksum_is_valid(pkg->digest, strlen(pkg->digest)))
 		pkg_checksum_calculate(pkg, NULL, false, true, false);
-	abi = pkg->abi != NULL ? pkg->abi : pkg->arch;
+	abi = pkg->abi != NULL ? pkg->abi : pkg->altabi;
 	if (abi == NULL || !is_valid_abi(abi, true)) {
 		rc = EPKG_FATAL;
 		pkg_emit_error("repository %s contains packages with wrong ABI: %s",
@@ -425,7 +425,7 @@ pkg_repo_binary_add_from_manifest(const char *buf, sqlite3 *sqlite, size_t len,
 
 	if (pkg->digest == NULL || !pkg_checksum_is_valid(pkg->digest, strlen(pkg->digest)))
 		pkg_checksum_calculate(pkg, NULL, false, true, false);
-	abi = pkg->abi != NULL ? pkg->abi : pkg->arch;
+	abi = pkg->abi != NULL ? pkg->abi : pkg->altabi;
 	if (abi == NULL || !is_valid_abi(abi, true)) {
 		rc = EPKG_FATAL;
 		pkg_emit_error("repository %s contains packages with wrong ABI: %s",

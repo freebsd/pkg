@@ -1662,7 +1662,7 @@ pkgdb_register_pkg(struct pkgdb *db, struct pkg *pkg, int forced,
 		return (EPKG_FATAL);
 
 	/* Prefer new ABI over old one */
-	arch = pkg->abi != NULL ? pkg->abi : pkg->arch;
+	arch = pkg->abi != NULL ? pkg->abi : pkg->altabi;
 
 	/*
 	 * Insert package record

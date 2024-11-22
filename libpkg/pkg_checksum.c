@@ -205,7 +205,7 @@ pkg_checksum_generate(struct pkg *pkg, char *dest, size_t destlen,
 	if (inc_version && !is_group)
 		tll_push_back(entries, pkg_kv_new("version", pkg->version));
 	if (!is_group)
-		tll_push_back(entries, pkg_kv_new("arch", pkg->arch));
+		tll_push_back(entries, pkg_kv_new("arch", pkg->altabi));
 
 	while (pkg_options(pkg, &option) == EPKG_OK) {
 		tll_push_back(entries, pkg_kv_new(option->key, option->value));

@@ -976,7 +976,7 @@ populate_pkg(sqlite3_stmt *stmt, struct pkg *pkg) {
 	}
 
 	pkg_arch_to_legacy(pkg->abi, legacyarch, BUFSIZ);
-	pkg->arch = xstrdup(legacyarch);
+	pkg->altabi = xstrdup(legacyarch);
 }
 
 static struct load_on_flag {

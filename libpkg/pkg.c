@@ -56,7 +56,7 @@ pkg_free(struct pkg *pkg)
 	free(pkg->version);
 	free(pkg->maintainer);
 	free(pkg->www);
-	free(pkg->arch);
+	free(pkg->altabi);
 	free(pkg->abi);
 	free(pkg->uid);
 	free(pkg->digest);
@@ -252,8 +252,8 @@ pkg_set_s(struct pkg *pkg, pkg_attr attr, const char *str)
 		}
 		break;
 	case PKG_ATTR_ARCH:
-		free(pkg->arch);
-		pkg->arch = xstrdup(str);
+		free(pkg->altabi);
+		pkg->altabi = xstrdup(str);
 		break;
 	case PKG_ATTR_ABI:
 		free(pkg->abi);

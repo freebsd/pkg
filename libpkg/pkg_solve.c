@@ -300,10 +300,10 @@ pkg_solve_handle_provide (struct pkg_solve_problem *problem,
 		if (pr->is_shlib) {
 			libfound = stringlist_contains(&pkg->shlibs_provided, pr->provide);
 			/* Skip incompatible ABI as well */
-			if (libfound && !STREQ(pkg->arch, orig->arch)) {
+			if (libfound && !STREQ(pkg->altabi, orig->altabi)) {
 				dbg(2, "require %s: package %s-%s(%c) provides wrong ABI %s, "
 					"wanted %s", pr->provide, pkg->name, pkg->version,
-					pkg->type == PKG_INSTALLED ? 'l' : 'r', pkg->arch, orig->arch);
+					pkg->type == PKG_INSTALLED ? 'l' : 'r', pkg->altabi, orig->altabi);
 				continue;
 			}
 		}
