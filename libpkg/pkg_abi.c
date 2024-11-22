@@ -33,10 +33,9 @@
 #include <unistd.h>
 
 #include "pkg.h"
-
-#include "private/pkg.h"
-#include "private/event.h"
 #include "private/binfmt.h"
+#include "private/event.h"
+#include "private/pkg.h"
 
 #define _PATH_UNAME "/usr/bin/uname"
 
@@ -46,33 +45,22 @@ struct arch_trans {
 	const char *archid;
 };
 
-static struct arch_trans machine_arch_translation[] = {
-	{ "x86:32", "i386" },
-	{ "x86:64", "amd64" },
-	{ "powerpc:32:eb", "powerpc" },
-	{ "powerpc:64:eb", "powerpc64" },
-	{ "powerpc:64:el", "powerpc64le" },
-	{ "sparc64:64", "sparc64" },
-	{ "ia64:64", "ia64" },
+static struct arch_trans machine_arch_translation[] = { { "x86:32", "i386" },
+	{ "x86:64", "amd64" }, { "powerpc:32:eb", "powerpc" },
+	{ "powerpc:64:eb", "powerpc64" }, { "powerpc:64:el", "powerpc64le" },
+	{ "sparc64:64", "sparc64" }, { "ia64:64", "ia64" },
 	/* All the ARM stuff */
 	{ "armv6:32:el:eabi:hardfp", "armv6" },
-	{ "armv7:32:el:eabi:hardfp", "armv7" },
-	{ "aarch64:64", "aarch64" },
+	{ "armv7:32:el:eabi:hardfp", "armv7" }, { "aarch64:64", "aarch64" },
 	/* And now MIPS */
-	{ "mips:32:el:o32", "mipsel" },
-	{ "mips:32:el:n32", "mipsn32el" },
-	{ "mips:32:eb:o32", "mips" },
-	{ "mips:32:eb:n32", "mipsn32" },
-	{ "mips:64:el:n64", "mips64el" },
-	{ "mips:64:eb:n64", "mips64" },
+	{ "mips:32:el:o32", "mipsel" }, { "mips:32:el:n32", "mipsn32el" },
+	{ "mips:32:eb:o32", "mips" }, { "mips:32:eb:n32", "mipsn32" },
+	{ "mips:64:el:n64", "mips64el" }, { "mips:64:eb:n64", "mips64" },
 	/* And RISC-V */
-	{ "riscv:32:hf", "riscv32" },
-	{ "riscv:32:sf", "riscv32sf" },
-	{ "riscv:64:hf", "riscv64" },
-	{ "riscv:64:sf", "riscv64sf" },
+	{ "riscv:32:hf", "riscv32" }, { "riscv:32:sf", "riscv32sf" },
+	{ "riscv:64:hf", "riscv64" }, { "riscv:64:sf", "riscv64sf" },
 
-	{ NULL, NULL }
-};
+	{ NULL, NULL } };
 
 static int
 pkg_get_myarch_fromfile(struct os_info *oi)
@@ -83,6 +71,9 @@ pkg_get_myarch_fromfile(struct os_info *oi)
 		_PATH_UNAME,
 		_PATH_BSHELL,
 	};
+	char work_abi_file[PATH_MAX];
+	char work_arch_hint[PATH_MAX];
+
 	int i, fd;
 
 	/*
@@ -94,34 +85,70 @@ pkg_get_myarch_fromfile(struct os_info *oi)
 	for (fd = -1, i = 0; i < NELEM(abi_files); i++) {
 		if (abi_files[i] == NULL)
 			continue;
+
+		const char *sep = strrchr(abi_files[i], '#');
+		if (sep) {
+			strlcpy(work_abi_file, abi_files[i],
+			    MIN(sep - abi_files[i] + 1, sizeof(work_abi_file)));
+			strlcpy(work_arch_hint, sep + 1,
+			    sizeof(work_arch_hint));
+		} else {
+			strlcpy(work_abi_file, abi_files[i],
+			    sizeof(work_abi_file));
+			work_arch_hint[0] = '\0';
+		}
+
 		/*
 		 * Try prepending rootdir and using that if it exists.  If
 		 * ABI_FILE is specified, assume that the consumer didn't want
 		 * it mangled by rootdir.
 		 */
-		if (i > 0 && checkroot && snprintf(rooted_abi_file, PATH_MAX,
-		    "%s/%s", ctx.pkg_rootdir, abi_files[i]) < PATH_MAX) {
-			if ((fd = open(rooted_abi_file, O_RDONLY)) >= 0)
+		if (i > 0 && checkroot &&
+		    snprintf(rooted_abi_file, PATH_MAX, "%s/%s",
+			ctx.pkg_rootdir, work_abi_file) < PATH_MAX) {
+			if ((fd = open(rooted_abi_file, O_RDONLY)) >= 0) {
+				strlcpy(work_abi_file, rooted_abi_file,
+				    sizeof(work_abi_file));
 				break;
+			}
 		}
-		if ((fd = open(abi_files[i], O_RDONLY)) >= 0)
+		if ((fd = open(work_abi_file, O_RDONLY)) >= 0) {
 			break;
+		}
 		/* if the ABI_FILE was provided we only care about it */
 		if (i == 0)
 			break;
 	}
 	if (fd == -1) {
-		pkg_emit_error("Unable to determine the ABI\n");
-		return (EPKG_FATAL);
+		pkg_emit_error(
+		    "Unable to determine the ABI, none of the ABI_FILEs can be read.");
+		return EPKG_FATAL;
+	}
+
+	if (work_arch_hint[0]) {
+		snprintf(oi->abi, sizeof(oi->abi), "::%s",
+		    work_arch_hint);
 	}
 
 	int ret = pkg_get_myarch_elfparse(fd, oi);
 	if (EPKG_OK != ret) {
-		lseek(fd, 0, SEEK_SET);
+		if (-1 == lseek(fd, 0, SEEK_SET)) {
+			pkg_emit_errno("Error seeking file", work_abi_file);
+			ret = EPKG_FATAL;
+		}
 		ret = pkg_get_myarch_macho(fd, oi);
+		if (EPKG_OK != ret) {
+			pkg_emit_error(
+			    "Unable to determine the ABI, %s cannot be parsed.",
+			    work_abi_file);
+			ret = EPKG_FATAL;
+		}
 	}
 
-	close(fd);
+	if (close(fd)) {
+		pkg_emit_errno("Error closing file", work_abi_file);
+		ret = EPKG_FATAL;
+	}
 	return ret;
 }
 
@@ -132,6 +159,7 @@ pkg_get_myarch_with_legacy(struct os_info *oi)
 		return (EPKG_FATAL);
 	int err = pkg_get_myarch_fromfile(oi);
 	if (err) {
+		pkg_debug(1, "Error %d when trying to determine myarch.", err);
 		free(oi->name);
 		return (err);
 	}
@@ -185,7 +213,7 @@ pkg_arch_to_legacy(const char *arch, char *dest, size_t sz)
 			return (0);
 		}
 	}
-	strlcpy(dest + i, arch + i, sz - (arch + i  - dest));
+	strlcpy(dest + i, arch + i, sz - (arch + i - dest));
 
 	return (0);
 }
@@ -195,13 +223,14 @@ pkg_analyse_files(struct pkgdb *db __unused, struct pkg *pkg, const char *stage)
 {
 	struct pkg_file *file = NULL;
 	int ret = EPKG_OK;
-	char fpath[MAXPATHLEN +1];
+	char fpath[MAXPATHLEN + 1];
 	const char *lib;
 	bool failures = false;
 
-	int (*pkg_analyse_init)(const char* stage)  = pkg_analyse_init_elf;
-	int (*pkg_analyse)(const bool developer_mode, struct pkg *pkg, const char *fpath) = pkg_analyse_elf;
-	int (*pkg_analyse_close)()  = pkg_analyse_close_elf;
+	int (*pkg_analyse_init)(const char *stage) = pkg_analyse_init_elf;
+	int (*pkg_analyse)(const bool developer_mode, struct pkg *pkg,
+	    const char *fpath) = pkg_analyse_elf;
+	int (*pkg_analyse_close)() = pkg_analyse_close_elf;
 
 	if (tll_length(pkg->shlibs_required) != 0) {
 		tll_free_and_free(pkg->shlibs_required, free);
@@ -219,12 +248,12 @@ pkg_analyse_files(struct pkgdb *db __unused, struct pkg *pkg, const char *stage)
 	/* Assume no architecture dependence, for contradiction */
 	if (ctx.developer_mode)
 		pkg->flags &= ~(PKG_CONTAINS_ELF_OBJECTS |
-				PKG_CONTAINS_STATIC_LIBS |
-				PKG_CONTAINS_LA);
+		    PKG_CONTAINS_STATIC_LIBS | PKG_CONTAINS_LA);
 
 	while (pkg_files(pkg, &file) == EPKG_OK) {
 		if (stage != NULL)
-			snprintf(fpath, sizeof(fpath), "%s/%s", stage, file->path);
+			snprintf(fpath, sizeof(fpath), "%s/%s", stage,
+			    file->path);
 		else
 			strlcpy(fpath, file->path, sizeof(fpath));
 
@@ -237,9 +266,11 @@ pkg_analyse_files(struct pkgdb *db __unused, struct pkg *pkg, const char *stage)
 	/*
 	 * Do not depend on libraries that a package provides itself
 	 */
-	tll_foreach(pkg->shlibs_required, s) {
+	tll_foreach(pkg->shlibs_required, s)
+	{
 		if (stringlist_contains(&pkg->shlibs_provided, s->item)) {
-			pkg_debug(2, "remove %s from required shlibs as the "
+			pkg_debug(2,
+			    "remove %s from required shlibs as the "
 			    "package %s provides this library itself",
 			    s->item, pkg->name);
 			tll_remove_and_free(pkg->shlibs_required, s, free);
@@ -249,11 +280,13 @@ pkg_analyse_files(struct pkgdb *db __unused, struct pkg *pkg, const char *stage)
 		while (pkg_files(pkg, &file) == EPKG_OK) {
 			if ((lib = strstr(file->path, s->item)) != NULL &&
 			    strlen(lib) == strlen(s->item) && lib[-1] == '/') {
-				pkg_debug(2, "remove %s from required shlibs as "
+				pkg_debug(2,
+				    "remove %s from required shlibs as "
 				    "the package %s provides this file itself",
 				    s->item, pkg->name);
 
-				tll_remove_and_free(pkg->shlibs_required, s, free);
+				tll_remove_and_free(pkg->shlibs_required, s,
+				    free);
 				break;
 			}
 		}

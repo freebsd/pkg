@@ -1,4 +1,12 @@
+/*-
+ * Copyright (c) 2024 Keve Müller <kevemueller@users.github.com>
+ *
+ * SPDX-License-Identifier: BSD-2-Clause
+ */
+
 #pragma once
+
+#include "private/pkg.h"
 
 int pkg_get_myarch_elfparse(int fd, struct os_info *oi);
 int pkg_analyse_init_elf(const char* stage);
