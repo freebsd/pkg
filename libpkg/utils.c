@@ -335,20 +335,29 @@ check_for_hardlink(hardlinks_t *hl, struct stat *st)
 	return (false);
 }
 
+/*
+ * ABI validation:
+ * - lowest match (case insensitive)
+ * - glob matching
+ *
+ * A package which is valid for installation on any FreeBSD now simply has
+ * to define itself as: abi: "FreeBSD" or "FreeBSD:*"
+ * A package which is valid for installation on any FreeBSD 15 regarless of
+ * the arch
+ * abi: "FreeBSD:15" or "FreeBSD:15:*"
+ *
+ */
+
 bool
-is_valid_abi(const char *arch, bool emit_error) {
-	const char *myarch, *myarch_legacy;
+is_valid_abi(const char *testabi, bool emit_error)
+{
+	const char *abi = ctx.oi->abi;
 
-	myarch = pkg_object_string(pkg_config_get("ABI"));
-	myarch_legacy = pkg_object_string(pkg_config_get("ALTABI"));
-
-	if (fnmatch(arch, myarch, FNM_CASEFOLD) == FNM_NOMATCH &&
-	    fnmatch(arch, myarch_legacy, FNM_CASEFOLD) == FNM_NOMATCH &&
-	    strncasecmp(arch, myarch, strlen(myarch)) != 0 &&
-	    strncasecmp(arch, myarch_legacy, strlen(myarch_legacy)) != 0) {
+	if (strncasecmp(testabi, abi, strlen(testabi)) != 0 &&
+	    fnmatch(testabi, abi, FNM_CASEFOLD) == FNM_NOMATCH) {
 		if (emit_error)
 			pkg_emit_error("wrong architecture: %s instead of %s",
-			    arch, myarch);
+			    testabi, abi);
 		return (false);
 	}
 
