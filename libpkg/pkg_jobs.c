@@ -1081,10 +1081,10 @@ pkg_jobs_need_upgrade(struct pkg *rp, struct pkg *lp)
 		return (true);
 
 	/* Compare archs */
-	if (!STREQ(lp->altabi, rp->altabi)) {
+	if (!STREQ(lp->abi, rp->abi)) {
 		free(rp->reason);
 		xasprintf(&rp->reason, "ABI changed: '%s' -> '%s'",
-		    lp->altabi, rp->altabi);
+		    lp->abi, rp->abi);
 		assert(rp->reason != NULL);
 		return (true);
 	}
