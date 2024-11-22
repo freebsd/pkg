@@ -146,7 +146,7 @@ shlib_valid_abi(const char *fpath, GElf_Ehdr *hdr)
 	 */
 	arch[0] = '\0';
 	wordsize[0] = '\0';
-	p = ctx.oi->abi;
+	p = pkg_object_string(pkg_config_get("ABI"));
 	for(semicolon = 0; semicolon < 3 && p != NULL; semicolon ++, p ++) {
 		p = strchr(p, ':');
 		if (p != NULL) {
