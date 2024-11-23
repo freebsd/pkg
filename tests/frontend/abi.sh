@@ -59,15 +59,96 @@ override_body() {
 
 elfparse_body() {
 	# ELF parsing now works across platforms
-	_expected="FreeBSD:13:amd64\n"
-	atf_check \
-		-o inline:"${_expected}" \
-		pkg -o IGNORE_OSMAJOR=1 -o ABI_FILE=$(atf_get_srcdir)/fbsd.bin config abi
 
-	_expected="freebsd:13:x86:64\n"
+	_expected="FreeBSD:14:aarch64\n"
 	atf_check \
 		-o inline:"${_expected}" \
-		pkg -o IGNORE_OSMAJOR=1 -o ABI_FILE=$(atf_get_srcdir)/fbsd.bin config altabi
+		pkg -o IGNORE_OSMAJOR=1 -o ABI_FILE=$(atf_get_srcdir)/freebsd-aarch64.bin config abi
+
+	_expected="freebsd:14:aarch64:64\n"
+	atf_check \
+		-o inline:"${_expected}" \
+		pkg -o IGNORE_OSMAJOR=1 -o ABI_FILE=$(atf_get_srcdir)/freebsd-aarch64.bin config altabi
+
+	_expected="FreeBSD:14:amd64\n"
+	atf_check \
+		-o inline:"${_expected}" \
+		pkg -o IGNORE_OSMAJOR=1 -o ABI_FILE=$(atf_get_srcdir)/freebsd-amd64.bin config abi
+
+	_expected="freebsd:14:x86:64\n"
+	atf_check \
+		-o inline:"${_expected}" \
+		pkg -o IGNORE_OSMAJOR=1 -o ABI_FILE=$(atf_get_srcdir)/freebsd-amd64.bin config altabi
+
+	_expected="FreeBSD:13:armv6\n"
+	atf_check \
+		-o inline:"${_expected}" \
+		pkg -o IGNORE_OSMAJOR=1 -o ABI_FILE=$(atf_get_srcdir)/freebsd-armv6.bin config abi
+
+	_expected="freebsd:13:armv6:32:el:eabi:hardfp\n"
+	atf_check \
+		-o inline:"${_expected}" \
+		pkg -o IGNORE_OSMAJOR=1 -o ABI_FILE=$(atf_get_srcdir)/freebsd-armv6.bin config altabi
+
+	_expected="FreeBSD:14:armv7\n"
+	atf_check \
+		-o inline:"${_expected}" \
+		pkg -o IGNORE_OSMAJOR=1 -o ABI_FILE=$(atf_get_srcdir)/freebsd-armv7.bin config abi
+
+	_expected="freebsd:14:armv7:32:el:eabi:hardfp\n"
+	atf_check \
+		-o inline:"${_expected}" \
+		pkg -o IGNORE_OSMAJOR=1 -o ABI_FILE=$(atf_get_srcdir)/freebsd-armv7.bin config altabi
+
+	_expected="FreeBSD:14:i386\n"
+	atf_check \
+		-o inline:"${_expected}" \
+		pkg -o IGNORE_OSMAJOR=1 -o ABI_FILE=$(atf_get_srcdir)/freebsd-i386.bin config abi
+
+	_expected="freebsd:14:x86:32\n"
+	atf_check \
+		-o inline:"${_expected}" \
+		pkg -o IGNORE_OSMAJOR=1 -o ABI_FILE=$(atf_get_srcdir)/freebsd-i386.bin config altabi
+
+	_expected="FreeBSD:14:powerpc\n"
+	atf_check \
+		-o inline:"${_expected}" \
+		pkg -o IGNORE_OSMAJOR=1 -o ABI_FILE=$(atf_get_srcdir)/freebsd-powerpc.bin config abi
+
+	_expected="freebsd:14:powerpc:32:eb\n"
+	atf_check \
+		-o inline:"${_expected}" \
+		pkg -o IGNORE_OSMAJOR=1 -o ABI_FILE=$(atf_get_srcdir)/freebsd-powerpc.bin config altabi
+
+	_expected="FreeBSD:14:powerpc64\n"
+	atf_check \
+		-o inline:"${_expected}" \
+		pkg -o IGNORE_OSMAJOR=1 -o ABI_FILE=$(atf_get_srcdir)/freebsd-powerpc64.bin config abi
+
+	_expected="freebsd:14:powerpc:64:eb\n"
+	atf_check \
+		-o inline:"${_expected}" \
+		pkg -o IGNORE_OSMAJOR=1 -o ABI_FILE=$(atf_get_srcdir)/freebsd-powerpc64.bin config altabi
+
+	_expected="FreeBSD:14:powerpc64le\n"
+	atf_check \
+		-o inline:"${_expected}" \
+		pkg -o IGNORE_OSMAJOR=1 -o ABI_FILE=$(atf_get_srcdir)/freebsd-powerpc64le.bin config abi
+
+	_expected="freebsd:14:powerpc:64:el\n"
+	atf_check \
+		-o inline:"${_expected}" \
+		pkg -o IGNORE_OSMAJOR=1 -o ABI_FILE=$(atf_get_srcdir)/freebsd-powerpc64le.bin config altabi
+
+	_expected="FreeBSD:14:riscv64\n"
+	atf_check \
+		-o inline:"${_expected}" \
+		pkg -o IGNORE_OSMAJOR=1 -o ABI_FILE=$(atf_get_srcdir)/freebsd-riscv64.bin config abi
+
+	_expected="freebsd:14:riscv:64:hf\n"
+	atf_check \
+		-o inline:"${_expected}" \
+		pkg -o IGNORE_OSMAJOR=1 -o ABI_FILE=$(atf_get_srcdir)/freebsd-riscv64.bin config altabi
 
 	_expected="dragonfly:5.10:x86:64\n"
 	atf_check \

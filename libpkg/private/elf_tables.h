@@ -50,26 +50,6 @@ static const struct _elf_corres wordsize_corres[] = {
 	{ -1, NULL},
 };
 
-static const struct _elf_corres endian_corres[] = {
-	{ ELFDATA2MSB, "eb" },
-	{ ELFDATA2LSB, "el" },
-	{ -1, NULL}
-};
-
-static const struct _elf_corres os_corres[] = {
-	{ ELFOSABI_FREEBSD, "freebsd" },
-	{ -1, NULL }
-};
-
-#ifndef EF_MIPS_ABI
-#define EF_MIPS_ABI	0x0000F000
-#endif
-#ifndef EF_ARM_VFP_FLOAT
-#define EF_ARM_VFP_FLOAT	0x00000400
-#endif
-#define E_MIPS_ABI_O32	0x00001000
-#define E_MIPS_ABI_N32	0x00000020
-
 #define NT_VERSION	1
 #define NT_ARCH	2
 #define NT_GNU_ABI_TAG	1
