@@ -68,13 +68,24 @@ TESTS_SH= \
 	frontend/triggers.sh
 
 #
-# Those files simple binaries obtained from
+# These files are mostly simple binaries obtained from
 # int main(void) { return 0; }
 #
+# The freebsd-*.bin files are copies of /usr/bin/uname from official
+# 14.1 release artifacts for the given architecture.
+
 
 TESTS_SHELL_BINS= \
 	frontend/dfly.bin \
-	frontend/fbsd.bin \
+	frontend/freebsd-aarch64.bin \
+	frontend/freebsd-amd64.bin \
+	frontend/freebsd-armv6.bin \
+	frontend/freebsd-armv7.bin \
+	frontend/freebsd-i386.bin \
+	frontend/freebsd-powerpc.bin \
+	frontend/freebsd-powerpc64.bin \
+	frontend/freebsd-powerpc64le.bin \
+	frontend/freebsd-riscv64.bin \
 	frontend/linux.bin \
 	frontend/macos.bin \
 	frontend/macos106.bin \

@@ -606,6 +606,71 @@ aeabi_parse_arm_attributes(void *data, size_t length)
 #undef MOVE
 }
 
+static const char *
+elf_parse_arch(os_type_t ostype, Elf *elf, GElf_Ehdr *ehdr)
+{
+	switch (ehdr->e_machine) {
+	case EM_386:
+		return ("i386");
+	case EM_X86_64:
+		switch (ostype) {
+		case OS_FREEBSD:
+			return ("amd64");
+		case OS_DRAGONFLY:
+			return ("x86:64");
+		default:
+			return ("x86_64");
+		}
+	case EM_AARCH64:
+		return ("aarch64");
+	case EM_ARM:
+		/* Only support EABI */
+		if ((ehdr->e_flags & EF_ARM_EABIMASK) == 0) {
+			return (NULL);
+		}
+
+		size_t shstrndx;
+		elf_getshdrstrndx(elf, &shstrndx);
+
+		GElf_Shdr shdr;
+		Elf_Scn *scn = NULL;
+		while ((scn = elf_nextscn(elf, scn)) != NULL) {
+			if (gelf_getshdr(scn, &shdr) != &shdr) {
+				break;
+			}
+			const char *sh_name = elf_strptr(elf, shstrndx, shdr.sh_name);
+			if (sh_name == NULL) {
+				continue;
+			}
+			if (STREQ(".ARM.attributes", sh_name)) {
+				Elf_Data *data = elf_getdata(scn, NULL);
+				return (aeabi_parse_arm_attributes(data->d_buf, data->d_size));
+			}
+		}
+		break;
+	case EM_PPC:
+		return ("powerpc");
+	case EM_PPC64:
+		switch (ehdr->e_ident[EI_DATA]) {
+		case ELFDATA2MSB:
+			return ("powerpc64");
+		case ELFDATA2LSB:
+			return ("powerpc64le");
+		}
+		break;
+	case EM_RISCV:
+		switch (ehdr->e_ident[EI_CLASS]) {
+		case ELFCLASS32:
+			return ("riscv32");
+		case ELFCLASS64:
+			return ("riscv64");
+		}
+		break;
+	}
+
+	return (NULL);
+}
+
 static bool
 elf_note_analyse(Elf_Data *data, GElf_Ehdr *elfhdr, struct os_info *oi)
 {
@@ -731,10 +796,8 @@ pkg_get_myarch_elfparse(int fd, struct os_info *oi)
 	Elf_Data *data;
 	Elf_Scn *scn = NULL;
 	int ret = EPKG_OK;
-	const char *arch,*abi, *endian_corres_str, *wordsize_corres_str, *fpu;
 	char *dest = oi->abi;
 	size_t sz = sizeof(oi->abi);
-	size_t dsz;
 
 	if (elf_version(EV_CURRENT) == EV_NONE) {
 		pkg_emit_error("ELF library initialization failed: %s",
@@ -777,20 +840,15 @@ pkg_get_myarch_elfparse(int fd, struct os_info *oi)
 		goto cleanup;
 	}
 
-	snprintf(dest, sz, "%s:%s", oi->name, oi->version);
+	const char *arch = elf_parse_arch(oi->ostype, elf, &elfhdr);
+	if (arch == NULL) {
+		ret = EPKG_FATAL;
+		pkg_emit_error("failed to determine the architecture");
+		goto cleanup;
+	}
+	oi->arch = xstrdup(arch);
 
-	wordsize_corres_str = elf_corres_to_string(wordsize_corres,
-	    (int)elfhdr.e_ident[EI_CLASS]);
-
-	if (oi->ostype == OS_FREEBSD && elfhdr.e_machine == EM_X86_64)
-		oi->arch = xstrdup("amd64");
-	else if (oi->ostype == OS_DRAGONFLY && elfhdr.e_machine == EM_X86_64)
-		oi->arch = xstrdup("x86:64");
-	else
-		oi->arch = xstrdup(elf_corres_to_string(mach_corres, (int) elfhdr.e_machine));
-
-	dsz = strlen(dest);
-	snprintf(dest + dsz, sz - dsz, ":%s", oi->arch);
+	snprintf(dest, sz, "%s:%s:%s", oi->name, oi->version, oi->arch);
 
 cleanup:
 	if (elf != NULL)
