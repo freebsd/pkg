@@ -916,10 +916,19 @@ _dbdir_mkdir(const char *path, mode_t mode)
 	return (mkdirat(dfd, _dbdir_trim_path(path), mode));
 }
 
-static int
+static char *
 _dbdir_getcwd(char *path, size_t sz)
 {
-	return (snprintf(path, sz, "/"));
+	if (0 == sz) {
+		errno = EINVAL;
+	} else 	if (sz >= 2) {
+		path[0] = '/';
+		path[1] = '\0';
+		return path;
+	} else {
+		errno = ERANGE;
+	}
+	return 0;
 }
 
 void
