@@ -4,11 +4,6 @@
 # _external_ sources.
 #
 
-# external/sqlite/sqlite3.c:45168:9: runtime error: call to function _dbdir_getcwd through pointer to incorrect function type 'char *(*)(char *, unsigned long)'
-# +pkgdb.c:921: note: _dbdir_getcwd defined here
-# +SUMMARY: UndefinedBehaviorSanitizer: undefined-behavior external/sqlite/sqlite3.c:45168:9 
-function:sqlite3.c
-
 # external/picosat/picosat.c:3432:33: runtime error: applying non-zero offset 8 to null pointer
 # +SUMMARY: UndefinedBehaviorSanitizer: undefined-behavior external/picosat/picosat.c:3432:33 
 pointer-overflow:picosat.c
