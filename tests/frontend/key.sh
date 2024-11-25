@@ -69,11 +69,17 @@ key_sign_body() {
 		# Generate a key with pkg
 		atf_check -o save:repo.pub -e ignore \
 		    pkg key --create -t "$signer" repo.key
-
+		
 		atf_check -o save:msg.sig \
 		    pkg key --sign -t "$signer" repo.key < msg
 
-		atf_check -o ignore openssl dgst -sha256 -verify repo.pub \
+		if [ $signer = ecdsa ]; then
+			keyform="-keyform DER"
+		else
+			keyform=""
+		fi
+
+		atf_check -o ignore openssl dgst -sha256 $keyform -verify repo.pub \
 		    -signature msg.sig msg
 	done
 }
