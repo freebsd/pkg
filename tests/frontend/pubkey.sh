@@ -25,7 +25,7 @@ ecc_test() {
 			openssl ecparam -genkey -name secp256k1 -out repo.key -outform DER
 		chmod 0400 repo.key
 		atf_check -o ignore -e ignore \
-			openssl ec -in repo.key -pubout -out repo.pub -outform DER
+			openssl ec -inform DER -in repo.key -pubout -out repo.pub -outform DER
 		;;
 	esac
 

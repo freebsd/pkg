@@ -18,16 +18,17 @@ setup() {
 		atf_skip_on Linux Test fails on Linux
 		atf_check -o save:repo.pub -e ignore \
 			pkg key --create repo.key
+		keyform=""
 		_typecmd=""
 		;;
 	ecc)
-		atf_skip_on Darwin Test fails on Darwin
 		atf_skip_on Linux Test fails on Linux
 		atf_check -o ignore -e ignore \
 			openssl ecparam -genkey -name secp256k1 -out repo.key -outform DER
 		chmod 0400 repo.key
 		atf_check -o ignore -e ignore \
-			openssl ec -in repo.key -pubout -out repo.pub -outform DER
+			openssl ec -inform DER -in repo.key -pubout -out repo.pub -outform DER
+		keyform="-keyform DER"
 		_typecmd='printf "%s\n%s\n" "TYPE" "ecdsa"'
 		;;
 	esac
@@ -47,7 +48,7 @@ read -t 2 sum
 
 $_typecmd
 echo SIGNATURE
-echo -n \$sum | /usr/bin/openssl dgst -sign repo.key -sha256 -binary
+echo -n \$sum | openssl dgst $keyform -sign repo.key -sha256 -binary
 echo
 echo CERT
 cat repo.pub
