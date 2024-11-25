@@ -20,13 +20,16 @@ native_body() {
 	fi
 	if [ "${OS}" = "FreeBSD" ]; then
 		thisarch=$(echo "${thisarch}" | sed s/x86_64/amd64/)
+		thisabi=$(echo "${thisarch}" | sed s/amd64/x86:64/)
+	else
+		thisabi=$thisarch
 	fi
 	_expected="${OS}:${version}:${thisarch}\n"
 	atf_check \
 		-o inline:"${_expected}" \
 		pkg config abi
 
-	_expected="$(uname -s | tr '[:upper:]' '[:lower:]'):${version}:$(echo $thisarch | sed 's/x86_64/x86:64/; s/amd64/x86:64/')\n"
+	_expected="$(uname -s | tr '[:upper:]' '[:lower:]'):${version}:${thisabi}\n"
 	atf_check \
 		-o inline:"${_expected}" \
 		pkg config altabi
