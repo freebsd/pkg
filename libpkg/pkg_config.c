@@ -50,6 +50,7 @@
 
 #include "pkg.h"
 #include "private/pkg.h"
+#include "private/pkg_abi.h"
 #include "private/event.h"
 #include "private/fetch.h"
 #include "pkg_repos.h"
@@ -89,7 +90,6 @@ struct pkg_ctx ctx = {
 	.compression_level = -1,
 	.compression_threads = -1,
 	.defer_triggers = false,
-	.oi = NULL,
 };
 
 struct config_entry {
@@ -98,7 +98,6 @@ struct config_entry {
 	const char *def;
 };
 
-static struct os_info oi = { 0 };
 static struct pkg_repo *repos = NULL;
 ucl_object_t *config = NULL;
 
@@ -157,16 +156,6 @@ static struct config_entry c[] = {
 		PKG_BOOL,
 		"SYSLOG",
 		"YES",
-	},
-	{
-		PKG_STRING,
-		"ABI",
-		oi.abi,
-	},
-	{
-		PKG_STRING,
-		"ALTABI",
-		oi.altabi,
 	},
 	{
 		PKG_BOOL,
@@ -379,11 +368,6 @@ static struct config_entry c[] = {
 		NULL,
 	},
 #ifdef __FreeBSD__
-	{
-		PKG_INT,
-		"OSVERSION",
-		oi.str_osversion,
-	},
 	{
 		PKG_BOOL,
 		"IGNORE_OSVERSION",
@@ -797,40 +781,79 @@ walk_repo_obj(const ucl_object_t *obj, const char *file, pkg_init_flags flags)
 	}
 }
 
+struct config_parser_vars {
+	char *abi;
+	char *altabi;
+	char *osversion;
+	char *release;
+	char *version_major;
+	char *version_minor;
+};
+
+/* Register parser variables based on ctx.abi.
+ * The returned struct must be free'd with config_parser_variables_free()
+ * after parsing is complete. */
+static struct config_parser_vars *
+config_parser_vars_register(struct ucl_parser *p)
+{
+	struct config_parser_vars *vars = xcalloc(1, sizeof(struct config_parser_vars));
+
+	vars->abi = pkg_abi_to_string(&ctx.abi);
+	ucl_parser_register_variable(p, "ABI", vars->abi);
+
+	char altabi_buffer[BUFSIZ];
+	pkg_arch_to_legacy(vars->abi, altabi_buffer, sizeof(altabi_buffer));
+	vars->altabi = xstrdup(altabi_buffer);
+	ucl_parser_register_variable(p, "ALTABI", vars->altabi);
+
+	if (ctx.abi.os == PKG_OS_FREEBSD) {
+		xasprintf(&vars->osversion, "%d",
+		    pkg_abi_get_freebsd_osversion(&ctx.abi));
+		ucl_parser_register_variable(p, "OSVERSION", vars->osversion);
+	}
+	ucl_parser_register_variable(p, "OSNAME", pkg_os_to_string(ctx.abi.os));
+
+	if (pkg_abi_string_only_major_version(ctx.abi.os)) {
+		xasprintf(&vars->release, "%d", ctx.abi.major);
+	} else {
+		xasprintf(&vars->release, "%d.%d", ctx.abi.major, ctx.abi.minor);
+	}
+	ucl_parser_register_variable(p, "RELEASE", vars->release);
+
+	xasprintf(&vars->version_major, "%d", ctx.abi.major);
+	ucl_parser_register_variable(p, "VERSION_MAJOR", vars->version_major);
+
+	xasprintf(&vars->version_minor, "%d", ctx.abi.minor);
+	ucl_parser_register_variable(p, "VERSION_MINOR", vars->version_minor);
+
+	ucl_parser_register_variable(p, "ARCH",
+	    pkg_arch_to_string(ctx.abi.os, ctx.abi.arch));
+
+	return vars;
+}
+
+static void
+config_parser_vars_free(struct config_parser_vars *vars)
+{
+	free(vars->abi);
+	free(vars->altabi);
+	free(vars->osversion);
+	free(vars->release);
+	free(vars->version_major);
+	free(vars->version_minor);
+	free(vars);
+}
 static void
 load_repo_file(int dfd, const char *repodir, const char *repofile,
     pkg_init_flags flags)
 {
 	struct ucl_parser *p;
 	ucl_object_t *obj = NULL;
-	const char *myarch = NULL;
-	const char *myarch_legacy = NULL;
 	int fd;
 
 	p = ucl_parser_new(0);
 
-	myarch = pkg_object_string(pkg_config_get("ABI"));
-	ucl_parser_register_variable (p, "ABI", myarch);
-
-	myarch_legacy = pkg_object_string(pkg_config_get("ALTABI"));
-	ucl_parser_register_variable (p, "ALTABI", myarch_legacy);
-	if (oi.ostype == OS_FREEBSD)
-		ucl_parser_register_variable(p, "OSVERSION", oi.str_osversion);
-	if (oi.name != NULL) {
-		ucl_parser_register_variable(p, "OSNAME", oi.name);
-	}
-	if (oi.version != NULL) {
-		ucl_parser_register_variable(p, "RELEASE", oi.version);
-	}
-	if (oi.version_major != NULL) {
-		ucl_parser_register_variable(p, "VERSION_MAJOR", oi.version_major);
-	}
-	if (oi.version_minor != NULL) {
-		ucl_parser_register_variable(p, "VERSION_MINOR", oi.version_minor);
-	}
-	if (oi.arch != NULL) {
-		ucl_parser_register_variable(p, "ARCH", oi.arch);
-	}
+	struct config_parser_vars *parser_vars = config_parser_vars_register(p);
 
 	errno = 0;
 	obj = NULL;
@@ -839,28 +862,28 @@ load_repo_file(int dfd, const char *repodir, const char *repofile,
 	fd = openat(dfd, repofile, O_RDONLY);
 	if (fd == -1) {
 		pkg_errno("Unable to open '%s/%s'", repodir, repofile);
-		return;
+		goto out_parser_vars;
 	}
 	if (!ucl_parser_add_fd(p, fd)) {
 		pkg_emit_error("Error parsing: '%s/%s': %s", repodir,
 		    repofile, ucl_parser_get_error(p));
-		ucl_parser_free(p);
-		close(fd);
-		return;
+		goto out_fd;
 	}
-	close(fd);
 
 	obj = ucl_parser_get_object(p);
 	if (obj == NULL) {
-		ucl_parser_free(p);
-		return;
+		goto out_fd;
 	}
 
-	ucl_parser_free(p);
 	if (obj->type == UCL_OBJECT)
 		walk_repo_obj(obj, repofile, flags);
 
 	ucl_object_unref(obj);
+out_fd:
+	close(fd);
+out_parser_vars:
+	ucl_parser_free(p);
+	config_parser_vars_free(parser_vars);
 }
 
 static int
@@ -922,23 +945,10 @@ bool
 pkg_compiled_for_same_os_major(void)
 {
 #ifdef OSMAJOR
-	const char	*myabi;
-	int		 osmajor;
-
 	if (getenv("IGNORE_OSMAJOR") != NULL)
 		return (true);
 
-	myabi = pkg_object_string(pkg_config_get("ABI"));
-	myabi = strchr(myabi,':');
-	if (myabi == NULL) {
-		pkg_emit_error("Invalid ABI");
-		return (false);
-	}
-	myabi++;
-
-	osmajor = (int) strtol(myabi, NULL, 10);
-
-	return (osmajor == OSMAJOR);
+	return (ctx.abi.major == OSMAJOR);
 #else
 	return (true);		/* Can't tell, so assume yes  */
 #endif
@@ -1001,6 +1011,63 @@ config_validate_debug_flags(const ucl_object_t *o)
 	return (ret);
 }
 
+static bool
+config_init_abi(struct pkg_abi *abi)
+{
+	if (getenv("ALTABI") != NULL) {
+		pkg_emit_notice("Setting ALTABI manually is no longer supported, "
+		    "set ABI and OSVERSION or ABI_FILE instead.");
+	}
+
+	const char *env_abi_file = getenv("ABI_FILE");
+	const char *env_abi_string = getenv("ABI");
+	const char *env_osversion_string = getenv("OSVERSION");
+
+	if (env_abi_file != NULL && env_abi_string != NULL) {
+		pkg_emit_notice("Both ABI_FILE and ABI are set, ABI_FILE overrides ABI");
+	}
+
+	if (env_abi_file != NULL && env_osversion_string != NULL) {
+		pkg_emit_notice("Both ABI_FILE and OSVERSION are set, ABI_FILE overrides OSVERSION");
+	}
+
+	if (env_abi_string != NULL) {
+		if (!pkg_abi_from_string(abi, env_abi_string)) {
+			return (false);
+		}
+
+		if (abi->os == PKG_OS_FREEBSD) {
+			if (env_osversion_string == NULL) {
+				pkg_emit_error("Setting ABI requires setting OSVERSION as well");
+				return (false);
+			}
+
+			const char *errstr = NULL;
+			int env_osversion = strtonum(env_osversion_string, 1, INT_MAX, &errstr);
+			if (errstr != NULL) {
+				pkg_emit_error("Invalid OSVERSION %s, %s", env_osversion_string, errstr);
+				return (false);
+			}
+
+			pkg_abi_set_freebsd_osversion(abi, env_osversion);
+		} else {
+			if (env_osversion_string != NULL) {
+				pkg_emit_notice("OSVERSION is ignored on %s",
+				    pkg_os_to_string(abi->os));
+			}
+		}
+	} else if (env_osversion_string != NULL) {
+		pkg_emit_error("Setting OSVERSION requires setting ABI as well");
+		return (EPKG_FATAL);
+	} else {
+		if (pkg_abi_from_file(abi) != EPKG_OK) {
+			return (false);
+		}
+	}
+
+	return (true);
+}
+
 int
 pkg_ini(const char *path, const char *reposdir, pkg_init_flags flags)
 {
@@ -1024,36 +1091,27 @@ pkg_ini(const char *path, const char *reposdir, pkg_init_flags flags)
 	char *tmp = NULL;
 	size_t ukeylen;
 	int err = EPKG_OK;
-	const char *envabi;
 
 	k = NULL;
 	o = NULL;
 	if (ctx.rootfd == -1 && (ctx.rootfd = open("/", O_DIRECTORY|O_RDONLY|O_CLOEXEC)) < 0) {
 		pkg_emit_error("Impossible to open /");
-		/* Note: Not goto out since oi.arch hasn't been initialized yet. */
 		return (EPKG_FATAL);
 	}
 
-	memset(&oi, 0, sizeof(oi));
-	envabi = getenv("ABI");
-	if (envabi == NULL) {
-		pkg_get_myarch_with_legacy(&oi);
-	} else {
-		strlcpy(oi.abi, envabi, sizeof(oi.abi));
-		pkg_arch_to_legacy(oi.abi, oi.altabi, sizeof(oi.abi));
-	}
-	ctx.oi = &oi;
 	if (parsed != false) {
 		pkg_emit_error("pkg_init() must only be called once");
-		err = EPKG_FATAL;
-		goto out;
+		return (EPKG_FATAL);
+	}
+
+	if (!config_init_abi(&ctx.abi)) {
+		return (EPKG_FATAL);
 	}
 
 	if (((flags & PKG_INIT_FLAG_USE_IPV4) == PKG_INIT_FLAG_USE_IPV4) &&
 	    ((flags & PKG_INIT_FLAG_USE_IPV6) == PKG_INIT_FLAG_USE_IPV6)) {
 		pkg_emit_error("Invalid flags for pkg_init()");
-		err = EPKG_FATAL;
-		goto out;
+		return (EPKG_FATAL);
 	}
 	if ((flags & PKG_INIT_FLAG_USE_IPV4) == PKG_INIT_FLAG_USE_IPV4)
 		ctx.ip = IPV4;
@@ -1150,25 +1208,8 @@ pkg_ini(const char *path, const char *reposdir, pkg_init_flags flags)
 	}
 
 	p = ucl_parser_new(0);
-	ucl_parser_register_variable (p, "ABI", oi.abi);
-	ucl_parser_register_variable (p, "ALTABI", oi.altabi);
-	if (oi.ostype == OS_FREEBSD)
-		ucl_parser_register_variable(p, "OSVERSION", oi.str_osversion);
-	if (oi.name != NULL) {
-		ucl_parser_register_variable(p, "OSNAME", oi.name);
-	}
-	if (oi.version != NULL) {
-		ucl_parser_register_variable(p, "RELEASE", oi.version);
-	}
-	if (oi.version_major != NULL) {
-		ucl_parser_register_variable(p, "VERSION_MAJOR", oi.version_major);
-	}
-	if (oi.version_minor != NULL) {
-		ucl_parser_register_variable(p, "VERSION_MINOR", oi.version_minor);
-	}
-	if (oi.arch != NULL) {
-		ucl_parser_register_variable(p, "ARCH", oi.arch);
-	}
+
+	struct config_parser_vars *parser_vars = config_parser_vars_register(p);
 
 	errno = 0;
 	obj = NULL;
@@ -1197,6 +1238,16 @@ pkg_ini(const char *path, const char *reposdir, pkg_init_flags flags)
 			pkg_emit_error("%s in pkg.conf is no longer "
 			    "supported.  Convert to the new repository style."
 			    "  See pkg.conf(5)", ukey->buf);
+			fatal_errors = true;
+			continue;
+		}
+
+		if (strncasecmp(ukey->buf, "ABI", ukeylen) == 0 ||
+		    strncasecmp(ukey->buf, "ALTABI", ukeylen) == 0 ||
+		    strncasecmp(ukey->buf, "OSVERSION", ukeylen) == 0) {
+			pkg_emit_error("Setting %s in pkg.conf is no longer supported. "
+			    "Set ABI_FILE or ABI and OSVERSION with -o on the "
+			    "command line or in the environment to configure ABI", ukey->buf);
 			fatal_errors = true;
 			continue;
 		}
@@ -1332,11 +1383,28 @@ pkg_ini(const char *path, const char *reposdir, pkg_init_flags flags)
 	ucl_object_unref(obj);
 	ucl_parser_free(p);
 
-	if (pkg_object_string(pkg_config_get("ABI")) == NULL ||
-	    STREQ(pkg_object_string(pkg_config_get("ABI")), "unknown")) {
-		pkg_emit_error("Unable to determine ABI");
-		err = EPKG_FATAL;
-		goto out;
+	{
+		/* Even though we no longer support setting ABI/ALTABI/OSVERSION
+		   in the pkg.conf config file, we still need to expose these
+		   values through e.g. `pkg config ABI`. */
+		char *abi_string = pkg_abi_to_string(&ctx.abi);
+		char altabi_string[BUFSIZ];
+		pkg_arch_to_legacy(abi_string, altabi_string, sizeof(altabi_string));
+
+		ucl_object_insert_key(config,
+		    ucl_object_fromstring(abi_string), "ABI", 0, true);
+		ucl_object_insert_key(config,
+		    ucl_object_fromstring(altabi_string), "ALTABI", 0, true);
+
+		free(abi_string);
+
+		if (ctx.abi.os == PKG_OS_FREEBSD) {
+			char *osversion;
+			xasprintf(&osversion, "%d", pkg_abi_get_freebsd_osversion(&ctx.abi));
+			ucl_object_insert_key(config,
+			    ucl_object_fromstring(osversion), "OSVERSION", 0, true);
+			free(osversion);
+		}
 	}
 
 	dbg(1, "pkg initialized");
@@ -1429,11 +1497,8 @@ pkg_ini(const char *path, const char *reposdir, pkg_init_flags flags)
 	}
 
 out:
-	free(oi.arch);
-	free(oi.name);
-	free(oi.version);
-	free(oi.version_major);
-	free(oi.version_minor);
+	config_parser_vars_free(parser_vars);
+
 	return err;
 
 }

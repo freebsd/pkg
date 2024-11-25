@@ -23,6 +23,7 @@
 #include <ucl.h>
 
 #include "xmalloc.h"
+#include "private/pkg_abi.h"
 #include "private/utils.h"
 #include "private/fetch.h"
 #include "pkghash.h"
@@ -106,18 +107,6 @@ typedef enum {
 	IPV6,
 } ip_version_t;
 
-typedef enum {
-	OS_UNKNOWN = 0,
-	OS_DRAGONFLY,
-	OS_FREEBSD,
-	OS_GNU,
-	OS_LINUX,
-	OS_MACOS,
-	OS_NETBSD,
-	OS_SYLLABLE,
-	OS_SOLARIS,
-} os_type_t;
-
 struct pkg_kvlist {
 	kvlist_t *list;
 };
@@ -134,19 +123,6 @@ struct pkg_kvlist_iterator {
 struct pkg_stringlist_iterator {
 	stringlist_t *list;
 	void *cur;
-};
-
-struct os_info {
-	int osversion;
-	int ostype;
-	char *name;
-	char *version;
-	char *version_major;
-	char *version_minor;
-	char *arch;
-	char abi[BUFSIZ];
-	char altabi[BUFSIZ];
-	char str_osversion[BUFSIZ];
 };
 
 struct pkg_ctx {
@@ -175,7 +151,7 @@ struct pkg_ctx {
 	bool defer_triggers;
 	bool repo_accept_legacy_pkg;
 	ip_version_t ip;
-	struct os_info *oi;
+	struct pkg_abi abi;
 	bool ischrooted;
 };
 
@@ -636,8 +612,6 @@ typedef enum {
 	PKG_RC_START = 0,
 	PKG_RC_STOP
 } pkg_rc_attr;
-
-int pkg_get_myarch_with_legacy(struct os_info *);
 
 /**
  * Remove and unregister the package.

@@ -10,6 +10,7 @@
 
 #include <atf-c.h>
 #include <private/pkg.h>
+#include <private/pkg_abi.h>
 #include <private/binfmt.h>
 #include <xstring.h>
 #include <tllist.h>
@@ -47,6 +48,8 @@ ATF_TC_BODY(analyse_elf, tc)
 {
 	struct pkg *p = NULL;
 	char *binpath = NULL;
+
+	ctx.abi.arch = PKG_ARCH_AMD64;
 
 	xasprintf(&binpath, "%s/frontend/libtestfbsd.so.1", atf_tc_get_config_var(tc, "srcdir"));
 

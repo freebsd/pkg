@@ -28,6 +28,7 @@
  */
 
 #include <bsd_compat.h>
+#include "private/pkg_abi.h"
 #include <sys/mman.h>
 #include <sys/stat.h>
 #ifdef HAVE_SYS_ENDIAN_H
@@ -315,7 +316,7 @@ int shlib_list_from_rpath(const char *rpath_str, const char *dirpath)
 int
 shlib_list_from_elf_hints(const char *hintsfile)
 {
-	if (ctx.oi->ostype == OS_FREEBSD || ctx.oi->ostype == OS_DRAGONFLY)
+	if (ctx.abi.os == PKG_OS_FREEBSD || ctx.abi.os == PKG_OS_DRAGONFLY)
 		read_elf_hints(hintsfile, 1);
 
 	return (scan_dirs_for_shlibs(&shlibs, ndirs, dirs, true));

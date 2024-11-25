@@ -55,6 +55,7 @@
 #include "pkg.h"
 #include "pkgvec.h"
 #include "private/event.h"
+#include "private/pkg_abi.h"
 #include "private/utils.h"
 #include "private/pkg.h"
 #include "xmalloc.h"
@@ -351,7 +352,7 @@ check_for_hardlink(hardlinks_t *hl, struct stat *st)
 bool
 is_valid_abi(const char *testabi, bool emit_error)
 {
-	const char *abi = ctx.oi->abi;
+	const char *abi = pkg_object_string(pkg_config_get("ABI"));
 
 	if (strncasecmp(testabi, abi, strlen(testabi)) != 0 &&
 	    fnmatch(testabi, abi, FNM_CASEFOLD) == FNM_NOMATCH) {
@@ -367,11 +368,10 @@ is_valid_abi(const char *testabi, bool emit_error)
 bool
 is_valid_os_version(struct pkg *pkg)
 {
-	if (ctx.oi->ostype != OS_FREEBSD)
+	if (ctx.abi.os != PKG_OS_FREEBSD)
 		return (true);
 	const char *fbsd_version;
 	const char *errstr = NULL;
-	int fbsdver;
 	char query_buf[512];
 	/* -1: not checked, 0: not allowed, 1: allowed */
 	static int osver_mismatch_allowed = -1;
@@ -380,14 +380,15 @@ is_valid_os_version(struct pkg *pkg)
 	if (pkg_object_bool(pkg_config_get("IGNORE_OSVERSION")))
 		return (true);
 	if ((fbsd_version = pkg_kv_get(&pkg->annotations, "FreeBSD_version")) != NULL) {
-		fbsdver = strtonum(fbsd_version, 1, INT_MAX, &errstr);
+		int pkg_osversion = strtonum(fbsd_version, 1, INT_MAX, &errstr);
 		if (errstr != NULL) {
 			pkg_emit_error("Invalid FreeBSD version %s for package %s",
 			    fbsd_version, pkg->name);
 			return (false);
 		}
-		if (fbsdver > ctx.oi->osversion) {
-			if (fbsdver - ctx.oi->osversion < 100000) {
+		int abi_osversion = pkg_abi_get_freebsd_osversion(&ctx.abi);
+		if (pkg_osversion > abi_osversion) {
+			if (pkg_osversion - abi_osversion < 100000) {
 				/* Negligible difference, ask user to enforce */
 				if (osver_mismatch_allowed == -1) {
 					snprintf(query_buf, sizeof(query_buf),
@@ -396,7 +397,7 @@ is_valid_os_version(struct pkg *pkg)
 							"- package: %d\n"
 							"- running userland: %d\n"
 							"Ignore the mismatch and continue? ", pkg->name,
-							fbsdver, ctx.oi->osversion);
+							pkg_osversion, abi_osversion);
 					ret = pkg_emit_query_yesno(false, query_buf);
 					osver_mismatch_allowed = ret;
 				}
@@ -409,7 +410,7 @@ is_valid_os_version(struct pkg *pkg)
 					"- package: %d\n"
 					"- running kernel: %d\n",
 					pkg->name,
-					fbsdver, ctx.oi->osversion);
+					pkg_osversion, abi_osversion);
 				return (false);
 			}
 		}

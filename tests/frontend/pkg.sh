@@ -21,15 +21,6 @@ pkg_no_database_body() {
 
 pkg_config_defaults_body()
 {
-	case "${OS}" in
-	FreeBSD|DragonFly)
-		MATCH_ALTABI='^ *ALTABI = "[a-zA-Z0-9]+:[a-z\.A-Z0-9]+:[a-zA-Z0-9]+:[a-zA-Z0-9:]+";$'
-		;;
-	*)
-		MATCH_ALTABI='^ *ALTABI = "[a-zA-Z0-9]+:[a-z\.A-Z0-9]+:[a-zA-Z0-9_]+;$'
-		;;
-	esac
-
 	atf_check \
 	    -o match:'^ *PKG_DBDIR = "/var/db/pkg";$' \
 	    -o match:'^ *PKG_CACHEDIR = "/var/cache/pkg";$' \
@@ -39,7 +30,7 @@ pkg_config_defaults_body()
 	    -o match:'^ *ASSUME_ALWAYS_YES = false;$' \
 	    -o match:'^ *PLIST_KEYWORDS_DIR = "";$' \
 	    -o match:'^ *SYSLOG = true;$' \
-	    -o match:"${MATCH_ABI}" \
+	    -o match:'^ *ABI = "[a-zA-Z0-9]+:[a-z\.A-Z0-9]+:[a-zA-Z0-9]+";$'\
 	    -o match:'^ *DEVELOPER_MODE = false;$' \
 	    -o match:'^ *VULNXML_SITE = "https://vuxml.freebsd.org/freebsd/vuln.xml.xz";$' \
 	    -o match:'^ *FETCH_RETRY = 3;$' \
