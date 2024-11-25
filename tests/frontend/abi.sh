@@ -49,13 +49,13 @@ override_body() {
 	atf_check \
 		-o inline:"${_expected}" \
 		-e ignore \
-		pkg -o ABI=FreeBSD:12:powerpc config abi
+		pkg -o ABI=FreeBSD:12:powerpc -o OSVERSION=1201000 config abi
 
 	_expected="freebsd:12:powerpc:32:eb\n"
 	atf_check \
 		-o inline:"${_expected}" \
 		-e ignore \
-		pkg -o ABI=FreeBSD:12:powerpc config altabi
+		pkg -o ABI=FreeBSD:12:powerpc -o OSVERSION=1201000 config altabi
 }
 
 elfparse_body() {
@@ -105,27 +105,27 @@ machoparse_body() {
 	atf_check \
 		-s exit:1 \
 		-o inline:"${_expected}" \
-		-e match:"Unable to determine ABI" \
+		-e match:"Unable to determine the ABI" \
 		pkg -o IGNORE_OSMAJOR=1 -o ABI_FILE=$(atf_get_srcdir)/macosfat.bin#i386 config abi
 
 	atf_check \
 		-s exit:1 \
 		-o inline:"${_expected}" \
-		-e match:"Unable to determine ABI" \
+		-e match:"Unable to determine the ABI" \
 		pkg -o IGNORE_OSMAJOR=1 -o ABI_FILE=$(atf_get_srcdir)/macosfat.bin#i386 config altabi
 
 	# explicitely select a fat entry that is not a valid architecture, hence not in the ABI_FILE
-	_expected="Scanned 2 entries, found none matching selector abc\n"
+	_expected=""
 	atf_check \
 		-s exit:1 \
 		-o inline:"${_expected}" \
-		-e match:"Unable to determine ABI" \
+		-e match:"Invalid ABI_FILE architecture hint abc" \
 		pkg -o IGNORE_OSMAJOR=1 -o ABI_FILE=$(atf_get_srcdir)/macosfat.bin#abc config abi
 
 	atf_check \
 		-s exit:1 \
 		-o inline:"${_expected}" \
-		-e match:"Unable to determine ABI" \
+		-e match:"Invalid ABI_FILE architecture hint abc" \
 		pkg -o IGNORE_OSMAJOR=1 -o ABI_FILE=$(atf_get_srcdir)/macosfat.bin#abc config altabi
 
 	# if the binary is not universal, selecting the first entry is not commentable
@@ -141,18 +141,18 @@ machoparse_body() {
 		-e not-match:"picking first" \
 		pkg -d -o IGNORE_OSMAJOR=1 -o ABI_FILE=$(atf_get_srcdir)/macos.bin config altabi
 
-	_expected="Scanned 1 entry, found none matching selector abc\n"
+	_expected="Scanned 1 entry, found none matching selector i386\n"
 	atf_check \
 		-s exit:1 \
 		-o inline:"${_expected}" \
-		-e match:"Unable to determine ABI" \
-		pkg -d -o IGNORE_OSMAJOR=1 -o ABI_FILE=$(atf_get_srcdir)/macos.bin#abc config abi
+		-e match:"Unable to determine the ABI" \
+		pkg -d -o IGNORE_OSMAJOR=1 -o ABI_FILE=$(atf_get_srcdir)/macos.bin#i386 config abi
 
 	atf_check \
 		-s exit:1 \
 		-o inline:"${_expected}" \
-		-e match:"Unable to determine ABI" \
-		pkg -d -o IGNORE_OSMAJOR=1 -o ABI_FILE=$(atf_get_srcdir)/macos.bin#abc config altabi
+		-e match:"Unable to determine the ABI" \
+		pkg -d -o IGNORE_OSMAJOR=1 -o ABI_FILE=$(atf_get_srcdir)/macos.bin#i386 config altabi
 
 	# if the binary is universal, selecting the first entry is to be commented
 	_expected="Darwin:17:amd64\n"

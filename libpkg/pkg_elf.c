@@ -23,7 +23,6 @@
 #include <sys/stat.h>
 
 #include <assert.h>
-#include <ctype.h>
 #include <dlfcn.h>
 #include <fcntl.h>
 #include <gelf.h>
@@ -43,8 +42,8 @@
 
 #include "pkg.h"
 #include "private/pkg.h"
+#include "private/pkg_abi.h"
 #include "private/event.h"
-#include "private/elf_tables.h"
 #include "private/ldconfig.h"
 #include "private/binfmt.h"
 
@@ -52,6 +51,9 @@
 #define NT_ABI_TAG 1
 #endif
 
+#define NT_VERSION	1
+#define NT_ARCH		2
+#define NT_GNU_ABI_TAG	1
 
 /* FFR: when we support installing a 32bit package on a 64bit host */
 #define _PATH_ELF32_HINTS       "/var/run/ld-elf32.so.hints"
@@ -60,8 +62,7 @@
 #define roundup2(x, y)	(((x)+((y)-1))&(~((y)-1))) /* if y is powers of two */
 #endif
 
-static const char * elf_corres_to_string(const struct _elf_corres* m, int e);
-static int elf_string_to_corres(const struct _elf_corres* m, const char *s);
+static enum pkg_arch elf_parse_arch(Elf *elf, GElf_Ehdr *ehdr);
 
 static int
 filter_system_shlibs(const char *name, char *path, size_t pathlen)
@@ -128,79 +129,6 @@ add_shlibs_to_pkg(struct pkg *pkg, const char *fpath, const char *name,
 
 		return (EPKG_FATAL);
 	}
-}
-
-static bool
-shlib_valid_abi(const char *fpath, GElf_Ehdr *hdr)
-{
-	int semicolon;
-	const char *p, *t;
-	char arch[64], wordsize[64];
-	int wclass;
-	const char *shlib_arch;
-
-	/*
-	 * ALTABI string is in format:
-	 * <osname>:<osversion>:<arch>:<wordsize>[.other]
-	 * We need here arch and wordsize only
-	 */
-	arch[0] = '\0';
-	wordsize[0] = '\0';
-	p = pkg_object_string(pkg_config_get("ABI"));
-	for(semicolon = 0; semicolon < 3 && p != NULL; semicolon ++, p ++) {
-		p = strchr(p, ':');
-		if (p != NULL) {
-			switch(semicolon) {
-			case 1:
-				/* We have arch here */
-				t = strchr(p + 1, ':');
-				/* Abi line is likely invalid */
-				if (t == NULL)
-					return (true);
-				strlcpy(arch, p + 1, MIN((long)sizeof(arch), t - p));
-				break;
-			case 2:
-				t = strchr(p + 1, ':');
-				if (t == NULL)
-					strlcpy(wordsize, p + 1, sizeof(wordsize));
-				else
-					strlcpy(wordsize, p + 1, MIN((long)sizeof(wordsize), t - p));
-				break;
-			}
-		}
-	}
-	/* Invalid ABI line */
-	if (arch[0] == '\0' || wordsize[0] == '\0')
-		return (true);
-
-	shlib_arch = elf_corres_to_string(mach_corres, (int)hdr->e_machine);
-	if (shlib_arch == NULL)
-		return (true);
-
-	wclass = elf_string_to_corres(wordsize_corres, wordsize);
-	if (wclass == -1)
-		return (true);
-
-
-	/*
-	 * Compare wordsize first as the arch for amd64/i386 is an abmiguous
-	 * 'x86'
-	 */
-	if ((int)hdr->e_ident[EI_CLASS] != wclass) {
-		pkg_debug(1, "not valid elf class for shlib: %s: %s",
-		    elf_corres_to_string(wordsize_corres,
-		    (int)hdr->e_ident[EI_CLASS]),
-		    fpath);
-		return (false);
-	}
-
-	if (!STREQ(shlib_arch, arch)) {
-		pkg_debug(1, "not valid abi for shlib: %s: %s", shlib_arch,
-		    fpath);
-		return (false);
-	}
-
-	return (true);
 }
 
 #ifdef __FreeBSD__
@@ -343,7 +271,7 @@ analyse_elf(struct pkg *pkg, const char *fpath)
 		goto cleanup; /* not a dynamically linked elf: no results */
 	}
 
-	if (!shlib_valid_abi(fpath, &elfhdr)) {
+	if (elf_parse_arch(e, &elfhdr) != ctx.abi.arch) {
 		ret = EPKG_END;
 		goto cleanup; /* Invalid ABI */
 	}
@@ -450,31 +378,7 @@ analyse_fpath(struct pkg *pkg, const char *fpath)
 	return (EPKG_OK);
 }
 
-static const char *
-elf_corres_to_string(const struct _elf_corres* m, int e)
-{
-	int i = 0;
-
-	for (i = 0; m[i].string != NULL; i++)
-		if (m[i].elf_nb == e)
-			return (m[i].string);
-
-	return ("unknown");
-}
-
-static int
-elf_string_to_corres(const struct _elf_corres* m, const char *s)
-{
-	int i = 0;
-
-	for (i = 0; m[i].string != NULL; i++)
-		if (STREQ(m[i].string, s))
-			return (m[i].elf_nb);
-
-	return (-1);
-}
-
-static const char *
+static enum pkg_arch
 aeabi_parse_arm_attributes(void *data, size_t length)
 {
 	uint32_t sect_len;
@@ -487,19 +391,19 @@ aeabi_parse_arm_attributes(void *data, size_t length)
 } while (0)
 
 	if (length == 0 || *section != 'A')
-		return (NULL);
+		return (PKG_ARCH_UNKNOWN);
 	MOVE(1);
 
 	/* Read the section length */
 	if (length < sizeof(sect_len))
-		return (NULL);
+		return (PKG_ARCH_UNKNOWN);
 	memcpy(&sect_len, section, sizeof(sect_len));
 
 	/*
 	 * The section length should be no longer than the section it is within
 	 */
 	if (sect_len > length)
-		return (NULL);
+		return (PKG_ARCH_UNKNOWN);
 
 	MOVE(sizeof(sect_len));
 
@@ -510,7 +414,7 @@ aeabi_parse_arm_attributes(void *data, size_t length)
 		MOVE(1);
 	}
 	if (length == 0)
-		return (NULL);
+		return (PKG_ARCH_UNKNOWN);
 	MOVE(1);
 
 	while (length != 0) {
@@ -520,21 +424,21 @@ aeabi_parse_arm_attributes(void *data, size_t length)
 		case 1: /* Tag_File */
 			MOVE(1);
 			if (length < sizeof(tag_length))
-				return (NULL);
+				return (PKG_ARCH_UNKNOWN);
 			memcpy(&tag_length, section, sizeof(tag_length));
 			break;
 		case 2: /* Tag_Section */
 		case 3: /* Tag_Symbol */
 		default:
-			return (NULL);
+			return (PKG_ARCH_UNKNOWN);
 		}
 		/* At least space for the tag and size */
 		if (tag_length <= 5)
-			return (NULL);
+			return (PKG_ARCH_UNKNOWN);
 		tag_length--;
 		/* Check the tag fits */
 		if (tag_length > length)
-			return (NULL);
+			return (PKG_ARCH_UNKNOWN);
 
 #define	MOVE_TAG(len) do {		\
 	assert(tag_length >= (len));	\
@@ -568,21 +472,21 @@ aeabi_parse_arm_attributes(void *data, size_t length)
 				 * more than one byte.
 				 */
 				if (val & (1 << 7))
-					return (NULL);
+					return (PKG_ARCH_UNKNOWN);
 
 				/* We have an ARMv4 or ARMv5 */
 				if (val <= 5)
-					return ("arm");
+					return (PKG_ARCH_UNKNOWN);
 				else if (val == 6) /* We have an ARMv6 */
-					return ("armv6");
+					return (PKG_ARCH_ARMV6);
 				else /* We have an ARMv7+ */
-					return ("armv7");
+					return (PKG_ARCH_ARMV7);
 			} else if (tag == 4 || tag == 5 || tag == 32 ||
 			    tag == 65 || tag == 67) {
 				while (*section != '\0' && length != 0)
 					MOVE_TAG(1);
 				if (tag_length == 0)
-					return (NULL);
+					return (PKG_ARCH_UNKNOWN);
 				/* Skip the last byte */
 				MOVE_TAG(1);
 			} else if ((tag >= 7 && tag <= 31) || tag == 34 ||
@@ -592,41 +496,34 @@ aeabi_parse_arm_attributes(void *data, size_t length)
 				while (*section & (1 << 7) && length != 0)
 					MOVE_TAG(1);
 				if (tag_length == 0)
-					return (NULL);
+					return (PKG_ARCH_UNKNOWN);
 				/* Skip the last byte */
 				MOVE_TAG(1);
 			} else
-				return (NULL);
+				return (PKG_ARCH_UNKNOWN);
 #undef MOVE_TAG
 		}
 
 		break;
 	}
-	return (NULL);
+	return (PKG_ARCH_UNKNOWN);
 #undef MOVE
 }
 
-static const char *
-elf_parse_arch(os_type_t ostype, Elf *elf, GElf_Ehdr *ehdr)
+static enum pkg_arch
+elf_parse_arch(Elf *elf, GElf_Ehdr *ehdr)
 {
 	switch (ehdr->e_machine) {
 	case EM_386:
-		return ("i386");
+		return (PKG_ARCH_I386);
 	case EM_X86_64:
-		switch (ostype) {
-		case OS_FREEBSD:
-			return ("amd64");
-		case OS_DRAGONFLY:
-			return ("x86:64");
-		default:
-			return ("x86_64");
-		}
+		return (PKG_ARCH_AMD64);
 	case EM_AARCH64:
-		return ("aarch64");
+		return (PKG_ARCH_AARCH64);
 	case EM_ARM:
 		/* Only support EABI */
 		if ((ehdr->e_flags & EF_ARM_EABIMASK) == 0) {
-			return (NULL);
+			return (PKG_ARCH_UNKNOWN);
 		}
 
 		size_t shstrndx;
@@ -649,38 +546,43 @@ elf_parse_arch(os_type_t ostype, Elf *elf, GElf_Ehdr *ehdr)
 		}
 		break;
 	case EM_PPC:
-		return ("powerpc");
+		return (PKG_ARCH_POWERPC);
 	case EM_PPC64:
 		switch (ehdr->e_ident[EI_DATA]) {
 		case ELFDATA2MSB:
-			return ("powerpc64");
+			return (PKG_ARCH_POWERPC64);
 		case ELFDATA2LSB:
-			return ("powerpc64le");
+			return (PKG_ARCH_POWERPC64LE);
 		}
 		break;
 	case EM_RISCV:
 		switch (ehdr->e_ident[EI_CLASS]) {
 		case ELFCLASS32:
-			return ("riscv32");
+			return (PKG_ARCH_RISCV32);
 		case ELFCLASS64:
-			return ("riscv64");
+			return (PKG_ARCH_RISCV64);
 		}
 		break;
 	}
 
-	return (NULL);
+	return (PKG_ARCH_UNKNOWN);
 }
 
+/* Returns true if the OS and version were successfully parsed */
 static bool
-elf_note_analyse(Elf_Data *data, GElf_Ehdr *elfhdr, struct os_info *oi)
+elf_note_analyse(Elf_Data *data, GElf_Ehdr *elfhdr, struct pkg_abi *abi)
 {
 	Elf_Note note;
 	char *src;
 	uint32_t gnu_abi_tag[4];
-	char *note_os[6] = {"Linux", "GNU", "Solaris", "FreeBSD", "NetBSD", "Syllable"};
-	int note_ost[6] = {OS_LINUX, OS_GNU, OS_SOLARIS, OS_FREEBSD, OS_NETBSD, OS_SYLLABLE};
-	char *(*pnote_os)[6] = &note_os;
-	char invalid_osname[] = "Unknown";
+	int note_ost[6] = {
+		PKG_OS_LINUX,
+		PKG_OS_UNKNOWN, /* GNU Hurd */
+		PKG_OS_UNKNOWN, /* Solaris */
+		PKG_OS_FREEBSD,
+		PKG_OS_NETBSD,
+		PKG_OS_UNKNOWN, /* Syllable */
+	};
 	uint32_t version = 0;
 	int version_style = 1;
 
@@ -709,7 +611,6 @@ elf_note_analyse(Elf_Data *data, GElf_Ehdr *elfhdr, struct os_info *oi)
 	if ((uintptr_t)src >= ((uintptr_t)data->d_buf + data->d_size)) {
 		return (false);
 	}
-	free(oi->name);
 	if (version_style == 2) {
 		/*
 		 * NT_GNU_ABI_TAG
@@ -733,24 +634,20 @@ elf_note_analyse(Elf_Data *data, GElf_Ehdr *elfhdr, struct os_info *oi)
 			}
 		}
 		if (gnu_abi_tag[0] < 6) {
-			oi->name = xstrdup((*pnote_os)[gnu_abi_tag[0]]);
-			oi->ostype = note_ost[gnu_abi_tag[0]];
+			abi->os= note_ost[gnu_abi_tag[0]];
 		} else {
-			oi->name = xstrdup(invalid_osname);
-			oi->ostype = OS_UNKNOWN;
+			abi->os = PKG_OS_UNKNOWN;
 		}
 	} else {
 		if (note.n_namesz == 0) {
-			oi->name = xstrdup(invalid_osname);
-			oi->ostype = OS_UNKNOWN;
+			abi->os = PKG_OS_UNKNOWN;
 		} else {
-			oi->name = xstrdup(src);
 			if (STREQ(src, "FreeBSD"))
-				oi->ostype = OS_FREEBSD;
+				abi->os = PKG_OS_FREEBSD;
 			else if (STREQ(src, "DragonFly"))
-				oi->ostype = OS_DRAGONFLY;
+				abi->os = PKG_OS_DRAGONFLY;
 			else if (STREQ(src, "NetBSD"))
-				oi->ostype = OS_NETBSD;
+				abi->os = PKG_OS_NETBSD;
 		}
 		src += roundup2(note.n_namesz, 4);
 		if (elfhdr->e_ident[EI_DATA] == ELFDATA2MSB)
@@ -759,28 +656,31 @@ elf_note_analyse(Elf_Data *data, GElf_Ehdr *elfhdr, struct os_info *oi)
 			version = le32dec(src);
 	}
 
-	free(oi->version);
 	if (version_style == 2) {
-		if (oi->ostype == OS_LINUX) {
-			xasprintf(&oi->version, "%d.%d", gnu_abi_tag[1],
-			    gnu_abi_tag[2]);
+		if (abi->os == PKG_OS_LINUX) {
+			abi->major = gnu_abi_tag[1];
+			abi->minor = gnu_abi_tag[2];
 		} else {
-			xasprintf(&oi->version, "%d.%d.%d", gnu_abi_tag[1],
-			    gnu_abi_tag[2], gnu_abi_tag[3]);
+			abi->major = gnu_abi_tag[1];
+			abi->minor = gnu_abi_tag[2];
+			abi->patch = gnu_abi_tag[3];
 		}
 	} else {
-		if (oi->osversion == 0) {
-			oi->osversion = version;
-			snprintf(oi->str_osversion, sizeof(oi->str_osversion), "%d", version);
-		}
-		if (oi->ostype == OS_DRAGONFLY) {
-			xasprintf(&oi->version, "%d.%d", version / 100000, (((version / 100 % 1000)+1)/2)*2);
-		} else if (oi->ostype == OS_NETBSD) {
-			xasprintf(&oi->version, "%d", (version + 1000000) / 100000000);
-		} else {
-			xasprintf(&oi->version_major, "%d", version / 100000);
-			xasprintf(&oi->version_minor, "%d", (version / 1000 % 100));
-			xasprintf(&oi->version, "%d", version / 100000);
+		switch (abi->os) {
+		case PKG_OS_UNKNOWN:
+			break;
+		case PKG_OS_FREEBSD:
+			pkg_abi_set_freebsd_osversion(abi, version);
+			break;
+		case PKG_OS_DRAGONFLY:
+			abi->major = version / 100000;
+			abi->minor = (((version / 100 % 1000)+1)/2)*2;
+			break;
+		case PKG_OS_NETBSD:
+			abi->major = (version + 1000000) / 100000000;
+			break;
+		default:
+			assert(0);
 		}
 	}
 
@@ -788,16 +688,16 @@ elf_note_analyse(Elf_Data *data, GElf_Ehdr *elfhdr, struct os_info *oi)
 }
 
 int
-pkg_get_myarch_elfparse(int fd, struct os_info *oi)
+pkg_elf_abi_from_fd(int fd, struct pkg_abi *abi)
 {
+	*abi = (struct pkg_abi){0};
+
 	Elf *elf = NULL;
 	GElf_Ehdr elfhdr;
 	GElf_Shdr shdr;
 	Elf_Data *data;
 	Elf_Scn *scn = NULL;
 	int ret = EPKG_OK;
-	char *dest = oi->abi;
-	size_t sz = sizeof(oi->abi);
 
 	if (elf_version(EV_CURRENT) == EV_NONE) {
 		pkg_emit_error("ELF library initialization failed: %s",
@@ -830,25 +730,22 @@ pkg_get_myarch_elfparse(int fd, struct os_info *oi)
 			 * loop over all the note section and override what
 			 * should be overridden if any
 			 */
-			elf_note_analyse(data, &elfhdr, oi);
+			elf_note_analyse(data, &elfhdr, abi);
 		}
 	}
 
-	if (oi->name == NULL) {
+	if (abi->os == PKG_OS_UNKNOWN) {
 		ret = EPKG_FATAL;
-		pkg_emit_error("failed to get the note section");
+		pkg_emit_error("failed to determine the operating system");
 		goto cleanup;
 	}
 
-	const char *arch = elf_parse_arch(oi->ostype, elf, &elfhdr);
-	if (arch == NULL) {
+	abi->arch = elf_parse_arch(elf, &elfhdr);
+	if (abi->arch == PKG_ARCH_UNKNOWN) {
 		ret = EPKG_FATAL;
 		pkg_emit_error("failed to determine the architecture");
 		goto cleanup;
 	}
-	oi->arch = xstrdup(arch);
-
-	snprintf(dest, sz, "%s:%s:%s", oi->name, oi->version, oi->arch);
 
 cleanup:
 	if (elf != NULL)

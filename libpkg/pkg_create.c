@@ -40,6 +40,8 @@
 #include "pkg.h"
 #include "private/event.h"
 #include "private/pkg.h"
+#include "private/pkg_abi.h"
+#include "xmalloc.h"
 
 #define TICK	100
 
@@ -563,14 +565,15 @@ static void
 fixup_abi(struct pkg *pkg, const char *rootdir, bool testing)
 {
 	bool defaultarch = false;
-	const char *arch;
 
 	/* if no arch autodetermine it */
 	if (pkg->abi == NULL) {
-		if (ctx.oi->ostype == OS_FREEBSD) {
-			pkg_kv_add(&pkg->annotations, "FreeBSD_version", xstrdup(ctx.oi->str_osversion), "annotation");
+		if (ctx.abi.os == PKG_OS_FREEBSD) {
+			char *str_osversion;
+			xasprintf(&str_osversion, "%d", pkg_abi_get_freebsd_osversion(&ctx.abi));
+			pkg_kv_add(&pkg->annotations, "FreeBSD_version", str_osversion, "annotation");
 		}
-		pkg->abi = xstrdup(ctx.oi->abi);
+		pkg->abi = pkg_abi_to_string(&ctx.abi);
 		defaultarch = true;
 	}
 
