@@ -15,7 +15,7 @@ CFLAGS+=	-Werror=return-type
 DEPFILES_NONEMPTY=	$(DEPFILES) /nonexistent
 -include $(DEPFILES_NONEMPTY:=)
 
-.SUFFIXES: .pico .in .bin .binin .so.1 .so.1in
+.SUFFIXES: .pico .in .bin .binin .so.1 .so.1in .suppress.in .suppress
 
 .c.o:
 	$(CC) -Wall -Wextra -std=gnu11 -D_GNU_SOURCE=1 -MT $@ -MD -MP -MF $*.Tpo -o $@ -c $(CFLAGS) $(LOCAL_CFLAGS) $<
@@ -33,4 +33,7 @@ DEPFILES_NONEMPTY=	$(DEPFILES) /nonexistent
 	cp $< $@
 
 .so.1in.so.1:
+	cp $< $@
+
+.suppress.in.suppress:
 	cp $< $@

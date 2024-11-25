@@ -21,10 +21,7 @@ check: all
 @if TESTS
 all: Kyuafile
 
-$(top_builddir)/UndefinedBehaviour.suppress: $(top_srcdir)/UndefinedBehaviour.suppress
-	install -m 644 $< $@
-
-check: $(top_builddir)/UndefinedBehaviour.suppress
+check: UndefinedBehaviour.suppress
 	export UBSAN_OPTIONS=print_stacktrace=1:halt_on_error=1:suppressions=$(top_builddir)/UndefinedBehaviour.suppress; \
 	export LLVM_PROFILE_FILE=/tmp/pkg.%p.profraw; \
 	if [ "$(HTML)" != "" ]; then \
