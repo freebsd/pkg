@@ -96,7 +96,6 @@ struct config_entry {
 	uint8_t type;
 	const char *key;
 	const char *def;
-	const char *desc;
 };
 
 static struct os_info oi = { 0 };
@@ -108,434 +107,362 @@ static struct config_entry c[] = {
 		PKG_STRING,
 		"PKG_DBDIR",
 		"/var/db/pkg",
-		"Where the package databases are stored",
 	},
 	{
 		PKG_STRING,
 		"PKG_CACHEDIR",
 		"/var/cache/pkg",
-		"Directory containing cache of downloaded packages",
 	},
 	{
 		PKG_STRING,
 		"PORTSDIR",
 		"/usr/ports",
-		"Location of the ports collection",
 	},
 	{
 		PKG_STRING,
 		"INDEXDIR",
 		NULL,		/* Default to PORTSDIR unless defined */
-		"Location of the ports INDEX",
 	},
 	{
 		PKG_STRING,
 		"INDEXFILE",
 		INDEXFILE,
-		"Filename of the ports INDEX",
 	},
 	{
 		PKG_BOOL,
 		"HANDLE_RC_SCRIPTS",
 		"NO",
-		"Automatically handle restarting services",
 	},
 	{
 		PKG_BOOL,
 		"DEFAULT_ALWAYS_YES",
 		"NO",
-		"Default to 'yes' for all pkg(8) questions",
 	},
 	{
 		PKG_BOOL,
 		"ASSUME_ALWAYS_YES",
 		"NO",
-		"Answer 'yes' to all pkg(8) questions",
 	},
 	{
 		PKG_ARRAY,
 		"REPOS_DIR",
 		"/etc/pkg/,"PREFIX"/etc/pkg/repos/",
-		"Location of the repository configuration files"
 	},
 	{
 		PKG_STRING,
 		"PLIST_KEYWORDS_DIR",
 		NULL,
-		"Directory containing definitions of plist keywords",
 	},
 	{
 		PKG_BOOL,
 		"SYSLOG",
 		"YES",
-		"Log pkg(8) operations via syslog(3)",
 	},
 	{
 		PKG_STRING,
 		"ABI",
 		oi.abi,
-		"Override the automatically detected ABI",
 	},
 	{
 		PKG_STRING,
 		"ALTABI",
 		oi.altabi,
-		"Override the automatically detected old-form ABI",
 	},
 	{
 		PKG_BOOL,
 		"DEVELOPER_MODE",
 		"NO",
-		"Add extra strict, pedantic warnings as an aid to package maintainers",
 	},
 	{
 		PKG_STRING,
 		"VULNXML_SITE",
 		DEFAULT_VULNXML_URL,
-		"URL giving location of the vulnxml database",
 	},
 	{
 		PKG_INT,
 		"FETCH_RETRY",
 		"3",
-		"How many times to retry fetching files",
 	},
 	{
 		PKG_STRING,
 		"PKG_PLUGINS_DIR",
 		PREFIX"/lib/pkg/",
-		"Directory which pkg(8) will load plugins from",
 	},
 	{
 		PKG_BOOL,
 		"PKG_ENABLE_PLUGINS",
 		"YES",
-		"Activate plugin support",
 	},
 	{
 		PKG_ARRAY,
 		"PLUGINS",
 		NULL,
-		"List of plugins that pkg(8) should load",
 	},
 	{
 		PKG_BOOL,
 		"DEBUG_SCRIPTS",
 		"NO",
-		"Run shell scripts in verbose mode to facilitate debugging",
 	},
 	{
 		PKG_STRING,
 		"PLUGINS_CONF_DIR",
 		PREFIX"/etc/pkg/",
-		"Directory containing plugin configuration data",
 	},
 	{
 		PKG_BOOL,
 		"PERMISSIVE",
 		"NO",
-		"Permit package installation despite presence of conflicting packages",
 	},
 	{
 		PKG_BOOL,
 		"REPO_AUTOUPDATE",
 		"YES",
-		"Automatically update repository catalogues prior to package updates",
 	},
 	{
 		PKG_STRING,
 		"NAMESERVER",
 		NULL,
-		"Use this nameserver when looking up addresses",
 	},
 	{
 		PKG_STRING,
 		"HTTP_USER_AGENT",
 		"pkg/"PKGVERSION,
-		"HTTP User-Agent",
 	},
 	{
 		PKG_STRING,
 		"EVENT_PIPE",
 		NULL,
-		"Send all events to the specified fifo or Unix socket",
 	},
 	{
 		PKG_INT,
 		"FETCH_TIMEOUT",
 		"30",
-		"Number of seconds before fetch(3) times out",
 	},
 	{
 		PKG_BOOL,
 		"UNSET_TIMESTAMP",
 		"NO",
-		"Do not include timestamps in the package",
 	},
 	{
 		PKG_STRING,
 		"SSH_RESTRICT_DIR",
 		NULL,
-		"Directory the ssh subsystem will be restricted to",
 	},
 	{
 		PKG_OBJECT,
 		"PKG_ENV",
 		NULL,
-		"Environment variables pkg will use",
 	},
 	{
 		PKG_STRING,
 		"PKG_SSH_ARGS",
 		NULL,
-		"Extras arguments to pass to ssh(1)",
 	},
 	{
 		PKG_INT,
 		"DEBUG_LEVEL",
 		"0",
-		"Level for debug messages",
 	},
 	{
 		PKG_OBJECT,
 		"ALIAS",
 		NULL,
-		"Command aliases",
 	},
 	{
 		PKG_STRING,
 		"CUDF_SOLVER",
 		NULL,
-		"Experimental: tells pkg to use an external CUDF solver",
 	},
 	{
 		PKG_STRING,
 		"SAT_SOLVER",
 		NULL,
-		"Experimental: tells pkg to use an external SAT solver",
 	},
 	{
 		PKG_BOOL,
 		"RUN_SCRIPTS",
 		"YES",
-		"Run post/pre actions scripts",
 	},
 	{
 		PKG_BOOL,
 		"CASE_SENSITIVE_MATCH",
 		"NO",
-		"Match package names case sensitively",
 	},
 	{
 		PKG_INT,
 		"LOCK_WAIT",
 		"1",
-		"Wait time to regain a lock if it is not available"
 	},
 	{
 		PKG_INT,
 		"LOCK_RETRIES",
 		"5",
-		"Retries performed to obtain a lock"
 	},
 	{
 		PKG_BOOL,
 		"SQLITE_PROFILE",
 		"NO",
-		"Profile sqlite queries"
 	},
 	{
 		PKG_INT,
 		"WORKERS_COUNT",
 		"0",
-		"How many workers are used for pkg-repo (hw.ncpu if 0)"
 	},
 	{
 		PKG_BOOL,
 		"READ_LOCK",
 		"NO",
-		"Use read locking for query database"
 	},
 	{
 		PKG_INT,
 		"IP_VERSION",
 		"0",
-		"Restrict network access to IPv4 or IPv6 only"
 	},
 	{
 		PKG_BOOL,
 		"AUTOMERGE",
 		"YES",
-		"Automatically merge configuration files"
 	},
 	{
 		PKG_STRING,
 		"MERGETOOL",
 		NULL,
-		"Path to a program to be used for solving conflicts during the 3-way merging"
 	},
 	{
 		PKG_STRING,
 		"VERSION_SOURCE",
 		NULL,
-		"Version source for pkg-version (I, P, R), default is auto detect"
 	},
 	{
 		PKG_BOOL,
 		"CONSERVATIVE_UPGRADE",
 		"YES",
-		"Prefer repos with higher priority during upgrade"
 	},
 	{
 		PKG_BOOL,
 		"PKG_CREATE_VERBOSE",
 		"NO",
-		"Enable verbose mode for 'pkg create'",
 	},
 	{
 		PKG_BOOL,
 		"AUTOCLEAN",
 		"NO",
-		"Always cleanup the cache directory after install/upgrade",
 	},
 	{
 		PKG_STRING,
 		"DOT_FILE",
 		NULL,
-		"Save SAT problem to the specified dot file"
 	},
 	{
 		PKG_OBJECT,
 		"REPOSITORIES",
 		NULL,
-		"Repository config in pkg.conf"
 	},
 	{
 		PKG_ARRAY,
 		"VALID_URL_SCHEME",
-		"pkg+http,pkg+https,https,http,file,ssh,tcp",
 	},
 	{
 		PKG_BOOL,
 		"ALLOW_BASE_SHLIBS",
 		"NO",
-		"Enable base libraries analysis",
 	},
 	{
 		PKG_INT,
 		"WARN_SIZE_LIMIT",
 		"1048576", /* 1 meg */
-		"Ask user when performing changes for more than this limit"
 	},
 	{
 		PKG_STRING,
 		"METALOG",
 		NULL,
-		"Write out the METALOG to the specified file",
 	},
 #ifdef __FreeBSD__
 	{
 		PKG_INT,
 		"OSVERSION",
 		oi.str_osversion,
-		"FreeBSD OS version",
 	},
 	{
 		PKG_BOOL,
 		"IGNORE_OSVERSION",
 		"NO",
-		"Ignore FreeBSD OS version check",
 	},
 #endif
 	{
 		PKG_BOOL,
 		"BACKUP_LIBRARIES",
 		"NO",
-		"Backup old versions of libraries during an upgrade",
 	},
 	{
 		PKG_STRING,
 		"BACKUP_LIBRARY_PATH",
 		PREFIX "/lib/compat/pkg",
-		"Path where pkg will backup libraries",
 	},
 	{
 		PKG_STRING,
 		"PKG_TRIGGERS_DIR",
 		PREFIX "/share/pkg/triggers",
-		"Path where the triggers should be installed",
 	},
 	{
 		PKG_BOOL,
 		"PKG_TRIGGERS_ENABLE",
 		"YES",
-		"Disable triggers",
 	},
 	{
 		PKG_ARRAY,
 		"AUDIT_IGNORE_GLOB",
 		NULL,
-		"List of glob to ignore while autiditing for vulnerabilities",
 	},
 	{
 		PKG_ARRAY,
 		"AUDIT_IGNORE_REGEX",
 		NULL,
-		"List of regex to ignore while autiditing for vulnerabilities",
 	},
 	{
 		PKG_STRING,
 		"COMPRESSION_FORMAT",
 		NULL,
-		"Set the default compression format for packages creating",
 	},
 	{
 		PKG_INT,
 		"COMPRESSION_LEVEL",
 		"-1",
-		"Set the default compression level",
 	},
 	{
 		PKG_BOOL,
 		"ARCHIVE_SYMLINK",
 		"FALSE",
-		"Create a symlink to legacy extension for backward compatibility",
 	},
 	{
 		PKG_BOOL,
 		"REPO_ACCEPT_LEGACY_PKG",
 		"FALSE",
-		"Accept legacy package extensions when creating the repository",
 	},
 	{
 		PKG_ARRAY,
 		"FILES_IGNORE_GLOB",
 		NULL,
-		"patterns of files to not extract from the package",
 	},
 	{
 		PKG_ARRAY,
 		"FILES_IGNORE_REGEX",
 		NULL,
-		"patterns of files to not extract from the package",
 	},
 	{
 		PKG_ARRAY,
 		"PKG_DEBUG_FLAGS",
 		"all",
-		"debug flags to activate",
 	},
 	{
 		PKG_INT,
 		"COMPRESSION_THREADS",
 		"-1",
-		"Set the default number of threads used for compression",
 	},
 	{
 		PKG_BOOL,
 		"PKG_REINSTALL_ON_OPTIONS_CHANGE",
 		"TRUE",
-		"Decide if packages gets reinstalled when local options does not match remote one",
 	}
 };
 
