@@ -20,7 +20,8 @@ native_body() {
 			;;
 		Darwin)
 			# without a hint, the first arch is selected, which happens to be consistently x86_64
-			thisarch="x86_64"
+			thisarch="amd64"
+			thisabi="x86:64"
 			version=$(uname -r | cut -d. -f1)
 			;;
 		FreeBSD)
