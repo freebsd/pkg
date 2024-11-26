@@ -161,10 +161,7 @@ int pkgdb_check_access(unsigned mode, const char *dbname);
  */
 void pkgdb_regex(sqlite3_context *ctx, int argc, sqlite3_value **argv);
 void pkgdb_regex_delete(void *p);
-void pkgdb_split_uid(sqlite3_context *ctx, int argc, sqlite3_value **argv);
-void pkgdb_split_version(sqlite3_context *ctx, int argc, sqlite3_value **argv);
 void pkgdb_now(sqlite3_context *ctx, int argc, __unused sqlite3_value **argv);
-void pkgdb_myarch(sqlite3_context *ctx, int argc, sqlite3_value **argv);
 int pkgdb_sqlcmd_init(sqlite3 *db, const char **err, const void *noused);
 int pkgdb_update_config_file_content(struct pkg *pkg, sqlite3 *s);
 void pkgdb_syscall_overload(void);
