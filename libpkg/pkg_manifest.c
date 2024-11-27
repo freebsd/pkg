@@ -950,6 +950,7 @@ pkg_emit_object(struct pkg *pkg, short flags)
 	if (pkg->abi == NULL && pkg->altabi != NULL)
 		pkg->abi = xstrdup(pkg->altabi);
 	pkg_arch_to_legacy(pkg->abi, legacyarch, BUFSIZ);
+	free(pkg->altabi);
 	pkg->altabi = xstrdup(legacyarch);
 	dbg(4, "Emitting basic metadata");
 	MANIFEST_EXPORT_FIELD(top, pkg, name, string);

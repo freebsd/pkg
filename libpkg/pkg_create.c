@@ -143,6 +143,7 @@ pkg_create_from_dir(struct pkg *pkg, const char *root,
 	}
 	ucl_object_unref(obj);
 	packing_append_buffer(pkg_archive, manifest, "+MANIFEST", strlen(manifest));
+	free(manifest);
 
 	counter_init("packing files", nfiles);
 
