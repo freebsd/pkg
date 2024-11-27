@@ -124,9 +124,9 @@ LOCAL_LDFLAGS+= -ldl
 
 @if pkgos_darwin
 LOCAL_LDFLAGS+=	-lresolv
-@else 
+@else
 @if pkgos_freebsd
-LOCAL_LDFLAGS+=	-Wl,--version-script=$(top_srcdir)/libpkg/libpkg.ver,--undefined-version 
+LOCAL_LDFLAGS+=	-Wl,--version-script=$(top_srcdir)/libpkg/libpkg.ver,--undefined-version
 @else
 ### --undefined-version is a FreeBSD ld option
 LOCAL_LDFLAGS+=	-Wl,--version-script=$(top_srcdir)/libpkg/libpkg.ver
@@ -172,6 +172,7 @@ STATIC_LIBS+=	$(top_builddir)/external/libcurl/libcurl.a
 @endif
 
 VPATH=	$(top_srcdir)/libpkg
+.PATH:	$(top_srcdir)/libpkg
 
 include $(MK)/lib.mk
 
