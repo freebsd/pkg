@@ -23,6 +23,7 @@ all: Kyuafile
 
 check: UndefinedBehaviour.suppress
 	export UBSAN_OPTIONS=print_stacktrace=1:halt_on_error=1:suppressions=$(top_builddir)/UndefinedBehaviour.suppress; \
+	export ASAN_OPTIONS=detect_leaks=1; \
 	export LLVM_PROFILE_FILE=/tmp/pkg.%p.profraw; \
 	if [ "$(HTML)" != "" ]; then \
 		args="-r $(top_builddir)/res.db" ; \
