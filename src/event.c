@@ -698,7 +698,7 @@ event_callback(void *data, struct pkg_event *ev)
 			evtmp = it->item;
 			if (evtmp->cb == ev->e_cleanup_callback.cleanup_cb &&
 			    evtmp->data == ev->e_cleanup_callback.data) {
-				tll_remove(cleanup_list, it);
+				tll_remove_and_free(cleanup_list, it, free);
 				break;
 			}
 		}

@@ -1609,7 +1609,10 @@ run_prstmt(sql_prstmt_index s, ...)
 
 	va_end(ap);
 
-	dbg(4, "running '%s'", sqlite3_expanded_sql(stmt));
+	char *debug_sql = sqlite3_expanded_sql(stmt);
+	dbg(4, "running '%s'", debug_sql);
+	sqlite3_free(debug_sql);
+
 	retcode = sqlite3_step(stmt);
 
 	return (retcode);

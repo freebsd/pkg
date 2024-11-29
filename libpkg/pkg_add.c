@@ -1558,6 +1558,8 @@ pkg_add_common(struct pkgdb *db, const char *path, unsigned flags,
 	}
 
 cleanup:
+	tll_free(symlinks_allowed);
+
 	if (openxact)
 		pkgdb_register_finale(db, retcode, NULL);
 	if (a != NULL) {
