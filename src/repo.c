@@ -112,19 +112,23 @@ exec_repo(int argc, char **argv)
 	pkg_repo_create_set_sign(prc, argv + 1, argc - 1, password_cb);
 
 	if (argc < 1) {
+		pkg_repo_create_free(prc);
 		usage_repo();
 		return (EXIT_FAILURE);
 	}
 
 	if (argc > 2 && !STREQ(argv[1], "signing_command:")) {
+		pkg_repo_create_free(prc);
 		usage_repo();
 		return (EXIT_FAILURE);
 	}
 
 	if (pkg_repo_create(prc, argv[0]) != EPKG_OK) {
 		printf("Cannot create repository catalogue\n");
+		pkg_repo_create_free(prc);
 		return (EXIT_FAILURE);
 	}
 
+	pkg_repo_create_free(prc);
 	return (EXIT_SUCCESS);
 }

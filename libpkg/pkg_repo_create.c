@@ -912,11 +912,13 @@ pkg_repo_create(struct pkg_repo_create *prc, char *path)
 
 	for (int i = 0; i < num_workers; i++)
 		pthread_join(threads[i], NULL);
+	free(threads);
 	ucl_object_emit_streamline_end_container(te.ctx);
 	pkg_emit_progress_tick(len, len);
 	ucl_object_emit_streamline_finish(te.ctx);
 	ucl_object_emit_funcs_free(f);
 	ucl_object_unref(obj);
+	ucl_object_unref(ar);
 
 	/* Write metafile */
 

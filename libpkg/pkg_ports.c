@@ -971,8 +971,7 @@ flush_script_buffer(xstring *buf, struct pkg *p, int type)
 int
 plist_parse_line(struct plist *plist, char *line)
 {
-	char *keyword, *buf, *bkpline;
-	struct file_attr *a;
+	char *buf, *bkpline;
 
 	if (line[0] == '\0')
 		return (EPKG_OK);
@@ -981,12 +980,13 @@ plist_parse_line(struct plist *plist, char *line)
 	bkpline = xstrdup(line);
 
 	if (line[0] == '@') {
-		keyword = NULL;
-		a = NULL;
+		char *keyword = 0;
+		struct file_attr *a = 0;
 		buf = extract_keywords(line + 1, &keyword, &a);
 		if (buf == NULL) {
 			pkg_emit_error("Malformed keyword %s, expecting @keyword "
 			    "or @keyword(owner,group,mode)", bkpline);
+			free_file_attr(a);
 			free(bkpline);
 			return (EPKG_FATAL);
 		}
@@ -997,9 +997,11 @@ plist_parse_line(struct plist *plist, char *line)
 			    keyword, line);
 			/* FALLTHRU */
 		case EPKG_FATAL:
+			free_file_attr(a);
 			free(bkpline);
 			return (EPKG_FATAL);
 		}
+		free_file_attr(a);
 	} else {
 		buf = line;
 		strlcpy(plist->last_file, buf, sizeof(plist->last_file));
