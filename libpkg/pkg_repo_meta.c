@@ -81,9 +81,11 @@ pkg_repo_meta_free(struct pkg_repo_meta *meta)
 		free(meta->conflicts);
 		free(meta->manifests);
 		free(meta->digests);
+		free(meta->data);
 		free(meta->fulldb);
 		free(meta->filesite);
 		free(meta->conflicts_archive);
+		free(meta->data_archive);
 		free(meta->manifests_archive);
 		free(meta->digests_archive);
 		free(meta->fulldb_archive);
