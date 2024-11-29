@@ -1559,7 +1559,7 @@ pkg_message_from_str(struct pkg *pkg, const char *str, size_t len)
 		ucl_parser_register_variable(parser, "PKGORIGIN", pkg->origin);
 	}
 	if (pkg->maintainer != NULL) {
-		ucl_parser_register_variable(parser, "MAINTAINER", pkg->origin);
+		ucl_parser_register_variable(parser, "MAINTAINER", pkg->maintainer);
 	}
 
 	if (ucl_parser_add_chunk(parser, (const unsigned char*)str, len)) {
