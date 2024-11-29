@@ -110,6 +110,7 @@ pkg_create_from_dir(struct pkg *pkg, const char *root,
 			flatsize += file->size;
 		}
 
+		free(file->sum);
 		file->sum = pkg_checksum_generate_file(fpath,
 		    PKG_HASH_TYPE_SHA256_HEX);
 		if (file->sum == NULL) {

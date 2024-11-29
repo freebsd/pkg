@@ -345,6 +345,7 @@ exec_updating(int argc, char **argv)
 
 	while (getline(&line, &linecap, fd) > 0) {
 		if (strspn(line, "0123456789:") == 9) {
+			free(dateline);
 			dateline = strdup(line);
 			found = 0;
 			head = 1;
@@ -384,6 +385,7 @@ cleanup:
 	pkgdb_release_lock(db, PKGDB_LOCK_READONLY);
 	pkgdb_close(db);
 	pkg_free(pkg);
+	free(line);
 	free(dateline);
 
 	return (retcode);
