@@ -609,7 +609,6 @@ pkg_set_files_from_object(struct pkg *pkg, const ucl_object_t *obj)
 	const char *sum = NULL;
 	const char *uname = NULL;
 	const char *gname = NULL;
-	void *set = NULL;
 	mode_t perm = 0;
 	xstring *fname = NULL;
 	const char *key, *okey;
@@ -631,11 +630,13 @@ pkg_set_files_from_object(struct pkg *pkg, const ucl_object_t *obj)
 			sum = ucl_object_tostring(cur);
 		else if (STRIEQ(key, "perm") &&
 			 (cur->type == UCL_STRING || cur->type == UCL_INT)) {
+			void *set = 0;
 			if ((set = setmode(ucl_object_tostring_forced(cur))) == NULL)
 				pkg_emit_error("Not a valid mode: %s",
 				    ucl_object_tostring(cur));
 			else
 				perm = getmode(set, 0);
+			free(set);
 		} else {
 			dbg(1, "Skipping unknown key for file(%s): %s",
 			    fname->buf, key);
@@ -656,7 +657,6 @@ pkg_set_dirs_from_object(struct pkg *pkg, const ucl_object_t *obj)
 	ucl_object_iter_t it = NULL;
 	const char *uname = NULL;
 	const char *gname = NULL;
-	void *set;
 	mode_t perm = 0;
 	xstring *dirname = NULL;
 	const char *key, *okey;
@@ -675,11 +675,13 @@ pkg_set_dirs_from_object(struct pkg *pkg, const ucl_object_t *obj)
 			gname = ucl_object_tostring(cur);
 		else if (STRIEQ(key, "perm") &&
 			 (cur->type == UCL_STRING || cur->type == UCL_INT)) {
+			void *set = 0;
 			if ((set = setmode(ucl_object_tostring_forced(cur))) == NULL)
 				pkg_emit_error("Not a valid mode: %s",
 				    ucl_object_tostring(cur));
 			else
 				perm = getmode(set, 0);
+			free(set);
 		} else if (STRIEQ(key, "try") && cur->type == UCL_BOOLEAN) {
 			/* ignore on purpose : compatibility*/
 		} else {

@@ -191,6 +191,7 @@ vquery_yesno(bool deft, const char *msg, va_list ap)
 		}
 	}
 
+	free(line);
 	free(out);
 
 	return (r);

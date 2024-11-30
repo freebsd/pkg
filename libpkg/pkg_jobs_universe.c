@@ -689,6 +689,7 @@ pkg_jobs_universe_free(struct pkg_jobs_universe *universe)
 	while (pkghash_next(&it))
 		pkg_jobs_universe_provide_free(it.value);
 	pkghash_destroy(universe->provides);
+	free(universe);
 }
 
 struct pkg_jobs_universe *

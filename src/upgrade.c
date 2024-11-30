@@ -217,6 +217,8 @@ add_vulnerable_upgrades(struct pkg_jobs	*jobs, struct pkgdb *db)
 		}
 	}
 
+	free(line);
+
 	fclose(in);
 
 	while (waitpid(cld, &retcode, 0) == -1) {
