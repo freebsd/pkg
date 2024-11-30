@@ -1,0 +1,14 @@
+# Unfixable leak reports from system libraries on MacOS
+leak:fork
+leak:dyld4::Loader::*
+
+
+# Suspected unfixable leak from within libcrypto on Ubuntu
+# Direct leak of 32 byte(s) in 1 object(s) allocated from:
+#    #0 0x55558b4c7293 in malloc (/home/runner/work/pkg/pkg/build.pkg/src/pkg+0x1e7293) (BuildId: 0d38bdca4c756f735a194bf765528e76b46c416f)
+#    #1 0x7f2a7f2237c4 in CRYPTO_zalloc (/lib/x86_64-linux-gnu/libcrypto.so.3+0x2237c4) (BuildId: c503df82cf13681b2f81e1097e857e3fc50679b1)
+#    #2 0x7f2a7f11afa3 in BUF_MEM_new (/lib/x86_64-linux-gnu/libcrypto.so.3+0x11afa3) (BuildId: c503df82cf13681b2f81e1097e857e3fc50679b1)
+#    #3 0x7f2a7f11b004 in BUF_MEM_new_ex (/lib/x86_64-linux-gnu/libcrypto.so.3+0x11b004) (BuildId: c503df82cf13681b2f81e1097e857e3fc50679b1)
+#    #4 0x7f2a7f0f79dd  (/lib/x86_64-linux-gnu/libcrypto.so.3+0xf79dd) (BuildId: c503df82cf13681b2f81e1097e857e3fc50679b1)
+#    #5 0x7f2a7f0ed883 in BIO_new_ex (/lib/x86_64-linux-gnu/libcrypto.so.3+0xed883) (BuildId: c503df82cf13681b2f81e1097e857e3fc50679b1)
+leak:BIO_new_ex
