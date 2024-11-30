@@ -12,3 +12,11 @@ leak:dyld4::Loader::*
 #    #4 0x7f2a7f0f79dd  (/lib/x86_64-linux-gnu/libcrypto.so.3+0xf79dd) (BuildId: c503df82cf13681b2f81e1097e857e3fc50679b1)
 #    #5 0x7f2a7f0ed883 in BIO_new_ex (/lib/x86_64-linux-gnu/libcrypto.so.3+0xed883) (BuildId: c503df82cf13681b2f81e1097e857e3fc50679b1)
 leak:BIO_new_ex
+
+# UCL should be investigated first within UCL, there is plenty to look at
+leak:ucl_parser_add_fd
+
+## FIXME: Temporarily suppress inside pkg source
+
+# this could be a dangling pointer false positive report, the whole function should be re-structured
+leak:pkgdb_open_all2

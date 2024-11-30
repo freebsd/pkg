@@ -56,6 +56,25 @@ struct regex_cache {
 	regex_t reg;
 };
 
+
+static void
+installed_ports_free(struct installed_ports *p) 
+{
+	if (!p)
+		return;
+	free(p->origin);
+	free(p);
+}
+
+static void
+regex_cache_free(struct regex_cache *p) 
+{
+	if (!p)
+		return;
+	free(p->pattern);
+	free(p);
+}
+
 void
 usage_updating(void)
 {
@@ -199,14 +218,13 @@ matcher(const char *affects, const char *origin, bool ignorecase)
 				goto out;
 			}
 			if ((ent->pattern = strdup(words[i])) == NULL) {
-				free(ent);
+				regex_cache_free(ent);
 				ret = 0;
 				goto out;
 			}
 			re = convert_re(words[i]);
 			if (re == NULL) {
-				free(ent->pattern);
-				free(ent);
+				regex_cache_free(ent);
 				ret = 0;
 				goto out;
 			}
@@ -221,6 +239,8 @@ matcher(const char *affects, const char *origin, bool ignorecase)
 	}
 
 out:
+	tll_foreach(cache, it)
+		tll_remove_and_free(cache, it, regex_cache_free);
 	free(words);
 	free(buf);
 	return (ret);
@@ -381,6 +401,8 @@ exec_updating(int argc, char **argv)
 	fclose(fd);
 
 cleanup:
+	tll_foreach(origins, it)
+		tll_remove_and_free(origins, it, installed_ports_free);
 	pkgdb_it_free(it);
 	pkgdb_release_lock(db, PKGDB_LOCK_READONLY);
 	pkgdb_close(db);

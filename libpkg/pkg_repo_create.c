@@ -1020,6 +1020,7 @@ pkg_repo_sign(const char *path, char **argv, int argc, char **sig, size_t *sigle
 			fwrite(line, linelen, 1, buf->fp);
 		}
 	}
+	free(line);
 
 	*sigtype = xstring_get(typestr);
 	*cert = xstring_get_binary(certstr, certlen);
@@ -1131,6 +1132,8 @@ pack_command_sign(struct packing *pack, const char *path, char **argv, int argc,
 
 		iov[offset].iov_base = buf;
 		iov[offset++].iov_len = size;
+	} else {
+		free(sigtype);
 	}
 
 	iov[offset].iov_base = sig;

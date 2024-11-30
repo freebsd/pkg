@@ -67,6 +67,7 @@ pkg_free(struct pkg *pkg)
 	free(pkg->desc);
 	free(pkg->sum);
 	free(pkg->repopath);
+	free(pkg->reponame);
 	free(pkg->repourl);
 	free(pkg->reason);
 	free(pkg->dep_formula);
