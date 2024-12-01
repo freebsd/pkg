@@ -28,6 +28,7 @@ TESTS_SH= \
 	frontend/conflicts.sh \
 	frontend/conflicts-multirepo.sh \
 	frontend/create.sh \
+	frontend/create-parsebin.sh \
 	frontend/delete.sh \
 	frontend/extract.sh \
 	frontend/fetch.sh \
