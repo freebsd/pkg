@@ -47,3 +47,130 @@ atf_require() {
 		atf_skip "$@"
 	fi
 }
+
+
+# helper function to obtain expected values for binaries used by the test cases
+
+bin_meta() {
+	local file="$1"
+	XFreeBSD_version=""
+	Xshlibs_required_base=""
+	case "${file}" in 
+		*freebsd-aarch64.bin)
+			XABI=FreeBSD:14:aarch64
+			XALTABI=freebsd:14:aarch64:64
+			XFreeBSD_version=1401000
+			Xshlibs_required_base="libc.so.7"
+			;;
+		*freebsd-amd64.bin)
+			XABI=FreeBSD:14:amd64
+			XALTABI=freebsd:14:x86:64
+			XFreeBSD_version=1401000
+			Xshlibs_required_base="libc.so.7"
+			;;
+		*freebsd-armv6.bin)
+			XABI=FreeBSD:13:armv6
+			XALTABI=freebsd:13:armv6:32:el:eabi:hardfp
+			XFreeBSD_version=1304000
+			Xshlibs_required_base="libc.so.7 libgcc_s.so.1"
+			;;
+		*freebsd-armv7.bin)
+			XABI=FreeBSD:14:armv7
+			XALTABI=freebsd:14:armv7:32:el:eabi:hardfp
+			XFreeBSD_version=1401000
+			Xshlibs_required_base="libc.so.7 libgcc_s.so.1"
+			;;
+		*freebsd-i386.bin)
+			XABI=FreeBSD:14:i386
+			XALTABI=freebsd:14:x86:32
+			XFreeBSD_version=1401000
+			Xshlibs_required_base="libc.so.7"
+			;;
+		*freebsd-powerpc.bin)
+			XABI=FreeBSD:14:powerpc
+			XALTABI=freebsd:14:powerpc:32:eb
+			XFreeBSD_version=1401000
+			Xshlibs_required_base="libc.so.7"
+			;;
+		*freebsd-powerpc64.bin)
+			XABI=FreeBSD:14:powerpc64
+			XALTABI=freebsd:14:powerpc:64:eb
+			XFreeBSD_version=1401000
+			Xshlibs_required_base="libc.so.7"
+			;;
+		*freebsd-powerpc64le.bin)
+			XABI=FreeBSD:14:powerpc64le
+			XALTABI=freebsd:14:powerpc:64:el
+			XFreeBSD_version=1401000
+			Xshlibs_required_base="libc.so.7"
+			;;
+		*freebsd-riscv64.bin)
+			XABI=FreeBSD:14:riscv64
+			XALTABI=freebsd:14:riscv:64:hf
+			XFreeBSD_version=1401000
+			Xshlibs_required_base="libc.so.7"
+			;;
+		*dfly.bin)
+			XABI=dragonfly:5.10:x86:64
+			XALTABI=dragonfly:5.10:x86:64
+			Xshlibs_required_base="libc.so.8"
+			;;
+		*linux.bin)
+			XABI=Linux:3.2:x86_64
+			XALTABI=linux:3.2:x86_64
+			Xshlibs_required_base="libc.so.6"
+			;;
+
+		*macos.bin)
+			XABI=Darwin:24:aarch64
+			XALTABI=darwin:24:aarch64:64
+			Xshlibs_required_base="libSystem.B.dylib"
+			;;
+		*macos106.bin)
+			XABI=Darwin:10:amd64
+			XALTABI=darwin:10:x86:64
+			Xshlibs_required_base="libSystem.B.dylib"
+			;;
+		*macos150.bin)
+			XABI=Darwin:24:amd64
+			XALTABI=darwin:24:x86:64
+			Xshlibs_required_base="libSystem.B.dylib"
+			;;
+
+		# macosfat.bin has amd64 as its first entry
+		*macosfat.bin|*macosfat.bin#amd64)
+			XABI=Darwin:24:amd64
+			XALTABI=darwin:24:x86:64
+			Xshlibs_required_base="libSystem.B.dylib"
+			;;
+			
+		# macosfat also has an aarch64 entry
+		*macosfat.bin#aarch64)
+			XABI=Darwin:20:aarch64
+			XALTABI=darwin:20:aarch64:64
+			Xshlibs_required="libAnswer.A.dylib-1.1"
+			Xshlibs_required_base="libAnswer.A.dylib-1.1 libSystem.B.dylib-1351.0"
+			;;
+
+		# macosfatlib.bin has aarch64 as its first entry
+		*macosfatlib.bin|*macosfatlib.bin#amd64)
+			XABI=Darwin:17:amd64
+			XALTABI=darwin:17:x86:64
+			Xshlibs_provided="libAnswer.A.dylib-1.2"
+			Xshlibs_required_base="libSystem.B.dylib-1351.0"
+			;;
+
+		*macosfatlib.bin#aarch64)
+			XABI=Darwin:20:aarch64
+			XALTABI=darwin:20:aarch64:64
+			Xshlibs_provided="libAnswer.A.dylib-1.1"
+			Xshlibs_required_base="libSystem.B.dylib-1351.0"
+			;;
+
+		*)
+			echo Unknown binary $1
+			return 1
+			;;
+	esac
+	return 0
+}

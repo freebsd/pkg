@@ -139,7 +139,7 @@ pkg_get_myarch_fromfile(struct os_info *oi)
 		ret = pkg_get_myarch_macho(fd, oi);
 		if (EPKG_OK != ret) {
 			pkg_emit_error(
-			    "Unable to determine the ABI, %s cannot be parsed.",
+			    "Unable to determine ABI, %s cannot be parsed.",
 			    work_abi_file);
 			ret = EPKG_FATAL;
 		}

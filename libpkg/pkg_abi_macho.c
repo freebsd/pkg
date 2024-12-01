@@ -304,6 +304,7 @@ pkg_get_myarch_macho(int fd, struct os_info *oi)
 		ret = EPKG_OK;
 	} else {
 		pkg_emit_notice("No OS version information found in binary.");
+		ret = EPKG_WARN;
 	}
 
 cleanup:

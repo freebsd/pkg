@@ -316,7 +316,7 @@ int
 shlib_list_from_elf_hints(const char *hintsfile)
 {
 	if (ctx.oi->ostype == OS_FREEBSD || ctx.oi->ostype == OS_DRAGONFLY)
-		read_elf_hints(hintsfile, 1);
+		read_elf_hints(hintsfile, false);
 
 	return (scan_dirs_for_shlibs(&shlibs, ndirs, dirs, true));
 }
