@@ -63,10 +63,20 @@ categories [
     "test",
 ]
 EOF
-    if [ x"${ALLOW_BASE_SHLIBS}" = xyes -a -n "${Xshlibs_required_base}" ]; then
-        echo "shlibs_required: [" >> ${PKG_NAME}.expected
-        for i in ${Xshlibs_required_base}; do
-            echo ${NL}"    "\"$i\" >> ${PKG_NAME}.expected
+    if [ x"${ALLOW_BASE_SHLIBS}" = xyes ]; then
+        Xshlibs_required="${Xshlibs_required_base}"
+    fi 
+    if [ -n "${Xshlibs_required}" ]; then
+        echo "shlibs_required [" >> ${PKG_NAME}.expected
+        for i in ${Xshlibs_required}; do
+            echo ${NL}"    "\"$i\", >> ${PKG_NAME}.expected
+        done
+        echo "]" >> ${PKG_NAME}.expected
+    fi
+    if [ -n "${Xshlibs_provided}" ]; then
+        echo "shlibs_provided [" >> ${PKG_NAME}.expected
+        for i in ${Xshlibs_provided}; do
+            echo ${NL}"    "\"$i\", >> ${PKG_NAME}.expected
         done
         echo "]" >> ${PKG_NAME}.expected
     fi
@@ -93,8 +103,9 @@ create_from_bin_body() {
         freebsd-aarch64.bin freebsd-amd64.bin freebsd-armv6.bin freebsd-armv7.bin \
 		freebsd-i386.bin freebsd-powerpc.bin freebsd-powerpc64.bin freebsd-powerpc64le.bin \
 		freebsd-riscv64.bin dfly.bin linux.bin \
-        macos.bin macos106.bin macos150.bin macosfat.bin \
-		"macosfat.bin#amd64" "macosfat.bin#aarch64"
+        macos.bin macos106.bin macos150.bin \
+        macosfat.bin "macosfat.bin#amd64" "macosfat.bin#aarch64" \
+        macosfatlib.bin "macosfatlib.bin#amd64" "macosfatlib.bin#aarch64"
     do
         local file1=$(atf_get_srcdir)/$bin
 
@@ -124,12 +135,15 @@ create_from_bin_body() {
 create_from_binbase_body() {
     local PKG_NAME=testbinbase
 
+    # FIXME: All ELF readers are failing on non-native runs.
     for bin in \
+        macos.bin macos106.bin macos150.bin \
+        macosfat.bin "macosfat.bin#amd64" "macosfat.bin#aarch64" \
+        macosfatlib.bin "macosfatlib.bin#amd64" "macosfatlib.bin#aarch64" \
         freebsd-aarch64.bin freebsd-amd64.bin freebsd-armv6.bin freebsd-armv7.bin \
-		freebsd-i386.bin freebsd-powerpc.bin freebsd-powerpc64.bin freebsd-powerpc64le.bin \
-		freebsd-riscv64.bin dfly.bin linux.bin \
-        macos.bin macos106.bin macos150.bin macosfat.bin \
-		"macosfat.bin#amd64" "macosfat.bin#aarch64"
+        freebsd-i386.bin freebsd-powerpc.bin freebsd-powerpc64.bin freebsd-powerpc64le.bin \
+        freebsd-riscv64.bin \
+        linux.bin dfly.bin
     do
         local file1=$(atf_get_srcdir)/$bin
 

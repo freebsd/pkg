@@ -212,7 +212,7 @@ read_min_version(const int fd, const bool swap, const uint32_t loadcmd,
 	return n;
 }
 
-static ssize_t
+ssize_t
 read_path(const int fd, const bool swap, const uint32_t loadcmdsize,
     char **dest)
 {
@@ -235,7 +235,7 @@ read_path(const int fd, const bool swap, const uint32_t loadcmdsize,
 	return n;
 }
 
-static ssize_t
+ssize_t
 read_dylib(const int fd, const bool swap, const uint32_t loadcmdsize,
     dylib_t **dest)
 {

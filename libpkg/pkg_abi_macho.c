@@ -124,8 +124,8 @@ static const fat_arch_t *
 match_entry(macho_file_t *mf, struct os_info *oi)
 {
 	const fat_arch_t *p = mf->arch;
-	// we can change the content of oi->abi freely
-	char *abisep = oi->abi;
+	char *abihint = xstrdup(oi->abi);
+	char *abisep = abihint;
 	/*const char *osname = */strsep(&abisep, ":");
 	/*const char *version_str = */ strsep(&abisep, ":");
 	const char *archname = strsep(&abisep, ":");
@@ -145,7 +145,7 @@ match_entry(macho_file_t *mf, struct os_info *oi)
 						CPU_SUBTYPE_ARM_ALL ||
 					    p->cpu.subtype_arm ==
 						cpu_hint.subtype_arm) {
-						return p;
+							goto matched;
 					}
 					break;
 				case CPU_TYPE_POWERPC:
@@ -155,7 +155,7 @@ match_entry(macho_file_t *mf, struct os_info *oi)
 						CPU_SUBTYPE_POWERPC_ALL ||
 					    p->cpu.subtype_ppc ==
 						cpu_hint.subtype_ppc) {
-						return p;
+							goto matched;
 					}
 					break;
 				case CPU_TYPE_X86:
@@ -165,7 +165,7 @@ match_entry(macho_file_t *mf, struct os_info *oi)
 						CPU_SUBTYPE_X86_ALL ||
 					    p->cpu.subtype_x86 ==
 						cpu_hint.subtype_x86) {
-						return p;
+							goto matched;
 					}
 					break;
 				default:
@@ -176,13 +176,15 @@ match_entry(macho_file_t *mf, struct os_info *oi)
 		    archname, cputype_to_freebsd_machine_arch(p->cpu));
 			p++;
 		}
-		pkg_emit_notice("Scanned %d entr%s, found none matching selector %s",
+		pkg_emit_notice("Scanned %"PRIu32" entr%s, found none matching selector %s",
 			mf->narch, mf->narch > 1 ? "ies" : "y", archname);
-		return 0;	
+		p=0;
 	} else if (mf->narch > 1 ) {
-		pkg_debug(1,"Found %d entries in universal binary, picking first",
+		pkg_debug(1,"Found %"PRIu32" entries in universal binary, picking first",
 			mf->narch);
 	}
+matched:
+	free(abihint);
 	return p;
 }
 
@@ -284,19 +286,19 @@ pkg_get_myarch_macho(int fd, struct os_info *oi)
 		oi->name = xstrdup("Darwin");
 		free(oi->version);
 		if (darwin.patch) {
-			xasprintf(&oi->version, "%d.%d.%d", darwin.major,
+			xasprintf(&oi->version, "%"PRIuFAST16".%"PRIuFAST16".%"PRIuFAST16"", darwin.major,
 			    darwin.minor, darwin.patch);
 		} else {
-			xasprintf(&oi->version, "%d.%d", darwin.major,
+			xasprintf(&oi->version, "%"PRIuFAST16".%"PRIuFAST16"", darwin.major,
 			    darwin.minor);
 		}
 		free(oi->version_major);
-		xasprintf(&oi->version_major, "%d", darwin.major);
+		xasprintf(&oi->version_major, "%"PRIuFAST16, darwin.major);
 		free(oi->version_minor);
-		xasprintf(&oi->version_minor, "%d", darwin.minor);
+		xasprintf(&oi->version_minor, "%"PRIuFAST16, darwin.minor);
 		free(oi->arch);
 		oi->arch = xstrdup(cputype_to_freebsd_machine_arch(mh.cpu));
-		snprintf(oi->abi, sizeof(oi->abi), "Darwin:%d:%s", darwin.major, cputype_to_freebsd_machine_arch(mh.cpu)); 
+		snprintf(oi->abi, sizeof(oi->abi), "Darwin:%"PRIuFAST16":%s", darwin.major, cputype_to_freebsd_machine_arch(mh.cpu)); 
 		// not populating oi->altabi, derived later by caller.
 		snprintf(oi->str_osversion, sizeof(oi->str_osversion), "%d",
 		    oi->osversion);
@@ -313,6 +315,147 @@ cleanup:
 	return ret;
 }
 
+static const char * const system_dylib_prefixes[] = {
+	"/System/",
+	"/usr/lib/",
+	"/lib/",
+};
+
+static bool
+system_dylib(const char *libname)
+{
+	const char * const *p = system_dylib_prefixes;
+	const char * const *p_end = p + NELEM(system_dylib_prefixes);
+	while (p < p_end) {
+		if (strncmp(libname, *p, strlen(*p)) == 0) {
+			return true;
+		}
+		p++;
+	}
+	return false;
+}
+
+static int
+analyse_macho(int fd, struct pkg *pkg, const bool baselibs)
+{
+	ssize_t x;
+	pkg_error_t ret = EPKG_END;
+
+	macho_file_t *mf = 0;
+
+	if ((x = read_macho_file(fd, &mf)) < 0) {
+		goto cleanup;
+	}
+
+	const fat_arch_t *p = match_entry(mf, ctx.oi);
+
+	if (!p) {
+		goto cleanup;
+	}
+
+	if (-1 == (x = lseek(fd, p->offset, SEEK_SET))) {
+		goto cleanup;
+	}
+	size_t n = 0;
+	macho_header_t mh;
+	if ((x = read_macho_header(fd, &mh)) < 0) {
+		goto cleanup;
+	}
+	const bool swap = mh.swap;
+	n = 0;
+	for (uint32_t ui = mh.ncmds; ui-- > 0;) {
+		size_t n0 = n;
+		uint32_t loadcmdtype;
+		uint32_t loadcmdsize;
+		READ(u32, loadcmdtype);
+		READ(u32, loadcmdsize);
+		enum MachOLoadCommand loadcmd = loadcmdtype & ~LC_REQ_DYLD;
+		switch (loadcmd) {
+		case LC_RPATH:
+		case LC_LOAD_DYLINKER:;
+			char *dylinker = 0;
+			if ((x = read_path(fd, swap, loadcmdsize,
+					&dylinker)) < 0) {
+				goto cleanup;
+			}
+			n += x;
+			pkg_debug(3, "load_dylinker %d: %s\n", loadcmd, dylinker);
+			free(dylinker);
+			break;
+		case LC_ID_DYLIB:   // provides
+		case LC_LOAD_DYLIB: // requires...
+		case LC_LOAD_WEAK_DYLIB:
+		case LC_REEXPORT_DYLIB:
+		case LC_LAZY_LOAD_DYLIB:
+		case LC_LOAD_UPWARD_DYLIB:;
+			dylib_t *dylib = 0;
+			if ((x = read_dylib(fd, swap, loadcmdsize,
+					&dylib)) < 0) {
+				goto cleanup;
+			}
+			n += x;
+			if (!baselibs && system_dylib(dylib->path)) {
+				pkg_debug(3, 
+					"Skipping System dynamic library path: %s ts %"PRIu32" current(%"PRIuFAST16", %"PRIuFAST16", %"PRIuFAST16") compat(%"PRIuFAST16", %"PRIuFAST16", %"PRIuFAST16")\n",
+					dylib->path, dylib->timestamp,
+					dylib->current_version.major,
+					dylib->current_version.minor,
+					dylib->current_version.patch,
+					dylib->compatibility_version.major,
+					dylib->compatibility_version.minor,
+					dylib->compatibility_version.patch);
+			} else {
+				const char * basename = strrchr(dylib->path, '/');
+				if (basename) {
+					pkg_debug(3, 
+						"Adding dynamic library path: %s ts %"PRIu32" current(%"PRIuFAST16", %"PRIuFAST16", %"PRIuFAST16") compat(%"PRIuFAST16", %"PRIuFAST16", %"PRIuFAST16")\n",
+						dylib->path, dylib->timestamp,
+						dylib->current_version.major,
+						dylib->current_version.minor,
+						dylib->current_version.patch,
+						dylib->compatibility_version.major,
+						dylib->compatibility_version.minor,
+						dylib->compatibility_version.patch);
+
+					basename++;
+
+					char *lib_with_version;
+					if (dylib->current_version.patch) {
+						xasprintf(&lib_with_version, "%s-%"PRIuFAST16".%"PRIuFAST16".%"PRIuFAST16, basename, dylib->current_version.major, dylib->current_version.minor, dylib->current_version.patch);
+					} else {
+						xasprintf(&lib_with_version, "%s-%"PRIuFAST16".%"PRIuFAST16, basename, dylib->current_version.major, dylib->current_version.minor);
+					}
+					if (LC_ID_DYLIB == loadcmd) {
+						pkg_addshlib_provided(pkg, lib_with_version);
+					} else {
+						pkg_addshlib_required(pkg, lib_with_version);
+					}
+					free(lib_with_version);
+				}
+			}
+			free(dylib);
+			break;
+		default:
+			break;
+		}
+		const uint32_t fill = loadcmdsize - (n - n0);
+		if (fill && -1 == (x = lseek(fd, fill, SEEK_CUR))) {
+			goto cleanup;
+		}
+		n += fill;
+		if (n > mh.sizeofcmds) {
+			// we passed the frame boundary of the load commands
+			pkg_emit_error("Mach-O structure misread.");
+			errno = EINVAL;
+			goto cleanup;
+		}
+	}
+
+cleanup:
+	free(mf);
+	return ret;
+}
+
 int
 pkg_analyse_init_macho(__unused const char *stage)
 {
@@ -320,10 +463,23 @@ pkg_analyse_init_macho(__unused const char *stage)
 }
 
 int
-pkg_analyse_macho(const bool developer_mode, __unused struct pkg *pkg, __unused const char *fpath)
+pkg_analyse_macho(const bool developer_mode, struct pkg *pkg, const char *fpath)
 {
 	int ret = EPKG_OK;
-	// int ret = analyse_macho(pkg, fpath);
+	bool baselibs = pkg_object_bool(pkg_config_get("ALLOW_BASE_SHLIBS"));
+	pkg_debug(1, "Analysing Mach-O %s %d", fpath, baselibs);
+
+	int fd = open(fpath, O_RDONLY);
+	if (-1 == fd) {
+		pkg_emit_errno("open", fpath);
+		ret = EPKG_FATAL;
+	} else {
+		ret = analyse_macho(fd, pkg, baselibs);
+		if (-1 == close(fd)) {
+			pkg_emit_errno("open", fpath);
+			ret = EPKG_FATAL;
+		}
+	}
 	if (developer_mode) {
 		if (ret != EPKG_OK && ret != EPKG_END) {
 			return EPKG_WARN;

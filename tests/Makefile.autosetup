@@ -92,6 +92,7 @@ TESTS_SHELL_BINS= \
 	frontend/macos106.bin \
 	frontend/macos150.bin \
 	frontend/macosfat.bin \
+	frontend/macosfatlib.bin \
 	frontend/libtestfbsd.so.1 \
 	frontend/libtest2fbsd.so.1 \
 	frontend/libfoo.so.1
