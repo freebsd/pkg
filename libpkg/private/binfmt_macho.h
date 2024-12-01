@@ -294,6 +294,10 @@ ssize_t read_build_version(const int fd, const bool swap,
     build_version_t **dest);
 ssize_t read_min_version(const int fd, const bool swap, const uint32_t loadcmd,
     build_version_t **dest);
+ssize_t read_path(const int fd, const bool swap, const uint32_t loadcmdsize, 
+    char **dest);
+ssize_t read_dylib(const int fd, const bool swap, const uint32_t loadcmdsize,
+    dylib_t **dest);
 
 #define READ(f, var)                              \
 	if ((x = read_##f(fd, swap, &var)) < 0) { \

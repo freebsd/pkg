@@ -227,10 +227,20 @@ pkg_analyse_files(struct pkgdb *db __unused, struct pkg *pkg, const char *stage)
 	const char *lib;
 	bool failures = false;
 
-	int (*pkg_analyse_init)(const char *stage) = pkg_analyse_init_elf;
+	int (*pkg_analyse_init)(const char *stage);
 	int (*pkg_analyse)(const bool developer_mode, struct pkg *pkg,
-	    const char *fpath) = pkg_analyse_elf;
-	int (*pkg_analyse_close)() = pkg_analyse_close_elf;
+	    const char *fpath);
+	int (*pkg_analyse_close)();
+
+	if (0 == strncmp(pkg->abi, "Darwin", 6)) {
+		pkg_analyse_init=pkg_analyse_init_macho;
+		pkg_analyse=pkg_analyse_macho;
+		pkg_analyse_close=pkg_analyse_close_macho;
+	} else {
+		pkg_analyse_init=pkg_analyse_init_elf;
+		pkg_analyse=pkg_analyse_elf;
+		pkg_analyse_close=pkg_analyse_close_elf;
+	}
 
 	if (tll_length(pkg->shlibs_required) != 0) {
 		tll_free_and_free(pkg->shlibs_required, free);
