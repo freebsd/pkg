@@ -3429,7 +3429,8 @@ satisfied (PS * ps)
     return 0;
   assert (!ps->conflict);
   assert (bcp_queue_is_empty (ps));
-  return ps->thead == ps->trail + ps->max_var;	/* all assigned */
+  return (ps->thead == ps->trail && 0 == ps->max_var)
+      || (ps->trail && ps->thead == ps->trail + ps->max_var); /* all assigned */
 }
 
 static void

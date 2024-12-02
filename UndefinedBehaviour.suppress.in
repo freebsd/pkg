@@ -1,9 +1,6 @@
 #
-# These are errors that need to be taken care of, but in the sprit of
-# "Put Your Own Oxygen Mask on First", we provide here a suppression list for
-# _external_ sources.
+# Suppress errors that are recognized but fix is considered beyond the scope of this project.
+# (e.g. in external source).
 #
-
-# external/picosat/picosat.c:3432:33: runtime error: applying non-zero offset 8 to null pointer
-# +SUMMARY: UndefinedBehaviorSanitizer: undefined-behavior external/picosat/picosat.c:3432:33 
-pointer-overflow:picosat.c
+# For syntax see: https://clang.llvm.org/docs/UndefinedBehaviorSanitizer.html#issue-suppression
+#
