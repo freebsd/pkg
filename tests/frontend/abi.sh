@@ -105,13 +105,13 @@ machoparse_body() {
 	atf_check \
 		-s exit:1 \
 		-o inline:"${_expected}" \
-		-e match:"Unable to determine the ABI" \
+		-e match:"Unable to determine ABI" \
 		pkg -o IGNORE_OSMAJOR=1 -o ABI_FILE=$(atf_get_srcdir)/macosfat.bin#i386 config abi
 
 	atf_check \
 		-s exit:1 \
 		-o inline:"${_expected}" \
-		-e match:"Unable to determine the ABI" \
+		-e match:"Unable to determine ABI" \
 		pkg -o IGNORE_OSMAJOR=1 -o ABI_FILE=$(atf_get_srcdir)/macosfat.bin#i386 config altabi
 
 	# explicitely select a fat entry that is not a valid architecture, hence not in the ABI_FILE
@@ -145,13 +145,13 @@ machoparse_body() {
 	atf_check \
 		-s exit:1 \
 		-o inline:"${_expected}" \
-		-e match:"Unable to determine the ABI" \
+		-e match:"Unable to determine ABI" \
 		pkg -d -o IGNORE_OSMAJOR=1 -o ABI_FILE=$(atf_get_srcdir)/macos.bin#i386 config abi
 
 	atf_check \
 		-s exit:1 \
 		-o inline:"${_expected}" \
-		-e match:"Unable to determine the ABI" \
+		-e match:"Unable to determine ABI" \
 		pkg -d -o IGNORE_OSMAJOR=1 -o ABI_FILE=$(atf_get_srcdir)/macos.bin#i386 config altabi
 
 	# if the binary is universal, selecting the first entry is to be commented
