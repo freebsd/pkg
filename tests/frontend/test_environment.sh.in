@@ -59,7 +59,7 @@ bin_meta() {
 	Xshlibs_provided=""
 	Xshlibs_required=""
 	Xshlibs_required_base=""
-	case "${file}" in 
+	case "${file}" in
 		*freebsd-aarch64.bin)
 			XABI=FreeBSD:14:aarch64
 			XALTABI=freebsd:14:aarch64:64
@@ -76,13 +76,13 @@ bin_meta() {
 			XABI=FreeBSD:13:armv6
 			XALTABI=freebsd:13:armv6:32:el:eabi:hardfp
 			XFreeBSD_version=1304000
-			Xshlibs_required_base="libc.so.7 libgcc_s.so.1"
+			Xshlibs_required_base="libgcc_s.so.1 libc.so.7"
 			;;
 		*freebsd-armv7.bin)
 			XABI=FreeBSD:14:armv7
 			XALTABI=freebsd:14:armv7:32:el:eabi:hardfp
 			XFreeBSD_version=1401000
-			Xshlibs_required_base="libc.so.7 libgcc_s.so.1"
+			Xshlibs_required_base="libgcc_s.so.1 libc.so.7"
 			;;
 		*freebsd-i386.bin)
 			XABI=FreeBSD:14:i386
@@ -112,17 +112,17 @@ bin_meta() {
 			XABI=FreeBSD:14:riscv64
 			XALTABI=freebsd:14:riscv:64:hf
 			XFreeBSD_version=1401000
-			Xshlibs_required_base="libc.so.7"
+#			Xshlibs_required_base="libc.so.7"
 			;;
 		*dfly.bin)
 			XABI=dragonfly:5.10:x86:64
 			XALTABI=dragonfly:5.10:x86:64
-			Xshlibs_required_base="libc.so.8"
+#			Xshlibs_required_base="libc.so.8"
 			;;
 		*linux.bin)
 			XABI=Linux:3.2:x86_64
 			XALTABI=linux:3.2:x86_64
-			Xshlibs_required_base="libc.so.6"
+#			Xshlibs_required_base="libc.so.6"
 			;;
 
 		*macos.bin)
@@ -146,7 +146,7 @@ bin_meta() {
 			XABI=Darwin:17:amd64
 			XALTABI=darwin:17:x86:64
 			Xshlibs_required="libAnswer.A.dylib-1.2"
-			Xshlibs_required_base="libAnswer.A.dylib-1.2 libSystem.B.dylib-1351.0"
+			Xshlibs_required_base="libAnswer.A.dylib-1.2 libSystem.B.dylib-1319.0"
 			;;
 
 		# macosfat also has an aarch64 entry
@@ -154,7 +154,7 @@ bin_meta() {
 			XABI=Darwin:20:aarch64
 			XALTABI=darwin:20:aarch64:64
 			Xshlibs_required="libAnswer.A.dylib-1.1"
-			Xshlibs_required_base="libAnswer.A.dylib-1.1 libSystem.B.dylib-1351.0"
+			Xshlibs_required_base="libAnswer.A.dylib-1.1 libSystem.B.dylib-1319.0"
 			;;
 
 		# macosfatlib.bin has aarch64 as its first entry
@@ -162,14 +162,14 @@ bin_meta() {
 			XABI=Darwin:17:amd64
 			XALTABI=darwin:17:x86:64
 			Xshlibs_provided="libAnswer.A.dylib-1.2"
-			Xshlibs_required_base="libSystem.B.dylib-1351.0"
+			Xshlibs_required_base="libSystem.B.dylib-1319.0"
 			;;
 
 		*macosfatlib.bin#aarch64)
 			XABI=Darwin:20:aarch64
 			XALTABI=darwin:20:aarch64:64
 			Xshlibs_provided="libAnswer.A.dylib-1.1"
-			Xshlibs_required_base="libSystem.B.dylib-1351.0"
+			Xshlibs_required_base="libSystem.B.dylib-1319.0"
 			;;
 
 		*)
