@@ -277,7 +277,7 @@ analyse_elf(struct pkg *pkg, const char *fpath)
 	}
 
 #ifdef __FreeBSD__
-	if (elfhdr.e_ident[EI_OSABI] != ELFOSABI_FREEBSD &&
+	if (ctx.abi.os == PKG_OS_FREEBSD && elfhdr.e_ident[EI_OSABI] != ELFOSABI_FREEBSD &&
 	    !is_old_freebsd_armheader(&elfhdr)) {
 		ret = EPKG_END;
 		goto cleanup;
