@@ -58,7 +58,7 @@ static struct {
 	{ PKG_OS_NETBSD, "NetBSD" },
 	{ PKG_OS_DRAGONFLY, "dragonfly" },
 	{ PKG_OS_LINUX, "Linux" },
-	{ PKG_OS_MACOS, "Darwin" },
+	{ PKG_OS_DARWIN, "Darwin" },
 	{ -1, NULL },
 };
 
@@ -109,7 +109,7 @@ pkg_os_uses_amd64_name(enum pkg_os os)
 {
 	switch (os) {
 	case PKG_OS_FREEBSD:
-	case PKG_OS_MACOS:
+	case PKG_OS_DARWIN:
 		return (true);
 	case PKG_OS_NETBSD:
 	case PKG_OS_LINUX:
@@ -175,7 +175,7 @@ pkg_abi_string_only_major_version(enum pkg_os os)
 	switch (os) {
 	case PKG_OS_FREEBSD:
 	case PKG_OS_NETBSD:
-	case PKG_OS_MACOS:
+	case PKG_OS_DARWIN:
 		return (true);
 	case PKG_OS_DRAGONFLY:
 	case PKG_OS_LINUX:
@@ -371,7 +371,7 @@ pkg_abi_from_file(struct pkg_abi *abi)
 
 		enum pkg_arch arch_hint = PKG_ARCH_UNKNOWN;
 		if (work_arch_hint[0]) {
-			arch_hint = pkg_arch_from_string(PKG_OS_MACOS, work_arch_hint);
+			arch_hint = pkg_arch_from_string(PKG_OS_DARWIN, work_arch_hint);
 			if (arch_hint == PKG_ARCH_UNKNOWN) {
 				pkg_emit_error("Invalid ABI_FILE architecture hint %s",
 				    work_arch_hint);
