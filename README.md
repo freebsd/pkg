@@ -54,7 +54,7 @@ database and then proceed to run the command you originally requested.
 
 More recent versions of pkg(7) understand `pkg -N` as a test to see if
 pkg(8) is installed without triggering the installation, and
-conversely, `pkg bootstrap[-f]` to install pkg(8) (or force it to be
+conversely, `pkg bootstrap [-f]` to install pkg(8) (or force it to be
 reinstalled) without performing any other actions.
 
 <a name="resources"></a>
