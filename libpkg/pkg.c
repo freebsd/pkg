@@ -103,6 +103,8 @@ pkg_free(struct pkg *pkg)
 	tll_free_and_free(pkg->message, pkg_message_free);
 	tll_free_and_free(pkg->annotations, pkg_kv_free);
 
+	tll_free_and_free(pkg->dir_to_del, free);
+
 	if (pkg->rootfd != -1)
 		close(pkg->rootfd);
 

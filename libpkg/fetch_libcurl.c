@@ -448,7 +448,7 @@ do_retry:
 		if (lurl) {
 			pkg_dbg(PKG_DBG_FETCH, 2, "CURL> attempting to fetch from %s\n", lurl);
 		}
-		pkg_dbg(PKG_DBG_FETCH, 2, "CURL> retries left: %ld\n", retry);
+		pkg_dbg(PKG_DBG_FETCH, 2, "CURL> retries left: %"PRId64"\n", retry);
 	}
 	curl_easy_setopt(cl, CURLOPT_HTTPAUTH, (long)CURLAUTH_ANY);
 	if (userpasswd != NULL) {

@@ -116,6 +116,8 @@ ATF_TC_BODY(c_charv_contains, tc)
 	ATF_REQUIRE_EQ_MSG(c_charv_contains(&list, "Test3", true), false, "c_charv_contains not case sensitive");
 	ATF_REQUIRE_EQ_MSG(c_charv_contains(&list, "Test3", false), true, "c_charv_contains not case insensitive");
 	ATF_REQUIRE_EQ_MSG(c_charv_contains(&list, "aest3", false), false, "c_charv_contains should not find anything");
+
+	pkgvec_free(&list);
 }
 
 ATF_TP_ADD_TCS(tp)

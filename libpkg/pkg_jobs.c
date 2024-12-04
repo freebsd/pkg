@@ -928,6 +928,7 @@ pkg_jobs_find_upgrade(struct pkg_jobs *j, const char *pattern, match_t m)
 		} else if (rc == EPKG_OK)
 			found = true;
 
+		pkg_free(p);
 		p = NULL;
 	}
 

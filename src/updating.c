@@ -71,6 +71,7 @@ regex_cache_free(struct regex_cache *p)
 {
 	if (!p)
 		return;
+	regfree(&p->reg);
 	free(p->pattern);
 	free(p);
 }

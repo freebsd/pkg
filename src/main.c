@@ -446,6 +446,7 @@ expand_aliases(int argc, char ***argv)
 	while ((alias = pkg_object_iterate(all_aliases, &it))) {
 		if (STREQ(oldargv[0], pkg_object_key(alias))) {
 			matched = true;
+			free(it);
 			break;
 		}
 	}

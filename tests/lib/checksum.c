@@ -79,7 +79,7 @@ ATF_TC_BODY(check_types, tc)
 
 ATF_TC_BODY(check_symlinks, tc)
 {
-	unsigned char *sum;
+	char *sum;
 
 	ATF_REQUIRE_EQ(symlink("foo", "bar"), 0);
 
@@ -115,7 +115,7 @@ ATF_TC_HEAD(check_files, tc)
 ATF_TC_BODY(check_files, tc)
 {
 	FILE *f;
-	unsigned char *sum;
+	char *sum;
 
 	f = fopen("foo", "w");
 	fprintf(f, "bar\n");
@@ -123,9 +123,9 @@ ATF_TC_BODY(check_files, tc)
 
 	sum = pkg_checksum_file("foo", PKG_HASH_TYPE_SHA256_HEX);
 	ATF_REQUIRE_STREQ(sum, "7d865e959b2466918c9863afca942d0fb89d7c9ac0c99bafc3749504ded97730");
+	free(sum);
 
 	ATF_CHECK(pkg_checksum_validate_file("foo", "7d865e959b2466918c9863afca942d0fb89d7c9ac0c99bafc3749504ded97730") == 0);
-	free(sum);
 
 	sum=pkg_checksum_generate_file("foo", PKG_HASH_TYPE_SHA256_HEX);
 	ATF_REQUIRE_STREQ(sum, "1$7d865e959b2466918c9863afca942d0fb89d7c9ac0c99bafc3749504ded97730");
@@ -140,7 +140,10 @@ ATF_TC_BODY(check_files, tc)
 	ATF_REQUIRE_EQ(pkg_checksum_symlinkat(AT_FDCWD, "nonexistent", PKG_HASH_TYPE_BLAKE2_BASE32), NULL);
 	ATF_REQUIRE_EQ(pkg_checksum_file("nonexistent", 42), NULL);
 	ATF_REQUIRE_EQ(pkg_checksum_data("a", 1, 42), NULL);
-	ATF_REQUIRE_STREQ(pkg_checksum_data("a", 0, PKG_HASH_TYPE_BLAKE2_BASE32), "u3xsc8fhkf9ntjikcz3hcsg1h5n59yqmz8s483emc8gessm4qnpk7ikhgqcmmz98ci391sdx565bazeffh1djkzkep7j1qqgeawsc6y");
+
+	sum = pkg_checksum_data("a", 0, PKG_HASH_TYPE_BLAKE2_BASE32);
+	ATF_REQUIRE_STREQ(sum, "u3xsc8fhkf9ntjikcz3hcsg1h5n59yqmz8s483emc8gessm4qnpk7ikhgqcmmz98ci391sdx565bazeffh1djkzkep7j1qqgeawsc6y");
+	free(sum);
 
 	sum = pkg_checksum_file("foo", PKG_HASH_TYPE_BLAKE2_BASE32);
 	ATF_REQUIRE_STREQ(sum, "gf8mcrnmm6p6hg6wa9xkfb98zo8g6nxu8z4q7s93boz8hzf5ogrsr4qgpsb7utd6speio3op18ocyrsa9ms8jj15byttiq7ofbih8gn");
@@ -180,6 +183,8 @@ ATF_TC_BODY(check_pkg, tc)
 	ATF_REQUIRE_STREQ(sum, "2$5$9819ezi7ytn58y3mwhcxaqbkiaik7ui9o3obewhqmuyx99kmb95y");
 	ATF_REQUIRE_EQ(pkg_checksum_get_type(sum, -1), PKG_HASH_TYPE_BLAKE2S_BASE32);
 	free(sum);
+
+	pkg_free(p);
 }
 
 ATF_TP_ADD_TCS(tp)

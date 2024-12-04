@@ -101,6 +101,7 @@ ATF_TC_BODY(packing_set_format, tc)
 	ATF_REQUIRE_STREQ(packing_set_format(a, TGZ, INT_MAX, -1), "tgz");
 	ATF_REQUIRE_STREQ(packing_set_format(a, TAR, INT_MAX, -1), "tar");
 	ATF_REQUIRE_EQ(packing_set_format(a, 28, INT_MAX, -1), NULL);
+	archive_write_free(a);
 }
 
 ATF_TP_ADD_TCS(tp)

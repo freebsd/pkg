@@ -993,6 +993,7 @@ backup_file_if_needed(struct pkg *p, struct pkg_file *f)
 			free(sum);
 			return;
 		}
+		free(sum);
 	}
 
 	snprintf(path, sizeof(path), "%s.pkgsave", f->path);

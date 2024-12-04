@@ -799,6 +799,7 @@ pkg_parse_manifest_ucl(struct pkg *pkg, ucl_object_t *obj)
 		if (!(sk->valid_type & TYPE_SHIFT(ucl_object_type(cur)))) {
 			pkg_emit_error("Bad format in manifest for key:"
 				" %s", key);
+			UCL_FREE (sizeof (*it), it);
 			return (EPKG_FATAL);
 		}
 	}

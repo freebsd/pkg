@@ -44,7 +44,9 @@ ATF_TC_WITHOUT_HEAD(prefix_path);
 
 ATF_TC_BODY(readdir, tc)
 {
-	int rootfd = open(getcwd(NULL, 0), O_DIRECTORY);
+	char *cwd = getcwd(NULL, 0);
+	int rootfd = open(cwd, O_DIRECTORY);
+	free(cwd);
 	lua_State *L = luaL_newstate();
 	static const luaL_Reg test_lib[] = {
 		{ "readdir", lua_readdir },
@@ -123,7 +125,9 @@ ATF_TC_BODY(readdir, tc)
 
 ATF_TC_BODY(stat, tc)
 {
-	int rootfd = open(getcwd(NULL, 0), O_DIRECTORY);
+	char *cwd = getcwd(NULL, 0);
+	int rootfd = open(cwd, O_DIRECTORY);
+	free(cwd);
 	lua_State *L = luaL_newstate();
 	static const luaL_Reg test_lib[] = {
 		{ "stat", lua_stat },
@@ -319,7 +323,9 @@ ATF_TC_BODY(override, tc)
 	}
 	atf_utils_wait(p, 0, "[string \"os.exit(1)\"]:1: os.exit not available\n", "");
 
-	int rootfd = open(getcwd(NULL, 0), O_DIRECTORY);
+	char *cwd = getcwd(NULL, 0);
+	int rootfd = open(cwd, O_DIRECTORY);
+	free(cwd);
 	lua_pushinteger(L, rootfd);
 	lua_setglobal(L, "rootfd");
 	p = atf_utils_fork();
@@ -355,7 +361,9 @@ ATF_TC_BODY(override, tc)
 ATF_TC_BODY(fileops, tc)
 {
 	char b[1024];
-	int rootfd = open(getcwd(NULL, 0), O_DIRECTORY);
+	char *cwd = getcwd(NULL, 0);
+	int rootfd = open(cwd, O_DIRECTORY);
+	free(cwd);
 	lua_State *L = luaL_newstate();
 	luaL_openlibs(L);
 	lua_pushinteger(L, rootfd);

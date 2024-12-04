@@ -954,12 +954,14 @@ exec_query(int argc, char **argv)
 	if ((match == MATCH_ALL || pkgname != NULL)
 	    && argc > 1) {
 		usage_query();
-		return (EXIT_FAILURE);
+		retcode = EXIT_FAILURE;
+		goto cleanup;
 	}
 
 	if (argc == 0) {
 		usage_query();
-		return (EXIT_FAILURE);
+		retcode = EXIT_FAILURE;
+		goto cleanup;
 	}
 
 	/* Default to all packages if no pkg provided */
@@ -968,12 +970,15 @@ exec_query(int argc, char **argv)
 	} else if (((argc == 1) ^ (match == MATCH_ALL)) && pkgname == NULL
 			&& condition == NULL) {
 		usage_query();
-		return (EXIT_FAILURE);
+		retcode = EXIT_FAILURE;
+		goto cleanup;
 	}
 
 	if (analyse_query_string(argv[0], accepted_query_flags, q_flags_len,
-			&query_flags, &multiline) != EPKG_OK)
-		return (EXIT_FAILURE);
+			&query_flags, &multiline) != EPKG_OK) {
+		retcode = EXIT_FAILURE;
+		goto cleanup;
+	}
 
 	if (pkgname != NULL) {
 		/* Use a manifest or compact manifest if possible. */
@@ -995,42 +1000,49 @@ exec_query(int argc, char **argv)
 			open_flags = PKG_OPEN_MANIFEST_ONLY;
 		}
 		if (pkg_open(&pkg, pkgname, open_flags) != EPKG_OK) {
-			return (EXIT_FAILURE);
+			retcode = EXIT_FAILURE;
+			goto cleanup;
 		}
 
 		print_query(pkg, argv[0], multiline);
-		pkg_free(pkg);
-		return (EXIT_SUCCESS);
+		retcode = EXIT_SUCCESS;
+		goto cleanup;
 	}
 
 	if (condition != NULL) {
 		sqlcond = xstring_new();
 		if (format_sql_condition(condition, sqlcond, false) != EPKG_OK) {
-			xstring_free(sqlcond);
-			return (EXIT_FAILURE);
+			retcode = EXIT_FAILURE;
+			goto cleanup;
 		}
 	}
 
 	ret = pkgdb_access(PKGDB_MODE_READ, PKGDB_DB_LOCAL);
 	if (ret == EPKG_ENOACCESS) {
 		warnx("Insufficient privileges to query the package database");
-		return (EXIT_FAILURE);
+		retcode = EXIT_FAILURE;
+		goto cleanup;
 	} else if (ret == EPKG_ENODB) {
 		if (!quiet)
 			warnx("No packages installed");
-		return (EXIT_SUCCESS);
-	} else if (ret != EPKG_OK)
-		return (EXIT_FAILURE);
+		retcode = EXIT_SUCCESS;
+		goto cleanup;
+	} else if (ret != EPKG_OK) {
+		retcode = EXIT_FAILURE;
+		goto cleanup;
+	}
 
 	ret = pkgdb_open(&db, PKGDB_DEFAULT);
-	if (ret != EPKG_OK)
-		return (EXIT_FAILURE);
+	if (ret != EPKG_OK) {
+		retcode = EXIT_FAILURE;
+		goto cleanup;
+	}
 
 	pkg_drop_privileges();
 	if (pkgdb_obtain_lock(db, PKGDB_LOCK_READONLY) != EPKG_OK) {
-		pkgdb_close(db);
 		warnx("Cannot get a read lock on a database, it is locked by another process");
-		return (EXIT_FAILURE);
+		retcode = EXIT_FAILURE;
+		goto cleanup;
 	}
 
 	if (sqlcond) {
@@ -1066,6 +1078,9 @@ exec_query(int argc, char **argv)
 		 were found. */
 		retcode = EXIT_FAILURE;
 	}
+
+cleanup:
+	xstring_free(sqlcond);
 
 	pkg_free(pkg);
 

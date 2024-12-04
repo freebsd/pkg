@@ -76,7 +76,8 @@ ATF_TC_BODY(analyse_elf, tc)
 	ATF_REQUIRE_EQ(tll_length(p->shlibs_required), 1);
 	ATF_REQUIRE_STREQ(tll_front(p->shlibs_required), "libfoo.so.1");
 	free(binpath);
-
+	
+	pkg_free(p);
 }
 
 ATF_TP_ADD_TCS(tp)

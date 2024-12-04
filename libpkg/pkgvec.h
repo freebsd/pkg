@@ -25,7 +25,7 @@
 
 #define pkgvec_free_and_free(v, free_func)            \
 	do {                                          \
-		for (size_t _i; _i < (v)->len ; _i++) { \
+		for (size_t _i=0; _i < (v)->len ; _i++) { \
 			free_func((v)->d[_i]);          \
 			(v)->d[_i] = NULL;   \
 		}                                     \
@@ -43,7 +43,7 @@
 
 #define pkgvec_clear_and_free(v, free_func) \
 	do {                                          \
-		for (size_t _i; _i < (v)->len ; _i++) { \
+		for (size_t _i=0; _i < (v)->len ; _i++) { \
 			free_func((v)->d[_i]);          \
 			(v)->d[_i] = NULL;   \
 		}                                     \

@@ -16,7 +16,587 @@ leak:BIO_new_ex
 # UCL should be investigated first within UCL, there is plenty to look at
 leak:ucl_parser_add_fd
 
+# atf 0.22 introduced leaks in the test-code
+# https://github.com/freebsd/atf/issues/77
+leak:atf_map_init_charpp
+leak:atf_tp_get_tcs
+leak:atf_utils_wait
+
 ## FIXME: Temporarily suppress inside pkg source
 
 # this could be a dangling pointer false positive report, the whole function should be re-structured
 leak:pkgdb_open_all2
+
+# UCL objects are copied around and not properly freed
+#Direct leak of 64 byte(s) in 1 object(s) allocated from:
+#    #0 0x000104ab0f12 in malloc+0x82 (libclang_rt.asan_osx_dynamic.dylib:x86_64h+0xdff12)
+#    #1 0x000103585784 in ucl_object_new_full ucl_util.c:3009
+#    #2 0x000103585754 in ucl_object_typed_new ucl_util.c:3000
+#    #3 0x0001037eddcf in pkg_ini pkg_config.c:1268
+#    #4 0x0001030fb427 in main main.c:674
+#    #5 0x7ff8018b92cc in start+0x70c (dyld:x86_64+0xfffffffffff4f2cc)
+#
+#Indirect leak of 64 byte(s) in 1 object(s) allocated from:
+#    #0 0x000104ab0f12 in malloc+0x82 (libclang_rt.asan_osx_dynamic.dylib:x86_64h+0xdff12)
+#    #1 0x000103588d19 in ucl_object_copy_internal ucl_util.c:3603
+#    #2 0x00010357efb9 in ucl_object_copy ucl_util.c:3667
+#    #3 0x0001037eddf0 in pkg_ini pkg_config.c:1269
+#    #4 0x0001030fb427 in main main.c:674
+#    #5 0x7ff8018b92cc in start+0x70c (dyld:x86_64+0xfffffffffff4f2cc)
+#
+#Indirect leak of 40 byte(s) in 1 object(s) allocated from:
+#    #0 0x000104ab1217 in calloc+0x87 (libclang_rt.asan_osx_dynamic.dylib:x86_64h+0xe0217)
+#    #1 0x0001035290b2 in kh_init_ucl_hash_node ucl_hash.c:117
+#    #2 0x000103528fe8 in ucl_hash_create ucl_hash.c:246
+#    #3 0x000103580e51 in ucl_object_insert_key_common ucl_util.c:2410
+#    #4 0x00010357e617 in ucl_object_insert_key ucl_util.c:2546
+#    #5 0x0001037ede53 in pkg_ini pkg_config.c:1269
+#    #6 0x0001030fb427 in main main.c:674
+#    #7 0x7ff8018b92cc in start+0x70c (dyld:x86_64+0xfffffffffff4f2cc)
+#
+#Indirect leak of 32 byte(s) in 1 object(s) allocated from:
+#    #0 0x000104ab1117 in realloc+0x87 (libclang_rt.asan_osx_dynamic.dylib:x86_64h+0xe0117)
+#    #1 0x0001035316f6 in kh_resize_ucl_hash_node ucl_hash.c:117
+#    #2 0x00010352b851 in kh_put_ucl_hash_node ucl_hash.c:117
+#    #3 0x000103529eb2 in ucl_hash_insert ucl_hash.c:333
+#    #4 0x000103583a56 in ucl_hash_insert_object ucl_internal.h:486
+#    #5 0x0001035812e1 in ucl_object_insert_key_common ucl_util.c:2443
+#    #6 0x00010357e617 in ucl_object_insert_key ucl_util.c:2546
+#    #7 0x0001037ede53 in pkg_ini pkg_config.c:1269
+#    #8 0x0001030fb427 in main main.c:674
+#    #9 0x7ff8018b92cc in start+0x70c (dyld:x86_64+0xfffffffffff4f2cc)
+#
+#Indirect leak of 32 byte(s) in 1 object(s) allocated from:
+#    #0 0x000104ab1117 in realloc+0x87 (libclang_rt.asan_osx_dynamic.dylib:x86_64h+0xe0117)
+#    #1 0x000103531635 in kh_resize_ucl_hash_node ucl_hash.c:117
+#    #2 0x00010352b851 in kh_put_ucl_hash_node ucl_hash.c:117
+#    #3 0x000103529eb2 in ucl_hash_insert ucl_hash.c:333
+#    #4 0x000103583a56 in ucl_hash_insert_object ucl_internal.h:486
+#    #5 0x0001035812e1 in ucl_object_insert_key_common ucl_util.c:2443
+#    #6 0x00010357e617 in ucl_object_insert_key ucl_util.c:2546
+#    #7 0x0001037ede53 in pkg_ini pkg_config.c:1269
+#    #8 0x0001030fb427 in main main.c:674
+#    #9 0x7ff8018b92cc in start+0x70c (dyld:x86_64+0xfffffffffff4f2cc)
+#
+#Indirect leak of 24 byte(s) in 1 object(s) allocated from:
+#    #0 0x000104ab0f12 in malloc+0x82 (libclang_rt.asan_osx_dynamic.dylib:x86_64h+0xdff12)
+#    #1 0x000103529ed4 in ucl_hash_insert ucl_hash.c:335
+#    #2 0x000103583a56 in ucl_hash_insert_object ucl_internal.h:486
+#    #3 0x0001035812e1 in ucl_object_insert_key_common ucl_util.c:2443
+#    #4 0x00010357e617 in ucl_object_insert_key ucl_util.c:2546
+#    #5 0x0001037ede53 in pkg_ini pkg_config.c:1269
+#    #6 0x0001030fb427 in main main.c:674
+#    #7 0x7ff8018b92cc in start+0x70c (dyld:x86_64+0xfffffffffff4f2cc)
+#
+#Indirect leak of 24 byte(s) in 1 object(s) allocated from:
+#    #0 0x000104ab0f12 in malloc+0x82 (libclang_rt.asan_osx_dynamic.dylib:x86_64h+0xdff12)
+#    #1 0x000103528f39 in ucl_hash_create ucl_hash.c:237
+#    #2 0x000103580e51 in ucl_object_insert_key_common ucl_util.c:2410
+#    #3 0x00010357e617 in ucl_object_insert_key ucl_util.c:2546
+#    #4 0x0001037ede53 in pkg_ini pkg_config.c:1269
+#    #5 0x0001030fb427 in main main.c:674
+#    #6 0x7ff8018b92cc in start+0x70c (dyld:x86_64+0xfffffffffff4f2cc)
+#
+#Indirect leak of 8 byte(s) in 1 object(s) allocated from:
+#    #0 0x000104ab0f12 in malloc+0x82 (libclang_rt.asan_osx_dynamic.dylib:x86_64h+0xdff12)
+#    #1 0x00010357502d in ucl_copy_key_trash ucl_util.c:507
+#    #2 0x00010358123a in ucl_object_insert_key_common ucl_util.c:2437
+#    #3 0x00010357e617 in ucl_object_insert_key ucl_util.c:2546
+#    #4 0x0001037ede53 in pkg_ini pkg_config.c:1269
+#    #5 0x0001030fb427 in main main.c:674
+#    #6 0x7ff8018b92cc in start+0x70c (dyld:x86_64+0xfffffffffff4f2cc)
+#
+#Indirect leak of 4 byte(s) in 1 object(s) allocated from:
+#    #0 0x000104ab0f12 in malloc+0x82 (libclang_rt.asan_osx_dynamic.dylib:x86_64h+0xdff12)
+#    #1 0x000103531522 in kh_resize_ucl_hash_node ucl_hash.c:117
+#    #2 0x00010352b851 in kh_put_ucl_hash_node ucl_hash.c:117
+#    #3 0x000103529eb2 in ucl_hash_insert ucl_hash.c:333
+#    #4 0x000103583a56 in ucl_hash_insert_object ucl_internal.h:486
+#    #5 0x0001035812e1 in ucl_object_insert_key_common ucl_util.c:2443
+#    #6 0x00010357e617 in ucl_object_insert_key ucl_util.c:2546
+#    #7 0x0001037ede53 in pkg_ini pkg_config.c:1269
+#    #8 0x0001030fb427 in main main.c:674
+#    #9 0x7ff8018b92cc in start+0x70c (dyld:x86_64+0xfffffffffff4f2cc)
+leak:pkg_ini
+
+# Freeing the iterator was not considered
+#Direct leak of 16 byte(s) in 1 object(s) allocated from:
+#    #0 0x00010dac7217 in calloc+0x87 (libclang_rt.asan_osx_dynamic.dylib:x86_64h+0xe0217)
+#    #1 0x00010c8a6e7c in xcalloc xmalloc.h:19
+#    #2 0x00010c8a6f9a in pkg_kvlist_iterator pkg_attributes.c:179
+#    #3 0x00010c0f5a7e in do_show annotate.c:150
+#    #4 0x00010c0f4f4d in exec_annotate annotate.c:353
+#    #5 0x00010c1121f2 in main main.c:809
+#    #6 0x7ff8018b92cc in start+0x70c (dyld:x86_64+0xfffffffffff4f2cc)
+#Direct leak of 8 byte(s) in 1 object(s) allocated from:
+#    #0 0x00010dac7217 in calloc+0x87 (libclang_rt.asan_osx_dynamic.dylib:x86_64h+0xe0217)
+#    #1 0x00010c8a6e7c in xcalloc xmalloc.h:19
+#    #2 0x00010c8a8a5c in pkg_get_element pkg_attributes.c:312
+#    #3 0x00010c0f5e6e in pkg_get_kv pkg.h:1822
+#    #4 0x00010c0f5a71 in do_show annotate.c:149
+#    #5 0x00010c0f4f4d in exec_annotate annotate.c:353
+#    #6 0x00010c1121f2 in main main.c:809
+#    #7 0x7ff8018b92cc in start+0x70c (dyld:x86_64+0xfffffffffff4f2cc)
+leak:pkg_kvlist_iterator
+leak:pkg_get_element
+
+# Purging TREEs after use was not considered
+#Direct leak of 16 byte(s) in 1 object(s) allocated from:
+#    #0 0x00010b871f12 in malloc+0x82 (libclang_rt.asan_osx_dynamic.dylib:x86_64h+0xdff12)
+#    #1 0x00010a5e8db4 in xmalloc xmalloc.h:11
+#    #2 0x00010a5e890f in pkg_conflicts_append_chain pkg_jobs_conflicts.c:446
+#    #3 0x00010a66cf21 in pkg_jobs_check_conflicts pkg_jobs.c:2341
+#    #4 0x00010a65f588 in pkg_jobs_check_and_solve_conflicts pkg_jobs.c:1899
+#    #5 0x00010a65f244 in pkg_jobs_solve pkg_jobs.c:1942
+#    #6 0x000109eb7f00 in exec_install install.c:224
+#    #7 0x000109ebd1f2 in main main.c:809
+#    #8 0x7ff8018b92cc in start+0x70c (dyld:x86_64+0xfffffffffff4f2cc)
+leak:pkg_conflicts_append_chain
+
+# repo->meta not properly freed
+#Direct leak of 176 byte(s) in 1 object(s) allocated from:
+#    #0 0x000105cff217 in calloc+0x87 (libclang_rt.asan_osx_dynamic.dylib:x86_64h+0xe0217)
+#    #1 0x0001049ec95c in xcalloc xmalloc.h:19
+#    #2 0x0001049eb050 in pkg_repo_meta_parse pkg_repo_meta.c:257
+#    #3 0x0001049eada5 in pkg_repo_meta_load pkg_repo_meta.c:389
+#    #4 0x000104a4f8b3 in pkg_repo_fetch_meta pkg_repo.c:1152
+#    #5 0x00010437bd29 in pkg_repo_binary_update_proceed update.c:543
+#    #6 0x00010437b641 in pkg_repo_binary_update update.c:748
+#    #7 0x000104a233b2 in pkg_update pkg_repo_update.c:54
+#    #8 0x00010435d458 in pkgcli_update update.c:86
+#    #9 0x00010435df62 in exec_update update.c:195
+#    #10 0x00010434a1e2 in main main.c:809
+#    #11 0x7ff8018b92cc in start+0x70c (dyld:x86_64+0xfffffffffff4f2cc)
+leak:pkg_repo_binary_update_proceed
+
+# iterator leaks memory
+#Indirect leak of 17 byte(s) in 1 object(s) allocated from:
+#    #0 0x562dc63e9f9e in strdup (/home/runner/work/pkg/pkg/build.pkg/src/pkg+0x1ccf9e) (BuildId: ba3136032c30dc1e82d451990c7e921feef19d31)
+#    #1 0x562dc6604a04 in xstrdup /home/runner/work/pkg/pkg/src.pkg/libpkg/xmalloc.h:35:12
+#    #2 0x562dc66031bb in populate_pkg /home/runner/work/pkg/pkg/src.pkg/libpkg/pkgdb_iterator.c:855:16
+#    #3 0x562dc6601012 in pkgdb_sqlite_it_next /home/runner/work/pkg/pkg/src.pkg/libpkg/pkgdb_iterator.c:1072:3
+#    #4 0x562dc6600955 in pkgdb_it_next /home/runner/work/pkg/pkg/src.pkg/libpkg/pkgdb_iterator.c:1121:11
+#    #5 0x562dc656cc1d in pkg_jobs_universe_get_local /home/runner/work/pkg/pkg/src.pkg/libpkg/pkg_jobs_universe.c:90:6
+#    #6 0x562dc656e87a in pkg_jobs_universe_process_deps /home/runner/work/pkg/pkg/src.pkg/libpkg/pkg_jobs_universe.c:252:11
+#    #7 0x562dc656e2a0 in pkg_jobs_universe_process_item /home/runner/work/pkg/pkg/src.pkg/libpkg/pkg_jobs_universe.c:608:8
+#    #8 0x562dc6570600 in pkg_jobs_universe_process /home/runner/work/pkg/pkg/src.pkg/libpkg/pkg_jobs_universe.c:658:10
+#    #9 0x562dc65485ee in jobs_solve_partial_upgrade /home/runner/work/pkg/pkg/src.pkg/libpkg/pkg_jobs.c:1635:13
+#    #10 0x562dc6542bb8 in jobs_solve_install_upgrade /home/runner/work/pkg/pkg/src.pkg/libpkg/pkg_jobs.c:1672:14
+#    #11 0x562dc653f624 in pkg_jobs_run_solver /home/runner/work/pkg/pkg/src.pkg/libpkg/pkg_jobs.c:1864:9
+#    #12 0x562dc653f187 in pkg_jobs_solve /home/runner/work/pkg/pkg/src.pkg/libpkg/pkg_jobs.c:1918:12
+#    #13 0x562dc6459b88 in exec_install /home/runner/work/pkg/pkg/src.pkg/src/install.c:224:6
+#    #14 0x562dc645eb64 in main /home/runner/work/pkg/pkg/src.pkg/src/main.c:809:9
+#    #15 0x7f9dc3e2a1c9  (/lib/x86_64-linux-gnu/libc.so.6+0x2a1c9) (BuildId: 6d64b17fbac799e68da7ebd9985ddf9b5cb375e6)
+#    #16 0x7f9dc3e2a28a in __libc_start_main (/lib/x86_64-linux-gnu/libc.so.6+0x2a28a) (BuildId: 6d64b17fbac799e68da7ebd9985ddf9b5cb375e6)
+#    #17 0x562dc6367444 in _start (/home/runner/work/pkg/pkg/build.pkg/src/pkg+0x14a444) (BuildId: ba3136032c30dc1e82d451990c7e921feef19d31)
+leak:pkgdb_it_next
+
+# repo metadata is leaked
+#Indirect leak of 8 byte(s) in 1 object(s) allocated from:
+#    #0 0x562397070f9e in strdup (/home/runner/work/pkg/pkg/build.pkg/src/pkg+0x1ccf9e) (BuildId: ba3136032c30dc1e82d451990c7e921feef19d31)
+#    #1 0x5623972c82e4 in xstrdup /home/runner/work/pkg/pkg/src.pkg/libpkg/xmalloc.h:35:12
+#    #2 0x5623972c7ab1 in pkg_repo_meta_set_default /home/runner/work/pkg/pkg/src.pkg/libpkg/pkg_repo_meta.c:67:18
+#    #3 0x5623972c5f1e in pkg_repo_meta_parse /home/runner/work/pkg/pkg/src.pkg/libpkg/pkg_repo_meta.c:259:2
+#    #4 0x5623972c5c7f in pkg_repo_meta_load /home/runner/work/pkg/pkg/src.pkg/libpkg/pkg_repo_meta.c:389:10
+#    #5 0x562397913304 in pkg_repo_binary_open /home/runner/work/pkg/pkg/src.pkg/libpkg/repo/binary/init.c:161:7
+#    #6 0x562397909ef4 in pkg_repo_binary_update /home/runner/work/pkg/pkg/src.pkg/libpkg/repo/binary/update.c:716:6
+#    #7 0x562397290bf4 in pkg_update /home/runner/work/pkg/pkg/src.pkg/libpkg/pkg_repo_update.c:54:11
+#    #8 0x5623970f78fc in pkgcli_update /home/runner/work/pkg/pkg/src.pkg/src/update.c:86:13
+#    #9 0x5623970fbe26 in exec_upgrade /home/runner/work/pkg/pkg/src.pkg/src/upgrade.c:350:17
+#    #10 0x5623970e5b64 in main /home/runner/work/pkg/pkg/src.pkg/src/main.c:809:9
+#    #11 0x7fae3fe2a1c9  (/lib/x86_64-linux-gnu/libc.so.6+0x2a1c9) (BuildId: 6d64b17fbac799e68da7ebd9985ddf9b5cb375e6)
+#    #12 0x7fae3fe2a28a in __libc_start_main (/lib/x86_64-linux-gnu/libc.so.6+0x2a28a) (BuildId: 6d64b17fbac799e68da7ebd9985ddf9b5cb375e6)
+#    #13 0x562396fee444 in _start (/home/runner/work/pkg/pkg/build.pkg/src/pkg+0x14a444) (BuildId: ba3136032c30dc1e82d451990c7e921feef19d31)
+leak:pkg_repo_binary_update
+
+
+# Leak during signature
+#Indirect leak of 64 byte(s) in 1 object(s) allocated from:
+#    #0 0x55ec4d2c5293 in malloc (/home/runner/work/pkg/pkg/build.pkg/src/pkg+0x1e5293) (BuildId: 2bd55d3c70bbeee491903cf8e0a5e4b4835de4a6)
+#    #1 0x55ec4d5f6dcd in libder_obj_alloc_internal /home/runner/work/pkg/pkg/src.pkg/external/libder/libder/libder_obj.c:138:8
+#    #2 0x55ec4d5f7133 in libder_obj_alloc_simple /home/runner/work/pkg/pkg/src.pkg/external/libder/libder/libder_obj.c:107:8
+#    #3 0x55ec4d4e69db in ecc_write_signature_component /home/runner/work/pkg/pkg/src.pkg/libpkg/pkgsign_ecc.c:425:9
+#    #4 0x55ec4d4e6636 in ecc_write_signature /home/runner/work/pkg/pkg/src.pkg/libpkg/pkgsign_ecc.c:462:7
+#    #5 0x55ec4d4e3775 in ecc_sign_data /home/runner/work/pkg/pkg/src.pkg/libpkg/pkgsign_ecc.c:1097:6
+#    #6 0x55ec4d4e398d in ecc_sign /home/runner/work/pkg/pkg/src.pkg/libpkg/pkgsign_ecc.c:1122:8
+#    #7 0x55ec4d4e89f4 in pkgsign_sign /home/runner/work/pkg/pkg/src.pkg/libpkg/pkgsign.c:177:9
+#    #8 0x55ec4d3f56c8 in pack_sign /home/runner/work/pkg/pkg/src.pkg/libpkg/pkg_repo_create.c:1066:6
+#    #9 0x55ec4d3f531a in pkg_repo_pack_db /home/runner/work/pkg/pkg/src.pkg/libpkg/pkg_repo_create.c:1172:9
+#    #10 0x55ec4d3f3a5d in pkg_repo_create_pack_and_sign /home/runner/work/pkg/pkg/src.pkg/libpkg/pkg_repo_create.c:724:6
+#    #11 0x55ec4d3f0810 in pkg_repo_create /home/runner/work/pkg/pkg/src.pkg/libpkg/pkg_repo_create.c:960:10
+#    #12 0x55ec4d32d33f in exec_repo /home/runner/work/pkg/pkg/src.pkg/src/repo.c:126:6
+#    #13 0x55ec4d321b74 in main /home/runner/work/pkg/pkg/src.pkg/src/main.c:809:9
+#    #14 0x7fd89d82a1c9  (/lib/x86_64-linux-gnu/libc.so.6+0x2a1c9) (BuildId: 6d64b17fbac799e68da7ebd9985ddf9b5cb375e6)
+#    #15 0x7fd89d82a28a in __libc_start_main (/lib/x86_64-linux-gnu/libc.so.6+0x2a28a) (BuildId: 6d64b17fbac799e68da7ebd9985ddf9b5cb375e6)
+#    #16 0x55ec4d22a444 in _start (/home/runner/work/pkg/pkg/build.pkg/src/pkg+0x14a444) (BuildId: 2bd55d3c70bbeee491903cf8e0a5e4b4835de4a6)
+leak:ecc_sign
+
+# Leak in jobs solver
+#Direct leak of 24 byte(s) in 1 object(s) allocated from:
+#    #0 0x56483b6c647d in calloc (/home/runner/work/pkg/pkg/build.pkg/src/pkg+0x1e547d) (BuildId: 2bd55d3c70bbeee491903cf8e0a5e4b4835de4a6)
+#    #1 0x56483b831dcc in xcalloc /home/runner/work/pkg/pkg/src.pkg/libpkg/xmalloc.h:19:14
+#    #2 0x56483b838029 in pkg_jobs_universe_get_remote /home/runner/work/pkg/pkg/src.pkg/libpkg/pkg_jobs_universe.c:139:13
+#    #3 0x56483b832bb0 in pkg_jobs_universe_process_deps /home/runner/work/pkg/pkg/src.pkg/libpkg/pkg_jobs_universe.c:277:12
+#    #4 0x56483b832276 in pkg_jobs_universe_process_item /home/runner/work/pkg/pkg/src.pkg/libpkg/pkg_jobs_universe.c:604:8
+#    #5 0x56483b834620 in pkg_jobs_universe_process /home/runner/work/pkg/pkg/src.pkg/libpkg/pkg_jobs_universe.c:658:10
+#    #6 0x56483b80c04b in jobs_solve_full_upgrade /home/runner/work/pkg/pkg/src.pkg/libpkg/pkg_jobs.c:1583:3
+#    #7 0x56483b806b99 in jobs_solve_install_upgrade /home/runner/work/pkg/pkg/src.pkg/libpkg/pkg_jobs.c:1668:14
+#    #8 0x56483b803644 in pkg_jobs_run_solver /home/runner/work/pkg/pkg/src.pkg/libpkg/pkg_jobs.c:1864:9
+#    #9 0x56483b8031a7 in pkg_jobs_solve /home/runner/work/pkg/pkg/src.pkg/libpkg/pkg_jobs.c:1918:12
+#    #10 0x56483b738fe2 in exec_upgrade /home/runner/work/pkg/pkg/src.pkg/src/upgrade.c:381:6
+#    #11 0x56483b722b74 in main /home/runner/work/pkg/pkg/src.pkg/src/main.c:809:9
+#    #12 0x7f76dba2a1c9  (/lib/x86_64-linux-gnu/libc.so.6+0x2a1c9) (BuildId: 6d64b17fbac799e68da7ebd9985ddf9b5cb375e6)
+#    #13 0x7f76dba2a28a in __libc_start_main (/lib/x86_64-linux-gnu/libc.so.6+0x2a28a) (BuildId: 6d64b17fbac799e68da7ebd9985ddf9b5cb375e6)
+#    #14 0x56483b62b444 in _start (/home/runner/work/pkg/pkg/build.pkg/src/pkg+0x14a444) (BuildId: 2bd55d3c70bbeee491903cf8e0a5e4b4835de4a6)
+leak:pkg_jobs_run_solver
+
+# reponames not freed
+leak:exec_fetch
+
+# abi leaked after fixup_abi
+#Direct leak of 8 byte(s) in 1 object(s) allocated from:
+#    #0 0x55c5bb2e2293 in malloc (/home/runner/work/pkg/pkg/build.pkg/src/pkg+0x1e5293) (BuildId: 2bd55d3c70bbeee491903cf8e0a5e4b4835de4a6)
+#    #1 0x7f063768f937  (/lib/x86_64-linux-gnu/libc.so.6+0x8f937) (BuildId: 6d64b17fbac799e68da7ebd9985ddf9b5cb375e6)
+#    #2 0x55c5bb26d5fa in vasprintf (/home/runner/work/pkg/pkg/build.pkg/src/pkg+0x1705fa) (BuildId: 2bd55d3c70bbeee491903cf8e0a5e4b4835de4a6)
+#    #3 0x55c5bb4a0a6c in xasprintf /home/runner/work/pkg/pkg/src.pkg/libpkg/xmalloc.h:55:6
+#    #4 0x55c5bb49ff0c in fixup_abi /home/runner/work/pkg/pkg/src.pkg/libpkg/pkg_create.c:573:4
+#    #5 0x55c5bb49f28b in pkg_create /home/runner/work/pkg/pkg/src.pkg/libpkg/pkg_create.c:411:2
+#    #6 0x55c5bb32eac3 in exec_create /home/runner/work/pkg/pkg/src.pkg/src/create.c:345:8
+#    #7 0x55c5bb33eb74 in main /home/runner/work/pkg/pkg/src.pkg/src/main.c:809:9
+#    #8 0x7f063762a1c9  (/lib/x86_64-linux-gnu/libc.so.6+0x2a1c9) (BuildId: 6d64b17fbac799e68da7ebd9985ddf9b5cb375e6)
+#    #9 0x7f063762a28a in __libc_start_main (/lib/x86_64-linux-gnu/libc.so.6+0x2a28a) (BuildId: 6d64b17fbac799e68da7ebd9985ddf9b5cb375e6)
+#    #10 0x55c5bb247444 in _start (/home/runner/work/pkg/pkg/build.pkg/src/pkg+0x14a444) (BuildId: 2bd55d3c70bbeee491903cf8e0a5e4b4835de4a6)
+leak:exec_create
+
+
+# pkg structures leaked
+#Direct leak of 4912 byte(s) in 1 object(s) allocated from:
+#    #0 0x55becb4bf47d in calloc (/home/runner/work/pkg/pkg/build.pkg/src/pkg+0x1e547d) (BuildId: 237ea5dd207e51baca5b1cbcc9176924eae0ad89)
+#    #1 0x55becb6e39bc in xcalloc /home/runner/work/pkg/pkg/src.pkg/libpkg/xmalloc.h:19:14
+#    #2 0x55becb6e387d in pkg_new /home/runner/work/pkg/pkg/src.pkg/libpkg/pkg.c:31:9
+#    #3 0x55becb70b78b in register_backup /home/runner/work/pkg/pkg/src.pkg/libpkg/backup_lib.c:56:7
+#    #4 0x55becb70b334 in backup_library /home/runner/work/pkg/pkg/src.pkg/libpkg/backup_lib.c:163:3
+#    #5 0x55becb68935f in pkg_add_cleanup_old /home/runner/work/pkg/pkg/src.pkg/libpkg/pkg_add.c:1298:7
+#    #6 0x55becb67f8e1 in pkg_add_common /home/runner/work/pkg/pkg/src.pkg/libpkg/pkg_add.c:1481:7
+#    #7 0x55becb68065d in pkg_add_upgrade /home/runner/work/pkg/pkg/src.pkg/libpkg/pkg_add.c:1599:9
+#    #8 0x55becb60a9e1 in pkg_jobs_handle_install /home/runner/work/pkg/pkg/src.pkg/libpkg/pkg_jobs.c:2032:13
+#    #9 0x55becb5fe88b in pkg_jobs_execute /home/runner/work/pkg/pkg/src.pkg/libpkg/pkg_jobs.c:2134:14
+#    #10 0x55becb5fcff3 in pkg_jobs_apply /home/runner/work/pkg/pkg/src.pkg/libpkg/pkg_jobs.c:2196:9
+#    #11 0x55becb5321f2 in exec_upgrade /home/runner/work/pkg/pkg/src.pkg/src/upgrade.c:401:14
+#    #12 0x55becb51bb74 in main /home/runner/work/pkg/pkg/src.pkg/src/main.c:809:9
+#    #13 0x7f84be62a1c9  (/lib/x86_64-linux-gnu/libc.so.6+0x2a1c9) (BuildId: 6d64b17fbac799e68da7ebd9985ddf9b5cb375e6)
+#    #14 0x7f84be62a28a in __libc_start_main (/lib/x86_64-linux-gnu/libc.so.6+0x2a28a) (BuildId: 6d64b17fbac799e68da7ebd9985ddf9b5cb375e6)
+#    #15 0x55becb424444 in _start (/home/runner/work/pkg/pkg/build.pkg/src/pkg+0x14a444) (BuildId: 237ea5dd207e51baca5b1cbcc9176924eae0ad89)
+#
+#Direct leak of 67 byte(s) in 1 object(s) allocated from:
+#    #0 0x55becb4bf293 in malloc (/home/runner/work/pkg/pkg/build.pkg/src/pkg+0x1e5293) (BuildId: 237ea5dd207e51baca5b1cbcc9176924eae0ad89)
+#    #1 0x7f84be68f937  (/lib/x86_64-linux-gnu/libc.so.6+0x8f937) (BuildId: 6d64b17fbac799e68da7ebd9985ddf9b5cb375e6)
+#    #2 0x55becb44a5fa in vasprintf (/home/runner/work/pkg/pkg/build.pkg/src/pkg+0x1705fa) (BuildId: 237ea5dd207e51baca5b1cbcc9176924eae0ad89)
+#    #3 0x55becb6d427c in xasprintf /home/runner/work/pkg/pkg/src.pkg/libpkg/xmalloc.h:55:6
+#    #4 0x55becb6d5c9c in pkg_checksum_generate_fileat /home/runner/work/pkg/pkg/src.pkg/libpkg/pkg_checksum.c:837:2
+#    #5 0x55becb70b711 in register_backup /home/runner/work/pkg/pkg/src.pkg/libpkg/backup_lib.c:48:8
+#    #6 0x55becb70b334 in backup_library /home/runner/work/pkg/pkg/src.pkg/libpkg/backup_lib.c:163:3
+#    #7 0x55becb68935f in pkg_add_cleanup_old /home/runner/work/pkg/pkg/src.pkg/libpkg/pkg_add.c:1298:7
+#    #8 0x55becb67f8e1 in pkg_add_common /home/runner/work/pkg/pkg/src.pkg/libpkg/pkg_add.c:1481:7
+#    #9 0x55becb68065d in pkg_add_upgrade /home/runner/work/pkg/pkg/src.pkg/libpkg/pkg_add.c:1599:9
+#    #10 0x55becb60a9e1 in pkg_jobs_handle_install /home/runner/work/pkg/pkg/src.pkg/libpkg/pkg_jobs.c:2032:13
+#    #11 0x55becb5fe88b in pkg_jobs_execute /home/runner/work/pkg/pkg/src.pkg/libpkg/pkg_jobs.c:2134:14
+#    #12 0x55becb5fcff3 in pkg_jobs_apply /home/runner/work/pkg/pkg/src.pkg/libpkg/pkg_jobs.c:2196:9
+#    #13 0x55becb5321f2 in exec_upgrade /home/runner/work/pkg/pkg/src.pkg/src/upgrade.c:401:14
+#    #14 0x55becb51bb74 in main /home/runner/work/pkg/pkg/src.pkg/src/main.c:809:9
+#    #15 0x7f84be62a1c9  (/lib/x86_64-linux-gnu/libc.so.6+0x2a1c9) (BuildId: 6d64b17fbac799e68da7ebd9985ddf9b5cb375e6)
+#    #16 0x7f84be62a28a in __libc_start_main (/lib/x86_64-linux-gnu/libc.so.6+0x2a28a) (BuildId: 6d64b17fbac799e68da7ebd9985ddf9b5cb375e6)
+#    #17 0x55becb424444 in _start (/home/runner/work/pkg/pkg/build.pkg/src/pkg+0x14a444) (BuildId: 237ea5dd207e51baca5b1cbcc9176924eae0ad89)
+#
+#Indirect leak of 8360 byte(s) in 1 object(s) allocated from:
+#    #0 0x55becb4bf47d in calloc (/home/runner/work/pkg/pkg/build.pkg/src/pkg+0x1e547d) (BuildId: 237ea5dd207e51baca5b1cbcc9176924eae0ad89)
+#    #1 0x55becb6e39bc in xcalloc /home/runner/work/pkg/pkg/src.pkg/libpkg/xmalloc.h:19:14
+#    #2 0x55becb6f00be in pkg_addfile_attr /home/runner/work/pkg/pkg/src.pkg/libpkg/pkg.c:552:6
+#    #3 0x55becb6efd0a in pkg_addfile /home/runner/work/pkg/pkg/src.pkg/libpkg/pkg.c:525:10
+#    #4 0x55becb70c3e5 in register_backup /home/runner/work/pkg/pkg/src.pkg/libpkg/backup_lib.c:77:2
+#    #5 0x55becb70b334 in backup_library /home/runner/work/pkg/pkg/src.pkg/libpkg/backup_lib.c:163:3
+#    #6 0x55becb68935f in pkg_add_cleanup_old /home/runner/work/pkg/pkg/src.pkg/libpkg/pkg_add.c:1298:7
+#    #7 0x55becb67f8e1 in pkg_add_common /home/runner/work/pkg/pkg/src.pkg/libpkg/pkg_add.c:1481:7
+#    #8 0x55becb68065d in pkg_add_upgrade /home/runner/work/pkg/pkg/src.pkg/libpkg/pkg_add.c:1599:9
+#    #9 0x55becb60a9e1 in pkg_jobs_handle_install /home/runner/work/pkg/pkg/src.pkg/libpkg/pkg_jobs.c:2032:13
+#    #10 0x55becb5fe88b in pkg_jobs_execute /home/runner/work/pkg/pkg/src.pkg/libpkg/pkg_jobs.c:2134:14
+#    #11 0x55becb5fcff3 in pkg_jobs_apply /home/runner/work/pkg/pkg/src.pkg/libpkg/pkg_jobs.c:2196:9
+#    #12 0x55becb5321f2 in exec_upgrade /home/runner/work/pkg/pkg/src.pkg/src/upgrade.c:401:14
+#    #13 0x55becb51bb74 in main /home/runner/work/pkg/pkg/src.pkg/src/main.c:809:9
+#    #14 0x7f84be62a1c9  (/lib/x86_64-linux-gnu/libc.so.6+0x2a1c9) (BuildId: 6d64b17fbac799e68da7ebd9985ddf9b5cb375e6)
+#    #15 0x7f84be62a28a in __libc_start_main (/lib/x86_64-linux-gnu/libc.so.6+0x2a28a) (BuildId: 6d64b17fbac799e68da7ebd9985ddf9b5cb375e6)
+#    #16 0x55becb424444 in _start (/home/runner/work/pkg/pkg/build.pkg/src/pkg+0x14a444) (BuildId: 237ea5dd207e51baca5b1cbcc9176924eae0ad89)
+#
+#Indirect leak of 3072 byte(s) in 1 object(s) allocated from:
+#    #0 0x55becb4bf47d in calloc (/home/runner/work/pkg/pkg/build.pkg/src/pkg+0x1e547d) (BuildId: 237ea5dd207e51baca5b1cbcc9176924eae0ad89)
+#    #1 0x55becb5d540c in xcalloc /home/runner/work/pkg/pkg/src.pkg/libpkg/xmalloc.h:19:14
+#    #2 0x55becb5d536e in pkghash_new /home/runner/work/pkg/pkg/src.pkg/libpkg/pkghash.c:52:19
+#    #3 0x55becb6f02bb in pkg_addfile_attr /home/runner/work/pkg/pkg/src.pkg/libpkg/pkg.c:570:2
+#    #4 0x55becb6efd0a in pkg_addfile /home/runner/work/pkg/pkg/src.pkg/libpkg/pkg.c:525:10
+#    #5 0x55becb70c3e5 in register_backup /home/runner/work/pkg/pkg/src.pkg/libpkg/backup_lib.c:77:2
+#    #6 0x55becb70b334 in backup_library /home/runner/work/pkg/pkg/src.pkg/libpkg/backup_lib.c:163:3
+#    #7 0x55becb68935f in pkg_add_cleanup_old /home/runner/work/pkg/pkg/src.pkg/libpkg/pkg_add.c:1298:7
+#    #8 0x55becb67f8e1 in pkg_add_common /home/runner/work/pkg/pkg/src.pkg/libpkg/pkg_add.c:1481:7
+#    #9 0x55becb68065d in pkg_add_upgrade /home/runner/work/pkg/pkg/src.pkg/libpkg/pkg_add.c:1599:9
+#    #10 0x55becb60a9e1 in pkg_jobs_handle_install /home/runner/work/pkg/pkg/src.pkg/libpkg/pkg_jobs.c:2032:13
+#    #11 0x55becb5fe88b in pkg_jobs_execute /home/runner/work/pkg/pkg/src.pkg/libpkg/pkg_jobs.c:2134:14
+#    #12 0x55becb5fcff3 in pkg_jobs_apply /home/runner/work/pkg/pkg/src.pkg/libpkg/pkg_jobs.c:2196:9
+#    #13 0x55becb5321f2 in exec_upgrade /home/runner/work/pkg/pkg/src.pkg/src/upgrade.c:401:14
+#    #14 0x55becb51bb74 in main /home/runner/work/pkg/pkg/src.pkg/src/main.c:809:9
+#    #15 0x7f84be62a1c9  (/lib/x86_64-linux-gnu/libc.so.6+0x2a1c9) (BuildId: 6d64b17fbac799e68da7ebd9985ddf9b5cb375e6)
+#    #16 0x7f84be62a28a in __libc_start_main (/lib/x86_64-linux-gnu/libc.so.6+0x2a28a) (BuildId: 6d64b17fbac799e68da7ebd9985ddf9b5cb375e6)
+#    #17 0x55becb424444 in _start (/home/runner/work/pkg/pkg/build.pkg/src/pkg+0x14a444) (BuildId: 237ea5dd207e51baca5b1cbcc9176924eae0ad89)
+#
+#Indirect leak of 67 byte(s) in 1 object(s) allocated from:
+#    #0 0x55becb4a6f9e in strdup (/home/runner/work/pkg/pkg/build.pkg/src/pkg+0x1ccf9e) (BuildId: 237ea5dd207e51baca5b1cbcc9176924eae0ad89)
+#    #1 0x55becb6ead24 in xstrdup /home/runner/work/pkg/pkg/src.pkg/libpkg/xmalloc.h:35:12
+#    #2 0x55becb6f00f7 in pkg_addfile_attr /home/runner/work/pkg/pkg/src.pkg/libpkg/pkg.c:556:12
+#    #3 0x55becb6efd0a in pkg_addfile /home/runner/work/pkg/pkg/src.pkg/libpkg/pkg.c:525:10
+#    #4 0x55becb70c3e5 in register_backup /home/runner/work/pkg/pkg/src.pkg/libpkg/backup_lib.c:77:2
+#    #5 0x55becb70b334 in backup_library /home/runner/work/pkg/pkg/src.pkg/libpkg/backup_lib.c:163:3
+#    #6 0x55becb68935f in pkg_add_cleanup_old /home/runner/work/pkg/pkg/src.pkg/libpkg/pkg_add.c:1298:7
+#    #7 0x55becb67f8e1 in pkg_add_common /home/runner/work/pkg/pkg/src.pkg/libpkg/pkg_add.c:1481:7
+#    #8 0x55becb68065d in pkg_add_upgrade /home/runner/work/pkg/pkg/src.pkg/libpkg/pkg_add.c:1599:9
+#    #9 0x55becb60a9e1 in pkg_jobs_handle_install /home/runner/work/pkg/pkg/src.pkg/libpkg/pkg_jobs.c:2032:13
+#    #10 0x55becb5fe88b in pkg_jobs_execute /home/runner/work/pkg/pkg/src.pkg/libpkg/pkg_jobs.c:2134:14
+#    #11 0x55becb5fcff3 in pkg_jobs_apply /home/runner/work/pkg/pkg/src.pkg/libpkg/pkg_jobs.c:2196:9
+#    #12 0x55becb5321f2 in exec_upgrade /home/runner/work/pkg/pkg/src.pkg/src/upgrade.c:401:14
+#    #13 0x55becb51bb74 in main /home/runner/work/pkg/pkg/src.pkg/src/main.c:809:9
+#    #14 0x7f84be62a1c9  (/lib/x86_64-linux-gnu/libc.so.6+0x2a1c9) (BuildId: 6d64b17fbac799e68da7ebd9985ddf9b5cb375e6)
+#    #15 0x7f84be62a28a in __libc_start_main (/lib/x86_64-linux-gnu/libc.so.6+0x2a28a) (BuildId: 6d64b17fbac799e68da7ebd9985ddf9b5cb375e6)
+#    #16 0x55becb424444 in _start (/home/runner/work/pkg/pkg/build.pkg/src/pkg+0x14a444) (BuildId: 237ea5dd207e51baca5b1cbcc9176924eae0ad89)
+#
+#Indirect leak of 61 byte(s) in 1 object(s) allocated from:
+#    #0 0x55becb4a6f9e in strdup (/home/runner/work/pkg/pkg/build.pkg/src/pkg+0x1ccf9e) (BuildId: 237ea5dd207e51baca5b1cbcc9176924eae0ad89)
+#    #1 0x55becb70c724 in xstrdup /home/runner/work/pkg/pkg/src.pkg/libpkg/xmalloc.h:35:12
+#    #2 0x55becb70b8ca in register_backup /home/runner/work/pkg/pkg/src.pkg/libpkg/backup_lib.c:62:15
+#    #3 0x55becb70b334 in backup_library /home/runner/work/pkg/pkg/src.pkg/libpkg/backup_lib.c:163:3
+#    #4 0x55becb68935f in pkg_add_cleanup_old /home/runner/work/pkg/pkg/src.pkg/libpkg/pkg_add.c:1298:7
+#    #5 0x55becb67f8e1 in pkg_add_common /home/runner/work/pkg/pkg/src.pkg/libpkg/pkg_add.c:1481:7
+#    #6 0x55becb68065d in pkg_add_upgrade /home/runner/work/pkg/pkg/src.pkg/libpkg/pkg_add.c:1599:9
+#    #7 0x55becb60a9e1 in pkg_jobs_handle_install /home/runner/work/pkg/pkg/src.pkg/libpkg/pkg_jobs.c:2032:13
+#    #8 0x55becb5fe88b in pkg_jobs_execute /home/runner/work/pkg/pkg/src.pkg/libpkg/pkg_jobs.c:2134:14
+#    #9 0x55becb5fcff3 in pkg_jobs_apply /home/runner/work/pkg/pkg/src.pkg/libpkg/pkg_jobs.c:2196:9
+#    #10 0x55becb5321f2 in exec_upgrade /home/runner/work/pkg/pkg/src.pkg/src/upgrade.c:401:14
+#    #11 0x55becb51bb74 in main /home/runner/work/pkg/pkg/src.pkg/src/main.c:809:9
+#    #12 0x7f84be62a1c9  (/lib/x86_64-linux-gnu/libc.so.6+0x2a1c9) (BuildId: 6d64b17fbac799e68da7ebd9985ddf9b5cb375e6)
+#    #13 0x7f84be62a28a in __libc_start_main (/lib/x86_64-linux-gnu/libc.so.6+0x2a28a) (BuildId: 6d64b17fbac799e68da7ebd9985ddf9b5cb375e6)
+#    #14 0x55becb424444 in _start (/home/runner/work/pkg/pkg/build.pkg/src/pkg+0x14a444) (BuildId: 237ea5dd207e51baca5b1cbcc9176924eae0ad89)
+#
+#Indirect leak of 61 byte(s) in 1 object(s) allocated from:
+#    #0 0x55becb4a6f9e in strdup (/home/runner/work/pkg/pkg/build.pkg/src/pkg+0x1ccf9e) (BuildId: 237ea5dd207e51baca5b1cbcc9176924eae0ad89)
+#    #1 0x55becb70c724 in xstrdup /home/runner/work/pkg/pkg/src.pkg/libpkg/xmalloc.h:35:12
+#    #2 0x55becb70b86f in register_backup /home/runner/work/pkg/pkg/src.pkg/libpkg/backup_lib.c:61:18
+#    #3 0x55becb70b334 in backup_library /home/runner/work/pkg/pkg/src.pkg/libpkg/backup_lib.c:163:3
+#    #4 0x55becb68935f in pkg_add_cleanup_old /home/runner/work/pkg/pkg/src.pkg/libpkg/pkg_add.c:1298:7
+#    #5 0x55becb67f8e1 in pkg_add_common /home/runner/work/pkg/pkg/src.pkg/libpkg/pkg_add.c:1481:7
+#    #6 0x55becb68065d in pkg_add_upgrade /home/runner/work/pkg/pkg/src.pkg/libpkg/pkg_add.c:1599:9
+#    #7 0x55becb60a9e1 in pkg_jobs_handle_install /home/runner/work/pkg/pkg/src.pkg/libpkg/pkg_jobs.c:2032:13
+#    #8 0x55becb5fe88b in pkg_jobs_execute /home/runner/work/pkg/pkg/src.pkg/libpkg/pkg_jobs.c:2134:14
+#    #9 0x55becb5fcff3 in pkg_jobs_apply /home/runner/work/pkg/pkg/src.pkg/libpkg/pkg_jobs.c:2196:9
+#    #10 0x55becb5321f2 in exec_upgrade /home/runner/work/pkg/pkg/src.pkg/src/upgrade.c:401:14
+#    #11 0x55becb51bb74 in main /home/runner/work/pkg/pkg/src.pkg/src/main.c:809:9
+#    #12 0x7f84be62a1c9  (/lib/x86_64-linux-gnu/libc.so.6+0x2a1c9) (BuildId: 6d64b17fbac799e68da7ebd9985ddf9b5cb375e6)
+#    #13 0x7f84be62a28a in __libc_start_main (/lib/x86_64-linux-gnu/libc.so.6+0x2a28a) (BuildId: 6d64b17fbac799e68da7ebd9985ddf9b5cb375e6)
+#    #14 0x55becb424444 in _start (/home/runner/work/pkg/pkg/build.pkg/src/pkg+0x14a444) (BuildId: 237ea5dd207e51baca5b1cbcc9176924eae0ad89)
+#
+#Indirect leak of 32 byte(s) in 1 object(s) allocated from:
+#    #0 0x55becb4bf293 in malloc (/home/runner/work/pkg/pkg/build.pkg/src/pkg+0x1e5293) (BuildId: 237ea5dd207e51baca5b1cbcc9176924eae0ad89)
+#    #1 0x55becb5d53c4 in xmalloc /home/runner/work/pkg/pkg/src.pkg/libpkg/xmalloc.h:11:14
+#    #2 0x55becb5d52d1 in pkghash_new /home/runner/work/pkg/pkg/src.pkg/libpkg/pkghash.c:48:19
+#    #3 0x55becb6f02bb in pkg_addfile_attr /home/runner/work/pkg/pkg/src.pkg/libpkg/pkg.c:570:2
+#    #4 0x55becb6efd0a in pkg_addfile /home/runner/work/pkg/pkg/src.pkg/libpkg/pkg.c:525:10
+#    #5 0x55becb70c3e5 in register_backup /home/runner/work/pkg/pkg/src.pkg/libpkg/backup_lib.c:77:2
+#    #6 0x55becb70b334 in backup_library /home/runner/work/pkg/pkg/src.pkg/libpkg/backup_lib.c:163:3
+#    #7 0x55becb68935f in pkg_add_cleanup_old /home/runner/work/pkg/pkg/src.pkg/libpkg/pkg_add.c:1298:7
+#    #8 0x55becb67f8e1 in pkg_add_common /home/runner/work/pkg/pkg/src.pkg/libpkg/pkg_add.c:1481:7
+#    #9 0x55becb68065d in pkg_add_upgrade /home/runner/work/pkg/pkg/src.pkg/libpkg/pkg_add.c:1599:9
+#    #10 0x55becb60a9e1 in pkg_jobs_handle_install /home/runner/work/pkg/pkg/src.pkg/libpkg/pkg_jobs.c:2032:13
+#    #11 0x55becb5fe88b in pkg_jobs_execute /home/runner/work/pkg/pkg/src.pkg/libpkg/pkg_jobs.c:2134:14
+#    #12 0x55becb5fcff3 in pkg_jobs_apply /home/runner/work/pkg/pkg/src.pkg/libpkg/pkg_jobs.c:2196:9
+#    #13 0x55becb5321f2 in exec_upgrade /home/runner/work/pkg/pkg/src.pkg/src/upgrade.c:401:14
+#    #14 0x55becb51bb74 in main /home/runner/work/pkg/pkg/src.pkg/src/main.c:809:9
+#    #15 0x7f84be62a1c9  (/lib/x86_64-linux-gnu/libc.so.6+0x2a1c9) (BuildId: 6d64b17fbac799e68da7ebd9985ddf9b5cb375e6)
+#    #16 0x7f84be62a28a in __libc_start_main (/lib/x86_64-linux-gnu/libc.so.6+0x2a28a) (BuildId: 6d64b17fbac799e68da7ebd9985ddf9b5cb375e6)
+#    #17 0x55becb424444 in _start (/home/runner/work/pkg/pkg/build.pkg/src/pkg+0x14a444) (BuildId: 237ea5dd207e51baca5b1cbcc9176924eae0ad89)
+#
+#Indirect leak of 24 byte(s) in 1 object(s) allocated from:
+#    #0 0x55becb4bf293 in malloc (/home/runner/work/pkg/pkg/build.pkg/src/pkg+0x1e5293) (BuildId: 237ea5dd207e51baca5b1cbcc9176924eae0ad89)
+#    #1 0x55becb6f5934 in pkg_addshlib_provided /home/runner/work/pkg/pkg/src.pkg/libpkg/pkg.c:936:2
+#    #2 0x55becb643fcd in analyse_elf /home/runner/work/pkg/pkg/src.pkg/libpkg/pkg_elf.c:321:5
+#    #3 0x55becb643534 in pkg_analyse_elf /home/runner/work/pkg/pkg/src.pkg/libpkg/pkg_elf.c:772:13
+#    #4 0x55becb648d30 in pkg_analyse_files /home/runner/work/pkg/pkg/src.pkg/libpkg/pkg_abi.c:490:9
+#    #5 0x55becb70c492 in register_backup /home/runner/work/pkg/pkg/src.pkg/libpkg/backup_lib.c:80:2
+#    #6 0x55becb70b334 in backup_library /home/runner/work/pkg/pkg/src.pkg/libpkg/backup_lib.c:163:3
+#    #7 0x55becb68935f in pkg_add_cleanup_old /home/runner/work/pkg/pkg/src.pkg/libpkg/pkg_add.c:1298:7
+#    #8 0x55becb67f8e1 in pkg_add_common /home/runner/work/pkg/pkg/src.pkg/libpkg/pkg_add.c:1481:7
+#    #9 0x55becb68065d in pkg_add_upgrade /home/runner/work/pkg/pkg/src.pkg/libpkg/pkg_add.c:1599:9
+#    #10 0x55becb60a9e1 in pkg_jobs_handle_install /home/runner/work/pkg/pkg/src.pkg/libpkg/pkg_jobs.c:2032:13
+#    #11 0x55becb5fe88b in pkg_jobs_execute /home/runner/work/pkg/pkg/src.pkg/libpkg/pkg_jobs.c:2134:14
+#    #12 0x55becb5fcff3 in pkg_jobs_apply /home/runner/work/pkg/pkg/src.pkg/libpkg/pkg_jobs.c:2196:9
+#    #13 0x55becb5321f2 in exec_upgrade /home/runner/work/pkg/pkg/src.pkg/src/upgrade.c:401:14
+#    #14 0x55becb51bb74 in main /home/runner/work/pkg/pkg/src.pkg/src/main.c:809:9
+#    #15 0x7f84be62a1c9  (/lib/x86_64-linux-gnu/libc.so.6+0x2a1c9) (BuildId: 6d64b17fbac799e68da7ebd9985ddf9b5cb375e6)
+#    #16 0x7f84be62a28a in __libc_start_main (/lib/x86_64-linux-gnu/libc.so.6+0x2a28a) (BuildId: 6d64b17fbac799e68da7ebd9985ddf9b5cb375e6)
+#    #17 0x55becb424444 in _start (/home/runner/work/pkg/pkg/build.pkg/src/pkg+0x14a444) (BuildId: 237ea5dd207e51baca5b1cbcc9176924eae0ad89)
+#
+#Indirect leak of 20 byte(s) in 1 object(s) allocated from:
+#    #0 0x55becb4a6f9e in strdup (/home/runner/work/pkg/pkg/build.pkg/src/pkg+0x1ccf9e) (BuildId: 237ea5dd207e51baca5b1cbcc9176924eae0ad89)
+#    #1 0x55becb5d6ff4 in xstrdup /home/runner/work/pkg/pkg/src.pkg/libpkg/xmalloc.h:35:12
+#    #2 0x55becb5d5e58 in pkghash_set_entry /home/runner/work/pkg/pkg/src.pkg/libpkg/pkghash.c:115:9
+#    #3 0x55becb5d5ac3 in pkghash_add /home/runner/work/pkg/pkg/src.pkg/libpkg/pkghash.c:151:10
+#    #4 0x55becb6f03b6 in pkg_addfile_attr /home/runner/work/pkg/pkg/src.pkg/libpkg/pkg.c:570:2
+#    #5 0x55becb6efd0a in pkg_addfile /home/runner/work/pkg/pkg/src.pkg/libpkg/pkg.c:525:10
+#    #6 0x55becb70c3e5 in register_backup /home/runner/work/pkg/pkg/src.pkg/libpkg/backup_lib.c:77:2
+#    #7 0x55becb70b334 in backup_library /home/runner/work/pkg/pkg/src.pkg/libpkg/backup_lib.c:163:3
+#    #8 0x55becb68935f in pkg_add_cleanup_old /home/runner/work/pkg/pkg/src.pkg/libpkg/pkg_add.c:1298:7
+#    #9 0x55becb67f8e1 in pkg_add_common /home/runner/work/pkg/pkg/src.pkg/libpkg/pkg_add.c:1481:7
+#    #10 0x55becb68065d in pkg_add_upgrade /home/runner/work/pkg/pkg/src.pkg/libpkg/pkg_add.c:1599:9
+#    #11 0x55becb60a9e1 in pkg_jobs_handle_install /home/runner/work/pkg/pkg/src.pkg/libpkg/pkg_jobs.c:2032:13
+#    #12 0x55becb5fe88b in pkg_jobs_execute /home/runner/work/pkg/pkg/src.pkg/libpkg/pkg_jobs.c:2134:14
+#    #13 0x55becb5fcff3 in pkg_jobs_apply /home/runner/work/pkg/pkg/src.pkg/libpkg/pkg_jobs.c:2196:9
+#    #14 0x55becb5321f2 in exec_upgrade /home/runner/work/pkg/pkg/src.pkg/src/upgrade.c:401:14
+#    #15 0x55becb51bb74 in main /home/runner/work/pkg/pkg/src.pkg/src/main.c:809:9
+#    #16 0x7f84be62a1c9  (/lib/x86_64-linux-gnu/libc.so.6+0x2a1c9) (BuildId: 6d64b17fbac799e68da7ebd9985ddf9b5cb375e6)
+#    #17 0x7f84be62a28a in __libc_start_main (/lib/x86_64-linux-gnu/libc.so.6+0x2a28a) (BuildId: 6d64b17fbac799e68da7ebd9985ddf9b5cb375e6)
+#    #18 0x55becb424444 in _start (/home/runner/work/pkg/pkg/build.pkg/src/pkg+0x14a444) (BuildId: 237ea5dd207e51baca5b1cbcc9176924eae0ad89)
+#
+#Indirect leak of 17 byte(s) in 1 object(s) allocated from:
+#    #0 0x55becb4a6f9e in strdup (/home/runner/work/pkg/pkg/build.pkg/src/pkg+0x1ccf9e) (BuildId: 237ea5dd207e51baca5b1cbcc9176924eae0ad89)
+#    #1 0x55becb70c724 in xstrdup /home/runner/work/pkg/pkg/src.pkg/libpkg/xmalloc.h:35:12
+#    #2 0x55becb70b814 in register_backup /home/runner/work/pkg/pkg/src.pkg/libpkg/backup_lib.c:60:17
+#    #3 0x55becb70b334 in backup_library /home/runner/work/pkg/pkg/src.pkg/libpkg/backup_lib.c:163:3
+#    #4 0x55becb68935f in pkg_add_cleanup_old /home/runner/work/pkg/pkg/src.pkg/libpkg/pkg_add.c:1298:7
+#    #5 0x55becb67f8e1 in pkg_add_common /home/runner/work/pkg/pkg/src.pkg/libpkg/pkg_add.c:1481:7
+#    #6 0x55becb68065d in pkg_add_upgrade /home/runner/work/pkg/pkg/src.pkg/libpkg/pkg_add.c:1599:9
+#    #7 0x55becb60a9e1 in pkg_jobs_handle_install /home/runner/work/pkg/pkg/src.pkg/libpkg/pkg_jobs.c:2032:13
+#    #8 0x55becb5fe88b in pkg_jobs_execute /home/runner/work/pkg/pkg/src.pkg/libpkg/pkg_jobs.c:2134:14
+#    #9 0x55becb5fcff3 in pkg_jobs_apply /home/runner/work/pkg/pkg/src.pkg/libpkg/pkg_jobs.c:2196:9
+#    #10 0x55becb5321f2 in exec_upgrade /home/runner/work/pkg/pkg/src.pkg/src/upgrade.c:401:14
+#    #11 0x55becb51bb74 in main /home/runner/work/pkg/pkg/src.pkg/src/main.c:809:9
+#    #12 0x7f84be62a1c9  (/lib/x86_64-linux-gnu/libc.so.6+0x2a1c9) (BuildId: 6d64b17fbac799e68da7ebd9985ddf9b5cb375e6)
+#    #13 0x7f84be62a28a in __libc_start_main (/lib/x86_64-linux-gnu/libc.so.6+0x2a28a) (BuildId: 6d64b17fbac799e68da7ebd9985ddf9b5cb375e6)
+#    #14 0x55becb424444 in _start (/home/runner/work/pkg/pkg/build.pkg/src/pkg+0x14a444) (BuildId: 237ea5dd207e51baca5b1cbcc9176924eae0ad89)
+#
+#Indirect leak of 17 byte(s) in 1 object(s) allocated from:
+#    #0 0x55becb4a6f9e in strdup (/home/runner/work/pkg/pkg/build.pkg/src/pkg+0x1ccf9e) (BuildId: 237ea5dd207e51baca5b1cbcc9176924eae0ad89)
+#    #1 0x55becb70c724 in xstrdup /home/runner/work/pkg/pkg/src.pkg/libpkg/xmalloc.h:35:12
+#    #2 0x55becb70b7b9 in register_backup /home/runner/work/pkg/pkg/src.pkg/libpkg/backup_lib.c:59:15
+#    #3 0x55becb70b334 in backup_library /home/runner/work/pkg/pkg/src.pkg/libpkg/backup_lib.c:163:3
+#    #4 0x55becb68935f in pkg_add_cleanup_old /home/runner/work/pkg/pkg/src.pkg/libpkg/pkg_add.c:1298:7
+#    #5 0x55becb67f8e1 in pkg_add_common /home/runner/work/pkg/pkg/src.pkg/libpkg/pkg_add.c:1481:7
+#    #6 0x55becb68065d in pkg_add_upgrade /home/runner/work/pkg/pkg/src.pkg/libpkg/pkg_add.c:1599:9
+#    #7 0x55becb60a9e1 in pkg_jobs_handle_install /home/runner/work/pkg/pkg/src.pkg/libpkg/pkg_jobs.c:2032:13
+#    #8 0x55becb5fe88b in pkg_jobs_execute /home/runner/work/pkg/pkg/src.pkg/libpkg/pkg_jobs.c:2134:14
+#    #9 0x55becb5fcff3 in pkg_jobs_apply /home/runner/work/pkg/pkg/src.pkg/libpkg/pkg_jobs.c:2196:9
+#    #10 0x55becb5321f2 in exec_upgrade /home/runner/work/pkg/pkg/src.pkg/src/upgrade.c:401:14
+#    #11 0x55becb51bb74 in main /home/runner/work/pkg/pkg/src.pkg/src/main.c:809:9
+#    #12 0x7f84be62a1c9  (/lib/x86_64-linux-gnu/libc.so.6+0x2a1c9) (BuildId: 6d64b17fbac799e68da7ebd9985ddf9b5cb375e6)
+#    #13 0x7f84be62a28a in __libc_start_main (/lib/x86_64-linux-gnu/libc.so.6+0x2a28a) (BuildId: 6d64b17fbac799e68da7ebd9985ddf9b5cb375e6)
+#    #14 0x55becb424444 in _start (/home/runner/work/pkg/pkg/build.pkg/src/pkg+0x14a444) (BuildId: 237ea5dd207e51baca5b1cbcc9176924eae0ad89)
+#
+#Indirect leak of 15 byte(s) in 1 object(s) allocated from:
+#    #0 0x55becb4a6f9e in strdup (/home/runner/work/pkg/pkg/build.pkg/src/pkg+0x1ccf9e) (BuildId: 237ea5dd207e51baca5b1cbcc9176924eae0ad89)
+#    #1 0x55becb70c724 in xstrdup /home/runner/work/pkg/pkg/src.pkg/libpkg/xmalloc.h:35:12
+#    #2 0x55becb70b925 in register_backup /home/runner/work/pkg/pkg/src.pkg/libpkg/backup_lib.c:63:21
+#    #3 0x55becb70b334 in backup_library /home/runner/work/pkg/pkg/src.pkg/libpkg/backup_lib.c:163:3
+#    #4 0x55becb68935f in pkg_add_cleanup_old /home/runner/work/pkg/pkg/src.pkg/libpkg/pkg_add.c:1298:7
+#    #5 0x55becb67f8e1 in pkg_add_common /home/runner/work/pkg/pkg/src.pkg/libpkg/pkg_add.c:1481:7
+#    #6 0x55becb68065d in pkg_add_upgrade /home/runner/work/pkg/pkg/src.pkg/libpkg/pkg_add.c:1599:9
+#    #7 0x55becb60a9e1 in pkg_jobs_handle_install /home/runner/work/pkg/pkg/src.pkg/libpkg/pkg_jobs.c:2032:13
+#    #8 0x55becb5fe88b in pkg_jobs_execute /home/runner/work/pkg/pkg/src.pkg/libpkg/pkg_jobs.c:2134:14
+#    #9 0x55becb5fcff3 in pkg_jobs_apply /home/runner/work/pkg/pkg/src.pkg/libpkg/pkg_jobs.c:2196:9
+#    #10 0x55becb5321f2 in exec_upgrade /home/runner/work/pkg/pkg/src.pkg/src/upgrade.c:401:14
+#    #11 0x55becb51bb74 in main /home/runner/work/pkg/pkg/src.pkg/src/main.c:809:9
+#    #12 0x7f84be62a1c9  (/lib/x86_64-linux-gnu/libc.so.6+0x2a1c9) (BuildId: 6d64b17fbac799e68da7ebd9985ddf9b5cb375e6)
+#    #13 0x7f84be62a28a in __libc_start_main (/lib/x86_64-linux-gnu/libc.so.6+0x2a28a) (BuildId: 6d64b17fbac799e68da7ebd9985ddf9b5cb375e6)
+#    #14 0x55becb424444 in _start (/home/runner/work/pkg/pkg/build.pkg/src/pkg+0x14a444) (BuildId: 237ea5dd207e51baca5b1cbcc9176924eae0ad89)
+#
+#Indirect leak of 15 byte(s) in 1 object(s) allocated from:
+#    #0 0x55becb4a6f9e in strdup (/home/runner/work/pkg/pkg/build.pkg/src/pkg+0x1ccf9e) (BuildId: 237ea5dd207e51baca5b1cbcc9176924eae0ad89)
+#    #1 0x55becb70c724 in xstrdup /home/runner/work/pkg/pkg/src.pkg/libpkg/xmalloc.h:35:12
+#    #2 0x55becb70c400 in register_backup /home/runner/work/pkg/pkg/src.pkg/libpkg/backup_lib.c:79:17
+#    #3 0x55becb70b334 in backup_library /home/runner/work/pkg/pkg/src.pkg/libpkg/backup_lib.c:163:3
+#    #4 0x55becb68935f in pkg_add_cleanup_old /home/runner/work/pkg/pkg/src.pkg/libpkg/pkg_add.c:1298:7
+#    #5 0x55becb67f8e1 in pkg_add_common /home/runner/work/pkg/pkg/src.pkg/libpkg/pkg_add.c:1481:7
+#    #6 0x55becb68065d in pkg_add_upgrade /home/runner/work/pkg/pkg/src.pkg/libpkg/pkg_add.c:1599:9
+#    #7 0x55becb60a9e1 in pkg_jobs_handle_install /home/runner/work/pkg/pkg/src.pkg/libpkg/pkg_jobs.c:2032:13
+#    #8 0x55becb5fe88b in pkg_jobs_execute /home/runner/work/pkg/pkg/src.pkg/libpkg/pkg_jobs.c:2134:14
+#    #9 0x55becb5fcff3 in pkg_jobs_apply /home/runner/work/pkg/pkg/src.pkg/libpkg/pkg_jobs.c:2196:9
+#    #10 0x55becb5321f2 in exec_upgrade /home/runner/work/pkg/pkg/src.pkg/src/upgrade.c:401:14
+#    #11 0x55becb51bb74 in main /home/runner/work/pkg/pkg/src.pkg/src/main.c:809:9
+#    #12 0x7f84be62a1c9  (/lib/x86_64-linux-gnu/libc.so.6+0x2a1c9) (BuildId: 6d64b17fbac799e68da7ebd9985ddf9b5cb375e6)
+#    #13 0x7f84be62a28a in __libc_start_main (/lib/x86_64-linux-gnu/libc.so.6+0x2a28a) (BuildId: 6d64b17fbac799e68da7ebd9985ddf9b5cb375e6)
+#    #14 0x55becb424444 in _start (/home/runner/work/pkg/pkg/build.pkg/src/pkg+0x14a444) (BuildId: 237ea5dd207e51baca5b1cbcc9176924eae0ad89)
+#
+#Indirect leak of 14 byte(s) in 1 object(s) allocated from:
+#    #0 0x55becb4a6f9e in strdup (/home/runner/work/pkg/pkg/build.pkg/src/pkg+0x1ccf9e) (BuildId: 237ea5dd207e51baca5b1cbcc9176924eae0ad89)
+#    #1 0x55becb6ead24 in xstrdup /home/runner/work/pkg/pkg/src.pkg/libpkg/xmalloc.h:35:12
+#    #2 0x55becb6f5941 in pkg_addshlib_provided /home/runner/work/pkg/pkg/src.pkg/libpkg/pkg.c:936:2
+#    #3 0x55becb643fcd in analyse_elf /home/runner/work/pkg/pkg/src.pkg/libpkg/pkg_elf.c:321:5
+#    #4 0x55becb643534 in pkg_analyse_elf /home/runner/work/pkg/pkg/src.pkg/libpkg/pkg_elf.c:772:13
+#    #5 0x55becb648d30 in pkg_analyse_files /home/runner/work/pkg/pkg/src.pkg/libpkg/pkg_abi.c:490:9
+#    #6 0x55becb70c492 in register_backup /home/runner/work/pkg/pkg/src.pkg/libpkg/backup_lib.c:80:2
+#    #7 0x55becb70b334 in backup_library /home/runner/work/pkg/pkg/src.pkg/libpkg/backup_lib.c:163:3
+#    #8 0x55becb68935f in pkg_add_cleanup_old /home/runner/work/pkg/pkg/src.pkg/libpkg/pkg_add.c:1298:7
+#    #9 0x55becb67f8e1 in pkg_add_common /home/runner/work/pkg/pkg/src.pkg/libpkg/pkg_add.c:1481:7
+#    #10 0x55becb68065d in pkg_add_upgrade /home/runner/work/pkg/pkg/src.pkg/libpkg/pkg_add.c:1599:9
+#    #11 0x55becb60a9e1 in pkg_jobs_handle_install /home/runner/work/pkg/pkg/src.pkg/libpkg/pkg_jobs.c:2032:13
+#    #12 0x55becb5fe88b in pkg_jobs_execute /home/runner/work/pkg/pkg/src.pkg/libpkg/pkg_jobs.c:2134:14
+#    #13 0x55becb5fcff3 in pkg_jobs_apply /home/runner/work/pkg/pkg/src.pkg/libpkg/pkg_jobs.c:2196:9
+#    #14 0x55becb5321f2 in exec_upgrade /home/runner/work/pkg/pkg/src.pkg/src/upgrade.c:401:14
+#    #15 0x55becb51bb74 in main /home/runner/work/pkg/pkg/src.pkg/src/main.c:809:9
+#    #16 0x7f84be62a1c9  (/lib/x86_64-linux-gnu/libc.so.6+0x2a1c9) (BuildId: 6d64b17fbac799e68da7ebd9985ddf9b5cb375e6)
+#    #17 0x7f84be62a28a in __libc_start_main (/lib/x86_64-linux-gnu/libc.so.6+0x2a28a) (BuildId: 6d64b17fbac799e68da7ebd9985ddf9b5cb375e6)
+#    #18 0x55becb424444 in _start (/home/runner/work/pkg/pkg/build.pkg/src/pkg+0x14a444) (BuildId: 237ea5dd207e51baca5b1cbcc9176924eae0ad89)
+#
+#Indirect leak of 4 byte(s) in 1 object(s) allocated from:
+#    #0 0x55becb4a6f9e in strdup (/home/runner/work/pkg/pkg/build.pkg/src/pkg+0x1ccf9e) (BuildId: 237ea5dd207e51baca5b1cbcc9176924eae0ad89)
+#    #1 0x55becb70c724 in xstrdup /home/runner/work/pkg/pkg/src.pkg/libpkg/xmalloc.h:35:12
+#    #2 0x55becb70b980 in register_backup /home/runner/work/pkg/pkg/src.pkg/libpkg/backup_lib.c:64:14
+#    #3 0x55becb70b334 in backup_library /home/runner/work/pkg/pkg/src.pkg/libpkg/backup_lib.c:163:3
+#    #4 0x55becb68935f in pkg_add_cleanup_old /home/runner/work/pkg/pkg/src.pkg/libpkg/pkg_add.c:1298:7
+#    #5 0x55becb67f8e1 in pkg_add_common /home/runner/work/pkg/pkg/src.pkg/libpkg/pkg_add.c:1481:7
+#    #6 0x55becb68065d in pkg_add_upgrade /home/runner/work/pkg/pkg/src.pkg/libpkg/pkg_add.c:1599:9
+#    #7 0x55becb60a9e1 in pkg_jobs_handle_install /home/runner/work/pkg/pkg/src.pkg/libpkg/pkg_jobs.c:2032:13
+#    #8 0x55becb5fe88b in pkg_jobs_execute /home/runner/work/pkg/pkg/src.pkg/libpkg/pkg_jobs.c:2134:14
+#    #9 0x55becb5fcff3 in pkg_jobs_apply /home/runner/work/pkg/pkg/src.pkg/libpkg/pkg_jobs.c:2196:9
+#    #10 0x55becb5321f2 in exec_upgrade /home/runner/work/pkg/pkg/src.pkg/src/upgrade.c:401:14
+#    #11 0x55becb51bb74 in main /home/runner/work/pkg/pkg/src.pkg/src/main.c:809:9
+#    #12 0x7f84be62a1c9  (/lib/x86_64-linux-gnu/libc.so.6+0x2a1c9) (BuildId: 6d64b17fbac799e68da7ebd9985ddf9b5cb375e6)
+#    #13 0x7f84be62a28a in __libc_start_main (/lib/x86_64-linux-gnu/libc.so.6+0x2a28a) (BuildId: 6d64b17fbac799e68da7ebd9985ddf9b5cb375e6)
+#    #14 0x55becb424444 in _start (/home/runner/work/pkg/pkg/build.pkg/src/pkg+0x14a444) (BuildId: 237ea5dd207e51baca5b1cbcc9176924eae0ad89)
+#
+#Indirect leak of 2 byte(s) in 1 object(s) allocated from:
+#    #0 0x55becb4a6f9e in strdup (/home/runner/work/pkg/pkg/build.pkg/src/pkg+0x1ccf9e) (BuildId: 237ea5dd207e51baca5b1cbcc9176924eae0ad89)
+#    #1 0x55becb70c724 in xstrdup /home/runner/work/pkg/pkg/src.pkg/libpkg/xmalloc.h:35:12
+#    #2 0x55becb70b9db in register_backup /home/runner/work/pkg/pkg/src.pkg/libpkg/backup_lib.c:65:17
+#    #3 0x55becb70b334 in backup_library /home/runner/work/pkg/pkg/src.pkg/libpkg/backup_lib.c:163:3
+#    #4 0x55becb68935f in pkg_add_cleanup_old /home/runner/work/pkg/pkg/src.pkg/libpkg/pkg_add.c:1298:7
+#    #5 0x55becb67f8e1 in pkg_add_common /home/runner/work/pkg/pkg/src.pkg/libpkg/pkg_add.c:1481:7
+#    #6 0x55becb68065d in pkg_add_upgrade /home/runner/work/pkg/pkg/src.pkg/libpkg/pkg_add.c:1599:9
+#    #7 0x55becb60a9e1 in pkg_jobs_handle_install /home/runner/work/pkg/pkg/src.pkg/libpkg/pkg_jobs.c:2032:13
+#    #8 0x55becb5fe88b in pkg_jobs_execute /home/runner/work/pkg/pkg/src.pkg/libpkg/pkg_jobs.c:2134:14
+#    #9 0x55becb5fcff3 in pkg_jobs_apply /home/runner/work/pkg/pkg/src.pkg/libpkg/pkg_jobs.c:2196:9
+#    #10 0x55becb5321f2 in exec_upgrade /home/runner/work/pkg/pkg/src.pkg/src/upgrade.c:401:14
+#    #11 0x55becb51bb74 in main /home/runner/work/pkg/pkg/src.pkg/src/main.c:809:9
+#    #12 0x7f84be62a1c9  (/lib/x86_64-linux-gnu/libc.so.6+0x2a1c9) (BuildId: 6d64b17fbac799e68da7ebd9985ddf9b5cb375e6)
+#    #13 0x7f84be62a28a in __libc_start_main (/lib/x86_64-linux-gnu/libc.so.6+0x2a28a) (BuildId: 6d64b17fbac799e68da7ebd9985ddf9b5cb375e6)
+#    #14 0x55becb424444 in _start (/home/runner/work/pkg/pkg/build.pkg/src/pkg+0x14a444) (BuildId: 237ea5dd207e51baca5b1cbcc9176924eae0ad89)
+leak:backup_library
+
+# fakerepo->url never freed
+leak:pkg_fetch_file_to_fd
+
+# hash not freed
+leak:trigger_check_match
+
+# Lua memory is never returned
+leak:l_alloc
+
+# Test is leaking
+leak:atfu_parse_plist_body
+leak:atfu_parse_keyword_body
+leak:atfu_charv_t_body
+leak:atfu_execute_body
+leak:atfu_readdir_body
