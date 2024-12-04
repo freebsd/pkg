@@ -79,8 +79,10 @@ pkg_sshserve(int fd)
 		if (line[linelen - 1] == '\n')
 			line[linelen - 1] = '\0';
 
-		if (STREQ(line, "quit"))
+		if (STREQ(line, "quit")) {
+			free(line);
 			return (EPKG_OK);
+		}
 
 		if (strncmp(line, "get ", 4) != 0) {
 			printf("ko: unknown command '%s'\n", line);

@@ -43,7 +43,9 @@ ATF_TC_BODY(badcommand, tc)
 	char strout[] =
 		"ok: pkg " PKGVERSION "\n"
 		"ko: unknown command 'plop'\n";
-	int rootfd = open(getcwd(NULL, 0), O_DIRECTORY);
+	char *cwd = getcwd(NULL, 0);
+	int rootfd = open(cwd, O_DIRECTORY);
+	free(cwd);
 	int stdin_pipe[2];
 	ATF_REQUIRE(pipe(stdin_pipe) >= 0);
 	pid_t p = atf_utils_fork();
@@ -74,7 +76,9 @@ ATF_TC_BODY(getfile, tc)
 		"ko: file not found\n"
 		"ko: not a file\n"
 		"ko: file not found\n";
-	int rootfd = open(getcwd(NULL, 0), O_DIRECTORY);
+	char * cwd = getcwd(NULL, 0);
+	int rootfd = open(cwd, O_DIRECTORY);
+	free(cwd);
 	int stdin_pipe[2];
 	ATF_REQUIRE(pipe(stdin_pipe) >= 0);
 	FILE *f = fopen("testfile", "w+");
@@ -88,8 +92,10 @@ ATF_TC_BODY(getfile, tc)
 		dup2(stdin_pipe[0], STDIN_FILENO);
 		close(stdin_pipe[1]);
 		config = ucl_object_typed_new(UCL_OBJECT);
-		ucl_object_insert_key(config, ucl_object_fromstring_common(getcwd(NULL, 0), 0, UCL_STRING_TRIM),
+		char *cwd = getcwd(NULL, 0);
+		ucl_object_insert_key(config, ucl_object_fromstring_common(cwd, 0, UCL_STRING_TRIM),
 			"SSH_RESTRICT_DIR", 16, false);
+		free(cwd);
 		exit(pkg_sshserve(rootfd));
 	}
 	close(stdin_pipe[0]);
@@ -115,7 +121,9 @@ ATF_TC_BODY(badrestrict, tc)
 	char strout[] =
 		"ok: pkg " PKGVERSION "\n"
 		"ko: chdir failed (/nonexistent)\n";
-	int rootfd = open(getcwd(NULL, 0), O_DIRECTORY);
+	char *cwd = getcwd(NULL, 0);
+	int rootfd = open(cwd, O_DIRECTORY);
+	free(cwd);
 	int stdin_pipe[2];
 	ATF_REQUIRE(pipe(stdin_pipe) >= 0);
 	pid_t p = atf_utils_fork();
@@ -185,11 +193,15 @@ ATF_TC_BODY(restricted, tc)
 		dup2(stdin_pipe[0], STDIN_FILENO);
 		close(stdin_pipe[1]);
 		config = ucl_object_typed_new(UCL_OBJECT);
-		char *restriteddir;
-		xasprintf(&restriteddir, "%s/test", getcwd(NULL, 0));
+		char *restriteddir = 0;
+		char *cwd = getcwd(NULL, 0);
+		xasprintf(&restriteddir, "%s/test", cwd);
+		free(cwd);
 		ucl_object_insert_key(config, ucl_object_fromstring_common(restriteddir, 0, UCL_STRING_TRIM),
 			"SSH_RESTRICT_DIR", 16, false);
-		exit(pkg_sshserve(rootfd));
+		int ret = pkg_sshserve(rootfd);
+		free(restriteddir);
+		exit(ret);
 	}
 	close(stdin_pipe[0]);
 	dprintf(stdin_pipe[1], "get ../testfile 0\n");

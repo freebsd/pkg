@@ -318,6 +318,8 @@ ATF_TC_BODY(expand_plist_variables, tc)
 	plop = expand_plist_variables("%%this%% %F is %%kof a %%new%% line %", &kv);
 	ATF_REQUIRE_STREQ(plop, "@comment  %F is %%kof a var line %");
 	free(plop);
+
+	tll_free_and_free(kv, pkg_kv_free);
 }
 
 ATF_TP_ADD_TCS(tp)

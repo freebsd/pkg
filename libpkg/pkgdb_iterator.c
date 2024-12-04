@@ -851,24 +851,31 @@ populate_pkg(sqlite3_stmt *stmt, struct pkg *pkg) {
 
 			switch (column->type) {
 			case PKG_ATTR_ABI:
+				free(pkg->abi);
 				pkg->abi = xstrdup(sqlite3_column_text(stmt, icol));
 				break;
 			case PKG_ATTR_CKSUM:
+				free(pkg->sum);
 				pkg->sum = xstrdup(sqlite3_column_text(stmt, icol));
 				break;
 			case PKG_ATTR_COMMENT:
+				free(pkg->comment);
 				pkg->comment = xstrdup(sqlite3_column_text(stmt, icol));
 				break;
 			case PKG_ATTR_REPONAME:
+				free(pkg->reponame);
 				pkg->reponame = xstrdup(sqlite3_column_text(stmt, icol));
 				break;
 			case PKG_ATTR_DESC:
+				free(pkg->desc);
 				pkg->desc = xstrdup(sqlite3_column_text(stmt, icol));
 				break;
 			case PKG_ATTR_MAINTAINER:
+				free(pkg->maintainer);
 				pkg->maintainer = xstrdup(sqlite3_column_text(stmt, icol));
 				break;
 			case PKG_ATTR_DIGEST:
+				free(pkg->digest);
 				pkg->digest = xstrdup(sqlite3_column_text(stmt, icol));
 				break;
 			case PKG_ATTR_MESSAGE:
@@ -887,33 +894,43 @@ populate_pkg(sqlite3_stmt *stmt, struct pkg *pkg) {
 				}
 				break;
 			case PKG_ATTR_NAME:
+				free(pkg->name);
 				pkg->name = xstrdup(sqlite3_column_text(stmt, icol));
 				break;
 			case PKG_ATTR_OLD_VERSION:
+				free(pkg->old_version);
 				pkg->old_version = xstrdup(sqlite3_column_text(stmt, icol));
 				break;
 			case PKG_ATTR_ORIGIN:
+				free(pkg->origin);
 				pkg->origin = xstrdup(sqlite3_column_text(stmt, icol));
 				break;
 			case PKG_ATTR_PREFIX:
+				free(pkg->prefix);
 				pkg->prefix = xstrdup(sqlite3_column_text(stmt, icol));
 				break;
 			case PKG_ATTR_REPOPATH:
+				free(pkg->repopath);
 				pkg->repopath = xstrdup(sqlite3_column_text(stmt, icol));
 				break;
 			case PKG_ATTR_REPOURL:
+				free(pkg->repourl);
 				pkg->repourl = xstrdup(sqlite3_column_text(stmt, icol));
 				break;
 			case PKG_ATTR_UNIQUEID:
+				free(pkg->uid);
 				pkg->uid = xstrdup(sqlite3_column_text(stmt, icol));
 				break;
 			case PKG_ATTR_VERSION:
+				free(pkg->version);
 				pkg->version = xstrdup(sqlite3_column_text(stmt, icol));
 				break;
 			case PKG_ATTR_WWW:
+				free(pkg->www);
 				pkg->www = xstrdup(sqlite3_column_text(stmt, icol));
 				break;
 			case PKG_ATTR_DEP_FORMULA:
+				free(pkg->dep_formula);
 				pkg->dep_formula = xstrdup(sqlite3_column_text(stmt, icol));
 				break;
 			default:

@@ -1570,6 +1570,7 @@ pkg_repo_free(struct pkg_repo *r)
 	if (r->fetcher != NULL && r->fetcher->cleanup != NULL)
 		r->fetcher->cleanup(r);
 	tll_free_and_free(r->env, pkg_kv_free);
+	free(r->dbpath);
 	free(r);
 }
 

@@ -69,6 +69,7 @@ ATF_TC_BODY(random_suffix, tc) {
 ATF_TC_BODY(json_escape, tc) {
 	char *m = json_escape("entry1\"\"\\ ");
 	ATF_REQUIRE_STREQ_MSG(m, "entry1\\\"\\\"\\\\ ", "Invalid escaping");
+	free(m);
 }
 
 ATF_TC_BODY(open_tempdir, tc) {

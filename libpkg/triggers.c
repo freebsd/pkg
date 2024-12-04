@@ -351,17 +351,18 @@ triggers_load(bool cleanup_only)
 void
 trigger_free(struct trigger *t)
 {
-	if (t == NULL)
+	if (!t)
 		return;
 	free(t->name);
-	if (t->path != NULL)
+	if (t->path)
 		ucl_object_unref(t->path);
-	if (t->path != NULL)
+	if (t->path_glob)
 		ucl_object_unref(t->path_glob);
-	if (t->path != NULL)
+	if (t->path_regex)
 		ucl_object_unref(t->path_regex);
 	free(t->cleanup.script);
 	free(t->script.script);
+	free(t);
 }
 
 static char *
@@ -695,5 +696,6 @@ pkg_execute_deferred_triggers(void)
 		}
 		exec_deferred(trigfd, e->d_name);
 	}
+	closedir(d);
 	return (EPKG_OK);
 }

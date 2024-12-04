@@ -159,7 +159,8 @@ populate_sums(struct pkgdb *db)
 		pkghash_safe_add(suml, cksum, NULL, NULL);
 		free(cksum);
 	}
-
+	pkgdb_it_free(it);
+	
 	return (suml);
 }
 
