@@ -26,7 +26,7 @@ enum pkg_os {
 	PKG_OS_NETBSD,
 	PKG_OS_DRAGONFLY,
 	PKG_OS_LINUX,
-	PKG_OS_MACOS,
+	PKG_OS_DARWIN,
 };
 
 /*

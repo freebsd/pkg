@@ -13,10 +13,9 @@
 
 /**
  * Routines to support pkg_abi.c functions when dealing with Mach-O files.
- * Supports getting ABI and ALTABI from the binary's load commands. Cave: picks
- * first binary in FAT collection. Supports getting shared libary information.
- * Picks right binary in FAT collection based on ABI. Supports FreeBSD naming of
- * architectures.
+ * Supports getting struct pkg_abi from the binary's load commands. 
+ * Supports getting shared libary information (needed, provided & loader).
+ * Picks right binary in Universal binary based on ABI.
  */
 
 static enum pkg_arch
@@ -129,7 +128,7 @@ match_entry(macho_file_t *mf, enum pkg_arch arch_hint)
 		const fat_arch_t *p_end = p + mf->narch;
 		while (p < p_end) {
 			// do not match cpu_hint.type == CPU_TYPE_ANY which is used if the
-			// archname hint was not recognized
+			// arch_hint was not recognized
 			if (p->cpu.type == cpu_hint.type &&
 			    p->cpu.type_is64 == cpu_hint.type_is64) {
 				switch (cpu_hint.type) {
@@ -140,7 +139,7 @@ match_entry(macho_file_t *mf, enum pkg_arch arch_hint)
 						CPU_SUBTYPE_ARM_ALL ||
 					    p->cpu.subtype_arm ==
 						cpu_hint.subtype_arm) {
-							goto matched;
+							return p;
 					}
 					break;
 				case CPU_TYPE_POWERPC:
@@ -150,7 +149,7 @@ match_entry(macho_file_t *mf, enum pkg_arch arch_hint)
 						CPU_SUBTYPE_POWERPC_ALL ||
 					    p->cpu.subtype_ppc ==
 						cpu_hint.subtype_ppc) {
-							goto matched;
+							return p;
 					}
 					break;
 				case CPU_TYPE_X86:
@@ -160,7 +159,7 @@ match_entry(macho_file_t *mf, enum pkg_arch arch_hint)
 						CPU_SUBTYPE_X86_ALL ||
 					    p->cpu.subtype_x86 ==
 						cpu_hint.subtype_x86) {
-							goto matched;
+							return p;
 					}
 					break;
 				default:
@@ -168,19 +167,18 @@ match_entry(macho_file_t *mf, enum pkg_arch arch_hint)
 				}
 			}
 			pkg_debug(1, "Looking for %s, did not match %s",
-			    pkg_arch_to_string(PKG_OS_MACOS, arch_hint),
-			    pkg_arch_to_string(PKG_OS_MACOS, cputype_to_pkg_arch(p->cpu)));
+			    pkg_arch_to_string(PKG_OS_DARWIN, arch_hint),
+			    pkg_arch_to_string(PKG_OS_DARWIN, cputype_to_pkg_arch(p->cpu)));
 			p++;
 		}
 		pkg_emit_notice("Scanned %d entr%s, found none matching selector %s",
 			mf->narch, mf->narch > 1 ? "ies" : "y",
-			pkg_arch_to_string(PKG_OS_MACOS, arch_hint));
+			pkg_arch_to_string(PKG_OS_DARWIN, arch_hint));
 		return 0;
 	} else if (mf->narch > 1 ) {
 		pkg_debug(1,"Found %"PRIu32" entries in universal binary, picking first",
 			mf->narch);
 	}
-matched:
 	return p;
 }
 
@@ -277,7 +275,7 @@ pkg_macho_abi_from_fd(int fd, struct pkg_abi *abi, enum pkg_arch arch_hint)
 		macho_version_t darwin;
 		map_platform_to_darwin(&darwin, bv->platform, bv->minos);
 
-		abi->os = PKG_OS_MACOS;
+		abi->os = PKG_OS_DARWIN;
 
 		abi->major = darwin.major;
 		abi->minor = darwin.minor;
@@ -391,33 +389,33 @@ analyse_macho(int fd, struct pkg *pkg, const bool baselibs)
 					dylib->compatibility_version.minor,
 					dylib->compatibility_version.patch);
 			} else {
+				// while under Darwin full path references are recommended and ubiquitous,
+				// we align with pkg native environment and use only the basename
+				// this also strips off any @executable_path, @loader_path, @rpath components
 				const char * basename = strrchr(dylib->path, '/');
-				if (basename) {
-					pkg_debug(3,
-						"Adding dynamic library path: %s ts %"PRIu32" current(%"PRIuFAST16", %"PRIuFAST16", %"PRIuFAST16") compat(%"PRIuFAST16", %"PRIuFAST16", %"PRIuFAST16")\n",
-						dylib->path, dylib->timestamp,
-						dylib->current_version.major,
-						dylib->current_version.minor,
-						dylib->current_version.patch,
-						dylib->compatibility_version.major,
-						dylib->compatibility_version.minor,
-						dylib->compatibility_version.patch);
+				basename = basename ? basename + 1 : dylib->path;
+				pkg_debug(3,
+					"Adding dynamic library path: %s ts %"PRIu32" current(%"PRIuFAST16", %"PRIuFAST16", %"PRIuFAST16") compat(%"PRIuFAST16", %"PRIuFAST16", %"PRIuFAST16")\n",
+					dylib->path, dylib->timestamp,
+					dylib->current_version.major,
+					dylib->current_version.minor,
+					dylib->current_version.patch,
+					dylib->compatibility_version.major,
+					dylib->compatibility_version.minor,
+					dylib->compatibility_version.patch);
 
-					basename++;
-
-					char *lib_with_version;
-					if (dylib->current_version.patch) {
-						xasprintf(&lib_with_version, "%s-%"PRIuFAST16".%"PRIuFAST16".%"PRIuFAST16, basename, dylib->current_version.major, dylib->current_version.minor, dylib->current_version.patch);
-					} else {
-						xasprintf(&lib_with_version, "%s-%"PRIuFAST16".%"PRIuFAST16, basename, dylib->current_version.major, dylib->current_version.minor);
-					}
-					if (LC_ID_DYLIB == loadcmd) {
-						pkg_addshlib_provided(pkg, lib_with_version);
-					} else {
-						pkg_addshlib_required(pkg, lib_with_version);
-					}
-					free(lib_with_version);
+				char *lib_with_version;
+				if (dylib->current_version.patch) {
+					xasprintf(&lib_with_version, "%s-%"PRIuFAST16".%"PRIuFAST16".%"PRIuFAST16, basename, dylib->current_version.major, dylib->current_version.minor, dylib->current_version.patch);
+				} else {
+					xasprintf(&lib_with_version, "%s-%"PRIuFAST16".%"PRIuFAST16, basename, dylib->current_version.major, dylib->current_version.minor);
 				}
+				if (LC_ID_DYLIB == loadcmd) {
+					pkg_addshlib_provided(pkg, lib_with_version);
+				} else {
+					pkg_addshlib_required(pkg, lib_with_version);
+				}
+				free(lib_with_version);
 			}
 			free(dylib);
 			break;
