@@ -455,12 +455,14 @@ pkg_analyse_macho(const bool developer_mode, struct pkg *pkg, const char *fpath)
 
 	int fd = open(fpath, O_RDONLY);
 	if (-1 == fd) {
-		pkg_emit_errno("open", fpath);
-		ret = EPKG_FATAL;
+		// pkg_emit_errno("open_pkg_analyse_macho", fpath);
+		// ret = EPKG_FATAL;
+		// Be consistent with analyse_elf and return no error if fpath cannot be opened
+		return ret;
 	} else {
 		ret = analyse_macho(fd, pkg, baselibs);
 		if (-1 == close(fd)) {
-			pkg_emit_errno("open", fpath);
+			pkg_emit_errno("close_pkg_analyse_macho", fpath);
 			ret = EPKG_FATAL;
 		}
 	}
