@@ -20,8 +20,8 @@ native_body() {
 			;;
 		Darwin)
 			# without a hint, the first arch is selected, which happens to be consistently x86_64
-			thisarch="amd64"
-			thisabi="x86:64"
+			thisarch="x86_64"
+			thisabi="x86_64"
 			version=$(uname -r | cut -d. -f1)
 			;;
 		FreeBSD)
@@ -84,8 +84,9 @@ machoparse_body() {
 	# Macho-O parsing now works across platforms
 
 	for bin in \
-		macos.bin macos106.bin macos150.bin macosfat.bin \
-		"macosfat.bin#amd64" "macosfat.bin#aarch64"
+		macos.bin macos106.bin macos150.bin \
+		macosfat.bin "macosfat.bin#x86_64" "macosfat.bin#aarch64" \
+		macosfatlib.bin "macosfatlib.bin#x86_64" "macosfatlib.bin#aarch64"
 	do
 		bin_meta ${bin}
 
@@ -155,13 +156,13 @@ machoparse_body() {
 		pkg -d -o IGNORE_OSMAJOR=1 -o ABI_FILE=$(atf_get_srcdir)/macos.bin#i386 config altabi
 
 	# if the binary is universal, selecting the first entry is to be commented
-	_expected="Darwin:17:amd64\n"
+	_expected="Darwin:17:x86_64\n"
 	atf_check \
 		-o inline:"${_expected}" \
 		-e match:"picking first" \
 		pkg -d -o IGNORE_OSMAJOR=1 -o ABI_FILE=$(atf_get_srcdir)/macosfat.bin config abi
 
-	_expected="darwin:17:x86:64\n"
+	_expected="darwin:17:x86_64\n"
 	atf_check \
 		-o inline:"${_expected}" \
 		-e match:"picking first" \

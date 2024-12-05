@@ -131,20 +131,20 @@ bin_meta() {
 			Xshlibs_required_base="libSystem.B.dylib-1351.0"
 			;;
 		*macos106.bin)
-			XABI=Darwin:10:amd64
-			XALTABI=darwin:10:x86:64
+			XABI=Darwin:10:x86_64
+			XALTABI=darwin:10:x86_64
 			Xshlibs_required_base="libSystem.B.dylib-125.2.11"
 			;;
 		*macos150.bin)
-			XABI=Darwin:24:amd64
-			XALTABI=darwin:24:x86:64
+			XABI=Darwin:24:x86_64
+			XALTABI=darwin:24:x86_64
 			Xshlibs_required_base="libSystem.B.dylib-1351.0"
 			;;
 
-		# macosfat.bin has amd64 as its first entry
-		*macosfat.bin|*macosfat.bin#amd64)
-			XABI=Darwin:17:amd64
-			XALTABI=darwin:17:x86:64
+		# macosfat.bin has x86_64 as its first entry
+		*macosfat.bin|*macosfat.bin#x86_64)
+			XABI=Darwin:17:x86_64
+			XALTABI=darwin:17:x86_64
 			Xshlibs_required="libAnswer.A.dylib-1.2"
 			Xshlibs_required_base="libAnswer.A.dylib-1.2 libSystem.B.dylib-1319.0"
 			;;
@@ -157,10 +157,10 @@ bin_meta() {
 			Xshlibs_required_base="libAnswer.A.dylib-1.1 libSystem.B.dylib-1319.0"
 			;;
 
-		# macosfatlib.bin has aarch64 as its first entry
-		*macosfatlib.bin|*macosfatlib.bin#amd64)
-			XABI=Darwin:17:amd64
-			XALTABI=darwin:17:x86:64
+		# macosfatlib.bin has x86_64 as its first entry
+		*macosfatlib.bin|*macosfatlib.bin#x86_64)
+			XABI=Darwin:17:x86_64
+			XALTABI=darwin:17:x86_64
 			Xshlibs_provided="libAnswer.A.dylib-1.2"
 			Xshlibs_required_base="libSystem.B.dylib-1319.0"
 			;;

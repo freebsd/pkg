@@ -109,8 +109,8 @@ pkg_os_uses_amd64_name(enum pkg_os os)
 {
 	switch (os) {
 	case PKG_OS_FREEBSD:
-	case PKG_OS_DARWIN:
 		return (true);
+	case PKG_OS_DARWIN:
 	case PKG_OS_NETBSD:
 	case PKG_OS_LINUX:
 		return (false);
