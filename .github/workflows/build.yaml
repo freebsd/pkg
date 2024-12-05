@@ -1,17 +1,23 @@
-name: build
+##
+# Copyright (c) 2024 Keve Müller <kevemueller@users.github.com>
+#
+# SPDX-License-Identifier: BSD-2-Clause
+#
+
 # GitHub action to compile pkg on ubuntu-24.04, ubuntu-latest/22.04 (amd64) and macos-latest (aarch64)
 #  * set-up prerequisites
 #  * configure && make && make check && make install
-#  * upload installed binaries as well as kyua reports as build artefact
+#  * upload installed binaries if tests succeed as well as kyua reports and log as build artefact
 #
 # We run in a matrix with os/sanitize flags.
 
+name: build
+
 on:
     pull_request:
-        branches:
-            - main
+      branches:
+          - main
     push:
-    workflow_dispatch:
 
 permissions:
     contents: read
@@ -25,21 +31,11 @@ jobs:
             matrix:
                 build-os:
                 - ubuntu-24.04
-                - ubuntu-latest
                 - macos-latest
                 sanitize:
-                - ""
+                - [ ]
                 - [ "asan", "lsan" ]
-                - ubsan
-                - tsan
-                exclude:
-                # don't run the sanitizers on Ubuntu 22.04
-                - build-os: ubuntu-latest
-                  sanitize: [ "asan", "lsan" ]
-                - build-os: ubuntu-latest
-                  sanitize: ubsan
-                - build-os: ubuntu-latest
-                  sanitize: tsan
+                - [ "ubsan", "tsan" ]
                 include:
                 - build-os: macos-latest
                   compiler: clang-19
@@ -99,6 +95,7 @@ jobs:
                   - pkg-config
                   - m4
                   llvm-bindir: /usr/lib/llvm-15/bin
+                  sanitize: [] 
         steps:
         - name: install packages (macOS)
           if: runner.os == 'macOS'
@@ -112,7 +109,7 @@ jobs:
             #
 
             brew update --quiet || true
-            brew remove pkg-config@0.29.2 || true # otherwise we get spurious errors with pkgconf
+            #brew remove pkg-config@0.29.2 || true # used to get spurious errors with pkgconf
             brew install ${{ join(matrix.pkgs, ' ') }}
 
             # kyua was kicked out of brew due to lack of activity
@@ -120,6 +117,7 @@ jobs:
             curl https://raw.githubusercontent.com/Homebrew/homebrew-core/master/Formula/k/kyua.rb | sed 's/[[:space:]]*disable.*$//'  > kyua.rb
             brew install --formula ./kyua.rb
 
+            # We make sure pkg-config picks up brew's libarchive instead of pointing to system libarchive
             echo PKG_CONFIG_PATH=$(brew --prefix libarchive)/lib/pkgconfig >> "${GITHUB_ENV}"
         - name: install packages (Linux)
           if: runner.os == 'Linux'
@@ -151,6 +149,7 @@ jobs:
             echo uname -a: $(uname -a)
             echo uname -m: $(uname -m)
             echo uname -p: $(uname -p)
+            kyua about | head -1
             echo NPROC="${NPROC}"
             echo CC="${CC}"
             echo CPP="${CPP}"
@@ -164,28 +163,49 @@ jobs:
             ${SRC_PKG}/configure --prefix=${INST_PKG} --with-libarchive.pc --with-libcurl --with-openssl.pc ${CFG_OPTS}
             make -j${NPROC}
 
-        - name: test&install pkg
+        - name: check pkg
           run: |
-            echo Checking and installing pkg
+            set +e
+            echo Checking pkg
             cd "${BUILD_PKG}"
-            if make check; then
-              echo "All mandatory checks passed"
-              kyua report --results-filter=xfail,broken,failed >> $GITHUB_STEP_SUMMARY
+            make check
+            check_exit=$?
+
+            if [ $check_exit -eq 0 ]; then    
+              echo "# ✅ All mandatory checks passed" >> $GITHUB_STEP_SUMMARY
               kyua report
-              kyua report-html
             else
-              kyua report --results-filter=xfail,broken,failed >> $GITHUB_STEP_SUMMARY
+              echo "# ❌ Some checks failed" >> $GITHUB_STEP_SUMMARY
+              echo "::error file=.github/workflows/build.yaml,line=173,endLine=173,title=Checks failed!::make check failed"
               kyua report --verbose
-              kyua report-html
-              exit 0
             fi
-            # only install non-debug builds
-            make install
+
+            kyua report --results-filter=xfail,broken,failed | sed 's/===>/##/' >> $GITHUB_STEP_SUMMARY
+            if [ $check_exit -ne 0 ]; then
+              kyua report --verbose --results-filter=xfail,broken,failed | sed 's/===>/##/' >> $GITHUB_STEP_SUMMARY
+            fi
+
+            kyua report-html # produces html subdirectory
+            # also include plain text
+            kyua report --verbose --results-filter=xfail,broken,failed > html/test-reportfailed.txt
+            # also include plain JUnit
+            kyua report-junit --output html/test-reportfailed.xml
+            # also include the kyua log
+            cp -a ~/.kyua/logs html/
+
+            exit $check_exit
+
+        - name: install pkg
+          run: |
+              cd "${BUILD_PKG}"
+              make install
+          if: ${{ success() && '' == join(matrix.sanitize, '') }} # only install successful non-debug builds
 
         - name: tar build & test reports
           run: |
             test -d ${INST_PKG} && tar cvf pkg-${{ matrix.build-os }}-${{ matrix.compiler }}.tar -C ${INST_PKG} .
             tar cvf pkg-${{ matrix.build-os }}-${{ matrix.compiler }}-report${{ join(matrix.sanitize, '_') }}.tar -C "${BUILD_PKG}/html" .
+          if: ${{ always() }}
 
         - name: archive build artefacts
           uses: actions/upload-artifact@v4
@@ -195,3 +215,4 @@ jobs:
               compression-level: 0
               retention-days: 10
               overwrite: true
+          if: ${{ always() }}
