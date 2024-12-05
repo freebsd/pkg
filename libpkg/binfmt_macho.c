@@ -61,7 +61,13 @@ read_fully(const int fd, const size_t len, void *dest)
 	ssize_t x;
 	while (n > 0) {
 		if ((x = read(fd, p, n)) < 0) {
+			if ( EAGAIN == errno) {
+				continue;
+			}
 			return x;
+		}
+		if ( 0 == x) {
+			return -1;
 		}
 		n -= x;
 		p += x;
