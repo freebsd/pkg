@@ -128,8 +128,8 @@ create_from_bin_body() {
 		freebsd-i386.bin freebsd-powerpc.bin freebsd-powerpc64.bin freebsd-powerpc64le.bin \
 		freebsd-riscv64.bin dfly.bin linux.bin \
         macos.bin macos106.bin macos150.bin \
-        macosfat.bin "macosfat.bin#amd64" "macosfat.bin#aarch64" \
-        macosfatlib.bin "macosfatlib.bin#amd64" "macosfatlib.bin#aarch64"
+        macosfat.bin "macosfat.bin#x86_64" "macosfat.bin#aarch64" \
+        macosfatlib.bin "macosfatlib.bin#x86_64" "macosfatlib.bin#aarch64"
     do
         do_check no testbin $bin
     done
@@ -138,8 +138,8 @@ create_from_bin_body() {
 create_from_machobinbase_body() {
     for bin in \
         macos.bin macos106.bin macos150.bin \
-        macosfat.bin "macosfat.bin#amd64" "macosfat.bin#aarch64" \
-        macosfatlib.bin "macosfatlib.bin#amd64" "macosfatlib.bin#aarch64" 
+        macosfat.bin "macosfat.bin#x86_64" "macosfat.bin#aarch64" \
+        macosfatlib.bin "macosfatlib.bin#x86_64" "macosfatlib.bin#aarch64" 
     do
         do_check yes machobinbase $bin
     done
