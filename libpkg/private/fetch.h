@@ -41,7 +41,6 @@ struct fetcher {
 	int (*fetch)(struct pkg_repo *repo, int dest, struct fetch_item *);
 };
 
-int fetch_open(struct pkg_repo *, struct fetch_item *);
 int ssh_open(struct pkg_repo *, struct fetch_item *);
 int file_open(struct pkg_repo *, struct fetch_item *);
 void fh_close(struct pkg_repo *);
