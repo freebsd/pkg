@@ -353,11 +353,6 @@ static struct config_entry c[] = {
 		"pkg+http,pkg+https,https,http,file,ssh,tcp",
 	},
 	{
-		PKG_BOOL,
-		"ALLOW_BASE_SHLIBS",
-		"NO",
-	},
-	{
 		PKG_INT,
 		"WARN_SIZE_LIMIT",
 		"1048576", /* 1 meg */

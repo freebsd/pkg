@@ -40,6 +40,7 @@
 #include <tllist.h>
 
 #include "pkg.h"
+#include "pkghash.h"
 #include "private/event.h"
 #include "private/pkg.h"
 #include "private/pkgdb.h"
@@ -671,6 +672,10 @@ pkg_solve_process_universe_variable(struct pkg_solve_problem *problem,
 
 		/* Shlibs */
 		tll_foreach(pkg->shlibs_required, s) {
+			if (pkghash_get(j->system_shlibs, s->item) != NULL) {
+				/* The shlib is provided by the system */
+				continue;
+			}
 			if (pkg_solve_add_require_rule(problem, cur_var,
 			    s->item, cur_var->assumed_reponame) != EPKG_OK) {
 				continue;

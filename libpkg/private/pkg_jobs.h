@@ -142,6 +142,7 @@ struct pkg_jobs {
 	struct triggers triggers;
 	struct pkghash *orphaned;
 	struct pkghash *notorphaned;
+	struct pkghash *system_shlibs;
 };
 
 #define PKG_PATTERN_FLAG_FILE (1 << 0)

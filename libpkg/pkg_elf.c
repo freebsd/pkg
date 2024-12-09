@@ -44,7 +44,6 @@
 #include "private/pkg.h"
 #include "private/pkg_abi.h"
 #include "private/event.h"
-#include "private/ldconfig.h"
 #include "private/binfmt.h"
 
 #ifndef NT_ABI_TAG
@@ -55,81 +54,11 @@
 #define NT_ARCH		2
 #define NT_GNU_ABI_TAG	1
 
-/* FFR: when we support installing a 32bit package on a 64bit host */
-#define _PATH_ELF32_HINTS       "/var/run/ld-elf32.so.hints"
-
 #ifndef roundup2
 #define roundup2(x, y)	(((x)+((y)-1))&(~((y)-1))) /* if y is powers of two */
 #endif
 
 static enum pkg_arch elf_parse_arch(Elf *elf, GElf_Ehdr *ehdr);
-
-static int
-filter_system_shlibs(const char *name, char *path, size_t pathlen)
-{
-	const char *shlib_path;
-
-	shlib_path = shlib_list_find_by_name(name);
-	if (shlib_path == NULL) {
-		/* dynamic linker could not resolve */
-		return (EPKG_FATAL);
-	}
-
-	if (pkg_object_bool(pkg_config_get("ALLOW_BASE_SHLIBS"))) {
-		if (strstr(shlib_path, "/lib32/") != NULL)
-			return (EPKG_END);
-	} else {
-		/* match /lib, /lib32, /usr/lib and /usr/lib32 */
-		if (strncmp(shlib_path, "/lib", 4) == 0 ||
-		    strncmp(shlib_path, "/usr/lib", 8) == 0)
-			return (EPKG_END); /* ignore libs from base */
-	}
-
-	if (path != NULL)
-		strncpy(path, shlib_path, pathlen);
-
-	return (EPKG_OK);
-}
-
-/* ARGSUSED */
-static int
-add_shlibs_to_pkg(struct pkg *pkg, const char *fpath, const char *name,
-    bool is_shlib)
-{
-	struct pkg_file *file = NULL;
-	const char *filepath;
-	size_t fsz, nsz;
-
-	switch(filter_system_shlibs(name, NULL, 0)) {
-	case EPKG_OK:		/* A non-system library */
-		pkg_addshlib_required(pkg, name);
-		return (EPKG_OK);
-	case EPKG_END:		/* A system library */
-		return (EPKG_OK);
-	default:
-		/* Ignore link resolution errors if we're analysing a
-		   shared library. */
-		if (is_shlib)
-			return (EPKG_OK);
-
-		while (pkg_files(pkg, &file) == EPKG_OK) {
-			filepath = file->path;
-			fsz = strlen(filepath);
-			nsz = strlen(name);
-
-			if (fsz >= nsz &&
-			    STREQ(&filepath[fsz - nsz], name)) {
-				pkg_addshlib_required(pkg, name);
-				return (EPKG_OK);
-			}
-		}
-
-		pkg_emit_notice("(%s-%s) %s - required shared library %s not "
-		    "found", pkg->name, pkg->version, fpath, name);
-
-		return (EPKG_FATAL);
-	}
-}
 
 #ifdef __FreeBSD__
 static bool
@@ -173,10 +102,6 @@ analyse_elf(struct pkg *pkg, const char *fpath)
 	size_t numdyn = 0;
 	size_t sh_link = 0;
 	size_t dynidx;
-	const char *shlib;
-	char *rpath = NULL;
-
-	bool is_shlib = false;
 
 	int fd;
 
@@ -289,69 +214,27 @@ analyse_elf(struct pkg *pkg, const char *fpath)
 		goto cleanup;
 	}
 
-	/* First, scan through the data from the .dynamic section to
-	   find any RPATH or RUNPATH settings.  These are colon
-	   separated paths to prepend to the ld.so search paths from
-	   the ELF hints file.  These always seem to come right after
-	   the NEEDED shared library entries.
-
-	   NEEDED entries should resolve to a filename for installed
-	   executables, but need not resolve for installed shared
-	   libraries -- additional info from the apps that link
-	   against them would be required.  Shared libraries are
-	   distinguished by a DT_SONAME tag */
-
-	rpath_list_init();
 	for (dynidx = 0; dynidx < numdyn; dynidx++) {
 		if ((dyn = gelf_getdyn(data, dynidx, &dyn_mem)) == NULL) {
 			ret = EPKG_FATAL;
 			pkg_emit_error("getdyn() failed for %s: %s", fpath,
 			    elf_errmsg(-1));
 			goto cleanup;
+		}
+
+		const char *shlib = elf_strptr(e, sh_link, dyn->d_un.d_val);
+		if (shlib == NULL || *shlib == '\0') {
+			continue;
 		}
 
 		if (dyn->d_tag == DT_SONAME) {
-			is_shlib = true;
-
-			/* The file being scanned is a shared library
-			   *provided* by the package. Record this if
-			   appropriate */
-			shlib = elf_strptr(e, sh_link, dyn->d_un.d_val);
-			if (shlib != NULL && *shlib != '\0')
-				pkg_addshlib_provided(pkg, shlib);
+			pkg_addshlib_provided(pkg, shlib);
+		} else if (dyn->d_tag == DT_NEEDED) {
+			pkg_addshlib_required(pkg, shlib);
 		}
-
-		if ((dyn->d_tag == DT_RPATH || dyn->d_tag == DT_RUNPATH) &&
-		    rpath == NULL)
-			rpath = elf_strptr(e, sh_link, dyn->d_un.d_val);
-	}
-	if (rpath != NULL) {
-		char *p = xstrdup(fpath);
-		shlib_list_from_rpath(rpath, get_dirname(p));
-		free(p);
-	}
-
-	/* Now find all of the NEEDED shared libraries. */
-
-	for (dynidx = 0; dynidx < numdyn; dynidx++) {
-		if ((dyn = gelf_getdyn(data, dynidx, &dyn_mem)) == NULL) {
-			ret = EPKG_FATAL;
-			pkg_emit_error("getdyn() failed for %s: %s", fpath,
-			    elf_errmsg(-1));
-			goto cleanup;
-		}
-
-		if (dyn->d_tag != DT_NEEDED)
-			continue;
-
-		shlib = elf_strptr(e, sh_link, dyn->d_un.d_val);
-
-		add_shlibs_to_pkg(pkg, fpath, shlib, is_shlib);
 	}
 
 cleanup:
-	rpath_list_free();
-
 	if (e != NULL)
 		elf_end(e);
 	close(fd);
@@ -753,33 +636,24 @@ cleanup:
 	return (ret);
 }
 
-int pkg_analyse_init_elf(const char* stage) {
+int pkg_analyse_init_elf(__unused const char* stage) {
 	if (elf_version(EV_CURRENT) == EV_NONE)
 		return (EPKG_FATAL);
+	return (EPKG_OK);
+}
 
-	shlib_list_init();
-
-	if (stage != NULL && pkg_object_bool(pkg_config_get("ALLOW_BASE_SHLIBS"))) {
-		/* Do not check the return */
-		shlib_list_from_stage(stage);
+int pkg_analyse_elf(const bool developer_mode, struct pkg *pkg, const char *fpath)
+{
+	int ret = analyse_elf(pkg, fpath);
+	if (developer_mode) {
+		if (ret != EPKG_OK && ret != EPKG_END) {
+			return EPKG_WARN;
+		}
+		analyse_fpath(pkg, fpath);
 	}
-
-	int ret = shlib_list_from_elf_hints(_PATH_ELF_HINTS);
 	return ret;
 }
 
-int pkg_analyse_elf(const bool developer_mode, struct pkg *pkg, const char *fpath) {
-		int ret = analyse_elf(pkg, fpath);
-		if (developer_mode) {
-			if (ret != EPKG_OK && ret != EPKG_END) {
-				return EPKG_WARN;
-			}
-			analyse_fpath(pkg, fpath);
-		}
-		return ret;
-}
-
 int pkg_analyse_close_elf() {
-	shlib_list_free();
 	return EPKG_OK;
 }

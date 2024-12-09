@@ -36,7 +36,8 @@ SRCS=	backup_lib.c \
 	pkg_elf.c \
 	pkg_abi_macho.c \
 	binfmt_macho.c \
-	ssh.c elfhints.c \
+	ssh.c \
+	system_shlibs.c \
 	pkg_arch.c \
 	pkg_cudf.c \
 	pkg_jobs_universe.c  pkg_printf.c \

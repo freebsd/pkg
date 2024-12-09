@@ -844,4 +844,6 @@ int pkg_parse_manifest_ucl(struct pkg *pkg, ucl_object_t *o);
 int pkg_get_reposdirfd(void);
 char * expand_plist_variables(const char *in, kvlist_t *vars);
 
+int scan_system_shlibs(pkghash **system_shlibs, const char *rootdir);
+
 #endif

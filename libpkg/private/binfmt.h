@@ -8,6 +8,13 @@
 
 #include "private/pkg.h"
 
+/* In the future this will be extended to include
+   e.g. PKG_PROVIDE_SHLIB_COMPAT_32 */
+enum pkg_provide_flags {
+	PKG_PROVIDE_NONE = 0,
+	PKG_PROVIDE_SHLIB_NATIVE = 1 << 0,
+};
+
 int pkg_elf_abi_from_fd(int fd, struct pkg_abi *abi);
 int pkg_analyse_init_elf(const char* stage);
 int pkg_analyse_elf(const bool developer_mode, struct pkg *pkg, const char *fpath);
