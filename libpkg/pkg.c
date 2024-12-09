@@ -904,6 +904,13 @@ pkg_addshlib_required(struct pkg *pkg, const char *name)
 	assert(pkg != NULL);
 	assert(name != NULL && name[0] != '\0');
 
+	if (match_ucl_lists(name,
+	    pkg_config_get("SHLIB_REQUIRE_IGNORE_GLOB"),
+	    pkg_config_get("SHLIB_REQUIRE_IGNORE_REGEX"))) {
+		dbg(3, "ignoring shlib %s required by package %s", name, pkg->name);
+		return (EPKG_OK);
+	}
+
 	/* silently ignore duplicates in case of shlibs */
 	tll_foreach(pkg->shlibs_required, s) {
 		if (STREQ(s->item, name))
