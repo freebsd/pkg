@@ -431,6 +431,16 @@ static struct config_entry c[] = {
 	},
 	{
 		PKG_ARRAY,
+		"SHLIB_REQUIRE_IGNORE_GLOB",
+		NULL,
+	},
+	{
+		PKG_ARRAY,
+		"SHLIB_REQUIRE_IGNORE_REGEX",
+		NULL,
+	},
+	{
+		PKG_ARRAY,
 		"PKG_DEBUG_FLAGS",
 		"all",
 	},
