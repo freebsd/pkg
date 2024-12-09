@@ -448,8 +448,7 @@ pkg_analyse_files(struct pkgdb *db __unused, struct pkg *pkg, const char *stage)
 	bool failures = false;
 
 	int (*pkg_analyse_init)(const char *stage);
-	int (*pkg_analyse)(const bool developer_mode, struct pkg *pkg,
-	    const char *fpath);
+	int (*pkg_analyse)(const bool developer_mode, struct pkg *pkg, const char *fpath);
 	int (*pkg_analyse_close)();
 
 	if (0 == strncmp(pkg->abi, "Darwin", 6)) {

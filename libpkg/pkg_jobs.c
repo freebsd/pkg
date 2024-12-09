@@ -219,6 +219,7 @@ pkg_jobs_free(struct pkg_jobs *j)
 		ucl_object_unref(j->triggers.schema);
 	pkghash_destroy(j->orphaned);
 	pkghash_destroy(j->notorphaned);
+	pkghash_destroy(j->system_shlibs);
 	free(j);
 }
 
@@ -1915,8 +1916,21 @@ pkg_jobs_check_and_solve_conflicts(struct pkg_jobs *j, bool *found_conflicts)
 int
 pkg_jobs_solve(struct pkg_jobs *j)
 {
-	int ret = pkg_jobs_run_solver(j);
+	int ret;
 
+	assert(j->system_shlibs == NULL);
+
+	/* If /usr/bin/uname is in the pkg database, we are targeting
+	 * a pkgbase system and should rely on the pkgbase packages to
+	 * provide system shlibs. */
+	if (!pkgdb_file_exists(j->db, "/usr/bin/uname")) {
+		ret = scan_system_shlibs(&j->system_shlibs, ctx.pkg_rootdir);
+		if (ret != EPKG_OK) {
+			return (ret);
+		}
+	}
+
+	ret = pkg_jobs_run_solver(j);
 	if (ret != EPKG_OK)
 		return (ret);
 

@@ -6,6 +6,7 @@
 
 #include <errno.h>
 
+#include "private/binfmt.h"
 #include "private/binfmt_macho.h"
 #include "private/pkg.h"
 #include "private/event.h"
@@ -13,7 +14,7 @@
 
 /**
  * Routines to support pkg_abi.c functions when dealing with Mach-O files.
- * Supports getting struct pkg_abi from the binary's load commands. 
+ * Supports getting struct pkg_abi from the binary's load commands.
  * Supports getting shared libary information (needed, provided & loader).
  * Picks right binary in Universal binary based on ABI.
  */
@@ -299,28 +300,8 @@ cleanup:
 	return ret;
 }
 
-static const char * const system_dylib_prefixes[] = {
-	"/System/",
-	"/usr/lib/",
-	"/lib/",
-};
-
-static bool
-system_dylib(const char *libname)
-{
-	const char * const *p = system_dylib_prefixes;
-	const char * const *p_end = p + NELEM(system_dylib_prefixes);
-	while (p < p_end) {
-		if (strncmp(libname, *p, strlen(*p)) == 0) {
-			return true;
-		}
-		p++;
-	}
-	return false;
-}
-
 static int
-analyse_macho(int fd, struct pkg *pkg, const bool baselibs)
+analyse_macho(int fd, struct pkg *pkg)
 {
 	ssize_t x;
 	pkg_error_t ret = EPKG_END;
@@ -378,45 +359,33 @@ analyse_macho(int fd, struct pkg *pkg, const bool baselibs)
 				goto cleanup;
 			}
 			n += x;
-			if (!baselibs && system_dylib(dylib->path)) {
-				pkg_debug(3,
-					"Skipping System dynamic library path: %s ts %"PRIu32" current(%"PRIuFAST16", %"PRIuFAST16", %"PRIuFAST16") compat(%"PRIuFAST16", %"PRIuFAST16", %"PRIuFAST16")\n",
-					dylib->path, dylib->timestamp,
-					dylib->current_version.major,
-					dylib->current_version.minor,
-					dylib->current_version.patch,
-					dylib->compatibility_version.major,
-					dylib->compatibility_version.minor,
-					dylib->compatibility_version.patch);
-			} else {
-				// while under Darwin full path references are recommended and ubiquitous,
-				// we align with pkg native environment and use only the basename
-				// this also strips off any @executable_path, @loader_path, @rpath components
-				const char * basename = strrchr(dylib->path, '/');
-				basename = basename ? basename + 1 : dylib->path;
-				pkg_debug(3,
-					"Adding dynamic library path: %s ts %"PRIu32" current(%"PRIuFAST16", %"PRIuFAST16", %"PRIuFAST16") compat(%"PRIuFAST16", %"PRIuFAST16", %"PRIuFAST16")\n",
-					dylib->path, dylib->timestamp,
-					dylib->current_version.major,
-					dylib->current_version.minor,
-					dylib->current_version.patch,
-					dylib->compatibility_version.major,
-					dylib->compatibility_version.minor,
-					dylib->compatibility_version.patch);
+			// while under Darwin full path references are recommended and ubiquitous,
+			// we align with pkg native environment and use only the basename
+			// this also strips off any @executable_path, @loader_path, @rpath components
+			const char * basename = strrchr(dylib->path, '/');
+			basename = basename ? basename + 1 : dylib->path;
+			pkg_debug(3,
+				"Adding dynamic library path: %s ts %"PRIu32" current(%"PRIuFAST16", %"PRIuFAST16", %"PRIuFAST16") compat(%"PRIuFAST16", %"PRIuFAST16", %"PRIuFAST16")\n",
+				dylib->path, dylib->timestamp,
+				dylib->current_version.major,
+				dylib->current_version.minor,
+				dylib->current_version.patch,
+				dylib->compatibility_version.major,
+				dylib->compatibility_version.minor,
+				dylib->compatibility_version.patch);
 
-				char *lib_with_version;
-				if (dylib->current_version.patch) {
-					xasprintf(&lib_with_version, "%s-%"PRIuFAST16".%"PRIuFAST16".%"PRIuFAST16, basename, dylib->current_version.major, dylib->current_version.minor, dylib->current_version.patch);
-				} else {
-					xasprintf(&lib_with_version, "%s-%"PRIuFAST16".%"PRIuFAST16, basename, dylib->current_version.major, dylib->current_version.minor);
-				}
-				if (LC_ID_DYLIB == loadcmd) {
-					pkg_addshlib_provided(pkg, lib_with_version);
-				} else {
-					pkg_addshlib_required(pkg, lib_with_version);
-				}
-				free(lib_with_version);
+			char *lib_with_version;
+			if (dylib->current_version.patch) {
+				xasprintf(&lib_with_version, "%s-%"PRIuFAST16".%"PRIuFAST16".%"PRIuFAST16, basename, dylib->current_version.major, dylib->current_version.minor, dylib->current_version.patch);
+			} else {
+				xasprintf(&lib_with_version, "%s-%"PRIuFAST16".%"PRIuFAST16, basename, dylib->current_version.major, dylib->current_version.minor);
 			}
+			if (LC_ID_DYLIB == loadcmd) {
+				pkg_addshlib_provided(pkg, lib_with_version);
+			} else {
+				pkg_addshlib_required(pkg, lib_with_version);
+			}
+			free(lib_with_version);
 			free(dylib);
 			break;
 		default:
@@ -450,8 +419,7 @@ int
 pkg_analyse_macho(const bool developer_mode, struct pkg *pkg, const char *fpath)
 {
 	int ret = EPKG_OK;
-	bool baselibs = pkg_object_bool(pkg_config_get("ALLOW_BASE_SHLIBS"));
-	pkg_debug(1, "Analysing Mach-O %s %d", fpath, baselibs);
+	pkg_debug(1, "Analysing Mach-O %s", fpath);
 
 	int fd = open(fpath, O_RDONLY);
 	if (-1 == fd) {
@@ -460,7 +428,7 @@ pkg_analyse_macho(const bool developer_mode, struct pkg *pkg, const char *fpath)
 		// Be consistent with analyse_elf and return no error if fpath cannot be opened
 		return ret;
 	} else {
-		ret = analyse_macho(fd, pkg, baselibs);
+		ret = analyse_macho(fd, pkg);
 		if (-1 == close(fd)) {
 			pkg_emit_errno("close_pkg_analyse_macho", fpath);
 			ret = EPKG_FATAL;

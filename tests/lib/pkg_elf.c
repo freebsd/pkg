@@ -61,22 +61,25 @@ ATF_TC_BODY(analyse_elf, tc)
 	ATF_REQUIRE_EQ(pkg_analyse_elf(false, p, binpath), EPKG_OK);
 	ATF_REQUIRE_EQ(tll_length(p->shlibs_provided), 1);
 	ATF_REQUIRE_STREQ(tll_front(p->shlibs_provided), "libtestfbsd.so.1");
+	ATF_REQUIRE_EQ(tll_length(p->shlibs_required), 1);
+	ATF_REQUIRE_STREQ(tll_front(p->shlibs_required), "libc.so.7");
 	free(binpath);
 
 	xasprintf(&binpath, "%s/Makefile", atf_tc_get_config_var(tc, "srcdir"));
 	ATF_REQUIRE_EQ(pkg_analyse_elf(false, p, binpath), EPKG_END);
 	ATF_REQUIRE_EQ(tll_length(p->shlibs_provided), 1);
+	ATF_REQUIRE_EQ(tll_length(p->shlibs_required), 1);
 	free(binpath);
 
-	ATF_REQUIRE_EQ(tll_length(p->shlibs_required), 0);
 	xasprintf(&binpath, "%s/frontend/libtest2fbsd.so.1", atf_tc_get_config_var(tc, "srcdir"));
 	ATF_REQUIRE_EQ(pkg_analyse_elf(false, p, binpath), EPKG_OK);
 	ATF_REQUIRE_EQ(tll_length(p->shlibs_provided), 2);
 	ATF_REQUIRE_STREQ(tll_back(p->shlibs_provided), "libtest2fbsd.so.1");
-	ATF_REQUIRE_EQ(tll_length(p->shlibs_required), 1);
-	ATF_REQUIRE_STREQ(tll_front(p->shlibs_required), "libfoo.so.1");
+	ATF_REQUIRE_EQ(tll_length(p->shlibs_required), 2);
+	ATF_REQUIRE_STREQ(tll_front(p->shlibs_required), "libc.so.7");
+	ATF_REQUIRE_STREQ(tll_back(p->shlibs_required), "libfoo.so.1");
 	free(binpath);
-	
+
 	pkg_free(p);
 }
 

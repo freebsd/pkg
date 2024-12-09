@@ -108,7 +108,6 @@ _pkg_config_opts() {
 	_values 'configuration option' \
 		'ABI[ABI of package you want to install]:string' \
 		'ALIAS[define local aliases for various pkg(8) standard command lines]:key/value list' \
-		'ALLOW_BASE_SHLIBS[enable base libraries analysis]:boolean:(yes no)' \
 		'AUTOCLEAN[cleanout content of cache directory after upgrades or installations]:boolean:(yes no)' \
 		'AUTOMERGE[automatically merge configuration files]:boolean:(yes no)' \
 		'DEFAULT_ALWAYS_YES[default to "yes" for all questions requiring user confirmation]:boolean:(yes no)' \

@@ -3,9 +3,7 @@
 . $(atf_get_srcdir)/test_environment.sh
 
 tests_init \
-	create_from_bin \
-    create_from_machobinbase \
-    create_from_elfbinbase
+	create_from_bin
 
 genmanifest() {
     local PKG_NAME="$1"
@@ -64,9 +62,6 @@ categories [
     "test",
 ]
 EOF
-    if [ x"${ALLOW_BASE_SHLIBS}" = xyes ]; then
-        Xshlibs_required="${Xshlibs_required_base}"
-    fi 
     if [ -n "${Xshlibs_required}" ]; then
         echo "shlibs_required [" >> ${PKG_NAME}.expected
         for i in ${Xshlibs_required}; do
@@ -97,22 +92,17 @@ EOF
 }
 
 do_check() {
-    ALLOW_BASE_SHLIBS=$1
-    local PKG_NAME=$2
-    local file1=$(atf_get_srcdir)/$3
+    local PKG_NAME=$1
+    local file1=$(atf_get_srcdir)/$2
 
     genmanifest ${PKG_NAME} ${file1}
-
-    atf_check \
-        -o inline:"${ALLOW_BASE_SHLIBS}\n" \
-        pkg -o IGNORE_OSMAJOR=1 -o ABI_FILE=${file1} -o ALLOW_BASE_SHLIBS=${ALLOW_BASE_SHLIBS} config allow_base_shlibs
 
     # cat ${PKG_NAME}.manifest
     atf_check \
         -o empty \
         -e empty \
         -s exit:0 \
-        pkg -o IGNORE_OSMAJOR=1 -o ABI_FILE=${file1} -o ALLOW_BASE_SHLIBS=${ALLOW_BASE_SHLIBS} create -M ./${PKG_NAME}.manifest -r ${TMPDIR}
+        pkg -o IGNORE_OSMAJOR=1 -o ABI_FILE=${file1} create -M ./${PKG_NAME}.manifest -r ${TMPDIR}
 
     # cat ${PKG_NAME}.expected
     atf_check \
@@ -131,31 +121,6 @@ create_from_bin_body() {
         macosfat.bin "macosfat.bin#x86_64" "macosfat.bin#aarch64" \
         macosfatlib.bin "macosfatlib.bin#x86_64" "macosfatlib.bin#aarch64"
     do
-        do_check no testbin $bin
-    done
-}
-
-create_from_machobinbase_body() {
-    for bin in \
-        macos.bin macos106.bin macos150.bin \
-        macosfat.bin "macosfat.bin#x86_64" "macosfat.bin#aarch64" \
-        macosfatlib.bin "macosfatlib.bin#x86_64" "macosfatlib.bin#aarch64" 
-    do
-        do_check yes machobinbase $bin
-    done
-}
-
-create_from_elfbinbase_body() {
-    atf_skip_on Linux Test fails on Linux
-    atf_skip_on Darwin Test fails on Darwin
-
-    # FIXME: All ELF readers are failing on non-native runs.
-    for bin in \
-        freebsd-aarch64.bin freebsd-amd64.bin freebsd-armv6.bin freebsd-armv7.bin \
-        freebsd-i386.bin freebsd-powerpc.bin freebsd-powerpc64.bin freebsd-powerpc64le.bin \
-        freebsd-riscv64.bin \
-        linux.bin dfly.bin
-    do
-        do_check yes elfbinbase $bin
+        do_check testbin $bin
     done
 }
