@@ -60,7 +60,6 @@
 
 static enum pkg_arch elf_parse_arch(Elf *elf, GElf_Ehdr *ehdr);
 
-#ifdef __FreeBSD__
 static bool
 is_old_freebsd_armheader(const GElf_Ehdr *e)
 {
@@ -79,7 +78,6 @@ is_old_freebsd_armheader(const GElf_Ehdr *e)
 	}
 	return (false);
 }
-#endif
 
 #ifndef HAVE_ELF_NOTE
 typedef Elf32_Nhdr Elf_Note;
@@ -201,13 +199,11 @@ analyse_elf(struct pkg *pkg, const char *fpath)
 		goto cleanup; /* Invalid ABI */
 	}
 
-#ifdef __FreeBSD__
 	if (ctx.abi.os == PKG_OS_FREEBSD && elfhdr.e_ident[EI_OSABI] != ELFOSABI_FREEBSD &&
 	    !is_old_freebsd_armheader(&elfhdr)) {
 		ret = EPKG_END;
 		goto cleanup;
 	}
-#endif
 
 	if ((data = elf_getdata(dynamic, NULL)) == NULL) {
 		ret = EPKG_END; /* Some error occurred, ignore this file */

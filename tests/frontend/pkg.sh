@@ -30,7 +30,7 @@ pkg_config_defaults_body()
 	    -o match:'^ *ASSUME_ALWAYS_YES = false;$' \
 	    -o match:'^ *PLIST_KEYWORDS_DIR = "";$' \
 	    -o match:'^ *SYSLOG = true;$' \
-	    -o match:'^ *ABI = "[a-zA-Z0-9]+:[a-z\.A-Z0-9]+:[a-zA-Z0-9]+";$'\
+	    -o match:'^ *ABI = "[a-zA-Z0-9]+:[a-z\.A-Z0-9]+:[a-zA-Z0-9_]+";$'\
 	    -o match:'^ *DEVELOPER_MODE = false;$' \
 	    -o match:'^ *VULNXML_SITE = "https://vuxml.freebsd.org/freebsd/vuln.xml.xz";$' \
 	    -o match:'^ *FETCH_RETRY = 3;$' \
