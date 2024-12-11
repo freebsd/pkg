@@ -939,7 +939,7 @@ pkg_shlib_flags_from_abi(const struct pkg_abi *shlib_abi)
  * libfoo.so.1.0.0:Linux    - compat Linux
  * libfoo.so.1.0.0:Linux:32 - compat Linux 32
  */
-static char *
+char *
 pkg_shlib_name_with_flags(const char *name, enum pkg_shlib_flags flags)
 {
 	const char *compat_os = "";

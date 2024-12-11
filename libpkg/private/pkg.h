@@ -800,6 +800,11 @@ enum pkg_shlib_flags {
 };
 /* Determine shlib flags by comparing the shlib abi with ctx.abi */
 enum pkg_shlib_flags pkg_shlib_flags_from_abi(const struct pkg_abi *shlib_abi);
+/*
+ * Given an unadorned shlib name (e.g. libfoo.so.1.0.0) return a newly allocated
+ * string with the given flags appended (e.g. libfoo.so.1.0.0:Linux:32).
+ */
+char *pkg_shlib_name_with_flags(const char *name, enum pkg_shlib_flags flags);
 int pkg_addshlib_required(struct pkg *pkg, const char *name, enum pkg_shlib_flags);
 /* No checking for duplicates or filtering */
 int pkg_addshlib_required_raw(struct pkg *pkg, const char *name);
