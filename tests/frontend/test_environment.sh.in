@@ -111,9 +111,7 @@ bin_meta() {
 			XABI=FreeBSD:14:riscv64
 			XALTABI=freebsd:14:riscv:64:hf
 			XFreeBSD_version=1401000
-# This riscv64 binary does not have the OS set to FreeBSD in its ELF header
-# TODO: handle this in pkg_elf.c
-#			Xshlibs_required="libc.so.7"
+			Xshlibs_required="libc.so.7"
 			;;
 		*dfly.bin)
 			XABI=dragonfly:5.10:x86:64

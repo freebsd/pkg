@@ -427,13 +427,13 @@ pkg_array(struct pkg *pkg, const ucl_object_t *obj, uint32_t attr)
 			if (cur->type != UCL_STRING)
 				pkg_emit_error("Skipping malformed required shared library");
 			else
-				pkg_addshlib_required(pkg, ucl_object_tostring(cur));
+				pkg_addshlib_required(pkg, ucl_object_tostring(cur), PKG_SHLIB_FLAGS_NONE);
 			break;
 		case MANIFEST_SHLIBS_PROVIDED:
 			if (cur->type != UCL_STRING)
 				pkg_emit_error("Skipping malformed provided shared library");
 			else
-				pkg_addshlib_provided(pkg, ucl_object_tostring(cur));
+				pkg_addshlib_provided(pkg, ucl_object_tostring(cur), PKG_SHLIB_FLAGS_NONE);
 			break;
 		case MANIFEST_CONFLICTS:
 			if (cur->type != UCL_STRING)

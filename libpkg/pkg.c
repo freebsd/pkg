@@ -22,6 +22,7 @@
 #include "private/pkg.h"
 #include "private/pkgdb.h"
 #include "private/utils.h"
+#include "xmalloc.h"
 
 #define dbg(x, ...) pkg_dbg(PKG_DBG_PACKAGE, x, __VA_ARGS__)
 
@@ -898,34 +899,99 @@ pkg_addoption_description(struct pkg *pkg, const char *key,
 	return (EPKG_OK);
 }
 
+enum pkg_shlib_flags
+pkg_shlib_flags_from_abi(const struct pkg_abi *shlib_abi)
+{
+	enum pkg_shlib_flags flags = PKG_SHLIB_FLAGS_NONE;
+
+	if (ctx.abi.os == PKG_OS_FREEBSD) {
+		if (shlib_abi->os == PKG_OS_LINUX) {
+			flags |= PKG_SHLIB_FLAGS_COMPAT_LINUX;
+		}
+
+		switch (ctx.abi.arch) {
+		case PKG_ARCH_AMD64:
+			if (shlib_abi->arch == PKG_ARCH_I386) {
+				flags |= PKG_SHLIB_FLAGS_COMPAT_32;
+			}
+			break;
+		case PKG_ARCH_AARCH64:
+			if (shlib_abi->arch == PKG_ARCH_ARMV7) {
+				flags |= PKG_SHLIB_FLAGS_COMPAT_32;
+			}
+			break;
+		case PKG_ARCH_POWERPC64:
+			if (shlib_abi->arch == PKG_ARCH_POWERPC) {
+				flags |= PKG_SHLIB_FLAGS_COMPAT_32;
+			}
+			break;
+		}
+	}
+
+	return (flags);
+}
+
+/*
+ * Format examples:
+ *
+ * libfoo.so.1.0.0          - native
+ * libfoo.so.1.0.0:32       - compat 32
+ * libfoo.so.1.0.0:Linux    - compat Linux
+ * libfoo.so.1.0.0:Linux:32 - compat Linux 32
+ */
+static char *
+pkg_shlib_name_with_flags(const char *name, enum pkg_shlib_flags flags)
+{
+	const char *compat_os = "";
+	if ((flags & PKG_SHLIB_FLAGS_COMPAT_LINUX) != 0) {
+		compat_os = ":Linux";
+	}
+
+	const char *compat_arch = "";
+	if ((flags & PKG_SHLIB_FLAGS_COMPAT_32) != 0) {
+		compat_arch = ":32";
+	}
+
+	char *ret;
+	xasprintf(&ret, "%s%s%s", name, compat_os, compat_arch);
+	return (ret);
+}
+
 int
-pkg_addshlib_required(struct pkg *pkg, const char *name)
+pkg_addshlib_required(struct pkg *pkg, const char *name,
+    enum pkg_shlib_flags flags)
 {
 	assert(pkg != NULL);
 	assert(name != NULL && name[0] != '\0');
 
-	if (match_ucl_lists(name,
+	char *full_name = pkg_shlib_name_with_flags(name, flags);
+
+	if (match_ucl_lists(full_name,
 	    pkg_config_get("SHLIB_REQUIRE_IGNORE_GLOB"),
 	    pkg_config_get("SHLIB_REQUIRE_IGNORE_REGEX"))) {
-		dbg(3, "ignoring shlib %s required by package %s", name, pkg->name);
+		dbg(3, "ignoring shlib %s required by package %s", full_name, pkg->name);
+		free(full_name);
 		return (EPKG_OK);
 	}
 
 	/* silently ignore duplicates in case of shlibs */
 	tll_foreach(pkg->shlibs_required, s) {
-		if (STREQ(s->item, name))
+		if (STREQ(s->item, full_name)) {
+			free(full_name);
 			return (EPKG_OK);
+		}
 	}
 
-	tll_push_back(pkg->shlibs_required, xstrdup(name));
+	tll_push_back(pkg->shlibs_required, full_name);
 
-	dbg(3, "added shlib deps for %s on %s", pkg->name, name);
+	dbg(3, "added shlib deps for %s on %s", pkg->name, full_name);
 
 	return (EPKG_OK);
 }
 
 int
-pkg_addshlib_provided(struct pkg *pkg, const char *name)
+pkg_addshlib_provided(struct pkg *pkg, const char *name,
+    enum pkg_shlib_flags flags)
 {
 	assert(pkg != NULL);
 	assert(name != NULL && name[0] != '\0');
@@ -934,15 +1000,19 @@ pkg_addshlib_provided(struct pkg *pkg, const char *name)
 	if (strncmp(name, "lib", 3) != 0)
 		return (EPKG_OK);
 
+	char *full_name = pkg_shlib_name_with_flags(name, flags);
+
 	/* silently ignore duplicates in case of shlibs */
 	tll_foreach(pkg->shlibs_provided, s) {
-		if (STREQ(s->item, name))
+		if (STREQ(s->item, full_name)) {
+			free(full_name);
 			return (EPKG_OK);
+		}
 	}
 
-	tll_push_back(pkg->shlibs_provided, xstrdup(name));
+	tll_push_back(pkg->shlibs_provided, full_name);
 
-	dbg(3, "added shlib provide %s for %s", name, pkg->name);
+	dbg(3, "added shlib provide %s for %s", full_name, pkg->name);
 
 	return (EPKG_OK);
 }
