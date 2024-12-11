@@ -58,26 +58,7 @@
 #define roundup2(x, y)	(((x)+((y)-1))&(~((y)-1))) /* if y is powers of two */
 #endif
 
-static enum pkg_arch elf_parse_arch(Elf *elf, GElf_Ehdr *ehdr);
-
-static bool
-is_old_freebsd_armheader(const GElf_Ehdr *e)
-{
-	GElf_Word eabi;
-
-	/*
-	 * Old FreeBSD arm EABI binaries were created with zeroes in [EI_OSABI].
-	 * Attempt to identify them by the little bit of valid info that is
-	 * present:  32-bit ARM with EABI version 4 or 5 in the flags.  OABI
-	 * binaries (prior to freebsd 10) have the correct [EI_OSABI] value.
-	 */
-	if (e->e_machine == EM_ARM && e->e_ident[EI_CLASS] == ELFCLASS32) {
-		eabi = e->e_flags & 0xff000000;
-		if (eabi == 0x04000000 || eabi == 0x05000000)
-			return (true);
-	}
-	return (false);
-}
+static void elf_parse_abi(Elf *elf, GElf_Ehdr *ehdr, struct pkg_abi *abi);
 
 #ifndef HAVE_ELF_NOTE
 typedef Elf32_Nhdr Elf_Note;
@@ -140,9 +121,8 @@ analyse_elf(struct pkg *pkg, const char *fpath)
 		goto cleanup;
 	}
 
-	/* Elf file has sections header */
+	/* Parse the needed information from the dynamic section header */
 	Elf_Scn *scn = NULL;
-	Elf_Scn *note = NULL;
 	Elf_Scn *dynamic = NULL;
 	size_t numdyn = 0;
 	size_t sh_link = 0;
@@ -154,20 +134,7 @@ analyse_elf(struct pkg *pkg, const char *fpath)
 					elf_errmsg(-1));
 			goto cleanup;
 		}
-		switch (shdr.sh_type) {
-		case SHT_NOTE:;
-			Elf_Data *data = elf_getdata(scn, NULL);
-			if (data == NULL) {
-				ret = EPKG_END; /* Some error occurred, ignore this file */
-				goto cleanup;
-			}
-			if (data->d_buf != NULL) {
-				Elf_Note *en = (Elf_Note *)data->d_buf;
-				if (en->n_type == NT_ABI_TAG)
-					note = scn;
-			}
-			break;
-		case SHT_DYNAMIC:
+		if (shdr.sh_type == SHT_DYNAMIC) {
 			dynamic = scn;
 			sh_link = shdr.sh_link;
 			if (shdr.sh_entsize == 0) {
@@ -177,29 +144,30 @@ analyse_elf(struct pkg *pkg, const char *fpath)
 			numdyn = shdr.sh_size / shdr.sh_entsize;
 			break;
 		}
-
-		if (note != NULL && dynamic != NULL)
-			break;
 	}
 
-	/*
-	 * note == NULL usually means a shared object for use with dlopen(3)
-	 * dynamic == NULL means not a dynamically linked elf
-	 */
 	if (dynamic == NULL) {
 		ret = EPKG_END;
 		goto cleanup; /* not a dynamically linked elf: no results */
 	}
 
-	if (elf_parse_arch(e, &elfhdr) != ctx.abi.arch) {
-		ret = EPKG_END;
-		goto cleanup; /* Invalid ABI */
-	}
-
-	if (ctx.abi.os == PKG_OS_FREEBSD && elfhdr.e_ident[EI_OSABI] != ELFOSABI_FREEBSD &&
-	    !is_old_freebsd_armheader(&elfhdr)) {
+	/* A shared object for use with dlopen(3) may lack a NOTE section and
+           will therefore have unknown elf_abi.os. */
+	struct pkg_abi elf_abi;
+	elf_parse_abi(e, &elfhdr, &elf_abi);
+	if (elf_abi.os == PKG_OS_UNKNOWN || elf_abi.arch == PKG_ARCH_UNKNOWN) {
 		ret = EPKG_END;
 		goto cleanup;
+	}
+
+	enum pkg_shlib_flags flags = pkg_shlib_flags_from_abi(&elf_abi);
+	if ((flags & PKG_SHLIB_FLAGS_COMPAT_LINUX) == 0 && elf_abi.os != ctx.abi.os) {
+		ret = EPKG_END;
+		goto cleanup; /* Incompatible OS */
+	}
+	if ((flags & PKG_SHLIB_FLAGS_COMPAT_32) == 0 && elf_abi.arch != ctx.abi.arch) {
+		ret = EPKG_END;
+		goto cleanup; /* Incompatible architecture */
 	}
 
 	Elf_Data *data = elf_getdata(dynamic, NULL);
@@ -222,10 +190,12 @@ analyse_elf(struct pkg *pkg, const char *fpath)
 			continue;
 		}
 
+
+
 		if (dyn->d_tag == DT_SONAME) {
-			pkg_addshlib_provided(pkg, shlib);
+			pkg_addshlib_provided(pkg, shlib, flags);
 		} else if (dyn->d_tag == DT_NEEDED) {
-			pkg_addshlib_required(pkg, shlib);
+			pkg_addshlib_required(pkg, shlib, flags);
 		}
 	}
 

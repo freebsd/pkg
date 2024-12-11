@@ -381,9 +381,9 @@ analyse_macho(int fd, struct pkg *pkg)
 				xasprintf(&lib_with_version, "%s-%"PRIuFAST16".%"PRIuFAST16, basename, dylib->current_version.major, dylib->current_version.minor);
 			}
 			if (LC_ID_DYLIB == loadcmd) {
-				pkg_addshlib_provided(pkg, lib_with_version);
+				pkg_addshlib_provided(pkg, lib_with_version, PKG_SHLIB_FLAGS_NONE);
 			} else {
-				pkg_addshlib_required(pkg, lib_with_version);
+				pkg_addshlib_required(pkg, lib_with_version, PKG_SHLIB_FLAGS_NONE);
 			}
 			free(lib_with_version);
 			free(dylib);

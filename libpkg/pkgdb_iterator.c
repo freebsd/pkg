@@ -586,6 +586,13 @@ pkgdb_load_group(sqlite3 *sqlite, struct pkg *pkg)
 }
 
 static int
+addshlib_required_raw(struct pkg *pkg, const char *name)
+{
+	tll_push_back(pkg->shlibs_required, xstrdup(name));
+	return (EPKG_OK);
+}
+
+static int
 pkgdb_load_shlib_required(sqlite3 *sqlite, struct pkg *pkg)
 {
 	const char	sql[] = ""
@@ -598,9 +605,15 @@ pkgdb_load_shlib_required(sqlite3 *sqlite, struct pkg *pkg)
 	assert(pkg != NULL);
 
 	return (load_val(sqlite, pkg, sql, PKG_LOAD_SHLIBS_REQUIRED,
-	    pkg_addshlib_required, PKG_ATTR_SHLIBS_REQUIRED));
+	    addshlib_required_raw, PKG_ATTR_SHLIBS_REQUIRED));
 }
 
+static int
+addshlib_provided_raw(struct pkg *pkg, const char *name)
+{
+	tll_push_back(pkg->shlibs_provided, xstrdup(name));
+	return (EPKG_OK);
+}
 
 static int
 pkgdb_load_shlib_provided(sqlite3 *sqlite, struct pkg *pkg)
@@ -615,7 +628,7 @@ pkgdb_load_shlib_provided(sqlite3 *sqlite, struct pkg *pkg)
 	assert(pkg != NULL);
 
 	return (load_val(sqlite, pkg, sql, PKG_LOAD_SHLIBS_PROVIDED,
-	    pkg_addshlib_provided, PKG_SHLIBS_PROVIDED));
+	    addshlib_provided_raw, PKG_SHLIBS_PROVIDED));
 }
 
 static int
