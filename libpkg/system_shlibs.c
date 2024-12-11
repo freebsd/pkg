@@ -18,10 +18,12 @@
 #include "pkg.h"
 #include "pkghash.h"
 #include "private/event.h"
+#include "private/pkg.h"
 #include "xmalloc.h"
 
 static int
-scan_dir_for_shlibs(pkghash **shlib_list, const char *dir)
+scan_dir_for_shlibs(pkghash **shlib_list, const char *dir,
+    enum pkg_shlib_flags flags)
 {
 	DIR *dirp= opendir(dir);
 	if (dirp == NULL) {
@@ -58,7 +60,9 @@ scan_dir_for_shlibs(pkghash **shlib_list, const char *dir)
 			continue;
 
 		/* We have a valid shared library name. */
-		pkghash_safe_add(*shlib_list, dp->d_name, NULL, NULL);
+		char *full = pkg_shlib_name_with_flags(dp->d_name, flags);
+		pkghash_safe_add(*shlib_list, full, NULL, NULL);
+		free(full);
 	}
 
 	closedir(dirp);
@@ -66,22 +70,26 @@ scan_dir_for_shlibs(pkghash **shlib_list, const char *dir)
 	return (EPKG_OK);
 }
 
-static const char *system_shlib_dirs[] = {
-	"/lib",
-	"/usr/lib",
+static struct {
+	const char *dir;
+	enum pkg_shlib_flags flags;
+} system_shlib_table[] = {
+	{"/lib", PKG_SHLIB_FLAGS_NONE },
+	{"/usr/lib", PKG_SHLIB_FLAGS_NONE },
+	{"/usr/lib32", PKG_SHLIB_FLAGS_COMPAT_32 },
 };
 
 int
 scan_system_shlibs(pkghash **system_shlibs, const char *rootdir)
 {
-	for (int i = 0; i < NELEM(system_shlib_dirs); i++) {
+	for (int i = 0; i < NELEM(system_shlib_table); i++) {
 		char *dir;
 		if (rootdir != NULL) {
-			xasprintf(&dir, "%s%s", rootdir, system_shlib_dirs[i]);
+			xasprintf(&dir, "%s%s", rootdir, system_shlib_table[i].dir);
 		} else {
-			dir = xstrdup(system_shlib_dirs[i]);
+			dir = xstrdup(system_shlib_table[i].dir);
 		}
-		int ret = scan_dir_for_shlibs(system_shlibs, dir);
+		int ret = scan_dir_for_shlibs(system_shlibs, dir, system_shlib_table[i].flags);
 		free(dir);
 		if (ret != EPKG_OK) {
 			return (ret);
