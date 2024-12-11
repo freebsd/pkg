@@ -86,31 +86,19 @@ typedef Elf32_Nhdr Elf_Note;
 static int
 analyse_elf(struct pkg *pkg, const char *fpath)
 {
-	Elf *e = NULL;
-	GElf_Ehdr elfhdr;
-	Elf_Scn *scn = NULL;
-	Elf_Scn *note = NULL;
-	Elf_Scn *dynamic = NULL;
-	GElf_Shdr shdr;
-	Elf_Data *data;
-	GElf_Dyn *dyn, dyn_mem;
-	struct stat sb;
 	int ret = EPKG_OK;
 
-	size_t numdyn = 0;
-	size_t sh_link = 0;
-	size_t dynidx;
-
-	int fd;
-
 	pkg_debug(1, "analysing elf %s", fpath);
+
+	struct stat sb;
 	if (lstat(fpath, &sb) != 0)
 		pkg_emit_errno("fstat() failed for", fpath);
 	/* ignore empty files and non regular files */
 	if (sb.st_size == 0 || !S_ISREG(sb.st_mode))
 		return (EPKG_END); /* Empty file or sym-link: no results */
 
-	if ((fd = open(fpath, O_RDONLY, 0)) < 0) {
+	int fd = open(fpath, O_RDONLY, 0);
+	if (fd < 0) {
 		return (EPKG_FATAL);
 	}
 
@@ -120,7 +108,8 @@ analyse_elf(struct pkg *pkg, const char *fpath)
 		return (EPKG_FATAL);
 	}
 
-	if ((e = elf_begin(fd, ELF_C_READ, NULL)) == NULL) {
+	Elf *e = elf_begin(fd, ELF_C_READ, NULL);
+	if (e == NULL) {
 		ret = EPKG_FATAL;
 		pkg_debug(1, "elf_begin() for %s failed: %s", fpath,
 		    elf_errmsg(-1));
@@ -137,6 +126,7 @@ analyse_elf(struct pkg *pkg, const char *fpath)
 	if (ctx.developer_mode)
 		pkg->flags |= PKG_CONTAINS_ELF_OBJECTS;
 
+	GElf_Ehdr elfhdr;
 	if (gelf_getehdr(e, &elfhdr) == NULL) {
 		ret = EPKG_WARN;
 		pkg_debug(1, "getehdr() failed: %s.", elf_errmsg(-1));
@@ -151,7 +141,13 @@ analyse_elf(struct pkg *pkg, const char *fpath)
 	}
 
 	/* Elf file has sections header */
+	Elf_Scn *scn = NULL;
+	Elf_Scn *note = NULL;
+	Elf_Scn *dynamic = NULL;
+	size_t numdyn = 0;
+	size_t sh_link = 0;
 	while ((scn = elf_nextscn(e, scn)) != NULL) {
+		GElf_Shdr shdr;
 		if (gelf_getshdr(scn, &shdr) != &shdr) {
 			ret = EPKG_FATAL;
 			pkg_emit_error("getshdr() for %s failed: %s", fpath,
@@ -159,12 +155,13 @@ analyse_elf(struct pkg *pkg, const char *fpath)
 			goto cleanup;
 		}
 		switch (shdr.sh_type) {
-		case SHT_NOTE:
-			if ((data = elf_getdata(scn, NULL)) == NULL) {
+		case SHT_NOTE:;
+			Elf_Data *data = elf_getdata(scn, NULL);
+			if (data == NULL) {
 				ret = EPKG_END; /* Some error occurred, ignore this file */
 				goto cleanup;
 			}
-			else if (data->d_buf != NULL) {
+			if (data->d_buf != NULL) {
 				Elf_Note *en = (Elf_Note *)data->d_buf;
 				if (en->n_type == NT_ABI_TAG)
 					note = scn;
@@ -205,12 +202,14 @@ analyse_elf(struct pkg *pkg, const char *fpath)
 		goto cleanup;
 	}
 
-	if ((data = elf_getdata(dynamic, NULL)) == NULL) {
+	Elf_Data *data = elf_getdata(dynamic, NULL);
+	if (data == NULL) {
 		ret = EPKG_END; /* Some error occurred, ignore this file */
 		goto cleanup;
 	}
 
-	for (dynidx = 0; dynidx < numdyn; dynidx++) {
+	for (size_t dynidx = 0; dynidx < numdyn; dynidx++) {
+		GElf_Dyn *dyn, dyn_mem;
 		if ((dyn = gelf_getdyn(data, dynidx, &dyn_mem)) == NULL) {
 			ret = EPKG_FATAL;
 			pkg_emit_error("getdyn() failed for %s: %s", fpath,
