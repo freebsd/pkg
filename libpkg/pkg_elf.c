@@ -565,16 +565,37 @@ elf_note_analyse(Elf_Data *data, GElf_Ehdr *elfhdr, struct pkg_abi *abi)
 	return (true);
 }
 
-int
-pkg_elf_abi_from_fd(int fd, struct pkg_abi *abi)
+static void
+elf_parse_abi(Elf *elf, GElf_Ehdr *ehdr, struct pkg_abi *abi)
 {
 	*abi = (struct pkg_abi){0};
 
+	Elf_Scn *scn = NULL;
+	while ((scn = elf_nextscn(elf, scn)) != NULL) {
+		GElf_Shdr shdr;
+		if (gelf_getshdr(scn, &shdr) != &shdr) {
+			pkg_emit_error("getshdr() failed: %s.", elf_errmsg(-1));
+			return;
+		}
+
+		if (shdr.sh_type == SHT_NOTE) {
+			Elf_Data *data = elf_getdata(scn, NULL);
+			/*
+			 * loop over all the note section and override what
+			 * should be overridden if any
+			 */
+			elf_note_analyse(data, ehdr, abi);
+		}
+	}
+
+	abi->arch = elf_parse_arch(elf, ehdr);
+}
+
+int
+pkg_elf_abi_from_fd(int fd, struct pkg_abi *abi)
+{
 	Elf *elf = NULL;
 	GElf_Ehdr elfhdr;
-	GElf_Shdr shdr;
-	Elf_Data *data;
-	Elf_Scn *scn = NULL;
 	int ret = EPKG_OK;
 
 	if (elf_version(EV_CURRENT) == EV_NONE) {
@@ -595,22 +616,7 @@ pkg_elf_abi_from_fd(int fd, struct pkg_abi *abi)
 		goto cleanup;
 	}
 
-	while ((scn = elf_nextscn(elf, scn)) != NULL) {
-		if (gelf_getshdr(scn, &shdr) != &shdr) {
-			ret = EPKG_FATAL;
-			pkg_emit_error("getshdr() failed: %s.", elf_errmsg(-1));
-			goto cleanup;
-		}
-
-		if (shdr.sh_type == SHT_NOTE) {
-			data = elf_getdata(scn, NULL);
-			/*
-			 * loop over all the note section and override what
-			 * should be overridden if any
-			 */
-			elf_note_analyse(data, &elfhdr, abi);
-		}
-	}
+	elf_parse_abi(elf, &elfhdr, abi);
 
 	if (abi->os == PKG_OS_UNKNOWN) {
 		ret = EPKG_FATAL;
@@ -618,7 +624,6 @@ pkg_elf_abi_from_fd(int fd, struct pkg_abi *abi)
 		goto cleanup;
 	}
 
-	abi->arch = elf_parse_arch(elf, &elfhdr);
 	if (abi->arch == PKG_ARCH_UNKNOWN) {
 		ret = EPKG_FATAL;
 		pkg_emit_error("failed to determine the architecture");
