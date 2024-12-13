@@ -35,6 +35,7 @@
 #include <sys/uio.h>
 #include <sys/file.h>
 #include <sys/time.h>
+#include <sys/wait.h>
 
 #include <archive_entry.h>
 #include <assert.h>
@@ -964,7 +965,7 @@ static int
 pkg_repo_sign(const char *path, char **argv, int argc, char **sig, size_t *siglen,
     char **sigtype, char **cert, size_t *certlen)
 {
-	FILE *fp;
+	FILE *fps[2];
 	char *sha256;
 	xstring *cmd = NULL;
 	xstring *buf = NULL;
@@ -974,7 +975,8 @@ pkg_repo_sign(const char *path, char **argv, int argc, char **sig, size_t *sigle
 	char *line = NULL;
 	size_t linecap = 0;
 	ssize_t linelen;
-	int i, ret = EPKG_OK;
+	pid_t spid;
+	int i, pstatus, ret = EPKG_OK;
 	bool end_seen = false;
 
 	sha256 = pkg_checksum_file(path, PKG_HASH_TYPE_SHA256_HEX);
@@ -991,18 +993,19 @@ pkg_repo_sign(const char *path, char **argv, int argc, char **sig, size_t *sigle
 	}
 
 	fflush(cmd->fp);
-	if ((fp = popen(cmd->buf, "r+")) == NULL) {
+	if ((spid = process_spawn_pipe(fps, cmd->buf)) < 0) {
 		ret = EPKG_FATAL;
 		goto done;
 	}
 
-	fprintf(fp, "%s\n", sha256);
+	fprintf(fps[1], "%s\n", sha256);
+	fflush(fps[1]);
 
 	sigstr = xstring_new();
 	certstr = xstring_new();
 	typestr = xstring_new();
 
-	while ((linelen = getline(&line, &linecap, fp)) > 0 ) {
+	while ((linelen = getline(&line, &linecap, fps[0])) > 0 ) {
 		if (STREQ(line, "SIGNATURE\n")) {
 			buf = sigstr;
 			continue;
@@ -1037,10 +1040,9 @@ pkg_repo_sign(const char *path, char **argv, int argc, char **sig, size_t *sigle
 	/* remove the latest \n */
 	*siglen -= 1;
 
-	if (pclose(fp) != 0) {
-		ret = EPKG_FATAL;
-		goto done;
-	}
+	waitpid(spid, &pstatus, WNOHANG);
+	fclose(fps[0]);
+	fclose(fps[1]);
 
 done:
 	free(sha256);
