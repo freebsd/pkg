@@ -15,6 +15,9 @@
 /* Location of default ca path */
 #undef CURL_CA_PATH
 
+/* If safe CA bundle search is enabled */
+#undef CURL_CA_SEARCH_SAFE
+
 /* Default SSL backend */
 #undef CURL_DEFAULT_SSL_BACKEND
 
@@ -32,6 +35,9 @@
 
 /* disable local binding support */
 #undef CURL_DISABLE_BINDLOCAL
+
+/* If unsafe CA bundle search in PATH on Windows is disabled */
+#undef CURL_DISABLE_CA_SEARCH
 
 /* to disable cookies support */
 #undef CURL_DISABLE_COOKIES
@@ -74,6 +80,9 @@
 
 /* to disable IMAP */
 #undef CURL_DISABLE_IMAP
+
+/* to disable IPFS */
+#undef CURL_DISABLE_IPFS
 
 /* to disable kerberos authentication */
 #undef CURL_DISABLE_KERBEROS_AUTH
@@ -144,8 +153,14 @@
 /* to disable verbose strings */
 #undef CURL_DISABLE_VERBOSE_STRINGS
 
+/* disable WebSockets */
+#undef CURL_DISABLE_WEBSOCKETS
+
 /* Definition to make a library symbol externally visible. */
 #undef CURL_EXTERN_SYMBOL
+
+/* cpu-machine-OS */
+#undef CURL_OS
 
 /* IP address type in sockaddr */
 #undef CURL_SA_FAMILY_T
@@ -518,8 +533,8 @@
 /* Define to 1 if you have the `pipe' function. */
 #undef HAVE_PIPE
 
-/* If you have a fine poll */
-#undef HAVE_POLL_FINE
+/* Define to 1 if you have the `poll' function. */
+#undef HAVE_POLL
 
 /* Define to 1 if you have the <poll.h> header file. */
 #undef HAVE_POLL_H
@@ -556,6 +571,9 @@
 
 /* Define to 1 if you have the send function. */
 #undef HAVE_SEND
+
+/* Define to 1 if you have the `sendmmsg' function. */
+#undef HAVE_SENDMMSG
 
 /* Define to 1 if you have the `sendmsg' function. */
 #undef HAVE_SENDMSG
@@ -595,9 +613,6 @@
 
 /* Define to 1 if you have the socketpair function. */
 #undef HAVE_SOCKETPAIR
-
-/* Define to 1 if you have the <socket.h> header file. */
-#undef HAVE_SOCKET_H
 
 /* Define to 1 if you have the `SSL_ech_set1_echconfig' function. */
 #undef HAVE_SSL_ECH_SET1_ECHCONFIG
@@ -747,6 +762,9 @@
 /* Define to 1 if you have the <wolfssh/ssh.h> header file. */
 #undef HAVE_WOLFSSH_SSH_H
 
+/* if you have wolfSSL_BIO_new */
+#undef HAVE_WOLFSSL_BIO
+
 /* Define to 1 if you have the `wolfSSL_CTX_GenerateEchConfig' function. */
 #undef HAVE_WOLFSSL_CTX_GENERATEECHCONFIG
 
@@ -774,8 +792,8 @@
 /* Define to 1 if you have the <zstd.h> header file. */
 #undef HAVE_ZSTD_H
 
-/* Define to 1 if you have the `_fseeki64' function. */
-#undef HAVE__FSEEKI64
+/* Define to 1 if you have the `_setmode' function. */
+#undef HAVE__SETMODE
 
 /* Define to the sub-directory where libtool stores uninstalled libraries. */
 #undef LT_OBJDIR
@@ -788,9 +806,6 @@
 
 /* Define to 1 if _THREAD_SAFE preprocessor symbol must be defined. */
 #undef NEED_THREAD_SAFE
-
-/* cpu-machine-OS */
-#undef OS
 
 /* Name of package */
 #undef PACKAGE
@@ -863,7 +878,7 @@
 /* GSASL support enabled */
 #undef USE_GSASL
 
-/* force HTTPS RR support for ECH */
+/* enable HTTPS RR support */
 #undef USE_HTTPSRR
 
 /* if hyper is in use */
@@ -952,9 +967,6 @@
 
 /* Use Unix domain sockets */
 #undef USE_UNIX_SOCKETS
-
-/* enable WebSockets support */
-#undef USE_WEBSOCKETS
 
 /* Define to 1 if you are building a Windows target with crypto API support.
    */

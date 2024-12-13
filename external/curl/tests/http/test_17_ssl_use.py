@@ -24,15 +24,13 @@
 #
 ###########################################################################
 #
-import difflib
-import filecmp
 import json
 import logging
 import os
-from datetime import timedelta
+import re
 import pytest
 
-from testenv import Env, CurlClient, LocalClient, ExecResult
+from testenv import Env, CurlClient, LocalClient
 
 
 log = logging.getLogger(__name__)
@@ -41,7 +39,8 @@ log = logging.getLogger(__name__)
 class TestSSLUse:
 
     @pytest.fixture(autouse=True, scope='class')
-    def _class_scope(self, env, nghttpx):
+    def _class_scope(self, env, httpd, nghttpx):
+        env.make_data_file(indir=httpd.docs_dir, fname="data-10k", fsize=10*1024)
         if env.have_h3():
             nghttpx.start_if_needed()
 
@@ -67,23 +66,20 @@ class TestSSLUse:
         count = 3
         exp_resumed = 'Resumed'
         xargs = ['--sessionid', '--tls-max', tls_max, f'--tlsv{tls_max}']
-        if env.curl_uses_lib('gnutls'):
-            if tls_max == '1.3':
-                exp_resumed = 'Initial'  # 1.2 works in GnuTLS, but 1.3 does not, TODO
         if env.curl_uses_lib('libressl'):
             if tls_max == '1.3':
                 exp_resumed = 'Initial'  # 1.2 works in LibreSSL, but 1.3 does not, TODO
-        if env.curl_uses_lib('wolfssl'):
-            if tls_max == '1.3':
-                exp_resumed = 'Initial'  # 1.2 works in wolfSSL, but 1.3 does not, TODO
         if env.curl_uses_lib('rustls-ffi'):
             exp_resumed = 'Initial'  # Rustls does not support sessions, TODO
         if env.curl_uses_lib('bearssl') and tls_max == '1.3':
             pytest.skip('BearSSL does not support TLSv1.3')
-        if env.curl_uses_lib('mbedtls') and tls_max == '1.3':
+        if env.curl_uses_lib('mbedtls') and tls_max == '1.3' and \
+           not env.curl_lib_version_at_least('mbedtls', '3.6.0'):
             pytest.skip('mbedtls TLSv1.3 session resume not working in 3.6.0')
 
-        curl = CurlClient(env=env)
+        run_env = os.environ.copy()
+        run_env['CURL_DEBUG'] = 'ssl'
+        curl = CurlClient(env=env, run_env=run_env)
         # tell the server to close the connection after each request
         urln = f'https://{env.authority_for(env.domain1, proto)}/curltest/sslinfo?'\
                f'id=[0-{count-1}]&close'
@@ -100,9 +96,9 @@ class TestSSLUse:
                 djson = json.load(f)
             assert djson['HTTPS'] == 'on', f'{i}: {djson}'
             if i == 0:
-                assert djson['SSL_SESSION_RESUMED'] == 'Initial', f'{i}: {djson}'
+                assert djson['SSL_SESSION_RESUMED'] == 'Initial', f'{i}: {djson}\n{r.dump_logs()}'
             else:
-                assert djson['SSL_SESSION_RESUMED'] == exp_resumed, f'{i}: {djson}'
+                assert djson['SSL_SESSION_RESUMED'] == exp_resumed, f'{i}: {djson}\n{r.dump_logs()}'
 
     # use host name with trailing dot, verify handshake
     @pytest.mark.parametrize("proto", ['http/1.1', 'h2', 'h3'])
@@ -124,8 +120,6 @@ class TestSSLUse:
     def test_17_04_double_dot(self, env: Env, proto):
         if proto == 'h3' and not env.have_h3():
             pytest.skip("h3 not supported")
-        if proto == 'h3' and env.curl_uses_lib('wolfssl'):
-            pytest.skip("wolfSSL HTTP/3 peer verification does not properly check")
         curl = CurlClient(env=env)
         domain = f'{env.domain1}..'
         url = f'https://{env.authority_for(domain, proto)}/curltest/sslinfo'
@@ -149,11 +143,11 @@ class TestSSLUse:
         if env.curl_uses_lib('bearssl'):
             pytest.skip("BearSSL does not support cert verification with IP addresses")
         if env.curl_uses_lib('mbedtls'):
-            pytest.skip("mbedTLS does not support cert verification with IP addresses")
+            pytest.skip("mbedTLS does use IP addresses in SNI")
         if proto == 'h3' and not env.have_h3():
             pytest.skip("h3 not supported")
         curl = CurlClient(env=env)
-        domain = f'127.0.0.1'
+        domain = '127.0.0.1'
         url = f'https://{env.authority_for(domain, proto)}/curltest/sslinfo'
         r = curl.http_get(url=url, alpn_proto=proto)
         assert r.exit_code == 0, f'{r}'
@@ -168,7 +162,7 @@ class TestSSLUse:
         if proto == 'h3' and not env.have_h3():
             pytest.skip("h3 not supported")
         curl = CurlClient(env=env)
-        domain = f'localhost'
+        domain = 'localhost'
         url = f'https://{env.authority_for(domain, proto)}/curltest/sslinfo'
         r = curl.http_get(url=url, alpn_proto=proto)
         assert r.exit_code == 0, f'{r}'
@@ -229,9 +223,12 @@ class TestSSLUse:
             if tls_proto == 'TLSv1.3':
                 pytest.skip('BearSSL does not support TLSv1.3')
             tls_proto = 'TLSv1.2'
+        elif env.curl_uses_lib('mbedtls') and not env.curl_lib_version_at_least('mbedtls', '3.6.0'):
+            if tls_proto == 'TLSv1.3':
+                pytest.skip('mbedTLS < 3.6.0 does not support TLSv1.3')
         elif env.curl_uses_lib('sectransp'):  # not in CI, so untested
             if tls_proto == 'TLSv1.3':
-                pytest.skip('SecureTransport does not support TLSv1.3')
+                pytest.skip('Secure Transport does not support TLSv1.3')
             tls_proto = 'TLSv1.2'
         # test
         extra_args = ['--tls13-ciphers', ':'.join(ciphers13)] if ciphers13 else []
@@ -259,7 +256,7 @@ class TestSSLUse:
             not env.curl_uses_lib('quictls'):
             pytest.skip("TLS library does not support --cert-status")
         curl = CurlClient(env=env)
-        domain = f'localhost'
+        domain = 'localhost'
         url = f'https://{env.authority_for(domain, proto)}/'
         r = curl.http_get(url=url, alpn_proto=proto, extra_args=[
             '--cert-status'
@@ -269,12 +266,10 @@ class TestSSLUse:
 
     @staticmethod
     def gen_test_17_09_list():
-        ret = []
-        for tls_proto in ['TLSv1', 'TLSv1.1', 'TLSv1.2', 'TLSv1.3']:
-            for max_ver in range(0, 5):
-                for min_ver in range(-2, 4):
-                    ret.append([tls_proto, max_ver, min_ver])
-        return ret
+        return [[tls_proto, max_ver, min_ver]
+                for tls_proto in ['TLSv1', 'TLSv1.1', 'TLSv1.2', 'TLSv1.3']
+                for max_ver in range(5)
+                for min_ver in range(-2, 4)]
 
     @pytest.mark.parametrize("tls_proto, max_ver, min_ver", gen_test_17_09_list())
     def test_17_09_ssl_min_max(self, env: Env, httpd, tls_proto, max_ver, min_ver):
@@ -284,7 +279,17 @@ class TestSSLUse:
         ])
         httpd.reload_if_config_changed()
         proto = 'http/1.1'
-        curl = CurlClient(env=env)
+        run_env = os.environ.copy()
+        if env.curl_uses_lib('gnutls'):
+            # we need to override any default system configuration since
+            # we want to test all protocol versions. Ubuntu (or the GH image)
+            # disable TSL1.0 and TLS1.1 system wide. We do not want.
+            our_config = os.path.join(env.gen_dir, 'gnutls_config')
+            if not os.path.exists(our_config):
+                with open(our_config, 'w') as fd:
+                    fd.write('# empty\n')
+            run_env['GNUTLS_SYSTEM_PRIORITY_FILE'] = our_config
+        curl = CurlClient(env=env, run_env=run_env)
         url = f'https://{env.authority_for(env.domain1, proto)}/curltest/sslinfo'
         # SSL backend specifics
         if env.curl_uses_lib('bearssl'):
@@ -300,10 +305,88 @@ class TestSSLUse:
         # test
         extra_args = [[], ['--tlsv1'], ['--tlsv1.0'], ['--tlsv1.1'], ['--tlsv1.2'], ['--tlsv1.3']][min_ver+2] + \
             [['--tls-max', '1.0'], ['--tls-max', '1.1'], ['--tls-max', '1.2'], ['--tls-max', '1.3'], []][max_ver]
+        extra_args.extend(['--trace-config', 'ssl'])
         r = curl.http_get(url=url, alpn_proto=proto, extra_args=extra_args)
         if max_ver >= min_ver and tls_proto in supported[max(0, min_ver):min(max_ver, 3)+1]:
-            assert r.exit_code == 0 , r.dump_logs()
+            assert r.exit_code == 0, f'extra_args={extra_args}\n{r.dump_logs()}'
             assert r.json['HTTPS'] == 'on', r.dump_logs()
             assert r.json['SSL_PROTOCOL'] == tls_proto, r.dump_logs()
         else:
-            assert r.exit_code != 0, r.dump_logs()
+            assert r.exit_code != 0, f'extra_args={extra_args}\n{r.dump_logs()}'
+
+    def test_17_10_h3_session_reuse(self, env: Env, httpd, nghttpx):
+        if not env.have_h3():
+            pytest.skip("h3 not supported")
+        if not env.curl_uses_lib('quictls') and \
+            not env.curl_uses_lib('gnutls') and \
+            not env.curl_uses_lib('wolfssl'):
+            pytest.skip("QUIC session reuse not implemented")
+        count = 2
+        docname = 'data-10k'
+        url = f'https://localhost:{env.https_port}/{docname}'
+        client = LocalClient(name='hx-download', env=env)
+        if not client.exists():
+            pytest.skip(f'example client not built: {client.name}')
+        r = client.run(args=[
+             '-n', f'{count}',
+             '-f',  # forbid reuse of connections
+             '-r', f'{env.domain1}:{env.port_for("h3")}:127.0.0.1',
+             '-V', 'h3', url
+        ])
+        r.check_exit_code(0)
+        # check that TLS session was reused as expected
+        reused_session = False
+        for line in r.trace_lines:
+            m = re.match(r'\[1-1] \* SSL reusing session.*', line)
+            if m:
+                reused_session = True
+        assert reused_session, f'{r}\n{r.dump_logs()}'
+
+    # use host name server has no certificate for
+    @pytest.mark.parametrize("proto", ['http/1.1', 'h2', 'h3'])
+    def test_17_11_wrong_host(self, env: Env, proto):
+        if proto == 'h3' and not env.have_h3():
+            pytest.skip("h3 not supported")
+        curl = CurlClient(env=env)
+        domain = f'insecure.{env.tld}'
+        url = f'https://{domain}:{env.port_for(proto)}/curltest/sslinfo'
+        r = curl.http_get(url=url, alpn_proto=proto)
+        assert r.exit_code == 60, f'{r}'
+
+    # use host name server has no cert for with --insecure
+    @pytest.mark.parametrize("proto", ['http/1.1', 'h2', 'h3'])
+    def test_17_12_insecure(self, env: Env, proto):
+        if proto == 'h3' and not env.have_h3():
+            pytest.skip("h3 not supported")
+        curl = CurlClient(env=env)
+        domain = f'insecure.{env.tld}'
+        url = f'https://{domain}:{env.port_for(proto)}/curltest/sslinfo'
+        r = curl.http_get(url=url, alpn_proto=proto, extra_args=[
+            '--insecure'
+        ])
+        assert r.exit_code == 0, f'{r}'
+        assert r.json, f'{r}'
+
+    # connect to an expired certificate
+    @pytest.mark.parametrize("proto", ['http/1.1', 'h2'])
+    def test_17_14_expired_cert(self, env: Env, proto):
+        if proto == 'h3' and not env.have_h3():
+            pytest.skip("h3 not supported")
+        curl = CurlClient(env=env)
+        url = f'https://{env.expired_domain}:{env.port_for(proto)}/'
+        r = curl.http_get(url=url, alpn_proto=proto)
+        assert r.exit_code == 60, f'{r}'  # peer failed verification
+        exp_trace = None
+        match_trace = None
+        if env.curl_uses_lib('openssl') or env.curl_uses_lib('quictls'):
+            exp_trace = r'.*SSL certificate problem: certificate has expired$'
+        elif env.curl_uses_lib('gnutls'):
+            exp_trace = r'.*server verification failed: certificate has expired\..*'
+        elif env.curl_uses_lib('wolfssl'):
+            exp_trace = r'.*server verification failed: certificate has expired\.$'
+        if exp_trace is not None:
+            for line in r.trace_lines:
+                if re.match(exp_trace, line):
+                    match_trace = line
+                    break
+            assert match_trace, f'Did not find "{exp_trace}" in trace\n{r.dump_logs()}'

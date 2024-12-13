@@ -39,7 +39,7 @@
 
 /*
  * get_terminal_columns() returns the number of columns in the current
- * terminal. It will return 79 on failure. Also, the number can be very big.
+ * terminal. It will return 79 on failure. Also, the number can be big.
  */
 
 unsigned int get_terminal_columns(void)
@@ -66,7 +66,7 @@ unsigned int get_terminal_columns(void)
     struct winsize ts;
     if(!ioctl(STDIN_FILENO, TIOCGWINSZ, &ts))
       cols = (int)ts.ws_col;
-#elif defined(_WIN32) && !defined(CURL_WINDOWS_APP)
+#elif defined(_WIN32) && !defined(CURL_WINDOWS_UWP)
     {
       HANDLE  stderr_hnd = GetStdHandle(STD_ERROR_HANDLE);
       CONSOLE_SCREEN_BUFFER_INFO console_info;
@@ -87,5 +87,5 @@ unsigned int get_terminal_columns(void)
   }
   if(!width)
     width = 79;
-  return width; /* 79 for unknown, might also be very small or very big */
+  return width; /* 79 for unknown, might also be tiny or enormous */
 }

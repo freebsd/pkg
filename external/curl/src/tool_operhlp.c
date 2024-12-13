@@ -66,8 +66,7 @@ bool output_expected(const char *url, const char *uploadfile)
 
 bool stdin_upload(const char *uploadfile)
 {
-  return (!strcmp(uploadfile, "-") ||
-          !strcmp(uploadfile, ".")) ? TRUE : FALSE;
+  return (!strcmp(uploadfile, "-") || !strcmp(uploadfile, "."));
 }
 
 /* Convert a CURLUcode into a CURLcode */
@@ -123,7 +122,7 @@ CURLcode add_file_name_to_url(CURL *curl, char **inurlp, const char *filename)
       /* We only want the part of the local path that is on the right
          side of the rightmost slash and backslash. */
       const char *filep = strrchr(filename, '/');
-      char *file2 = strrchr(filep?filep:filename, '\\');
+      char *file2 = strrchr(filep ? filep : filename, '\\');
       char *encfile;
 
       if(file2)

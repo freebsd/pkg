@@ -456,6 +456,8 @@ SPDX-License-Identifier: curl
  it is time to set the User Agent field to fool the server into thinking you
  are one of those browsers.
 
+ By default, curl uses curl/VERSION, such as User-Agent: curl/8.11.0.
+
  To make curl look like Internet Explorer 5 on a Windows 2000 box:
 
     curl --user-agent "Mozilla/4.0 (compatible; MSIE 5.01; Windows NT 5.0)" [URL]
@@ -571,7 +573,7 @@ SPDX-License-Identifier: curl
 
  Curl supports encrypted fetches when built to use a TLS library and it can be
  built to use one out of a fairly large set of libraries - `curl -V` shows
- which one your curl was built to use (if any!). To get a page from an HTTPS
+ which one your curl was built to use (if any). To get a page from an HTTPS
  server, simply run curl like:
 
     curl https://secure.example.com

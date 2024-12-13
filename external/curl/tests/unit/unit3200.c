@@ -23,6 +23,7 @@
  ***************************************************************************/
 #include "curlcheck.h"
 #include "curl_get_line.h"
+#include "memdebug.h"
 
 #if !defined(CURL_DISABLE_COOKIES) || !defined(CURL_DISABLE_ALTSVC) ||  \
   !defined(CURL_DISABLE_HSTS) || !defined(CURL_DISABLE_NETRC)
@@ -46,7 +47,7 @@ static CURLcode unit_stop(void)
   return CURLE_OK;
 }
 
-#ifdef __GNUC__
+#if defined(__GNUC__) || defined(__clang__)
 #pragma GCC diagnostic push
 #pragma GCC diagnostic ignored "-Woverlength-strings"
 #endif
@@ -77,7 +78,7 @@ static const char *filecontents[] = {
   "LINE1\x1aTEST"
 };
 
-#ifdef __GNUC__
+#if defined(__GNUC__) || defined(__clang__)
 #pragma GCC diagnostic warning "-Woverlength-strings"
 #endif
 
@@ -172,7 +173,7 @@ UNITTEST_START
   return (CURLcode)rc;
 UNITTEST_STOP
 
-#ifdef __GNUC__
+#if defined(__GNUC__) || defined(__clang__)
 #pragma GCC diagnostic pop
 #endif
 

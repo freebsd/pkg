@@ -33,8 +33,8 @@ archives](https://curl.se/mail/list.cgi?list=curl-distros)).
 ## Alt Linux
 
 - curl: http://www.sisyphus.ru/srpm/Sisyphus/curl
-- curl patches: http://www.sisyphus.ru/ru/srpm/Sisyphus/curl/patches
-- curl issues: http://www.sisyphus.ru/ru/srpm/Sisyphus/curl/bugs
+- curl issues: https://packages.altlinux.org/en/sisyphus/srpms/curl/issues/
+- curl patches: https://git.altlinux.org/gears/c/curl.git?p=curl.git;a=tree;f=.gear
 
 ## Arch Linux
 
@@ -144,7 +144,7 @@ Issues and patches for this are managed in the main curl project.
 - curl: https://formulae.brew.sh/formula/curl
 
 Homebrew's policy is that all patches and issues should be submitted upstream
-unless it is very specific to Homebrew's way of packaging software.
+unless it is specific to Homebrew's way of packaging software.
 
 ## MacPorts
 

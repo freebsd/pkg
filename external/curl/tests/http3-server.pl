@@ -38,6 +38,7 @@ my $listenport = 9017;
 my $connect = "127.0.0.1,8990";
 my $cert = "Server-localhost-sv";
 my $conf = "nghttpx.conf";
+my $dev_null = ($^O eq 'MSWin32' ? 'NUL' : '/dev/null');
 
 #***************************************************************************
 # Process command line options
@@ -108,6 +109,7 @@ $certfile = abs_path($certfile);
 $keyfile = abs_path($keyfile);
 
 my $cmdline="$nghttpx --http2-proxy --backend=$connect ".
+    "--backend-keep-alive-timeout=500ms ".
     "--frontend=\"*,$listenport\" ".
     "--frontend=\"*,$listenport;quic\" ".
     "--log-level=INFO ".
@@ -116,4 +118,4 @@ my $cmdline="$nghttpx --http2-proxy --backend=$connect ".
     "--conf=$conf ".
     "$keyfile $certfile";
 print "RUN: $cmdline\n" if($verbose);
-exec("exec $cmdline 2>/dev/null");
+exec("exec $cmdline 2>$dev_null");

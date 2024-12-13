@@ -24,26 +24,15 @@ Content-Disposition: filename=name%TESTNUMBER; charset=funny; option=strange
 #
 # Client-side
 <client>
-# this relies on the debug feature to allow us to set directory to store the
-# -O output in, using the CURL_TESTDIR variable
-<features>
-Debug
-</features>
 <server>
 http
 </server>
 <name>
 HTTP GET with -O and Content-Disposition, -D file
 </name>
-<setenv>
-CURL_TESTDIR=%LOGDIR
-</setenv>
 <command option="no-output,no-include">
-http://%HOSTIP:%HTTPPORT/%TESTNUMBER -O -D %LOGDIR/heads%TESTNUMBER
+http://%HOSTIP:%HTTPPORT/%TESTNUMBER -O -D %LOGDIR/heads%TESTNUMBER --output-dir %LOGDIR
 </command>
-<postcheck>
-perl %SRCDIR/libtest/notexists.pl %LOGDIR/name%TESTNUMBER
-</postcheck>
 </client>
 
 #
@@ -74,6 +63,8 @@ Content-Disposition: filename=name%TESTNUMBER; charset=funny; option=strange
 
 <file3 name="%LOGDIR/stdout%TESTNUMBER">
 </file3>
-
+<notexists>
+%LOGDIR/name%TESTNUMBER
+</notexists>
 </verify>
 </testcase>

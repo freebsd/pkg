@@ -484,6 +484,7 @@ AC_DEFUN([CURL_CHECK_LIB_ARES], [
     dnl c-ares library support has been requested
     clean_CPPFLAGS="$CPPFLAGS"
     clean_LDFLAGS="$LDFLAGS"
+    clean_LDFLAGSPC="$LDFLAGSPC"
     clean_LIBS="$LIBS"
     configure_runpath=`pwd`
     if test -n "$want_ares_path"; then
@@ -525,6 +526,7 @@ AC_DEFUN([CURL_CHECK_LIB_ARES], [
     #
     CPPFLAGS="$clean_CPPFLAGS $ares_CPPFLAGS"
     LDFLAGS="$clean_LDFLAGS $ares_LDFLAGS"
+    LDFLAGSPC="$clean_LDFLAGSPC $ares_LDFLAGS"
     LIBS="$ares_LIBS $clean_LIBS"
     #
 
@@ -532,7 +534,7 @@ AC_DEFUN([CURL_CHECK_LIB_ARES], [
     AC_MSG_CHECKING([that c-ares is good and recent enough])
     AC_LINK_IFELSE([
       AC_LANG_PROGRAM([[
-#include <ares.h>
+        #include <ares.h>
         /* set of dummy functions in case c-ares was built with debug */
         void curl_dofree() { }
         void curl_sclose() { }
@@ -553,6 +555,7 @@ AC_DEFUN([CURL_CHECK_LIB_ARES], [
       dnl restore initial settings
       CPPFLAGS="$clean_CPPFLAGS"
       LDFLAGS="$clean_LDFLAGS"
+      LDFLAGSPC="$clean_LDFLAGSPC"
       LIBS="$clean_LIBS"
       # prevent usage
       want_ares="no"

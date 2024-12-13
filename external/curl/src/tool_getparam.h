@@ -267,10 +267,12 @@ typedef enum {
   C_TCP_FASTOPEN,
   C_TCP_NODELAY,
   C_TELNET_OPTION,
+  C_TEST_DUPHANDLE,
   C_TEST_EVENT,
   C_TFTP_BLKSIZE,
   C_TFTP_NO_OPTIONS,
   C_TIME_COND,
+  C_TLS_EARLYDATA,
   C_TLS_MAX,
   C_TLS13_CIPHERS,
   C_TLSAUTHTYPE,
@@ -342,7 +344,6 @@ typedef enum {
   PARAM_NO_PREFIX,
   PARAM_NUMBER_TOO_LARGE,
   PARAM_NO_NOT_BOOLEAN,
-  PARAM_CONTDISP_SHOW_HEADER, /* --include and --remote-header-name */
   PARAM_CONTDISP_RESUME_FROM, /* --continue-at and --remote-header-name */
   PARAM_READ_ERROR,
   PARAM_EXPAND_ERROR, /* --expand problem */

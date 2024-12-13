@@ -42,7 +42,7 @@ specifies two separate 100-byte ranges(*) (HTTP)
 ##
 
 (*) = NOTE that these make the server reply with a multipart response, which
-is returned as-is by curl! Parsing or otherwise transforming this response is
+is returned as-is by curl. Parsing or otherwise transforming this response is
 the responsibility of the caller.
 
 Only digit characters (0-9) are valid in the 'start' and 'stop' fields of the
@@ -55,3 +55,6 @@ attempt to get a range, curl instead gets the whole document.
 FTP and SFTP range downloads only support the simple 'start-stop' syntax
 (optionally with one of the numbers omitted). FTP use depends on the extended
 FTP command SIZE.
+
+This command line option is mutually exclusive with --continue-at: you can only
+use one of them for a single transfer.

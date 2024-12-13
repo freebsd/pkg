@@ -59,7 +59,6 @@
 
  3. Documentation
  3.1 Improve documentation about fork safety
- 3.2 Provide cmake config-file
 
  4. FTP
  4.1 HOST
@@ -93,6 +92,7 @@
 
  9. IMAP
  9.1 Enhanced capability support
+ 9.2 upload unread
 
  10. LDAP
  10.1 SASL based authentication mechanisms
@@ -113,6 +113,7 @@
  13.1 TLS-PSK with OpenSSL
  13.2 TLS channel binding
  13.3 Defeat TLS fingerprinting
+ 13.4 Consider OCSP stapling by default
  13.5 Export session ids
  13.6 Provide callback for cert verification
  13.7 Less memory massaging with Schannel
@@ -545,12 +546,6 @@
 
  See https://github.com/curl/curl/issues/6968
 
-3.2 Provide cmake config-file
-
- A config-file package is a set of files provided by us to allow applications
- to write cmake scripts to find and use libcurl easier. See
- https://github.com/curl/curl/issues/885
-
 4. FTP
 
 4.1 HOST
@@ -726,6 +721,12 @@
  Add the ability, for an application that uses libcurl, to obtain the list of
  capabilities returned from the CAPABILITY command.
 
+9.2 upload unread
+
+ Uploads over IMAP currently always set the email as "read" (or "seen"). It
+ would be good to offer a way for users to select for uploads to remain
+ unread.
+
 10. LDAP
 
 10.1 SASL based authentication mechanisms
@@ -816,6 +817,14 @@
  By changing the order of TLS extensions provided in the TLS handshake, it is
  sometimes possible to circumvent TLS fingerprinting by servers. The TLS
  extension order is of course not the only way to fingerprint a client.
+
+13.4 Consider OCSP stapling by default
+
+ Treat a negative response a reason for aborting the connection. Since OCSP
+ stapling is presumed to get used much less in the future when Let's Encrypt
+ drops the OCSP support, the benefit of this might however be limited.
+
+ https://github.com/curl/curl/issues/15483
 
 13.5 Export session ids
 
@@ -938,7 +947,7 @@
 
 15.4 Add option to allow abrupt server closure
 
- libcurl w/schannel errors without a known termination point from the server
+ libcurl with Schannel errors without a known termination point from the server
  (such as length of transfer, or SSL "close notify" alert) to prevent against
  a truncation attack. Really old servers may neglect to send any termination
  point. An option could be added to ignore such abrupt closures.
@@ -1052,7 +1061,7 @@
 
 18.7 specify which response codes that make -f/--fail return error
 
- Allows a user to better specify exacly which error code(s) that are fine
+ Allows a user to better specify exactly which error code(s) that are fine
  and which are errors for their specific uses cases
 
 18.9 Choose the name of file in braces for complex URLs

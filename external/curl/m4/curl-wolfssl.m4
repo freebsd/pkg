@@ -39,6 +39,7 @@ esac
 if test "x$OPT_WOLFSSL" != xno; then
   _cppflags=$CPPFLAGS
   _ldflags=$LDFLAGS
+  _ldflagspc=$LDFLAGSPC
 
   ssl_msg=
 
@@ -78,6 +79,7 @@ if test "x$OPT_WOLFSSL" != xno; then
     if test "x$USE_WOLFSSL" != "xyes"; then
 
       LDFLAGS="$LDFLAGS $addld"
+      LDFLAGSPC="$LDFLAGSPC $addld"
       AC_MSG_NOTICE([Add $addld to LDFLAGS])
       if test "$addcflags" != "-I/usr/include"; then
         CPPFLAGS="$CPPFLAGS $addcflags"
@@ -91,12 +93,12 @@ if test "x$OPT_WOLFSSL" != xno; then
       AC_MSG_CHECKING([for wolfSSL_Init in -lwolfssl])
       AC_LINK_IFELSE([
         AC_LANG_PROGRAM([[
-/* These are not needed for detection and confuse wolfSSL.
-   They are set up properly later if it is detected.  */
-#undef SIZEOF_LONG
-#undef SIZEOF_LONG_LONG
-#include <wolfssl/options.h>
-#include <wolfssl/ssl.h>
+          /* These are not needed for detection and confuse wolfSSL.
+             They are set up properly later if it is detected.  */
+          #undef SIZEOF_LONG
+          #undef SIZEOF_LONG_LONG
+          #include <wolfssl/options.h>
+          #include <wolfssl/ssl.h>
         ]],[[
           return wolfSSL_Init();
         ]])
@@ -114,6 +116,7 @@ if test "x$OPT_WOLFSSL" != xno; then
         AC_MSG_RESULT(no)
         CPPFLAGS=$_cppflags
         LDFLAGS=$_ldflags
+        LDFLAGSPC=$_ldflagspc
         wolfssllibpath=""
       ])
       LIBS="$my_ac_save_LIBS"
@@ -145,6 +148,14 @@ if test "x$OPT_WOLFSSL" != xno; then
         )
 
       dnl if this symbol is present, we can make use of BIO filter chains
+      AC_CHECK_FUNC(wolfSSL_BIO_new,
+        [
+          AC_DEFINE(HAVE_WOLFSSL_BIO, 1,
+                    [if you have wolfSSL_BIO_new])
+          WOLFSSL_BIO=1
+        ]
+        )
+      dnl if this symbol is present, we have the full BIO feature set
       AC_CHECK_FUNC(wolfSSL_BIO_set_shutdown,
         [
           AC_DEFINE(HAVE_WOLFSSL_FULL_BIO, 1,

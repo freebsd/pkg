@@ -23,7 +23,7 @@ d?????????    N U         U               N ???  N NN:NN asubdir
 sftp
 </server>
 <precheck>
-perl %SRCDIR/libtest/test%TESTNUMBER.pl prepare %PWD/%LOGDIR/test%TESTNUMBER.dir
+%PERL %SRCDIR/libtest/test%TESTNUMBER.pl prepare %PWD/%LOGDIR/test%TESTNUMBER.dir
 </precheck>
 <name>
 SFTP directory retrieval
@@ -31,16 +31,13 @@ SFTP directory retrieval
 <command>
 --key %LOGDIR/server/curl_client_key --pubkey %LOGDIR/server/curl_client_key.pub -u %USER: sftp://%HOSTIP:%SSHPORT%SSH_PWD/%LOGDIR/test%TESTNUMBER.dir/ --insecure
 </command>
-<postcheck>
-perl %SRCDIR/libtest/test%TESTNUMBER.pl postprocess %PWD/%LOGDIR/test%TESTNUMBER.dir %PWD/%LOGDIR/curl%TESTNUMBER.out
-</postcheck>
 </client>
 
 #
 # Verify data after the test has been "shot"
 <verify>
-<valgrind>
-disable
-</valgrind>
+<postcheck>
+%PERL %SRCDIR/libtest/test%TESTNUMBER.pl postprocess %PWD/%LOGDIR/test%TESTNUMBER.dir %PWD/%LOGDIR/curl%TESTNUMBER.out
+</postcheck>
 </verify>
 </testcase>

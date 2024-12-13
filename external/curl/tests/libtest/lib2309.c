@@ -1,5 +1,3 @@
-#ifndef HEADER_CURL_PATH_H
-#define HEADER_CURL_PATH_H
 /***************************************************************************
  *                                  _   _ ____  _
  *  Project                     ___| | | |  _ \| |
@@ -24,26 +22,45 @@
  *
  ***************************************************************************/
 
-#include "curl_setup.h"
+#include "test.h"
+#include "testtrace.h"
+
 #include <curl/curl.h>
-#include "urldata.h"
 
-#ifdef _WIN32
-#  undef  PATH_MAX
-#  define PATH_MAX MAX_PATH
-#  ifndef R_OK
-#    define R_OK 4
-#  endif
-#endif
+static size_t cb_ignore(char *buffer, size_t size, size_t nmemb, void *userp)
+{
+  (void)buffer;
+  (void)size;
+  (void)nmemb;
+  (void)userp;
+  return CURL_WRITEFUNC_ERROR;
+}
 
-#ifndef PATH_MAX
-#define PATH_MAX 1024 /* just an extra precaution since there are systems that
-                         have their definition hidden well */
-#endif
+CURLcode test(char *URL)
+{
+  CURL *curl;
+  CURL *curldupe;
+  CURLcode res = CURLE_OK;
 
-CURLcode Curl_getworkingpath(struct Curl_easy *data,
-                             char *homedir,
-                             char **path);
+  global_init(CURL_GLOBAL_ALL);
+  curl = curl_easy_init();
+  if(curl) {
+    curl_easy_setopt(curl, CURLOPT_WRITEFUNCTION, cb_ignore);
+    curl_easy_setopt(curl, CURLOPT_URL, URL);
+    curl_easy_setopt(curl, CURLOPT_VERBOSE, 1L);
+    curl_easy_setopt(curl, CURLOPT_PROXY, libtest_arg3);
+    curl_easy_setopt(curl, CURLOPT_NETRC, (long)CURL_NETRC_REQUIRED);
+    curl_easy_setopt(curl, CURLOPT_NETRC_FILE, libtest_arg2);
 
-CURLcode Curl_get_pathname(const char **cpp, char **path, const char *homedir);
-#endif /* HEADER_CURL_PATH_H */
+    curldupe = curl_easy_duphandle(curl);
+    if(curldupe) {
+      res = curl_easy_perform(curldupe);
+      printf("Returned %d, should be %d.\n", res, CURLE_WRITE_ERROR);
+      fflush(stdout);
+      curl_easy_cleanup(curldupe);
+    }
+    curl_easy_cleanup(curl);
+  }
+  curl_global_cleanup();
+  return CURLE_OK;
+}

@@ -192,7 +192,7 @@ sub runner_init {
             $SIG{INT} = 'IGNORE';
             $SIG{TERM} = 'IGNORE';
             eval {
-                # some msys2 perl versions don't define SIGUSR1
+                # some msys2 perl versions don't define SIGUSR1, also missing from Win32 Perl
                 $SIG{USR1} = 'IGNORE';
             };
 
@@ -779,7 +779,7 @@ sub singletest_prepare {
         my $filename=$fileattr{'name'};
         if(@inputfile || $filename) {
             if(!$filename) {
-                logmsg " $testnum: IGNORED: section client=>file has no name attribute\n";
+                logmsg " $testnum: IGNORED: Section client=>file has no name attribute\n";
                 return -1;
             }
             my $fileContent = join('', @inputfile);
@@ -848,10 +848,11 @@ sub singletest_run {
 
     my @codepieces = getpart("client", "tool");
     my $tool="";
+    my $tool_name="";  # without exe extension
     if(@codepieces) {
-        $tool = $codepieces[0];
-        chomp $tool;
-        $tool .= exe_ext('TOOL');
+        $tool_name = $codepieces[0];
+        chomp $tool_name;
+        $tool = $tool_name . exe_ext('TOOL');
     }
 
     my $disablevalgrind;
@@ -893,6 +894,18 @@ sub singletest_run {
             $cmdargs .= "--test-event ";
             $fail_due_event_based--;
         }
+        if($run_duphandle) {
+            $cmdargs .= "--test-duphandle ";
+            my @dis = getpart("client", "disable");
+            if(@dis) {
+                chomp $dis[0] if($dis[0]);
+                if($dis[0] eq "test-duphandle") {
+                    # marked to not run with duphandle
+                    logmsg " $testnum: IGNORED: Can't run test-duphandle\n";
+                    return (-1, 0, 0, "", "", 0);
+                }
+            }
+        }
         $cmdargs .= $cmd;
         if ($proxy_address) {
             $cmdargs .= " --proxy $proxy_address ";
@@ -904,20 +917,36 @@ sub singletest_run {
 
         # Default the tool to a unit test with the same name as the test spec
         if($keywords{"unittest"} && !$tool) {
-            $tool="unit$testnum";
+            $tool_name="unit$testnum";
+            $tool = $tool_name;
         }
 
         if($tool =~ /^lib/) {
-            $CMDLINE="$LIBDIR/$tool";
+            if($bundle) {
+                $CMDLINE="$LIBDIR/libtests";
+            }
+            else {
+                $CMDLINE="$LIBDIR/$tool";
+            }
         }
         elsif($tool =~ /^unit/) {
-            $CMDLINE="$UNITDIR/$tool";
+            if($bundle) {
+                $CMDLINE="$UNITDIR/units";
+            }
+            else {
+                $CMDLINE="$UNITDIR/$tool";
+            }
         }
 
         if(! -f $CMDLINE) {
             logmsg " $testnum: IGNORED: The tool set in the test case for this: '$tool' does not exist\n";
             return (-1, 0, 0, "", "", 0);
         }
+
+        if($bundle) {
+            $CMDLINE.=" $tool_name";
+        }
+
         $DBGCURL=$CMDLINE;
     }
 
@@ -1113,6 +1142,11 @@ sub singletest_postcheck {
 
     # run the postcheck command
     my @postcheck= getpart("client", "postcheck");
+    if(@postcheck) {
+        die "test$testnum uses client/postcheck";
+    }
+
+    @postcheck= getpart("verify", "postcheck");
     if(@postcheck) {
         my $cmd = join("", @postcheck);
         chomp $cmd;
@@ -1361,6 +1395,7 @@ sub runnerar_ready {
     my $rin = "";
     my %idbyfileno;
     my $maxfileno=0;
+    my @ready_runners = ();
     foreach my $p (keys(%controllerr)) {
         my $fd = fileno($controllerr{$p});
         vec($rin, $fd, 1) = 1;
@@ -1383,10 +1418,11 @@ sub runnerar_ready {
                 return (undef, $idbyfileno{$fd});
             }
             if(vec($rout, $fd, 1)) {
-                return ($idbyfileno{$fd}, undef);
+                push(@ready_runners, $idbyfileno{$fd});
             }
         }
-        die "Internal pipe readiness inconsistency\n";
+        die "Internal pipe readiness inconsistency\n" if(!@ready_runners);
+        return (@ready_runners, undef);
     }
     return (undef, undef);
 }

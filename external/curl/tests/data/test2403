@@ -29,16 +29,15 @@ Funny-head: yesyes
 # Client-side
 <client>
 <features>
-h2c
+http/2
 SSL
 headers-api
 </features>
 <server>
-http
 http/2
 </server>
 <name>
-HTTP/2 GET
+HTTP/2 GET using %{header_json}
 </name>
 <setenv>
 </setenv>

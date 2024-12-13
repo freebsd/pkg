@@ -47,11 +47,10 @@ file contents should appear once for each file
 # Client-side
 <client>
 <features>
-h2c
+http/2
 SSL
 </features>
 <server>
-http
 http/2
 </server>
 <tool>

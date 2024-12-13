@@ -38,6 +38,7 @@ my $listenport2 = 9016;
 my $connect = "127.0.0.1,8990";
 my $conf = "nghttpx.conf";
 my $cert = "Server-localhost-sv";
+my $dev_null = ($^O eq 'MSWin32' ? 'NUL' : '/dev/null');
 
 #***************************************************************************
 # Process command line options
@@ -108,6 +109,7 @@ $certfile = abs_path($certfile);
 $keyfile = abs_path($keyfile);
 
 my $cmdline="$nghttpx --backend=$connect ".
+    "--backend-keep-alive-timeout=500ms ".
     "--frontend=\"*,$listenport;no-tls\" ".
     "--frontend=\"*,$listenport2\" ".
     "--log-level=INFO ".
@@ -116,4 +118,4 @@ my $cmdline="$nghttpx --backend=$connect ".
     "--errorlog-file=$logfile ".
     "$keyfile $certfile";
 print "RUN: $cmdline\n" if($verbose);
-exec("exec $cmdline 2>/dev/null");
+exec("exec $cmdline 2>$dev_null");

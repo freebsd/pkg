@@ -22,21 +22,37 @@
 #
 ###########################################################################
 
-# Get 'UNITPROGS', 'UNITFILES' variables
+# Get 'UNITPROGS', '*_SOURCES', 'FIRSTFILES' variables
 transform_makefile_inc("Makefile.inc" "${CMAKE_CURRENT_BINARY_DIR}/Makefile.inc.cmake")
 include("${CMAKE_CURRENT_BINARY_DIR}/Makefile.inc.cmake")
 
+if(CURL_TEST_BUNDLES)
+  add_custom_command(
+    OUTPUT "unit_bundle.c"
+    COMMAND ${PERL_EXECUTABLE} "${PROJECT_SOURCE_DIR}/tests/mk-bundle.pl" "${CMAKE_CURRENT_SOURCE_DIR}" > "unit_bundle.c"
+    DEPENDS
+      "${PROJECT_SOURCE_DIR}/tests/mk-bundle.pl" ${FIRSTFILES}
+      "${CMAKE_CURRENT_SOURCE_DIR}/Makefile.inc"
+    VERBATIM)
+
+  set(UNITPROGS "units")
+  set(units_SOURCES "unit_bundle.c")
+endif()
+
 foreach(_target IN LISTS UNITPROGS)
   set(_target_name "${_target}")
-  add_executable(${_target_name} EXCLUDE_FROM_ALL "${_target}.c" ${UNITFILES})
+  add_executable(${_target_name} EXCLUDE_FROM_ALL ${${_target}_SOURCES})
   add_dependencies(testdeps ${_target_name})
   target_link_libraries(${_target_name} curltool curlu)
   target_include_directories(${_target_name} PRIVATE
-    "${CURL_BINARY_DIR}/lib"            # for "curl_config.h"
-    "${CURL_SOURCE_DIR}/lib"            # for "curl_setup.h"
-    "${CURL_SOURCE_DIR}/src"
-    "${CURL_SOURCE_DIR}/tests/libtest"
+    "${PROJECT_BINARY_DIR}/lib"            # for "curl_config.h"
+    "${PROJECT_SOURCE_DIR}/lib"            # for "curl_setup.h"
+    "${PROJECT_SOURCE_DIR}/src"
+    "${PROJECT_SOURCE_DIR}/tests/libtest"
   )
+  if(CURL_TEST_BUNDLES)
+    target_include_directories(${_target_name} PRIVATE "${PROJECT_SOURCE_DIR}/tests/unit")
+  endif()
   set_target_properties(${_target_name} PROPERTIES
     OUTPUT_NAME "${_target}"
     PROJECT_LABEL "Test unit ${_target}")

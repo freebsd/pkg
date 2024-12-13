@@ -42,7 +42,7 @@ Get a file off an FTPS server:
 
 or use the more appropriate FTPS way to get the same file:
 
-    curl --ftp-ssl ftp://files.are.example.com/secrets.txt
+    curl --ssl-reqd ftp://files.are.example.com/secrets.txt
 
 Get a file from an SSH server using SFTP:
 
@@ -274,7 +274,7 @@ To get even more details and information on what curl does, try using the
 `--trace` or `--trace-ascii` options with a given filename to log to, like
 this:
 
-    curl --trace trace.txt www.haxx.se
+    curl --trace my-trace.txt www.haxx.se
 
 
 ## Detailed Information

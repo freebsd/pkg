@@ -24,8 +24,8 @@
 
 AC_DEFUN([CURL_DARWIN_SYSTEMCONFIGURATION], [
 AC_MSG_CHECKING([whether to link macOS CoreFoundation, CoreServices, and SystemConfiguration frameworks])
-case $host_os in
-  darwin*)
+case $host in
+  *-apple-*)
     AC_COMPILE_IFELSE([
       AC_LANG_PROGRAM([[
         #include <sys/types.h>
@@ -44,7 +44,9 @@ case $host_os in
     ])
     if test "x$build_for_macos" != xno; then
       AC_MSG_RESULT(yes)
-      LDFLAGS="$LDFLAGS -framework CoreFoundation -framework CoreServices -framework SystemConfiguration"
+      SYSCONFIG_LDFLAGS='-framework CoreFoundation -framework CoreServices -framework SystemConfiguration'
+      LDFLAGS="$LDFLAGS $SYSCONFIG_LDFLAGS"
+      LDFLAGSPC="$LDFLAGSPC $SYSCONFIG_LDFLAGS"
     else
       AC_MSG_RESULT(no)
     fi

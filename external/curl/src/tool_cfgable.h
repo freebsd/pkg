@@ -130,7 +130,9 @@ struct OperationConfig {
   struct getout *url_get;   /* point to the node to fill in URL */
   struct getout *url_out;   /* point to the node to fill in outfile */
   struct getout *url_ul;    /* point to the node to fill in upload */
+#ifndef CURL_DISABLE_IPFS
   char *ipfs_gateway;
+#endif /* !CURL_DISABLE_IPFS */
   char *doh_url;
   char *cipher_list;
   char *proxy_cipher_list;
@@ -259,6 +261,7 @@ struct OperationConfig {
   bool xattr;               /* store metadata in extended attributes */
   long gssapi_delegation;
   bool ssl_allow_beast;     /* allow this SSL vulnerability */
+  bool ssl_allow_earlydata; /* allow use of TLSv1.3 early data */
   bool proxy_ssl_allow_beast; /* allow this SSL vulnerability for proxy */
   bool ssl_no_revoke;       /* disable SSL certificate revocation checks */
   bool ssl_revoke_best_effort; /* ignore SSL revocation offline/missing
@@ -303,12 +306,9 @@ struct OperationConfig {
   bool rm_partial;                /* on error, remove partially written output
                                      files */
   bool skip_existing;
-#ifdef USE_ECH
   char *ech;                      /* Config set by --ech keywords */
   char *ech_config;               /* Config set by "--ech esl:" option */
   char *ech_public;               /* Config set by "--ech pn:" option */
-#endif
-
 };
 
 struct GlobalConfig {
@@ -330,13 +330,14 @@ struct GlobalConfig {
   long ms_per_transfer;           /* start next transfer after (at least) this
                                      many milliseconds */
 #ifdef DEBUGBUILD
+  bool test_duphandle;
   bool test_event_based;
 #endif
   bool parallel;
   unsigned short parallel_max; /* MAX_PARALLEL is the maximum */
   bool parallel_connect;
   char *help_category;            /* The help category, if set */
-  struct var *variables;
+  struct tool_var *variables;
   struct OperationConfig *first;
   struct OperationConfig *current;
   struct OperationConfig *last;   /* Always last in the struct */

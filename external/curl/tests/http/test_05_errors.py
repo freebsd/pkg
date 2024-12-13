@@ -24,12 +24,10 @@
 #
 ###########################################################################
 #
-import json
 import logging
-from typing import Optional, Tuple, List, Dict
 import pytest
 
-from testenv import Env, CurlClient, ExecResult
+from testenv import Env, CurlClient
 
 
 log = logging.getLogger(__name__)
@@ -129,7 +127,7 @@ class TestErrors:
         r = curl.http_download(urls=[url], alpn_proto=proto, extra_args=[
             '--parallel',
         ])
-        if proto == 'http/1.0' and \
+        if proto == 'http/1.0' and not env.curl_uses_lib('wolfssl') and \
                 (env.curl_is_debug() or not env.curl_uses_lib('openssl')):
             # we are inconsistent if we fail or not in missing TLS shutdown
             # openssl code ignore such errors intentionally in non-debug builds

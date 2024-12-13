@@ -171,7 +171,9 @@ static const struct LongShort aliases[]= {
   {"insecure",                   ARG_BOOL, 'k', C_INSECURE},
   {"interface",                  ARG_STRG, ' ', C_INTERFACE},
   {"ip-tos",                     ARG_STRG, ' ', C_IP_TOS},
+#ifndef CURL_DISABLE_IPFS
   {"ipfs-gateway",               ARG_STRG, ' ', C_IPFS_GATEWAY},
+#endif /* !CURL_DISABLE_IPFS */
   {"ipv4",                       ARG_NONE, '4', C_IPV4},
   {"ipv6",                       ARG_NONE, '6', C_IPV6},
   {"json",                       ARG_STRG, ' ', C_JSON},
@@ -310,10 +312,14 @@ static const struct LongShort aliases[]= {
   {"tcp-fastopen",               ARG_BOOL, ' ', C_TCP_FASTOPEN},
   {"tcp-nodelay",                ARG_BOOL, ' ', C_TCP_NODELAY},
   {"telnet-option",              ARG_STRG, 't', C_TELNET_OPTION},
+#ifdef DEBUGBUILD
+  {"test-duphandle",             ARG_BOOL, ' ', C_TEST_DUPHANDLE},
   {"test-event",                 ARG_BOOL, ' ', C_TEST_EVENT},
+#endif
   {"tftp-blksize",               ARG_STRG, ' ', C_TFTP_BLKSIZE},
   {"tftp-no-options",            ARG_BOOL, ' ', C_TFTP_NO_OPTIONS},
   {"time-cond",                  ARG_STRG, 'z', C_TIME_COND},
+  {"tls-earlydata",              ARG_BOOL, ' ', C_TLS_EARLYDATA},
   {"tls-max",                    ARG_STRG, ' ', C_TLS_MAX},
   {"tls13-ciphers",              ARG_STRG, ' ', C_TLS13_CIPHERS},
   {"tlsauthtype",                ARG_STRG, ' ', C_TLSAUTHTYPE},
@@ -388,7 +394,7 @@ void parse_cert_parameter(const char *cert_parameter,
   param_place = cert_parameter;
   while(*param_place) {
     span = strcspn(param_place, ":\\");
-    strncpy(certname_place, param_place, span);
+    memcpy(certname_place, param_place, span);
     param_place += span;
     certname_place += span;
     /* we just ate all the non-special chars. now we are on either a special
@@ -942,7 +948,7 @@ static ParameterError set_rate(struct GlobalConfig *global,
   if(numlen > sizeof(number) -1)
     return PARAM_NUMBER_TOO_LARGE;
 
-  strncpy(number, nextarg, numlen);
+  memcpy(number, nextarg, numlen);
   number[numlen] = 0;
   err = str2unum(&denominator, number);
   if(err)
@@ -1013,6 +1019,541 @@ const struct LongShort *findlongopt(const char *opt)
                  sizeof(aliases[0]), findarg);
 }
 
+static ParameterError parse_url(struct OperationConfig *config,
+                                const char *nextarg)
+{
+  ParameterError err = PARAM_OK;
+  struct getout *url;
+
+  if(!config->url_get)
+    config->url_get = config->url_list;
+
+  if(config->url_get) {
+    /* there is a node here, if it already is filled-in continue to find
+       an "empty" node */
+    while(config->url_get && (config->url_get->flags & GETOUT_URL))
+      config->url_get = config->url_get->next;
+  }
+
+  /* now there might or might not be an available node to fill in! */
+
+  if(config->url_get)
+    /* existing node */
+    url = config->url_get;
+  else
+    /* there was no free node, create one! */
+    config->url_get = url = new_getout(config);
+
+  if(!url)
+    return PARAM_NO_MEM;
+  else {
+    /* fill in the URL */
+    err = getstr(&url->url, nextarg, DENY_BLANK);
+    url->flags |= GETOUT_URL;
+  }
+  return err;
+}
+
+static ParameterError parse_localport(struct OperationConfig *config,
+                                      char *nextarg)
+{
+  char *pp = NULL;
+  char *p = nextarg;
+  while(ISDIGIT(*p))
+    p++;
+  if(*p) {
+    pp = p;
+    /* check for ' - [end]' */
+    if(ISSPACE(*pp))
+      pp++;
+    if(*pp != '-')
+      return PARAM_BAD_USE;
+    pp++;
+    if(*pp && ISSPACE(*pp))
+      pp++;
+    *p = 0; /* null-terminate to make str2unum() work below */
+  }
+
+  if(str2unummax(&config->localport, nextarg, 65535))
+    return PARAM_BAD_USE;
+  if(!pp)
+    config->localportrange = 1; /* default number of ports to try */
+  else {
+    if(str2unummax(&config->localportrange, pp, 65535))
+      return PARAM_BAD_USE;
+    config->localportrange -= (config->localport-1);
+    if(config->localportrange < 1)
+      return PARAM_BAD_USE;
+  }
+  return PARAM_OK;
+}
+
+static ParameterError parse_continue_at(struct GlobalConfig *global,
+                                        struct OperationConfig *config,
+                                        const char *nextarg)
+{
+  ParameterError err = PARAM_OK;
+  if(config->range) {
+    errorf(global, "--continue-at is mutually exclusive with --range");
+    return PARAM_BAD_USE;
+  }
+  if(config->rm_partial) {
+    errorf(config->global,
+           "--continue-at is mutually exclusive with --remove-on-error");
+    return PARAM_BAD_USE;
+  }
+  if(config->file_clobber_mode == CLOBBER_NEVER) {
+    errorf(config->global,
+           "--continue-at is mutually exclusive with --no-clobber");
+    return PARAM_BAD_USE;
+  }
+  /* This makes us continue an ftp transfer at given position */
+  if(strcmp(nextarg, "-")) {
+    err = str2offset(&config->resume_from, nextarg);
+    config->resume_from_current = FALSE;
+  }
+  else {
+    config->resume_from_current = TRUE;
+    config->resume_from = 0;
+  }
+  config->use_resume = TRUE;
+  return err;
+}
+
+static ParameterError parse_ech(struct GlobalConfig *global,
+                                struct OperationConfig *config,
+                                const char *nextarg)
+{
+  ParameterError err = PARAM_OK;
+  if(!feature_ech)
+    err = PARAM_LIBCURL_DOESNT_SUPPORT;
+  else if(strlen(nextarg) > 4 && strncasecompare("pn:", nextarg, 3)) {
+    /* a public_name */
+    err = getstr(&config->ech_public, nextarg, DENY_BLANK);
+  }
+  else if(strlen(nextarg) > 5 && strncasecompare("ecl:", nextarg, 4)) {
+    /* an ECHConfigList */
+    if('@' != *(nextarg + 4)) {
+      err = getstr(&config->ech_config, nextarg, DENY_BLANK);
+    }
+    else {
+      /* Indirect case: @filename or @- for stdin */
+      char *tmpcfg = NULL;
+      FILE *file;
+
+      nextarg++;        /* skip over '@' */
+      if(!strcmp("-", nextarg)) {
+        file = stdin;
+      }
+      else {
+        file = fopen(nextarg, FOPEN_READTEXT);
+      }
+      if(!file) {
+        warnf(global,
+              "Couldn't read file \"%s\" "
+              "specified for \"--ech ecl:\" option",
+              nextarg);
+        return PARAM_BAD_USE; /*  */
+      }
+      err = file2string(&tmpcfg, file);
+      if(file != stdin)
+        fclose(file);
+      if(err)
+        return err;
+      config->ech_config = aprintf("ecl:%s",tmpcfg);
+      if(!config->ech_config)
+        return PARAM_NO_MEM;
+      free(tmpcfg);
+    } /* file done */
+  }
+  else {
+    /* Simple case: just a string, with a keyword */
+    err = getstr(&config->ech, nextarg, DENY_BLANK);
+  }
+  return err;
+}
+
+static ParameterError parse_header(struct GlobalConfig *global,
+                                   struct OperationConfig *config,
+                                   cmdline_t cmd,
+                                   const char *nextarg)
+{
+  ParameterError err = PARAM_OK;
+
+  /* A custom header to append to a list */
+  if(nextarg[0] == '@') {
+    /* read many headers from a file or stdin */
+    char *string;
+    size_t len;
+    bool use_stdin = !strcmp(&nextarg[1], "-");
+    FILE *file = use_stdin ? stdin : fopen(&nextarg[1], FOPEN_READTEXT);
+    if(!file) {
+      errorf(global, "Failed to open %s", &nextarg[1]);
+      err = PARAM_READ_ERROR;
+    }
+    else {
+      err = file2memory(&string, &len, file);
+      if(!err && string) {
+        /* Allow strtok() here since this is not used threaded */
+        /* !checksrc! disable BANNEDFUNC 2 */
+        char *h = strtok(string, "\r\n");
+        while(h) {
+          if(cmd == C_PROXY_HEADER) /* --proxy-header */
+            err = add2list(&config->proxyheaders, h);
+          else
+            err = add2list(&config->headers, h);
+          if(err)
+            break;
+          h = strtok(NULL, "\r\n");
+        }
+        free(string);
+      }
+      if(!use_stdin)
+        fclose(file);
+    }
+  }
+  else {
+    if(cmd == C_PROXY_HEADER) /* --proxy-header */
+      err = add2list(&config->proxyheaders, nextarg);
+    else
+      err = add2list(&config->headers, nextarg);
+  }
+  return err;
+}
+
+static ParameterError parse_output(struct OperationConfig *config,
+                                   const char *nextarg)
+{
+  ParameterError err = PARAM_OK;
+  struct getout *url;
+
+  /* output file */
+  if(!config->url_out)
+    config->url_out = config->url_list;
+  if(config->url_out) {
+    /* there is a node here, if it already is filled-in continue to find
+       an "empty" node */
+    while(config->url_out && (config->url_out->flags & GETOUT_OUTFILE))
+      config->url_out = config->url_out->next;
+  }
+
+  /* now there might or might not be an available node to fill in! */
+
+  if(config->url_out)
+    /* existing node */
+    url = config->url_out;
+  else {
+    /* there was no free node, create one! */
+    config->url_out = url = new_getout(config);
+  }
+
+  if(!url)
+    return PARAM_NO_MEM;
+
+  /* fill in the outfile */
+  err = getstr(&url->outfile, nextarg, DENY_BLANK);
+  url->flags &= ~GETOUT_USEREMOTE; /* switch off */
+  url->flags |= GETOUT_OUTFILE;
+  return err;
+}
+
+static ParameterError parse_remote_name(struct OperationConfig *config,
+                                        bool toggle)
+{
+  ParameterError err = PARAM_OK;
+  struct getout *url;
+
+  if(!toggle && !config->default_node_flags)
+    return err; /* nothing to do */
+
+  /* output file */
+  if(!config->url_out)
+    config->url_out = config->url_list;
+  if(config->url_out) {
+    /* there is a node here, if it already is filled-in continue to find
+       an "empty" node */
+    while(config->url_out && (config->url_out->flags & GETOUT_OUTFILE))
+      config->url_out = config->url_out->next;
+  }
+
+  /* now there might or might not be an available node to fill in! */
+
+  if(config->url_out)
+    /* existing node */
+    url = config->url_out;
+  else {
+    /* there was no free node, create one! */
+    config->url_out = url = new_getout(config);
+  }
+
+  if(!url)
+    return PARAM_NO_MEM;
+
+  url->outfile = NULL; /* leave it */
+  if(toggle)
+    url->flags |= GETOUT_USEREMOTE;  /* switch on */
+  else
+    url->flags &= ~GETOUT_USEREMOTE; /* switch off */
+  url->flags |= GETOUT_OUTFILE;
+  return PARAM_OK;
+}
+
+static ParameterError parse_quote(struct OperationConfig *config,
+                                  const char *nextarg)
+{
+  ParameterError err = PARAM_OK;
+
+  /* QUOTE command to send to FTP server */
+  switch(nextarg[0]) {
+  case '-':
+    /* prefixed with a dash makes it a POST TRANSFER one */
+    nextarg++;
+    err = add2list(&config->postquote, nextarg);
+    break;
+  case '+':
+    /* prefixed with a plus makes it a just-before-transfer one */
+    nextarg++;
+    err = add2list(&config->prequote, nextarg);
+        break;
+  default:
+    err = add2list(&config->quote, nextarg);
+    break;
+  }
+  return err;
+}
+
+static ParameterError parse_range(struct GlobalConfig *global,
+                                  struct OperationConfig *config,
+                                  const char *nextarg)
+{
+  ParameterError err = PARAM_OK;
+
+  if(config->use_resume) {
+    errorf(global, "--continue-at is mutually exclusive with --range");
+    return PARAM_BAD_USE;
+  }
+  /* Specifying a range WITHOUT A DASH will create an illegal HTTP range
+     (and will not actually be range by definition). The manpage
+     previously claimed that to be a good way, why this code is added to
+     work-around it. */
+  if(ISDIGIT(*nextarg) && !strchr(nextarg, '-')) {
+    char buffer[32];
+    curl_off_t value;
+    if(curlx_strtoofft(nextarg, NULL, 10, &value)) {
+      warnf(global, "unsupported range point");
+      err = PARAM_BAD_USE;
+    }
+    else {
+      warnf(global,
+            "A specified range MUST include at least one dash (-). "
+            "Appending one for you");
+      msnprintf(buffer, sizeof(buffer), "%" CURL_FORMAT_CURL_OFF_T "-",
+                value);
+      Curl_safefree(config->range);
+      config->range = strdup(buffer);
+      if(!config->range)
+        err = PARAM_NO_MEM;
+    }
+  }
+  else {
+    /* byte range requested */
+    const char *tmp_range = nextarg;
+    while(*tmp_range) {
+      if(!ISDIGIT(*tmp_range) && *tmp_range != '-' && *tmp_range != ',') {
+        warnf(global, "Invalid character is found in given range. "
+              "A specified range MUST have only digits in "
+              "\'start\'-\'stop\'. The server's response to this "
+              "request is uncertain.");
+        break;
+      }
+      tmp_range++;
+    }
+    err = getstr(&config->range, nextarg, DENY_BLANK);
+  }
+  return err;
+}
+
+static ParameterError parse_upload_file(struct OperationConfig *config,
+                                        const char *nextarg)
+{
+  ParameterError err = PARAM_OK;
+  struct getout *url;
+
+  /* we are uploading */
+  if(!config->url_ul)
+    config->url_ul = config->url_list;
+  if(config->url_ul) {
+    /* there is a node here, if it already is filled-in continue to find
+       an "empty" node */
+    while(config->url_ul && (config->url_ul->flags & GETOUT_UPLOAD))
+      config->url_ul = config->url_ul->next;
+  }
+
+  /* now there might or might not be an available node to fill in! */
+
+  if(config->url_ul)
+    /* existing node */
+    url = config->url_ul;
+  else
+    /* there was no free node, create one! */
+    config->url_ul = url = new_getout(config);
+
+  if(!url)
+    return PARAM_NO_MEM;
+
+  url->flags |= GETOUT_UPLOAD; /* mark -T used */
+  if(!*nextarg)
+    url->flags |= GETOUT_NOUPLOAD;
+  else {
+    /* "-" equals stdin, but keep the string around for now */
+    err = getstr(&url->infile, nextarg, DENY_BLANK);
+  }
+  return err;
+}
+
+static ParameterError parse_verbose(struct GlobalConfig *global,
+                                    bool toggle,
+                                    size_t nopts)
+{
+  ParameterError err = PARAM_OK;
+
+  /* This option is a super-boolean with side effect when applied
+   * more than once in the same argument flag, like `-vvv`. */
+  if(!toggle) {
+    global->verbosity = 0;
+    if(set_trace_config(global, "-all"))
+      err = PARAM_NO_MEM;
+    global->tracetype = TRACE_NONE;
+    return err;
+  }
+  else if(!nopts) {
+    /* fist `-v` in an argument resets to base verbosity */
+    global->verbosity = 0;
+    if(set_trace_config(global, "-all"))
+      return PARAM_NO_MEM;
+  }
+  /* the '%' thing here will cause the trace get sent to stderr */
+  switch(global->verbosity) {
+  case 0:
+    global->verbosity = 1;
+    Curl_safefree(global->trace_dump);
+    global->trace_dump = strdup("%");
+    if(!global->trace_dump)
+      err = PARAM_NO_MEM;
+    else {
+      if(global->tracetype && (global->tracetype != TRACE_PLAIN))
+        warnf(global,
+              "-v, --verbose overrides an earlier trace option");
+      global->tracetype = TRACE_PLAIN;
+    }
+    break;
+  case 1:
+    global->verbosity = 2;
+    if(set_trace_config(global, "ids,time,protocol"))
+      err = PARAM_NO_MEM;
+    break;
+  case 2:
+    global->verbosity = 3;
+    global->tracetype = TRACE_ASCII;
+    if(set_trace_config(global, "ssl,read,write"))
+      err = PARAM_NO_MEM;
+    break;
+  case 3:
+    global->verbosity = 4;
+    if(set_trace_config(global, "network"))
+      err = PARAM_NO_MEM;
+    break;
+  default:
+    /* no effect for now */
+    break;
+  }
+  return err;
+}
+
+static ParameterError parse_writeout(struct GlobalConfig *global,
+                                     struct OperationConfig *config,
+                                     const char *nextarg)
+{
+  ParameterError err = PARAM_OK;
+
+  /* get the output string */
+  if('@' == *nextarg) {
+    /* the data begins with a '@' letter, it means that a filename
+       or - (stdin) follows */
+    FILE *file;
+    const char *fname;
+    nextarg++; /* pass the @ */
+    if(!strcmp("-", nextarg)) {
+      fname = "<stdin>";
+      file = stdin;
+    }
+    else {
+      fname = nextarg;
+      file = fopen(fname, FOPEN_READTEXT);
+      if(!file) {
+        errorf(global, "Failed to open %s", fname);
+        return PARAM_READ_ERROR;
+      }
+    }
+    Curl_safefree(config->writeout);
+    err = file2string(&config->writeout, file);
+    if(file && (file != stdin))
+      fclose(file);
+    if(err)
+      return err;
+    if(!config->writeout)
+      warnf(global, "Failed to read %s", fname);
+  }
+  else
+    err = getstr(&config->writeout, nextarg, ALLOW_BLANK);
+
+  return err;
+}
+
+static ParameterError parse_time_cond(struct GlobalConfig *global,
+                                      struct OperationConfig *config,
+                                      const char *nextarg)
+{
+  ParameterError err = PARAM_OK;
+
+  switch(*nextarg) {
+  case '+':
+    nextarg++;
+    FALLTHROUGH();
+  default:
+    /* If-Modified-Since: (section 14.28 in RFC2068) */
+    config->timecond = CURL_TIMECOND_IFMODSINCE;
+    break;
+  case '-':
+    /* If-Unmodified-Since:  (section 14.24 in RFC2068) */
+    config->timecond = CURL_TIMECOND_IFUNMODSINCE;
+    nextarg++;
+    break;
+  case '=':
+    /* Last-Modified:  (section 14.29 in RFC2068) */
+    config->timecond = CURL_TIMECOND_LASTMOD;
+    nextarg++;
+    break;
+  }
+  config->condtime = (curl_off_t)curl_getdate(nextarg, NULL);
+  if(-1 == config->condtime) {
+    curl_off_t value;
+    /* now let's see if it is a filename to get the time from instead! */
+    int rc = getfiletime(nextarg, global, &value);
+    if(!rc)
+      /* pull the time out from the file */
+      config->condtime = value;
+    else {
+      /* failed, remove time condition */
+      config->timecond = CURL_TIMECOND_NONE;
+      warnf(global,
+            "Illegal date format for -z, --time-cond (and not "
+            "a filename). Disabling time condition. "
+            "See curl_getdate(3) for valid date syntax.");
+    }
+  }
+  return err;
+}
 
 ParameterError getparameter(const char *flag, /* f or -long-flag */
                             char *nextarg,    /* NULL if unset */
@@ -1022,9 +1563,7 @@ ParameterError getparameter(const char *flag, /* f or -long-flag */
                             struct GlobalConfig *global,
                             struct OperationConfig *config)
 {
-  int rc;
   const char *parse = NULL;
-  time_t now;
   bool longopt = FALSE;
   bool singleopt = FALSE; /* when true means '-o foo' used '-ofoo' */
   size_t nopts = 0; /* options processed in `flag`*/
@@ -1032,7 +1571,6 @@ ParameterError getparameter(const char *flag, /* f or -long-flag */
   bool toggle = TRUE; /* how to switch boolean options, on or off. Controlled
                          by using --OPTION or --no-OPTION */
   bool nextalloc = FALSE; /* if nextarg is allocated */
-  struct getout *url;
   static const char *redir_protos[] = {
     "http",
     "https",
@@ -1109,7 +1647,6 @@ ParameterError getparameter(const char *flag, /* f or -long-flag */
 
   do {
     /* we can loop here if we have multiple single-letters */
-    char letter;
     cmdline_t cmd;
 
     if(!longopt && !a) {
@@ -1119,7 +1656,6 @@ ParameterError getparameter(const char *flag, /* f or -long-flag */
         break;
       }
     }
-    letter = a->letter;
     cmd = (cmdline_t)a->cmd;
     if(ARGTYPE(a->desc) >= ARG_STRG) {
       /* this option requires an extra parameter */
@@ -1216,7 +1752,7 @@ ParameterError getparameter(const char *flag, /* f or -long-flag */
       config->disallow_username_in_url = toggle;
       break;
     case C_EPSV: /* --epsv */
-      config->disable_epsv = (!toggle)?TRUE:FALSE;
+      config->disable_epsv = !toggle;
       break;
     case C_DNS_SERVERS: /* --dns-servers */
       if(!curlinfo->ares_num) /* c-ares is needed for this */
@@ -1246,7 +1782,7 @@ ParameterError getparameter(const char *flag, /* f or -long-flag */
       }
       break;
     case C_ALPN: /* --alpn */
-      config->noalpn = (!toggle)?TRUE:FALSE;
+      config->noalpn = !toggle;
       break;
     case C_LIMIT_RATE: /* --limit-rate */
       err = GetSizeParameter(global, nextarg, "rate", &value);
@@ -1321,9 +1857,11 @@ ParameterError getparameter(const char *flag, /* f or -long-flag */
       if(!err && (config->maxredirs < -1))
         err = PARAM_BAD_NUMERIC;
       break;
+#ifndef CURL_DISABLE_IPFS
     case C_IPFS_GATEWAY: /* --ipfs-gateway */
       err = getstr(&config->ipfs_gateway, nextarg, DENY_BLANK);
       break;
+#endif /* !CURL_DISABLE_IPFS */
     case C_PROXY_NTLM: /* --proxy-ntlm */
       if(!feature_ntlm)
         err = PARAM_LIBCURL_DOESNT_SUPPORT;
@@ -1367,38 +1905,13 @@ ParameterError getparameter(const char *flag, /* f or -long-flag */
       config->disable_eprt = toggle;
       break;
     case C_EPRT: /* --eprt */
-      config->disable_eprt = (!toggle)?TRUE:FALSE;
+      config->disable_eprt = !toggle;
       break;
     case C_XATTR: /* --xattr */
       config->xattr = toggle;
       break;
     case C_URL: /* --url */
-      if(!config->url_get)
-        config->url_get = config->url_list;
-
-      if(config->url_get) {
-        /* there is a node here, if it already is filled-in continue to find
-           an "empty" node */
-        while(config->url_get && (config->url_get->flags & GETOUT_URL))
-          config->url_get = config->url_get->next;
-      }
-
-      /* now there might or might not be an available node to fill in! */
-
-      if(config->url_get)
-        /* existing node */
-        url = config->url_get;
-      else
-        /* there was no free node, create one! */
-        config->url_get = url = new_getout(config);
-
-      if(!url)
-        err = PARAM_NO_MEM;
-      else {
-        /* fill in the URL */
-        err = getstr(&url->url, nextarg, DENY_BLANK);
-        url->flags |= GETOUT_URL;
-      }
+      err = parse_url(config, nextarg);
       break;
     case C_FTP_SSL: /* --ftp-ssl */
     case C_SSL: /* --ssl */
@@ -1502,40 +2015,9 @@ ParameterError getparameter(const char *flag, /* f or -long-flag */
     case C_FTP_METHOD: /* --ftp-method */
       config->ftp_filemethod = ftpfilemethod(config, nextarg);
       break;
-    case C_LOCAL_PORT: { /* --local-port */
-      /* 16bit base 10 is 5 digits, but we allow 6 so that this catches
-         overflows, not just truncates */
-      char lrange[7]="";
-      char *p = nextarg;
-      while(ISDIGIT(*p))
-        p++;
-      if(*p) {
-        /* if there is anything more than a plain decimal number */
-        rc = sscanf(p, " - %6s", lrange);
-        *p = 0; /* null-terminate to make str2unum() work below */
-      }
-      else
-        rc = 0;
-
-      err = str2unum(&config->localport, nextarg);
-      if(err || (config->localport > 65535)) {
-        err = PARAM_BAD_USE;
-        break;
-      }
-      if(!rc)
-        config->localportrange = 1; /* default number of ports to try */
-      else {
-        err = str2unum(&config->localportrange, lrange);
-        if(err || (config->localportrange > 65535))
-          err = PARAM_BAD_USE;
-        else {
-          config->localportrange -= (config->localport-1);
-          if(config->localportrange < 1)
-            err = PARAM_BAD_USE;
-        }
-      }
+    case C_LOCAL_PORT: /* --local-port */
+      err = parse_localport(config, nextarg);
       break;
-    }
     case C_FTP_ALTERNATIVE_TO_USER: /* --ftp-alternative-to-user */
       err = getstr(&config->ftp_alternative_to_user, nextarg, DENY_BLANK);
       break;
@@ -1548,7 +2030,7 @@ ParameterError getparameter(const char *flag, /* f or -long-flag */
       config->ftp_ssl_reqd = toggle;
       break;
     case C_SESSIONID: /* --sessionid */
-      config->disable_sessionid = (!toggle)?TRUE:FALSE;
+      config->disable_sessionid = !toggle;
       break;
     case C_FTP_SSL_CONTROL: /* --ftp-ssl-control */
       if(toggle && !feature_ssl)
@@ -1578,7 +2060,7 @@ ParameterError getparameter(const char *flag, /* f or -long-flag */
       config->raw = toggle;
       break;
     case C_KEEPALIVE: /* --keepalive */
-      config->nokeepalive = (!toggle)?TRUE:FALSE;
+      config->nokeepalive = !toggle;
       break;
     case C_KEEPALIVE_TIME: /* --keepalive-time */
       err = str2unum(&config->alivetime, nextarg);
@@ -1649,13 +2131,14 @@ ParameterError getparameter(const char *flag, /* f or -long-flag */
     case C_SASL_IR: /* --sasl-ir */
       config->sasl_ir = toggle;
       break;
-    case C_TEST_EVENT: /* --test-event */
 #ifdef DEBUGBUILD
-      global->test_event_based = toggle;
-#else
-      warnf(global, "--test-event is ignored unless a debug build");
-#endif
+    case C_TEST_DUPHANDLE: /* --test-duphandle */
+      global->test_duphandle = toggle;
       break;
+    case C_TEST_EVENT: /* --test-event */
+      global->test_event_based = toggle;
+      break;
+#endif
     case C_UNIX_SOCKET: /* --unix-socket */
       config->abstract_unix_socket = FALSE;
       err = getstr(&config->unix_socket_path, nextarg, DENY_BLANK);
@@ -1686,6 +2169,10 @@ ParameterError getparameter(const char *flag, /* f or -long-flag */
     case C_ABSTRACT_UNIX_SOCKET: /* --abstract-unix-socket */
       config->abstract_unix_socket = TRUE;
       err = getstr(&config->unix_socket_path, nextarg, DENY_BLANK);
+      break;
+    case C_TLS_EARLYDATA: /* --tls-earlydata */
+      if(feature_ssl)
+        config->ssl_allow_earlydata = toggle;
       break;
     case C_TLS_MAX: /* --tls-max */
       err = str2tls_max(&config->ssl_version_max, nextarg);
@@ -1833,16 +2320,7 @@ ParameterError getparameter(const char *flag, /* f or -long-flag */
       err = getstr(&config->cookiejar, nextarg, DENY_BLANK);
       break;
     case C_CONTINUE_AT: /* --continue-at */
-      /* This makes us continue an ftp transfer at given position */
-      if(strcmp(nextarg, "-")) {
-        err = str2offset(&config->resume_from, nextarg);
-        config->resume_from_current = FALSE;
-      }
-      else {
-        config->resume_from_current = TRUE;
-        config->resume_from = 0;
-      }
-      config->use_resume = TRUE;
+      err = parse_continue_at(global, config, nextarg);
       break;
     case C_DATA: /* --data */
     case C_DATA_ASCII:  /* --data-ascii */
@@ -1908,57 +2386,9 @@ ParameterError getparameter(const char *flag, /* f or -long-flag */
         err = PARAM_ENGINES_REQUESTED;
       }
       break;
-#ifndef USE_ECH
-    case C_ECH: /* --ech, not implemented by default */
-      err = PARAM_LIBCURL_DOESNT_SUPPORT;
-      break;
-#else
     case C_ECH: /* --ech */
-      if(strlen(nextarg) > 4 && strncasecompare("pn:", nextarg, 3)) {
-        /* a public_name */
-        err = getstr(&config->ech_public, nextarg, DENY_BLANK);
-      }
-      else if(strlen(nextarg) > 5 && strncasecompare("ecl:", nextarg, 4)) {
-        /* an ECHConfigList */
-        if('@' != *(nextarg + 4)) {
-          err = getstr(&config->ech_config, nextarg, DENY_BLANK);
-        }
-        else {
-          /* Indirect case: @filename or @- for stdin */
-          char *tmpcfg = NULL;
-          FILE *file;
-
-          nextarg++;        /* skip over '@' */
-          if(!strcmp("-", nextarg)) {
-            file = stdin;
-          }
-          else {
-            file = fopen(nextarg, FOPEN_READTEXT);
-          }
-          if(!file) {
-            warnf(global,
-                  "Couldn't read file \"%s\" "
-                  "specified for \"--ech ecl:\" option",
-                  nextarg);
-            return PARAM_BAD_USE; /*  */
-          }
-          err = file2string(&tmpcfg, file);
-          if(file != stdin)
-            fclose(file);
-          if(err)
-            return err;
-          config->ech_config = aprintf("ecl:%s",tmpcfg);
-          if(!config->ech_config)
-            return PARAM_NO_MEM;
-          free(tmpcfg);
-      } /* file done */
-    }
-    else {
-      /* Simple case: just a string, with a keyword */
-      err = getstr(&config->ech, nextarg, DENY_BLANK);
-    }
-    break;
-#endif
+      err = parse_ech(global, config, nextarg);
+      break;
     case C_CAPATH: /* --capath */
       err = getstr(&config->capath, nextarg, DENY_BLANK);
       break;
@@ -2145,6 +2575,11 @@ ParameterError getparameter(const char *flag, /* f or -long-flag */
       }
       break;
     case C_REMOVE_ON_ERROR: /* --remove-on-error */
+      if(config->use_resume && toggle) {
+        errorf(config->global,
+               "--continue-at is mutually exclusive with --remove-on-error");
+        return PARAM_BAD_USE;
+      }
       config->rm_partial = toggle;
       break;
     case C_FAIL: /* --fail */
@@ -2163,7 +2598,7 @@ ParameterError getparameter(const char *flag, /* f or -long-flag */
                    nextarg,
                    &config->mimeroot,
                    &config->mimecurrent,
-                   (cmd == C_FORM_STRING)?TRUE:FALSE)) /* literal string */
+                   (cmd == C_FORM_STRING))) /* literal string */
         err = PARAM_BAD_USE;
       else if(SetHTTPrequest(config, TOOL_HTTPREQ_MIMEPOST, &config->httpreq))
         err = PARAM_BAD_USE;
@@ -2192,44 +2627,7 @@ ParameterError getparameter(const char *flag, /* f or -long-flag */
       break;
     case C_HEADER: /* --header */
     case C_PROXY_HEADER: /* --proxy-header */
-      /* A custom header to append to a list */
-      if(nextarg[0] == '@') {
-        /* read many headers from a file or stdin */
-        char *string;
-        size_t len;
-        bool use_stdin = !strcmp(&nextarg[1], "-");
-        FILE *file = use_stdin?stdin:fopen(&nextarg[1], FOPEN_READTEXT);
-        if(!file) {
-          errorf(global, "Failed to open %s", &nextarg[1]);
-          err = PARAM_READ_ERROR;
-        }
-        else {
-          err = file2memory(&string, &len, file);
-          if(!err && string) {
-            /* Allow strtok() here since this is not used threaded */
-            /* !checksrc! disable BANNEDFUNC 2 */
-            char *h = strtok(string, "\r\n");
-            while(h) {
-              if(cmd == C_PROXY_HEADER) /* --proxy-header */
-                err = add2list(&config->proxyheaders, h);
-              else
-                err = add2list(&config->headers, h);
-              if(err)
-                break;
-              h = strtok(NULL, "\r\n");
-            }
-            free(string);
-          }
-          if(!use_stdin)
-            fclose(file);
-        }
-      }
-      else {
-        if(cmd == C_PROXY_HEADER) /* --proxy-header */
-          err = add2list(&config->proxyheaders, nextarg);
-        else
-          err = add2list(&config->headers, nextarg);
-      }
+      err = parse_header(global, config, cmd, nextarg);
       break;
     case C_INCLUDE: /* --include */
     case C_SHOW_HEADERS: /* --show-headers */
@@ -2242,9 +2640,8 @@ ParameterError getparameter(const char *flag, /* f or -long-flag */
     case C_HEAD: /* --head */
       config->no_body = toggle;
       config->show_headers = toggle;
-      if(SetHTTPrequest(config,
-                        (config->no_body)?TOOL_HTTPREQ_HEAD:TOOL_HTTPREQ_GET,
-                        &config->httpreq))
+      if(SetHTTPrequest(config, (config->no_body) ? TOOL_HTTPREQ_HEAD :
+                        TOOL_HTTPREQ_GET, &config->httpreq))
         err = PARAM_BAD_USE;
       break;
     case C_REMOTE_HEADER_NAME: /* --remote-header-name */
@@ -2303,56 +2700,24 @@ ParameterError getparameter(const char *flag, /* f or -long-flag */
       config->nobuffer = longopt ? !toggle : TRUE;
       break;
     case C_REMOTE_NAME_ALL: /* --remote-name-all */
-      config->default_node_flags = toggle?GETOUT_USEREMOTE:0;
+      config->default_node_flags = toggle ? GETOUT_USEREMOTE : 0;
       break;
     case C_OUTPUT_DIR: /* --output-dir */
       err = getstr(&config->output_dir, nextarg, DENY_BLANK);
       break;
     case C_CLOBBER: /* --clobber */
+      if(config->use_resume && !toggle) {
+        errorf(config->global,
+               "--continue-at is mutually exclusive with --no-clobber");
+        return PARAM_BAD_USE;
+      }
       config->file_clobber_mode = toggle ? CLOBBER_ALWAYS : CLOBBER_NEVER;
       break;
     case C_OUTPUT: /* --output */
+      err = parse_output(config, nextarg);
+      break;
     case C_REMOTE_NAME: /* --remote-name */
-      /* output file */
-      if(!config->url_out)
-        config->url_out = config->url_list;
-      if(config->url_out) {
-        /* there is a node here, if it already is filled-in continue to find
-           an "empty" node */
-        while(config->url_out && (config->url_out->flags & GETOUT_OUTFILE))
-          config->url_out = config->url_out->next;
-      }
-
-      /* now there might or might not be an available node to fill in! */
-
-      if(config->url_out)
-        /* existing node */
-        url = config->url_out;
-      else {
-        if(!toggle && !config->default_node_flags)
-          break;
-        /* there was no free node, create one! */
-        config->url_out = url = new_getout(config);
-      }
-
-      if(!url) {
-        err = PARAM_NO_MEM;
-        break;
-      }
-
-      /* fill in the outfile */
-      if('o' == letter) {
-        err = getstr(&url->outfile, nextarg, DENY_BLANK);
-        url->flags &= ~GETOUT_USEREMOTE; /* switch off */
-      }
-      else {
-        url->outfile = NULL; /* leave it */
-        if(toggle)
-          url->flags |= GETOUT_USEREMOTE;  /* switch on */
-        else
-          url->flags &= ~GETOUT_USEREMOTE; /* switch off */
-      }
-      url->flags |= GETOUT_OUTFILE;
+      err = parse_remote_name(config, toggle);
       break;
     case C_FTP_PORT: /* --ftp-port */
       /* This makes the FTP sessions use PORT instead of PASV */
@@ -2372,61 +2737,10 @@ ParameterError getparameter(const char *flag, /* f or -long-flag */
          cause an error! */
       break;
     case C_QUOTE: /* --quote */
-      /* QUOTE command to send to FTP server */
-      switch(nextarg[0]) {
-      case '-':
-        /* prefixed with a dash makes it a POST TRANSFER one */
-        nextarg++;
-        err = add2list(&config->postquote, nextarg);
-        break;
-      case '+':
-        /* prefixed with a plus makes it a just-before-transfer one */
-        nextarg++;
-        err = add2list(&config->prequote, nextarg);
-        break;
-      default:
-        err = add2list(&config->quote, nextarg);
-        break;
-      }
+      err = parse_quote(config, nextarg);
       break;
     case C_RANGE: /* --range */
-      /* Specifying a range WITHOUT A DASH will create an illegal HTTP range
-         (and will not actually be range by definition). The manpage
-         previously claimed that to be a good way, why this code is added to
-         work-around it. */
-      if(ISDIGIT(*nextarg) && !strchr(nextarg, '-')) {
-        char buffer[32];
-        if(curlx_strtoofft(nextarg, NULL, 10, &value)) {
-          warnf(global, "unsupported range point");
-          err = PARAM_BAD_USE;
-        }
-        else {
-          warnf(global,
-                "A specified range MUST include at least one dash (-). "
-                "Appending one for you");
-          msnprintf(buffer, sizeof(buffer), "%" CURL_FORMAT_CURL_OFF_T "-",
-                    value);
-          Curl_safefree(config->range);
-          config->range = strdup(buffer);
-          if(!config->range)
-            err = PARAM_NO_MEM;
-        }
-      }
-      else {
-        /* byte range requested */
-        const char *tmp_range = nextarg;
-        while(*tmp_range) {
-          if(!ISDIGIT(*tmp_range) && *tmp_range != '-' && *tmp_range != ',') {
-            warnf(global, "Invalid character is found in given range. "
-                  "A specified range MUST have only digits in "
-                  "\'start\'-\'stop\'. The server's response to this "
-                  "request is uncertain.");
-            break;
-          }
-          tmp_range++;
-        }
-        err = getstr(&config->range, nextarg, DENY_BLANK);
-      }
+      err = parse_range(global, config, nextarg);
       break;
     case C_REMOTE_TIME: /* --remote-time */
       /* use remote file's time */
@@ -2446,37 +2760,7 @@ ParameterError getparameter(const char *flag, /* f or -long-flag */
       err = add2list(&config->telnet_options, nextarg);
       break;
     case C_UPLOAD_FILE: /* --upload-file */
-      /* we are uploading */
-      if(!config->url_ul)
-        config->url_ul = config->url_list;
-      if(config->url_ul) {
-        /* there is a node here, if it already is filled-in continue to find
-           an "empty" node */
-        while(config->url_ul && (config->url_ul->flags & GETOUT_UPLOAD))
-          config->url_ul = config->url_ul->next;
-      }
-
-      /* now there might or might not be an available node to fill in! */
-
-      if(config->url_ul)
-        /* existing node */
-        url = config->url_ul;
-      else
-        /* there was no free node, create one! */
-        config->url_ul = url = new_getout(config);
-
-      if(!url) {
-        err = PARAM_NO_MEM;
-        break;
-      }
-
-      url->flags |= GETOUT_UPLOAD; /* mark -T used */
-      if(!*nextarg)
-        url->flags |= GETOUT_NOUPLOAD;
-      else {
-        /* "-" equals stdin, but keep the string around for now */
-        err = getstr(&url->infile, nextarg, DENY_BLANK);
-      }
+      err = parse_upload_file(config, nextarg);
       break;
     case C_USER: /* --user */
       /* user:password  */
@@ -2489,95 +2773,14 @@ ParameterError getparameter(const char *flag, /* f or -long-flag */
       cleanarg(clearthis);
       break;
     case C_VERBOSE: /* --verbose */
-      /* This option is a super-boolean with side effect when applied
-       * more than once in the same argument flag, like `-vvv`. */
-      if(!toggle) {
-        global->verbosity = 0;
-        if(set_trace_config(global, "-all"))
-          err = PARAM_NO_MEM;
-        global->tracetype = TRACE_NONE;
-        break;
-      }
-      else if(!nopts) {
-        /* fist `-v` in an argument resets to base verbosity */
-        global->verbosity = 0;
-        if(set_trace_config(global, "-all")) {
-          err = PARAM_NO_MEM;
-          break;
-        }
-      }
-      /* the '%' thing here will cause the trace get sent to stderr */
-      switch(global->verbosity) {
-      case 0:
-        global->verbosity = 1;
-        Curl_safefree(global->trace_dump);
-        global->trace_dump = strdup("%");
-        if(!global->trace_dump)
-          err = PARAM_NO_MEM;
-        else {
-          if(global->tracetype && (global->tracetype != TRACE_PLAIN))
-            warnf(global,
-                  "-v, --verbose overrides an earlier trace option");
-          global->tracetype = TRACE_PLAIN;
-        }
-        break;
-      case 1:
-        global->verbosity = 2;
-        if(set_trace_config(global, "ids,time,protocol"))
-          err = PARAM_NO_MEM;
-        break;
-      case 2:
-        global->verbosity = 3;
-        global->tracetype = TRACE_ASCII;
-        if(set_trace_config(global, "ssl,read,write"))
-          err = PARAM_NO_MEM;
-        break;
-      case 3:
-        global->verbosity = 4;
-        if(set_trace_config(global, "network"))
-          err = PARAM_NO_MEM;
-        break;
-      default:
-        /* no effect for now */
-        break;
-      }
+      err = parse_verbose(global, toggle, nopts);
       break;
     case C_VERSION: /* --version */
       if(toggle)    /* --no-version yields no output! */
         err = PARAM_VERSION_INFO_REQUESTED;
       break;
     case C_WRITE_OUT: /* --write-out */
-      /* get the output string */
-      if('@' == *nextarg) {
-        /* the data begins with a '@' letter, it means that a filename
-           or - (stdin) follows */
-        FILE *file;
-        const char *fname;
-        nextarg++; /* pass the @ */
-        if(!strcmp("-", nextarg)) {
-          fname = "<stdin>";
-          file = stdin;
-        }
-        else {
-          fname = nextarg;
-          file = fopen(fname, FOPEN_READTEXT);
-          if(!file) {
-            errorf(global, "Failed to open %s", fname);
-            err = PARAM_READ_ERROR;
-            break;
-          }
-        }
-        Curl_safefree(config->writeout);
-        err = file2string(&config->writeout, file);
-        if(file && (file != stdin))
-          fclose(file);
-        if(err)
-          break;
-        if(!config->writeout)
-          warnf(global, "Failed to read %s", fname);
-      }
-      else
-        err = getstr(&config->writeout, nextarg, ALLOW_BLANK);
+      err = parse_writeout(global, config, nextarg);
       break;
     case C_PREPROXY: /* --preproxy */
       err = getstr(&config->preproxy, nextarg, DENY_BLANK);
@@ -2624,42 +2827,7 @@ ParameterError getparameter(const char *flag, /* f or -long-flag */
       global->parallel_connect = toggle;
       break;
     case C_TIME_COND: /* --time-cond */
-      switch(*nextarg) {
-      case '+':
-        nextarg++;
-        FALLTHROUGH();
-      default:
-        /* If-Modified-Since: (section 14.28 in RFC2068) */
-        config->timecond = CURL_TIMECOND_IFMODSINCE;
-        break;
-      case '-':
-        /* If-Unmodified-Since:  (section 14.24 in RFC2068) */
-        config->timecond = CURL_TIMECOND_IFUNMODSINCE;
-        nextarg++;
-        break;
-      case '=':
-        /* Last-Modified:  (section 14.29 in RFC2068) */
-        config->timecond = CURL_TIMECOND_LASTMOD;
-        nextarg++;
-        break;
-      }
-      now = time(NULL);
-      config->condtime = (curl_off_t)curl_getdate(nextarg, &now);
-      if(-1 == config->condtime) {
-        /* now let's see if it is a filename to get the time from instead! */
-        rc = getfiletime(nextarg, global, &value);
-        if(!rc)
-          /* pull the time out from the file */
-          config->condtime = value;
-        else {
-          /* failed, remove time condition */
-          config->timecond = CURL_TIMECOND_NONE;
-          warnf(global,
-                "Illegal date format for -z, --time-cond (and not "
-                "a filename). Disabling time condition. "
-                "See curl_getdate(3) for valid date syntax.");
-        }
-      }
+      err = parse_time_cond(global, config, nextarg);
       break;
     case C_MPTCP: /* --mptcp */
       config->mptcp = TRUE;
@@ -2760,9 +2928,7 @@ ParameterError parse_args(struct GlobalConfig *global, int argc,
   }
 
   if(!result && config->content_disposition) {
-    if(config->show_headers)
-      result = PARAM_CONTDISP_SHOW_HEADER;
-    else if(config->resume_from_current)
+    if(config->resume_from_current)
       result = PARAM_CONTDISP_RESUME_FROM;
   }
 

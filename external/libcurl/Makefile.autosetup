@@ -97,7 +97,8 @@ SRCS=	\
 	curl_sha512_256.c \
 	cw-out.c \
 	request.c \
-	socketpair.c
+	socketpair.c \
+	timediff.c
 
 LOCAL_CFLAGS=	-DHAVE_CONFIG_H \
 		-DBUILDING_LIBCURL \

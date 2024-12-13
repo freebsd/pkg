@@ -121,17 +121,18 @@ replaced by their content at that time.
 
 Available substitute variables include:
 
-- `%CLIENT6IP` - IPv6 address of the client running curl
+- `%CLIENT6IP` - IPv6 address of the client running curl (including brackets)
+- `%CLIENT6IP-NB` - IPv6 address of the client running curl (no brackets)
 - `%CLIENTIP` - IPv4 address of the client running curl
 - `%CURL` - Path to the curl executable
 - `%DATE` - current YYYY-MM-DD date
+- `%DEV_NULL` - Null device (e.g. /dev/null)
 - `%FILE_PWD` - Current directory, on Windows prefixed with a slash
 - `%FTP6PORT` - IPv6 port number of the FTP server
 - `%FTPPORT` - Port number of the FTP server
 - `%FTPSPORT` - Port number of the FTPS server
 - `%FTPTIME2` - Timeout in seconds that should be just sufficient to receive a
   response from the test FTP server
-- `%FTPTIME3` - Even longer than `%FTPTIME2`
 - `%GOPHER6PORT` - IPv6 port number of the Gopher server
 - `%GOPHERPORT` - Port number of the Gopher server
 - `%GOPHERSPORT` - Port number of the Gophers server
@@ -431,6 +432,7 @@ Features testable here are:
 - `brotli`
 - `c-ares`
 - `CharConv`
+- `codeset-utf8`. If the running codeset is UTF-8 capable.
 - `cookies`
 - `crypto`
 - `Debug`
@@ -456,6 +458,7 @@ Features testable here are:
 - `libssh`
 - `oldlibssh` (versions before 0.9.4)
 - `libz`
+- `local-http`. The HTTP server runs on 127.0.0.1
 - `manual`
 - `mbedtls`
 - `Mime`
@@ -510,10 +513,6 @@ output is displayed by the command or if the return code is non-zero, the test
 is skipped and the (single-line) output is displayed as reason for not running
 the test.
 
-### `<postcheck>`
-A command line that if set gets run by the test script after the test. If the
-command exists with a non-zero status code, the test is considered failed.
-
 ### `<tool>`
 Name of tool to invoke instead of "curl". This tool must be built and exist
 either in the `libtest/` directory (if the tool name starts with `lib`) or in
@@ -523,6 +522,7 @@ the `unit/` directory (if the tool name starts with `unit`).
 Brief test case description, shown when the test runs.
 
 ### `<setenv>`
+
     variable1=contents1
     variable2=contents2
     variable3
@@ -546,7 +546,7 @@ If there is no test number found above, the HTTP test server uses the number
 following the last dot in the given hostname (made so that a CONNECT can still
 pass on test number) so that "foo.bar.123" gets treated as test case
 123. Alternatively, if an IPv6 address is provided to CONNECT, the last
-hexadecimal group in the address is used as the test number! For example the
+hexadecimal group in the address is used as the test number. For example the
 address "[1234::ff]" would be treated as test case 255.
 
 Set `type="perl"` to write the test case as a perl script. It implies that
@@ -585,7 +585,7 @@ parameter is the not negative integer number of seconds for the delay. This
 'delay' attribute is intended for specific test cases, and normally not
 needed.
 
-### `<filename="%LOGDIR/filename" [nonewline="yes"]>`
+### `<file name="%LOGDIR/filename" [nonewline="yes"]>`
 This creates the named file with this content before the test case is run,
 which is useful if the test case needs a file to act on.
 
@@ -607,6 +607,11 @@ Pass this given data on stdin to the tool.
 If `nonewline` is set, we cut off the trailing newline of this given data
 before comparing with the one actually received by the client
 
+## `<disable>`
+
+If `test-duphandle` is a listed item here, this is not run when
+`--test-duphandle` is used.
+
 ## `<verify>`
 ### `<errorcode>`
 numerical error code curl is supposed to return. Specify a list of accepted
@@ -621,6 +626,14 @@ changing protocol data such as port numbers or user-agent strings.
 ### `<strippart>`
 One perl op per line that operates on the protocol dump. This is pretty
 advanced. Example: `s/^EPRT .*/EPRT stripped/`.
+
+### `<postcheck>`
+A command line that if set gets run by the test script after the test. If the
+command exists with a non-zero status code, the test is considered failed.
+
+### `<notexists>`
+A list of directory entries that are checked for after the test has completed
+and that must not exist. A listed entry existing causes the test to fail.
 
 ### `<protocol [nonewline="yes"][crlf="yes"]>`
 
@@ -665,7 +678,7 @@ test.
 
 `loadfile="filename"` makes loading the data from an external file.
 
-### `<filename="%LOGDIR/filename" [mode="text"]>`
+### `<file name="%LOGDIR/filename" [mode="text"]>`
 The file's contents must be identical to this after the test is complete. Use
 the mode="text" attribute if the output is in text mode on platforms that have
 a text/binary difference.

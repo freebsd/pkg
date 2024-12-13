@@ -1298,6 +1298,9 @@ Introduced in 7.9.6. See CURLOPT_DEBUGFUNCTION(3).
 ## CURLINFO_DOUBLE
 Introduced in 7.4.1.
 
+## CURLINFO_EARLYDATA_SENT_T
+Introduced in 8.11.0.
+
 ## CURLINFO_EFFECTIVE_METHOD
 Introduced in 7.72.0.
 
@@ -3154,6 +3157,9 @@ Introduced in 7.44.0. See CURLOPT_SSL_OPTIONS(3).
 
 ## CURLSSLOPT_REVOKE_BEST_EFFORT
 Introduced in 7.70.0. See CURLOPT_SSL_OPTIONS(3).
+
+## CURLSSLOPT_EARLYDATA
+Introduced in 8.11.0. See CURLOPT_SSL_OPTIONS(3).
 
 ## CURLSSLSET_NO_BACKENDS
 Introduced in 7.56.0. See curl_global_sslset(3).

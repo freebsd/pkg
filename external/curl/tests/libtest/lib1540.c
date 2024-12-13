@@ -23,6 +23,7 @@
  ***************************************************************************/
 #include "test.h"
 
+#include "testtrace.h"
 #include "testutil.h"
 #include "warnless.h"
 #include "memdebug.h"
@@ -56,7 +57,7 @@ static int please_continue(void *userp,
   return 0; /* go on */
 }
 
-static size_t header_callback(void *ptr, size_t size, size_t nmemb,
+static size_t header_callback(char *ptr, size_t size, size_t nmemb,
                               void *userp)
 {
   size_t len = size * nmemb;
@@ -65,7 +66,7 @@ static size_t header_callback(void *ptr, size_t size, size_t nmemb,
   return len;
 }
 
-static size_t write_callback(void *ptr, size_t size, size_t nmemb, void *userp)
+static size_t write_callback(char *ptr, size_t size, size_t nmemb, void *userp)
 {
   struct transfer_status *st = (struct transfer_status *)userp;
   size_t len = size * nmemb;
@@ -106,6 +107,12 @@ CURLcode test(char *URL)
   easy_setopt(curls, CURLOPT_XFERINFOFUNCTION, please_continue);
   easy_setopt(curls, CURLOPT_XFERINFODATA, &st);
   easy_setopt(curls, CURLOPT_NOPROGRESS, 0L);
+
+  libtest_debug_config.nohex = 1;
+  libtest_debug_config.tracetime = 1;
+  test_setopt(curls, CURLOPT_DEBUGDATA, &libtest_debug_config);
+  easy_setopt(curls, CURLOPT_DEBUGFUNCTION, libtest_debug_cb);
+  easy_setopt(curls, CURLOPT_VERBOSE, 1L);
 
   res = curl_easy_perform(curls);
 

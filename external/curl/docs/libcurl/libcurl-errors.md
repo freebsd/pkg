@@ -60,7 +60,7 @@ The URL was not properly formatted.
 
 ## CURLE_NOT_BUILT_IN (4)
 
-A requested feature, protocol or option was not found built-in in this libcurl
+A requested feature, protocol or option was not found built into this libcurl
 due to a build-time decision. This means that a feature or option was not
 enabled or explicitly disabled when libcurl was built and in order to get it
 to function you have to get a rebuilt libcurl.
@@ -203,9 +203,9 @@ Not used in modern versions.
 
 The server does not support or accept range requests.
 
-## CURLE_HTTP_POST_ERROR (34)
+## Obsolete error (34)
 
-This is an odd error that mainly occurs due to internal confusion.
+Not used since 7.56.0.
 
 ## CURLE_SSL_CONNECT_ERROR (35)
 
@@ -236,9 +236,9 @@ LDAP search failed.
 
 Not used in modern versions.
 
-## CURLE_FUNCTION_NOT_FOUND (41)
+## Obsolete error (41)
 
-Function not found. A required zlib function was not found.
+Not used since 7.53.0.
 
 ## CURLE_ABORTED_BY_CALLBACK (42)
 
@@ -525,7 +525,7 @@ You are doomed.
 
 ## CURLM_INTERNAL_ERROR (4)
 
-This can only be returned if libcurl bugs. Please report it to us!
+This can only be returned if libcurl bugs. Please report it to us.
 
 ## CURLM_BAD_SOCKET (5)
 
