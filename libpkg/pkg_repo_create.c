@@ -303,9 +303,9 @@ pkg_create_repo_read_fts(fts_item_t *items, FTS *fts,
 
 struct thr_env {
 	int ntask;
-	int ffd;
-	int mfd;
-	int dfd;
+	FILE *ffile;
+	FILE *mfile;
+	FILE *dfile;
 	struct ucl_emitter_context *ctx;
 	struct pkg_repo_meta *meta;
 	fts_item_t fts_items;
@@ -327,7 +327,7 @@ pkg_create_repo_thread(void *arg)
 
 	pkg_debug(1, "start worker to parse packages");
 
-	if (te->ffd != -1)
+	if (te->ffile != NULL)
 		flags = PKG_OPEN_MANIFEST_ONLY;
 	else
 		flags = PKG_OPEN_MANIFEST_ONLY | PKG_OPEN_MANIFEST_COMPACT;
@@ -364,31 +364,16 @@ pkg_create_repo_thread(void *arg)
 			pthread_mutex_lock(&te->flock);
 			ucl_object_t *o = pkg_emit_object(pkg, 0);
 			ucl_object_emit_streamline_add_object(te->ctx, o);
-			ucl_object_emit_fd(o, UCL_EMIT_JSON_COMPACT, te->mfd);
-			dprintf(te->mfd, "\n");
-#if defined(_DARWIN_C_SOURCE) || defined(__APPLE__)
-			fcntl(te->mfd, F_FULLFSYNC);
-#else
-			fdatasync(te->mfd);
-#endif
+			ucl_object_emit_file(o, UCL_EMIT_JSON_COMPACT, te->mfile);
+			fprintf(te->mfile, "\n");
 			ucl_object_unref(o);
+
+			if (te->ffile != NULL) {
+				pkg_emit_filelist(pkg, te->ffile);
+			}
 
 			pthread_mutex_unlock(&te->flock);
 
-			if (te->ffd != -1) {
-				FILE *fl;
-
-				if (flock(te->ffd, LOCK_EX) == -1) {
-					pkg_emit_errno("pkg_create_repo_worker", "flock");
-					ret = EPKG_FATAL;
-					goto cleanup;
-				}
-				fl = fdopen(dup(te->ffd), "a");
-				pkg_emit_filelist(pkg, fl);
-				fclose(fl);
-
-				flock(te->ffd, LOCK_UN);
-			}
 			pkg_free(pkg);
 		}
 		pthread_mutex_lock(&te->nlock);
@@ -770,6 +755,7 @@ pkg_repo_create(struct pkg_repo_create *prc, char *path)
 	struct thr_env te = { 0 };
 	size_t len;
 	int fd;
+	int dfd, ffd, mfd;
 	int retcode = EPKG_FATAL;
 	ucl_object_t *meta_dump;
 	char *repopath[2];
@@ -777,7 +763,7 @@ pkg_repo_create(struct pkg_repo_create *prc, char *path)
 	if (prc->outdir == NULL)
 		prc->outdir = path;
 
-	te.mfd = te.ffd = te.dfd = -1;
+	te.dfile = te.ffile = te.mfile = NULL;
 
 	if (!is_dir(path)) {
 		pkg_emit_error("%s is not a directory", path);
@@ -845,17 +831,28 @@ pkg_repo_create(struct pkg_repo_create *prc, char *path)
 		goto cleanup;
 	}
 
-	if ((te.mfd = openat(prc->ofd, prc->meta->manifests,
+	if ((mfd = openat(prc->ofd, prc->meta->manifests,
 	     O_CREAT|O_TRUNC|O_WRONLY, 00644)) == -1) {
 		goto cleanup;
 	}
-	if ((te.dfd = openat(prc->ofd, prc->meta->data,
+	if ((te.mfile = fdopen(mfd,"w")) == NULL) {
+		goto cleanup;
+	}
+
+	if ((dfd = openat(prc->ofd, prc->meta->data,
 	    O_CREAT|O_TRUNC|O_WRONLY, 00644)) == -1) {
 		goto cleanup;
 	}
+	if ((te.dfile = fdopen(dfd,"w")) == NULL) {
+		goto cleanup;
+	}
+
 	if (prc->filelist) {
-		if ((te.ffd = openat(prc->ofd, prc->meta->filesite,
+		if ((ffd = openat(prc->ofd, prc->meta->filesite,
 		        O_CREAT|O_TRUNC|O_WRONLY, 00644)) == -1) {
+			goto cleanup;
+		}
+		if ((te.ffile = fdopen(ffd,"w")) == NULL) {
 			goto cleanup;
 		}
 	}
@@ -891,7 +888,7 @@ pkg_repo_create(struct pkg_repo_create *prc, char *path)
 	ucl_object_insert_key(obj,
 	    prc->expired_packages == NULL ? ucl_object_typed_new(UCL_ARRAY) : prc->expired_packages,
 	    "expired_packages", 0, false);
-	f = ucl_object_emit_fd_funcs(te.dfd);
+	f = ucl_object_emit_file_funcs(te.dfile);
 	te.ctx = ucl_object_emit_streamline_new(obj, UCL_EMIT_JSON_COMPACT, f);
 	ucl_object_t *ar = ucl_object_typed_new(UCL_ARRAY);
 	ar->key = "packages";
@@ -944,12 +941,12 @@ pkg_repo_create(struct pkg_repo_create *prc, char *path)
 	}
 	retcode = EPKG_OK;
 cleanup:
-	if (te.mfd != -1)
-		close(te.mfd);
-	if (te.ffd != -1)
-		close(te.ffd);
-	if (te.dfd != -1)
-		close(te.dfd);
+	if (te.mfile != NULL)
+		fclose(te.mfile);
+	if (te.ffile != NULL)
+		fclose(te.ffile);
+	if (te.dfile != NULL)
+		fclose(te.dfile);
 	if (fts != NULL)
 		fts_close(fts);
 
