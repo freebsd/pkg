@@ -151,13 +151,41 @@ analyse_elf(struct pkg *pkg, const char *fpath)
 		goto cleanup; /* not a dynamically linked elf: no results */
 	}
 
-	/* A shared object for use with dlopen(3) may lack a NOTE section and
-           will therefore have unknown elf_abi.os. */
 	struct pkg_abi elf_abi;
 	elf_parse_abi(e, &elfhdr, &elf_abi);
-	if (elf_abi.os == PKG_OS_UNKNOWN || elf_abi.arch == PKG_ARCH_UNKNOWN) {
+	if (elf_abi.arch == PKG_ARCH_UNKNOWN) {
 		ret = EPKG_END;
 		goto cleanup;
+	}
+
+	if (elf_abi.os == PKG_OS_UNKNOWN) {
+		/* There is no reliable way to identify shared libraries targeting Linux.
+		 * It would be possible to reliably identify Linux executables by checking
+		 * the dynamic linker path in DT_INTERP. Shared libraries however do not
+		 * have DT_INTERP set.
+		 *
+		 * Reading the notes section for NT_GNU_ABI_TAG is not sufficient either
+		 * as this is only required for executables, not shared libraries.
+		 * See https://refspecs.linuxfoundation.org/LSB_1.2.0/gLSB/noteabitag.html
+		 *
+		 * Therefore, if pkg is targeting Linux assume that ELF files with unknown
+		 * target OS are also targeting Linux.
+		 *
+		 * Furthermore, if pkg is targeting FreeBSD also assume that ELF
+		 * files with unknown target OS are targeting Linux. This is consistent
+		 * with the behavior of the FreeBSD kernel, which falls back to Linux by
+		 * default if it is unable to determine the target OS of an ELF file.
+		 * (This behavior can be overridden with a fallback_brand sysctl.)
+		 *
+		 * We could add a pkg option to configure the fallback OS
+		 * in the future if necessary.
+		 */
+		if (ctx.abi.os == PKG_OS_LINUX || ctx.abi.os == PKG_OS_FREEBSD) {
+			elf_abi.os = PKG_OS_LINUX;
+		} else {
+			ret = EPKG_END;
+			goto cleanup;
+		}
 	}
 
 	enum pkg_shlib_flags flags = pkg_shlib_flags_from_abi(&elf_abi);
