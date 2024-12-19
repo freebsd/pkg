@@ -453,7 +453,12 @@ static struct config_entry c[] = {
 		PKG_BOOL,
 		"PKG_REINSTALL_ON_OPTIONS_CHANGE",
 		"TRUE",
-	}
+	},
+	{
+		PKG_BOOL,
+		"TRACK_LINUX_COMPAT_SHLIBS",
+		"FALSE",
+	},
 };
 
 static bool parsed = false;

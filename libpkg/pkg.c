@@ -905,7 +905,8 @@ pkg_shlib_flags_from_abi(const struct pkg_abi *shlib_abi)
 	enum pkg_shlib_flags flags = PKG_SHLIB_FLAGS_NONE;
 
 	if (ctx.abi.os == PKG_OS_FREEBSD) {
-		if (shlib_abi->os == PKG_OS_LINUX) {
+		if (shlib_abi->os == PKG_OS_LINUX &&
+		    pkg_object_bool(pkg_config_get("TRACK_LINUX_COMPAT_SHLIBS"))) {
 			flags |= PKG_SHLIB_FLAGS_COMPAT_LINUX;
 		}
 
