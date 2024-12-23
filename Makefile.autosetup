@@ -16,10 +16,9 @@ clean-profiles:
 	rm -f /tmp/pkg.*.profraw
 @endif
 
-configure_call: auto.def
+configure_call: auto.def @CONF_GEN_FILES@
 	sh configure_call
-	${MAKE} all
-	exit 0
+	${MAKE}
 
 Makefile: configure_call
 
