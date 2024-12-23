@@ -16,10 +16,17 @@ clean-profiles:
 	rm -f /tmp/pkg.*.profraw
 @endif
 
+configure_call: auto.def
+	sh configure_call
+	${MAKE} all
+	exit 0
+
+Makefile: configure_call
+
 check: all
 
 @if TESTS
-all: Kyuafile
+all: Kyuafile Makefile
 
 check: UndefinedBehaviour.suppress Leak.suppress
 	export UBSAN_OPTIONS=print_stacktrace=1:halt_on_error=1:suppressions=$(top_builddir)/UndefinedBehaviour.suppress; \

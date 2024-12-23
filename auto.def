@@ -396,4 +396,8 @@ foreach dir [list external/blake2 external/picosat \
 	make-template $dir/Makefile.autosetup $dir/Makefile
 }
 
+set out [open "configure_call" w+]
+puts $out "$autosetup(srcdir)/configure $argv"
+close $out
+
 file mkdir external/libucl/src scripts/periodic scripts/completion tests/lib tests/frontend
