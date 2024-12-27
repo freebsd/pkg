@@ -13,206 +13,191 @@
 
 name: build
 
-on:
-    pull_request:
-      branches:
-          - main
-    push:
+"on":
+  pull_request:
+    branches:
+      - main
+  push:
 
 permissions:
-    contents: read
+  contents: read
 
 jobs:
-    build:
-        name: build ${{ join(matrix.sanitize, '+') }} ${{ matrix.build-os }} ${{ matrix.compiler }}
-        runs-on: "${{ matrix.build-os }}"
-        strategy:
-            fail-fast: false
-            matrix:
-                build-os:
-                - ubuntu-24.04
-                - macos-latest
-                sanitize:
-                - [ ]
-                - [ "asan", "lsan" ]
-                - [ "ubsan", "tsan" ]
-                include:
-                - build-os: macos-latest
-                  compiler: clang-19
-                  pkgs: 
-                  - pkg-config
-                  - libarchive 
-                  - llvm@19
-                  llvm-bindir: /opt/homebrew/opt/llvm@19/bin
-                - build-os: ubuntu-24.04
-                  compiler: clang-18
-                  pkgs: 
-                  - clang-18
-                  - libcurl4-openssl-dev
-                  - libsqlite3-dev
-                  - libbsd-dev
-                  - libarchive-tools
-                  - libarchive-dev
-                  - libssl-dev
-                  - liblzma-dev
-                  - liblua5.2-dev
-                  - liblzo2-dev
-                  - libattr1-dev
-                  - libacl1-dev
-                  - libatf-dev
-                  - kyua
-                  - atf-sh
-                  - build-essential
-                  - zlib1g-dev
-                  - libbz2-dev
-                  - python3
-                  - pkg-config
-                  - m4
-                  llvm-bindir: /usr/lib/llvm-18/bin
+  build:
+    name: build ${{ join(matrix.sanitize, '+') }} ${{ matrix.build-os }} ${{ matrix.compiler }}
+    runs-on: "${{ matrix.build-os }}"
+    strategy:
+      fail-fast: false
+      matrix:
+        build-os:
+          - ubuntu-24.04
+          - macos-15
+        sanitize:
+          - []
+          - ["asan", "lsan"]
+          - ["ubsan", "tsan"]
+        include:
+          - build-os: macos-15
+            compiler: clang-19
+            pkgs:
+              # - pkgconf comes preinstalled on the GitHub runner
+              - libarchive
+              - llvm@19
+            llvm-bindir: /opt/homebrew/opt/llvm@19/bin
+          - build-os: ubuntu-24.04
+            compiler: clang-18
+            pkgs:
+              - clang-18
+              - libcurl4-openssl-dev
+              - libsqlite3-dev
+              - libbsd-dev
+              - libarchive-tools
+              - libarchive-dev
+              - libssl-dev
+              - liblzma-dev
+              - liblua5.2-dev
+              - liblzo2-dev
+              - libattr1-dev
+              - libacl1-dev
+              - libatf-dev
+              - kyua
+              - atf-sh
+              - build-essential
+              - zlib1g-dev
+              - libbz2-dev
+              - python3
+              - pkg-config
+              - m4
+            llvm-bindir: /usr/lib/llvm-18/bin
+    steps:
+      - name: install packages (macOS)
+        if: runner.os == 'macOS'
+        run: |
+          # on MacOS we build with
+          #   * latest clang@19 from brew (system provided clang lacks sanitizers)
+          #   * ld from system
+          #   * libarchive from brew (system provided libarchive has issues)
+          #   * openssl from brew
+          #   * libcurl from system
+          #
 
-                - build-os: ubuntu-latest 
-                  compiler: clang-15
-                  pkgs: 
-                  - clang-15
-                  - libcurl4-openssl-dev
-                  - libsqlite3-dev
-                  - libbsd-dev
-                  - libarchive-tools
-                  - libarchive-dev
-                  - libssl-dev
-                  - liblzma-dev
-                  - liblua5.2-dev
-                  - liblzo2-dev
-                  - libattr1-dev
-                  - libacl1-dev
-                  - libatf-dev
-                  - kyua
-                  - atf-sh
-                  - build-essential
-                  - zlib1g-dev
-                  - libbz2-dev
-                  - python3
-                  - pkg-config
-                  - m4
-                  llvm-bindir: /usr/lib/llvm-15/bin
-                  sanitize: [] 
-        steps:
-        - name: install packages (macOS)
-          if: runner.os == 'macOS'
-          run: |
-            # on MacOS we build with 
-            #   * latest clang@19 from brew (system provided clang lacks sanitizers)
-            #   * ld from system
-            #   * libarchive from brew (system provided libarchive has issues)
-            #   * openssl from brew
-            #   * libcurl from system
-            #
+          brew update --quiet || true
 
-            brew update --quiet || true
-            #brew remove pkg-config@0.29.2 || true # used to get spurious errors with pkgconf
-            brew install ${{ join(matrix.pkgs, ' ') }}
+          # temporarily use unstable atf to benefit from fix for std::vector
+          brew install --HEAD atf
+          
+          brew install ${{ join(matrix.pkgs, ' ') }}
 
-            # kyua was kicked out of brew due to lack of activity
-            # we patch away the disabled line and install the last built binary version
-            curl https://raw.githubusercontent.com/Homebrew/homebrew-core/master/Formula/k/kyua.rb | sed 's/[[:space:]]*disable.*$//'  > kyua.rb
-            brew install --formula ./kyua.rb
+          # kyua was kicked out of brew due to lack of activity
+          # we patch away the disabled line and install the last built binary version
+          curl https://raw.githubusercontent.com/Homebrew/homebrew-core/master/Formula/k/kyua.rb |
+            sed 's/^[[:space:]]*disable.*$//'  > kyua.rb
+          brew install --formula ./kyua.rb
 
-            # We make sure pkg-config picks up brew's libarchive instead of pointing to system libarchive
-            echo PKG_CONFIG_PATH=$(brew --prefix libarchive)/lib/pkgconfig >> "${GITHUB_ENV}"
-        - name: install packages (Linux)
-          if: runner.os == 'Linux'
-          run: |
-            sudo apt-get update --quiet || true
-            sudo apt-get -yq --no-install-suggests --no-install-recommends install ${{ join(matrix.pkgs, ' ') }}
-        - uses: actions/checkout@v4
-          with:
-            path: src.pkg
-        - name: setup environment
-          run: |
-            echo "CC=${{ matrix.llvm-bindir }}/clang" >> "${GITHUB_ENV}"
-            echo "CXX=${{ matrix.llvm-bindir }}/clang++" >> "${GITHUB_ENV}"
-            echo "CPP=${{ matrix.llvm-bindir }}/clang-cpp" >> "${GITHUB_ENV}"
-            # this is miraculously not picked up by automake as the default
-            echo "CC_FOR_BUILD=${{ matrix.llvm-bindir }}/clang" >> "${GITHUB_ENV}"
-            echo "SRC_PKG=${GITHUB_WORKSPACE}/src.pkg" >> "${GITHUB_ENV}"
-            echo "BUILD_PKG=${GITHUB_WORKSPACE}/build.pkg" >> "${GITHUB_ENV}"
-            echo "INST_PKG=${GITHUB_WORKSPACE}/inst.pkg" >> "${GITHUB_ENV}"
-            echo "NPROC=`getconf _NPROCESSORS_ONLN 2>/dev/null || getconf NPROCESSORS_ONLN 2>/dev/null || echo 1`" >> "${GITHUB_ENV}"
+          # We make sure pkg-config picks up brew's libarchive instead of pointing to system libarchive
+          echo PKG_CONFIG_PATH=$(brew --prefix libarchive)/lib/pkgconfig >> "${GITHUB_ENV}"
+      - name: install packages (Linux)
+        if: runner.os == 'Linux'
+        run: |
+          sudo apt-get update --quiet || true
+          sudo apt-get -yq --no-install-suggests --no-install-recommends install \
+            ${{ join(matrix.pkgs, ' ') }}
+      - uses: actions/checkout@v4
+        with:
+          path: src.pkg
+      - name: setup environment
+        run: |
+          echo "CC=${{ matrix.llvm-bindir }}/clang" >> "${GITHUB_ENV}"
+          echo "CXX=${{ matrix.llvm-bindir }}/clang++" >> "${GITHUB_ENV}"
+          echo "CPP=${{ matrix.llvm-bindir }}/clang-cpp" >> "${GITHUB_ENV}"
+          # this is miraculously not picked up by automake as the default
+          echo "CC_FOR_BUILD=${{ matrix.llvm-bindir }}/clang" >> "${GITHUB_ENV}"
+          echo "SRC_PKG=${GITHUB_WORKSPACE}/src.pkg" >> "${GITHUB_ENV}"
+          echo "BUILD_PKG=${GITHUB_WORKSPACE}/build.pkg" >> "${GITHUB_ENV}"
+          echo "INST_PKG=${GITHUB_WORKSPACE}/inst.pkg" >> "${GITHUB_ENV}"
+          echo "NPROC=`getconf _NPROCESSORS_ONLN 2>/dev/null ||
+            getconf NPROCESSORS_ONLN 2>/dev/null ||
+            echo 1`" >> "${GITHUB_ENV}"
 
-        - name: build pkg
-          run: |
-            CFG_OPTS=""
-            for i in ${{ join(matrix.sanitize, ' ') }}; do
-              CFG_OPTS="${CFG_OPTS} --with-${i}"
-            done
-            echo Building pkg with ${{ matrix.sanitize }} .. ${CFG_OPTS} 
-            echo uname -a: $(uname -a)
-            echo uname -m: $(uname -m)
-            echo uname -p: $(uname -p)
-            kyua about | head -1
-            echo NPROC="${NPROC}"
-            echo CC="${CC}"
-            echo CPP="${CPP}"
-            echo PKG_CONFIG_PATH="${PKG_CONFIG_PATH}"
-            echo SRC_PKG="${SRC_PKG}"
-            echo BUILD_PKG="${BUILD_PKG}"
-            echo INST_PKG="${INST_PKG}"
+      - name: build pkg
+        run: |
+          CFG_OPTS=""
+          for i in ${{ join(matrix.sanitize, ' ') }}; do
+            CFG_OPTS="${CFG_OPTS} --with-${i}"
+          done
+          echo Building pkg with ${{ matrix.sanitize }} .. ${CFG_OPTS}
+          echo uname -a: $(uname -a)
+          echo uname -m: $(uname -m)
+          echo uname -p: $(uname -p)
+          kyua about | head -1
+          echo NPROC="${NPROC}"
+          echo CC="${CC}"
+          echo CPP="${CPP}"
+          echo PKG_CONFIG_PATH="${PKG_CONFIG_PATH}"
+          echo SRC_PKG="${SRC_PKG}"
+          echo BUILD_PKG="${BUILD_PKG}"
+          echo INST_PKG="${INST_PKG}"
 
-            mkdir -p "${BUILD_PKG}"
-            cd "${BUILD_PKG}"
-            ${SRC_PKG}/configure --prefix=${INST_PKG} --with-libarchive.pc --with-libcurl --with-openssl.pc ${CFG_OPTS}
-            make -j${NPROC}
+          mkdir -p "${BUILD_PKG}"
+          cd "${BUILD_PKG}"
+          ${SRC_PKG}/configure --prefix=${INST_PKG} --with-libarchive.pc --with-libcurl \
+            --with-openssl.pc ${CFG_OPTS}
+          make -j${NPROC}
 
-        - name: check pkg
-          run: |
-            set +e
-            echo Checking pkg
-            cd "${BUILD_PKG}"
-            make check
-            check_exit=$?
+      - name: check pkg
+        run: |
+          set +e
+          echo Checking pkg
+          cd "${BUILD_PKG}"
+          make check
+          check_exit=$?
 
-            if [ $check_exit -eq 0 ]; then    
-              echo "# ✅ All mandatory checks passed" >> $GITHUB_STEP_SUMMARY
-              kyua report
-            else
-              echo "# ❌ Some checks failed" >> $GITHUB_STEP_SUMMARY
-              echo "::error file=.github/workflows/build.yaml,line=173,endLine=173,title=Checks failed!::make check failed"
-              kyua report --verbose
-            fi
+          if [ $check_exit -eq 0 ]; then
+            echo "# ✅ All mandatory checks passed" >> $GITHUB_STEP_SUMMARY
+            kyua report
+          else
+            echo "# ❌ Some checks failed" >> $GITHUB_STEP_SUMMARY
+            LOCATION="file=.github/workflows/build.yaml,line=173,endLine=173"
+            echo "::error ${LOCATION},title=Checks failed!::make check failed"
+            kyua report --verbose
+          fi
 
-            kyua report --results-filter=xfail,broken,failed | sed 's/===>/##/' >> $GITHUB_STEP_SUMMARY
-            if [ $check_exit -ne 0 ]; then
-              kyua report --verbose --results-filter=xfail,broken,failed | sed 's/===>/##/' >> $GITHUB_STEP_SUMMARY
-            fi
+          kyua report --results-filter=xfail,broken,failed | sed 's/===>/##/' >> $GITHUB_STEP_SUMMARY
+          if [ $check_exit -ne 0 ]; then
+            kyua report --verbose --results-filter=xfail,broken,failed |
+              sed 's/===>/##/' >> $GITHUB_STEP_SUMMARY
+          fi
 
-            kyua report-html # produces html subdirectory
-            # also include plain text
-            kyua report --verbose --results-filter=xfail,broken,failed > html/test-reportfailed.txt
-            # also include plain JUnit
-            kyua report-junit --output html/test-reportfailed.xml
-            # also include the kyua log
-            cp -a ~/.kyua/logs html/
+          kyua report-html # produces html subdirectory
+          # also include plain text
+          kyua report --verbose --results-filter=xfail,broken,failed > html/test-reportfailed.txt
+          # also include plain JUnit
+          kyua report-junit --output html/test-reportfailed.xml
+          # also include the kyua log
+          cp -a ~/.kyua/logs html/
 
-            exit $check_exit
+          exit $check_exit
 
-        - name: install pkg
-          run: |
-              cd "${BUILD_PKG}"
-              make install
-          if: ${{ success() && '' == join(matrix.sanitize, '') }} # only install successful non-debug builds
+      - name: install pkg
+        run: |
+          cd "${BUILD_PKG}"
+          make install
+        # only install successful non-debug builds
+        if: ${{ success() && '' == join(matrix.sanitize, '') }}
 
-        - name: tar build & test reports
-          run: |
-            test -d ${INST_PKG} && tar cvf pkg-${{ matrix.build-os }}-${{ matrix.compiler }}.tar -C ${INST_PKG} .
-            tar cvf pkg-${{ matrix.build-os }}-${{ matrix.compiler }}-report${{ join(matrix.sanitize, '_') }}.tar -C "${BUILD_PKG}/html" .
-          if: ${{ always() }}
+      - name: tar build & test reports
+        run: |
+          NAME="pkg-${{ matrix.build-os }}-${{ matrix.compiler }}"
+          test -d ${INST_PKG} && tar cvf ${NAME}.tar -C ${INST_PKG} .
+          tar cvf ${NAME}-report${{ join(matrix.sanitize, '_') }}.tar -C "${BUILD_PKG}/html" .
+        if: ${{ always() }}
 
-        - name: archive build artefacts
-          uses: actions/upload-artifact@v4
-          with:
-              name: pkg-test${{ join(matrix.sanitize, '_') }}-${{ matrix.build-os }}-${{ matrix.compiler }}
-              path: pkg*.tar
-              compression-level: 0
-              retention-days: 10
-              overwrite: true
-          if: ${{ always() }}
+      - name: archive build artefacts
+        uses: actions/upload-artifact@v4
+        with:
+          name: pkg-test${{ join(matrix.sanitize, '_') }}-${{ matrix.build-os }}-${{ matrix.compiler }}
+          path: pkg*.tar
+          compression-level: 0
+          retention-days: 10
+          overwrite: true
+        if: ${{ always() }}
