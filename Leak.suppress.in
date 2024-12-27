@@ -1,7 +1,16 @@
-# Unfixable leak reports from system libraries on MacOS
-leak:fork
-leak:dyld4::Loader::*
+# Suppress certain memory leaks
+# See https://github.com/google/sanitizers/wiki/AddressSanitizerLeakSanitizer#suppressions
+# as a reference for this file format.
 
+
+# Unfixable leak reports from system libraries on MacOS
+leak:dyld4::Loader::*
+leak:dyld4::APIs::*
+leak:dyld3::MachOAnalyzer::*
+leak:fork
+leak:tlv_get_addr*
+leak:localtime*
+leak:vfprintf*
 
 # Suspected unfixable leak from within libcrypto on Ubuntu
 # Direct leak of 32 byte(s) in 1 object(s) allocated from:
@@ -21,6 +30,8 @@ leak:ucl_parser_add_fd
 leak:atf_map_init_charpp
 leak:atf_tp_get_tcs
 leak:atf_utils_wait
+# more from atf --HEAD
+leak:atf_tc_run
 
 ## FIXME: Temporarily suppress inside pkg source
 
@@ -152,6 +163,14 @@ leak:pkg_get_element
 #    #7 0x000109ebd1f2 in main main.c:809
 #    #8 0x7ff8018b92cc in start+0x70c (dyld:x86_64+0xfffffffffff4f2cc)
 leak:pkg_conflicts_append_chain
+
+# multiple repo-names not properly cleaned up
+#Direct leak of 8 byte(s) in 1 object(s) allocated from:
+#    #0 0x00011002a117 in realloc+0x87 (libclang_rt.asan_osx_dynamic.dylib:x86_64h+0xe0117)
+#    #1 0x00010e677c5a in exec_install install.c:142
+#    #2 0x00010e67d562 in main main.c:809
+#    #3 0x7ff80c3302cc in start+0x70c (dyld:x86_64+0xfffffffffff4f2cc)
+leak:exec_install
 
 # repo->meta not properly freed
 #Direct leak of 176 byte(s) in 1 object(s) allocated from:
