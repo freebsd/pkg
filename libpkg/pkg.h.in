@@ -1722,12 +1722,6 @@ void pkg_create_set_timestamp(struct pkg_create *, time_t);
 void pkg_create_set_expand_manifest(struct pkg_create *, bool);
 int pkg_create(struct pkg_create *, const char *, const char *, bool);
 int pkg_create_i(struct pkg_create *, struct pkg *, bool);
-/* deprecated */
-int pkg_create_from_manifest(const char *, pkg_formats, const char *,
-    const char *, const char *) __attribute__((deprecated));
-int pkg_create_staged(const char *, pkg_formats, const char *, const char *, char *, bool) __attribute__((deprecated));
-int pkg_create_installed(const char *, pkg_formats, struct pkg *) __attribute__((deprecated));
-int pkgdb_register_ports(struct pkgdb *db, struct pkg *pkg) __attribute__((deprecated));;
 int pkg_execute_deferred_triggers(void);
 int pkg_add_triggers(void);
 

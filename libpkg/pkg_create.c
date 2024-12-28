@@ -433,25 +433,6 @@ pkg_create(struct pkg_create *pc, const char *metadata, const char *plist,
 	return (ret);
 }
 
-/* The "no concessions to old pkg_tools" variant: just get everything
- * from the manifest */
-int
-pkg_create_from_manifest(const char *outdir, pkg_formats format,
-    const char *rootdir, const char *manifest, const char *plist)
-{
-	struct pkg_create *pc;
-	int ret;
-
-	pc = pkg_create_new();
-	pc->format = format;
-	pkg_create_set_rootdir(pc, rootdir);
-	pkg_create_set_output_dir(pc, outdir);
-
-	ret = pkg_create(pc, manifest, plist, false);
-	pkg_create_free(pc);
-	return (ret);
-}
-
 static int
 pkg_load_message_from_file(int fd, struct pkg *pkg, const char *path)
 {
@@ -595,38 +576,6 @@ pkg_load_metadata(struct pkg *pkg, const char *mfile, const char *md_dir,
 		return (ret);
 
 	fixup_abi(pkg, rootdir, testing);
-	return (ret);
-}
-
-int
-pkg_create_staged(const char *outdir, pkg_formats format, const char *rootdir,
-    const char *md_dir, char *plist, bool hash)
-{
-	struct pkg_create *pc;
-	int ret;
-
-	pc = pkg_create_new();
-	pc->format = format;
-	pkg_create_set_rootdir(pc, rootdir);
-	pkg_create_set_output_dir(pc, outdir);
-
-	ret = pkg_create(pc, md_dir, plist, hash);
-	pkg_create_free(pc);
-	return (ret);
-}
-
-int
-pkg_create_installed(const char *outdir, pkg_formats format, struct pkg *pkg)
-{
-	struct pkg_create *pc;
-	int ret;
-
-	pc = pkg_create_new();
-	pc->format = format;
-	pkg_create_set_output_dir(pc, outdir);
-
-	ret = pkg_create_i(pc, pkg, false);
-	pkg_create_free(pc);
 	return (ret);
 }
 

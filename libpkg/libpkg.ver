@@ -27,9 +27,7 @@ global:
 	pkg_copy_file;
 	pkg_create;
 	pkg_create_free;
-	pkg_create_from_manifest;
 	pkg_create_i;
-	pkg_create_installed;
 	pkg_create_new;
 	pkg_create_repo;
 	pkg_create_set_compression_level;
@@ -40,7 +38,6 @@ global:
 	pkg_create_set_overwrite;
 	pkg_create_set_rootdir;
 	pkg_create_set_timestamp;
-	pkg_create_staged;
 	pkg_dep_get;
 	pkg_dep_is_locked;
 	pkg_deps;
@@ -232,7 +229,6 @@ global:
 	pkgdb_query_shlib_provide;
 	pkgdb_query_shlib_require;
 	pkgdb_query_which;
-	pkgdb_register_ports;
 	pkgdb_release_lock;
 	pkgdb_repo_query;
 	pkgdb_repo_query2;
