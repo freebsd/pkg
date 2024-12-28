@@ -158,33 +158,15 @@ ATF_TC_BODY(print_msg, tc)
 	lua_pushinteger(L, fd);
 	lua_setglobal(L, "msgfd");
 
-	pid_t p = atf_utils_fork();
-	if (p == 0) {
-		if (luaL_dostring(L, "test.print_msg()")) {
-			printf("%s\n", lua_tostring(L, -1));
-		}
-		exit(lua_tonumber(L, -1));
-	}
-	atf_utils_wait(p, 0, "[string \"test.print_msg()\"]:1: bad argument #0 to 'print_msg' (pkg.print_msg takes exactly one argument)\n", "");
+	ATF_REQUIRE(luaL_dostring(L, "test.print_msg()") != 0);
+	ATF_REQUIRE_STREQ(lua_tostring(L, -1), "[string \"test.print_msg()\"]:1: bad argument #0 to 'print_msg' (pkg.print_msg takes exactly one argument)");
+	ATF_REQUIRE_EQ(lua_tonumber(L, -1), 0);
 
-	p = atf_utils_fork();
-	if (p == 0) {
-		if (luaL_dostring(L, "test.print_msg(1, 2)")) {
-			printf("%s\n", lua_tostring(L, -1));
-		}
-		exit(lua_tonumber(L, -1));
-	}
-	atf_utils_wait(p, 0, "[string \"test.print_msg(1, 2)\"]:1: bad argument #2 to 'print_msg' (pkg.print_msg takes exactly one argument)\n", "");
+	ATF_REQUIRE(luaL_dostring(L, "test.print_msg(1, 2)") != 0);
+	ATF_REQUIRE_STREQ(lua_tostring(L, -1), "[string \"test.print_msg(1, 2)\"]:1: bad argument #2 to 'print_msg' (pkg.print_msg takes exactly one argument)");
+	ATF_REQUIRE_EQ(lua_tonumber(L, -1), 0);
 
-	p = atf_utils_fork();
-	if (p == 0) {
-		if (luaL_dostring(L, "test.print_msg(\"bla\")")) {
-			printf("%s\n", lua_tostring(L, -1));
-		}
-		exit(lua_tonumber(L, -1));
-	}
-	atf_utils_wait(p, 0, "", "");
-
+	ATF_REQUIRE(luaL_dostring(L, "test.print_msg(\"bla\")") == 0);
 	int err = close(fd);
 	ATF_REQUIRE_MSG(0 == err, "close failed (%d,%s)", errno, strerror(errno));
 
