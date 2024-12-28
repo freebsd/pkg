@@ -108,63 +108,36 @@ ATF_TC_BODY(stat, tc)
 	lua_pushinteger(L, rootfd);
 	lua_setglobal(L, "rootfd");
 
-	pid_t p = atf_utils_fork();
-	if (p == 0) {
-		if (luaL_dostring(L, "test.stat(\".\", \"plop\")")) {
-			printf("%s\n", lua_tostring(L, -1));
-		}
-		exit(lua_tonumber(L, -1));
-	}
-	atf_utils_wait(p, 0, "[string \"test.stat(\".\", \"plop\")\"]:1: bad argument #2 to 'stat' (pkg.stat takes exactly one argument)\n", "");
+	ATF_REQUIRE(luaL_dostring(L, "test.stat(\".\", \"plop\")") != 0);
+	ATF_REQUIRE_STREQ(lua_tostring(L, -1), "[string \"test.stat(\".\", \"plop\")\"]:1: bad argument #2 to 'stat' (pkg.stat takes exactly one argument)");
+	ATF_REQUIRE_EQ(lua_tonumber(L, -1), 0);
 
-	p = atf_utils_fork();
-	if (p == 0) {
-		if (luaL_dostring(L, "test.stat()")) {
-			printf("%s\n", lua_tostring(L, -1));
-		}
-		exit(lua_tonumber(L, -1));
-	}
-	atf_utils_wait(p, 0, "[string \"test.stat()\"]:1: bad argument #0 to 'stat' (pkg.stat takes exactly one argument)\n", "");
+	ATF_REQUIRE(luaL_dostring(L, "test.stat()") != 0);
+	ATF_REQUIRE_STREQ(lua_tostring(L, -1), "[string \"test.stat()\"]:1: bad argument #0 to 'stat' (pkg.stat takes exactly one argument)");
+	ATF_REQUIRE_EQ(lua_tonumber(L, -1), 0);
 
-	p = atf_utils_fork();
-	if (p == 0) {
-		if (luaL_dostring(L, "st = test.stat(\".\")\nprint(st.type)")) {
-			printf("%s\n", lua_tostring(L, -1));
-		}
-		exit(lua_tonumber(L, -1));
-	}
-	atf_utils_wait(p, 0, "dir\n", "");
+	ATF_REQUIRE(luaL_dostring(L, "st = test.stat(\".\")\nres = st.type") == 0);
+	lua_getglobal(L, "res");
+	ATF_REQUIRE(lua_isstring(L, -1));
+	ATF_REQUIRE_STREQ(lua_tostring(L,-1), "dir");
 
 	close(open("testfile", O_CREAT|O_TRUNC, 0644));
-	p = atf_utils_fork();
-	if (p == 0) {
-		if (luaL_dostring(L, "st = test.stat(\"testfile\")\nprint(st.type)")) {
-			printf("%s\n", lua_tostring(L, -1));
-		}
-		exit(lua_tonumber(L, -1));
-	}
-	atf_utils_wait(p, 0, "reg\n", "");
+	ATF_REQUIRE(luaL_dostring(L, "st = test.stat(\"testfile\")\nres = st.type") == 0);
+	lua_getglobal(L, "res");
+	ATF_REQUIRE(lua_isstring(L, -1));
+	ATF_REQUIRE_STREQ(lua_tostring(L,-1), "reg");
 
 	symlink("testfile", "plop");
-	p = atf_utils_fork();
-	if (p == 0) {
-		if (luaL_dostring(L, "st = test.stat(\"plop\")\nprint(st.type)")) {
-			printf("%s\n", lua_tostring(L, -1));
-		}
-		exit(lua_tonumber(L, -1));
-	}
-	atf_utils_wait(p, 0, "lnk\n", "");
+	ATF_REQUIRE(luaL_dostring(L, "st = test.stat(\"plop\")\nres = st.type") == 0);
+	lua_getglobal(L, "res");
+	ATF_REQUIRE(lua_isstring(L, -1));
+	ATF_REQUIRE_STREQ(lua_tostring(L,-1), "lnk");
 
 	lua_pushinteger(L, -1);
 	lua_setglobal(L, "rootfd");
-	p = atf_utils_fork();
-	if (p == 0) {
-		if (luaL_dostring(L, "st = test.stat(\".\")\nprint(st)")) {
-			printf("%s\n", lua_tostring(L, -1));
-		}
-		exit(lua_tonumber(L, -1));
-	}
-	atf_utils_wait(p, 0, "nil\n", "");
+	ATF_REQUIRE(luaL_dostring(L, "res = test.stat(\".\")\n") == 0);
+	lua_getglobal(L, "res");
+	ATF_REQUIRE(lua_isnil(L, -1));
 }
 
 ATF_TC_BODY(print_msg, tc)
