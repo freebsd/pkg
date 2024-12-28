@@ -59,68 +59,36 @@ ATF_TC_BODY(readdir, tc)
 	lua_pushinteger(L, rootfd);
 	lua_setglobal(L, "rootfd");
 
-	pid_t p = atf_utils_fork();
-	if (p == 0) {
-		if (luaL_dostring(L, "test.readdir(\".\", \"plop\")")) {
-			printf("%s\n", lua_tostring(L, -1));
-		}
-		exit(lua_tonumber(L, -1));
-	}
-	atf_utils_wait(p, 0, "[string \"test.readdir(\".\", \"plop\")\"]:1: bad argument #2 to 'readdir' (pkg.readdir takes exactly one argument)\n", "");
+	ATF_REQUIRE(luaL_dostring(L, "test.readdir(\".\", \"plop\")") != 0);
+	ATF_REQUIRE_STREQ(lua_tostring(L, -1), "[string \"test.readdir(\".\", \"plop\")\"]:1: bad argument #2 to 'readdir' (pkg.readdir takes exactly one argument)");
+	ATF_REQUIRE_EQ(lua_tonumber(L, -1), 0);
 
-	p = atf_utils_fork();
-	if (p == 0) {
-		if (luaL_dostring(L, "test.readdir()")) {
-			printf("%s\n", lua_tostring(L, -1));
-		}
-		exit(lua_tonumber(L, -1));
-	}
-	atf_utils_wait(p, 0, "[string \"test.readdir()\"]:1: bad argument #0 to 'readdir' (pkg.readdir takes exactly one argument)\n", "");
+	ATF_REQUIRE(luaL_dostring(L, "test.readdir()") != 0);
+	ATF_REQUIRE_STREQ(lua_tostring(L, -1), "[string \"test.readdir()\"]:1: bad argument #0 to 'readdir' (pkg.readdir takes exactly one argument)");
+	ATF_REQUIRE_EQ(lua_tonumber(L, -1), 0);
 
-	p = atf_utils_fork();
-	if (p == 0) {
-		if (luaL_dostring(L, "res = test.readdir(\".\")\nif res ~= nil then print(#res) end")) {
-			printf("%s\n", lua_tostring(L, -1));
-		}
-		exit(lua_tonumber(L, -1));
-	}
-	atf_utils_wait(p, 0, "2\n", "");
-	p = atf_utils_fork();
-	if (p == 0) {
-		if (luaL_dostring(L, "if test.readdir(\"nonexistent\") ~= nil then print(\"non nil output\") end")) {
-			printf("%s\n", lua_tostring(L, -1));
-		}
-		exit(lua_tonumber(L, -1));
-	}
-	atf_utils_wait(p, 0, "", "");
+	ATF_REQUIRE(luaL_dostring(L, "res = test.readdir(\".\")\n gr = #res\n") == 0);
+	lua_getglobal(L, "res");
+	ATF_REQUIRE(lua_istable(L, -1));
+	ATF_REQUIRE_EQ(luaL_len(L, -1), 0);
 
-	p = atf_utils_fork();
-	if (p == 0) {
-		if (luaL_dostring(L, "if test.readdir(\"/\") ~= nil then print(\"nil output\") end")) {
-			printf("%s\n", lua_tostring(L, -1));
-		}
-		exit(lua_tonumber(L, -1));
-	}
-	atf_utils_wait(p, 0, "", "");
+	ATF_REQUIRE(luaL_dostring(L, "res = test.readdir(\"nonexistent\")") == 0);
+	lua_getglobal(L, "res");
+	ATF_REQUIRE(lua_isnil(L, -1));
+
+	ATF_REQUIRE(luaL_dostring(L, "res = test.readdir('/')") == 0);
+	lua_getglobal(L, "res");
+	ATF_REQUIRE(lua_isnil(L, -1));
 
 	close(open("testfile", O_CREAT|O_TRUNC, 0644));
-	p = atf_utils_fork();
-	if (p == 0) {
-		if (luaL_dostring(L, "if test.readdir(\"testfile\") ~= nil then print(\"nil output\") end")) {
-			printf("%s\n", lua_tostring(L, -1));
-		}
-		exit(lua_tonumber(L, -1));
-	}
-	atf_utils_wait(p, 0, "", "");
+	ATF_REQUIRE(luaL_dostring(L, "res = test.readdir(\".\")\n gr = #res\n") == 0);
+	lua_getglobal(L, "res");
+	ATF_REQUIRE(lua_istable(L, -1));
+	ATF_REQUIRE_EQ(luaL_len(L, -1), 1);
 
-	p = atf_utils_fork();
-	if (p == 0) {
-		if (luaL_dostring(L, "res = test.readdir(\".\")\n print(#res)")) {
-			printf("%s\n", lua_tostring(L, -1));
-		}
-		exit(lua_tonumber(L, -1));
-	}
-	atf_utils_wait(p, 0, "3\n", "");
+	ATF_REQUIRE(luaL_dostring(L, "res = test.readdir(\"testfile\")") == 0);
+	lua_getglobal(L, "res");
+	ATF_REQUIRE(lua_isnil(L, -1));
 }
 
 ATF_TC_BODY(stat, tc)
@@ -243,7 +211,7 @@ ATF_TC_BODY(print_msg, tc)
 		exit(lua_tonumber(L, -1));
 	}
 	atf_utils_wait(p, 0, "", "");
-	
+
 	int err = close(fd);
 	ATF_REQUIRE_MSG(0 == err, "close failed (%d,%s)", errno, strerror(errno));
 
