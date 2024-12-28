@@ -542,7 +542,11 @@ lua_readdir(lua_State *L)
 	if (*path == '/') {
 		lua_getglobal(L, "rootfd");
 		int rootfd = lua_tointeger(L, -1);
-		fd = openat(rootfd, path +1, O_DIRECTORY);
+		if (strlen(path) > 1) {
+			fd = openat(rootfd, path +1, O_DIRECTORY);
+		} else {
+			fd = dup(rootfd);
+		}
 	} else {
 		fd = open(path, O_DIRECTORY);
 	}

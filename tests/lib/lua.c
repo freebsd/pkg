@@ -76,9 +76,9 @@ ATF_TC_BODY(readdir, tc)
 	lua_getglobal(L, "res");
 	ATF_REQUIRE(lua_isnil(L, -1));
 
-	ATF_REQUIRE(luaL_dostring(L, "res = test.readdir('/')") == 0);
+	ATF_REQUIRE(luaL_dostring(L, "res = test.readdir(\"/\")") == 0);
 	lua_getglobal(L, "res");
-	ATF_REQUIRE(lua_isnil(L, -1));
+	ATF_REQUIRE(!lua_isnil(L, -1));
 
 	close(open("testfile", O_CREAT|O_TRUNC, 0644));
 	ATF_REQUIRE(luaL_dostring(L, "res = test.readdir(\".\")\n gr = #res\n") == 0);
