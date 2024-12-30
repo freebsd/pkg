@@ -1,6 +1,28 @@
+Changes from 1.21.99.4 to 1.21.99.5
+- the pkg target ABI is now dynamically detected, pkg can be used to cross
+  install packages among OS.
+- macho ABI handling completly rewritten
+- ALTABI is not used anywhere anymore, we are now only working with ABI
+- Lots of cleanups thanks for compiler sanitizers
+- shlibs handling is now portable (and do not depend on elfhints anymore)
+- deprecate ALLOW_BASE_SHLIBS, now pkg scans for /lib and /usr/lib (respecting
+  rootdir) to find the list of shlibs provided by base. This scan is skipped
+  when using pkgbase.
+- new SHLIB_REQUIRE_IGNORE_GLOB and SHLIB_REQUIRE_IGNORE_REGEX to filter out
+  some librariries to be added to shlibs_required list
+- speed up pkg repo by using buffered stdio
+- pkg now tracks shlibs with tagging:
+   libfoo.so.1.0.0          - native (no change to status quo)
+   libfoo.so.1.0.0:32       - compat 32
+   libfoo.so.1.0.0:Linux    - compat Linux
+   libfoo.so.1.0.0:Linux:32 - compat Linux 32
+- pkg tracks 32bit compat shlibs
+- pkg can track linux shlibs for linux compatibility (disabled by default) via
+  TRACK_LINUX_COMPAT_SHLIBS
+
 Changes from 1.21.99.3 to 1.21.99.4
 - ABI detection related fixes
-- Lots of fixs for MacOS
+- Lots of fixes for MacOS
 - Fix host component handling in file:// URLs
 - build system: add --with-tsan support
 - fix threads on MacOS
