@@ -53,12 +53,12 @@ typedef tll(char *) stringlist_t;
 	__FILE__, __LINE__, sqlite3_errmsg(db)); \
 } while (0)
 
-typedef tll(struct hardlink *) hardlinks_t;
 struct hardlink {
 	ino_t ino;
 	dev_t dev;
 	const char *path;
 };
+typedef pkgvec_t(struct hardlink *) hardlinks_t;
 
 struct tempdir {
 	char name[PATH_MAX];

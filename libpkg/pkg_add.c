@@ -1652,7 +1652,7 @@ pkg_add_fromdir(struct pkg *pkg, const char *src)
 	struct group *gr, grent;
 	int err, fd, fromfd;
 	int retcode;
-	hardlinks_t hardlinks = tll_init();
+	hardlinks_t hardlinks;
 	const char *path;
 	char buffer[1024];
 	size_t link_len;
@@ -1661,6 +1661,7 @@ pkg_add_fromdir(struct pkg *pkg, const char *src)
 	stringlist_t symlinks_allowed = tll_init();
 	tll_push_back(symlinks_allowed, pkg->prefix);
 
+	pkgvec_init(&hardlinks);
 	install_as_user = (getenv("INSTALL_AS_USER") != NULL);
 
 	fromfd = open(src, O_DIRECTORY);
@@ -1728,7 +1729,7 @@ pkg_add_fromdir(struct pkg *pkg, const char *src)
 			continue;
 		if (fstatat(fromfd, RELATIVE_PATH(f->path), &st,
 		    AT_SYMLINK_NOFOLLOW) == -1) {
-			tll_free_and_free(hardlinks, free);
+			pkgvec_free_and_free(&hardlinks, free);
 			close(fromfd);
 			pkg_fatal_errno("%s%s", src, f->path);
 		}
@@ -1781,7 +1782,7 @@ pkg_add_fromdir(struct pkg *pkg, const char *src)
 			if ((link_len = readlinkat(fromfd,
 			    RELATIVE_PATH(f->path), target,
 			    sizeof(target))) == -1) {
-				tll_free_and_free(hardlinks, free);
+				pkgvec_free_and_free(&hardlinks, free);
 				close(fromfd);
 				pkg_fatal_errno("Impossible to read symlinks "
 				    "'%s'", f->path);
@@ -1794,16 +1795,17 @@ pkg_add_fromdir(struct pkg *pkg, const char *src)
 		} else if (S_ISREG(st.st_mode)) {
 			if ((fd = openat(fromfd, RELATIVE_PATH(f->path),
 			    O_RDONLY)) == -1) {
-				tll_free_and_free(hardlinks, free);
+				pkgvec_free_and_free(&hardlinks, free);
 				close(fromfd);
 				pkg_fatal_errno("Impossible to open source file"
 				    " '%s'", RELATIVE_PATH(f->path));
 			}
 			path = NULL;
-			tll_foreach(hardlinks, hit) {
-				if (hit->item->ino == st.st_ino &&
-				    hit->item->dev == st.st_dev) {
-					path = hit->item->path;
+			for (size_t i = 0; i < hardlinks.len; i++) {
+				struct hardlink *hit = hardlinks.d[i];
+				if (hit->ino == st.st_ino &&
+				    hit->dev == st.st_dev) {
+					path = hit->path;
 					break;
 				}
 			}
@@ -1823,7 +1825,7 @@ pkg_add_fromdir(struct pkg *pkg, const char *src)
 				h->ino = st.st_ino;
 				h->dev = st.st_dev;
 				h->path = f->path;
-				tll_push_back(hardlinks, h);
+				pkgvec_push(&hardlinks, h);
 			}
 			close(fd);
 		} else {
@@ -1837,7 +1839,7 @@ pkg_add_fromdir(struct pkg *pkg, const char *src)
 
 cleanup:
 	tll_free(symlinks_allowed);
-	tll_free_and_free(hardlinks, free);
+	pkgvec_free_and_free(&hardlinks, free);
 	close(fromfd);
 	return (retcode);
 }

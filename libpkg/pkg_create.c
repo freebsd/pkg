@@ -68,8 +68,9 @@ pkg_create_from_dir(struct pkg *pkg, const char *root,
 	const char	*relocation;
 	char		*manifest;
 	ucl_object_t	*obj;
-	hardlinks_t	 hardlinks = tll_init();
+	hardlinks_t	 hardlinks;
 
+	pkgvec_init(&hardlinks);
 	if (pkg_is_valid(pkg) != EPKG_OK) {
 		pkg_emit_error("the package is not valid");
 		return (EPKG_FATAL);
@@ -95,13 +96,13 @@ pkg_create_from_dir(struct pkg *pkg, const char *root,
 
 		if (lstat(fpath, &st) == -1) {
 			pkg_emit_error("file '%s' is missing", fpath);
-			tll_free_and_free(hardlinks, free);
+			pkgvec_free_and_free(&hardlinks, free);
 			return (EPKG_FATAL);
 		}
 
 		if (!(S_ISREG(st.st_mode) || S_ISLNK(st.st_mode))) {
 			pkg_emit_error("file '%s' is not a regular file or symlink", fpath);
-			tll_free_and_free(hardlinks, free);
+			pkgvec_free_and_free(&hardlinks, free);
 			return (EPKG_FATAL);
 		}
 
@@ -116,13 +117,13 @@ pkg_create_from_dir(struct pkg *pkg, const char *root,
 		file->sum = pkg_checksum_generate_file(fpath,
 		    PKG_HASH_TYPE_SHA256_HEX);
 		if (file->sum == NULL) {
-			tll_free_and_free(hardlinks, free);
+			pkgvec_free_and_free(&hardlinks, free);
 			return (EPKG_FATAL);
 		}
 
 		counter_count();
 	}
-	tll_free_and_free(hardlinks, free);
+	pkgvec_free_and_free(&hardlinks, free);
 
 	counter_end();
 

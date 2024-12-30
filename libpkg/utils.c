@@ -323,15 +323,16 @@ check_for_hardlink(hardlinks_t *hl, struct stat *st)
 {
 	struct hardlink *h;
 
-	tll_foreach(*hl, it) {
-		if (it->item->ino == st->st_ino &&
-		    it->item->dev == st->st_dev)
+	for (size_t i = 0; i < hl->len; i++) {
+		h = hl->d[i];
+		if (h->ino == st->st_ino &&
+		    h->dev == st->st_dev)
 			return (true);
 	}
 	h = xcalloc(1, sizeof(*h));
 	h->ino = st->st_ino;
 	h->dev = st->st_dev;
-	tll_push_back(*hl, h);
+	pkgvec_push(hl, h);
 
 	return (false);
 }

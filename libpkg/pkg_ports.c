@@ -1046,6 +1046,7 @@ plist_new(struct pkg *pkg, const char *stage)
 	p->post_install_buf = xstring_new();
 	p->pre_deinstall_buf = xstring_new();
 	p->post_deinstall_buf = xstring_new();
+	pkgvec_init(&p->hardlinks);
 
 	populate_keywords(p);
 
@@ -1071,7 +1072,7 @@ plist_free(struct plist *p)
 
 	free(p->uname);
 	free(p->gname);
-	tll_free_and_free(p->hardlinks, free);
+	pkgvec_free_and_free(&p->hardlinks, free);
 
 	xstring_free(p->post_deinstall_buf);
 	xstring_free(p->post_install_buf);
