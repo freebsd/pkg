@@ -66,7 +66,7 @@ struct tempdir {
 	size_t len;
 	int fd;
 };
-typedef tll(struct tempdir *) tempdirs_t;
+typedef pkgvec_t(struct tempdir *) tempdirs_t;
 
 struct dns_srvinfo {
 	unsigned int type;

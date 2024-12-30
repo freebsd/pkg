@@ -425,16 +425,17 @@ get_tempdir(int rootfd, const char *path, tempdirs_t *tempdirs, stringlist_t *sy
 {
 	struct tempdir *tmpdir = NULL;
 
-	tll_foreach(*tempdirs, t) {
-		if (strncmp(t->item->name, path, t->item->len) == 0 && path[t->item->len] == '/') {
-			reopen_tempdir(rootfd, t->item);
-			return (t->item);
+	for (size_t i = 0; i < tempdirs->len; i++) {
+		tmpdir = tempdirs->d[i];
+		if (strncmp(tmpdir->name, path, tmpdir->len) == 0 && path[tmpdir->len] == '/') {
+			reopen_tempdir(rootfd, tmpdir);
+			return (tmpdir);
 		}
 	}
 
 	tmpdir = open_tempdir(rootfd, path, symlinks_allowed);
 	if (tmpdir != NULL)
-		tll_push_back(*tempdirs, tmpdir);
+		pkgvec_push(tempdirs, tmpdir);
 
 	return (tmpdir);
 }
@@ -650,10 +651,10 @@ create_hardlink(struct pkg *pkg, struct pkg_file *f, const char *path, tempdirs_
 		return (EPKG_FATAL);
 	}
 	if (fh->temppath[0] == '\0') {
-		tll_foreach(*tempdirs, t) {
-			if (strncmp(t->item->name, fh->path, t->item->len) == 0 &&
-			    fh->path[t->item->len] == '/' ) {
-				tmphdir = t->item;
+		for (size_t i = 0; i < tempdirs->len; i++) {
+			if (strncmp(tempdirs->d[i]->name, fh->path, tempdirs->d[i]->len) == 0 &&
+			    fh->path[tempdirs->d[i]->len] == '/' ) {
+				tmphdir = tempdirs->d[i];
 				reopen_tempdir(pkg->rootfd, tmphdir);
 				break;
 			}
@@ -1017,13 +1018,14 @@ pkg_extract_finalize(struct pkg *pkg, tempdirs_t *tempdirs)
 
 
 	if (tempdirs != NULL) {
-		tll_foreach(*tempdirs, t) {
-			if (renameat(pkg->rootfd, RELATIVE_PATH(t->item->temp),
-			    pkg->rootfd, RELATIVE_PATH(t->item->name)) != 0) {
+		for (size_t i = 0; i < tempdirs->len; i++) {
+			struct tempdir *t = tempdirs->d[i];
+			if (renameat(pkg->rootfd, RELATIVE_PATH(t->temp),
+			    pkg->rootfd, RELATIVE_PATH(t->name)) != 0) {
 				pkg_fatal_errno("Fail to rename %s -> %s",
-				    t->item->temp, t->item->name);
+				    t->temp, t->name);
 			}
-			free(t->item);
+			free(t);
 		}
 	}
 	while (pkg_files(pkg, &f) == EPKG_OK) {
@@ -1087,7 +1089,7 @@ pkg_extract_finalize(struct pkg *pkg, tempdirs_t *tempdirs)
 			return (EPKG_FATAL);
 	}
 	if (tempdirs != NULL)
-		tll_free(*tempdirs);
+		pkgvec_free(tempdirs);
 
 	return (EPKG_OK);
 }
@@ -1354,10 +1356,12 @@ pkg_add_common(struct pkgdb *db, const char *path, unsigned flags,
 	int			 retcode = EPKG_OK;
 	int			 ret;
 	int			 nfiles;
-	tempdirs_t		 tempdirs = tll_init();
+	tempdirs_t		 tempdirs;
 	stringlist_t		 symlinks_allowed = tll_init();
 
 	assert(path != NULL);
+
+	pkgvec_init(&tempdirs);
 
 	/*
 	 * Open the package archive file, read all the meta files and set the
@@ -1657,11 +1661,12 @@ pkg_add_fromdir(struct pkg *pkg, const char *src)
 	char buffer[1024];
 	size_t link_len;
 	bool install_as_user;
-	tempdirs_t tempdirs = tll_init();
+	tempdirs_t tempdirs;
 	stringlist_t symlinks_allowed = tll_init();
 	tll_push_back(symlinks_allowed, pkg->prefix);
 
 	pkgvec_init(&hardlinks);
+	pkgvec_init(&tempdirs);
 	install_as_user = (getenv("INSTALL_AS_USER") != NULL);
 
 	fromfd = open(src, O_DIRECTORY);
