@@ -33,7 +33,7 @@ Changes from 1.21.99.3 to 1.21.99.4
 - repositories: new pkg repositories command to list configured
   repositories
 - vuxml: now fetched over https
-- check: now default on the -s option when no options is passed.
+- check: now default to the -s option when no option is passed.
 
 Changes from 1.21.99.2 to 1.21.99.3
 - alias: prime-origins is now uniq
@@ -103,11 +103,11 @@ Changes from 1.20.99.9 to 1.20.99.10
 - pkg now support elfhints on any byte-order on FreeBSD
 - behaviour change: pkg lock/unlock errors if the package stated is unavailable
 - pkg now supports ECDSA and EdDSA for all its signature mechanism
-- new pkg key command which allows to generate keys.
+- new pkg key command that allows generation of keys.
 - plenty of minor code cleanup and bug fixes.
 
 Changes from 1.20.99.8 to 1.20.99.9
-- pkgbase: .snap now comes after .alpha in versionning
+- pkgbase: .snap now comes after .alpha in versioning
 - update: lock pkg update to avoid concurrent instance of pkg update to compete
 - bundled sqlite: update to 3.45.0
 - bootstrap now accepts -y
@@ -118,11 +118,11 @@ Changes from 1.20.99.8 to 1.20.99.9
 - lots of small code optimizations
 - remove now unsupported arm architectures
 - refactor pkg_repo_create API to make it more flexible, while here document it
-- repo: to not generate anymore the meta.{pkg,txz} which is unused since pkg 1.13
+- repo: to not generate anymore the meta.{pkg,txz}, which is unused since pkg 1.13
 
 Changes from 1.20.99.7 to 1.20.99.8
 - fix a race in vulnxml fetch trigger
-- add a new data.pkg which contains a fully valid json and aim at replacing
+- add a new data.pkg that contains a fully valid json and aim at replacing
   packagesite.pkg because extensible, continue to produce packagesite.pkg
 - repo: remove ability to provide v1 repository format
 - deduplicate code directly using libucl exporters instead of home backed ones
@@ -154,9 +154,9 @@ Changes from 1.20.99.5 to 1.20.99.6
 - fix very slow orphan test computation consuming 100% of CPU in autoremove
 
 Changes from 1.20.99.4 to 1.20.99.5
-- fix a regression introduce with switch to libcurl which results in
+- fix a regression, introduced with the switch to libcurl, that results in
   the remote db mtime being badly set
-- fix a regression which makes pkg query report twice some packages
+- fix a regression that makes pkg query report twice some packages
   when configured in multirepository mode.
 - fix a compatibility issue with http_proxy env var (lowercase)
 - update libcurl to latest version
@@ -199,7 +199,7 @@ Changes from 1.19.99.1 to 1.19.99.2
 - pkg add (respect provide/require)
 - pkg autoremove: properly process provides/requires
 - pkg now requires C11
-- remplace pkg_set(3) API with a _Generic based API
+- replace pkg_set(3) API with a _Generic based API
 - periodic script: Use locale-agnostic (ISO 8601)
 - complete refactoring of the fetch code
 - new pkgdb_all_search to search local and remote DBs at the same time
@@ -218,7 +218,7 @@ Changes from 1.18.99.7 to 1.19.99.1
 - fix spelling issues in pkg-trigger(8)
 
 Changes from 1.18.99.6 to 1.18.99.7
-- reduce the number of filedescriptors opened at the same time
+- reduce the number of file descriptors opened at the same time
 - update sqlite to 3.40.0
 - fix regression in pkg lock
 - fix annotate --modify
@@ -236,7 +236,7 @@ Changes from 1.18.99.4 to 1.18.99.5
 
 Changes from 1.18.99.3 to 1.18.99.4
 - Accept '~' in the version or name of a package
-- Autoremove will not remove anything which is required
+- Autoremove will not remove anything that is required
   by another installed package (via provides or via shlibs_provides)
 - Update linenoise to latest version
 - Update sqlite to 3.39.3
@@ -274,14 +274,14 @@ Changes from 1.17.99.9 to 1.17.99.10
 - Remove the deprecated pkg_get() function from the API
 - prevent @config files to be verified from pkg checksums checking
 - Remove ftp(s):// support
-- add tcp:// protocol support which allows to server packages form inetd
+- add tcp:// protocol support, which allows to serve packages from inetd
   and secure it via spiped for example
 - triggers can now be trigger when empty directories are added/removed
 - Add "orphans" aliases
 - speed up pkg which
 - Reduce the possibility to have a temporary file during package extraction
-  which exceed NAME_MAX (maxium file name length)
-- If the pattern has a '/' in it, it now search origin and all other categories
+  that exceeds NAME_MAX (maxium file name length)
+- If the pattern has a '/' in it, it now searches origin and all other categories
   as well
   for example graphics/zathura and print/zathura will both match the zathura
   package
@@ -295,7 +295,7 @@ Changes from 1.17.99.9 to 1.17.99.10
   vim-motif                      Improved version of the vi editor (motif flavor)
   vim-tiny                       Improved version of the vi editor (tiny flavor)
   vim-x11                        Improved version of the vi editor (x11 flavor)
-- portability: build and run on alpine (musl)
+- portability: build and run on Alpine (musl)
 
 Changes from 1.17.99.8 to 1.17.99.9
 - pkg add: only runs triggers at the end of the equivalent of a transaction
@@ -323,15 +323,14 @@ Changes from 1.17.99.4 to 1.17.99.5
 - document triggers
 - add pkg.readdir to lua scripts
 - reduce memory usage for hashes
-- fix memory corruption which can happen in some corner cases
+- fix memory corruption that can happen in some corner cases
 - run triggers for pkg add and pkg register
 
 Changes from 1.17.99.3 to 1.17.99.4
 - pkg version: fix regression from conversion to pkghash
 - allow filtering files at install time
 - add periodic script to check vulnerabilities in base
-- fix pkg failing to find its db if run from a directory which does not exists
-  anymore
+- fix pkg failing to find its db if run from a directory that no longer exists
 - fix ubsan reported issues
 - fix priorization upgrade-removal along with other deletion
 - fix plenty of memory leaks
@@ -421,8 +420,8 @@ Changes from 1.15.99.7 to 1.15.99.8
 - 'set' now reports when a package provided in command line is not installed
 - all commands are now consistently using --no-scritps instead of different
   flavor per commands
-- when request to install many packages unavailable in the repo, print all the
-  missing one instead of stop at the first one only
+- when requesting installation of many packages unavailable in the repo, print
+  all missing packages instead of stopping at the first
 - 'info' now prints the timestamp and repository in the --raw output
 - Improve error messaging when parsing the configuration file
 - when upgrading in dry-run mode: stop first checking for pkg, but show all
@@ -447,7 +446,7 @@ Changes from 1.15.99.5 to 1.15.99.6
   * deprecation_message: message if deprecated
   * actions_script: script version of 'actions' in lua
   * lua scripts: now can have real arguments instead of
-  pre-expended ones
+    pre-expended ones
 
 Changes from 1.15.99.4 to 1.15.99.5
 - Use open_memstream instead of utstring
@@ -547,7 +546,7 @@ Changes from 1.13.99.2 to 1.13.99.3
 Changes from 1.13.99.1 to 1.13.99.2
 - Fix pkg fetch -o
 - Implement a mechanism to autobackup libraries during upgrades
-- zsh-completion: disable repo update during package retrival
+- zsh-completion: disable repo update during package retrieval
 - Improve documentation
 - More variable are now expanded when reading configuration files:
   * OSNAME: FreeBSD
@@ -602,7 +601,7 @@ Changes from 1.12.99.0 to 1.12.99.1
   the compression format. Now pkg repo will create a meta.conf file
   uncompressed (it is small enough) and fallback on the old meta.txz.
   Note that meta.txz is still created for backward compatibility
-- pkg repo now creates meta files in version 2 by default meaning the digests.txz
+- pkg repo now creates meta files in version 2 by default, meaning the digests.txz
   is not created anymore, it was only used up to pkg 1.2. Anyone upgrading
   from pkg 1.2 should first run pkg bootstrap -f to be on a recent version.
 - pkg -r now first lookup under the rootdir for its ABI_FILE.
@@ -618,18 +617,18 @@ Changes from pkg 1.11.99.2 to 1.11.99.3
 - Fix build with gmake
 - Bundle lua functions into a proper package
 - Fix build on osx
-- Fix libelf detection on debian
+- Fix libelf detection on Debian
 - Fix pkg_shutdown unproperly reinitializing closed fds
 
 Changes from pkg 1.11.99.1 to 1.11.99.2
 - Fix cross installation with new build system
-- Add a function to lua_script allowing to send a message which will be
+- Add a function to lua_script allowing to send a message that will be
   printed along with the other messages at the end of the message process.
 - Fix detection of libarchive with zstd support
 
 Changes from pkg 1.11.99.0 to 1.11.99.1
 - Import lua 5.3.5
-- Recommand using pkg boostrap -f in case we do need to reinstall pkg
+- Recommend using pkg boostrap -f in case we do need to reinstall pkg
 - Scripts can now be written in lua
 - Keywords scripting part can now be written in lua
 
@@ -723,7 +722,7 @@ Changes from pkg 1.10.99.5 to 1.10.99.6
 
 Changes from pkg 1.10.99.4 to 1.10.99.5
 - pkg clean is now happy if the cache dir non existing
-- 410.pkg-audit now uses anticongestion on freebsd 12
+- 410.pkg-audit now uses anticongestion on FreeBSD 12
 - fix pkg install -r foo if foo is a disabled repository
 - fix elf handling on non FreeBSD
 - fix support for platforms without AT_SYMLINK_NOFOLLOW
@@ -748,12 +747,12 @@ Changes from pkg 1.9
 - Fix NetBSD ABI
 - Add a fallback for utimensat when reporting EOPNOTSUPP
 - replace libsbuf with utstring for portability
-- Overwrite some sqlite vfs functions to allow more capsicumisation of pkg
+- Overwrite some SQLite vfs functions to allow more capsicumisation of pkg
 - move more pkg audit details into the library
 - allow to run pkg query without any privileges
 - extend the audit periodic script to report deprecated packages
 - Fix fd leak to rcscripts
-- stop dropping privieges during fetching it causes more issues than it solves
+- stop dropping privileges during fetching, it causes more issues than it solves
 - speed walking though [reverse]dependencies
 - Update blake2b to latest version
 - Add blake2s to the list of supported checksums
@@ -774,7 +773,7 @@ Changes from pkg 1.9
 - Fix pkg register issues with some version of libarchive:
   * hardlinks not being made hardlinks sometime
   * issues when PREFIX is a symlink to another directory
-- Use portable mechanism to find the number of CPUs which allows pkg repo to be
+- Use portable mechanism to find the number of CPUs, which allows pkg repo to be
   faster on Linux
 - New pkg upgrade --vulnerable
 
