@@ -3,13 +3,13 @@ Changes from 1.21.99.4 to 1.21.99.5
   install packages among OS.
 - macho ABI handling completly rewritten
 - ALTABI is not used anywhere anymore, we are now only working with ABI
-- Lots of cleanups thanks for compiler sanitizers
+- Lots of cleanups thanks to compiler sanitizers
 - shlibs handling is now portable (and do not depend on elfhints anymore)
 - deprecate ALLOW_BASE_SHLIBS, now pkg scans for /lib and /usr/lib (respecting
   rootdir) to find the list of shlibs provided by base. This scan is skipped
   when using pkgbase.
 - new SHLIB_REQUIRE_IGNORE_GLOB and SHLIB_REQUIRE_IGNORE_REGEX to filter out
-  some librariries to be added to shlibs_required list
+  some libraries to be added to shlibs_required list
 - speed up pkg repo by using buffered stdio
 - pkg now tracks shlibs with tagging:
    libfoo.so.1.0.0          - native (no change to status quo)
@@ -17,7 +17,7 @@ Changes from 1.21.99.4 to 1.21.99.5
    libfoo.so.1.0.0:Linux    - compat Linux
    libfoo.so.1.0.0:Linux:32 - compat Linux 32
 - pkg tracks 32bit compat shlibs
-- pkg can track linux shlibs for linux compatibility (disabled by default) via
+- pkg can track Linux shlibs for Linux compatibility (disabled by default) via
   TRACK_LINUX_COMPAT_SHLIBS
 
 Changes from 1.21.99.3 to 1.21.99.4
@@ -56,16 +56,16 @@ Changes from 1.21.99.1 to 1.21.99.2
 - bug fix: fix upgrade with symlinks becoming directories
 - debug: implement debug flags to allow to cherrypick the debug flags to print
 - check: remove -B and -r options
-- compression: allow to defined the number of threads to use with zstd and xz
+- compression: allow to define the number of threads to use with zstd and xz
 - curl: update to 8.9.0
 - http: add support for HTTP_PROXY_AUTH
 - periodic: remove compat_vars
 - info: fix json formatted output
 - manpages: lots of fixes and improvements
-- install/upgrade: now removed packaages are printed at the bottom of the list of changes
+- install/upgrade: now removed packages are printed at the bottom of the list of changes
 - using -r <repo> now always enable the repository specified
 - periodic: provide a mechanism to ignore jails via prefix matching
-- upgrade: allow the used to ignore options changes in the triggers to reinstall a package
+- upgrade: allow the user to ignore options changes in the triggers to reinstall a package
 - lock/unlock: fix batch operations
 - osversion: fix confusing message
 - new attempt at better handling vital during upgrades
@@ -232,7 +232,7 @@ Changes from 1.18.99.5 to1.18.99.6
 - fix a regression when executing a shell script
 
 Changes from 1.18.99.4 to 1.18.99.5
-- delete: now handles properly provides/requipres
+- delete: now handles properly provides/requires
 
 Changes from 1.18.99.3 to 1.18.99.4
 - Accept '~' in the version or name of a package
@@ -339,8 +339,8 @@ Changes from 1.17.99.3 to 1.17.99.4
 Changes from 1.17.99.2 to 1.17.99.3
 - make pkg/audit.h C++ friendly
 - fix build with libressl
-- Enable aarch64 support for linux
-- plenty of portability fixes for linux with musl libc
+- Enable aarch64 support for Linux
+- plenty of portability fixes for Linux with musl libc
 - autoremove: respect -q
 - version: report an error if the provided INDEX file does not exist
 - periodic: allow users so provide an ignore list of jails
@@ -381,8 +381,8 @@ Changes from 1.16.99.3 to 1.16.99.4
 - plist: remove stub support for @mtree
 - plist: remove stub support for @conflict
 - info: fix info processing of mutliple compares
-- ci runs again on linux and osx
-- portability fixes for linux and osx
+- ci runs again on Linux and osx
+- portability fixes for Linux and osx
 - ubsan/asan related fixes
 
 Changes from 1.16.99.2 to 1.16.99.3
@@ -399,7 +399,7 @@ Changes from 1.16.99.2 to 1.16.99.3
 Changes from 1.16.99.1 to 1.16.99.2
 - libpkg: rsa: stop leaking an RSA object
 - libpkg: rsa: start abstracting away rsa bits
-- lua: filecmp: Fix for symlink
+- lua: filecmp: fix for symlink
 
 Changes from 1.16.99.8 to 1.16.99.1
 - Avoid making making xstring.h public
@@ -428,7 +428,7 @@ Changes from 1.15.99.7 to 1.15.99.8
 - when upgrading in dry-run mode: stop first checking for pkg, but show all
   the packages to be upgraded, pkg included
 - Fix crash when pkg is told to package a directory as a file
-- 'create' now accept -e to create package with an expanded version of the
+- 'create' now accepts -e to create package with an expanded version of the
   manifest aka readable
 - Relax keywords attributes syntax by allowing spaces
 
@@ -472,7 +472,7 @@ Changes from 1.14.99.6 to 1.14.99.7
 - Default the OSVERSION check to false
 - Fix some errors related to getpwname_r/getgrnam_r
 - Add RISC-V ABI aliases
-- Add '%X' to pkg-query, this print the internal package checksum
+- Add '%X' to pkg-query, this prints the internal package checksum
 
 Changes from 1.14.99.5 to 1.14.99.6
 - Run lua scripts before shell scripts
@@ -490,7 +490,7 @@ Changes from 1.14.99.3 to 1.14.99.4
   * update sqlite to latest version
   * Add a new 'hash' mode to pkg repo to make repositories CDN friendly
   * Isolate transport protocol to be able to easily change implementations
-    in the futur
+    in the future
   * Fix invalid json in even_pipe
   * lots of portability fixes
 
@@ -498,8 +498,8 @@ Changes from 1.14.99.2 to 1.14.99.3
 - Fix linking on FreeBSD
 
 Changes from 1.14.99.1 to 1.14.99.2
-- Fix hanging if a script spawn a process and
-  it still run after the scripts finish
+- Fix hanging if a script spawns a process and
+  it still runs after the script finishes
 - Prevent potential hang with lua scripts
 - For http mirror first try to get the list from the
   full path and then fallback on the root one if we
@@ -515,7 +515,7 @@ Changes from 1.13.99.7 to 1.14.99.1
 - Use mmap in sqlite
 - Update sqlite to latest version
 - Document pkg_create(3)
-- Prepare the land for futur proof remote dependency handling
+- Prepare the land for future-proof remote dependency handling
 - Update usage of pkg set -A and pkg set -v
 - Add pkg create -l (compression level)
 
@@ -547,9 +547,9 @@ Changes from 1.13.99.2 to 1.13.99.3
 Changes from 1.13.99.1 to 1.13.99.2
 - Fix pkg fetch -o
 - Implement a mechanism to autobackup libraries during upgrades
-- zsh-completion: disable repo update durign package retrival
+- zsh-completion: disable repo update during package retrival
 - Improve documentation
-- More variable are now expanded when reading the confirations files:
+- More variable are now expanded when reading configuration files:
   * OSNAME: FreeBSD
   * RELEASE: 12.1
   * ARCH: amd64
@@ -577,7 +577,7 @@ Changes from 1.12.99.3 to 1.12.99.4
 - Document shell scripts
 - Document keywords ucl files
 - Add a variable to both lua scripts and shell script to allow
-  the scripts to know they are actually being upgrading things
+  the scripts to know they are actually upgrading things
 
 Changes from 1.12.99.2 to 1.12.99.3
 - Add more regression test
@@ -603,7 +603,7 @@ Changes from 1.12.99.0 to 1.12.99.1
   uncompressed (it is small enough) and fallback on the old meta.txz.
   Note that meta.txz is still created for backward compatibility
 - pkg repo now creates meta files in version 2 by default meaning the digests.txz
-  is not created anymore, it was only used up to pkg 1.2. anyone upgrading
+  is not created anymore, it was only used up to pkg 1.2. Anyone upgrading
   from pkg 1.2 should first run pkg bootstrap -f to be on a recent version.
 - pkg -r now first lookup under the rootdir for its ABI_FILE.
 - suppress version checking when -j is specified
@@ -636,7 +636,7 @@ Changes from pkg 1.11.99.0 to 1.11.99.1
 Changes from pkg 1.10.99.13 to 1.10.99.14
 - fix libpkg.so when linked with binutils
 - instead of closing stdin for script just use /dev/null
-- force installation of symlinks to avoid make install to fail is some
+- force installation of symlinks to avoid make install to fail if some
   symlinks are already there
 
 Changes from pkg 1.10.99.12 to 1.10.99.13
@@ -644,7 +644,7 @@ Changes from pkg 1.10.99.12 to 1.10.99.13
 - fix segfault that can occurs sometime when forcing the installation of a
   localpackage: pkg install -f ./mypkg-X.txz
 - fix abi detection when multiple elf notes are used in the binary like on
-  fedora
+  Fedora
 
 Changes from pkg 1.10.99.11 to 1.10.99.12
 - use /usr/bin/uname to determine of the ABI
@@ -653,7 +653,7 @@ Changes from pkg 1.10.99.11 to 1.10.99.12
   * rcomment: showing only the comment of a non installed package
   * rdesc: showing only the description of a non installed package
 - switch to cirrus-ci
-- improve portability on linux
+- improve portability on Linux
 - simplify code to create the repository
 - close stdin when running scripts
 - update bundled libucl to latest version
@@ -669,7 +669,7 @@ Changes from pkg 1.10.99.10 to 1.10.99.11
 Changes from pkg 1.10.99.9 to 1.10.99.10
 - Fix incremental build
 - Fix loading plugins in the flat binary
-- Stop issueing wrong error message before creating the local repository for
+- Stop issuing wrong error message before creating the local repository for
   the first time
 
 Changes from pkg 1.10.99.8 to 1.10.99.9
@@ -697,7 +697,7 @@ Changes from pkg 1.10.99.6 to 1.10.99.7
 - Sort fts traversal in repo creation
 - Fix floating pint exception when packaging packages with weird elf files
 - More test cases for config merge
-- Fix running the testsuite on linux and osx
+- Fix running the testsuite on Linux and osx
 - Fix pkg version regarding flavors
 - Add support for creating packages with a hash in their names
 - Accept DT_SONAME anywhere in .dynamic
@@ -716,10 +716,10 @@ Changes from pkg 1.10.99.5 to 1.10.99.6
 - recognize armv7
 - add %q to pkg_printf(3) and pkg-query(8) to print altabi
 - add an extra line when printing pkg-messages to improve readability
-- stop considering nfs as dangerous and if a corruption happens on nfs drive
-  by a message the user to the highly possible reason of the corruption so
-  he can fix
-- zsh completion imrpovements
+- stop considering NFS as dangerous and if a corruption happens on an NFS
+  drive by a message the user to the highly possible reason of the
+  corruption so he can fix
+- zsh completion improvements
 
 Changes from pkg 1.10.99.4 to 1.10.99.5
 - pkg clean is now happy if the cache dir non existing
@@ -730,7 +730,7 @@ Changes from pkg 1.10.99.4 to 1.10.99.5
 - fix dropping privileges on Linux
 - fix build with recent libbsd
 - fix duplicate pkg registration overwriting the existing pkg
-- better ABI name on linux
+- better ABI name on Linux
 - lots of changes in internal API to use fd when possible
 - removed option: pkg repo -L
 
@@ -775,7 +775,7 @@ Changes from pkg 1.9
   * hardlinks not being made hardlinks sometime
   * issues when PREFIX is a symlink to another directory
 - Use portable mechanism to find the number of CPUs which allows pkg repo to be
-  faster on linux
+  faster on Linux
 - New pkg upgrade --vulnerable
 
 Changes from pkg 1.8
