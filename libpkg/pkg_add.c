@@ -435,7 +435,7 @@ get_tempdir(int rootfd, const char *path, tempdirs_t *tempdirs, c_charv_t *symli
 
 	tmpdir = open_tempdir(rootfd, path, symlinks_allowed);
 	if (tmpdir != NULL)
-		pkgvec_push(tempdirs, tmpdir);
+		vec_push(tempdirs, tmpdir);
 
 	return (tmpdir);
 }
@@ -1089,7 +1089,7 @@ pkg_extract_finalize(struct pkg *pkg, tempdirs_t *tempdirs)
 			return (EPKG_FATAL);
 	}
 	if (tempdirs != NULL)
-		pkgvec_free(tempdirs);
+		vec_free(tempdirs);
 
 	return (EPKG_OK);
 }
@@ -1361,8 +1361,8 @@ pkg_add_common(struct pkgdb *db, const char *path, unsigned flags,
 
 	assert(path != NULL);
 
-	pkgvec_init(&tempdirs);
-	pkgvec_init(&symlinks_allowed);
+	vec_init(&tempdirs);
+	vec_init(&symlinks_allowed);
 
 	/*
 	 * Open the package archive file, read all the meta files and set the
@@ -1465,7 +1465,7 @@ pkg_add_common(struct pkgdb *db, const char *path, unsigned flags,
 	 */
 	if (extract) {
 		pkg_register_cleanup_callback(pkg_rollback_cb, pkg);
-		pkgvec_push(&symlinks_allowed, pkg->prefix);
+		vec_push(&symlinks_allowed, pkg->prefix);
 		retcode = do_extract(a, ae, nfiles, pkg, local, &tempdirs, &symlinks_allowed);
 		pkg_unregister_cleanup_callback(pkg_rollback_cb, pkg);
 		if (retcode != EPKG_OK) {
@@ -1564,7 +1564,7 @@ pkg_add_common(struct pkgdb *db, const char *path, unsigned flags,
 	}
 
 cleanup:
-	pkgvec_free(&symlinks_allowed);
+	vec_free(&symlinks_allowed);
 
 	if (openxact)
 		pkgdb_register_finale(db, retcode, NULL);
@@ -1665,10 +1665,10 @@ pkg_add_fromdir(struct pkg *pkg, const char *src)
 	tempdirs_t tempdirs;
 	c_charv_t symlinks_allowed;
 
-	pkgvec_init(&symlinks_allowed);
-	pkgvec_push(&symlinks_allowed, pkg->prefix);
-	pkgvec_init(&hardlinks);
-	pkgvec_init(&tempdirs);
+	vec_init(&symlinks_allowed);
+	vec_push(&symlinks_allowed, pkg->prefix);
+	vec_init(&hardlinks);
+	vec_init(&tempdirs);
 	install_as_user = (getenv("INSTALL_AS_USER") != NULL);
 
 	fromfd = open(src, O_DIRECTORY);
@@ -1736,7 +1736,7 @@ pkg_add_fromdir(struct pkg *pkg, const char *src)
 			continue;
 		if (fstatat(fromfd, RELATIVE_PATH(f->path), &st,
 		    AT_SYMLINK_NOFOLLOW) == -1) {
-			pkgvec_free_and_free(&hardlinks, free);
+			vec_free_and_free(&hardlinks, free);
 			close(fromfd);
 			pkg_fatal_errno("%s%s", src, f->path);
 		}
@@ -1789,7 +1789,7 @@ pkg_add_fromdir(struct pkg *pkg, const char *src)
 			if ((link_len = readlinkat(fromfd,
 			    RELATIVE_PATH(f->path), target,
 			    sizeof(target))) == -1) {
-				pkgvec_free_and_free(&hardlinks, free);
+				vec_free_and_free(&hardlinks, free);
 				close(fromfd);
 				pkg_fatal_errno("Impossible to read symlinks "
 				    "'%s'", f->path);
@@ -1802,7 +1802,7 @@ pkg_add_fromdir(struct pkg *pkg, const char *src)
 		} else if (S_ISREG(st.st_mode)) {
 			if ((fd = openat(fromfd, RELATIVE_PATH(f->path),
 			    O_RDONLY)) == -1) {
-				pkgvec_free_and_free(&hardlinks, free);
+				vec_free_and_free(&hardlinks, free);
 				close(fromfd);
 				pkg_fatal_errno("Impossible to open source file"
 				    " '%s'", RELATIVE_PATH(f->path));
@@ -1832,7 +1832,7 @@ pkg_add_fromdir(struct pkg *pkg, const char *src)
 				h->ino = st.st_ino;
 				h->dev = st.st_dev;
 				h->path = f->path;
-				pkgvec_push(&hardlinks, h);
+				vec_push(&hardlinks, h);
 			}
 			close(fd);
 		} else {
@@ -1845,8 +1845,8 @@ pkg_add_fromdir(struct pkg *pkg, const char *src)
 	retcode = pkg_extract_finalize(pkg, &tempdirs);
 
 cleanup:
-	pkgvec_free(&symlinks_allowed);
-	pkgvec_free_and_free(&hardlinks, free);
+	vec_free(&symlinks_allowed);
+	vec_free_and_free(&hardlinks, free);
 	close(fromfd);
 	return (retcode);
 }

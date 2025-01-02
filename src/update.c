@@ -158,7 +158,7 @@ exec_update(int argc, char **argv)
 		{ NULL,		0,			NULL,	0   },
 	};
 
-	pkgvec_init(&reponames);
+	vec_init(&reponames);
 	while ((ch = getopt_long(argc, argv, "+fqr:", longopts, NULL)) != -1) {
 		switch (ch) {
 		case 'f':
@@ -168,7 +168,7 @@ exec_update(int argc, char **argv)
 			quiet = true;
 			break;
 		case 'r':
-			pkgvec_push(&reponames, optarg);
+			vec_push(&reponames, optarg);
 			break;
 		default:
 			usage_update();

@@ -138,7 +138,7 @@ exec_rquery(int argc, char **argv)
 
 	portsdir = pkg_object_string(pkg_config_get("PORTSDIR"));
 
-	pkgvec_init(&reponames);
+	vec_init(&reponames);
 	while ((ch = getopt_long(argc, argv, "+aCgiIxe:r:U", longopts, NULL)) != -1) {
 		switch (ch) {
 		case 'a':
@@ -160,7 +160,7 @@ exec_rquery(int argc, char **argv)
 			index_output = true;
 			break;
 		case 'r':
-			pkgvec_push(&reponames, optarg);
+			vec_push(&reponames, optarg);
 			break;
 		case 'U':
 			auto_update = false;

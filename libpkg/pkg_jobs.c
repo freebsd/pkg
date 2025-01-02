@@ -29,7 +29,6 @@
  * THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  */
 
-#include "pkgvec.h"
 #ifdef HAVE_CONFIG_H
 #include "pkg_config.h"
 #endif
@@ -121,9 +120,9 @@ int
 pkg_jobs_set_repository(struct pkg_jobs *j, const char *ident)
 {
 	c_charv_t idents;
-	pkgvec_init(&idents);
+	vec_init(&idents);
 	if (ident != NULL)
-		pkgvec_push(&idents, ident);
+		vec_push(&idents, ident);
 	return (pkg_jobs_set_repositories(j, &idents));
 }
 

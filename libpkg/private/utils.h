@@ -58,7 +58,7 @@ struct hardlink {
 	dev_t dev;
 	const char *path;
 };
-typedef pkgvec_t(struct hardlink *) hardlinks_t;
+typedef vec_t(struct hardlink *) hardlinks_t;
 
 struct tempdir {
 	char name[PATH_MAX];
@@ -66,7 +66,7 @@ struct tempdir {
 	size_t len;
 	int fd;
 };
-typedef pkgvec_t(struct tempdir *) tempdirs_t;
+typedef vec_t(struct tempdir *) tempdirs_t;
 
 struct dns_srvinfo {
 	unsigned int type;

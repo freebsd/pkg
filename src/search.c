@@ -280,7 +280,7 @@ exec_search(int argc, char **argv)
 		{ NULL,			0,			NULL,	0   },
 	};
 
-	pkgvec_init(&reponames);
+	vec_init(&reponames);
 	while ((ch = getopt_long(argc, argv, "+CcDdefgiL:opqQ:r:RS:sUx", longopts, NULL)) != -1) {
 		switch (ch) {
 		case 'C':
@@ -323,7 +323,7 @@ exec_search(int argc, char **argv)
 			opt |= modifier_opt(optarg);
 			break;
 		case 'r':
-			pkgvec_push(&reponames, optarg);
+			vec_push(&reponames, optarg);
 			break;
 		case 'R':
 			opt = INFO_RAW;
