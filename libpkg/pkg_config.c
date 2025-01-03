@@ -1066,10 +1066,11 @@ config_init_abi(struct pkg_abi *abi)
 				    pkg_os_to_string(abi->os));
 			}
 		}
-	} else if (env_osversion_string != NULL) {
-		pkg_emit_error("Setting OSVERSION requires setting ABI as well");
-		return (EPKG_FATAL);
 	} else {
+		if (env_osversion_string != NULL) {
+			pkg_emit_notice("Setting OSVERSION requires setting ABI as well (ignoring)");
+			unsetenv("OSVERSION");
+		}
 		if (pkg_abi_from_file(abi) != EPKG_OK) {
 			return (false);
 		}
