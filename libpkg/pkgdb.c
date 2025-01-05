@@ -51,7 +51,7 @@
 #include "private/utils.h"
 #include "private/pkg_deps.h"
 #include "tllist.h"
-#include "pkgvec.h"
+#include "pkg/vec.h"
 
 #include "private/db_upgrades.h"
 
@@ -987,12 +987,12 @@ pkgdb_open_all(struct pkgdb **db_p, pkgdb_t type, const char *reponame)
 	c_charv_t r;
 	int ret;
 
-	pkgvec_init(&r);
+	vec_init(&r);
 	if (reponame != NULL)
-		pkgvec_push(&r, reponame);
+		vec_push(&r, reponame);
 
 	ret = pkgdb_open_all2(db_p, type, &r);
-	pkgvec_free(&r);
+	vec_free(&r);
 	return (ret);
 }
 int

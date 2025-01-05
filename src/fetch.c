@@ -82,7 +82,7 @@ exec_fetch(int argc, char **argv)
 		{ NULL,			0,			NULL,	0   },
 	};
 
-	pkgvec_init(&reponames);
+	vec_init(&reponames);
 	while ((ch = getopt_long(argc, argv, "+aCdgiqr:Uuxyo:", longopts, NULL)) != -1) {
 		switch (ch) {
 		case 'a':
@@ -104,7 +104,7 @@ exec_fetch(int argc, char **argv)
 			quiet = true;
 			break;
 		case 'r':
-			pkgvec_push(&reponames, optarg);
+			vec_push(&reponames, optarg);
 			break;
 		case 'u':
 			f |= PKG_FLAG_UPGRADES_FOR_INSTALLED;

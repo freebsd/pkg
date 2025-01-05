@@ -831,7 +831,7 @@ exec_version(int argc, char **argv)
 		{ NULL,			0,			NULL,	0   },
 	};
 
-	pkgvec_init(&reponames);
+	vec_init(&reponames);
 	while ((ch = getopt_long(argc, argv, "+Ce:g:hIiL:l:n:O:oPqRr:TtUvx:",
 				 longopts, NULL)) != -1) {
 		switch (ch) {
@@ -885,7 +885,7 @@ exec_version(int argc, char **argv)
 			break;
 		case 'r':
 			opt |= VERSION_SOURCE_REMOTE;
-			pkgvec_push(&reponames, optarg);
+			vec_push(&reponames, optarg);
 			break;
 		case 'T':
 			opt |= VERSION_TESTPATTERN;

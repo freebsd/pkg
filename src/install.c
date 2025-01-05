@@ -98,7 +98,7 @@ exec_install(int argc, char **argv)
 		quiet = true;
 	}
 
-	pkgvec_init(&reponames);
+	vec_init(&reponames);
 	while ((ch = getopt_long(argc, argv, "+ACfFgiIlMnqr:RUxy", longopts, NULL)) != -1) {
 		switch (ch) {
 		case 'A':
@@ -139,7 +139,7 @@ exec_install(int argc, char **argv)
 			quiet = true;
 			break;
 		case 'r':
-			pkgvec_push(&reponames, optarg);
+			vec_push(&reponames, optarg);
 			break;
 		case 'R':
 			f |= PKG_FLAG_RECURSIVE;

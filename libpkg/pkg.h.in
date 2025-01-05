@@ -46,7 +46,7 @@ extern "C" {
 #include <stdbool.h>
 #include <stdio.h>
 #include <stdlib.h>
-#include <pkgvec.h>
+#include <pkg/vec.h>
 
 /* The expected name of the pkg(8) binary executable. */
 #ifndef PKG_EXEC_NAME
@@ -136,7 +136,7 @@ struct pkg_kv {
 	char *value;
 };
 
-typedef pkgvec_t(struct pkg_kv *) pkg_kvl_t;
+typedef vec_t(struct pkg_kv *) pkg_kvl_t;
 
 /**
  * The system-wide pkg(8) status: ie. is it a) installed or otherwise

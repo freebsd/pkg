@@ -53,7 +53,7 @@
 #include <bsd_compat.h>
 
 #include "pkg.h"
-#include "pkgvec.h"
+#include "pkg/vec.h"
 #include "private/event.h"
 #include "private/pkg_abi.h"
 #include "private/utils.h"
@@ -332,7 +332,7 @@ check_for_hardlink(hardlinks_t *hl, struct stat *st)
 	h = xcalloc(1, sizeof(*h));
 	h->ino = st->st_ino;
 	h->dev = st->st_dev;
-	pkgvec_push(hl, h);
+	vec_push(hl, h);
 
 	return (false);
 }

@@ -268,7 +268,7 @@ exec_upgrade(int argc, char **argv)
 	};
 
 	nbactions = nbdone = 0;
-	pkgvec_init(&reponames);
+	vec_init(&reponames);
 
 	while ((ch = getopt_long(argc, argv, "+CfFgiInqr:Uxyv", longopts, NULL)) != -1) {
 		switch (ch) {
@@ -300,7 +300,7 @@ exec_upgrade(int argc, char **argv)
 			quiet = true;
 			break;
 		case 'r':
-			pkgvec_push(&reponames, optarg);
+			vec_push(&reponames, optarg);
 			break;
 		case 'U':
 			auto_update = false;

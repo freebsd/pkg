@@ -34,7 +34,7 @@
  * THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  */
 
-#include "pkgvec.h"
+#include "pkg/vec.h"
 #ifdef HAVE_CONFIG_H
 #include "pkg_config.h"
 #endif
@@ -401,13 +401,13 @@ pkgdb_repo_query_cond(struct pkgdb *db, const char *cond, const char *pattern, m
 	c_charv_t r;
 	struct pkgdb_it *ret;
 
-	pkgvec_init(&r);
+	vec_init(&r);
 
 	if (repo != NULL)
-		pkgvec_push(&r, repo);
+		vec_push(&r, repo);
 
 	ret = pkgdb_repo_query_cond2(db, cond, pattern, match, &r);
-	pkgvec_free(&r);
+	vec_free(&r);
 
 	return (ret);
 }
@@ -548,12 +548,12 @@ pkgdb_repo_search(struct pkgdb *db, const char *pattern, match_t match,
 	c_charv_t r;
 	struct pkgdb_it *ret;
 
-	pkgvec_init(&r);
+	vec_init(&r);
 	if (repo != NULL)
-		pkgvec_push(&r, repo);
+		vec_push(&r, repo);
 
 	ret = pkgdb_repo_search2(db, pattern, match, field, sort, &r);
-	pkgvec_free(&r);
+	vec_free(&r);
 
 	return (ret);
 }
@@ -595,14 +595,14 @@ pkgdb_all_search(struct pkgdb *db, const char *pattern, match_t match,
 	c_charv_t r;
 	struct pkgdb_it *ret;
 
-	pkgvec_init(&r);
+	vec_init(&r);
 
 	if (repo != NULL)
-		pkgvec_push(&r, repo);
+		vec_push(&r, repo);
 
 	ret = pkgdb_all_search2(db, pattern, match, field, sort, &r);
 
-	pkgvec_free(&r);
+	vec_free(&r);
 
 	return (ret);
 }

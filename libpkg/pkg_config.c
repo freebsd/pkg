@@ -529,10 +529,10 @@ pkg_external_libs_version(void)
 {
 	pkg_kvl_t *kvl = xcalloc(1, sizeof(*kvl));
 
-	pkgvec_push(kvl, pkg_kv_new("libcurl", curl_version()));
-	pkgvec_push(kvl, pkg_kv_new("libarchive", archive_version_string()));
-	pkgvec_push(kvl, pkg_kv_new("sqlite", sqlite3_libversion()));
-	pkgvec_push(kvl, pkg_kv_new("openssl", OpenSSL_version(OPENSSL_VERSION)));
+	vec_push(kvl, pkg_kv_new("libcurl", curl_version()));
+	vec_push(kvl, pkg_kv_new("libarchive", archive_version_string()));
+	vec_push(kvl, pkg_kv_new("sqlite", sqlite3_libversion()));
+	vec_push(kvl, pkg_kv_new("openssl", OpenSSL_version(OPENSSL_VERSION)));
 
 	return (kvl);
 }
@@ -1066,10 +1066,11 @@ config_init_abi(struct pkg_abi *abi)
 				    pkg_os_to_string(abi->os));
 			}
 		}
-	} else if (env_osversion_string != NULL) {
-		pkg_emit_error("Setting OSVERSION requires setting ABI as well");
-		return (EPKG_FATAL);
 	} else {
+		if (env_osversion_string != NULL) {
+			dbg(1, "Setting OSVERSION requires setting ABI as well (ignoring)");
+			unsetenv("OSVERSION");
+		}
 		if (pkg_abi_from_file(abi) != EPKG_OK) {
 			return (false);
 		}
