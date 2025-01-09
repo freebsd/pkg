@@ -362,13 +362,11 @@ static struct config_entry c[] = {
 		"METALOG",
 		NULL,
 	},
-#ifdef __FreeBSD__
 	{
 		PKG_BOOL,
 		"IGNORE_OSVERSION",
 		"NO",
 	},
-#endif
 	{
 		PKG_BOOL,
 		"BACKUP_LIBRARIES",
