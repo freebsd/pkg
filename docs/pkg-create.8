@@ -14,7 +14,7 @@
 .\"
 .\"     @(#)pkg.8
 .\"
-.Dd May 3, 2024
+.Dd January 15, 2025
 .Dt PKG-CREATE 8
 .Os
 .\" ---------------------------------------------------------------------------
@@ -168,7 +168,7 @@ options.
 .It Fl f Ar format , Cm --format Ar format
 Set
 .Ar format
-as the package output format.
+as the package compression format.
 It can be one of
 .Ar tzst, txz , tbz , tgz
 or
@@ -177,6 +177,10 @@ which are currently the only supported formats.
 If an invalid or no format is specified
 .Ar txz
 is assumed.
+.Po The
+.Pa .pkg
+extension is used for all compression types.
+.Pc
 .It Fl l Ar level , Cm --level Ar level
 Set the compression
 .Ar level
