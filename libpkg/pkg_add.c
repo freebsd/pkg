@@ -1547,6 +1547,7 @@ pkg_add_common(struct pkgdb *db, const char *path, unsigned flags,
 
 cleanup:
 	vec_free(context.symlinks_allowed);
+	free(context.symlinks_allowed);
 
 	if (openxact)
 		pkgdb_register_finale(db, retcode, NULL);
