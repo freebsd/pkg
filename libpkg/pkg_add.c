@@ -1876,12 +1876,15 @@ open_tempdir(struct pkg_add_context *context, const char *path)
 						pkgdb_it_free(it);
 						continue;
 					}
+					pkgdb_it_free(it);
 					/* Not myself */
 					if (!STREQ(p->uid, context->pkg->uid)) {
 						/* fallback */
+						pkg_free(p);
 						if (fstatat(context->rootfd, RELATIVE_PATH(walk), &st, 0) == -1)
 							continue;
 					}
+					pkg_free(p);
 				}
 			}
 			if (S_ISDIR(st.st_mode) && cnt == 1)
