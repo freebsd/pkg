@@ -1,3 +1,11 @@
+Changes from 1.21.99.6 to 2.0.99
+- allow IGNORE_OSVERSION on all oses
+- improve dealing with symlinks to directories and upgrades
+
+Changes from 1.21.99.5 to 1.21.99.6
+- allow IGNORE_OSVERSION on all oses
+
+- improve dealing with symlinks to directories and upgrades
 Changes from 1.21.99.6 to 1.21.99.6
 - ignore OSVERSION if set but ABI is not set
 
