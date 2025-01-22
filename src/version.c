@@ -113,8 +113,10 @@ print_version(struct pkg *pkg, const char *source, const char *ver,
 	if ((opt & VERSION_NOSTATUS) && limchar == key)
 		return;
 
-	if (opt & VERSION_ORIGIN)
-		pkg_printf("%-34o %c", pkg, key);
+	if (opt & VERSION_ORIGIN) {
+		pkg_printf("%-34o", pkg);
+		printf("%c", key);
+	}
 	else {
 		cout = pkg_printf("%n-%v", pkg, pkg);
 		cout = 35 - cout;
