@@ -1,3 +1,6 @@
+Changes from 2.0.1 to 2.0.2
+- Relax OSVERSION requirement
+
 Changes from 2.0.0 to 2.0.1
 - pkg.conf.sample: use consistent UCL syntax
 - version: fix bad usage of pkg_printf
