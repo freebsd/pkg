@@ -473,6 +473,8 @@ pkg_jobs_universe_process_shlibs(struct pkg_jobs_universe *universe,
 	int rc;
 
 	tll_foreach(pkg->shlibs_required, s) {
+		if (pkghash_get(universe->j->system_shlibs, s->item) != NULL)
+			continue;
 		if (pkghash_get(universe->provides, s->item) != NULL)
 			continue;
 
