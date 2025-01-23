@@ -1046,8 +1046,9 @@ config_init_abi(struct pkg_abi *abi)
 
 		if (abi->os == PKG_OS_FREEBSD) {
 			if (env_osversion_string == NULL) {
-				pkg_emit_error("Setting ABI requires setting OSVERSION as well");
-				return (false);
+				pkg_emit_error("Setting ABI requires setting OSVERSION, guessing the OSVERSION as: %d",
+				    pkg_abi_get_freebsd_osversion(abi));
+				return (true);
 			}
 
 			const char *errstr = NULL;
