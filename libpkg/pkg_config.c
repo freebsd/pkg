@@ -1023,7 +1023,7 @@ static bool
 config_init_abi(struct pkg_abi *abi)
 {
 	if (getenv("ALTABI") != NULL) {
-		pkg_emit_notice("Setting ALTABI manually is no longer supported, "
+		pkg_emit_error("Setting ALTABI manually is no longer supported, "
 		    "set ABI and OSVERSION or ABI_FILE instead.");
 	}
 
@@ -1032,11 +1032,11 @@ config_init_abi(struct pkg_abi *abi)
 	const char *env_osversion_string = getenv("OSVERSION");
 
 	if (env_abi_file != NULL && env_abi_string != NULL) {
-		pkg_emit_notice("Both ABI_FILE and ABI are set, ABI_FILE overrides ABI");
+		pkg_emit_error("Both ABI_FILE and ABI are set, ABI_FILE overrides ABI");
 	}
 
 	if (env_abi_file != NULL && env_osversion_string != NULL) {
-		pkg_emit_notice("Both ABI_FILE and OSVERSION are set, ABI_FILE overrides OSVERSION");
+		pkg_emit_error("Both ABI_FILE and OSVERSION are set, ABI_FILE overrides OSVERSION");
 	}
 
 	if (env_abi_string != NULL) {
