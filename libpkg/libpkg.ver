@@ -202,6 +202,10 @@ global:
 	pkg_vfprintf;
 	pkg_vprintf;
 	pkg_vsnprintf;
+	pkgbase_free;
+	pkgbase_new;
+	pkgbase_provide;
+	pkgbase_provide_shlib;
 	pkgdb_access;
 	pkgdb_access2;
 	pkgdb_add_annotation;

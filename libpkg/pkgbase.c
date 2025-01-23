@@ -19,7 +19,17 @@
 #include "pkghash.h"
 #include "private/event.h"
 #include "private/pkg.h"
+#include "private/pkgdb.h"
 #include "xmalloc.h"
+
+struct pkgbase {
+	struct pkghash *system_shlibs;
+	/*
+	 * unused yet but will be in the future when we will start using
+	 * provides/requires in pkgbase
+	 */
+	struct pkghash *provides;
+};
 
 static int
 scan_dir_for_shlibs(pkghash **shlib_list, const char *dir,
@@ -97,4 +107,37 @@ scan_system_shlibs(pkghash **system_shlibs, const char *rootdir)
 	}
 
 	return (EPKG_OK);
+}
+
+struct pkgbase *
+pkgbase_new(struct pkgdb *db)
+{
+	struct pkgbase *pb = xcalloc(1, sizeof(*pb));
+
+	if (!pkgdb_file_exists(db, "/usr/bin/uname"))
+		scan_system_shlibs(&pb->system_shlibs, ctx.pkg_rootdir);
+
+	return (pb);
+}
+
+void
+pkgbase_free(struct pkgbase *pb)
+{
+	if (pb == NULL)
+		return;
+	pkghash_destroy(pb->system_shlibs);
+	pkghash_destroy(pb->provides);
+	free(pb);
+}
+
+bool
+pkgbase_provide_shlib(struct pkgbase *pb, const char *shlib)
+{
+	return (pkghash_get(pb->system_shlibs, shlib) != NULL);
+}
+
+bool
+pkgbase_provide(struct pkgbase *pb, const char *provide)
+{
+	return (pkghash_get(pb->provides, provide) != NULL);
 }
