@@ -1446,8 +1446,11 @@ pkg_add_common(struct pkgdb *db, const char *path, unsigned flags,
 	 * Extract the files on disk.
 	 */
 	if (extract) {
+		char *compat;
 		pkg_register_cleanup_callback(pkg_rollback_cb, pkg);
-		vec_push(context.symlinks_allowed, pkg->prefix);
+		vec_push(context.symlinks_allowed, xstrdup(pkg->prefix));
+		xasprintf(&compat, "%s/lib/compat", pkg->prefix);
+		vec_push(context.symlinks_allowed, compat);
 		retcode = do_extract(a, ae, nfiles, local, &tempdirs, &context);
 		pkg_unregister_cleanup_callback(pkg_rollback_cb, pkg);
 		if (retcode != EPKG_OK) {
@@ -1546,7 +1549,7 @@ pkg_add_common(struct pkgdb *db, const char *path, unsigned flags,
 	}
 
 cleanup:
-	vec_free(context.symlinks_allowed);
+	vec_free_and_free(context.symlinks_allowed, free);
 	free(context.symlinks_allowed);
 
 	if (openxact)
