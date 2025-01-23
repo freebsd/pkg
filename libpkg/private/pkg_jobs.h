@@ -228,7 +228,7 @@ int pkg_conflicts_append_chain(struct pkg_job_universe_item *it,
 /*
  * Check whether `rp` is an upgrade for `lp`
  */
-bool pkg_jobs_need_upgrade(struct pkg *rp, struct pkg *lp);
+bool pkg_jobs_need_upgrade(struct pkghash *system_shlibs, struct pkg *rp, struct pkg *lp);
 
 /*
  * Pre-process universe to fix complex upgrade chains

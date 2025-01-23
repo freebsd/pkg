@@ -334,7 +334,7 @@ pkg_jobs_universe_process_deps(struct pkg_jobs_universe *universe,
 
 				if (npkg != NULL) {
 					/* Set reason for upgrades */
-					if (!pkg_jobs_need_upgrade(rpkg, npkg))
+					if (!pkg_jobs_need_upgrade(universe->j->system_shlibs, rpkg, npkg))
 						continue;
 					/* Save automatic flag */
 					rpkg->automatic = npkg->automatic;
@@ -355,7 +355,7 @@ pkg_jobs_universe_process_deps(struct pkg_jobs_universe *universe,
 
 			if (npkg != NULL) {
 				/* Set reason for upgrades */
-				if (!pkg_jobs_need_upgrade(rpkg, npkg))
+				if (!pkg_jobs_need_upgrade(universe->j->system_shlibs, rpkg, npkg))
 					continue;
 				/* Save automatic flag */
 				rpkg->automatic = npkg->automatic;
@@ -1017,7 +1017,7 @@ pkg_jobs_universe_get_upgrade_candidates(struct pkg_jobs_universe *universe,
 		}
 		else {
 			if (selected == lp &&
-					(lp == NULL || pkg_jobs_need_upgrade(pkg, lp)))
+					(lp == NULL || pkg_jobs_need_upgrade(universe->j->system_shlibs, pkg, lp)))
 				selected = pkg;
 			else if (pkg_version_change_between(pkg, selected) == PKG_UPGRADE)
 				selected = pkg;
