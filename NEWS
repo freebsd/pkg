@@ -1,3 +1,10 @@
+Changes from 2.0.0 to 2.0.1
+- pkg.conf.sample: use consistent UCL syntax
+- version: fix bad usage of pkg_printf
+- ABI: replace notice with warning message
+- fix pkg check -d on systems without pkgbase
+- improve the solver on system without pkgbase
+
 Changes from 1.21.99.6 to 2.0.0
 - allow IGNORE_OSVERSION on all oses
 - improve dealing with symlinks to directories and upgrades
