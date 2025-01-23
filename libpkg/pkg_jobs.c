@@ -1047,7 +1047,7 @@ pkg_jobs_find_remote_pattern(struct pkg_jobs *j, struct job_pattern *jp)
 }
 
 bool
-pkg_jobs_need_upgrade(struct pkg *rp, struct pkg *lp)
+pkg_jobs_need_upgrade(struct pkghash *system_shlibs, struct pkg *rp, struct pkg *lp)
 {
 	int ret, ret1, ret2;
 	struct pkg_option *lo = NULL, *ro = NULL;
@@ -1241,18 +1241,40 @@ pkg_jobs_need_upgrade(struct pkg *rp, struct pkg *lp)
 	}
 	free(l1);
 
-	if (tll_length(rp->shlibs_required) != tll_length(lp->shlibs_required)) {
-		free(rp->reason);
-		rp->reason = xstrdup("required shared library changed");
-		return (true);
+	size_t cntr = tll_length(rp->shlibs_required);
+	size_t cntl = tll_length(lp->shlibs_required);
+	if (cntr != cntl) {
+		if (system_shlibs != NULL) {
+		/*
+		 * before considering shlibs we need to check if we are running
+		 * pkgbase
+		 */
+			tll_foreach(rp->shlibs_required, r) {
+				if (pkghash_get(system_shlibs, r->item) != NULL)
+					cntr--;
+			}
+			tll_foreach(lp->shlibs_required, l) {
+				if (pkghash_get(system_shlibs, l->item) != NULL)
+					cntl--;
+			}
+		}
+		if (cntr != cntl) {
+			free(rp->reason);
+			rp->reason = xstrdup("required shared library changed");
+			return (true);
+		}
 	}
 	l1 = xcalloc(tll_length(lp->shlibs_required), sizeof (char*));
 	i = 0;
 	tll_foreach(lp->shlibs_required, l) {
+		if (pkghash_get(system_shlibs, l->item) != NULL)
+			continue;
 		l1[i++] = l->item;
 	}
 	i = 0;
 	tll_foreach(rp->shlibs_required, r) {
+		if (pkghash_get(system_shlibs, r->item) != NULL)
+			continue;
 		if (!STREQ(r->item, l1[i])) {
 			free(rp->reason);
 			rp->reason = xstrdup("required shared library changed");
