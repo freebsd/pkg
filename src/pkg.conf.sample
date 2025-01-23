@@ -54,35 +54,35 @@
 #IP_VERSION = 0
 
 # Sample alias settings
-ALIAS              : {
-  all-depends: query %dn-%dv,
-  annotations: info -A,
-  build-depends: info -qd,
-  cinfo: info -Cx,
-  comment: query -i "%c",
-  csearch: search -Cx,
-  desc: query -i "%e",
-  download: fetch,
-  iinfo: info -ix,
-  isearch: search -ix,
-  prime-list: "query -e '%a = 0' '%n'",
-  prime-origins: "query -e '%a = 0' '%o' | sort -u",
-  leaf: "query -e '%#r == 0' '%n-%v'",
-  list: info -ql,
-  noauto = "query -e '%a == 0' '%n-%v'",
-  options: query -i "%n - %Ok: %Ov",
-  origin: info -qo,
-  orphans: version -vRl\?,
-  provided-depends: info -qb,
-  rall-depends: rquery %dn-%dv,
-  raw: info -R,
-  rcomment: rquery -i "%c",
-  rdesc: rquery -i "%e",
-  required-depends: info -qr,
-  roptions: rquery -i "%n - %Ok: %Ov",
-  shared-depends: info -qB,
-  show: info -f -k,
-  size: info -sq,
-  unmaintained = "query -e '%m = \"ports@FreeBSD.org\"' '%o (%w)'",
-  runmaintained = "rquery -e '%m = \"ports@FreeBSD.org\"' '%o (%w)'",
-  }
+ALIAS {
+    all-depends = "query %dn-%dv";
+    annotations = "info -A";
+    build-depends = "info -qd";
+    cinfo = "info -Cx";
+    comment = "query -i \"%c\"";
+    csearch = "search -Cx";
+    desc = "query -i \"%e\"";
+    download = "fetch";
+    iinfo = "info -ix";
+    isearch = "search -ix";
+    prime-list = "query -e '%a = 0' '%n'";
+    prime-origins = "query -e '%a = 0' '%o' | sort -u";
+    leaf = "query -e '%#r == 0' '%n-%v'";
+    list = "info -ql";
+    noauto = "query -e '%a == 0' '%n-%v'";
+    options = "query -i \"%n - %Ok: %Ov\"";
+    origin = "info -qo";
+    orphans = "version -vRl?";
+    provided-depends = "info -qb";
+    rall-depends = "rquery %dn-%dv";
+    raw = "info -R";
+    rcomment = "rquery -i \"%c\"";
+    rdesc = "rquery -i \"%e\"";
+    required-depends = "info -qr";
+    roptions = "rquery -i \"%n - %Ok: %Ov\"";
+    shared-depends = "info -qB";
+    show = "info -f -k";
+    size = "info -sq";
+    unmaintained = "query -e '%m = \"ports@FreeBSD.org\"' '%o (%w)'";
+    runmaintained = "rquery -e '%m = \"ports@FreeBSD.org\"' '%o (%w)'";
+}

@@ -37,7 +37,7 @@ SRCS=	backup_lib.c \
 	pkg_abi_macho.c \
 	binfmt_macho.c \
 	ssh.c \
-	system_shlibs.c \
+	pkgbase.c \
 	pkg_arch.c \
 	pkg_cudf.c \
 	pkg_jobs_universe.c  pkg_printf.c \
@@ -188,7 +188,7 @@ lib$(LIB)_flat.a: $(STATIC_LIBS)
 	libtool -static -o lib$(LIB)_flat.a $(STATIC_LIBS)
 @else
 lib$(LIB)_flat.a: ${STATIC_LIBS} mergelib_script
-	ar -M < mergelib_script
+	$(AR) -M < mergelib_script
 @endif
 
 mergelib_script: $(STATIC_LIBS)

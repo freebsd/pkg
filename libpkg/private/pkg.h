@@ -840,7 +840,7 @@ enum pkg_metalog_type {
 int pkg_set_from_fileat(int fd, struct pkg *pkg, pkg_attr attr, const char *file, bool trimcr);
 void pkg_rollback_cb(void *);
 void pkg_rollback_pkg(struct pkg *);
-int pkg_add_fromdir(struct pkg *, const char *);
+int pkg_add_fromdir(struct pkg *, const char *, struct pkgdb *db);
 struct pkg_dep* pkg_adddep_chain(struct pkg_dep *chain,
 		struct pkg *pkg, const char *name, const char *origin, const
 		char *version, bool locked);

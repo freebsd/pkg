@@ -925,7 +925,7 @@ pkg_solve_set_initial_assumption(struct pkg_solve_problem *problem,
 			    conservative, assumed_reponame, true);
 
 			if (local && (STREQ(selected->pkg->digest, local->pkg->digest) ||
-				      !pkg_jobs_need_upgrade(selected->pkg, local->pkg))) {
+				      !pkg_jobs_need_upgrade(problem->j->system_shlibs, selected->pkg, local->pkg))) {
 				selected = local;
 			}
 		}

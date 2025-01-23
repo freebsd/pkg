@@ -128,6 +128,8 @@ struct pkg_plugin;
 
 struct pkg_manifest_parser;
 
+struct pkg_base;
+
 typedef struct ucl_object_s pkg_object;
 typedef void * pkg_iter;
 
@@ -1731,6 +1733,10 @@ struct pkg_stringlist_iterator *pkg_stringlist_iterator(struct pkg_stringlist *l
 const char *pkg_stringlist_next(struct pkg_stringlist_iterator *it);
 struct pkg_el *pkg_get_element(struct pkg *p, pkg_attr a);
 pkg_kvl_t *pkg_external_libs_version(void);
+struct pkgbase *pkgbase_new(struct pkgdb *db);
+bool pkgbase_provide_shlib(struct pkgbase *, const char *shlib);
+bool pkgbase_provide(struct pkgbase *, const char *shlib);
+void pkgbase_free(struct pkgbase *);
 
 static inline void
 pkg_get_s(struct pkg *p, pkg_attr a, const char **val)

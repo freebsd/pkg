@@ -362,13 +362,11 @@ static struct config_entry c[] = {
 		"METALOG",
 		NULL,
 	},
-#ifdef __FreeBSD__
 	{
 		PKG_BOOL,
 		"IGNORE_OSVERSION",
 		"NO",
 	},
-#endif
 	{
 		PKG_BOOL,
 		"BACKUP_LIBRARIES",
@@ -1025,7 +1023,7 @@ static bool
 config_init_abi(struct pkg_abi *abi)
 {
 	if (getenv("ALTABI") != NULL) {
-		pkg_emit_notice("Setting ALTABI manually is no longer supported, "
+		pkg_emit_error("Setting ALTABI manually is no longer supported, "
 		    "set ABI and OSVERSION or ABI_FILE instead.");
 	}
 
@@ -1034,11 +1032,11 @@ config_init_abi(struct pkg_abi *abi)
 	const char *env_osversion_string = getenv("OSVERSION");
 
 	if (env_abi_file != NULL && env_abi_string != NULL) {
-		pkg_emit_notice("Both ABI_FILE and ABI are set, ABI_FILE overrides ABI");
+		pkg_emit_error("Both ABI_FILE and ABI are set, ABI_FILE overrides ABI");
 	}
 
 	if (env_abi_file != NULL && env_osversion_string != NULL) {
-		pkg_emit_notice("Both ABI_FILE and OSVERSION are set, ABI_FILE overrides OSVERSION");
+		pkg_emit_error("Both ABI_FILE and OSVERSION are set, ABI_FILE overrides OSVERSION");
 	}
 
 	if (env_abi_string != NULL) {
@@ -1048,8 +1046,9 @@ config_init_abi(struct pkg_abi *abi)
 
 		if (abi->os == PKG_OS_FREEBSD) {
 			if (env_osversion_string == NULL) {
-				pkg_emit_error("Setting ABI requires setting OSVERSION as well");
-				return (false);
+				pkg_emit_error("Setting ABI requires setting OSVERSION, guessing the OSVERSION as: %d",
+				    pkg_abi_get_freebsd_osversion(abi));
+				return (true);
 			}
 
 			const char *errstr = NULL;

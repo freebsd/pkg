@@ -41,6 +41,7 @@ check_deps(struct pkgdb *db, struct pkg *p, deps_entries *dh, bool noinstall, xs
 	int nbpkgs = 0;
 	struct pkg_stringlist *sl = NULL;
 	struct pkg_stringlist_iterator	*slit;
+	struct pkgbase *pb;
 
 	assert(db != NULL);
 	assert(p != NULL);
@@ -60,8 +61,11 @@ check_deps(struct pkgdb *db, struct pkg *p, deps_entries *dh, bool noinstall, xs
 
 	/* checking libraries required */
 	pkg_get(p, PKG_ATTR_SHLIBS_REQUIRED, &sl);
+	pb = pkgbase_new(db);
 	slit = pkg_stringlist_iterator(sl);
 	while ((buf = pkg_stringlist_next(slit))) {
+		if (pkgbase_provide_shlib(pb, buf))
+			continue;
 		it = pkgdb_query_shlib_provide(db, buf);
 		if (it != NULL && pkgdb_it_count(it) > 0) {
 			pkgdb_it_free(it);
@@ -82,6 +86,8 @@ check_deps(struct pkgdb *db, struct pkg *p, deps_entries *dh, bool noinstall, xs
 	pkg_get(p, PKG_ATTR_REQUIRES, &sl);
 	slit = pkg_stringlist_iterator(sl);
 	while ((buf = pkg_stringlist_next(slit))) {
+		if (pkgbase_provide(pb, buf))
+			continue;
 		it = pkgdb_query_provide(db, buf);
 		if (it != NULL && pkgdb_it_count(it) > 0) {
 			pkgdb_it_free(it);
@@ -94,6 +100,7 @@ check_deps(struct pkgdb *db, struct pkg *p, deps_entries *dh, bool noinstall, xs
 			pkg_fprintf(out->fp, "%n has a missing requirement: %S\n",
 			    p, buf);
 	}
+	pkgbase_free(pb);
 	free(slit);
 	free(sl);
 

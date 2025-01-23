@@ -28,6 +28,7 @@
 #include <err.h>
 #include <fcntl.h>
 #include <private/utils.h>
+#include <private/add.h>
 
 ATF_TC_WITHOUT_HEAD(hidden_tempfile);
 ATF_TC_WITHOUT_HEAD(random_suffix);
@@ -73,13 +74,14 @@ ATF_TC_BODY(json_escape, tc) {
 }
 
 ATF_TC_BODY(open_tempdir, tc) {
+	struct pkg_add_context ctx = { 0 };
 	struct tempdir *t;
-	int rootfd = open(getenv("TMPDIR"), O_DIRECTORY);
-	ATF_REQUIRE_MSG(rootfd  != -1, "impossible to open TMPDIR");
-	t = open_tempdir(rootfd, "/plop", NULL);
+	ctx.rootfd = open(getenv("TMPDIR"), O_DIRECTORY);
+	ATF_REQUIRE_MSG(ctx.rootfd  != -1, "impossible to open TMPDIR");
+	t = open_tempdir(&ctx, "/plop");
 	ATF_REQUIRE(t == NULL);
-	mkdirat(rootfd, "usr", 0755);
-	t = open_tempdir(rootfd, "/usr/local/directory", NULL);
+	mkdirat(ctx.rootfd, "usr", 0755);
+	t = open_tempdir(&ctx, "/usr/local/directory");
 	ATF_REQUIRE(t != NULL);
 	ATF_REQUIRE_STREQ(t->name, "/usr/local");
 	ATF_REQUIRE_EQ(t->len, strlen("/usr/local"));
@@ -87,7 +89,7 @@ ATF_TC_BODY(open_tempdir, tc) {
 	ATF_REQUIRE(t->fd != -1);
 	close(t->fd);
 	free(t);
-	t = open_tempdir(rootfd, "/nousr/local/directory", NULL);
+	t = open_tempdir(&ctx, "/nousr/local/directory");
 	ATF_REQUIRE(t != NULL);
 	ATF_REQUIRE_STREQ(t->name, "/nousr");
 	ATF_REQUIRE_EQ(t->len, strlen("/nousr"));
@@ -95,10 +97,10 @@ ATF_TC_BODY(open_tempdir, tc) {
 	ATF_REQUIRE(t->fd != -1);
 	close(t->fd);
 	free(t);
-	mkdirat(rootfd, "dir", 0755);
+	mkdirat(ctx.rootfd, "dir", 0755);
 	/* a file in the path */
-	close(openat(rootfd, "dir/file1", O_CREAT|O_WRONLY, 0644));
-	t = open_tempdir(rootfd, "/dir/file1/test", NULL);
+	close(openat(ctx.rootfd, "dir/file1", O_CREAT|O_WRONLY, 0644));
+	t = open_tempdir(&ctx, "/dir/file1/test");
 	ATF_REQUIRE(t != NULL);
 	ATF_REQUIRE_STREQ(t->name, "/dir/file1");
 	ATF_REQUIRE_EQ(t->len, strlen("/dir/file1"));

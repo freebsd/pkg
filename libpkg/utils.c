@@ -983,61 +983,6 @@ json_escape(const char *str)
 	return (xstring_get(buf));
 }
 
-struct tempdir *
-open_tempdir(int rootfd, const char *path, c_charv_t *symlinks_allowed)
-{
-	struct stat st;
-	char walk[MAXPATHLEN];
-	char *dir;
-	size_t cnt = 0, len;
-	struct tempdir *t;
-
-	strlcpy(walk, path, sizeof(walk));
-	while ((dir = strrchr(walk, '/')) != NULL) {
-		*dir = '\0';
-		cnt++;
-		/* accept symlinks pointing to directories only for prefix */
-		len = strlen(walk);
-		if (len == 0 && cnt == 1)
-			break;
-		if (len > 0) {
-			int flag = AT_SYMLINK_NOFOLLOW;
-			if (symlinks_allowed != NULL) {
-				for (size_t i = 0; i < symlinks_allowed->len; i++) {
-					if (STREQ(RELATIVE_PATH(walk), RELATIVE_PATH(symlinks_allowed->d[i])))
-						flag = 0;
-				}
-			}
-			if (fstatat(rootfd, RELATIVE_PATH(walk), &st, flag) == -1)
-				continue;
-			if (S_ISDIR(st.st_mode) && cnt == 1)
-				break;
-			if (!S_ISDIR(st.st_mode))
-				continue;
-		}
-		*dir = '/';
-		t = xcalloc(1, sizeof(*t));
-		hidden_tempfile(t->temp, sizeof(t->temp), walk);
-		if (mkdirat(rootfd, RELATIVE_PATH(t->temp), 0755) == -1) {
-			pkg_errno("Fail to create temporary directory: %s", t->temp);
-			free(t);
-			return (NULL);
-		}
-
-		strlcpy(t->name, walk, sizeof(t->name));
-		t->len = strlen(t->name);
-		t->fd = openat(rootfd, RELATIVE_PATH(t->temp), O_DIRECTORY);
-		if (t->fd == -1) {
-			pkg_errno("Fail to open directory %s", t->temp);
-			free(t);
-			return (NULL);
-		}
-		return (t);
-	}
-	errno = 0;
-	return (NULL);
-}
-
 const char *
 get_http_auth(void)
 {

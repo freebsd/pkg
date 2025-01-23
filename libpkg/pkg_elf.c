@@ -582,6 +582,8 @@ elf_parse_abi(Elf *elf, GElf_Ehdr *ehdr, struct pkg_abi *abi)
 			 * loop over all the note section and override what
 			 * should be overridden if any
 			 */
+			if (data == NULL)
+				continue;
 			elf_note_analyse(data, ehdr, abi);
 		}
 	}
