@@ -826,9 +826,6 @@ pkgdb_open_repos(struct pkgdb *db, const char *reponame)
 {
 	struct pkg_repo *r = NULL;
 
-	if (reponame != NULL) {
-		printf("opening reponame: %s\n", reponame);
-	}
 	while (pkg_repos(&r) == EPKG_OK) {
 		if (!r->enable && reponame == NULL) {
 			continue;
