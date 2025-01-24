@@ -2216,9 +2216,11 @@ pkg_jobs_apply(struct pkg_jobs *j)
 			if (rc == EPKG_OK) {
 				bool found_conflicts = false;
 				rc = pkg_jobs_check_and_solve_conflicts(j, &found_conflicts);
+				if (rc != EPKG_OK)
+					return (rc);
 				if (found_conflicts) {
 					rc = EPKG_CONFLICT;
-				} else if (rc == EPKG_OK) {
+				} else {
 					rc = pkg_jobs_execute(j);
 				}
 			}
