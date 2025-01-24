@@ -1,3 +1,7 @@
+Changes from 2.0.2 to 2.0.3
+- improve elf abi detection when looking for shlibs
+- remove debug printf's
+
 Changes from 2.0.1 to 2.0.2
 - Relax OSVERSION requirement
 
