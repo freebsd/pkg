@@ -4,7 +4,8 @@
  * SPDX-License-Identifier: BSD-2-Clause
  */
 
-#pragma once
+#ifndef VEC_H
+#define VEC_H
 
 #include <stdbool.h>
 #include <stdlib.h>
@@ -69,3 +70,4 @@
 
 typedef vec_t(char *) charv_t;
 typedef vec_t(const char *) c_charv_t;
+#endif
