@@ -2214,7 +2214,6 @@ pkg_jobs_apply(struct pkg_jobs *j)
 			rc = pkg_jobs_fetch(j);
 			pkg_plugins_hook_run(PKG_PLUGIN_HOOK_POST_FETCH, j, j->db);
 			if (rc == EPKG_OK) {
-				j->need_fetch = false;
 				bool found_conflicts = false;
 				rc = pkg_jobs_check_and_solve_conflicts(j, &found_conflicts);
 				if (found_conflicts) {
