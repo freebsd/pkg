@@ -1911,29 +1911,6 @@ pkg_jobs_run_solver(struct pkg_jobs *j)
 	return (ret);
 }
 
-static int
-pkg_jobs_check_and_solve_conflicts(struct pkg_jobs *j, bool *found_conflicts)
-{
-	int rc;
-
-	/* An inital solver run must be completed before this function is called */
-	assert(j->solved);
-
-	while ((rc = pkg_jobs_check_conflicts(j)) == EPKG_CONFLICT) {
-		if (found_conflicts) {
-			*found_conflicts = true;
-		}
-		/* Cleanup solver results */
-		tll_free_and_free(j->jobs, free);
-		rc = pkg_jobs_run_solver(j);
-		if (rc != EPKG_OK) {
-			break;
-		}
-	}
-
-	return (rc);
-}
-
 int
 pkg_jobs_solve(struct pkg_jobs *j)
 {
@@ -1974,8 +1951,22 @@ pkg_jobs_solve(struct pkg_jobs *j)
 		}
 	}
 
-	if (!j->need_fetch && j->type != PKG_JOBS_FETCH) {
-		ret = pkg_jobs_check_and_solve_conflicts(j, NULL);
+	if (j->solved && !j->need_fetch && j->type != PKG_JOBS_FETCH) {
+		int rc;
+		bool has_conflicts = false;
+		do {
+			j->conflicts_registered = 0;
+			rc = pkg_jobs_check_conflicts(j);
+			if (rc == EPKG_CONFLICT) {
+				/* Cleanup results */
+				tll_free_and_free(j->jobs, free);
+				has_conflicts = true;
+				pkg_jobs_solve(j);
+			}
+			else if (rc == EPKG_OK && !has_conflicts) {
+				break;
+			}
+		} while (j->conflicts_registered > 0);
 	}
 
 	return (ret);
@@ -2198,6 +2189,7 @@ int
 pkg_jobs_apply(struct pkg_jobs *j)
 {
 	int rc;
+	bool has_conflicts = false;
 
 	if (!j->solved) {
 		pkg_emit_error("The jobs hasn't been solved");
@@ -2214,12 +2206,29 @@ pkg_jobs_apply(struct pkg_jobs *j)
 			rc = pkg_jobs_fetch(j);
 			pkg_plugins_hook_run(PKG_PLUGIN_HOOK_POST_FETCH, j, j->db);
 			if (rc == EPKG_OK) {
-				j->need_fetch = false;
-				bool found_conflicts = false;
-				rc = pkg_jobs_check_and_solve_conflicts(j, &found_conflicts);
-				if (found_conflicts) {
-					rc = EPKG_CONFLICT;
-				} else if (rc == EPKG_OK) {
+				/* Check local conflicts in the first run */
+				if (j->solved == 1) {
+					do {
+						j->conflicts_registered = 0;
+						rc = pkg_jobs_check_conflicts(j);
+						if (rc == EPKG_CONFLICT) {
+							/* Cleanup results */
+							tll_free_and_free(j->jobs, free);
+							has_conflicts = true;
+							rc = pkg_jobs_solve(j);
+						}
+						else if (rc == EPKG_OK && !has_conflicts) {
+							rc = pkg_jobs_execute(j);
+							break;
+						}
+					} while (j->conflicts_registered > 0);
+
+					if (has_conflicts) {
+						return (EPKG_CONFLICT);
+					}
+				}
+				else {
+					/* Not the first run, conflicts are resolved already */
 					rc = pkg_jobs_execute(j);
 				}
 			}
