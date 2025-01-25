@@ -232,6 +232,12 @@ analyse_elf(struct pkg *pkg, const char *fpath)
 		if (dyn->d_tag == DT_SONAME) {
 			pkg_addshlib_provided(pkg, shlib, flags);
 		} else if (dyn->d_tag == DT_NEEDED) {
+			/*
+			 * some packages record fullpath to a lib
+			 * neovim is an example, skip them for now
+			 */
+			if (*shlib == '/')
+				continue;
 			pkg_addshlib_required(pkg, shlib, flags);
 		}
 	}
