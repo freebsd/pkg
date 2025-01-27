@@ -1916,15 +1916,15 @@ pkg_jobs_solve(struct pkg_jobs *j)
 {
 	int ret;
 
-	assert(j->system_shlibs == NULL);
-
-	/* If /usr/bin/uname is in the pkg database, we are targeting
-	 * a pkgbase system and should rely on the pkgbase packages to
-	 * provide system shlibs. */
-	if (!pkgdb_file_exists(j->db, "/usr/bin/uname")) {
-		ret = scan_system_shlibs(&j->system_shlibs, ctx.pkg_rootdir);
-		if (ret != EPKG_OK) {
-			return (ret);
+	if (j->system_shlibs == NULL) {
+		/* If /usr/bin/uname is in the pkg database, we are targeting
+		 * a pkgbase system and should rely on the pkgbase packages to
+		 * provide system shlibs. */
+		if (!pkgdb_file_exists(j->db, "/usr/bin/uname")) {
+			ret = scan_system_shlibs(&j->system_shlibs, ctx.pkg_rootdir);
+			if (ret != EPKG_OK) {
+				return (ret);
+			}
 		}
 	}
 
