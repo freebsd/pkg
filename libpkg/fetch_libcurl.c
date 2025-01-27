@@ -508,7 +508,7 @@ do_retry:
 			if (rc == 404) {
 				retcode = EPKG_ENOENT;
 			} else {
-				pkg_emit_error("An error occured while fetching package");
+				pkg_emit_error("An error occured while fetching package: %s", curl_easy_strerror(rc));
 				retcode = EPKG_FATAL;
 			}
 		} else
