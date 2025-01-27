@@ -51,14 +51,18 @@ The following options can be defined in
 .Nm :
 .Bl -tag -width ".Cm ABI: string"
 .It Cm ABI: string
-The ABI of the package you want to install.
-Default: derived from the ABI of the
-.Pa /usr/bin/uname
-binary, if not found then
-.Pa /bin/sh
-binary.
-E.g.,
+The ABI of the package you want to install, for example
 .Ql FreeBSD:14:amd64 .
+This should be set in combination with the OSVERSION option if targeting
+.Fx
+to specify the exact target version.
+Default: derived based on ABI_FILE.
+.It Cm ABI_FILE: string
+Set the file used to determine the target ABI.
+Default:
+.Pa /usr/bin/uname ,
+or if not found,
+.Pa /bin/sh .
 .It Cm ALIAS: key/value list
 Define local aliases for various
 .Xr pkg 8
@@ -228,6 +232,15 @@ When given as a hostname, will be converted to a list of IPv4 or IPv6
 addresses by the default mechanisms configured on the system.
 See
 .Xr getaddrinfo 3 .
+.It Cm OSVERSION: integer
+Specifiy the exact
+.Fx
+version for the target ABI. This should be set in combination with the ABI option.
+The format is the same as the format of
+.Dv __FreeBSD_version
+in
+.Pa /usr/include/sys/param.h .
+Default: derived based on ABI_FILE.
 .It Cm PERMISSIVE: boolean
 Ignore conflicts while registering a package.
 Note that the conflicting files will not be recorded as owned by the new
@@ -554,26 +567,40 @@ for details.
 It is possible to specify more than one repository per file.
 .Sh VARIABLES
 The following variables will be expanded during the parsing of
-.Nm
+.Nm .
 .Bl -tag -width Ds
 .It Va ABI
+Expands to the ABI string
+.Po e.g.
+.Ql FreeBSD:14:amd64
+.Pc .
 .It Va OSNAME
-Expands to the full version of the name of the operating system.
+Expands to the the name of the target operating system.
 .It Va RELEASE
-Expands to the full version of the operating system.
+Expands to the full version of the target operating system.
 .It Va VERSION_MAJOR
-If supported, expands to the major version of the operating system.
-(Only supported on
-.Fx
-)
+Expands to the major version of the target operating system.
 .It Va VERSION_MINOR
-If supported, expands to the minor version of the operating system.
-(Only supported on
-.Fx
-)
+Expands to the minor version of the target operating system.
+.It Va OSVERSION
+If targeting
+.Fx ,
+expands to the target version in the same format as
+.Dv __FreeBSD_version
+in
+.PA /usr/include/sys/param.h .
 .It Va ARCH
-Expands the architecture of the system.
+Expands to the architecture of the system.
 .El
+.Pp
+Since the values of these variables are affected by some options that
+may be set in
+.Nm
+(for example ABI or ABI_FILE), it is necessary to parse pkg.conf in two
+passes. The first pass only parses the ABI, ABI_FILE, and OSVERSION
+options and does no variable expansion. The second pass expands the
+variables listed above and ignores the ABI, ABI_FILE, and OSVERSION
+options.
 .Sh ENVIRONMENT
 An environment variable with the same name as the option in the
 configuration file always overrides the value of an option set in the
