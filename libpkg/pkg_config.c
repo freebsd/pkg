@@ -1019,6 +1019,70 @@ config_validate_debug_flags(const ucl_object_t *o)
 	return (ret);
 }
 
+/* Parses ABI_FILE, ABI, ALTABI, and OSVERSION from the given ucl file and sets
+ * the values in the environment. These values must be parsed separately from
+ * the rest of the config because they are made available as variable expansions
+ * when parsing the rest of the config (See config_parser_vars_register()). */
+static void
+config_parse_abi_options(int conffd)
+{
+	if (conffd < 0) {
+		return;
+	}
+
+	struct ucl_parser *p = ucl_parser_new(0);
+
+	if (!ucl_parser_add_fd(p, conffd)) {
+		pkg_emit_error("Invalid configuration file: %s", ucl_parser_get_error(p));
+	}
+
+	ucl_object_t *obj = ucl_parser_get_object(p);
+
+	ucl_object_iter_t it = NULL;
+	const ucl_object_t *cur;
+	xstring *ukey = NULL;
+	while (obj != NULL && (cur = ucl_iterate_object(obj, &it, true))) {
+		xstring_renew(ukey);
+		const char *key = ucl_object_key(cur);
+		for (size_t i = 0; key[i] != '\0'; i++)
+			fputc(toupper(key[i]), ukey->fp);
+		fflush(ukey->fp);
+
+		if (STREQ(ukey->buf, "ABI_FILE") ||
+		    STREQ(ukey->buf, "ABI") ||
+		    STREQ(ukey->buf, "ALTABI")) {
+			if (cur->type == UCL_STRING) {
+				/* Don't overwrite the value already set on the
+				   command line or in the environment */
+				setenv(ukey->buf, ucl_object_tostring(cur), 0);
+			} else {
+				pkg_emit_error("Malformed key %s, got '%s' expecting "
+				    "'string', ignoring", key,
+				    type_to_string(cur->type));
+			}
+		} else if (STREQ(ukey->buf, "OSVERSION")) {
+			if (cur->type == UCL_INT) {
+				int64_t osversion = ucl_object_toint(cur);
+				char *str_osversion;
+				xasprintf(&str_osversion, "%" PRIi64, osversion);
+				/* Don't overwrite the value already set on the
+				   command line or in the environment */
+				setenv(ukey->buf, str_osversion, 0);
+				free(str_osversion);
+			} else {
+				pkg_emit_error("Malformed key %s, got '%s' expecting "
+				    "'integer', ignoring", key,
+				    type_to_string(cur->type));
+			}
+
+
+		}
+	}
+
+	ucl_object_unref(obj);
+	ucl_parser_free(p);
+}
+
 static bool
 config_init_abi(struct pkg_abi *abi)
 {
@@ -1114,6 +1178,17 @@ pkg_ini(const char *path, const char *reposdir, pkg_init_flags flags)
 		return (EPKG_FATAL);
 	}
 
+	if (path == NULL)
+		conffd = openat(ctx.rootfd, &PREFIX"/etc/pkg.conf"[1], 0);
+	else
+		conffd = open(path, O_RDONLY);
+	if (conffd == -1 && errno != ENOENT) {
+		pkg_errno("Cannot open %s/%s",
+		    ctx.pkg_rootdir != NULL ? ctx.pkg_rootdir : "",
+		    path);
+	}
+
+	config_parse_abi_options(conffd);
 	if (!config_init_abi(&ctx.abi)) {
 		return (EPKG_FATAL);
 	}
@@ -1207,16 +1282,6 @@ pkg_ini(const char *path, const char *reposdir, pkg_init_flags flags)
 		}
 	}
 
-	if (path == NULL)
-		conffd = openat(ctx.rootfd, &PREFIX"/etc/pkg.conf"[1], 0);
-	else
-		conffd = open(path, O_RDONLY);
-	if (conffd == -1 && errno != ENOENT) {
-		pkg_errno("Cannot open %s/%s",
-		    ctx.pkg_rootdir != NULL ? ctx.pkg_rootdir : "",
-		    path);
-	}
-
 	p = ucl_parser_new(0);
 
 	struct config_parser_vars *parser_vars = config_parser_vars_register(p);
@@ -1252,14 +1317,11 @@ pkg_ini(const char *path, const char *reposdir, pkg_init_flags flags)
 			continue;
 		}
 
-		if (STREQ(ukey->buf, "ABI") ||
+		if (STREQ(ukey->buf, "ABI_FILE") ||
+		    STREQ(ukey->buf, "ABI") ||
 		    STREQ(ukey->buf, "ALTABI") ||
 		    STREQ(ukey->buf, "OSVERSION")) {
-			pkg_emit_error("Setting %s in pkg.conf is no longer supported. "
-			    "Set ABI_FILE or ABI and OSVERSION with -o on the "
-			    "command line or in the environment to configure ABI", ukey->buf);
-			fatal_errors = true;
-			continue;
+			continue; /* Already parsed in config_parse_abi_options() */
 		}
 
 		/* ignore unknown keys */
