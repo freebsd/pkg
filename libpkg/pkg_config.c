@@ -1242,9 +1242,9 @@ pkg_ini(const char *path, const char *reposdir, pkg_init_flags flags)
 		ukeylen = strlen(ukey->buf);
 		object = ucl_object_find_keyl(config, ukey->buf, ukeylen);
 
-		if (strncasecmp(ukey->buf, "PACKAGESITE", ukeylen) == 0 ||
-		    strncasecmp(ukey->buf, "PUBKEY", ukeylen) == 0 ||
-		    strncasecmp(ukey->buf, "MIRROR_TYPE", ukeylen) == 0) {
+		if (STREQ(ukey->buf, "PACKAGESITE") ||
+		    STREQ(ukey->buf, "PUBKEY") ||
+		    STREQ(ukey->buf, "MIRROR_TYPE")) {
 			pkg_emit_error("%s in pkg.conf is no longer "
 			    "supported.  Convert to the new repository style."
 			    "  See pkg.conf(5)", ukey->buf);
@@ -1252,9 +1252,9 @@ pkg_ini(const char *path, const char *reposdir, pkg_init_flags flags)
 			continue;
 		}
 
-		if (strncasecmp(ukey->buf, "ABI", ukeylen) == 0 ||
-		    strncasecmp(ukey->buf, "ALTABI", ukeylen) == 0 ||
-		    strncasecmp(ukey->buf, "OSVERSION", ukeylen) == 0) {
+		if (STREQ(ukey->buf, "ABI") ||
+		    STREQ(ukey->buf, "ALTABI") ||
+		    STREQ(ukey->buf, "OSVERSION")) {
 			pkg_emit_error("Setting %s in pkg.conf is no longer supported. "
 			    "Set ABI_FILE or ABI and OSVERSION with -o on the "
 			    "command line or in the environment to configure ABI", ukey->buf);
