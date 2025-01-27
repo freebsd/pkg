@@ -909,6 +909,8 @@ populate_pkg(sqlite3_stmt *stmt, struct pkg *pkg) {
 			case PKG_ATTR_NAME:
 				free(pkg->name);
 				pkg->name = xstrdup(sqlite3_column_text(stmt, icol));
+				free(pkg->uid);
+				pkg->uid = xstrdup(sqlite3_column_text(stmt, icol));
 				break;
 			case PKG_ATTR_OLD_VERSION:
 				free(pkg->old_version);

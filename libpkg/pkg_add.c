@@ -1874,7 +1874,7 @@ open_tempdir(struct pkg_add_context *context, const char *path)
 				continue;
 			if (flag != 0 && S_ISLNK(st.st_mode)) {
 				struct pkgdb_it	*it = NULL;
-				struct pkg *p;
+				struct pkg *p = NULL;
 				if (context->db != NULL && (it = pkgdb_query_which(context->db, walk, false)) != NULL) {
 					if (pkgdb_it_next(it, &p, PKG_LOAD_BASIC) != EPKG_OK) {
 						pkgdb_it_free(it);
@@ -1884,9 +1884,10 @@ open_tempdir(struct pkg_add_context *context, const char *path)
 					/* Not myself */
 					if (!STREQ(p->uid, context->pkg->uid)) {
 						/* fallback */
-						pkg_free(p);
-						if (fstatat(context->rootfd, RELATIVE_PATH(walk), &st, 0) == -1)
+						if (fstatat(context->rootfd, RELATIVE_PATH(walk), &st, 0) == -1) {
+							pkg_free(p);
 							continue;
+						}
 					}
 					pkg_free(p);
 				}

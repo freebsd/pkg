@@ -230,6 +230,8 @@ name_key(struct plist *p, char *line, struct file_attr *a __unused)
 	tmp[0] = '\0';
 	tmp++;
 	p->pkg->name = xstrdup(line);
+	free(p->pkg->uid);
+	p->pkg->uid = xstrdup(line);
 	p->pkg->version = xstrdup(tmp);
 
 	return (EPKG_OK);

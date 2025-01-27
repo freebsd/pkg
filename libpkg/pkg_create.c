@@ -504,6 +504,9 @@ load_metadata(struct pkg *pkg, const char *metadata, const char *plist,
 		close(fd);
 		return (EPKG_FATAL);
 	}
+	/* ensure the uid is properly */
+	free(pkg->uid);
+	pkg->uid = xstrdup(pkg->name);
 
 	pkg_load_message_from_file(fd, pkg, "+DISPLAY");
 	if (pkg->desc == NULL)
