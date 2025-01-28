@@ -1,3 +1,10 @@
+Changes from 2.0.99.2 to 2.0.99.3
+- elf: prevent absolute path for DT_NEEDED libs
+- curl: be verbose about the fetch error
+- fix crash in case of conflicts
+- allow to define ABI_FILE in pkg.conf(5)
+- rework directories vs symlinks handling (give back flexibility to end users)
+
 Changes from 2.0.99.1 to 2.0.99.2
 - Relax OSVERSION requirement
 - Improve elf format detection
