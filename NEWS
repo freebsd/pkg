@@ -1,6 +1,13 @@
+Changes from 2.0.4 to 2.0.5
+- Allow ABI_FILE in pkg.conf(5)
+- fix crash in case of conflicts
+- restore flexibility for end user to replace directories with symlinks to
+  directories
+- Do not track absolute DT_NEEDED
+- curl: more verbose error message
+
 Changes from 2.0.3 to 2.0.4
 - Fix fetching packages after conflicts
-- Do not track absolute DT_NEEDED
 
 Changes from 2.0.2 to 2.0.3
 - improve elf abi detection when looking for shlibs
