@@ -1341,8 +1341,6 @@ pkg_add_common(struct pkgdb *db, const char *path, unsigned flags,
 	assert(path != NULL);
 
 	vec_init(&tempdirs);
-	context.symlinks_allowed = xcalloc(1, sizeof(*context.symlinks_allowed));
-	context.db = db;
 
 	/*
 	 * Open the package archive file, read all the meta files and set the
@@ -1351,6 +1349,7 @@ pkg_add_common(struct pkgdb *db, const char *path, unsigned flags,
 	 */
 	ret = pkg_open2(&pkg, &a, &ae, path, 0, -1);
 	context.pkg = pkg;
+	context.localpkg = local;
 	if (ret == EPKG_END)
 		extract = false;
 	else if (ret != EPKG_OK) {
@@ -1447,7 +1446,6 @@ pkg_add_common(struct pkgdb *db, const char *path, unsigned flags,
 	 */
 	if (extract) {
 		pkg_register_cleanup_callback(pkg_rollback_cb, pkg);
-		vec_push(context.symlinks_allowed, pkg->prefix);
 		retcode = do_extract(a, ae, nfiles, local, &tempdirs, &context);
 		pkg_unregister_cleanup_callback(pkg_rollback_cb, pkg);
 		if (retcode != EPKG_OK) {
@@ -1546,9 +1544,6 @@ pkg_add_common(struct pkgdb *db, const char *path, unsigned flags,
 	}
 
 cleanup:
-	vec_free(context.symlinks_allowed);
-	free(context.symlinks_allowed);
-
 	if (openxact)
 		pkgdb_register_finale(db, retcode, NULL);
 	if (a != NULL) {
@@ -1650,9 +1645,6 @@ pkg_add_fromdir(struct pkg *pkg, const char *src, struct pkgdb *db)
 
 	memset(&context, 0, sizeof(context));
 
-	context.db = db;
-	context.symlinks_allowed = xcalloc(1, sizeof(*context.symlinks_allowed));
-	vec_push(context.symlinks_allowed, pkg->prefix);
 	vec_init(&hardlinks);
 	vec_init(&tempdirs);
 	install_as_user = (getenv("INSTALL_AS_USER") != NULL);
@@ -1833,12 +1825,33 @@ pkg_add_fromdir(struct pkg *pkg, const char *src, struct pkgdb *db)
 	retcode = pkg_extract_finalize(pkg, &tempdirs);
 
 cleanup:
-	vec_free(context.symlinks_allowed);
-	free(context.symlinks_allowed);
 	vec_free_and_free(&hardlinks, free);
 	close(fromfd);
 	return (retcode);
 }
+
+/*static bool
+belong_to_self(struct pkg_add_context *context, const char *path)
+{
+	struct pkgdb_it *it = NULL;
+	struct pkg *p = NULL;
+	if (context->db != NULL && (it = pkgdb_query_which(context->db, path, false)) != NULL) {
+		if (pkgdb_it_next(it, &p, PKG_LOAD_BASIC) != EPKG_OK) {
+			pkgdb_it_free(it);
+			fprintf(stderr, "mais non\n");
+			return (false);
+		}
+		pkgdb_it_free(it);
+		if (STREQ(p->uid, context->pkg->uid)) {
+			pkg_free(p);
+			fprintf(stderr, "mais oui\n");
+			return (true);
+		}
+		pkg_free(p);
+	}
+	fprintf(stderr, "mais nope\n");
+	return (false);
+}*/
 
 struct tempdir *
 open_tempdir(struct pkg_add_context *context, const char *path)
@@ -1853,40 +1866,19 @@ open_tempdir(struct pkg_add_context *context, const char *path)
 	while ((dir = strrchr(walk, '/')) != NULL) {
 		*dir = '\0';
 		cnt++;
-		/* accept symlinks pointing to directories only for prefix */
+		/* accept symlinks pointing to directories */
 		len = strlen(walk);
 		if (len == 0 && cnt == 1)
 			break;
 		if (len > 0) {
 			int flag = AT_SYMLINK_NOFOLLOW;
-			if (context->symlinks_allowed != NULL) {
-				for (size_t i = 0; i < context->symlinks_allowed->len; i++) {
-					if (STREQ(RELATIVE_PATH(walk), RELATIVE_PATH(context->symlinks_allowed->d[i]))) {
-						flag = 0;
-						break;
-					}
-				}
-			}
+			if (context->localpkg == NULL)
+				flag = 0;
 			if (fstatat(context->rootfd, RELATIVE_PATH(walk), &st, flag) == -1)
 				continue;
-			if (flag != 0 && S_ISLNK(st.st_mode)) {
-				struct pkgdb_it	*it = NULL;
-				struct pkg *p;
-				if (context->db != NULL && (it = pkgdb_query_which(context->db, walk, false)) != NULL) {
-					if (pkgdb_it_next(it, &p, PKG_LOAD_BASIC) != EPKG_OK) {
-						pkgdb_it_free(it);
-						continue;
-					}
-					pkgdb_it_free(it);
-					/* Not myself */
-					if (!STREQ(p->uid, context->pkg->uid)) {
-						/* fallback */
-						pkg_free(p);
-						if (fstatat(context->rootfd, RELATIVE_PATH(walk), &st, 0) == -1)
-							continue;
-					}
-					pkg_free(p);
-				}
+			if (S_ISLNK(st.st_mode) && context->localpkg != NULL && pkghash_get(context->localpkg->filehash, walk) == NULL) {
+				if (fstatat(context->rootfd, RELATIVE_PATH(walk), &st, 0) == -1)
+					continue;
 			}
 			if (S_ISDIR(st.st_mode) && cnt == 1)
 				break;
@@ -1915,4 +1907,3 @@ open_tempdir(struct pkg_add_context *context, const char *path)
 	errno = 0;
 	return (NULL);
 }
-

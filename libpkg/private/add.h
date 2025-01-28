@@ -10,10 +10,7 @@
 
 struct pkg_add_context {
 	int rootfd;
-	c_charv_t *symlinks_allowed;
-	struct pkgdb *db;
 	struct pkg *pkg;
+	struct pkg *localpkg;
 };
-
 struct tempdir *open_tempdir(struct pkg_add_context *, const char *path);
-
