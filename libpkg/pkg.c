@@ -83,6 +83,7 @@ pkg_free(struct pkg *pkg)
 	pkg_list_free(pkg, PKG_FILES);
 	pkg_list_free(pkg, PKG_DIRS);
 	pkg_list_free(pkg, PKG_OPTIONS);
+	pkg_list_free(pkg, PKG_CONFIG_FILES);
 
 	tll_free_and_free(pkg->users, free);
 	pkg->flags &= ~PKG_LOAD_USERS;
