@@ -1020,7 +1020,7 @@ pkg_emit_object(struct pkg *pkg, short flags)
 
 	dbg(4, "Emitting deps");
 	map = NULL;
-	while (pkg_deps(pkg, &dep) == EPKG_OK) {
+	DL_FOREACH(pkg->depends, dep) {
 		submap = ucl_object_typed_new(UCL_OBJECT);
 		MANIFEST_EXPORT_FIELD(submap, dep, origin, string);
 		MANIFEST_EXPORT_FIELD(submap, dep, version, string);
@@ -1113,7 +1113,7 @@ pkg_emit_object(struct pkg *pkg, short flags)
 
 	dbg(4, "Emitting options");
 	map = NULL;
-	while (pkg_options(pkg, &option) == EPKG_OK) {
+	DL_FOREACH(pkg->options, option) {
 		dbg(4, "Emitting option: %s", option->value);
 		if (map == NULL)
 			map = ucl_object_typed_new(UCL_OBJECT);
@@ -1144,7 +1144,7 @@ pkg_emit_object(struct pkg *pkg, short flags)
 		if ((flags & PKG_MANIFEST_EMIT_NOFILES) == 0) {
 			dbg(4, "Emitting files");
 			map = NULL;
-			while (pkg_files(pkg, &file) == EPKG_OK) {
+			DL_FOREACH(pkg->files, file) {
 				char dpath[MAXPATHLEN];
 				const char *dp = file->path;
 
@@ -1172,7 +1172,7 @@ pkg_emit_object(struct pkg *pkg, short flags)
 
 			dbg(4, "Emitting config files");
 			seq = NULL;
-			while (pkg_config_files(pkg, &cf) == EPKG_OK) {
+			DL_FOREACH(pkg->config_files, cf) {
 				urlencode(cf->path, &tmpsbuf);
 				if (seq == NULL)
 					seq = ucl_object_typed_new(UCL_ARRAY);
@@ -1183,7 +1183,7 @@ pkg_emit_object(struct pkg *pkg, short flags)
 
 			dbg(4, "Emitting directories");
 			map = NULL;
-			while (pkg_dirs(pkg, &dir) == EPKG_OK) {
+			DL_FOREACH(pkg->dirs, dir) {
 				urlencode(dir->path, &tmpsbuf);
 				if (map == NULL)
 					map = ucl_object_typed_new(UCL_OBJECT);
