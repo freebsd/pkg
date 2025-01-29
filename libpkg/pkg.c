@@ -1725,3 +1725,42 @@ pkg_message_to_str(struct pkg *pkg)
 
 	return (ret);
 }
+
+static int
+pkg_dep_cmp(struct pkg_dep *a, struct pkg_dep *b)
+{
+	return (STREQ(a->name, b->name));
+}
+
+static int
+pkg_file_cmp(struct pkg_file *a, struct pkg_file *b)
+{
+	return (STREQ(a->path, b->path));
+}
+
+static int
+pkg_dir_cmp(struct pkg_dir *a, struct pkg_dir *b)
+{
+	return (STREQ(a->path, b->path));
+}
+
+static int
+pkg_option_cmp(struct pkg_option *a, struct pkg_option *b)
+{
+	return (STREQ(a->key, b->key));
+}
+
+static int
+pkg_cf_cmp(struct pkg_config_file *a, struct pkg_config_file *b)
+{
+	return (STREQ(a->path, b->path));
+}
+void
+pkg_lists_sort(struct pkg *p)
+{
+	DL_SORT(p->depends, pkg_dep_cmp);
+	DL_SORT(p->files, pkg_file_cmp);
+	DL_SORT(p->dirs, pkg_dir_cmp);
+	DL_SORT(p->options, pkg_option_cmp);
+	DL_SORT(p->config_files, pkg_cf_cmp);
+}
