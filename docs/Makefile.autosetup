@@ -26,6 +26,7 @@ MAN8=	pkg-add.8 \
 	pkg-key.8 \
 	pkg-lock.8 \
 	pkg-query.8 \
+	pkg-ps.8 \
 	pkg-register.8 \
 	pkg-repo.8 \
 	pkg-rquery.8 \
