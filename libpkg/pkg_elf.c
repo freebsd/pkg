@@ -238,6 +238,8 @@ analyse_elf(struct pkg *pkg, const char *fpath)
 			 */
 			if (*shlib == '/')
 				continue;
+			if (strncmp(shlib, "lib", 3) != 0)
+				continue;
 			pkg_addshlib_required(pkg, shlib, flags);
 		}
 	}
