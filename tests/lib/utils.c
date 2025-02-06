@@ -35,6 +35,7 @@ ATF_TC_WITHOUT_HEAD(random_suffix);
 ATF_TC_WITHOUT_HEAD(json_escape);
 ATF_TC_WITHOUT_HEAD(open_tempdir);
 ATF_TC_WITHOUT_HEAD(get_http_auth);
+ATF_TC_WITHOUT_HEAD(str_ends_with);
 
 ATF_TC_BODY(hidden_tempfile, tc) {
 	const char *filename = "plop";
@@ -126,6 +127,14 @@ ATF_TC_BODY(get_http_auth, tc) {
 	ATF_REQUIRE_STREQ(get_http_auth(), "user:passwd");
 }
 
+ATF_TC_BODY(str_ends_with, tc) {
+	ATF_REQUIRE(str_ends_with(NULL, NULL));
+	ATF_REQUIRE(!str_ends_with(NULL, "end"));
+	ATF_REQUIRE(!str_ends_with("a", "end"));
+	ATF_REQUIRE(str_ends_with("end", "end"));
+	ATF_REQUIRE(str_ends_with("backend", "end"));
+}
+
 ATF_TP_ADD_TCS(tp)
 {
 	ATF_TP_ADD_TC(tp, hidden_tempfile);
@@ -133,6 +142,7 @@ ATF_TP_ADD_TCS(tp)
 	ATF_TP_ADD_TC(tp, json_escape);
 	ATF_TP_ADD_TC(tp, open_tempdir);
 	ATF_TP_ADD_TC(tp, get_http_auth);
+	ATF_TP_ADD_TC(tp, str_ends_with);
 
 	return (atf_no_error());
 }

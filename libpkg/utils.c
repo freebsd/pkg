@@ -1019,3 +1019,20 @@ c_charv_contains(c_charv_t *v, const char *el, bool casesensitive)
 	}
 	return (false);
 }
+
+bool
+str_ends_with(const char *str, const char *end)
+{
+	size_t el, sl;
+
+	if (end == NULL)
+		return (true);
+	if (str == NULL)
+		return (false);
+
+	sl = strlen(str);
+	el = strlen(end);
+	if (sl < el)
+		return (false);
+	return (strncmp(str + (sl - el), end, (sl - el)) == 0);
+}
