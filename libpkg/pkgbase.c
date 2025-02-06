@@ -47,6 +47,7 @@ scan_dir_for_shlibs(pkghash **shlib_list, const char *dir,
 	}
 
 	struct dirent *dp;
+	size_t cnt = 0;
 	while ((dp = readdir(dirp)) != NULL) {
 		/* Only regular files and sym-links. On some
 		   filesystems d_type is not set, on these the d_type
@@ -74,8 +75,11 @@ scan_dir_for_shlibs(pkghash **shlib_list, const char *dir,
 		/* We have a valid shared library name. */
 		char *full = pkg_shlib_name_with_flags(dp->d_name, flags);
 		pkghash_safe_add(*shlib_list, full, NULL, NULL);
+		cnt++;
 		free(full);
 	}
+	if (cnt == 0)
+		errno = ENOENT;
 
 	closedir(dirp);
 
@@ -94,6 +98,7 @@ static struct {
 int
 scan_system_shlibs(pkghash **system_shlibs, const char *rootdir)
 {
+	int r = EPKG_OK;
 	for (int i = 0; i < NELEM(system_shlib_table); i++) {
 		char *dir;
 		if (rootdir != NULL) {
@@ -101,14 +106,17 @@ scan_system_shlibs(pkghash **system_shlibs, const char *rootdir)
 		} else {
 			dir = xstrdup(system_shlib_table[i].dir);
 		}
+		errno = 0;
 		int ret = scan_dir_for_shlibs(system_shlibs, dir, system_shlib_table[i].flags);
 		free(dir);
+		if (errno == ENOENT)
+			r = EPKG_NOCOMPAT32;
 		if (ret != EPKG_OK) {
 			return (ret);
 		}
 	}
 
-	return (EPKG_OK);
+	return (r);
 }
 
 struct pkgbase *
