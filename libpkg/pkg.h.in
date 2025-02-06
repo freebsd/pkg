@@ -555,6 +555,10 @@ typedef enum {
 	 * The requested operation is not supported.
 	 */
 	EPKG_OPNOTSUPP,
+	/**
+	 * No compat 32 support
+	 */
+	EPKG_NOCOMPAT32,
 } pkg_error_t;
 
 /**

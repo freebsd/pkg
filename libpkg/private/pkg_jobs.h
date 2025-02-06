@@ -138,6 +138,7 @@ struct pkg_jobs {
 	struct job_pattern *patterns;
 	bool conservative;
 	bool pinning;
+	bool ignore_compat32;
 	void		*lockedpkgs;
 	struct triggers triggers;
 	struct pkghash *orphaned;
