@@ -118,5 +118,6 @@ void append_random_suffix(char *buf, int buflen, int suffixlen);
 char *json_escape(const char *str);
 const char *get_http_auth(void);
 bool c_charv_contains(c_charv_t *, const char *, bool);
+bool str_ends_with(const char *str, const char *end);
 
 #endif

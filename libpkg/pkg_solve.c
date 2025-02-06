@@ -672,6 +672,7 @@ pkg_solve_process_universe_variable(struct pkg_solve_problem *problem,
 
 		/* Shlibs */
 		tll_foreach(pkg->shlibs_required, s) {
+			/* Ignore 32 bit libraries */
 			if (pkghash_get(j->system_shlibs, s->item) != NULL) {
 				/* The shlib is provided by the system */
 				continue;
