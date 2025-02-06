@@ -20,6 +20,7 @@
 #include "private/event.h"
 #include "private/pkg.h"
 #include "private/pkgdb.h"
+#include "private/utils.h"
 #include "xmalloc.h"
 
 struct pkgbase {
@@ -29,6 +30,7 @@ struct pkgbase {
 	 * provides/requires in pkgbase
 	 */
 	struct pkghash *provides;
+	bool ignore_compat32;
 };
 
 static int
@@ -115,7 +117,8 @@ pkgbase_new(struct pkgdb *db)
 	struct pkgbase *pb = xcalloc(1, sizeof(*pb));
 
 	if (!pkgdb_file_exists(db, "/usr/bin/uname"))
-		scan_system_shlibs(&pb->system_shlibs, ctx.pkg_rootdir);
+		if (scan_system_shlibs(&pb->system_shlibs, ctx.pkg_rootdir) == EPKG_NOCOMPAT32)
+			pb->ignore_compat32 = true;
 
 	return (pb);
 }
@@ -133,6 +136,8 @@ pkgbase_free(struct pkgbase *pb)
 bool
 pkgbase_provide_shlib(struct pkgbase *pb, const char *shlib)
 {
+	if (pb->ignore_compat32 && str_ends_with(shlib, ":32"))
+		return (true);
 	return (pkghash_get(pb->system_shlibs, shlib) != NULL);
 }
 

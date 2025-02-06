@@ -1922,7 +1922,9 @@ pkg_jobs_solve(struct pkg_jobs *j)
 		 * provide system shlibs. */
 		if (!pkgdb_file_exists(j->db, "/usr/bin/uname")) {
 			ret = scan_system_shlibs(&j->system_shlibs, ctx.pkg_rootdir);
-			if (ret != EPKG_OK) {
+			if (ret == EPKG_NOCOMPAT32) {
+				j->ignore_compat32 = true;
+			} else if (ret != EPKG_OK) {
 				return (ret);
 			}
 		}
