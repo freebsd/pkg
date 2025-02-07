@@ -30,6 +30,7 @@
 #include <sys/param.h>
 #include <sys/file.h>
 #include <sys/time.h>
+#include <sys/mman.h>
 
 #include <stdio.h>
 #include <stdlib.h>
@@ -47,6 +48,7 @@
 #include "private/utils.h"
 #include "private/pkgdb.h"
 #include "private/pkg.h"
+#include "private/json.h"
 #include "binary.h"
 #include "binary_private.h"
 
@@ -363,7 +365,7 @@ pkg_repo_binary_register_conflicts(const char *origin, char **conflicts,
 }
 
 static int
-pkg_repo_binary_add_from_ucl(sqlite3 *sqlite, ucl_object_t *o, struct pkg_repo *repo)
+pkg_repo_binary_add_from_string(sqlite3 *sqlite, const char *str, size_t len, struct pkg_repo *repo)
 {
 	int rc = EPKG_OK;
 	struct pkg *pkg;
@@ -373,10 +375,9 @@ pkg_repo_binary_add_from_ucl(sqlite3 *sqlite, ucl_object_t *o, struct pkg_repo *
 	if (rc != EPKG_OK)
 		return (EPKG_FATAL);
 
-	rc = pkg_parse_manifest_ucl(pkg, o);
-	if (rc != EPKG_OK) {
+	rc = pkg_parse_manifest(pkg, str, len);
+	if (rc != EPKG_OK)
 		goto cleanup;
-	}
 
 	if (pkg->digest == NULL || !pkg_checksum_is_valid(pkg->digest, strlen(pkg->digest)))
 		pkg_checksum_calculate(pkg, NULL, false, true, false);
@@ -400,7 +401,6 @@ pkg_repo_binary_add_from_ucl(sqlite3 *sqlite, ucl_object_t *o, struct pkg_repo *
 	rc = pkg_repo_binary_add_pkg(pkg, sqlite, true);
 
 cleanup:
-	ucl_object_unref(o);
 	pkg_free(pkg);
 
 	return (rc);
@@ -499,20 +499,27 @@ rollback_repo(void *data)
 	unlink(path);
 }
 
-static void
-save_ucl(struct pkg_repo *repo, ucl_object_t *obj, const char* dst_name)
+static int
+dump_json(struct pkg_repo *repo, const char *line, jsmntok_t *tok, const char *dst_name)
 {
-	if (obj == NULL)
-		return;
+	if (tok->type != JSMN_ARRAY) {
+		pkg_emit_error("Invalid %s, expecting an array", dst_name);
+		return (1);
+	}
+	if (tok->size == 0) {
+		return (1);
+	}
 	if (repo->dfd == -1 && pkg_repo_open(repo) == EPKG_FATAL)
-		return;
+		return (0);
 	int fd = openat(repo->dfd, dst_name, O_CREAT|O_TRUNC|O_RDWR, 0644);
 	if (fd == -1) {
-		pkg_emit_errno("openat", "repo save_ucl");
-		return;
+		pkg_emit_errno("openat", "repo dump_json");
 	}
-	ucl_object_emit_fd(obj, UCL_EMIT_JSON_COMPACT, fd);
-	close(fd);
+	FILE *f = fdopen(fd, "w");
+	fprintf(f, "%.*s", jsmn_toklen(tok), line + tok->start);
+	fclose(f);
+
+	return (0);
 }
 
 static int
@@ -530,7 +537,7 @@ pkg_repo_binary_update_proceed(const char *name, struct pkg_repo *repo,
 	size_t linecap = 0;
 	ssize_t linelen, totallen = 0;
 	struct pkg_repo_content prc;
-	ucl_object_t *data = NULL;
+	struct stat st;
 
 	pkg_debug(1, "Pkgrepo, begin update of '%s'", name);
 
@@ -556,19 +563,16 @@ pkg_repo_binary_update_proceed(const char *name, struct pkg_repo *repo,
 		goto cleanup;
 
 	if (rc == EPKG_OK) {
-		struct ucl_parser *p = ucl_parser_new(0);
-		if (!ucl_parser_add_fd(p, prc.data_fd)) {
-			pkg_emit_error("Error parsing data file: %s'",
-			    ucl_parser_get_error(p));
-			ucl_parser_free(p);
+		fstat(prc.data_fd, &st);
+		lseek(prc.data_fd, 0, SEEK_SET);
+		linelen = st.st_size;
+		line = mmap(NULL, st.st_size, PROT_READ, MAP_SHARED, prc.data_fd, 0);
+		if (line == MAP_FAILED) {
+			pkg_emit_errno("Error parsing data", "mmap");
 			close(prc.data_fd);
 			rc = EPKG_FATAL;
 			goto cleanup;
 		}
-		data = ucl_parser_get_object(p);
-		ucl_parser_free(p);
-		close(prc.data_fd);
-		/* XXX TODO check against a schema */
 	} else {
 		rc = pkg_repo_fetch_remote_extract_fd(repo, &prc);
 		if (rc != EPKG_OK)
@@ -612,6 +616,57 @@ pkg_repo_binary_update_proceed(const char *name, struct pkg_repo *repo,
 		goto cleanup;
 
 	in_trans = true;
+	if (line != NULL) {
+		jsmn_parser p;
+		jsmntok_t *tok;
+		jsmn_init(&p);
+		int tokcount = jsmn_parse(&p, line, linelen, NULL, 0);
+		if (tokcount < 0) {
+			pkg_emit_error("Invalid data");
+			goto cleanup;
+		}
+		tok = xcalloc(tokcount, sizeof(*tok));
+		jsmn_init(&p);
+		tokcount = jsmn_parse(&p, line, linelen, tok, tokcount);
+		if (tokcount < 0) {
+			pkg_emit_error("Invalid data");
+			goto cleanup;
+		}
+		tokcount = p.toknext;
+		if (tok->type != JSMN_OBJECT) {
+			pkg_emit_error("Invalid data (expecting a json object)");
+			free(tok);
+			goto cleanup;
+		}
+		int i = 0;
+		while ((i = jsmntok_nextchild(tok, tokcount, 0, i)) > 0) {
+			jsmntok_t *key = tok + i;
+			jsmntok_t *value = tok + i +1;
+
+			if (key->type != JSMN_STRING) {
+				continue;
+			}
+			if (jsmntok_stringeq(key, line, "groups")) {
+				dump_json(repo, line, value, "groups");
+			} else if (jsmntok_stringeq(key, line, "expired_packages")) {
+				dump_json(repo, line, value, "expired_packages");
+			} else if (jsmntok_stringeq(key, line, "packages")) {
+				if (value->type == JSMN_ARRAY) {
+					int j = i + 1;
+					while ((j = jsmntok_nextchild(tok, tokcount, i + 1, j)) > 0) {
+						jsmntok_t *jobj = tok + j;
+						cnt++;
+						if ((cnt % 10) == 0)
+							cancel = pkg_emit_progress_tick(cnt, value->size);
+						rc = pkg_repo_binary_add_from_string(sqlite, line + jobj->start, jsmn_toklen(jobj), repo);
+						if (rc != EPKG_OK || cancel != 0)
+							break;
+					}
+					pkg_emit_progress_tick(cnt, value->size);
+				}
+			}
+		}
+	}
 	if (f != NULL) {
 		while ((linelen = getline(&line, &linecap, f)) > 0) {
 			cnt++;
@@ -624,25 +679,6 @@ pkg_repo_binary_update_proceed(const char *name, struct pkg_repo *repo,
 				break;
 		}
 		pkg_emit_progress_tick(prc.manifest_len, prc.manifest_len);
-	}
-	if (data != NULL) {
-		ucl_object_t *pkgs = ucl_object_ref(ucl_object_find_key(data, "packages"));
-		int nbel = ucl_array_size(pkgs);
-		while (cnt < nbel) {
-			ucl_object_t *o = ucl_array_pop_first(pkgs);
-			cnt++;
-			if ((cnt % 10 ) == 0)
-				cancel = pkg_emit_progress_tick(cnt, nbel);
-			rc = pkg_repo_binary_add_from_ucl(sqlite, o, repo);
-			if (rc != EPKG_OK || cancel != 0)
-				break;
-		}
-		pkg_emit_progress_tick(cnt, nbel);
-		save_ucl(repo,
-		    ucl_object_ref(ucl_object_find_key(data, "groups")), "groups.ucl");
-		save_ucl(repo,
-		    ucl_object_ref(ucl_object_find_key(data, "expired_packages")),
-		    "expired_packages.ucl");
 	}
 
 	if (rc == EPKG_OK)
@@ -677,9 +713,13 @@ cleanup:
 		free(path);
 	}
 	pkg_unregister_cleanup_callback(rollback_repo, (void *)name);
-	free(line);
-	if (f != NULL)
+	if (f != NULL) {
+		free(line);
 		fclose(f);
+	} else {
+		munmap(line, linelen);
+		close(prc.data_fd);
+	}
 
 	return (rc);
 }
