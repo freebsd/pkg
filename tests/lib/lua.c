@@ -34,6 +34,27 @@
 #include <stdlib.h>
 #include <errno.h>
 
+
+// Some Lua tests are reported on macOS/aarch64 to poison addresses
+// e.g.
+// AddressSanitizer: CHECK failed: asan_poisoning.cpp:40 "((AddrIsInMem(addr + size - (1ULL << 3)))) != (0)" (0x0, 0x0) (tid=78712)
+// #0 0x000101cf086c in __asan::CheckUnwind()+0x20 (libclang_rt.asan_osx_dynamic.dylib:arm64+0x5c86c)
+// #1 0x000101d0b318 in __sanitizer::CheckFailed(char const*, int, char const*, unsigned long long, unsigned long long)+0x90 (libclang_rt.asan_osx_dynamic.dylib:arm64+0x77318)
+// #2 0x000101ce7ed4 in __asan::PoisonShadow(unsigned long, unsigned long, unsigned char)+0x28c (libclang_rt.asan_osx_dynamic.dylib:arm64+0x53ed4)
+// #3 0x000101ce9e74 in __asan::PlatformUnpoisonStacks()+0x50 (libclang_rt.asan_osx_dynamic.dylib:arm64+0x55e74)
+// #4 0x000101cf04c0 in __asan_handle_no_return+0x28 (libclang_rt.asan_osx_dynamic.dylib:arm64+0x5c4c0)
+// #5 0x00010046cf98 in atfu_execute_body lua.c:193
+// #6 0x0001010a70c4 in atf_tc_run+0x58 (libatf-c.1.dylib:arm64+0x30c4)
+// #7 0x0001010ad49c in atf_tp_main+0x8a0 (libatf-c.1.dylib:arm64+0x949c)
+// #8 0x00010046af48 in main lua.c:491
+// #9 0x000187ee4270 ()
+// Use this attribute to silence the report until it is better understood. The code itself seems legit.
+#if defined(__clang__) || defined (__GNUC__)
+# define ATTRIBUTE_NO_SANITIZE_ADDRESS __attribute__((no_sanitize_address))
+#else
+# define ATTRIBUTE_NO_SANITIZE_ADDRESS
+#endif
+
 ATF_TC_WITHOUT_HEAD(readdir);
 ATF_TC_WITHOUT_HEAD(stat);
 ATF_TC_WITHOUT_HEAD(print_msg);
@@ -173,7 +194,7 @@ ATF_TC_BODY(print_msg, tc)
 	atf_utils_compare_file("testfile", "bla\n");
 }
 
-ATF_TC_BODY(execute, tc)
+ATTRIBUTE_NO_SANITIZE_ADDRESS ATF_TC_BODY(execute, tc)
 {
 	lua_State *L = luaL_newstate();
 	static const luaL_Reg test_lib[] = {
@@ -222,7 +243,7 @@ ATF_TC_BODY(execute, tc)
 	atf_utils_wait(p, 0, "1\n", "");
 }
 
-ATF_TC_BODY(override, tc)
+ATTRIBUTE_NO_SANITIZE_ADDRESS ATF_TC_BODY(override, tc)
 {
 	lua_State *L = luaL_newstate();
 	luaL_openlibs(L);
