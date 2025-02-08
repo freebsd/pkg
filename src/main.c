@@ -293,9 +293,6 @@ show_repository_info(void)
 static void
 show_version_info(int version)
 {
-	char *config;
-	pkg_kvl_t *lib;
-
 	if (version > 1)
 		printf("%-24s: ", "Version");
 
@@ -306,13 +303,16 @@ show_version_info(int version)
 
 	printf("%-24s: %s\n", "libpkg", pkg_libversion());
 
-	lib = pkg_external_libs_version();
-	for (size_t i = 0; i < lib->len; i++)
+	pkg_kvl_t *lib = pkg_external_libs_version();
+	for (size_t i = 0; i < lib->len; i++) {
 		printf("%-24s: %s\n", lib->d[i]->key, lib->d[i]->value);
+	}
+	free(lib);
 
-	config = pkg_config_dump();
+	char *config = pkg_config_dump();
 	printf("%s\n", config);
 	free(config);
+	
 	show_plugin_info();
 	show_repository_info();
 

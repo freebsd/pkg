@@ -76,7 +76,7 @@ jobs:
           # on MacOS we build with
           #   * latest clang@19 from brew (system provided clang lacks sanitizers)
           #   * ld from system
-          #   * libarchive from brew (system provided libarchive has issues)
+          #   * libarchive from brew (system provided libarchive has no header files for development)
           #   * openssl from brew
           #   * libcurl from system
           #
