@@ -30,7 +30,6 @@
 #include <sys/param.h>
 #include <sys/file.h>
 #include <sys/time.h>
-#include <sys/mman.h>
 
 #include <stdio.h>
 #include <stdlib.h>
@@ -536,8 +535,8 @@ pkg_repo_binary_update_proceed(const char *name, struct pkg_repo *repo,
 	char *line = NULL;
 	size_t linecap = 0;
 	ssize_t linelen, totallen = 0;
+	FILE *fs = NULL;
 	struct pkg_repo_content prc;
-	struct stat st;
 
 	pkg_debug(1, "Pkgrepo, begin update of '%s'", name);
 
@@ -563,16 +562,15 @@ pkg_repo_binary_update_proceed(const char *name, struct pkg_repo *repo,
 		goto cleanup;
 
 	if (rc == EPKG_OK) {
-		fstat(prc.data_fd, &st);
-		lseek(prc.data_fd, 0, SEEK_SET);
-		linelen = st.st_size;
-		line = mmap(NULL, st.st_size, PROT_READ, MAP_SHARED, prc.data_fd, 0);
-		if (line == MAP_FAILED) {
-			pkg_emit_errno("Error parsing data", "mmap");
-			close(prc.data_fd);
+		f = fdopen(prc.data_fd, "r");
+		rewind(f);
+		if ((linelen = getline(&line, &linecap, f)) <0) {
+			pkg_emit_errno("Error parsing data", "getline");
 			rc = EPKG_FATAL;
 			goto cleanup;
 		}
+		fclose(f);
+		f = NULL;
 	} else {
 		rc = pkg_repo_fetch_remote_extract_fd(repo, &prc);
 		if (rc != EPKG_OK)
@@ -713,13 +711,9 @@ cleanup:
 		free(path);
 	}
 	pkg_unregister_cleanup_callback(rollback_repo, (void *)name);
-	if (f != NULL) {
-		free(line);
+	if (f != NULL)
 		fclose(f);
-	} else {
-		munmap(line, linelen);
-		close(prc.data_fd);
-	}
+	free(line);
 
 	return (rc);
 }
