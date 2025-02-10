@@ -256,8 +256,6 @@ url_decode(const char* src, size_t len)
 				*p++ = (char)value;
 				i += 2;
 			}
-		} else if (src[i] == '+') {
-			*p++ = ' ';
 		} else {
 			*p++ = src[i];
 		}
