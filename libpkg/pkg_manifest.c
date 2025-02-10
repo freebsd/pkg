@@ -690,13 +690,6 @@ pkg_set_deps_from_object(struct pkg *pkg, const ucl_object_t *obj)
 	const char *origin = NULL;
 	const char *version = NULL;
 	const char *key, *okey;
-	bool noversion = false;
-	static bool noversion_env_check = false;
-
-	if (!noversion_env_check) {
-		noversion = (getenv("PKG_NO_VERSION_FOR_DEPS") != NULL);
-		noversion_env_check = true;
-	}
 
 	okey = ucl_object_key(obj);
 	if (okey == NULL)
@@ -711,7 +704,7 @@ pkg_set_deps_from_object(struct pkg *pkg, const ucl_object_t *obj)
 			if (cur->type != UCL_STRING) {
 				/* accept version to be an integer */
 				if (cur->type == UCL_INT && STRIEQ(key, "version")) {
-					if (!noversion)
+					if (!ctx.no_version_for_deps)
 						version = ucl_object_tostring_forced(cur);
 					continue;
 				}
@@ -722,7 +715,7 @@ pkg_set_deps_from_object(struct pkg *pkg, const ucl_object_t *obj)
 			}
 			if (STRIEQ(key, "origin"))
 				origin = ucl_object_tostring(cur);
-			if (STRIEQ(key, "version") && !noversion)
+			if (STRIEQ(key, "version") && !ctx.no_version_for_deps)
 				version = ucl_object_tostring(cur);
 		}
 		if (origin != NULL)

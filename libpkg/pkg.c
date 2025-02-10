@@ -906,13 +906,7 @@ pkg_shlib_flags_from_abi(const struct pkg_abi *shlib_abi)
 	enum pkg_shlib_flags flags = PKG_SHLIB_FLAGS_NONE;
 
 	if (ctx.abi.os == PKG_OS_FREEBSD) {
-		static bool check_track_linux_compat_shlibs = false;
-		static bool track_linux_compat_shlibs = false;
-		if (!check_track_linux_compat_shlibs) {
-			track_linux_compat_shlibs = pkg_object_bool(pkg_config_get("TRACK_LINUX_COMPAT_SHLIBS"));
-			check_track_linux_compat_shlibs = true;
-		}
-		if (shlib_abi->os == PKG_OS_LINUX && track_linux_compat_shlibs)
+		if (shlib_abi->os == PKG_OS_LINUX && ctx.track_linux_compat_shlibs)
 			flags |= PKG_SHLIB_FLAGS_COMPAT_LINUX;
 
 		switch (ctx.abi.arch) {

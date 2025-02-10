@@ -90,6 +90,7 @@ struct pkg_ctx ctx = {
 	.compression_level = -1,
 	.compression_threads = -1,
 	.defer_triggers = false,
+	.no_version_for_deps = false,
 };
 
 struct config_entry {
@@ -1502,6 +1503,8 @@ pkg_ini(const char *path, const char *reposdir, pkg_init_flags flags)
 	ctx.compression_threads = pkg_object_int(pkg_config_get("COMPRESSION_THREADS"));
 	ctx.archive_symlink = pkg_object_bool(pkg_config_get("ARCHIVE_SYMLINK"));
 	ctx.repo_accept_legacy_pkg = pkg_object_bool(pkg_config_get("REPO_ACCEPT_LEGACY_PKG"));
+	ctx.no_version_for_deps = (getenv("PKG_NO_VERSION_FOR_DEPS") != NULL);
+	ctx.track_linux_compat_shlibs = pkg_object_bool(pkg_config_get("TRACK_LINUX_COMPAT_SHLIBS"));
 
 	it = NULL;
 	object = ucl_object_find_key(config, "PKG_ENV");

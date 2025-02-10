@@ -153,6 +153,8 @@ struct pkg_ctx {
 	ip_version_t ip;
 	struct pkg_abi abi;
 	bool ischrooted;
+	bool no_version_for_deps;
+	bool track_linux_compat_shlibs;
 };
 
 extern struct pkg_ctx ctx;
