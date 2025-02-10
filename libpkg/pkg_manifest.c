@@ -693,8 +693,13 @@ pkg_set_deps_from_object(struct pkg *pkg, const ucl_object_t *obj)
 	const char *version = NULL;
 	const char *key, *okey;
 	bool noversion = false;
+	static bool noversion_env_check = false;
 
-	noversion = (getenv("PKG_NO_VERSION_FOR_DEPS") != NULL);
+	if (!noversion_env_check) {
+		noversion = (getenv("PKG_NO_VERSION_FOR_DEPS") != NULL);
+		noversion_env_check = true;
+	}
+
 	okey = ucl_object_key(obj);
 	if (okey == NULL)
 		return (EPKG_FATAL);
