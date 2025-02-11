@@ -6,7 +6,7 @@ SRCS=	sqlite3.c \
 LOCAL_CFLAGS=	-I$(top_srcdir)/external/linenoise \
 		-I$(top_builddir)/external/sqlite \
 		-D_HAVE_SQLITE_CONFIG_H \
-		-DHAVE_LINENOISE \
+		-DHAVE_LINENOISE=2 \
 		-Wno-unused-variable \
 		-Wno-unused-function \
 		-Wno-strict-aliasing \
