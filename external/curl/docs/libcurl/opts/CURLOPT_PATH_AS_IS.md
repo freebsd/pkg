@@ -41,6 +41,9 @@ order to try out server implementations.
 
 By default libcurl normalizes such sequences before using the path.
 
+This is a request for the *first* request libcurl issues. When following
+redirects, it may no longer apply.
+
 The corresponding flag for the curl_url_set(3) function is called
 **CURLU_PATH_AS_IS**.
 
@@ -71,4 +74,7 @@ int main(void)
 
 # RETURN VALUE
 
-Returns CURLE_OK if the option is supported, and CURLE_UNKNOWN_OPTION if not.
+curl_easy_setopt(3) returns a CURLcode indicating success or error.
+
+CURLE_OK (0) means everything was OK, non-zero means an error occurred, see
+libcurl-errors(3).

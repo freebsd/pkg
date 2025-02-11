@@ -27,23 +27,11 @@
  */
 /* This example code only builds as-is on Windows.
  *
- * While Unix/Linux user, you do not need this software.
- * You can achieve the same result as synctime using curl, awk and date.
- * Set proxy as according to your network, but beware of proxy Cache-Control.
- *
- * To set your system clock, root access is required.
- * # date -s "`curl -sI https://nist.time.gov/timezone.cgi?UTC/s/0 \
- *        | awk -F': ' '/Date: / {print $2}'`"
- *
- * To view remote webserver date and time.
- * $ curl -sI https://nist.time.gov/timezone.cgi?UTC/s/0 \
- *        | awk -F': ' '/Date: / {print $2}'
- *
  * Synchronising your computer clock via Internet time server usually relies
  * on DAYTIME, TIME, or NTP protocols. These protocols provide good accurate
- * time synchronization but it does not work well through a
- * firewall/proxy. Some adjustment has to be made to the firewall/proxy for
- * these protocols to work properly.
+ * time synchronization but it does not work well through a firewall/proxy.
+ * Some adjustment has to be made to the firewall/proxy for these protocols to
+ * work properly.
  *
  * There is an indirect method. Since most webserver provide server time in
  * their HTTP header, therefore you could synchronise your computer clock
@@ -63,12 +51,6 @@
  *    GMT/UTC time. Therefore your computer timezone must be properly set.
  * 6. Webserver data should not be cached by the proxy server. Some
  *    webserver provide Cache-Control to prevent caching.
- *
- * References:
- * https://web.archive.org/web/20100228012139/ \
- *    tf.nist.gov/timefreq/service/its.htm
- * https://web.archive.org/web/20100409024302/ \
- *    tf.nist.gov/timefreq/service/firewall.htm
  *
  * Usage:
  * This software synchronises your computer clock only when you issue
@@ -95,6 +77,8 @@
 
 #ifdef _WIN32
 #include <windows.h>
+#else
+#error "This example requires Windows."
 #endif
 
 
@@ -110,36 +94,38 @@ typedef struct
   char timeserver[MAX_STRING1];
 } conf_t;
 
-const char DefaultTimeServer[3][MAX_STRING1] =
+static const char DefaultTimeServer[3][MAX_STRING1] =
 {
   "https://nist.time.gov/",
   "https://www.google.com/"
 };
 
-const char *DayStr[] = {"Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"};
-const char *MthStr[] = {"Jan", "Feb", "Mar", "Apr", "May", "Jun",
-                        "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"};
+static const char *DayStr[] = {
+  "Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"};
+static const char *MthStr[] = {
+  "Jan", "Feb", "Mar", "Apr", "May", "Jun",
+  "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"};
 
-int  ShowAllHeader;
-int  AutoSyncTime;
-SYSTEMTIME SYSTime;
-SYSTEMTIME LOCALTime;
+static int ShowAllHeader;
+static int AutoSyncTime;
+static SYSTEMTIME SYSTime;
+static SYSTEMTIME LOCALTime;
 
 #define HTTP_COMMAND_HEAD       0
 #define HTTP_COMMAND_GET        1
 
 
-size_t SyncTime_CURL_WriteOutput(void *ptr, size_t size, size_t nmemb,
-                                 void *stream)
+static size_t SyncTime_CURL_WriteOutput(void *ptr, size_t size, size_t nmemb,
+                                        void *stream)
 {
   fwrite(ptr, size, nmemb, stream);
-  return (nmemb*size);
+  return nmemb * size;
 }
 
-size_t SyncTime_CURL_WriteHeader(void *ptr, size_t size, size_t nmemb,
-                                 void *stream)
+static size_t SyncTime_CURL_WriteHeader(void *ptr, size_t size, size_t nmemb,
+                                        void *stream)
 {
-  char  TmpStr1[26], TmpStr2[26];
+  char TmpStr1[26], TmpStr2[26];
 
   (void)stream;
 
@@ -167,7 +153,7 @@ size_t SyncTime_CURL_WriteHeader(void *ptr, size_t size, size_t nmemb,
           SYSTime.wMilliseconds = 500;    /* adjust to midpoint, 0.5 sec */
           for(i = 0; i < 12; i++) {
             if(strcmp(MthStr[i], TmpStr2) == 0) {
-              SYSTime.wMonth = i + 1;
+              SYSTime.wMonth = (WORD)(i + 1);
               break;
             }
           }
@@ -185,11 +171,11 @@ size_t SyncTime_CURL_WriteHeader(void *ptr, size_t size, size_t nmemb,
             " Server Date is no longer valid.\n");
     AutoSyncTime = 0;
   }
-  return (nmemb*size);
+  return nmemb * size;
 }
 
-void SyncTime_CURL_Init(CURL *curl, char *proxy_port,
-                        char *proxy_user_password)
+static void SyncTime_CURL_Init(CURL *curl, const char *proxy_port,
+                               const char *proxy_user_password)
 {
   if(strlen(proxy_port) > 0)
     curl_easy_setopt(curl, CURLOPT_PROXY, proxy_port);
@@ -197,15 +183,13 @@ void SyncTime_CURL_Init(CURL *curl, char *proxy_port,
   if(strlen(proxy_user_password) > 0)
     curl_easy_setopt(curl, CURLOPT_PROXYUSERPWD, proxy_user_password);
 
-#ifdef SYNCTIME_UA
   curl_easy_setopt(curl, CURLOPT_USERAGENT, SYNCTIME_UA);
-#endif
   curl_easy_setopt(curl, CURLOPT_WRITEFUNCTION, SyncTime_CURL_WriteOutput);
   curl_easy_setopt(curl, CURLOPT_HEADERFUNCTION, SyncTime_CURL_WriteHeader);
 }
 
-int SyncTime_CURL_Fetch(CURL *curl, char *URL_Str, char *OutFileName,
-                        int HttpGetBody)
+static CURLcode SyncTime_CURL_Fetch(CURL *curl, const char *URL_Str,
+                                    const char *OutFileName, int HttpGetBody)
 {
   FILE *outfile;
   CURLcode res;
@@ -225,11 +209,11 @@ int SyncTime_CURL_Fetch(CURL *curl, char *URL_Str, char *OutFileName,
   return res;  /* (CURLE_OK) */
 }
 
-void showUsage(void)
+static void showUsage(void)
 {
-  fprintf(stderr, "SYNCTIME: Synchronising computer clock with time server"
+  fprintf(stderr, "synctime: Synchronising computer clock with time server"
           " using HTTP protocol.\n");
-  fprintf(stderr, "Usage   : SYNCTIME [Option]\n");
+  fprintf(stderr, "Usage   : synctime [Option]\n");
   fprintf(stderr, "Options :\n");
   fprintf(stderr, " --server=WEBSERVER        Use this time server instead"
           " of default.\n");
@@ -245,7 +229,7 @@ void showUsage(void)
   return;
 }
 
-int conf_init(conf_t *conf)
+static int conf_init(conf_t *conf)
 {
   int i;
 
@@ -323,9 +307,9 @@ int main(int argc, char *argv[])
     tzonediffWord  = (int)(tzonediffFloat/3600.0);
 
     if((double)(tzonediffWord * 3600) == tzonediffFloat)
-      snprintf(tzoneBuf, 15, "%+03d'00'", tzonediffWord);
+      snprintf(tzoneBuf, sizeof(tzoneBuf), "%+03d'00'", tzonediffWord);
     else
-      snprintf(tzoneBuf, 15, "%+03d'30'", tzonediffWord);
+      snprintf(tzoneBuf, sizeof(tzoneBuf), "%+03d'30'", tzonediffWord);
 
     /* Get current system time and local time */
     GetSystemTime(&SYSTime);

@@ -25,7 +25,7 @@
 add_custom_target(curl-examples)
 
 # Get 'check_PROGRAMS' variable
-transform_makefile_inc("Makefile.inc" "${CMAKE_CURRENT_BINARY_DIR}/Makefile.inc.cmake")
+curl_transform_makefile_inc("Makefile.inc" "${CMAKE_CURRENT_BINARY_DIR}/Makefile.inc.cmake")
 include("${CMAKE_CURRENT_BINARY_DIR}/Makefile.inc.cmake")
 
 foreach(_target IN LISTS check_PROGRAMS)
@@ -33,7 +33,7 @@ foreach(_target IN LISTS check_PROGRAMS)
   add_executable(${_target_name} EXCLUDE_FROM_ALL "${_target}.c")
   add_dependencies(curl-examples ${_target_name})
   target_link_libraries(${_target_name} ${LIB_SELECTED} ${CURL_LIBS})
-  target_compile_definitions(${_target_name} PRIVATE "CURL_NO_OLDIES")
+  target_compile_definitions(${_target_name} PRIVATE "CURL_NO_OLDIES" "$<$<BOOL:MSVC>:_CRT_SECURE_NO_DEPRECATE>")
   if(LIB_SELECTED STREQUAL LIB_STATIC AND WIN32)
     set_property(TARGET ${_target_name} APPEND PROPERTY COMPILE_DEFINITIONS "CURL_STATICLIB")
   endif()

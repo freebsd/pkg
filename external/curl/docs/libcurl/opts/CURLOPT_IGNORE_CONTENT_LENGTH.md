@@ -69,13 +69,11 @@ int main(void)
 
 Support for FTP added in 7.46.0.
 
-# NOTES
-
-This option is not working for HTTP when libcurl is built to use the hyper
-backend.
-
 # %AVAILABILITY%
 
 # RETURN VALUE
 
-Returns CURLE_OK if the option is supported, and CURLE_UNKNOWN_OPTION if not.
+curl_easy_setopt(3) returns a CURLcode indicating success or error.
+
+CURLE_OK (0) means everything was OK, non-zero means an error occurred, see
+libcurl-errors(3).

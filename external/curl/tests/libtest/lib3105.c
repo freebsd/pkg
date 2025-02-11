@@ -21,35 +21,47 @@
  * SPDX-License-Identifier: curl
  *
  ***************************************************************************/
-#include "tool_setup.h"
+#include "test.h"
 
-#if defined(HAVE_SETMODE) || defined(HAVE__SETMODE)
+#include "testutil.h"
+#include "warnless.h"
+#include "memdebug.h"
 
-#ifdef HAVE_IO_H
-#  include <io.h>
-#endif
+#define TEST_HANG_TIMEOUT 60 * 1000
 
-#ifdef HAVE_FCNTL_H
-#  include <fcntl.h>
-#endif
-
-#include "tool_binmode.h"
-
-#include "memdebug.h" /* keep this as LAST include */
-
-void set_binmode(FILE *stream)
+CURLcode test(char *URL)
 {
-#ifdef O_BINARY
-#  ifdef __HIGHC__
-  _setmode(stream, O_BINARY);
-#  elif defined(HAVE__SETMODE)
-  (void)_setmode(fileno(stream), O_BINARY);
-#  else
-  (void)setmode(fileno(stream), O_BINARY);
-#  endif
-#else
-  (void)stream;
-#endif
-}
+  CURL *curls = NULL;
+  CURLM *multi = NULL;
+  CURLcode i = CURLE_OK;
+  CURLcode res = CURLE_OK;
+  CURLMcode mc;
 
-#endif /* HAVE_SETMODE || HAVE__SETMODE */
+  global_init(CURL_GLOBAL_ALL);
+
+  multi_init(multi);
+
+  easy_init(curls);
+
+  easy_setopt(curls, CURLOPT_URL, URL);
+
+  multi_add_handle(multi, curls);
+
+  mc = curl_multi_remove_handle(multi, curls);
+  mc += curl_multi_remove_handle(multi, curls);
+
+  if(mc) {
+    fprintf(stderr, "%d was unexpected\n", (int)mc);
+    i = CURLE_FAILED_INIT;
+  }
+
+test_cleanup:
+  curl_multi_cleanup(multi);
+  curl_easy_cleanup(curls);
+  curl_global_cleanup();
+
+  if(res)
+    i = res;
+
+  return i; /* return the final return code */
+}

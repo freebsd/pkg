@@ -259,6 +259,7 @@ typedef enum {
   C_SSL_NO_REVOKE,
   C_SSL_REQD,
   C_SSL_REVOKE_BEST_EFFORT,
+  C_SSL_SESSIONS,
   C_SSLV2,
   C_SSLV3,
   C_STDERR,
@@ -348,6 +349,7 @@ typedef enum {
   PARAM_READ_ERROR,
   PARAM_EXPAND_ERROR, /* --expand problem */
   PARAM_BLANK_STRING,
+  PARAM_VAR_SYNTAX, /* --variable syntax error */
   PARAM_LAST
 } ParameterError;
 

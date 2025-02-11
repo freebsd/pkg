@@ -74,6 +74,13 @@ For example, to insert the word hello 100 times:
 
     %repeat[100 x hello]%
 
+## Insert capped epoch days
+
+Mostly to test capped cookie expire dates: `%days[NUM]` inserts the number of
+seconds for the given number of days into the future, aligned to the nearest
+minute. That is the same calculation the cookie engine uses to cap expiration
+dates.
+
 ## Include file
 
 This instruction allows a test case to include another file. It is helpful to
@@ -208,9 +215,6 @@ together as a single identifier. Most keywords are only there to provide a way
 for users to skip certain classes of tests, if desired, but a few are treated
 specially by the test harness or build system.
 
-When using curl built with Hyper, the keywords must include `HTTP` or `HTTPS`
-for 'hyper mode' to kick in and make line ending checks work for tests.
-
 When running a unit test and the keywords include `unittest`, the `<tool>`
 section can be left empty to use the standard unit test tool name `unitN` where
 `N` is the test number.
@@ -233,10 +237,14 @@ If the data contains `swsclose` anywhere within the start and end tag, and
 this is an HTTP test, then the connection is closed by the server after this
 response is sent. If not, the connection is kept persistent.
 
-If the data contains `swsbounce` anywhere within the start and end tag, the
-HTTP server detects if this is a second request using the same test and part
-number and then increases the part number with one. This is useful for auth
-tests and similar.
+If the data contains `swsbounce` anywhere within the start and end tag, then
+the HTTP server overrides the part number response returned for a subsequent
+request made by the same test to `previous part number + 1`. For example, if a
+test makes a request which causes the server to return `<data>` that contains
+keyword `swsbounce` then for the next response it ignores the requested part
+number and instead returns `<data1>`. And if `<data1>` contains keyword
+`swsbounce` then the next response is `<data2>` and so on. This is useful for
+auth tests and similar.
 
 `sendzero=yes` means that the (FTP) server "sends" the data even if the size
 is zero bytes. Used to verify curl's behavior on zero bytes transfers.
@@ -428,9 +436,10 @@ Features testable here are:
 
 - `alt-svc`
 - `AppleIDN`
+- `asyn-rr` - c-ares is used for additional records only
 - `bearssl`
 - `brotli`
-- `c-ares`
+- `c-ares` - c-ares is used for (all) name resolves
 - `CharConv`
 - `codeset-utf8`. If the running codeset is UTF-8 capable.
 - `cookies`
@@ -447,12 +456,13 @@ Features testable here are:
 - `http/2`
 - `http/3`
 - `HTTPS-proxy`
-- `hyper`
+- `HTTPSRR`
 - `IDN`
 - `IPv6`
 - `Kerberos`
 - `Largefile`
 - `large-time` (time_t is larger than 32-bit)
+- `large-size` (size_t is larger than 32-bit)
 - `ld_preload`
 - `libssh2`
 - `libssh`

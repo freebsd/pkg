@@ -1340,6 +1340,9 @@ Introduced in 7.50.0.
 ## CURLINFO_HTTPAUTH_AVAIL
 Introduced in 7.10.8.
 
+## CURLINFO_HTTPAUTH_USED
+Introduced in 8.12.0.
+
 ## CURLINFO_LASTONE
 Introduced in 7.4.1.
 
@@ -1405,6 +1408,9 @@ Introduced in 7.52.0.
 
 ## CURLINFO_PROXYAUTH_AVAIL
 Introduced in 7.10.8.
+
+## CURLINFO_PROXYAUTH_USED
+Introduced in 8.12.0.
 
 ## CURLINFO_PTR
 Introduced in 7.54.1.

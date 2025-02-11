@@ -60,6 +60,8 @@
 #include "server_sockaddr.h"
 #include "warnless.h"
 
+#include "tool_binmode.h"
+
 /* include memdebug.h last */
 #include "memdebug.h"
 
@@ -540,12 +542,14 @@ static curl_socket_t mqttit(curl_socket_t fd)
       break;
 
     if(remaining_length >= buff_size) {
+      unsigned char *newbuffer;
       buff_size = remaining_length;
-      buffer = realloc(buffer, buff_size);
-      if(!buffer) {
+      newbuffer = realloc(buffer, buff_size);
+      if(!newbuffer) {
         logmsg("Failed realloc of size %zu", buff_size);
         goto end;
       }
+      buffer = newbuffer;
     }
 
     if(remaining_length) {
@@ -748,7 +752,14 @@ static bool incoming(curl_socket_t listenfd)
     FD_ZERO(&fds_err);
 
     /* there's always a socket to wait for */
+#if defined(__DJGPP__)
+#pragma GCC diagnostic push
+#pragma GCC diagnostic ignored "-Warith-conversion"
+#endif
     FD_SET(sockfd, &fds_read);
+#if defined(__DJGPP__)
+#pragma GCC diagnostic pop
+#endif
 
     do {
       /* select() blocking behavior call on blocking descriptors please */
@@ -1021,11 +1032,11 @@ int main(int argc, char *argv[])
 #ifdef _WIN32
   win32_init();
   atexit(win32_cleanup);
-
-  setmode(fileno(stdin), O_BINARY);
-  setmode(fileno(stdout), O_BINARY);
-  setmode(fileno(stderr), O_BINARY);
 #endif
+
+  CURL_SET_BINMODE(stdin);
+  CURL_SET_BINMODE(stdout);
+  CURL_SET_BINMODE(stderr);
 
   install_signal_handlers(FALSE);
 

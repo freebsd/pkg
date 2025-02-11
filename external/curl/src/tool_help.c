@@ -36,10 +36,6 @@
 
 #include "memdebug.h" /* keep this as LAST include */
 
-#ifdef MSDOS
-#  define USE_WATT32
-#endif
-
 #ifndef ARRAYSIZE
 #define ARRAYSIZE(A) (sizeof(A)/sizeof((A)[0]))
 #endif
@@ -288,11 +284,13 @@ void tool_help(char *category)
         msnprintf(cmdbuf, sizeof(cmdbuf), "\n    --no-%s", a->lname);
       else
         msnprintf(cmdbuf, sizeof(cmdbuf), "\n    %s", category);
+#ifdef USE_MANUAL
       if(a->cmd == C_XATTR)
         /* this is the last option, which then ends when FILES starts */
         showhelp("\nALL OPTIONS\n", cmdbuf, "\nFILES");
       else
         showhelp("\nALL OPTIONS\n", cmdbuf, "\n    -");
+#endif
     }
 #else
     fprintf(tool_stderr, "Cannot comply. "

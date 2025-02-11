@@ -49,7 +49,7 @@ int tool_seek_cb(void *userdata, curl_off_t offset, int whence)
 {
   struct per_transfer *per = userdata;
 
-#if(SIZEOF_CURL_OFF_T > SIZEOF_OFF_T) && !defined(USE_WIN32_LARGE_FILES)
+#if (SIZEOF_CURL_OFF_T > SIZEOF_OFF_T) && !defined(USE_WIN32_LARGE_FILES)
 
   /* The offset check following here is only interesting if curl_off_t is
      larger than off_t and we are not using the Win32 large file support
@@ -80,7 +80,11 @@ int tool_seek_cb(void *userdata, curl_off_t offset, int whence)
   }
 #endif
 
+#ifdef __AMIGA__
+  if(LSEEK_ERROR == lseek(per->infd, (off_t)offset, whence))
+#else
   if(LSEEK_ERROR == lseek(per->infd, offset, whence))
+#endif
     /* could not rewind, the reason is in errno but errno is just not portable
        enough and we do not actually care that much why we failed. We will let
        libcurl know that it may try other means if it wants to. */

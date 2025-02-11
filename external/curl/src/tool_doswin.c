@@ -45,7 +45,15 @@
 #ifdef _WIN32
 #  undef  PATH_MAX
 #  define PATH_MAX MAX_PATH
+
+#  define _use_lfn(f) (1)  /* long filenames always available */
+#elif !defined(__DJGPP__) || (__DJGPP__ < 2)  /* DJGPP 2.0 has _use_lfn() */
+#  define _use_lfn(f) (0)  /* long filenames never available */
+#elif defined(__DJGPP__)
+#  include <fcntl.h>       /* _use_lfn(f) prototype */
 #endif
+
+#ifdef MSDOS
 
 #ifndef S_ISCHR
 #  ifdef S_IFCHR
@@ -55,15 +63,6 @@
 #  endif
 #endif
 
-#ifdef _WIN32
-#  define _use_lfn(f) (1)   /* long filenames always available */
-#elif !defined(__DJGPP__) || (__DJGPP__ < 2)  /* DJGPP 2.0 has _use_lfn() */
-#  define _use_lfn(f) (0)  /* long filenames never available */
-#elif defined(__DJGPP__)
-#  include <fcntl.h>                /* _use_lfn(f) prototype */
-#endif
-
-#ifdef MSDOS
 /* only used by msdosify() */
 static SANITIZEcode truncate_dryrun(const char *path,
                                     const size_t truncate_pos);
@@ -242,7 +241,8 @@ SANITIZE_ERR_OK: Good -- 'path' can be truncated
 SANITIZE_ERR_INVALID_PATH: Bad -- 'path' cannot be truncated
 != SANITIZE_ERR_OK && != SANITIZE_ERR_INVALID_PATH: Error
 */
-SANITIZEcode truncate_dryrun(const char *path, const size_t truncate_pos)
+static SANITIZEcode truncate_dryrun(const char *path,
+                                    const size_t truncate_pos)
 {
   size_t len;
 
@@ -291,8 +291,8 @@ sanitize_file_name.
 Success: (SANITIZE_ERR_OK) *sanitized points to a sanitized copy of file_name.
 Failure: (!= SANITIZE_ERR_OK) *sanitized is NULL.
 */
-SANITIZEcode msdosify(char **const sanitized, const char *file_name,
-                      int flags)
+static SANITIZEcode msdosify(char **const sanitized, const char *file_name,
+                             int flags)
 {
   char dos_name[PATH_MAX];
   static const char illegal_chars_dos[] = ".+, ;=[]" /* illegal in DOS */
@@ -418,7 +418,7 @@ SANITIZEcode msdosify(char **const sanitized, const char *file_name,
   }
 
   *sanitized = strdup(dos_name);
-  return (*sanitized ? SANITIZE_ERR_OK : SANITIZE_ERR_OUT_OF_MEMORY);
+  return *sanitized ? SANITIZE_ERR_OK : SANITIZE_ERR_OUT_OF_MEMORY;
 }
 #endif /* MSDOS */
 
@@ -547,11 +547,10 @@ static SANITIZEcode rename_if_reserved_dos(char **const sanitized,
 #endif
 
   *sanitized = strdup(fname);
-  return (*sanitized ? SANITIZE_ERR_OK : SANITIZE_ERR_OUT_OF_MEMORY);
+  return *sanitized ? SANITIZE_ERR_OK : SANITIZE_ERR_OUT_OF_MEMORY;
 }
 
-#if defined(MSDOS) && (defined(__DJGPP__) || defined(__GO32__))
-
+#ifdef __DJGPP__
 /*
  * Disable program default argument globbing. We do it on our own.
  */
@@ -560,8 +559,7 @@ char **__crt0_glob_function(char *arg)
   (void)arg;
   return (char **)0;
 }
-
-#endif /* MSDOS && (__DJGPP__ || __GO32__) */
+#endif
 
 #ifdef _WIN32
 

@@ -77,7 +77,7 @@ introduced in later libcurl versions.
 ## CURL_PUSH_OK (0)
 
 The application has accepted the stream and it can now start receiving data,
-the ownership of the CURL handle has been taken over by the application.
+the ownership of the curl handle has been taken over by the application.
 
 ## CURL_PUSH_DENY (1)
 
@@ -144,4 +144,7 @@ int main(void)
 
 # RETURN VALUE
 
-Returns CURLM_OK if the option is supported, and CURLM_UNKNOWN_OPTION if not.
+curl_multi_setopt(3) returns a CURLMcode indicating success or error.
+
+CURLM_OK (0) means everything was OK, non-zero means an error occurred, see
+libcurl-errors(3).

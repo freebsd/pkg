@@ -65,11 +65,11 @@ It gets called when the known_host matching has been done, to allow the
 application to act and decide for libcurl how to proceed. The callback is only
 called if CURLOPT_SSH_KNOWNHOSTS(3) is also set.
 
-This callback function gets passed the CURL handle, the key from the
-known_hosts file *knownkey*, the key from the remote site *foundkey*,
-info from libcurl on the matching status and a custom pointer (set with
-CURLOPT_SSH_KEYDATA(3)). It MUST return one of the following return
-codes to tell libcurl how to act:
+This callback function gets passed the curl handle, the key from the
+known_hosts file *knownkey*, the key from the remote site *foundkey*, info
+from libcurl on the matching status and a custom pointer (set with
+CURLOPT_SSH_KEYDATA(3)). It MUST return one of the following return codes to
+tell libcurl how to act:
 
 ## CURLKHSTAT_FINE_REPLACE
 
@@ -149,4 +149,7 @@ int main(void)
 
 # RETURN VALUE
 
-Returns CURLE_OK if the option is supported, and CURLE_UNKNOWN_OPTION if not.
+curl_easy_setopt(3) returns a CURLcode indicating success or error.
+
+CURLE_OK (0) means everything was OK, non-zero means an error occurred, see
+libcurl-errors(3).

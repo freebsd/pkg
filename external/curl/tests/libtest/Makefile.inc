@@ -23,22 +23,16 @@
 ###########################################################################
 # files used only in some libcurl test programs
 TESTUTIL = testutil.c testutil.h
-
-# files used only in some libcurl test programs
 TSTTRACE = testtrace.c testtrace.h
-
-# files used only in some libcurl test programs
 WARNLESS = ../../lib/warnless.c ../../lib/warnless.h
-
-# files used only in some libcurl test programs
 MULTIBYTE = ../../lib/curl_multibyte.c ../../lib/curl_multibyte.h
+INET_PTON = ../../lib/inet_pton.c ../../lib/inet_pton.h
+THREADS = ../../lib/curl_threads.c ../../lib/curl_threads.h
 
 # these files are used in every single test program below
 TIMEDIFF = ../../lib/timediff.c ../../lib/timediff.h
 FIRSTFILES = first.c first.h
 SUPPORTFILES = $(TIMEDIFF) $(FIRSTFILES) test.h
-
-THREADS = ../../lib/curl_threads.c ../../lib/curl_threads.h
 
 # These are all libcurl test programs
 LIBTESTPROGS = libauthretry libntlmconnect libprereq                     \
@@ -54,7 +48,8 @@ LIBTESTPROGS = libauthretry libntlmconnect libprereq                     \
  lib599 \
  lib643        lib645 lib650 lib651 lib652 lib653 lib654 lib655 lib658   \
  lib659 lib661 lib666 lib667 lib668 \
- lib670 lib671 lib672 lib673 lib674 lib676 lib677 lib678 \
+ lib670 lib671 lib672 lib673 lib674 lib676 lib677 lib678 lib694 lib695   \
+ lib696 \
  lib1156 \
  lib1301 \
  lib1485 \
@@ -76,12 +71,12 @@ LIBTESTPROGS = libauthretry libntlmconnect libprereq                     \
  lib1933 lib1934 lib1935 lib1936 lib1937 lib1938 lib1939 lib1940 \
  lib1945 lib1946 lib1947 lib1948 lib1955 lib1956 lib1957 lib1958 lib1959 \
  lib1960 lib1964 \
- lib1970 lib1971 lib1972 lib1973 lib1974 lib1975 \
- lib2301 lib2302 lib2304 lib2305 lib2306         lib2308 lib2309 \
+ lib1970 lib1971 lib1972 lib1973 lib1974 lib1975 lib1977 \
+ lib2301 lib2302 lib2304 lib2305 lib2306         lib2308 lib2309 lib2310 \
  lib2402 lib2404 lib2405 \
  lib2502 \
  lib3010 lib3025 lib3026 lib3027 \
- lib3100 lib3101 lib3102 lib3103 lib3207
+ lib3100 lib3101 lib3102 lib3103 lib3104 lib3105 lib3207
 
 libntlmconnect_SOURCES = libntlmconnect.c $(SUPPORTFILES) $(TESTUTIL) $(WARNLESS)
 libntlmconnect_LDADD = $(TESTUTIL_LIBS)
@@ -343,6 +338,13 @@ lib677_LDADD = $(TESTUTIL_LIBS)
 
 lib678_SOURCES = lib678.c $(SUPPORTFILES) $(TESTUTIL) $(WARNLESS) $(MULTIBYTE)
 lib678_LDADD = $(TESTUTIL_LIBS)
+
+lib694_SOURCES = lib694.c $(SUPPORTFILES)
+
+lib695_SOURCES = lib695.c $(SUPPORTFILES)
+
+lib696_SOURCES = lib556.c $(SUPPORTFILES)
+lib696_CPPFLAGS = $(AM_CPPFLAGS) -DLIB696
 
 lib1301_SOURCES = lib1301.c $(SUPPORTFILES) $(TESTUTIL)
 lib1301_LDADD = $(TESTUTIL_LIBS)
@@ -641,7 +643,7 @@ lib1958_LDADD = $(TESTUTIL_LIBS)
 lib1959_SOURCES = lib1959.c $(SUPPORTFILES) $(TESTUTIL) $(WARNLESS)
 lib1959_LDADD = $(TESTUTIL_LIBS)
 
-lib1960_SOURCES = lib1960.c $(SUPPORTFILES)
+lib1960_SOURCES = lib1960.c $(SUPPORTFILES) $(INET_PTON)
 lib1960_LDADD = $(TESTUTIL_LIBS)
 
 lib1964_SOURCES = lib1964.c $(SUPPORTFILES) $(TESTUTIL) $(WARNLESS)
@@ -665,6 +667,9 @@ lib1974_LDADD = $(TESTUTIL_LIBS)
 lib1975_SOURCES = lib1975.c $(SUPPORTFILES) $(TESTUTIL) $(WARNLESS)
 lib1975_LDADD = $(TESTUTIL_LIBS)
 
+lib1977_SOURCES = lib1977.c $(SUPPORTFILES) $(TESTUTIL) $(WARNLESS)
+lib1977_LDADD = $(TESTUTIL_LIBS)
+
 lib2301_SOURCES = lib2301.c $(SUPPORTFILES)
 lib2301_LDADD = $(TESTUTIL_LIBS)
 
@@ -685,6 +690,9 @@ lib2308_LDADD = $(TESTUTIL_LIBS)
 
 lib2309_SOURCES = lib2309.c $(SUPPORTFILES)
 lib2309_LDADD = $(TESTUTIL_LIBS)
+
+lib2310_SOURCES = lib2310.c $(SUPPORTFILES) $(TESTUTIL) $(TSTTRACE) $(MULTIBYTE)
+lib2310_LDADD = $(TESTUTIL_LIBS)
 
 lib2402_SOURCES = lib2402.c $(SUPPORTFILES) $(TESTUTIL) $(WARNLESS)
 lib2402_LDADD = $(TESTUTIL_LIBS)
@@ -721,6 +729,10 @@ lib3102_LDADD = $(TESTUTIL_LIBS)
 
 lib3103_SOURCES = lib3103.c $(SUPPORTFILES)
 lib3103_LDADD = $(TESTUTIL_LIBS)
+
+lib3104_SOURCES = lib3104.c $(SUPPORTFILES)
+
+lib3105_SOURCES = lib3105.c $(SUPPORTFILES)
 
 lib3207_SOURCES = lib3207.c $(SUPPORTFILES) $(TESTUTIL) $(THREADS) $(WARNLESS) $(MULTIBYTE)
 lib3207_LDADD = $(TESTUTIL_LIBS)

@@ -1378,55 +1378,33 @@ dnl Check if curl's Win32 large file will be used
 
 AC_DEFUN([CURL_CHECK_WIN32_LARGEFILE], [
   AC_REQUIRE([CURL_CHECK_NATIVE_WINDOWS])dnl
-  AC_MSG_CHECKING([whether build target supports Win32 file API])
-  curl_win32_file_api="no"
-  if test "$curl_cv_native_windows" = "yes"; then
-    if test x"$enable_largefile" != "xno"; then
-      AC_COMPILE_IFELSE([
-        AC_LANG_PROGRAM([[
-        ]],[[
-          #if !defined(_WIN32_WCE) && (defined(__MINGW32__) || defined(_MSC_VER))
-            int dummy=1;
-          #else
-            #error Win32 large file API not supported.
-          #endif
-        ]])
-      ],[
-        curl_win32_file_api="win32_large_files"
-      ])
-    fi
-    if test "$curl_win32_file_api" = "no"; then
-      AC_COMPILE_IFELSE([
-        AC_LANG_PROGRAM([[
-        ]],[[
-          #if defined(_WIN32_WCE) || defined(__MINGW32__) || defined(_MSC_VER)
-            int dummy=1;
-          #else
-            #error Win32 small file API not supported.
-          #endif
-        ]])
-      ],[
-        curl_win32_file_api="win32_small_files"
-      ])
-    fi
+  if test "$curl_cv_native_windows" = 'yes'; then
+    AC_MSG_CHECKING([whether build target supports Win32 large files])
+    case $host_os in
+      mingw32ce*|cegcc*)
+        dnl Windows CE does not support large files
+        curl_win32_has_largefile='no'
+        ;;
+      *)
+        dnl All mingw-w64 versions support large files
+        curl_win32_has_largefile='yes'
+        ;;
+    esac
+    case "$curl_win32_has_largefile" in
+      yes)
+        if test x"$enable_largefile" = 'xno'; then
+          AC_MSG_RESULT([yes (large file disabled)])
+        else
+          AC_MSG_RESULT([yes (large file enabled)])
+          AC_DEFINE_UNQUOTED(USE_WIN32_LARGE_FILES, 1,
+            [Define to 1 if you are building a Windows target with large file support.])
+        fi
+        ;;
+      *)
+        AC_MSG_RESULT([no])
+        ;;
+    esac
   fi
-  case "$curl_win32_file_api" in
-    win32_large_files)
-      AC_MSG_RESULT([yes (large file enabled)])
-      AC_DEFINE_UNQUOTED(USE_WIN32_LARGE_FILES, 1,
-        [Define to 1 if you are building a Windows target with large file support.])
-      AC_SUBST(USE_WIN32_LARGE_FILES, [1])
-      ;;
-    win32_small_files)
-      AC_MSG_RESULT([yes (large file disabled)])
-      AC_DEFINE_UNQUOTED(USE_WIN32_SMALL_FILES, 1,
-        [Define to 1 if you are building a Windows target without large file support.])
-      AC_SUBST(USE_WIN32_SMALL_FILES, [1])
-      ;;
-    *)
-      AC_MSG_RESULT([no])
-      ;;
-  esac
 ])
 
 dnl CURL_CHECK_WIN32_CRYPTO
@@ -1437,7 +1415,7 @@ AC_DEFUN([CURL_CHECK_WIN32_CRYPTO], [
   AC_REQUIRE([CURL_CHECK_NATIVE_WINDOWS])dnl
   AC_MSG_CHECKING([whether build target supports Win32 crypto API])
   curl_win32_crypto_api="no"
-  if test "$curl_cv_native_windows" = "yes"; then
+  if test "$curl_cv_native_windows" = "yes" -a "$curl_cv_winuwp" != "yes"; then
     AC_COMPILE_IFELSE([
       AC_LANG_PROGRAM([[
         #undef inline
@@ -1462,7 +1440,7 @@ AC_DEFUN([CURL_CHECK_WIN32_CRYPTO], [
       AC_MSG_RESULT([yes])
       AC_DEFINE_UNQUOTED(USE_WIN32_CRYPTO, 1,
         [Define to 1 if you are building a Windows target with crypto API support.])
-      AC_SUBST(USE_WIN32_CRYPTO, [1])
+      USE_WIN32_CRYPTO=1
       ;;
     *)
       AC_MSG_RESULT([no])
@@ -1548,23 +1526,36 @@ AC_DEFUN([CURL_PREPARE_BUILDINFO], [
   case $host in
     *-apple-*) curl_pflags="${curl_pflags} APPLE";;
   esac
+  case $host in
+    *-*-*bsd*|*-*-aix*|*-*-hpux*|*-*-interix*|*-*-irix*|*-*-linux*|*-*-solaris*|*-*-sunos*|*-apple-*|*-*-cygwin*|*-*-msys*)
+      curl_pflags="${curl_pflags} UNIX";;
+  esac
+  case $host in
+    *-*-*bsd*)
+      curl_pflags="${curl_pflags} BSD";;
+  esac
+  case $host in
+    *-*-android*)
+      curl_pflags="${curl_pflags} ANDROID"
+      ANDROID_PLATFORM_LEVEL=`echo "$host_os" | $SED -ne 's/.*android\(@<:@0-9@:>@*\).*/\1/p'`
+      if test -n "${ANDROID_PLATFORM_LEVEL}"; then
+        curl_pflags="${curl_pflags}-${ANDROID_PLATFORM_LEVEL}"
+      fi
+      ;;
+  esac
   if test "$curl_cv_native_windows" = 'yes'; then
     curl_pflags="${curl_pflags} WIN32"
-  else
-    case $host in
-      *-*-*bsd*|*-*-aix*|*-*-hpux*|*-*-interix*|*-*-irix*|*-*-linux*|*-*-solaris*|*-*-sunos*|*-apple-*|*-*-cygwin*|*-*-msys*)
-        curl_pflags="${curl_pflags} UNIX";;
-    esac
-    case $host in
-      *-*-*bsd*)
-        curl_pflags="${curl_pflags} BSD";;
-    esac
+  fi
+  if test "$curl_cv_winuwp" = 'yes'; then
+    curl_pflags="${curl_pflags} UWP"
   fi
   if test "$curl_cv_cygwin" = 'yes'; then
     curl_pflags="${curl_pflags} CYGWIN"
   fi
   case $host_os in
     msys*) curl_pflags="${curl_pflags} MSYS";;
+    msdos*) curl_pflags="${curl_pflags} DOS";;
+    amiga*) curl_pflags="${curl_pflags} AMIGA";;
   esac
   if test "x$compiler_id" = 'xGNU_C'; then
     curl_pflags="${curl_pflags} GCC"

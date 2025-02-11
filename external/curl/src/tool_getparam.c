@@ -45,10 +45,6 @@
 
 #include "memdebug.h" /* keep this as LAST include */
 
-#ifdef MSDOS
-#  define USE_WATT32
-#endif
-
 #define ALLOW_BLANK TRUE
 #define DENY_BLANK FALSE
 
@@ -304,6 +300,7 @@ static const struct LongShort aliases[]= {
   {"ssl-no-revoke",              ARG_BOOL, ' ', C_SSL_NO_REVOKE},
   {"ssl-reqd",                   ARG_BOOL, ' ', C_SSL_REQD},
   {"ssl-revoke-best-effort",     ARG_BOOL, ' ', C_SSL_REVOKE_BEST_EFFORT},
+  {"ssl-sessions",               ARG_FILE, ' ', C_SSL_SESSIONS},
   {"sslv2",                      ARG_NONE, '2', C_SSLV2},
   {"sslv3",                      ARG_NONE, '3', C_SSLV3},
   {"stderr",                     ARG_FILE, ' ', C_STDERR},
@@ -604,7 +601,7 @@ static ParameterError data_urlencode(struct GlobalConfig *global,
     /* a '@' letter, it means that a filename or - (stdin) follows */
     if(!strcmp("-", p)) {
       file = stdin;
-      set_binmode(stdin);
+      CURL_SET_BINMODE(stdin);
     }
     else {
       file = fopen(p, "rb");
@@ -870,7 +867,7 @@ static ParameterError set_data(cmdline_t cmd,
     if(!strcmp("-", nextarg)) {
       file = stdin;
       if(cmd == C_DATA_BINARY) /* forced data-binary */
-        set_binmode(stdin);
+        CURL_SET_BINMODE(stdin);
     }
     else {
       file = fopen(nextarg, "rb");
@@ -1019,7 +1016,8 @@ const struct LongShort *findlongopt(const char *opt)
                  sizeof(aliases[0]), findarg);
 }
 
-static ParameterError parse_url(struct OperationConfig *config,
+static ParameterError parse_url(struct GlobalConfig *global,
+                                struct OperationConfig *config,
                                 const char *nextarg)
 {
   ParameterError err = PARAM_OK;
@@ -1050,6 +1048,11 @@ static ParameterError parse_url(struct OperationConfig *config,
     /* fill in the URL */
     err = getstr(&url->url, nextarg, DENY_BLANK);
     url->flags |= GETOUT_URL;
+    if(!err && (++config->num_urls > 1) && (config->etag_save_file ||
+                                            config->etag_compare_file)) {
+      errorf(global, "The etag options only work on a single URL");
+      return PARAM_BAD_USE;
+    }
   }
   return err;
 }
@@ -1141,7 +1144,7 @@ static ParameterError parse_ech(struct GlobalConfig *global,
       char *tmpcfg = NULL;
       FILE *file;
 
-      nextarg++;        /* skip over '@' */
+      nextarg += 5;        /* skip over 'ecl:@' */
       if(!strcmp("-", nextarg)) {
         file = stdin;
       }
@@ -1161,9 +1164,9 @@ static ParameterError parse_ech(struct GlobalConfig *global,
       if(err)
         return err;
       config->ech_config = aprintf("ecl:%s",tmpcfg);
+      free(tmpcfg);
       if(!config->ech_config)
         return PARAM_NO_MEM;
-      free(tmpcfg);
     } /* file done */
   }
   else {
@@ -1911,7 +1914,7 @@ ParameterError getparameter(const char *flag, /* f or -long-flag */
       config->xattr = toggle;
       break;
     case C_URL: /* --url */
-      err = parse_url(config, nextarg);
+      err = parse_url(global, config, nextarg);
       break;
     case C_FTP_SSL: /* --ftp-ssl */
     case C_SSL: /* --ssl */
@@ -2403,7 +2406,10 @@ ParameterError getparameter(const char *flag, /* f or -long-flag */
       }
       break;
     case C_HOSTPUBSHA256: /* --hostpubsha256 */
-      err = getstr(&config->hostpubsha256, nextarg, DENY_BLANK);
+      if(!feature_libssh2)
+        err = PARAM_LIBCURL_DOESNT_SUPPORT;
+      else
+        err = getstr(&config->hostpubsha256, nextarg, DENY_BLANK);
       break;
     case C_CRLFILE: /* --crlfile */
       err = getstr(&config->crlfile, nextarg, DENY_BLANK);
@@ -2465,6 +2471,12 @@ ParameterError getparameter(const char *flag, /* f or -long-flag */
     case C_SSL_REVOKE_BEST_EFFORT: /* --ssl-revoke-best-effort */
       if(feature_ssl)
         config->ssl_revoke_best_effort = TRUE;
+      break;
+    case C_SSL_SESSIONS: /* --ssl-sessions */
+      if(feature_ssls_export)
+        err = getstr(&global->ssl_sessions, nextarg, DENY_BLANK);
+      else
+        err = PARAM_LIBCURL_DOESNT_SUPPORT;
       break;
     case C_TCP_FASTOPEN: /* --tcp-fastopen */
       config->tcp_fastopen = TRUE;
@@ -2549,10 +2561,20 @@ ParameterError getparameter(const char *flag, /* f or -long-flag */
         config->socks5_auth &= ~CURLAUTH_GSSAPI;
       break;
     case C_ETAG_SAVE: /* --etag-save */
-      err = getstr(&config->etag_save_file, nextarg, DENY_BLANK);
+      if(config->num_urls > 1) {
+        errorf(global, "The etag options only work on a single URL");
+        err = PARAM_BAD_USE;
+      }
+      else
+        err = getstr(&config->etag_save_file, nextarg, DENY_BLANK);
       break;
     case C_ETAG_COMPARE: /* --etag-compare */
-      err = getstr(&config->etag_compare_file, nextarg, DENY_BLANK);
+      if(config->num_urls > 1) {
+        errorf(global, "The etag options only work on a single URL");
+        err = PARAM_BAD_USE;
+      }
+      else
+        err = getstr(&config->etag_compare_file, nextarg, DENY_BLANK);
       break;
     case C_CURVES: /* --curves */
       err = getstr(&config->ssl_ec_curves, nextarg, DENY_BLANK);

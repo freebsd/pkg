@@ -71,15 +71,6 @@ rem ***************************************************************************
   shift & goto parseArgs
 
 :start
-  if exist ..\buildconf.bat (
-    if "%MODE%" == "GENERATE" (
-      call ..\buildconf
-    ) else if "%VERSION%" == "PRE" (
-      call ..\buildconf -clean
-    ) else if "%VERSION%" == "ALL" (
-      call ..\buildconf -clean
-    )
-  )
   if "%VERSION%" == "PRE" goto success
   if "%VERSION%" == "VC10" goto vc10
   if "%VERSION%" == "VC11" goto vc11
@@ -164,6 +155,7 @@ rem
       call :element %1 lib "timediff.c" %3
       call :element %1 lib "nonblock.c" %3
       call :element %1 lib "warnless.c" %3
+      call :element %1 lib "curl_get_line.c" %3
       call :element %1 lib "curl_multibyte.c" %3
       call :element %1 lib "version_win32.c" %3
       call :element %1 lib "dynbuf.c" %3
@@ -176,6 +168,7 @@ rem
       call :element %1 lib "nonblock.h" %3
       call :element %1 lib "warnless.h" %3
       call :element %1 lib "curl_ctype.h" %3
+      call :element %1 lib "curl_get_line.h" %3
       call :element %1 lib "curl_multibyte.h" %3
       call :element %1 lib "version_win32.h" %3
       call :element %1 lib "dynbuf.h" %3
@@ -311,7 +304,7 @@ rem
   echo Only legacy Visual Studio project files can be generated.
   echo.
   echo To generate recent versions of Visual Studio project files use cmake.
-  echo Refer to INSTALL-CMAKE in the docs directory.
+  echo Refer to INSTALL-CMAKE.md in the docs directory.
   echo.
   echo -clean    - Removes the project files
   goto error

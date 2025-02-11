@@ -55,6 +55,7 @@ extern bool feature_http2;
 extern bool feature_http3;
 extern bool feature_httpsproxy;
 extern bool feature_libz;
+extern bool feature_libssh2;
 extern bool feature_ntlm;
 extern bool feature_ntlm_wb;
 extern bool feature_spnego;
@@ -62,6 +63,7 @@ extern bool feature_ssl;
 extern bool feature_tls_srp;
 extern bool feature_zstd;
 extern bool feature_ech;
+extern bool feature_ssls_export;
 
 CURLcode get_libcurl_info(void);
 const char *proto_token(const char *proto);

@@ -137,8 +137,8 @@ build_triplet = @build@
 host_triplet = @host@
 @USE_CPPFLAG_CURL_STATICLIB_TRUE@am__append_1 = -DCURL_STATICLIB
 check_PROGRAMS = 10-at-a-time$(EXEEXT) address-scope$(EXEEXT) \
-	altsvc$(EXEEXT) anyauthput$(EXEEXT) certinfo$(EXEEXT) \
-	chkspeed$(EXEEXT) connect-to$(EXEEXT) \
+	altsvc$(EXEEXT) anyauthput$(EXEEXT) block_ip$(EXEEXT) \
+	certinfo$(EXEEXT) chkspeed$(EXEEXT) connect-to$(EXEEXT) \
 	cookie_interface$(EXEEXT) debug$(EXEEXT) \
 	default-scheme$(EXEEXT) externalsocket$(EXEEXT) \
 	fileupload$(EXEEXT) ftp-wildcard$(EXEEXT) ftpget$(EXEEXT) \
@@ -232,6 +232,10 @@ anyauthput_SOURCES = anyauthput.c
 anyauthput_OBJECTS = anyauthput.$(OBJEXT)
 anyauthput_LDADD = $(LDADD)
 anyauthput_DEPENDENCIES = $(LIBDIR)/libcurl.la
+block_ip_SOURCES = block_ip.c
+block_ip_OBJECTS = block_ip.$(OBJEXT)
+block_ip_LDADD = $(LDADD)
+block_ip_DEPENDENCIES = $(LIBDIR)/libcurl.la
 certinfo_SOURCES = certinfo.c
 certinfo_OBJECTS = certinfo.$(OBJEXT)
 certinfo_LDADD = $(LDADD)
@@ -673,19 +677,20 @@ depcomp = $(SHELL) $(top_srcdir)/depcomp
 am__maybe_remake_depfiles = depfiles
 am__depfiles_remade = ./$(DEPDIR)/10-at-a-time.Po \
 	./$(DEPDIR)/address-scope.Po ./$(DEPDIR)/altsvc.Po \
-	./$(DEPDIR)/anyauthput.Po ./$(DEPDIR)/certinfo.Po \
-	./$(DEPDIR)/chkspeed.Po ./$(DEPDIR)/connect-to.Po \
-	./$(DEPDIR)/cookie_interface.Po ./$(DEPDIR)/debug.Po \
-	./$(DEPDIR)/default-scheme.Po ./$(DEPDIR)/externalsocket.Po \
-	./$(DEPDIR)/fileupload.Po ./$(DEPDIR)/ftp-wildcard.Po \
-	./$(DEPDIR)/ftpget.Po ./$(DEPDIR)/ftpgetinfo.Po \
-	./$(DEPDIR)/ftpgetresp.Po ./$(DEPDIR)/ftpsget.Po \
-	./$(DEPDIR)/ftpupload.Po ./$(DEPDIR)/ftpuploadfrommem.Po \
-	./$(DEPDIR)/ftpuploadresume.Po ./$(DEPDIR)/getinfo.Po \
-	./$(DEPDIR)/getinmemory.Po ./$(DEPDIR)/getredirect.Po \
-	./$(DEPDIR)/getreferrer.Po ./$(DEPDIR)/headerapi.Po \
-	./$(DEPDIR)/hsts-preload.Po ./$(DEPDIR)/http-options.Po \
-	./$(DEPDIR)/http-post.Po ./$(DEPDIR)/http2-download.Po \
+	./$(DEPDIR)/anyauthput.Po ./$(DEPDIR)/block_ip.Po \
+	./$(DEPDIR)/certinfo.Po ./$(DEPDIR)/chkspeed.Po \
+	./$(DEPDIR)/connect-to.Po ./$(DEPDIR)/cookie_interface.Po \
+	./$(DEPDIR)/debug.Po ./$(DEPDIR)/default-scheme.Po \
+	./$(DEPDIR)/externalsocket.Po ./$(DEPDIR)/fileupload.Po \
+	./$(DEPDIR)/ftp-wildcard.Po ./$(DEPDIR)/ftpget.Po \
+	./$(DEPDIR)/ftpgetinfo.Po ./$(DEPDIR)/ftpgetresp.Po \
+	./$(DEPDIR)/ftpsget.Po ./$(DEPDIR)/ftpupload.Po \
+	./$(DEPDIR)/ftpuploadfrommem.Po ./$(DEPDIR)/ftpuploadresume.Po \
+	./$(DEPDIR)/getinfo.Po ./$(DEPDIR)/getinmemory.Po \
+	./$(DEPDIR)/getredirect.Po ./$(DEPDIR)/getreferrer.Po \
+	./$(DEPDIR)/headerapi.Po ./$(DEPDIR)/hsts-preload.Po \
+	./$(DEPDIR)/http-options.Po ./$(DEPDIR)/http-post.Po \
+	./$(DEPDIR)/http2-download.Po \
 	./$(DEPDIR)/http2-pushinmemory.Po \
 	./$(DEPDIR)/http2-serverpush.Po ./$(DEPDIR)/http2-upload.Po \
 	./$(DEPDIR)/http3-present.Po ./$(DEPDIR)/http3.Po \
@@ -748,24 +753,24 @@ am__v_CCLD_ = $(am__v_CCLD_@AM_DEFAULT_V@)
 am__v_CCLD_0 = @echo "  CCLD    " $@;
 am__v_CCLD_1 = 
 SOURCES = 10-at-a-time.c address-scope.c altsvc.c anyauthput.c \
-	certinfo.c chkspeed.c connect-to.c cookie_interface.c debug.c \
-	default-scheme.c externalsocket.c fileupload.c ftp-wildcard.c \
-	ftpget.c ftpgetinfo.c ftpgetresp.c ftpsget.c ftpupload.c \
-	ftpuploadfrommem.c ftpuploadresume.c getinfo.c getinmemory.c \
-	getredirect.c getreferrer.c headerapi.c hsts-preload.c \
-	http-options.c http-post.c http2-download.c \
-	http2-pushinmemory.c http2-serverpush.c http2-upload.c http3.c \
-	http3-present.c httpcustomheader.c httpput.c \
-	httpput-postfields.c https.c imap-append.c imap-authzid.c \
-	imap-copy.c imap-create.c imap-delete.c imap-examine.c \
-	imap-fetch.c imap-list.c imap-lsub.c imap-multi.c imap-noop.c \
-	imap-search.c imap-ssl.c imap-store.c imap-tls.c interface.c \
-	ipv6.c keepalive.c localport.c maxconnects.c multi-app.c \
-	multi-debugcallback.c multi-double.c multi-formadd.c \
-	multi-legacy.c multi-post.c multi-single.c netrc.c parseurl.c \
-	persistent.c pop3-authzid.c pop3-dele.c pop3-list.c \
-	pop3-multi.c pop3-noop.c pop3-retr.c pop3-ssl.c pop3-stat.c \
-	pop3-tls.c pop3-top.c pop3-uidl.c post-callback.c \
+	block_ip.c certinfo.c chkspeed.c connect-to.c \
+	cookie_interface.c debug.c default-scheme.c externalsocket.c \
+	fileupload.c ftp-wildcard.c ftpget.c ftpgetinfo.c ftpgetresp.c \
+	ftpsget.c ftpupload.c ftpuploadfrommem.c ftpuploadresume.c \
+	getinfo.c getinmemory.c getredirect.c getreferrer.c \
+	headerapi.c hsts-preload.c http-options.c http-post.c \
+	http2-download.c http2-pushinmemory.c http2-serverpush.c \
+	http2-upload.c http3.c http3-present.c httpcustomheader.c \
+	httpput.c httpput-postfields.c https.c imap-append.c \
+	imap-authzid.c imap-copy.c imap-create.c imap-delete.c \
+	imap-examine.c imap-fetch.c imap-list.c imap-lsub.c \
+	imap-multi.c imap-noop.c imap-search.c imap-ssl.c imap-store.c \
+	imap-tls.c interface.c ipv6.c keepalive.c localport.c \
+	maxconnects.c multi-app.c multi-debugcallback.c multi-double.c \
+	multi-formadd.c multi-legacy.c multi-post.c multi-single.c \
+	netrc.c parseurl.c persistent.c pop3-authzid.c pop3-dele.c \
+	pop3-list.c pop3-multi.c pop3-noop.c pop3-retr.c pop3-ssl.c \
+	pop3-stat.c pop3-tls.c pop3-top.c pop3-uidl.c post-callback.c \
 	postinmemory.c postit2.c postit2-formadd.c progressfunc.c \
 	protofeats.c range.c resolve.c rtsp-options.c sendrecv.c \
 	sepheaders.c sftpget.c sftpuploadresume.c \
@@ -774,24 +779,24 @@ SOURCES = 10-at-a-time.c address-scope.c altsvc.c anyauthput.c \
 	smtp-multi.c smtp-ssl.c smtp-tls.c smtp-vrfy.c sslbackend.c \
 	unixsocket.c url2file.c urlapi.c websocket.c websocket-cb.c
 DIST_SOURCES = 10-at-a-time.c address-scope.c altsvc.c anyauthput.c \
-	certinfo.c chkspeed.c connect-to.c cookie_interface.c debug.c \
-	default-scheme.c externalsocket.c fileupload.c ftp-wildcard.c \
-	ftpget.c ftpgetinfo.c ftpgetresp.c ftpsget.c ftpupload.c \
-	ftpuploadfrommem.c ftpuploadresume.c getinfo.c getinmemory.c \
-	getredirect.c getreferrer.c headerapi.c hsts-preload.c \
-	http-options.c http-post.c http2-download.c \
-	http2-pushinmemory.c http2-serverpush.c http2-upload.c http3.c \
-	http3-present.c httpcustomheader.c httpput.c \
-	httpput-postfields.c https.c imap-append.c imap-authzid.c \
-	imap-copy.c imap-create.c imap-delete.c imap-examine.c \
-	imap-fetch.c imap-list.c imap-lsub.c imap-multi.c imap-noop.c \
-	imap-search.c imap-ssl.c imap-store.c imap-tls.c interface.c \
-	ipv6.c keepalive.c localport.c maxconnects.c multi-app.c \
-	multi-debugcallback.c multi-double.c multi-formadd.c \
-	multi-legacy.c multi-post.c multi-single.c netrc.c parseurl.c \
-	persistent.c pop3-authzid.c pop3-dele.c pop3-list.c \
-	pop3-multi.c pop3-noop.c pop3-retr.c pop3-ssl.c pop3-stat.c \
-	pop3-tls.c pop3-top.c pop3-uidl.c post-callback.c \
+	block_ip.c certinfo.c chkspeed.c connect-to.c \
+	cookie_interface.c debug.c default-scheme.c externalsocket.c \
+	fileupload.c ftp-wildcard.c ftpget.c ftpgetinfo.c ftpgetresp.c \
+	ftpsget.c ftpupload.c ftpuploadfrommem.c ftpuploadresume.c \
+	getinfo.c getinmemory.c getredirect.c getreferrer.c \
+	headerapi.c hsts-preload.c http-options.c http-post.c \
+	http2-download.c http2-pushinmemory.c http2-serverpush.c \
+	http2-upload.c http3.c http3-present.c httpcustomheader.c \
+	httpput.c httpput-postfields.c https.c imap-append.c \
+	imap-authzid.c imap-copy.c imap-create.c imap-delete.c \
+	imap-examine.c imap-fetch.c imap-list.c imap-lsub.c \
+	imap-multi.c imap-noop.c imap-search.c imap-ssl.c imap-store.c \
+	imap-tls.c interface.c ipv6.c keepalive.c localport.c \
+	maxconnects.c multi-app.c multi-debugcallback.c multi-double.c \
+	multi-formadd.c multi-legacy.c multi-post.c multi-single.c \
+	netrc.c parseurl.c persistent.c pop3-authzid.c pop3-dele.c \
+	pop3-list.c pop3-multi.c pop3-noop.c pop3-retr.c pop3-ssl.c \
+	pop3-stat.c pop3-tls.c pop3-top.c pop3-uidl.c post-callback.c \
 	postinmemory.c postit2.c postit2-formadd.c progressfunc.c \
 	protofeats.c range.c resolve.c rtsp-options.c sendrecv.c \
 	sepheaders.c sftpget.c sftpuploadresume.c \
@@ -827,7 +832,6 @@ DISTFILES = $(DIST_COMMON) $(DIST_SOURCES) $(TEXINFOS) $(EXTRA_DIST)
 ACLOCAL = @ACLOCAL@
 AMTAR = @AMTAR@
 AM_DEFAULT_VERBOSITY = @AM_DEFAULT_VERBOSITY@
-APACHECTL = @APACHECTL@
 APXS = @APXS@
 AR = @AR@
 AR_FLAGS = @AR_FLAGS@
@@ -854,31 +858,10 @@ CURL_CA_BUNDLE = @CURL_CA_BUNDLE@
 CURL_CA_EMBED = @CURL_CA_EMBED@
 CURL_CFLAG_EXTRAS = @CURL_CFLAG_EXTRAS@
 CURL_CPP = @CURL_CPP@
-CURL_DISABLE_DICT = @CURL_DISABLE_DICT@
-CURL_DISABLE_FILE = @CURL_DISABLE_FILE@
-CURL_DISABLE_FTP = @CURL_DISABLE_FTP@
-CURL_DISABLE_GOPHER = @CURL_DISABLE_GOPHER@
-CURL_DISABLE_HTTP = @CURL_DISABLE_HTTP@
-CURL_DISABLE_IMAP = @CURL_DISABLE_IMAP@
-CURL_DISABLE_IPFS = @CURL_DISABLE_IPFS@
-CURL_DISABLE_LDAP = @CURL_DISABLE_LDAP@
-CURL_DISABLE_LDAPS = @CURL_DISABLE_LDAPS@
-CURL_DISABLE_MQTT = @CURL_DISABLE_MQTT@
-CURL_DISABLE_POP3 = @CURL_DISABLE_POP3@
-CURL_DISABLE_PROXY = @CURL_DISABLE_PROXY@
-CURL_DISABLE_RTSP = @CURL_DISABLE_RTSP@
-CURL_DISABLE_SMB = @CURL_DISABLE_SMB@
-CURL_DISABLE_SMTP = @CURL_DISABLE_SMTP@
-CURL_DISABLE_TELNET = @CURL_DISABLE_TELNET@
-CURL_DISABLE_TFTP = @CURL_DISABLE_TFTP@
-CURL_DISABLE_WEBSOCKETS = @CURL_DISABLE_WEBSOCKETS@
 CURL_LIBCURL_VERSIONED_SYMBOLS_PREFIX = @CURL_LIBCURL_VERSIONED_SYMBOLS_PREFIX@
 CURL_LIBCURL_VERSIONED_SYMBOLS_SONAME = @CURL_LIBCURL_VERSIONED_SYMBOLS_SONAME@
 CURL_NETWORK_AND_TIME_LIBS = @CURL_NETWORK_AND_TIME_LIBS@
-CURL_NETWORK_LIBS = @CURL_NETWORK_LIBS@
-CURL_WITH_MULTI_SSL = @CURL_WITH_MULTI_SSL@
 CYGPATH_W = @CYGPATH_W@
-DEFAULT_SSL_BACKEND = @DEFAULT_SSL_BACKEND@
 DEFS = @DEFS@
 DEPDIR = @DEPDIR@
 DLLTOOL = @DLLTOOL@
@@ -897,22 +880,14 @@ FILECMD = @FILECMD@
 FISH_FUNCTIONS_DIR = @FISH_FUNCTIONS_DIR@
 GCOV = @GCOV@
 GREP = @GREP@
-HAVE_BROTLI = @HAVE_BROTLI@
-HAVE_GNUTLS_SRP = @HAVE_GNUTLS_SRP@
-HAVE_LDAP_SSL = @HAVE_LDAP_SSL@
 HAVE_LIBZ = @HAVE_LIBZ@
-HAVE_OPENSSL_SRP = @HAVE_OPENSSL_SRP@
-HAVE_PROTO_BSDSOCKET_H = @HAVE_PROTO_BSDSOCKET_H@
-HAVE_ZSTD = @HAVE_ZSTD@
 HTTPD = @HTTPD@
 HTTPD_NGHTTPX = @HTTPD_NGHTTPX@
-IDN_ENABLED = @IDN_ENABLED@
 INSTALL = @INSTALL@
 INSTALL_DATA = @INSTALL_DATA@
 INSTALL_PROGRAM = @INSTALL_PROGRAM@
 INSTALL_SCRIPT = @INSTALL_SCRIPT@
 INSTALL_STRIP_PROGRAM = @INSTALL_STRIP_PROGRAM@
-IPV6_ENABLED = @IPV6_ENABLED@
 LCOV = @LCOV@
 LD = @LD@
 LDFLAGS = @LDFLAGS@
@@ -951,9 +926,6 @@ PACKAGE_URL = @PACKAGE_URL@
 PACKAGE_VERSION = @PACKAGE_VERSION@
 PATH_SEPARATOR = @PATH_SEPARATOR@
 PERL = @PERL@
-PKGADD_NAME = @PKGADD_NAME@
-PKGADD_PKG = @PKGADD_PKG@
-PKGADD_VENDOR = @PKGADD_VENDOR@
 PKGCONFIG = @PKGCONFIG@
 RANLIB = @RANLIB@
 RC = @RC@
@@ -961,46 +933,10 @@ SED = @SED@
 SET_MAKE = @SET_MAKE@
 SHELL = @SHELL@
 SSL_BACKENDS = @SSL_BACKENDS@
-SSL_ENABLED = @SSL_ENABLED@
-SSL_LIBS = @SSL_LIBS@
 STRIP = @STRIP@
 SUPPORT_FEATURES = @SUPPORT_FEATURES@
 SUPPORT_PROTOCOLS = @SUPPORT_PROTOCOLS@
 TEST_NGHTTPX = @TEST_NGHTTPX@
-USE_APPLE_IDN = @USE_APPLE_IDN@
-USE_ARES = @USE_ARES@
-USE_BEARSSL = @USE_BEARSSL@
-USE_GNUTLS = @USE_GNUTLS@
-USE_HYPER = @USE_HYPER@
-USE_LIBPSL = @USE_LIBPSL@
-USE_LIBRTMP = @USE_LIBRTMP@
-USE_LIBSSH = @USE_LIBSSH@
-USE_LIBSSH2 = @USE_LIBSSH2@
-USE_LIBUV = @USE_LIBUV@
-USE_MBEDTLS = @USE_MBEDTLS@
-USE_MSH3 = @USE_MSH3@
-USE_NGHTTP2 = @USE_NGHTTP2@
-USE_NGHTTP3 = @USE_NGHTTP3@
-USE_NGTCP2 = @USE_NGTCP2@
-USE_NGTCP2_CRYPTO_BORINGSSL = @USE_NGTCP2_CRYPTO_BORINGSSL@
-USE_NGTCP2_CRYPTO_GNUTLS = @USE_NGTCP2_CRYPTO_GNUTLS@
-USE_NGTCP2_CRYPTO_QUICTLS = @USE_NGTCP2_CRYPTO_QUICTLS@
-USE_NGTCP2_CRYPTO_WOLFSSL = @USE_NGTCP2_CRYPTO_WOLFSSL@
-USE_NGTCP2_H3 = @USE_NGTCP2_H3@
-USE_OPENLDAP = @USE_OPENLDAP@
-USE_OPENSSL_H3 = @USE_OPENSSL_H3@
-USE_OPENSSL_QUIC = @USE_OPENSSL_QUIC@
-USE_QUICHE = @USE_QUICHE@
-USE_RUSTLS = @USE_RUSTLS@
-USE_SCHANNEL = @USE_SCHANNEL@
-USE_SECTRANSP = @USE_SECTRANSP@
-USE_UNIX_SOCKETS = @USE_UNIX_SOCKETS@
-USE_WIN32_CRYPTO = @USE_WIN32_CRYPTO@
-USE_WIN32_LARGE_FILES = @USE_WIN32_LARGE_FILES@
-USE_WIN32_SMALL_FILES = @USE_WIN32_SMALL_FILES@
-USE_WINDOWS_SSPI = @USE_WINDOWS_SSPI@
-USE_WOLFSSH = @USE_WOLFSSH@
-USE_WOLFSSL = @USE_WOLFSSL@
 VERSION = @VERSION@
 VERSIONNUM = @VERSIONNUM@
 VSFTPD = @VSFTPD@
@@ -1061,7 +997,7 @@ top_build_prefix = @top_build_prefix@
 top_builddir = @top_builddir@
 top_srcdir = @top_srcdir@
 AUTOMAKE_OPTIONS = foreign nostdinc
-EXTRA_DIST = README.md Makefile.example Makefile.mk CMakeLists.txt \
+EXTRA_DIST = README.md Makefile.example CMakeLists.txt \
   $(COMPLICATED_EXAMPLES) .checksrc
 
 
@@ -1165,6 +1101,10 @@ altsvc$(EXEEXT): $(altsvc_OBJECTS) $(altsvc_DEPENDENCIES) $(EXTRA_altsvc_DEPENDE
 anyauthput$(EXEEXT): $(anyauthput_OBJECTS) $(anyauthput_DEPENDENCIES) $(EXTRA_anyauthput_DEPENDENCIES) 
 	@rm -f anyauthput$(EXEEXT)
 	$(AM_V_CCLD)$(LINK) $(anyauthput_OBJECTS) $(anyauthput_LDADD) $(LIBS)
+
+block_ip$(EXEEXT): $(block_ip_OBJECTS) $(block_ip_DEPENDENCIES) $(EXTRA_block_ip_DEPENDENCIES) 
+	@rm -f block_ip$(EXEEXT)
+	$(AM_V_CCLD)$(LINK) $(block_ip_OBJECTS) $(block_ip_LDADD) $(LIBS)
 
 certinfo$(EXEEXT): $(certinfo_OBJECTS) $(certinfo_DEPENDENCIES) $(EXTRA_certinfo_DEPENDENCIES) 
 	@rm -f certinfo$(EXEEXT)
@@ -1600,6 +1540,7 @@ distclean-compile:
 @AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/address-scope.Po@am__quote@ # am--include-marker
 @AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/altsvc.Po@am__quote@ # am--include-marker
 @AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/anyauthput.Po@am__quote@ # am--include-marker
+@AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/block_ip.Po@am__quote@ # am--include-marker
 @AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/certinfo.Po@am__quote@ # am--include-marker
 @AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/chkspeed.Po@am__quote@ # am--include-marker
 @AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/connect-to.Po@am__quote@ # am--include-marker
@@ -1872,6 +1813,7 @@ distclean: distclean-am
 	-rm -f ./$(DEPDIR)/address-scope.Po
 	-rm -f ./$(DEPDIR)/altsvc.Po
 	-rm -f ./$(DEPDIR)/anyauthput.Po
+	-rm -f ./$(DEPDIR)/block_ip.Po
 	-rm -f ./$(DEPDIR)/certinfo.Po
 	-rm -f ./$(DEPDIR)/chkspeed.Po
 	-rm -f ./$(DEPDIR)/connect-to.Po
@@ -2027,6 +1969,7 @@ maintainer-clean: maintainer-clean-am
 	-rm -f ./$(DEPDIR)/address-scope.Po
 	-rm -f ./$(DEPDIR)/altsvc.Po
 	-rm -f ./$(DEPDIR)/anyauthput.Po
+	-rm -f ./$(DEPDIR)/block_ip.Po
 	-rm -f ./$(DEPDIR)/certinfo.Po
 	-rm -f ./$(DEPDIR)/chkspeed.Po
 	-rm -f ./$(DEPDIR)/connect-to.Po

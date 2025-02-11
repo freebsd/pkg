@@ -32,8 +32,8 @@ logging on to the remote FTP server. This stores a NULL as pointer if
 something is wrong.
 
 The **path** pointer is NULL or points to private memory. You MUST NOT free
-- it gets freed when you call curl_easy_cleanup(3) on the corresponding
-CURL handle.
+- it gets freed when you call curl_easy_cleanup(3) on the corresponding curl
+handle.
 
 # %PROTOCOLS%
 
@@ -70,4 +70,7 @@ Works for SFTP since 7.21.4
 
 # RETURN VALUE
 
-Returns CURLE_OK if the option is supported, and CURLE_UNKNOWN_OPTION if not.
+curl_easy_getinfo(3) returns a CURLcode indicating success or error.
+
+CURLE_OK (0) means everything was OK, non-zero means an error occurred, see
+libcurl-errors(3).

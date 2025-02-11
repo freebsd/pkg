@@ -136,6 +136,17 @@ sub subbase64 {
         $$thing =~ s/%%REPEAT%%/$all/;
     }
 
+    # days
+    while($$thing =~ s/%days\[(.*?)\]/%%DAYS%%/i) {
+        # convert to now + given days in epoch seconds, align to a 60 second
+        # boundary. Then provide two alternatives.
+        my $now = time();
+        my $d = ($1 * 24 * 3600) + $now + 30;
+        $d = int($d/60) * 60;
+        my $d2 = $d + 60;
+        $$thing =~ s/%%DAYS%%/%alternatives[$d,$d2]/;
+    }
+
     # include a file
     $$thing =~ s/%include ([^%]*)%[\n\r]+/includefile($1)/ge;
 }
@@ -149,13 +160,6 @@ sub subnewlines {
         $$thing =~ s/\x0d*\x0a/\x0d\x0a/;
         return;
     }
-
-    # When curl is built with Hyper, it gets all response headers delivered as
-    # name/value pairs and curl "invents" the newlines when it saves the
-    # headers. Therefore, curl will always save headers with CRLF newlines
-    # when built to use Hyper. By making sure we deliver all tests using CRLF
-    # as well, all test comparisons will survive without knowing about this
-    # little quirk.
 
     if(($$thing =~ /^HTTP\/(1.1|1.0|2|3) [1-5][^\x0d]*\z/) ||
        ($$thing =~ /^(GET|POST|PUT|DELETE) \S+ HTTP\/\d+(\.\d+)?/) ||
