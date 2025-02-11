@@ -1,3 +1,10 @@
+Changes form 2.0.5 to 2.0.6
+- sort list before exporting manifest to improve reproducibility
+- only track shared libraries which starts with lib*
+- ignore compat32 libraries on systems installed from sets (vs pkgbase) where
+  the lib32 set is not installed.
+- update: now works again on system with less than 300MB of RAM available
+
 Changes from 2.0.4 to 2.0.5
 - Allow ABI_FILE in pkg.conf(5)
 - fix crash in case of conflicts
