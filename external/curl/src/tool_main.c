@@ -63,15 +63,6 @@
 int vms_show = 0;
 #endif
 
-#if defined(__AMIGA__)
-#if defined(__GNUC__)
-#define CURL_USED __attribute__((used))
-#else
-#define CURL_USED
-#endif
-static const char CURL_USED min_stack[] = "$STACK:16384";
-#endif
-
 #ifdef __MINGW32__
 /*
  * There seems to be no way to escape "*" in command-line arguments with MinGW
@@ -151,7 +142,7 @@ static CURLcode main_init(struct GlobalConfig *config)
 {
   CURLcode result = CURLE_OK;
 
-#ifdef __DJGPP__
+#if defined(__DJGPP__) || defined(__GO32__)
   /* stop stat() wasting time */
   _djstat_flags |= _STAT_INODE | _STAT_EXEC_MAGIC | _STAT_DIRSIZE;
 #endif

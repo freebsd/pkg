@@ -283,26 +283,28 @@ Curl_sha512_256_finish(unsigned char *digest,
 #ifdef __GNUC__
 #  if defined(__has_attribute) && defined(__STDC_VERSION__)
 #    if __has_attribute(always_inline) && __STDC_VERSION__ >= 199901
-#      define CURL_FORCEINLINE CURL_INLINE __attribute__((always_inline))
+#      define MHDX_INLINE inline __attribute__((always_inline))
 #    endif
 #  endif
 #endif
 
-#if !defined(CURL_FORCEINLINE) && \
+#if !defined(MHDX_INLINE) && \
   defined(_MSC_VER) && !defined(__GNUC__) && !defined(__clang__)
-#  define CURL_FORCEINLINE __forceinline
+#  if _MSC_VER >= 1400
+#    define MHDX_INLINE __forceinline
+#  endif
 #endif
 
-#if !defined(CURL_FORCEINLINE)
-   /* Assume that 'CURL_INLINE' keyword works or the
+#if !defined(MHDX_INLINE)
+   /* Assume that 'inline' keyword works or the
     * macro was already defined correctly. */
-#  define CURL_FORCEINLINE CURL_INLINE
+#  define MHDX_INLINE inline
 #endif
 
 /* Bits manipulation macros and functions.
    Can be moved to other headers to reuse. */
 
-#define CURL_GET_64BIT_BE(ptr)                                  \
+#define MHDX_GET_64BIT_BE(ptr)                                  \
   ( ((curl_uint64_t)(((const unsigned char*)(ptr))[0]) << 56) | \
     ((curl_uint64_t)(((const unsigned char*)(ptr))[1]) << 48) | \
     ((curl_uint64_t)(((const unsigned char*)(ptr))[2]) << 40) | \
@@ -312,7 +314,7 @@ Curl_sha512_256_finish(unsigned char *digest,
     ((curl_uint64_t)(((const unsigned char*)(ptr))[6]) << 8)  | \
     (curl_uint64_t)(((const unsigned char*)(ptr))[7]) )
 
-#define CURL_PUT_64BIT_BE(ptr,val) do {                                 \
+#define MHDX_PUT_64BIT_BE(ptr,val) do {                                 \
     ((unsigned char*)(ptr))[7]=(unsigned char)((curl_uint64_t)(val));   \
     ((unsigned char*)(ptr))[6]=(unsigned char)(((curl_uint64_t)(val)) >> 8); \
     ((unsigned char*)(ptr))[5]=(unsigned char)(((curl_uint64_t)(val)) >> 16); \
@@ -326,8 +328,8 @@ Curl_sha512_256_finish(unsigned char *digest,
 /* Defined as a function. The macro version may duplicate the binary code
  * size as each argument is used twice, so if any calculation is used
  * as an argument, the calculation could be done twice. */
-static CURL_FORCEINLINE curl_uint64_t
-Curl_rotr64(curl_uint64_t value, unsigned int bits)
+static MHDX_INLINE curl_uint64_t
+MHDx_rotr64(curl_uint64_t value, unsigned int bits)
 {
   bits %= 64;
   if(0 == bits)
@@ -386,7 +388,7 @@ Curl_rotr64(curl_uint64_t value, unsigned int bits)
 /**
  * SHA-512/256 calculation context
  */
-struct Curl_sha512_256ctx
+struct mhdx_sha512_256ctx
 {
   /**
    * Intermediate hash value. The variable is properly aligned. Smart
@@ -414,7 +416,7 @@ struct Curl_sha512_256ctx
 /**
  * Context type used for SHA-512/256 calculations
  */
-typedef struct Curl_sha512_256ctx Curl_sha512_256_ctx;
+typedef struct mhdx_sha512_256ctx Curl_sha512_256_ctx;
 
 
 /**
@@ -424,9 +426,9 @@ typedef struct Curl_sha512_256ctx Curl_sha512_256_ctx;
  * @return always CURLE_OK
  */
 static CURLcode
-Curl_sha512_256_init(void *context)
+MHDx_sha512_256_init(void *context)
 {
-  struct Curl_sha512_256ctx *const ctx = (struct Curl_sha512_256ctx *)context;
+  struct mhdx_sha512_256ctx *const ctx = (struct mhdx_sha512_256ctx *) context;
 
   /* Check whether the header and this file use the same numbers */
   DEBUGASSERT(CURL_SHA512_256_DIGEST_LENGTH == CURL_SHA512_256_DIGEST_SIZE);
@@ -460,7 +462,7 @@ Curl_sha512_256_init(void *context)
  * @param data  the data buffer with #CURL_SHA512_256_BLOCK_SIZE bytes block
  */
 static void
-Curl_sha512_256_transform(curl_uint64_t H[SHA512_256_HASH_SIZE_WORDS],
+MHDx_sha512_256_transform(curl_uint64_t H[SHA512_256_HASH_SIZE_WORDS],
                           const void *data)
 {
   /* Working variables,
@@ -486,13 +488,13 @@ Curl_sha512_256_transform(curl_uint64_t H[SHA512_256_HASH_SIZE_WORDS],
   /* Four 'Sigma' macro functions.
      See FIPS PUB 180-4 formulae 4.10, 4.11, 4.12, 4.13. */
 #define SIG0(x)                                                         \
-  ( Curl_rotr64((x), 28) ^ Curl_rotr64((x), 34) ^ Curl_rotr64((x), 39) )
+  ( MHDx_rotr64((x), 28) ^ MHDx_rotr64((x), 34) ^ MHDx_rotr64((x), 39) )
 #define SIG1(x)                                                         \
-  ( Curl_rotr64((x), 14) ^ Curl_rotr64((x), 18) ^ Curl_rotr64((x), 41) )
+  ( MHDx_rotr64((x), 14) ^ MHDx_rotr64((x), 18) ^ MHDx_rotr64((x), 41) )
 #define sig0(x)                                                 \
-  ( Curl_rotr64((x), 1) ^ Curl_rotr64((x), 8) ^ ((x) >> 7) )
+  ( MHDx_rotr64((x), 1) ^ MHDx_rotr64((x), 8) ^ ((x) >> 7) )
 #define sig1(x)                                                 \
-  ( Curl_rotr64((x), 19) ^ Curl_rotr64((x), 61) ^ ((x) >> 6) )
+  ( MHDx_rotr64((x), 19) ^ MHDx_rotr64((x), 61) ^ ((x) >> 6) )
 
   if(1) {
     unsigned int t;
@@ -575,7 +577,7 @@ Curl_sha512_256_transform(curl_uint64_t H[SHA512_256_HASH_SIZE_WORDS],
        Input data must be read in big-endian bytes order,
        see FIPS PUB 180-4 section 3.1.2. */
 #define SHA512_GET_W_FROM_DATA(buf,t)                                   \
-    CURL_GET_64BIT_BE(                                                  \
+    MHDX_GET_64BIT_BE(                                                  \
       ((const unsigned char*) (buf)) + (t) * SHA512_256_BYTES_IN_WORD)
 
     /* During first 16 steps, before making any calculation on each step, the
@@ -626,12 +628,12 @@ Curl_sha512_256_transform(curl_uint64_t H[SHA512_256_HASH_SIZE_WORDS],
  * @return always CURLE_OK
  */
 static CURLcode
-Curl_sha512_256_update(void *context,
+MHDx_sha512_256_update(void *context,
                        const unsigned char *data,
                        size_t length)
 {
   unsigned int bytes_have; /**< Number of bytes in the context buffer */
-  struct Curl_sha512_256ctx *const ctx = (struct Curl_sha512_256ctx *)context;
+  struct mhdx_sha512_256ctx *const ctx = (struct mhdx_sha512_256ctx *)context;
   /* the void pointer here is required to mute Intel compiler warning */
   void *const ctx_buf = ctx->buffer;
 
@@ -659,7 +661,7 @@ Curl_sha512_256_update(void *context,
              bytes_left);
       data += bytes_left;
       length -= bytes_left;
-      Curl_sha512_256_transform(ctx->H, ctx->buffer);
+      MHDx_sha512_256_transform(ctx->H, ctx->buffer);
       bytes_have = 0;
     }
   }
@@ -667,7 +669,7 @@ Curl_sha512_256_update(void *context,
   while(CURL_SHA512_256_BLOCK_SIZE <= length) {
     /* Process any full blocks of new data directly,
        without copying to the buffer. */
-    Curl_sha512_256_transform(ctx->H, data);
+    MHDx_sha512_256_transform(ctx->H, data);
     data += CURL_SHA512_256_BLOCK_SIZE;
     length -= CURL_SHA512_256_BLOCK_SIZE;
   }
@@ -703,10 +705,10 @@ Curl_sha512_256_update(void *context,
  * @return always CURLE_OK
  */
 static CURLcode
-Curl_sha512_256_finish(unsigned char *digest,
+MHDx_sha512_256_finish(unsigned char *digest,
                        void *context)
 {
-  struct Curl_sha512_256ctx *const ctx = (struct Curl_sha512_256ctx *)context;
+  struct mhdx_sha512_256ctx *const ctx = (struct mhdx_sha512_256ctx *)context;
   curl_uint64_t num_bits;   /**< Number of processed bits */
   unsigned int bytes_have; /**< Number of bytes in the context buffer */
   /* the void pointer here is required to mute Intel compiler warning */
@@ -740,7 +742,7 @@ Curl_sha512_256_finish(unsigned char *digest,
       memset(((unsigned char *) ctx_buf) + bytes_have, 0,
              CURL_SHA512_256_BLOCK_SIZE - bytes_have);
     /* Process the full block. */
-    Curl_sha512_256_transform(ctx->H, ctx->buffer);
+    MHDx_sha512_256_transform(ctx->H, ctx->buffer);
     /* Start the new block. */
     bytes_have = 0;
   }
@@ -752,31 +754,36 @@ Curl_sha512_256_finish(unsigned char *digest,
      part of number of bits as big-endian values.
      See FIPS PUB 180-4 section 5.1.2. */
   /* Note: the target location is predefined and buffer is always aligned */
-  CURL_PUT_64BIT_BE(((unsigned char *) ctx_buf)  \
+  MHDX_PUT_64BIT_BE(((unsigned char *) ctx_buf)  \
                       + CURL_SHA512_256_BLOCK_SIZE    \
                       - SHA512_256_SIZE_OF_LEN_ADD,   \
                       ctx->count_bits_hi);
-  CURL_PUT_64BIT_BE(((unsigned char *) ctx_buf)      \
+  MHDX_PUT_64BIT_BE(((unsigned char *) ctx_buf)      \
                       + CURL_SHA512_256_BLOCK_SIZE        \
                       - SHA512_256_SIZE_OF_LEN_ADD        \
                       + SHA512_256_BYTES_IN_WORD,         \
                       num_bits);
   /* Process the full final block. */
-  Curl_sha512_256_transform(ctx->H, ctx->buffer);
+  MHDx_sha512_256_transform(ctx->H, ctx->buffer);
 
   /* Put in BE mode the leftmost part of the hash as the final digest.
      See FIPS PUB 180-4 section 6.7. */
 
-  CURL_PUT_64BIT_BE((digest + 0 * SHA512_256_BYTES_IN_WORD), ctx->H[0]);
-  CURL_PUT_64BIT_BE((digest + 1 * SHA512_256_BYTES_IN_WORD), ctx->H[1]);
-  CURL_PUT_64BIT_BE((digest + 2 * SHA512_256_BYTES_IN_WORD), ctx->H[2]);
-  CURL_PUT_64BIT_BE((digest + 3 * SHA512_256_BYTES_IN_WORD), ctx->H[3]);
+  MHDX_PUT_64BIT_BE((digest + 0 * SHA512_256_BYTES_IN_WORD), ctx->H[0]);
+  MHDX_PUT_64BIT_BE((digest + 1 * SHA512_256_BYTES_IN_WORD), ctx->H[1]);
+  MHDX_PUT_64BIT_BE((digest + 2 * SHA512_256_BYTES_IN_WORD), ctx->H[2]);
+  MHDX_PUT_64BIT_BE((digest + 3 * SHA512_256_BYTES_IN_WORD), ctx->H[3]);
 
   /* Erase potentially sensitive data. */
-  memset(ctx, 0, sizeof(struct Curl_sha512_256ctx));
+  memset(ctx, 0, sizeof(struct mhdx_sha512_256ctx));
 
   return CURLE_OK;
 }
+
+/* Map to the local implementation */
+#define Curl_sha512_256_init    MHDx_sha512_256_init
+#define Curl_sha512_256_update  MHDx_sha512_256_update
+#define Curl_sha512_256_finish  MHDx_sha512_256_finish
 
 #endif /* Local SHA-512/256 code */
 

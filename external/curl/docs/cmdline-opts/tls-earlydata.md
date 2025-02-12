@@ -10,7 +10,6 @@ Multi: boolean
 See-also:
   - tlsv1.3
   - tls-max
-  - ssl-sessions
 Example:
   - --tls-earlydata $URL
 ---

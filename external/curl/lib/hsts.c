@@ -41,7 +41,6 @@
 #include "rename.h"
 #include "share.h"
 #include "strdup.h"
-#include "strparse.h"
 
 /* The last 3 #include files should be in this order */
 #include "curl_printf.h"
@@ -49,8 +48,10 @@
 #include "memdebug.h"
 
 #define MAX_HSTS_LINE 4095
-#define MAX_HSTS_HOSTLEN 2048
-#define MAX_HSTS_DATELEN 256
+#define MAX_HSTS_HOSTLEN 256
+#define MAX_HSTS_HOSTLENSTR "256"
+#define MAX_HSTS_DATELEN 64
+#define MAX_HSTS_DATELENSTR "64"
 #define UNLIMITED "unlimited"
 
 #if defined(DEBUGBUILD) || defined(UNITTESTS)
@@ -108,13 +109,14 @@ void Curl_hsts_cleanup(struct hsts **hp)
 
 static CURLcode hsts_create(struct hsts *h,
                             const char *hostname,
-                            size_t hlen,
                             bool subdomains,
                             curl_off_t expires)
 {
+  size_t hlen;
   DEBUGASSERT(h);
   DEBUGASSERT(hostname);
 
+  hlen = strlen(hostname);
   if(hlen && (hostname[hlen - 1] == '.'))
     /* strip off any trailing dot */
     --hlen;
@@ -148,7 +150,6 @@ CURLcode Curl_hsts_parse(struct hsts *h, const char *hostname,
   bool subdomains = FALSE;
   struct stsentry *sts;
   time_t now = time(NULL);
-  size_t hlen = strlen(hostname);
 
   if(Curl_host_is_ipnum(hostname))
     /* "explicit IP address identification of all forms is excluded."
@@ -217,7 +218,7 @@ CURLcode Curl_hsts_parse(struct hsts *h, const char *hostname,
 
   if(!expires) {
     /* remove the entry if present verbatim (without subdomain match) */
-    sts = Curl_hsts(h, hostname, hlen, FALSE);
+    sts = Curl_hsts(h, hostname, FALSE);
     if(sts) {
       Curl_node_remove(&sts->node);
       hsts_free(sts);
@@ -232,14 +233,14 @@ CURLcode Curl_hsts_parse(struct hsts *h, const char *hostname,
     expires += now;
 
   /* check if it already exists */
-  sts = Curl_hsts(h, hostname, hlen, FALSE);
+  sts = Curl_hsts(h, hostname, FALSE);
   if(sts) {
     /* just update these fields */
     sts->expires = expires;
     sts->includeSubDomains = subdomains;
   }
   else
-    return hsts_create(h, hostname, hlen, subdomains, expires);
+    return hsts_create(h, hostname, subdomains, expires);
 
   return CURLE_OK;
 }
@@ -251,11 +252,12 @@ CURLcode Curl_hsts_parse(struct hsts *h, const char *hostname,
  * attempted.
  */
 struct stsentry *Curl_hsts(struct hsts *h, const char *hostname,
-                           size_t hlen, bool subdomain)
+                           bool subdomain)
 {
   struct stsentry *bestsub = NULL;
   if(h) {
     time_t now = time(NULL);
+    size_t hlen = strlen(hostname);
     struct Curl_llist_node *e;
     struct Curl_llist_node *n;
     size_t blen = 0;
@@ -422,40 +424,29 @@ static CURLcode hsts_add(struct hsts *h, char *line)
      example.com "20191231 10:00:00"
      .example.net "20191231 10:00:00"
    */
-  struct Curl_str host;
-  struct Curl_str date;
+  char host[MAX_HSTS_HOSTLEN + 1];
+  char date[MAX_HSTS_DATELEN + 1];
+  int rc;
 
-  if(Curl_str_word(&line, &host, MAX_HSTS_HOSTLEN) ||
-     Curl_str_singlespace(&line) ||
-     Curl_str_quotedword(&line, &date, MAX_HSTS_DATELEN) ||
-     Curl_str_newline(&line))
-    ;
-  else {
+  rc = sscanf(line,
+              "%" MAX_HSTS_HOSTLENSTR "s \"%" MAX_HSTS_DATELENSTR "[^\"]\"",
+              host, date);
+  if(2 == rc) {
+    time_t expires = strcmp(date, UNLIMITED) ? Curl_getdate_capped(date) :
+      TIME_T_MAX;
     CURLcode result = CURLE_OK;
+    char *p = host;
     bool subdomain = FALSE;
     struct stsentry *e;
-    char dbuf[MAX_HSTS_DATELEN + 1];
-    time_t expires;
-
-    /* The date parser works on a null terminated string. The maximum length
-       is upheld by Curl_str_quotedword(). */
-    memcpy(dbuf, date.str, date.len);
-    dbuf[date.len] = 0;
-
-    expires = strcmp(dbuf, UNLIMITED) ? Curl_getdate_capped(dbuf) :
-      TIME_T_MAX;
-
-    if(host.str[0] == '.') {
-      host.str++;
-      host.len--;
+    if(p[0] == '.') {
+      p++;
       subdomain = TRUE;
     }
     /* only add it if not already present */
-    e = Curl_hsts(h, host.str, host.len, subdomain);
+    e = Curl_hsts(h, p, subdomain);
     if(!e)
-      result = hsts_create(h, host.str, host.len, subdomain, expires);
-    else if((strlen(e->host) == host.len) &&
-            strncasecompare(host.str, e->host, host.len)) {
+      result = hsts_create(h, p, subdomain, expires);
+    else if(strcasecompare(p, e->host)) {
       /* the same hostname, use the largest expire time */
       if(expires > e->expires)
         e->expires = expires;
@@ -497,7 +488,7 @@ static CURLcode hsts_pull(struct Curl_easy *data, struct hsts *h)
           expires = Curl_getdate_capped(e.expire);
         else
           expires = TIME_T_MAX; /* the end of time */
-        result = hsts_create(h, e.name, strlen(e.name),
+        result = hsts_create(h, e.name,
                              /* bitfield to bool conversion: */
                              e.includeSubDomains ? TRUE : FALSE,
                              expires);

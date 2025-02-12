@@ -89,7 +89,4 @@ loop - until all transfers are complete.
 
 # RETURN VALUE
 
-This function returns a CURLMcode indicating success or error.
-
-CURLM_OK (0) means everything was OK, non-zero means an error occurred, see
-libcurl-errors(3).
+The standard CURLMcode for multi interface error codes.

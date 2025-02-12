@@ -190,7 +190,6 @@ const struct Curl_handler Curl_handler_telnet = {
   ZERO_NULL,                            /* write_resp_hd */
   ZERO_NULL,                            /* connection_check */
   ZERO_NULL,                            /* attach connection */
-  ZERO_NULL,                            /* follow */
   PORT_TELNET,                          /* defport */
   CURLPROTO_TELNET,                     /* protocol */
   CURLPROTO_TELNET,                     /* family */
@@ -696,10 +695,7 @@ static void printsub(struct Curl_easy *data,
           infof(data, ", not IAC SE) ");
         }
       }
-      if(length >= 2)
-        length -= 2;
-      else /* bad input */
-        return;
+      length -= 2;
     }
     if(length < 1) {
       infof(data, "(Empty suboption?)");
@@ -779,7 +775,8 @@ static void printsub(struct Curl_easy *data,
 
 #ifdef _MSC_VER
 #pragma warning(push)
-#pragma warning(disable:4706) /* assignment within conditional expression */
+/* warning C4706: assignment within conditional expression */
+#pragma warning(disable:4706)
 #endif
 static bool str_is_nonascii(const char *str)
 {

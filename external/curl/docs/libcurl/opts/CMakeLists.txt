@@ -22,14 +22,14 @@
 #
 ###########################################################################
 # Get 'man_MANS' variable
-curl_transform_makefile_inc("Makefile.inc" "${CMAKE_CURRENT_BINARY_DIR}/Makefile.inc.cmake")
+transform_makefile_inc("Makefile.inc" "${CMAKE_CURRENT_BINARY_DIR}/Makefile.inc.cmake")
 include("${CMAKE_CURRENT_BINARY_DIR}/Makefile.inc.cmake")
 
-curl_add_manual_pages(man_MANS)
+add_manual_pages(man_MANS)
 add_custom_target(curl-opts-man DEPENDS ${man_MANS})
 add_dependencies(curl-man curl-opts-man)
 if(NOT CURL_DISABLE_INSTALL)
-  set(_src "")
+  unset(_src)
   foreach(_f IN LISTS man_MANS)
     list(APPEND _src "${CMAKE_CURRENT_BINARY_DIR}/${_f}")
   endforeach()

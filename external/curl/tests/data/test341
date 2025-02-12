@@ -36,7 +36,7 @@ chunky-trailer: header data
 http
 </server>
 <name>
-A non existing file with --etag-compare is just a blank
+Try to open a non existing file with --etag-compare should return an error
 </name>
 <command>
 http://%HOSTIP:%HTTPPORT/%TESTNUMBER --etag-compare %LOGDIR/etag%TESTNUMBER
@@ -46,14 +46,9 @@ http://%HOSTIP:%HTTPPORT/%TESTNUMBER --etag-compare %LOGDIR/etag%TESTNUMBER
 #
 # Verify data after the test has been "shot"
 <verify>
-<protocol>
-GET /%TESTNUMBER HTTP/1.1
-Host: %HOSTIP:%HTTPPORT
-User-Agent: curl/%VERSION
-Accept: */*
-If-None-Match: ""
-
-</protocol>
+<errorcode>
+26
+</errorcode>
 </verify>
 
 </testcase>

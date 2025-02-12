@@ -139,10 +139,9 @@ int main(void)
 
 # RETURN VALUE
 
-curl_easy_setopt(3) returns a CURLcode indicating success or error.
+Returns CURLE_OK on success or CURLE_OUT_OF_MEMORY if there was insufficient
+heap space.
 
-CURLE_OK (0) means everything was OK, non-zero means an error occurred, see
-libcurl-errors(3).
-
-Note that curl_easy_setopt(3) does not parse the given string so given a bad
-URL, it is not detected until curl_easy_perform(3) or similar is called.
+Note that curl_easy_setopt(3) does not parse the given string so given a
+bad URL, it is not detected until curl_easy_perform(3) or similar is
+called.

@@ -23,6 +23,9 @@
  * SPDX-License-Identifier: curl
  *
  ***************************************************************************/
+#ifdef USE_HYPER
+#define CURL_DISABLE_RTSP 1
+#endif
 
 #ifndef CURL_DISABLE_RTSP
 

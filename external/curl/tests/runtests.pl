@@ -57,7 +57,8 @@
 # given, this won't be a problem.
 
 use strict;
-use warnings;
+# Promote all warnings to fatal
+use warnings FATAL => 'all';
 use 5.006;
 use POSIX qw(strftime);
 
@@ -590,8 +591,11 @@ sub checksystemfeatures {
                 $feature{"c-ares"} = 1;
                 $resolver="c-ares";
             }
+            if ($libcurl =~ /Hyper/i) {
+                $feature{"hyper"} = 1;
+            }
             if ($libcurl =~ /nghttp2/i) {
-                # nghttp2 supports h2c
+                # nghttp2 supports h2c, hyper does not
                 $feature{"h2c"} = 1;
             }
             if ($libcurl =~ /AppleIDN/) {
@@ -697,8 +701,6 @@ sub checksystemfeatures {
             $feature{"Unicode"} = $feat =~ /Unicode/i;
             # Thread-safe init
             $feature{"threadsafe"} = $feat =~ /threadsafe/i;
-            $feature{"HTTPSRR"} = $feat =~ /HTTPSRR/;
-            $feature{"asyn-rr"} = $feat =~ /asyn-rr/;
         }
         #
         # Test harness currently uses a non-stunnel server in order to
@@ -821,7 +823,6 @@ sub checksystemfeatures {
     $feature{"headers-api"} = 1;
     $feature{"xattr"} = 1;
     $feature{"large-time"} = 1;
-    $feature{"large-size"} = 1;
     $feature{"sha512-256"} = 1;
     $feature{"local-http"} = servers::localhttp();
     $feature{"codeset-utf8"} = lc(langinfo(CODESET())) eq "utf-8";
@@ -1284,7 +1285,9 @@ sub singletest_check {
             chomp($validstdout[-1]);
         }
 
-        if($hash{'crlf'}) {
+        if($hash{'crlf'} ||
+           ($feature{"hyper"} && ($keywords{"HTTP"}
+                           || $keywords{"HTTPS"}))) {
             subnewlines(0, \$_) for @validstdout;
         }
 
@@ -1322,6 +1325,12 @@ sub singletest_check {
 
         # get the mode attribute
         my $filemode=$hash{'mode'};
+        if($filemode && ($filemode eq "text") && $feature{"hyper"}) {
+            # text mode check in hyper-mode. Sometimes necessary if the stderr
+            # data *looks* like HTTP and thus has gotten CRLF newlines
+            # mistakenly
+            normalize_text(\@validstderr);
+        }
         if($filemode && ($filemode eq "text")) {
             normalize_text(\@validstderr);
             normalize_text(\@actual);
@@ -1424,7 +1433,9 @@ sub singletest_check {
                     # of the datacheck
                     chomp($replycheckpart[-1]);
                 }
-                if($replycheckpartattr{'crlf'}) {
+                if($replycheckpartattr{'crlf'} ||
+                   ($feature{"hyper"} && ($keywords{"HTTP"}
+                                   || $keywords{"HTTPS"}))) {
                     subnewlines(0, \$_) for @replycheckpart;
                 }
                 push(@reply, @replycheckpart);
@@ -1445,7 +1456,9 @@ sub singletest_check {
         if($filemode && ($filemode eq "text")) {
             normalize_text(\@reply);
         }
-        if($replyattr{'crlf'}) {
+        if($replyattr{'crlf'} ||
+           ($feature{"hyper"} && ($keywords{"HTTP"}
+                           || $keywords{"HTTPS"}))) {
             subnewlines(0, \$_) for @reply;
         }
     }
@@ -1538,7 +1551,8 @@ sub singletest_check {
             }
         }
 
-        if($hash{'crlf'}) {
+        if($hash{'crlf'} ||
+           ($feature{"hyper"} && ($keywords{"HTTP"} || $keywords{"HTTPS"}))) {
             subnewlines(0, \$_) for @proxyprot;
         }
 
@@ -1596,7 +1610,9 @@ sub singletest_check {
                 normalize_text(\@outfile);
                 normalize_text(\@generated);
             }
-            if($hash{'crlf'}) {
+            if($hash{'crlf'} ||
+               ($feature{"hyper"} && ($keywords{"HTTP"}
+                               || $keywords{"HTTPS"}))) {
                 subnewlines(0, \$_) for @outfile;
             }
 
@@ -1672,7 +1688,7 @@ sub singletest_check {
             my %cmdhash = getpartattr("client", "command");
             my $cmdtype = $cmdhash{'type'} || "default";
             logmsg "\n** ALERT! memory tracking with no output file?\n"
-                if($cmdtype ne "perl");
+                if(!$cmdtype eq "perl");
             $ok .= "-"; # problem with memory checking
         }
         else {

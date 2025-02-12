@@ -50,13 +50,12 @@ INTERNALDOCS =                                  \
  internals/CONNECTION-FILTERS.md                \
  internals/DYNBUF.md                            \
  internals/HASH.md                              \
+ internals/HYPER.md                             \
  internals/LLIST.md                             \
  internals/MQTT.md                              \
  internals/NEW-PROTOCOL.md                      \
  internals/README.md                            \
  internals/SPLAY.md                             \
- internals/STRPARSE.md                          \
- internals/TLS-SESSIONS.md                      \
  internals/WEBSOCKET.md
 
 EXTRA_DIST =                                    \
@@ -87,8 +86,6 @@ EXTRA_DIST =                                    \
  HSTS.md                                        \
  HTTP-COOKIES.md                                \
  HTTP3.md                                       \
- HTTPSRR.md                                     \
- INFRASTRUCTURE.md                              \
  INSTALL                                        \
  INSTALL-CMAKE.md                               \
  INSTALL.md                                     \

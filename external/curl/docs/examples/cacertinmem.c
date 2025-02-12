@@ -31,14 +31,10 @@
 #include <curl/curl.h>
 #include <stdio.h>
 
-#if defined(__GNUC__) || defined(__clang__)
-#pragma GCC diagnostic ignored "-Woverlength-strings"
-#endif
-
 static size_t writefunction(void *ptr, size_t size, size_t nmemb, void *stream)
 {
   fwrite(ptr, size, nmemb, (FILE *)stream);
-  return nmemb * size;
+  return (nmemb*size);
 }
 
 static CURLcode sslctx_function(CURL *curl, void *sslctx, void *parm)
@@ -182,5 +178,5 @@ int main(void)
 
   curl_easy_cleanup(ch);
   curl_global_cleanup();
-  return (int)rv;
+  return rv;
 }

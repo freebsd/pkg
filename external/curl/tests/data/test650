@@ -104,7 +104,11 @@ Content-Disposition: attachment; filename="test%TESTNUMBER.filedata"
 Content-Type: text/whatever
 
 
+%if hyper
+AB
+%else
 ab
+%endif
 This is data from a file.
 
 ------------------------------
@@ -112,7 +116,11 @@ Content-Disposition: attachment; filename="test%TESTNUMBER.filedata"
 Content-Type: text/whatever
 
 
+%if hyper
+BB
+%else
 bb
+%endif
 This is data from a file.
 
 --------------------------------
@@ -121,7 +129,11 @@ This is data from a file.
 Content-Disposition: form-data; name="filecontents"
 
 
+%if hyper
+11B
+%else
 11b
+%endif
 This is data from a file.
 
 ------------------------------
@@ -176,7 +188,11 @@ Content-Disposition: attachment; filename="test%TESTNUMBER.filedata"
 Content-Type: text/whatever
 
 
+%if hyper
+AB
+%else
 ab
+%endif
 This is data from a file.
 
 ------------------------------
@@ -184,7 +200,11 @@ Content-Disposition: attachment; filename="test%TESTNUMBER.filedata"
 Content-Type: text/whatever
 
 
+%if hyper
+BB
+%else
 bb
+%endif
 This is data from a file.
 
 --------------------------------
@@ -193,7 +213,11 @@ This is data from a file.
 Content-Disposition: form-data; name="filecontents"
 
 
+%if hyper
+11B
+%else
 11b
+%endif
 This is data from a file.
 
 ------------------------------

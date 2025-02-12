@@ -70,7 +70,5 @@ int main(void)
 
 # RETURN VALUE
 
-This function returns a CURLMcode indicating success or error.
-
-CURLM_OK (0) means everything was OK, non-zero means an error occurred, see
-libcurl-errors(3).
+CURLMcode type, general libcurl multi interface error code. On success,
+CURLM_OK is returned.

@@ -134,7 +134,6 @@ const struct Curl_handler Curl_handler_ldap = {
   ZERO_NULL,                            /* write_resp_hd */
   ZERO_NULL,                            /* connection_check */
   ZERO_NULL,                            /* attach connection */
-  ZERO_NULL,                            /* follow */
   PORT_LDAP,                            /* defport */
   CURLPROTO_LDAP,                       /* protocol */
   CURLPROTO_LDAP,                       /* family */
@@ -164,7 +163,6 @@ const struct Curl_handler Curl_handler_ldaps = {
   ZERO_NULL,                            /* write_resp_hd */
   ZERO_NULL,                            /* connection_check */
   ZERO_NULL,                            /* attach connection */
-  ZERO_NULL,                            /* follow */
   PORT_LDAPS,                           /* defport */
   CURLPROTO_LDAPS,                      /* protocol */
   CURLPROTO_LDAP,                       /* family */
@@ -573,7 +571,7 @@ static CURLcode oldap_connect(struct Curl_easy *data, bool *done)
   ldap_set_option(li->ld, LDAP_OPT_REFERRALS, LDAP_OPT_OFF);
 
 #ifdef USE_SSL
-  if(Curl_conn_is_ssl(conn, FIRSTSOCKET))
+  if(conn->handler->flags & PROTOPT_SSL)
     return oldap_ssl_connect(data, OLDAP_SSL);
 
   if(data->set.use_ssl) {

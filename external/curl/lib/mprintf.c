@@ -37,12 +37,14 @@
 #ifdef HAVE_LONGLONG
 #  define LONG_LONG_TYPE long long
 #  define HAVE_LONG_LONG_TYPE
-#elif defined(_MSC_VER)
-#  define LONG_LONG_TYPE __int64
-#  define HAVE_LONG_LONG_TYPE
 #else
-#  undef LONG_LONG_TYPE
-#  undef HAVE_LONG_LONG_TYPE
+#  if defined(_MSC_VER) && (_MSC_VER >= 900) && (_INTEGRAL_MAX_BITS >= 64)
+#    define LONG_LONG_TYPE __int64
+#    define HAVE_LONG_LONG_TYPE
+#  else
+#    undef LONG_LONG_TYPE
+#    undef HAVE_LONG_LONG_TYPE
+#  endif
 #endif
 
 /*
@@ -678,12 +680,12 @@ static int formatf(
 
   struct outsegment output[MAX_SEGMENTS];
   struct va_input input[MAX_PARAMETERS];
-  char work[BUFFSIZE + 2];
+  char work[BUFFSIZE];
 
   /* 'workend' points to the final buffer byte position, but with an extra
      byte as margin to avoid the (FALSE?) warning Coverity gives us
      otherwise */
-  char *workend = &work[BUFFSIZE - 2];
+  char *workend = &work[sizeof(work) - 2];
 
   /* Parse the format string */
   if(parsefmt(format, output, input, &ocount, &icount, ap_save))
@@ -966,8 +968,8 @@ number:
 
       if(width >= 0) {
         size_t dlen;
-        if(width >= BUFFSIZE)
-          width = BUFFSIZE - 1;
+        if(width >= (int)sizeof(work))
+          width = sizeof(work)-1;
         /* RECURSIVE USAGE */
         dlen = (size_t)curl_msnprintf(fptr, left, "%d", width);
         fptr += dlen;
@@ -976,19 +978,17 @@ number:
       if(prec >= 0) {
         /* for each digit in the integer part, we can have one less
            precision */
-        int maxprec = BUFFSIZE - 1;
+        size_t maxprec = sizeof(work) - 2;
         double val = iptr->val.dnum;
-        if(prec > maxprec)
-          prec = maxprec - 1;
         if(width > 0 && prec <= width)
-          maxprec -= width;
+          maxprec -= (size_t)width;
         while(val >= 10.0) {
           val /= 10;
           maxprec--;
         }
 
-        if(prec > maxprec)
-          prec = maxprec - 1;
+        if(prec > (int)maxprec)
+          prec = (int)maxprec-1;
         if(prec < 0)
           prec = 0;
         /* RECURSIVE USAGE */
@@ -1014,19 +1014,14 @@ number:
       /* NOTE NOTE NOTE!! Not all sprintf implementations return number of
          output characters */
 #ifdef HAVE_SNPRINTF
-      (snprintf)(work, BUFFSIZE, formatbuf, iptr->val.dnum); /* NOLINT */
-#ifdef _WIN32
-      /* Old versions of the Windows CRT do not terminate the snprintf output
-         buffer if it reaches the max size so we do that here. */
-      work[BUFFSIZE - 1] = 0;
-#endif
+      (snprintf)(work, sizeof(work), formatbuf, iptr->val.dnum);
 #else
       (sprintf)(work, formatbuf, iptr->val.dnum);
 #endif
 #ifdef __clang__
 #pragma clang diagnostic pop
 #endif
-      DEBUGASSERT(strlen(work) < BUFFSIZE);
+      DEBUGASSERT(strlen(work) <= sizeof(work));
       for(fptr = work; *fptr; fptr++)
         OUTCHAR(*fptr);
       break;

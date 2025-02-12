@@ -644,7 +644,13 @@ static CURLcode setopt_long(struct Curl_easy *data, CURLoption option,
     break;
 
   case CURLOPT_HTTP09_ALLOWED:
+#ifdef USE_HYPER
+    /* Hyper does not support HTTP/0.9 */
+    if(enabled)
+      return CURLE_BAD_FUNCTION_ARGUMENT;
+#else
     data->set.http09_allowed = enabled;
+#endif
     break;
 #endif /* ! CURL_DISABLE_HTTP */
 
@@ -917,7 +923,6 @@ static CURLcode setopt_long(struct Curl_easy *data, CURLoption option,
     break;
 #endif
 
-#ifdef HAVE_GSSAPI
   case CURLOPT_GSSAPI_DELEGATION:
     /*
      * GSS-API credential delegation bitmask
@@ -925,7 +930,6 @@ static CURLcode setopt_long(struct Curl_easy *data, CURLoption option,
     data->set.gssapi_delegation = (unsigned char)uarg&
       (CURLGSSAPI_DELEGATION_POLICY_FLAG|CURLGSSAPI_DELEGATION_FLAG);
     break;
-#endif
   case CURLOPT_SSL_VERIFYPEER:
     /*
      * Enable peer SSL verifying.
@@ -987,7 +991,7 @@ static CURLcode setopt_long(struct Curl_easy *data, CURLoption option,
     /*
      * Enable TLS false start.
      */
-    if(!Curl_ssl_false_start())
+    if(!Curl_ssl_false_start(data))
       return CURLE_NOT_BUILT_IN;
 
     data->set.ssl.falsestart = enabled;
@@ -1106,8 +1110,7 @@ static CURLcode setopt_long(struct Curl_easy *data, CURLoption option,
      */
     if(arg > 2)
       return CURLE_BAD_FUNCTION_ARGUMENT;
-    data->set.connect_only = !!arg;
-    data->set.connect_only_ws = (arg == 2);
+    data->set.connect_only = (unsigned char)arg;
     break;
 
   case CURLOPT_SSL_SESSIONID_CACHE:
@@ -1585,8 +1588,8 @@ static CURLcode setopt_pointers(struct Curl_easy *data, CURLoption option,
         data->hsts = NULL;
 #endif
 #ifdef USE_SSL
-      if(data->share->ssl_scache == data->state.ssl_scache)
-        data->state.ssl_scache = data->multi ? data->multi->ssl_scache : NULL;
+      if(data->share->sslsession == data->state.session)
+        data->state.session = NULL;
 #endif
 #ifdef USE_LIBPSL
       if(data->psl == &data->share->psl)
@@ -1629,8 +1632,10 @@ static CURLcode setopt_pointers(struct Curl_easy *data, CURLoption option,
       }
 #endif
 #ifdef USE_SSL
-      if(data->share->ssl_scache)
-        data->state.ssl_scache = data->share->ssl_scache;
+      if(data->share->sslsession) {
+        data->set.general_ssl.max_ssl_sessions = data->share->max_ssl_sessions;
+        data->state.session = data->share->sslsession;
+      }
 #endif
 #ifdef USE_LIBPSL
       if(data->share->specifier & (1 << CURL_LOCK_DATA_PSL))
@@ -2106,6 +2111,7 @@ static CURLcode setopt_cptr(struct Curl_easy *data, CURLoption option,
      * The URL to fetch.
      */
     if(data->state.url_alloc) {
+      /* the already set URL is allocated, free it first! */
       Curl_safefree(data->state.url);
       data->state.url_alloc = FALSE;
     }
@@ -2193,13 +2199,6 @@ static CURLcode setopt_cptr(struct Curl_easy *data, CURLoption option,
     /*
      * pass CURLU to set URL
      */
-    if(data->state.url_alloc) {
-      Curl_safefree(data->state.url);
-      data->state.url_alloc = FALSE;
-    }
-    else
-      data->state.url = NULL;
-    Curl_safefree(data->set.str[STRING_SET_URL]);
     data->set.uh = (CURLU *)ptr;
     break;
   case CURLOPT_SSLCERT:

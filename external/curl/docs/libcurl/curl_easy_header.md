@@ -160,6 +160,4 @@ int main(void)
 
 # RETURN VALUE
 
-This function returns a CURLHcode indicating success or error. CURLHE_OK (0)
-means everything was OK, non-zero means an error occurred, see
-libcurl-errors(3).
+This function returns a CURLHcode indicating success or error.

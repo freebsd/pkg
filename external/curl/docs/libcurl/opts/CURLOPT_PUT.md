@@ -89,7 +89,4 @@ Deprecated since 7.12.1.
 
 # RETURN VALUE
 
-curl_easy_setopt(3) returns a CURLcode indicating success or error.
-
-CURLE_OK (0) means everything was OK, non-zero means an error occurred, see
-libcurl-errors(3).
+Returns CURLE_OK if HTTP is supported, and CURLE_UNKNOWN_OPTION if not.

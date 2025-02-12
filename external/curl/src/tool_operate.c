@@ -87,7 +87,6 @@
 #include "tool_parsecfg.h"
 #include "tool_setopt.h"
 #include "tool_sleep.h"
-#include "tool_ssls.h"
 #include "tool_urlglob.h"
 #include "tool_util.h"
 #include "tool_writeout.h"
@@ -110,6 +109,12 @@ CURL_EXTERN CURLcode curl_easy_perform_ev(CURL *easy);
 #define CURL_DECLARED_CURL_CA_EMBED
 extern const unsigned char curl_ca_embed[];
 #endif
+#endif
+
+#ifndef O_BINARY
+/* since O_BINARY as used in bitmasks, setting it to zero makes it usable in
+   source code but yet it does not ruin anything */
+#  define O_BINARY 0
 #endif
 
 #ifndef SOL_IP
@@ -374,16 +379,16 @@ static CURLcode pre_transfer(struct GlobalConfig *global,
       case FAB$C_VAR:
       case FAB$C_VFC:
       case FAB$C_STMCR:
-        per->infd = open(per->uploadfile, O_RDONLY | CURL_O_BINARY);
+        per->infd = open(per->uploadfile, O_RDONLY | O_BINARY);
         break;
       default:
-        per->infd = open(per->uploadfile, O_RDONLY | CURL_O_BINARY,
+        per->infd = open(per->uploadfile, O_RDONLY | O_BINARY,
                          "rfm=stmlf", "ctx=stm");
       }
     }
     if(per->infd == -1)
 #else
-      per->infd = open(per->uploadfile, O_RDONLY | CURL_O_BINARY);
+      per->infd = open(per->uploadfile, O_RDONLY | O_BINARY);
     if((per->infd == -1) || fstat(per->infd, &fileinfo))
 #endif
     {
@@ -671,7 +676,7 @@ static CURLcode post_per_transfer(struct GlobalConfig *global,
               outs->bytes);
         fflush(outs->stream);
         /* truncate file at the position where we started appending */
-#if defined(HAVE_FTRUNCATE) && !defined(__DJGPP__) && !defined(__AMIGA__)
+#ifdef HAVE_FTRUNCATE
         if(ftruncate(fileno(outs->stream), outs->init)) {
           /* when truncate fails, we cannot just append as then we will
              create something strange, bail out */
@@ -1935,9 +1940,12 @@ static CURLcode single_transfer(struct GlobalConfig *global,
 
         /* open file for reading: */
         FILE *file = fopen(config->etag_compare_file, FOPEN_READTEXT);
-        if(!file)
-          warnf(global, "Failed to open %s: %s", config->etag_compare_file,
-                strerror(errno));
+        if(!file && !config->etag_save_file) {
+          errorf(global,
+                 "Failed to open %s", config->etag_compare_file);
+          result = CURLE_READ_ERROR;
+          break;
+        }
 
         if((PARAM_OK == file2string(&etag_from_file, file)) &&
            etag_from_file) {
@@ -1969,12 +1977,6 @@ static CURLcode single_transfer(struct GlobalConfig *global,
       }
 
       if(config->etag_save_file) {
-        if(config->create_dirs) {
-          result = create_dir_hierarchy(config->etag_save_file, global);
-          if(result)
-            break;
-        }
-
         /* open file for output: */
         if(strcmp(config->etag_save_file, "-")) {
           FILE *newfile = fopen(config->etag_save_file, "ab");
@@ -1994,7 +1996,7 @@ static CURLcode single_transfer(struct GlobalConfig *global,
         }
         else {
           /* always use binary mode for protocol header output */
-          CURL_SET_BINMODE(etag_save->stream);
+          set_binmode(etag_save->stream);
         }
       }
 
@@ -2039,7 +2041,7 @@ static CURLcode single_transfer(struct GlobalConfig *global,
         if(!strcmp(config->headerfile, "%")) {
           heads->stream = stderr;
           /* use binary mode for protocol header output */
-          CURL_SET_BINMODE(heads->stream);
+          set_binmode(heads->stream);
         }
         else if(strcmp(config->headerfile, "-")) {
           FILE *newfile;
@@ -2080,7 +2082,7 @@ static CURLcode single_transfer(struct GlobalConfig *global,
         }
         else {
           /* always use binary mode for protocol header output */
-          CURL_SET_BINMODE(heads->stream);
+          set_binmode(heads->stream);
         }
       }
 
@@ -2267,7 +2269,7 @@ static CURLcode single_transfer(struct GlobalConfig *global,
         DEBUGASSERT(per->infdopen == FALSE);
         DEBUGASSERT(per->infd == STDIN_FILENO);
 
-        CURL_SET_BINMODE(stdin);
+        set_binmode(stdin);
         if(!strcmp(per->uploadfile, ".")) {
           if(curlx_nonblock((curl_socket_t)per->infd, TRUE) < 0)
             warnf(global,
@@ -2301,7 +2303,7 @@ static CURLcode single_transfer(struct GlobalConfig *global,
          !config->use_ascii) {
         /* We get the output to stdout and we have not got the ASCII/text
            flag, then set stdout to be binary */
-        CURL_SET_BINMODE(stdout);
+        set_binmode(stdout);
       }
 
       /* explicitly passed to stdout means okaying binary gunk */
@@ -3184,13 +3186,8 @@ CURLcode operate(struct GlobalConfig *global, int argc, argv_item_t argv[])
       if(res == PARAM_HELP_REQUESTED)
         tool_help(global->help_category);
       /* Check if we were asked for the manual */
-      else if(res == PARAM_MANUAL_REQUESTED) {
-#ifdef USE_MANUAL
+      else if(res == PARAM_MANUAL_REQUESTED)
         hugehelp();
-#else
-        puts("built-in manual was disabled at build-time");
-#endif
-      }
       /* Check if we were asked for the version information */
       else if(res == PARAM_VERSION_INFO_REQUESTED)
         tool_version_info();
@@ -3238,31 +3235,18 @@ CURLcode operate(struct GlobalConfig *global, int argc, argv_item_t argv[])
           curl_share_setopt(share, CURLSHOPT_SHARE, CURL_LOCK_DATA_PSL);
           curl_share_setopt(share, CURLSHOPT_SHARE, CURL_LOCK_DATA_HSTS);
 
-          if(global->ssl_sessions && feature_ssls_export)
-            result = tool_ssls_load(global, global->first, share,
-                                    global->ssl_sessions);
+          /* Get the required arguments for each operation */
+          do {
+            result = get_args(operation, count++);
 
-          if(!result) {
-            /* Get the required arguments for each operation */
-            do {
-              result = get_args(operation, count++);
+            operation = operation->next;
+          } while(!result && operation);
 
-              operation = operation->next;
-            } while(!result && operation);
+          /* Set the current operation pointer */
+          global->current = global->first;
 
-            /* Set the current operation pointer */
-            global->current = global->first;
-
-            /* now run! */
-            result = run_all_transfers(global, share, result);
-
-            if(global->ssl_sessions && feature_ssls_export) {
-              CURLcode r2 = tool_ssls_save(global, global->first, share,
-                                           global->ssl_sessions);
-              if(r2 && !result)
-                result = r2;
-            }
-          }
+          /* now run! */
+          result = run_all_transfers(global, share, result);
 
           curl_share_cleanup(share);
           if(global->libcurl) {

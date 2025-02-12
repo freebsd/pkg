@@ -24,9 +24,8 @@
 #include "tool_setup.h"
 
 #ifdef HAVE_PWD_H
-#undef __NO_NET_API /* required for AmigaOS to declare getpwuid() */
-#include <pwd.h>
-#define __NO_NET_API
+#  undef __NO_NET_API /* required for building for AmigaOS */
+#  include <pwd.h>
 #endif
 
 #ifdef HAVE_SYS_STAT_H

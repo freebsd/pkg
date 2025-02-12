@@ -50,7 +50,6 @@
 #include "multiif.h"
 #include "vtls/keylog.h"
 #include "vtls/vtls.h"
-#include "vtls/vtls_scache.h"
 #include "vquic-tls.h"
 
 /* The last 3 #include files should be in this order */
@@ -222,7 +221,7 @@ static CURLcode wssl_init_ssl(struct curl_tls_ctx *ctx,
   }
 
   if(ssl_config->primary.cache_session) {
-    (void)Curl_wssl_setup_session(cf, data, &ctx->wssl, peer->scache_key);
+    (void)wssl_setup_session(cf, data, &ctx->wssl, peer);
   }
 
   return CURLE_OK;
@@ -235,43 +234,25 @@ CURLcode Curl_vquic_tls_init(struct curl_tls_ctx *ctx,
                              struct ssl_peer *peer,
                              const char *alpn, size_t alpn_len,
                              Curl_vquic_tls_ctx_setup *cb_setup,
-                             void *cb_user_data, void *ssl_user_data,
-                             Curl_vquic_session_reuse_cb *session_reuse_cb)
+                             void *cb_user_data, void *ssl_user_data)
 {
-  char tls_id[80];
   CURLcode result;
 
 #ifdef USE_OPENSSL
-  Curl_ossl_version(tls_id, sizeof(tls_id));
-#elif defined(USE_GNUTLS)
-  Curl_gtls_version(tls_id, sizeof(tls_id));
-#elif defined(USE_WOLFSSL)
-  Curl_wssl_version(tls_id, sizeof(tls_id));
-#else
-#error "no TLS lib in used, should not happen"
-  return CURLE_FAILED_INIT;
-#endif
-  (void)session_reuse_cb;
-  result = Curl_ssl_peer_init(peer, cf, tls_id, TRNSPRT_QUIC);
-  if(result)
-    return result;
-
-#ifdef USE_OPENSSL
   (void)result;
-  return Curl_ossl_ctx_init(&ctx->ossl, cf, data, peer,
+  return Curl_ossl_ctx_init(&ctx->ossl, cf, data, peer, TRNSPRT_QUIC,
                             (const unsigned char *)alpn, alpn_len,
                             cb_setup, cb_user_data, NULL, ssl_user_data);
 #elif defined(USE_GNUTLS)
+  (void)result;
   return Curl_gtls_ctx_init(&ctx->gtls, cf, data, peer,
-                            (const unsigned char *)alpn, alpn_len,
-                            cb_setup, cb_user_data, ssl_user_data,
-                            session_reuse_cb);
+                            (const unsigned char *)alpn, alpn_len, NULL,
+                            cb_setup, cb_user_data, ssl_user_data);
 #elif defined(USE_WOLFSSL)
   result = wssl_init_ctx(ctx, cf, data, cb_setup, cb_user_data);
   if(result)
     return result;
 
-  (void)session_reuse_cb;
   return wssl_init_ssl(ctx, cf, data, peer, alpn, alpn_len, ssl_user_data);
 #else
 #error "no TLS lib in used, should not happen"
@@ -365,9 +346,6 @@ CURLcode Curl_vquic_tls_verify_peer(struct curl_tls_ctx *ctx,
 
   }
 #endif
-  /* on error, remove any session we might have in the pool */
-  if(result)
-    Curl_ssl_scache_remove_all(cf, data, peer->scache_key);
   return result;
 }
 

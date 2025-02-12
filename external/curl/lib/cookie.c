@@ -97,26 +97,6 @@ Example set of cookies:
 
 static void strstore(char **str, const char *newstr, size_t len);
 
-/* number of seconds in 400 days */
-#define COOKIES_MAXAGE (400*24*3600)
-
-/* Make sure cookies never expire further away in time than 400 days into the
-   future. (from RFC6265bis draft-19)
-
-   For the sake of easier testing, align the capped time to an even 60 second
-   boundary.
-*/
-static void cap_expires(time_t now, struct Cookie *co)
-{
-  if((TIME_T_MAX - COOKIES_MAXAGE - 30) > now) {
-    timediff_t cap = now + COOKIES_MAXAGE;
-    if(co->expires > cap) {
-      cap += 30;
-      co->expires = (cap/60)*60;
-    }
-  }
-}
-
 static void freecookie(struct Cookie *co)
 {
   free(co->domain);
@@ -458,7 +438,7 @@ static bool bad_domain(const char *domain, size_t len)
   fine. The prime reason for filtering out control bytes is that some HTTP
   servers return 400 for requests that contain such.
 */
-static bool invalid_octets(const char *p)
+static int invalid_octets(const char *p)
 {
   /* Reject all bytes \x01 - \x1f (*except* \x09, TAB) + \x7f */
   static const char badoctets[] = {
@@ -469,7 +449,7 @@ static bool invalid_octets(const char *p)
   size_t len;
   /* scan for all the octets that are *not* in cookie-octet */
   len = strcspn(p, badoctets);
-  return p[len] != '\0';
+  return (p[len] != '\0');
 }
 
 #define CERR_OK            0
@@ -488,13 +468,6 @@ static bool invalid_octets(const char *p)
 #define CERR_FIELDS        13 /* incomplete netscape line */
 #define CERR_PSL           14 /* a public suffix */
 #define CERR_LIVE_WINS     15
-
-/* The maximum length we accept a date string for the 'expire' keyword. The
-   standard date formats are within the 30 bytes range. This adds an extra
-   margin just to make sure it realistically works with what is used out
-   there.
-*/
-#define MAX_DATE_LENGTH 80
 
 static int
 parse_cookie_header(struct Curl_easy *data,
@@ -734,20 +707,16 @@ parse_cookie_header(struct Curl_easy *data,
             co->expires += now;
           break;
         }
-        cap_expires(now, co);
       }
       else if((nlen == 7) && strncasecompare("expires", namep, 7)) {
-        if(!co->expires && (vlen < MAX_DATE_LENGTH)) {
+        if(!co->expires) {
           /*
            * Let max-age have priority.
            *
            * If the date cannot get parsed for whatever reason, the cookie
            * will be treated as a session cookie
            */
-          char dbuf[MAX_DATE_LENGTH + 1];
-          memcpy(dbuf, valuep, vlen);
-          dbuf[vlen] = 0;
-          co->expires = Curl_getdate_capped(dbuf);
+          co->expires = Curl_getdate_capped(valuep);
 
           /*
            * Session cookies have expires set to 0 so if we get that back
@@ -758,7 +727,6 @@ parse_cookie_header(struct Curl_easy *data,
             co->expires = 1;
           else if(co->expires < 0)
             co->expires = 0;
-          cap_expires(now, co);
         }
       }
 
@@ -837,9 +805,10 @@ parse_netscape(struct Cookie *co,
    * This line is NOT an HTTP header style line, we do offer support for
    * reading the odd netscape cookies-file format here
    */
-  const char *ptr, *next;
+  char *ptr;
+  char *firstptr;
+  char *tok_buf = NULL;
   int fields;
-  size_t len;
 
   /*
    * In 2008, Internet Explorer introduced HTTP-only cookies to prevent XSS
@@ -856,22 +825,29 @@ parse_netscape(struct Cookie *co,
     /* do not even try the comments */
     return CERR_COMMENT;
 
+  /* strip off the possible end-of-line characters */
+  ptr = strchr(lineptr, '\r');
+  if(ptr)
+    *ptr = 0; /* clear it */
+  ptr = strchr(lineptr, '\n');
+  if(ptr)
+    *ptr = 0; /* clear it */
+
+  /* tokenize on TAB */
+  firstptr = Curl_strtok_r((char *)lineptr, "\t", &tok_buf);
+
   /*
    * Now loop through the fields and init the struct we already have
    * allocated
    */
   fields = 0;
-  for(next = lineptr; next; fields++) {
-    ptr = next;
-    len = strcspn(ptr, "\t\r\n");
-    next = (ptr[len] == '\t' ? &ptr[len + 1] : NULL);
+  for(ptr = firstptr; ptr;
+      ptr = Curl_strtok_r(NULL, "\t", &tok_buf), fields++) {
     switch(fields) {
     case 0:
-      if(ptr[0]=='.') { /* skip preceding dots */
+      if(ptr[0]=='.') /* skip preceding dots */
         ptr++;
-        len--;
-      }
-      co->domain = Curl_memdup0(ptr, len);
+      co->domain = strdup(ptr);
       if(!co->domain)
         return CERR_OUT_OF_MEMORY;
       break;
@@ -881,13 +857,13 @@ parse_netscape(struct Cookie *co,
        * domain can access the variable. Set TRUE when the cookie says
        * .domain.com and to false when the domain is complete www.domain.com
        */
-      co->tailmatch = !!strncasecompare(ptr, "TRUE", len);
+      co->tailmatch = !!strcasecompare(ptr, "TRUE");
       break;
     case 2:
       /* The file format allows the path field to remain not filled in */
-      if(strncmp("TRUE", ptr, len) && strncmp("FALSE", ptr, len)) {
+      if(strcmp("TRUE", ptr) && strcmp("FALSE", ptr)) {
         /* only if the path does not look like a boolean option! */
-        co->path = Curl_memdup0(ptr, len);
+        co->path = strdup(ptr);
         if(!co->path)
           return CERR_OUT_OF_MEMORY;
         else {
@@ -908,7 +884,7 @@ parse_netscape(struct Cookie *co,
       FALLTHROUGH();
     case 3:
       co->secure = FALSE;
-      if(strncasecompare(ptr, "TRUE", len)) {
+      if(strcasecompare(ptr, "TRUE")) {
         if(secure || ci->running)
           co->secure = TRUE;
         else
@@ -916,19 +892,11 @@ parse_netscape(struct Cookie *co,
       }
       break;
     case 4:
-      {
-        char *endp;
-        const char *p;
-        /* make sure curlx_strtoofft won't read past the current field */
-        for(p = ptr; p < &ptr[len] && ISDIGIT(*p); ++p)
-          ;
-        if(p == ptr || p != &ptr[len] ||
-           curlx_strtoofft(ptr, &endp, 10, &co->expires) || endp != &ptr[len])
-          return CERR_RANGE;
-      }
+      if(curlx_strtoofft(ptr, NULL, 10, &co->expires))
+        return CERR_RANGE;
       break;
     case 5:
-      co->name = Curl_memdup0(ptr, len);
+      co->name = strdup(ptr);
       if(!co->name)
         return CERR_OUT_OF_MEMORY;
       else {
@@ -940,7 +908,7 @@ parse_netscape(struct Cookie *co,
       }
       break;
     case 6:
-      co->value = Curl_memdup0(ptr, len);
+      co->value = strdup(ptr);
       if(!co->value)
         return CERR_OUT_OF_MEMORY;
       break;
@@ -1335,14 +1303,14 @@ static int cookie_sort(const void *p1, const void *p2)
   l2 = c2->path ? strlen(c2->path) : 0;
 
   if(l1 != l2)
-    return (l2 > l1) ? 1 : -1; /* avoid size_t <=> int conversions */
+    return (l2 > l1) ? 1 : -1 ; /* avoid size_t <=> int conversions */
 
   /* 2 - compare cookie domain lengths */
   l1 = c1->domain ? strlen(c1->domain) : 0;
   l2 = c2->domain ? strlen(c2->domain) : 0;
 
   if(l1 != l2)
-    return (l2 > l1) ? 1 : -1; /* avoid size_t <=> int conversions */
+    return (l2 > l1) ? 1 : -1 ;  /* avoid size_t <=> int conversions */
 
   /* 3 - compare cookie name lengths */
   l1 = c1->name ? strlen(c1->name) : 0;

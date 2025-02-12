@@ -40,10 +40,6 @@
 #include <sys/poll.h>
 #endif
 
-#ifdef MSDOS
-#include <dos.h>  /* delay() */
-#endif
-
 #include "curlx.h" /* from the private lib dir */
 #include "getpart.h"
 #include "util.h"
@@ -341,10 +337,12 @@ void set_advisor_read_lock(const char *filename)
     return;
   }
 
-  res = fclose(lockfile);
+  do {
+    res = fclose(lockfile);
+  } while(res && ((error = errno) == EINTR));
   if(res)
     logmsg("Error closing lock file %s error: %d %s",
-           filename, errno, strerror(errno));
+           filename, error, strerror(error));
 }
 
 void clear_advisor_read_lock(const char *filename)
@@ -470,7 +468,7 @@ long timediff(struct timeval newer, struct timeval older)
 
 typedef void (*SIGHANDLER_T)(int);
 
-#if defined(_MSC_VER) && (_MSC_VER <= 1700)
+#if defined(_MSC_VER) && _MSC_VER == 1600
 /* Workaround for warning C4306:
    'type cast' : conversion from 'int' to 'void (__cdecl *)(int)' */
 #undef SIG_ERR

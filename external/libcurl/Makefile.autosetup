@@ -76,7 +76,6 @@ SRCS=	\
 	urlapi.c \
 	warnless.c \
 	vtls.c \
-	vtls_scache.c \
 	openssl.c \
 	keylog.c \
 	hostcheck.c \
@@ -99,9 +98,7 @@ SRCS=	\
 	cw-out.c \
 	request.c \
 	socketpair.c \
-	timediff.c \
-	strparse.c
-
+	timediff.c
 
 LOCAL_CFLAGS=	-DHAVE_CONFIG_H \
 		-DBUILDING_LIBCURL \

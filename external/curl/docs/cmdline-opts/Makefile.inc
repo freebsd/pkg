@@ -269,7 +269,6 @@ DPAGES = \
   ssl-no-revoke.md \
   ssl-reqd.md \
   ssl-revoke-best-effort.md \
-  ssl-sessions.md \
   ssl.md \
   sslv2.md \
   sslv3.md \

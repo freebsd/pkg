@@ -73,7 +73,5 @@ int main(void)
 
 # RETURN VALUE
 
-curl_easy_setopt(3) returns a CURLcode indicating success or error.
-
-CURLE_OK (0) means everything was OK, non-zero means an error occurred, see
-libcurl-errors(3).
+Returns CURLE_OK if OCSP stapling is supported by the SSL backend, otherwise
+returns CURLE_NOT_BUILT_IN.

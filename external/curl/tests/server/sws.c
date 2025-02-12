@@ -84,9 +84,9 @@ static bool is_proxy = FALSE;
 
 static long prevtestno = -1;    /* previous test number we served */
 static long prevpartno = -1;    /* previous part number we served */
-static bool prevbounce = FALSE; /* instructs the server to override the
-                                   requested part number to prevpartno + 1 when
-                                   prevtestno and current test are the same */
+static bool prevbounce = FALSE; /* instructs the server to increase the part
+                                   number for a test in case the identical
+                                   testno+partno request shows up again */
 
 #define RCMD_NORMALREQ 0 /* default request, use the tests file normally */
 #define RCMD_IDLE      1 /* told to sit idle */
@@ -832,10 +832,12 @@ static void storerequest(const char *reqbuf, size_t totalsize)
 
 storerequest_cleanup:
 
-  res = fclose(dump);
+  do {
+    res = fclose(dump);
+  } while(res && ((error = errno) == EINTR));
   if(res)
     logmsg("Error closing file %s error: %d %s",
-           dumpfile, errno, strerror(errno));
+           dumpfile, error, strerror(error));
 }
 
 static void init_httprequest(struct httprequest *req)
@@ -900,21 +902,13 @@ static int get_request(curl_socket_t sock, struct httprequest *req)
           int rc;
           fd_set input;
           fd_set output;
-          struct timeval timeout = {0};
-          timeout.tv_sec = 1; /* 1000 ms */
+          struct timeval timeout = {1, 0}; /* 1000 ms */
 
           logmsg("Got EAGAIN from sread");
           FD_ZERO(&input);
           FD_ZERO(&output);
           got = 0;
-#if defined(__DJGPP__)
-#pragma GCC diagnostic push
-#pragma GCC diagnostic ignored "-Warith-conversion"
-#endif
           FD_SET(sock, &input);
-#if defined(__DJGPP__)
-#pragma GCC diagnostic pop
-#endif
           do {
             logmsg("Wait until readable");
             rc = select((int)sock + 1, &input, &output, NULL, &timeout);
@@ -1215,10 +1209,12 @@ retry:
     }
   } while((count > 0) && !got_exit_signal);
 
-  res = fclose(dump);
+  do {
+    res = fclose(dump);
+  } while(res && ((error = errno) == EINTR));
   if(res)
     logmsg("Error closing file %s error: %d %s",
-           responsedump, errno, strerror(errno));
+           responsedump, error, strerror(error));
 
   if(got_exit_signal) {
     free(ptr);
@@ -1379,18 +1375,10 @@ static curl_socket_t connect_to(const char *ipaddr, unsigned short port)
     error = SOCKERRNO;
     if((error == EINPROGRESS) || (error == EWOULDBLOCK)) {
       fd_set output;
-      struct timeval timeout = {0};
-      timeout.tv_sec = 1; /* 1000 ms */
+      struct timeval timeout = {1, 0}; /* 1000 ms */
 
       FD_ZERO(&output);
-#if defined(__DJGPP__)
-#pragma GCC diagnostic push
-#pragma GCC diagnostic ignored "-Warith-conversion"
-#endif
       FD_SET(serverfd, &output);
-#if defined(__DJGPP__)
-#pragma GCC diagnostic pop
-#endif
       while(1) {
         rc = select((int)serverfd + 1, NULL, &output, NULL, &timeout);
         if(rc < 0 && SOCKERRNO != EINTR)
@@ -1500,10 +1488,9 @@ static void http_connect(curl_socket_t *infdp,
 
     fd_set input;
     fd_set output;
+    struct timeval timeout = {1, 0}; /* 1000 ms */
     ssize_t rc;
     curl_socket_t maxfd = (curl_socket_t)-1;
-    struct timeval timeout = {0};
-    timeout.tv_sec = 1; /* 1000 ms */
 
     FD_ZERO(&input);
     FD_ZERO(&output);
@@ -1515,14 +1502,7 @@ static void http_connect(curl_socket_t *infdp,
       /* listener socket is monitored to allow client to establish
          secondary tunnel only when this tunnel is not established
          and primary one is fully operational */
-#if defined(__DJGPP__)
-#pragma GCC diagnostic push
-#pragma GCC diagnostic ignored "-Warith-conversion"
-#endif
       FD_SET(rootfd, &input);
-#if defined(__DJGPP__)
-#pragma GCC diagnostic pop
-#endif
       maxfd = rootfd;
     }
 
@@ -1532,28 +1512,14 @@ static void http_connect(curl_socket_t *infdp,
       if(clientfd[i] != CURL_SOCKET_BAD) {
         if(poll_client_rd[i]) {
           /* unless told not to do so, monitor readability */
-#if defined(__DJGPP__)
-#pragma GCC diagnostic push
-#pragma GCC diagnostic ignored "-Warith-conversion"
-#endif
           FD_SET(clientfd[i], &input);
-#if defined(__DJGPP__)
-#pragma GCC diagnostic pop
-#endif
           if(clientfd[i] > maxfd)
             maxfd = clientfd[i];
         }
         if(poll_client_wr[i] && toc[i]) {
           /* unless told not to do so, monitor writability
              if there is data ready to be sent to client */
-#if defined(__DJGPP__)
-#pragma GCC diagnostic push
-#pragma GCC diagnostic ignored "-Warith-conversion"
-#endif
           FD_SET(clientfd[i], &output);
-#if defined(__DJGPP__)
-#pragma GCC diagnostic pop
-#endif
           if(clientfd[i] > maxfd)
             maxfd = clientfd[i];
         }
@@ -1562,28 +1528,14 @@ static void http_connect(curl_socket_t *infdp,
       if(serverfd[i] != CURL_SOCKET_BAD) {
         if(poll_server_rd[i]) {
           /* unless told not to do so, monitor readability */
-#if defined(__DJGPP__)
-#pragma GCC diagnostic push
-#pragma GCC diagnostic ignored "-Warith-conversion"
-#endif
           FD_SET(serverfd[i], &input);
-#if defined(__DJGPP__)
-#pragma GCC diagnostic pop
-#endif
           if(serverfd[i] > maxfd)
             maxfd = serverfd[i];
         }
         if(poll_server_wr[i] && tos[i]) {
           /* unless told not to do so, monitor writability
              if there is data ready to be sent to server */
-#if defined(__DJGPP__)
-#pragma GCC diagnostic push
-#pragma GCC diagnostic ignored "-Warith-conversion"
-#endif
           FD_SET(serverfd[i], &output);
-#if defined(__DJGPP__)
-#pragma GCC diagnostic pop
-#endif
           if(serverfd[i] > maxfd)
             maxfd = serverfd[i];
         }
@@ -1982,8 +1934,9 @@ static int service_connection(curl_socket_t msgsock, struct httprequest *req,
 
   if(prevbounce) {
     /* bounce treatment requested */
-    if(req->testno == prevtestno) {
-      req->partno = prevpartno + 1;
+    if((req->testno == prevtestno) &&
+       (req->partno == prevpartno)) {
+      req->partno++;
       logmsg("BOUNCE part number to %ld", req->partno);
     }
     else {
@@ -2370,10 +2323,9 @@ int main(int argc, char *argv[])
   for(;;) {
     fd_set input;
     fd_set output;
+    struct timeval timeout = {0, 250000L}; /* 250 ms */
     curl_socket_t maxfd = (curl_socket_t)-1;
     int active;
-    struct timeval timeout = {0};
-    timeout.tv_usec = 250000L; /* 250 ms */
 
     /* Clear out closed sockets */
     for(socket_idx = num_sockets - 1; socket_idx >= 1; --socket_idx) {
@@ -2395,14 +2347,7 @@ int main(int argc, char *argv[])
 
     for(socket_idx = 0; socket_idx < num_sockets; ++socket_idx) {
       /* Listen on all sockets */
-#if defined(__DJGPP__)
-#pragma GCC diagnostic push
-#pragma GCC diagnostic ignored "-Warith-conversion"
-#endif
       FD_SET(all_sockets[socket_idx], &input);
-#if defined(__DJGPP__)
-#pragma GCC diagnostic pop
-#endif
       if(all_sockets[socket_idx] > maxfd)
         maxfd = all_sockets[socket_idx];
     }
@@ -2522,7 +2467,7 @@ sws_cleanup:
     sclose(sock);
 
 #ifdef USE_UNIX_SOCKETS
-  if(unlink_socket && socket_domain == AF_UNIX && unix_socket) {
+  if(unlink_socket && socket_domain == AF_UNIX) {
     rc = unlink(unix_socket);
     logmsg("unlink(%s) = %d (%s)", unix_socket, rc, strerror(rc));
   }

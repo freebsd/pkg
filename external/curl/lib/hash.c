@@ -42,8 +42,6 @@ hash_element_dtor(void *user, void *element)
 {
   struct Curl_hash *h = (struct Curl_hash *) user;
   struct Curl_hash_element *e = (struct Curl_hash_element *) element;
-  DEBUGASSERT(h);
-  DEBUGASSERT(e);
 
   if(e->ptr) {
     if(e->dtor)

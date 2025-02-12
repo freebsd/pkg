@@ -134,38 +134,40 @@ Curl_llist_append(struct Curl_llist *list, const void *p,
   Curl_llist_insert_next(list, list->_tail, p, ne);
 }
 
-void *Curl_node_take_elem(struct Curl_llist_node *e)
+/*
+ * @unittest: 1300
+ */
+void
+Curl_node_uremove(struct Curl_llist_node *e, void *user)
 {
   void *ptr;
   struct Curl_llist *list;
   if(!e)
-    return NULL;
+    return;
 
   list = e->_list;
   DEBUGASSERT(list);
   DEBUGASSERT(list->_init == LLISTINIT);
   DEBUGASSERT(list->_size);
   DEBUGASSERT(e->_init == NODEINIT);
-  if(list) {
-    if(e == list->_head) {
-      list->_head = e->_next;
+  if(e == list->_head) {
+    list->_head = e->_next;
 
-      if(!list->_head)
-        list->_tail = NULL;
-      else
-        e->_next->_prev = NULL;
-    }
-    else {
-      if(e->_prev)
-        e->_prev->_next = e->_next;
-
-      if(!e->_next)
-        list->_tail = e->_prev;
-      else
-        e->_next->_prev = e->_prev;
-    }
-    --list->_size;
+    if(!list->_head)
+      list->_tail = NULL;
+    else
+      e->_next->_prev = NULL;
   }
+  else {
+    if(e->_prev)
+      e->_prev->_next = e->_next;
+
+    if(!e->_next)
+      list->_tail = e->_prev;
+    else
+      e->_next->_prev = e->_prev;
+  }
+
   ptr = e->_ptr;
 
   e->_list = NULL;
@@ -176,27 +178,11 @@ void *Curl_node_take_elem(struct Curl_llist_node *e)
   e->_init = NODEREM; /* specific pattern on remove - not zero */
 #endif
 
-  return ptr;
-}
+  --list->_size;
 
-/*
- * @unittest: 1300
- */
-void
-Curl_node_uremove(struct Curl_llist_node *e, void *user)
-{
-  struct Curl_llist *list;
-  void *ptr;
-  if(!e)
-    return;
-
-  list = e->_list;
-  DEBUGASSERT(list);
-  if(list) {
-    ptr = Curl_node_take_elem(e);
-    if(list->_dtor)
-      list->_dtor(user, ptr);
-  }
+  /* call the dtor() last for when it actually frees the 'e' memory itself */
+  if(list->_dtor)
+    list->_dtor(user, ptr);
 }
 
 void Curl_node_remove(struct Curl_llist_node *e)

@@ -166,7 +166,4 @@ SFTP support added in 7.16.3. *-prefix for SFTP added in 7.24.0
 
 # RETURN VALUE
 
-curl_easy_setopt(3) returns a CURLcode indicating success or error.
-
-CURLE_OK (0) means everything was OK, non-zero means an error occurred, see
-libcurl-errors(3).
+Returns CURLE_OK

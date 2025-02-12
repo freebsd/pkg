@@ -1076,24 +1076,27 @@ const struct Curl_ssl Curl_ssl_rustls = {
   SSLSUPP_TLS13_CIPHERSUITES,
   sizeof(struct rustls_ssl_backend_data),
 
-  NULL,                            /* init */
-  NULL,                            /* cleanup */
+  Curl_none_init,                  /* init */
+  Curl_none_cleanup,               /* cleanup */
   cr_version,                      /* version */
+  Curl_none_check_cxn,             /* check_cxn */
   cr_shutdown,                     /* shutdown */
   cr_data_pending,                 /* data_pending */
   cr_random,                       /* random */
-  NULL,                            /* cert_status_request */
+  Curl_none_cert_status_request,   /* cert_status_request */
   cr_connect_blocking,             /* connect */
   cr_connect_nonblocking,          /* connect_nonblocking */
   Curl_ssl_adjust_pollset,         /* adjust_pollset */
   cr_get_internals,                /* get_internals */
   cr_close,                        /* close_one */
-  NULL,                            /* close_all */
-  NULL,                            /* set_engine */
-  NULL,                            /* set_engine_default */
-  NULL,                            /* engines_list */
-  NULL,                            /* false_start */
+  Curl_none_close_all,             /* close_all */
+  Curl_none_set_engine,            /* set_engine */
+  Curl_none_set_engine_default,    /* set_engine_default */
+  Curl_none_engines_list,          /* engines_list */
+  Curl_none_false_start,           /* false_start */
   NULL,                            /* sha256sum */
+  NULL,                            /* associate_connection */
+  NULL,                            /* disassociate_connection */
   cr_recv,                         /* recv decrypted data */
   cr_send,                         /* send data to encrypt */
   NULL,                            /* get_channel_binding */

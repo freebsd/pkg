@@ -349,6 +349,9 @@ int getpart(char **outbuf, size_t *outlen,
         state = STATE_INMAIN;
         csub[0] = '\0';
         if(in_wanted_part) {
+          /* end of wanted part */
+          in_wanted_part = 0;
+
           /* Do we need to base64 decode the data? */
           if(base64) {
             error = decodedata(outbuf, outlen);
@@ -365,6 +368,9 @@ int getpart(char **outbuf, size_t *outlen,
         state = STATE_OUTER;
         cmain[0] = '\0';
         if(in_wanted_part) {
+          /* end of wanted part */
+          in_wanted_part = 0;
+
           /* Do we need to base64 decode the data? */
           if(base64) {
             error = decodedata(outbuf, outlen);
@@ -380,8 +386,11 @@ int getpart(char **outbuf, size_t *outlen,
         /* end of outermost file section */
         state = STATE_OUTSIDE;
         couter[0] = '\0';
-        if(in_wanted_part)
+        if(in_wanted_part) {
+          /* end of wanted part */
+          in_wanted_part = 0;
           break;
+        }
       }
 
     }

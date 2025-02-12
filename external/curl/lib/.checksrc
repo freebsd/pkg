@@ -1,5 +1,2 @@
-banfunc strerror
-banfunc strncpy
-banfunc sscanf
-banfunc snprintf
-banfunc vsnprint
+enable STRERROR
+enable STRNCPY

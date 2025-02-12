@@ -78,7 +78,6 @@
 #include "vquic/vquic.h" /* for quic cfilters */
 #include "http_proxy.h"
 #include "socks.h"
-#include "strcase.h"
 
 /* The last 3 #include files should be in this order */
 #include "curl_printf.h"
@@ -87,27 +86,6 @@
 
 #ifndef ARRAYSIZE
 #define ARRAYSIZE(A) (sizeof(A)/sizeof((A)[0]))
-#endif
-
-#if !defined(CURL_DISABLE_ALTSVC) || defined(USE_HTTPSRR)
-
-enum alpnid Curl_alpn2alpnid(char *name, size_t len)
-{
-  if(len == 2) {
-    if(strncasecompare(name, "h1", 2))
-      return ALPN_h1;
-    if(strncasecompare(name, "h2", 2))
-      return ALPN_h2;
-    if(strncasecompare(name, "h3", 2))
-      return ALPN_h3;
-  }
-  else if(len == 8) {
-    if(strncasecompare(name, "http/1.1", 8))
-      return ALPN_h1;
-  }
-  return ALPN_none; /* unknown, probably rubbish input */
-}
-
 #endif
 
 /*
@@ -1507,7 +1485,7 @@ CURLcode Curl_conn_setup(struct Curl_easy *data,
   DEBUGASSERT(data);
   DEBUGASSERT(conn->handler);
 
-#if !defined(CURL_DISABLE_HTTP)
+#if !defined(CURL_DISABLE_HTTP) && !defined(USE_HYPER)
   if(!conn->cfilter[sockindex] &&
      conn->handler->protocol == CURLPROTO_HTTPS) {
     DEBUGASSERT(ssl_mode != CURL_CF_SSL_DISABLE);
@@ -1515,7 +1493,7 @@ CURLcode Curl_conn_setup(struct Curl_easy *data,
     if(result)
       goto out;
   }
-#endif /* !defined(CURL_DISABLE_HTTP) */
+#endif /* !defined(CURL_DISABLE_HTTP) && !defined(USE_HYPER) */
 
   /* Still no cfilter set, apply default. */
   if(!conn->cfilter[sockindex]) {

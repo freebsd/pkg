@@ -28,7 +28,6 @@ check_PROGRAMS = \
   address-scope \
   altsvc \
   anyauthput \
-  block_ip \
   certinfo \
   chkspeed \
   connect-to \
@@ -82,7 +81,7 @@ check_PROGRAMS = \
   ipv6 \
   keepalive \
   localport \
-  maxconnects \
+  maxconnects  \
   multi-app \
   multi-debugcallback \
   multi-double \

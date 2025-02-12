@@ -29,7 +29,7 @@ CURLcode curl_easy_setopt(CURL *handle, CURLOPT_STREAM_DEPENDS_E,
 
 # DESCRIPTION
 
-Pass a `CURL` pointer in *dephandle* to identify the stream within the same
+Pass a CURL pointer in *dephandle* to identify the stream within the same
 connection that this stream is depending upon exclusively. That means it
 depends on it and sets the Exclusive bit.
 
@@ -76,7 +76,4 @@ int main(void)
 
 # RETURN VALUE
 
-curl_easy_setopt(3) returns a CURLcode indicating success or error.
-
-CURLE_OK (0) means everything was OK, non-zero means an error occurred, see
-libcurl-errors(3).
+Returns CURLE_OK if the option is supported, and CURLE_UNKNOWN_OPTION if not.

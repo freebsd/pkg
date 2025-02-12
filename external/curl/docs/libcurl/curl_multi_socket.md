@@ -79,10 +79,7 @@ curl_multi_socket(3) is deprecated, use curl_multi_socket_action(3) instead.
 
 # RETURN VALUE
 
-This function returns a CURLMcode indicating success or error.
-
-CURLM_OK (0) means everything was OK, non-zero means an error occurred, see
-libcurl-errors(3).
+CURLMcode type, general libcurl multi interface error code.
 
 The return code is for the whole multi stack. Problems still might have
 occurred on individual transfers even when one of these functions return OK.

@@ -37,10 +37,6 @@
 #include <unistd.h>  /* getopt() */
 #endif
 
-#ifdef _WIN32
-#define strdup _strdup
-#endif
-
 #ifndef CURLPIPE_MULTIPLEX
 #error "too old libcurl, cannot do HTTP/2 server push!"
 #endif
@@ -283,10 +279,8 @@ static void usage(const char *msg)
   fprintf(stderr,
     "  -A number  abort transfer after `number` response bytes\n"
     "  -F number  fail writing response after `number` response bytes\n"
-    "  -M number  max concurrent connections to a host\n"
     "  -P number  pause transfer after `number` response bytes\n"
     "  -r <host>:<port>:<addr>  resolve information\n"
-    "  -T number  max concurrent connections total\n"
     "  -V http_version (http/1.1, h2, h3) http version to use\n"
   );
 }
@@ -314,16 +308,13 @@ int main(int argc, char *argv[])
   struct curl_slist *host = NULL;
   char *resolve = NULL;
   size_t max_host_conns = 0;
-  size_t max_total_conns = 0;
   int fresh_connect = 0;
-  int result = 0;
 
-  while((ch = getopt(argc, argv, "aefhm:n:xA:F:M:P:r:T:V:")) != -1) {
+  while((ch = getopt(argc, argv, "aefhm:n:xA:F:M:P:r:V:")) != -1) {
     switch(ch) {
     case 'h':
       usage(NULL);
-      result = 2;
-      goto cleanup;
+      return 2;
     case 'a':
       abort_paused = 1;
       break;
@@ -355,11 +346,7 @@ int main(int argc, char *argv[])
       pause_offset = (size_t)strtol(optarg, NULL, 10);
       break;
     case 'r':
-      free(resolve);
       resolve = strdup(optarg);
-      break;
-    case 'T':
-      max_total_conns = (size_t)strtol(optarg, NULL, 10);
       break;
     case 'V': {
       if(!strcmp("http/1.1", optarg))
@@ -370,15 +357,13 @@ int main(int argc, char *argv[])
         http_version = CURL_HTTP_VERSION_3ONLY;
       else {
         usage("invalid http version");
-        result = 1;
-        goto cleanup;
+        return 1;
       }
       break;
     }
     default:
-      usage("invalid option");
-      result = 1;
-      goto cleanup;
+     usage("invalid option");
+     return 1;
     }
   }
   argc -= optind;
@@ -389,8 +374,7 @@ int main(int argc, char *argv[])
 
   if(argc != 1) {
     usage("not enough arguments");
-    result = 2;
-    goto cleanup;
+    return 2;
   }
   url = argv[0];
 
@@ -400,8 +384,7 @@ int main(int argc, char *argv[])
   share = curl_share_init();
   if(!share) {
     fprintf(stderr, "error allocating share\n");
-    result = 1;
-    goto cleanup;
+    return 1;
   }
   curl_share_setopt(share, CURLSHOPT_SHARE, CURL_LOCK_DATA_COOKIE);
   curl_share_setopt(share, CURLSHOPT_SHARE, CURL_LOCK_DATA_DNS);
@@ -413,14 +396,11 @@ int main(int argc, char *argv[])
   transfers = calloc(transfer_count, sizeof(*transfers));
   if(!transfers) {
     fprintf(stderr, "error allocating transfer structs\n");
-    result = 1;
-    goto cleanup;
+    return 1;
   }
 
   multi_handle = curl_multi_init();
   curl_multi_setopt(multi_handle, CURLMOPT_PIPELINING, CURLPIPE_MULTIPLEX);
-  curl_multi_setopt(multi_handle, CURLMOPT_MAX_TOTAL_CONNECTIONS,
-                    (long)max_total_conns);
   curl_multi_setopt(multi_handle, CURLMOPT_MAX_HOST_CONNECTIONS,
                     (long)max_host_conns);
 
@@ -441,8 +421,7 @@ int main(int argc, char *argv[])
        setup(t->easy, url, t, http_version, host, share, use_earlydata,
              fresh_connect)) {
       fprintf(stderr, "[t-%d] FAILED setup\n", (int)i);
-      result = 1;
-      goto cleanup;
+      return 1;
     }
     curl_multi_add_handle(multi_handle, t->easy);
     t->started = 1;
@@ -485,6 +464,7 @@ int main(int argc, char *argv[])
         }
       }
 
+
       /* nothing happening, maintenance */
       if(abort_paused) {
         /* abort paused transfers */
@@ -521,8 +501,7 @@ int main(int argc, char *argv[])
                setup(t->easy, url, t, http_version, host, share,
                      use_earlydata, fresh_connect)) {
               fprintf(stderr, "[t-%d] FAILED setup\n", (int)i);
-              result = 1;
-              goto cleanup;
+              return 1;
             }
             curl_multi_add_handle(multi_handle, t->easy);
             t->started = 1;
@@ -556,10 +535,9 @@ int main(int argc, char *argv[])
 
   curl_share_cleanup(share);
   curl_slist_free_all(host);
-cleanup:
   free(resolve);
 
-  return result;
+  return 0;
 #else
   (void)argc;
   (void)argv;

@@ -84,7 +84,7 @@
     }                                                                   \
   } while(0)
 
-#define unittest_abort(msg)                                   \
+#define abort_test(msg)                                       \
   do {                                                        \
     fprintf(stderr, "%s:%d test ABORTED: '%s'\n",             \
             __FILE__, __LINE__, msg);                         \

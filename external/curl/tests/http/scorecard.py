@@ -450,14 +450,15 @@ class ScoreCard:
             p['name'] = 'h2'
             if not self.env.have_h2_curl():
                 raise ScoreCardError('curl does not support HTTP/2')
-            for lib in ['nghttp2']:
+            for lib in ['nghttp2', 'hyper']:
                 if self.env.curl_uses_lib(lib):
                     p['implementation'] = lib
                     break
         elif self.protocol == 'h1' or self.protocol == 'http/1.1':
             proto = 'http/1.1'
             p['name'] = proto
-            p['implementation'] = 'native'
+            p['implementation'] = 'hyper' if self.env.curl_uses_lib('hyper')\
+                else 'native'
         else:
             raise ScoreCardError(f"unknown protocol: {self.protocol}")
 

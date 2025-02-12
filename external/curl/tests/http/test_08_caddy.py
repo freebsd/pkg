@@ -69,7 +69,7 @@ class TestCaddy:
 
     # download 1 file
     @pytest.mark.parametrize("proto", ['http/1.1', 'h2', 'h3'])
-    def test_08_01_download_1(self, env: Env, caddy: Caddy, proto):
+    def test_08_01_download_1(self, env: Env, caddy: Caddy, repeat, proto):
         if proto == 'h3' and not env.have_h3_curl():
             pytest.skip("h3 not supported in curl")
         if proto == 'h3' and env.curl_uses_lib('msh3'):
@@ -81,7 +81,8 @@ class TestCaddy:
 
     # download 1MB files sequentially
     @pytest.mark.parametrize("proto", ['http/1.1', 'h2', 'h3'])
-    def test_08_02_download_1mb_sequential(self, env: Env, caddy: Caddy, proto):
+    def test_08_02_download_1mb_sequential(self, env: Env, caddy: Caddy,
+                                           repeat, proto):
         if proto == 'h3' and not env.have_h3_curl():
             pytest.skip("h3 not supported in curl")
         if proto == 'h3' and env.curl_uses_lib('msh3'):
@@ -94,7 +95,8 @@ class TestCaddy:
 
     # download 1MB files parallel
     @pytest.mark.parametrize("proto", ['http/1.1', 'h2', 'h3'])
-    def test_08_03_download_1mb_parallel(self, env: Env, caddy: Caddy, proto):
+    def test_08_03_download_1mb_parallel(self, env: Env, caddy: Caddy,
+                                         repeat, proto):
         if proto == 'h3' and not env.have_h3_curl():
             pytest.skip("h3 not supported in curl")
         if proto == 'h3' and env.curl_uses_lib('msh3'):
@@ -116,7 +118,8 @@ class TestCaddy:
     @pytest.mark.skipif(condition=Env().slow_network, reason="not suitable for slow network tests")
     @pytest.mark.skipif(condition=Env().ci_run, reason="not suitable for CI runs")
     @pytest.mark.parametrize("proto", ['h2', 'h3'])
-    def test_08_04a_download_10mb_sequential(self, env: Env, caddy: Caddy, proto):
+    def test_08_04a_download_10mb_sequential(self, env: Env, caddy: Caddy,
+                                           repeat, proto):
         if proto == 'h3' and not env.have_h3_curl():
             pytest.skip("h3 not supported in curl")
         if proto == 'h3' and env.curl_uses_lib('msh3'):
@@ -131,7 +134,8 @@ class TestCaddy:
     @pytest.mark.skipif(condition=Env().slow_network, reason="not suitable for slow network tests")
     @pytest.mark.skipif(condition=Env().ci_run, reason="not suitable for CI runs")
     @pytest.mark.parametrize("proto", ['h2', 'h3'])
-    def test_08_04b_download_10mb_sequential(self, env: Env, caddy: Caddy, proto):
+    def test_08_04b_download_10mb_sequential(self, env: Env, caddy: Caddy,
+                                           repeat, proto):
         if proto == 'h3' and not env.have_h3_curl():
             pytest.skip("h3 not supported in curl")
         if proto == 'h3' and env.curl_uses_lib('msh3'):
@@ -146,7 +150,8 @@ class TestCaddy:
     @pytest.mark.skipif(condition=Env().slow_network, reason="not suitable for slow network tests")
     @pytest.mark.parametrize("proto", ['http/1.1', 'h2', 'h3'])
     @pytest.mark.skipif(condition=Env().ci_run, reason="not suitable for CI runs")
-    def test_08_05_download_1mb_parallel(self, env: Env, caddy: Caddy, proto):
+    def test_08_05_download_1mb_parallel(self, env: Env, caddy: Caddy,
+                                         repeat, proto):
         if proto == 'h3' and not env.have_h3_curl():
             pytest.skip("h3 not supported in curl")
         if proto == 'h3' and env.curl_uses_lib('msh3'):
@@ -169,7 +174,7 @@ class TestCaddy:
 
     # post data parallel, check that they were echoed
     @pytest.mark.parametrize("proto", ['http/1.1', 'h2', 'h3'])
-    def test_08_06_post_parallel(self, env: Env, httpd, caddy, proto):
+    def test_08_06_post_parallel(self, env: Env, httpd, caddy, repeat, proto):
         if proto == 'h3' and not env.have_h3():
             pytest.skip("h3 not supported")
         if proto == 'h3' and env.curl_uses_lib('msh3'):
@@ -188,7 +193,7 @@ class TestCaddy:
 
     # put large file, check that they length were echoed
     @pytest.mark.parametrize("proto", ['http/1.1', 'h2', 'h3'])
-    def test_08_07_put_large(self, env: Env, httpd, caddy, proto):
+    def test_08_07_put_large(self, env: Env, httpd, caddy, repeat, proto):
         if proto == 'h3' and not env.have_h3():
             pytest.skip("h3 not supported")
         if proto == 'h3' and env.curl_uses_lib('msh3'):
@@ -205,12 +210,8 @@ class TestCaddy:
             respdata = open(curl.response_file(i)).readlines()
             assert respdata == exp_data
 
-    @pytest.mark.parametrize("proto", ['http/1.1', 'h2', 'h3'])
+    @pytest.mark.parametrize("proto", ['http/1.1', 'h2'])
     def test_08_08_earlydata(self, env: Env, httpd, caddy, proto):
-        if not env.curl_uses_lib('gnutls'):
-            pytest.skip('TLS earlydata only implemented in GnuTLS')
-        if proto == 'h3' and not env.have_h3():
-            pytest.skip("h3 not supported")
         count = 2
         docname = 'data10k.data'
         url = f'https://{env.domain1}:{caddy.port}/{docname}'
@@ -229,15 +230,12 @@ class TestCaddy:
         self.check_downloads(client, srcfile, count)
         earlydata = {}
         for line in r.trace_lines:
-            m = re.match(r'^\[t-(\d+)] EarlyData: (-?\d+)', line)
+            m = re.match(r'^\[t-(\d+)] EarlyData: (\d+)', line)
             if m:
                 earlydata[int(m.group(1))] = int(m.group(2))
+        # Caddy does not support early data
         assert earlydata[0] == 0, f'{earlydata}'
-        if proto == 'h3':
-            assert earlydata[1] == 71, f'{earlydata}'
-        else:
-            # Caddy does not support early data on TCP
-            assert earlydata[1] == 0, f'{earlydata}'
+        assert earlydata[1] == 0, f'{earlydata}'
 
     def check_downloads(self, client, srcfile: str, count: int,
                         complete: bool = True):

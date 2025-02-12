@@ -26,9 +26,7 @@
 #ifndef CURL_DISABLE_NETRC
 
 #ifdef HAVE_PWD_H
-#undef __NO_NET_API /* required for AmigaOS to declare getpwuid() */
 #include <pwd.h>
-#define __NO_NET_API
 #endif
 
 #include <curl/curl.h>
@@ -267,8 +265,7 @@ static int parsenetrc(struct store_netrc *store,
             retcode = NETRC_FAILED; /* allocation failed */
             goto out;
           }
-          if(!specific_login || our_login)
-            found |= FOUND_PASSWORD;
+          found |= FOUND_PASSWORD;
           keyword = NONE;
         }
         else if(strcasecompare("login", tok))
@@ -277,10 +274,6 @@ static int parsenetrc(struct store_netrc *store,
           keyword = PASSWORD;
         else if(strcasecompare("machine", tok)) {
           /* a new machine here */
-          if(found & FOUND_PASSWORD) {
-            done = TRUE;
-            break;
-          }
           state = HOSTFOUND;
           keyword = NONE;
           found = 0;
@@ -316,16 +309,11 @@ static int parsenetrc(struct store_netrc *store,
 
 out:
   Curl_dyn_free(&token);
-  if(!retcode) {
-    if(!password && our_login) {
-      /* success without a password, set a blank one */
-      password = strdup("");
-      if(!password)
-        retcode = 1; /* out of memory */
-    }
-    else if(!login && !password)
-      /* a default with no credentials */
-      retcode = NETRC_FILE_MISSING;
+  if(!retcode && !password && our_login) {
+    /* success without a password, set a blank one */
+    password = strdup("");
+    if(!password)
+      retcode = 1; /* out of memory */
   }
   if(!retcode) {
     /* success */
@@ -402,7 +390,7 @@ int Curl_parsenetrc(struct store_netrc *store, const char *host,
     retcode = parsenetrc(store, host, loginp, passwordp, filealloc);
     free(filealloc);
 #ifdef _WIN32
-    if((retcode == NETRC_FILE_MISSING) || (retcode == NETRC_FAILED)) {
+    if(retcode == NETRC_FILE_MISSING) {
       /* fallback to the old-style "_netrc" file */
       filealloc = aprintf("%s%s_netrc", home, DIR_CHAR);
       if(!filealloc) {

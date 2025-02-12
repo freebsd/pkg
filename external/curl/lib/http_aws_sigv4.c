@@ -35,7 +35,6 @@
 #include "parsedate.h"
 #include "sendf.h"
 #include "escape.h"
-#include "strparse.h"
 
 #include <time.h>
 
@@ -119,6 +118,8 @@ static void trim_headers(struct curl_slist *head)
 
 /* maximum length for the aws sivg4 parts */
 #define MAX_SIGV4_LEN 64
+#define MAX_SIGV4_LEN_TXT "64"
+
 #define DATE_HDR_KEY_LEN (MAX_SIGV4_LEN + sizeof("X--Date"))
 
 /* string been x-PROVIDER-date:TIMESTAMP, I need +1 for ':' */
@@ -159,8 +160,7 @@ static int compare_header_names(const char *a, const char *b)
 static CURLcode make_headers(struct Curl_easy *data,
                              const char *hostname,
                              char *timestamp,
-                             const char *provider1,
-                             size_t plen, /* length of provider1 */
+                             char *provider1,
                              char **date_header,
                              char *content_sha256_header,
                              struct dynbuf *canonical_headers,
@@ -174,16 +174,16 @@ static CURLcode make_headers(struct Curl_easy *data,
   struct curl_slist *l;
   bool again = TRUE;
 
-  msnprintf(date_hdr_key, DATE_HDR_KEY_LEN, "X-%.*s-Date",
-            (int)plen, provider1);
-  /* provider1 ucfirst */
-  Curl_strntolower(&date_hdr_key[2], provider1, plen);
-  date_hdr_key[2] = Curl_raw_toupper(provider1[0]);
+  /* provider1 mid */
+  Curl_strntolower(provider1, provider1, strlen(provider1));
+  provider1[0] = Curl_raw_toupper(provider1[0]);
 
-  msnprintf(date_full_hdr, DATE_FULL_HDR_LEN,
-            "x-%.*s-date:%s", (int)plen, provider1, timestamp);
+  msnprintf(date_hdr_key, DATE_HDR_KEY_LEN, "X-%s-Date", provider1);
+
   /* provider1 lowercase */
-  Curl_strntolower(&date_full_hdr[2], provider1, plen);
+  Curl_strntolower(provider1, provider1, 1); /* first byte only */
+  msnprintf(date_full_hdr, DATE_FULL_HDR_LEN,
+            "x-%s-date:%s", provider1, timestamp);
 
   if(!Curl_checkheaders(data, STRCONST("Host"))) {
     char *fullhost;
@@ -336,7 +336,6 @@ fail:
 /* try to parse a payload hash from the content-sha256 header */
 static char *parse_content_sha_hdr(struct Curl_easy *data,
                                    const char *provider1,
-                                   size_t plen,
                                    size_t *value_len)
 {
   char key[CONTENT_SHA256_KEY_LEN];
@@ -344,8 +343,7 @@ static char *parse_content_sha_hdr(struct Curl_easy *data,
   char *value;
   size_t len;
 
-  key_len = msnprintf(key, sizeof(key), "x-%.*s-content-sha256",
-                      (int)plen, provider1);
+  key_len = msnprintf(key, sizeof(key), "x-%s-content-sha256", provider1);
 
   value = Curl_checkheaders(data, key, key_len);
   if(!value)
@@ -391,7 +389,6 @@ static CURLcode calc_payload_hash(struct Curl_easy *data,
 
 static CURLcode calc_s3_payload_hash(struct Curl_easy *data,
                                      Curl_HttpReq httpreq, char *provider1,
-                                     size_t plen,
                                      unsigned char *sha_hash,
                                      char *sha_hex, char *header)
 {
@@ -418,7 +415,7 @@ static CURLcode calc_s3_payload_hash(struct Curl_easy *data,
 
   /* format the required content-sha256 header */
   msnprintf(header, CONTENT_SHA256_HDR_LEN,
-            "x-%.*s-content-sha256: %s", (int)plen, provider1, sha_hex);
+            "x-%s-content-sha256: %s", provider1, sha_hex);
 
   ret = CURLE_OK;
 fail:
@@ -435,8 +432,6 @@ static int compare_func(const void *a, const void *b)
   const struct pair *aa = a;
   const struct pair *bb = b;
   /* If one element is empty, the other is always sorted higher */
-  if(aa->len == 0 && bb->len == 0)
-    return 0;
   if(aa->len == 0)
     return -1;
   if(bb->len == 0)
@@ -576,11 +571,12 @@ CURLcode Curl_output_aws_sigv4(struct Curl_easy *data, bool proxy)
   CURLcode result = CURLE_OUT_OF_MEMORY;
   struct connectdata *conn = data->conn;
   size_t len;
-  char *line;
-  struct Curl_str provider0;
-  struct Curl_str provider1;
-  struct Curl_str region = { NULL, 0};
-  struct Curl_str service = { NULL, 0};
+  const char *arg;
+  char provider0[MAX_SIGV4_LEN + 1]="";
+  char provider1[MAX_SIGV4_LEN + 1]="";
+  char region[MAX_SIGV4_LEN + 1]="";
+  char service[MAX_SIGV4_LEN + 1]="";
+  bool sign_as_s3 = FALSE;
   const char *hostname = conn->host.name;
   time_t clock;
   struct tm tm;
@@ -629,31 +625,27 @@ CURLcode Curl_output_aws_sigv4(struct Curl_easy *data, bool proxy)
    * AWS is the default because most of non-amazon providers
    * are still using aws:amz as a prefix.
    */
-  line = data->set.str[STRING_AWS_SIGV4] ?
-    data->set.str[STRING_AWS_SIGV4] : (char *)"aws:amz";
+  arg = data->set.str[STRING_AWS_SIGV4] ?
+    data->set.str[STRING_AWS_SIGV4] : "aws:amz";
 
-  /* provider0[:provider1[:region[:service]]]
+  /* provider1[:provider2[:region[:service]]]
 
      No string can be longer than N bytes of non-whitespace
   */
-  if(Curl_str_until(&line, &provider0, MAX_SIGV4_LEN, ':')) {
+  (void)sscanf(arg, "%" MAX_SIGV4_LEN_TXT "[^:]"
+               ":%" MAX_SIGV4_LEN_TXT "[^:]"
+               ":%" MAX_SIGV4_LEN_TXT "[^:]"
+               ":%" MAX_SIGV4_LEN_TXT "s",
+               provider0, provider1, region, service);
+  if(!provider0[0]) {
     failf(data, "first aws-sigv4 provider cannot be empty");
     result = CURLE_BAD_FUNCTION_ARGUMENT;
     goto fail;
   }
-  if(Curl_str_single(&line, ':') ||
-     Curl_str_until(&line, &provider1, MAX_SIGV4_LEN, ':')) {
-    provider1.str = provider0.str;
-    provider1.len = provider0.len;
-  }
-  else if(Curl_str_single(&line, ':') ||
-          Curl_str_until(&line, &region, MAX_SIGV4_LEN, ':') ||
-          Curl_str_single(&line, ':') ||
-          Curl_str_until(&line, &service, MAX_SIGV4_LEN, ':')) {
-    /* nothing to do */
-  }
+  else if(!provider1[0])
+    strcpy(provider1, provider0);
 
-  if(!service.len) {
+  if(!service[0]) {
     char *hostdot = strchr(hostname, '.');
     if(!hostdot) {
       failf(data, "aws-sigv4: service missing in parameters and hostname");
@@ -666,13 +658,12 @@ CURLcode Curl_output_aws_sigv4(struct Curl_easy *data, bool proxy)
       result = CURLE_URL_MALFORMAT;
       goto fail;
     }
-    service.str = (char *)hostname;
-    service.len = len;
+    memcpy(service, hostname, len);
+    service[len] = '\0';
 
-    infof(data, "aws_sigv4: picked service %.*s from host",
-          (int)service.len, service.str);
+    infof(data, "aws_sigv4: picked service %s from host", service);
 
-    if(!region.len) {
+    if(!region[0]) {
       const char *reg = hostdot + 1;
       const char *hostreg = strchr(reg, '.');
       if(!hostreg) {
@@ -686,29 +677,25 @@ CURLcode Curl_output_aws_sigv4(struct Curl_easy *data, bool proxy)
         result = CURLE_URL_MALFORMAT;
         goto fail;
       }
-      region.str = (char *)reg;
-      region.len = len;
-      infof(data, "aws_sigv4: picked region %.*s from host",
-            (int)region.len, region.str);
+      memcpy(region, reg, len);
+      region[len] = '\0';
+      infof(data, "aws_sigv4: picked region %s from host", region);
     }
   }
 
   Curl_http_method(data, conn, &method, &httpreq);
 
-  payload_hash = parse_content_sha_hdr(data, provider1.str, provider1.len,
-                                       &payload_hash_len);
+  /* AWS S3 requires a x-amz-content-sha256 header, and supports special
+   * values like UNSIGNED-PAYLOAD */
+  sign_as_s3 = (strcasecompare(provider0, "aws") &&
+                strcasecompare(service, "s3"));
+
+  payload_hash = parse_content_sha_hdr(data, provider1, &payload_hash_len);
 
   if(!payload_hash) {
-    /* AWS S3 requires a x-amz-content-sha256 header, and supports special
-     * values like UNSIGNED-PAYLOAD */
-    bool sign_as_s3 = ((provider0.len == 3) &&
-                       strncasecompare(provider0.str, "aws", 3)) &&
-      ((service.len == 2) && strncasecompare(service.str, "s3", 2));
-
     if(sign_as_s3)
-      result = calc_s3_payload_hash(data, httpreq,
-                                    provider1.str, provider1.len,
-                                    sha_hash, sha_hex, content_sha256_hdr);
+      result = calc_s3_payload_hash(data, httpreq, provider1, sha_hash,
+                                    sha_hex, content_sha256_hdr);
     else
       result = calc_payload_hash(data, sha_hash, sha_hex);
     if(result)
@@ -739,8 +726,7 @@ CURLcode Curl_output_aws_sigv4(struct Curl_easy *data, bool proxy)
     goto fail;
   }
 
-  result = make_headers(data, hostname, timestamp,
-                        provider1.str, provider1.len,
+  result = make_headers(data, hostname, timestamp, provider1,
                         &date_header, content_sha256_hdr,
                         &canonical_headers, &signed_headers);
   if(result)
@@ -785,18 +771,14 @@ CURLcode Curl_output_aws_sigv4(struct Curl_easy *data, bool proxy)
 
   DEBUGF(infof(data, "Canonical request: %s", canonical_request));
 
-  request_type = aprintf("%.*s4_request", (int)provider0.len, provider0.str);
+  /* provider 0 lowercase */
+  Curl_strntolower(provider0, provider0, strlen(provider0));
+  request_type = aprintf("%s4_request", provider0);
   if(!request_type)
     goto fail;
 
-  /* provider0 is lowercased *after* aprintf() so that the buffer can be
-     written to */
-  Curl_strntolower(request_type, request_type, provider0.len);
-
-  credential_scope = aprintf("%s/%.*s/%.*s/%s",
-                             date, (int)region.len, region.str,
-                             (int)service.len, service.str,
-                             request_type);
+  credential_scope = aprintf("%s/%s/%s/%s",
+                             date, region, service, request_type);
   if(!credential_scope)
     goto fail;
 
@@ -806,41 +788,42 @@ CURLcode Curl_output_aws_sigv4(struct Curl_easy *data, bool proxy)
 
   sha256_to_hex(sha_hex, sha_hash);
 
+  /* provider 0 uppercase */
+  Curl_strntoupper(provider0, provider0, strlen(provider0));
+
   /*
    * Google allows using RSA key instead of HMAC, so this code might change
    * in the future. For now we only support HMAC.
    */
-  str_to_sign = aprintf("%.*s4-HMAC-SHA256\n" /* Algorithm */
+  str_to_sign = aprintf("%s4-HMAC-SHA256\n" /* Algorithm */
                         "%s\n" /* RequestDateTime */
                         "%s\n" /* CredentialScope */
                         "%s",  /* HashedCanonicalRequest in hex */
-                        (int)provider0.len, provider0.str,
+                        provider0,
                         timestamp,
                         credential_scope,
                         sha_hex);
-  if(!str_to_sign)
+  if(!str_to_sign) {
     goto fail;
+  }
 
-  /* make provider0 part done uppercase */
-  Curl_strntoupper(str_to_sign, provider0.str, provider0.len);
-
-  secret = aprintf("%.*s4%s", (int)provider0.len, provider0.str,
+  /* provider 0 uppercase */
+  secret = aprintf("%s4%s", provider0,
                    data->state.aptr.passwd ?
                    data->state.aptr.passwd : "");
   if(!secret)
     goto fail;
-  /* make provider0 part done uppercase */
-  Curl_strntoupper(secret, provider0.str, provider0.len);
 
   HMAC_SHA256(secret, strlen(secret), date, strlen(date), sign0);
-  HMAC_SHA256(sign0, sizeof(sign0), region.str, region.len, sign1);
-  HMAC_SHA256(sign1, sizeof(sign1), service.str, service.len, sign0);
+  HMAC_SHA256(sign0, sizeof(sign0), region, strlen(region), sign1);
+  HMAC_SHA256(sign1, sizeof(sign1), service, strlen(service), sign0);
   HMAC_SHA256(sign0, sizeof(sign0), request_type, strlen(request_type), sign1);
   HMAC_SHA256(sign1, sizeof(sign1), str_to_sign, strlen(str_to_sign), sign0);
 
   sha256_to_hex(sha_hex, sign0);
 
-  auth_headers = aprintf("Authorization: %.*s4-HMAC-SHA256 "
+  /* provider 0 uppercase */
+  auth_headers = aprintf("Authorization: %s4-HMAC-SHA256 "
                          "Credential=%s/%s, "
                          "SignedHeaders=%s, "
                          "Signature=%s\r\n"
@@ -851,7 +834,7 @@ CURLcode Curl_output_aws_sigv4(struct Curl_easy *data, bool proxy)
                           */
                          "%s"
                          "%s", /* optional sha256 header includes \r\n */
-                         (int)provider0.len, provider0.str,
+                         provider0,
                          user,
                          credential_scope,
                          Curl_dyn_ptr(&signed_headers),
@@ -861,9 +844,6 @@ CURLcode Curl_output_aws_sigv4(struct Curl_easy *data, bool proxy)
   if(!auth_headers) {
     goto fail;
   }
-  /* provider 0 uppercase */
-  Curl_strntoupper(&auth_headers[sizeof("Authorization: ") - 1],
-                   provider0.str, provider0.len);
 
   Curl_safefree(data->state.aptr.userpwd);
   data->state.aptr.userpwd = auth_headers;

@@ -55,7 +55,4 @@ int main(void)
 
 # RETURN VALUE
 
-curl_multi_setopt(3) returns a CURLMcode indicating success or error.
-
-CURLM_OK (0) means everything was OK, non-zero means an error occurred, see
-libcurl-errors(3).
+Returns CURLM_OK if the option is supported, and CURLM_UNKNOWN_OPTION if not.

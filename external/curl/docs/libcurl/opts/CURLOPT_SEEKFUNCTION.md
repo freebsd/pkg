@@ -10,9 +10,7 @@ See-also:
   - CURLOPT_SEEKDATA (3)
   - CURLOPT_STDERR (3)
 Protocol:
-  - FTP
-  - HTTP
-  - SFTP
+  - All
 Added-in: 7.18.0
 ---
 
@@ -100,7 +98,4 @@ int main(void)
 
 # RETURN VALUE
 
-curl_easy_setopt(3) returns a CURLcode indicating success or error.
-
-CURLE_OK (0) means everything was OK, non-zero means an error occurred, see
-libcurl-errors(3).
+Returns CURLE_OK if the option is supported, and CURLE_UNKNOWN_OPTION if not.

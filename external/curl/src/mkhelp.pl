@@ -43,8 +43,8 @@ print <<HEAD
 /*
  * NEVER EVER edit this manually, fix the mkhelp.pl script instead!
  */
-#include "tool_hugehelp.h"
 #ifdef USE_MANUAL
+#include "tool_hugehelp.h"
 #include "tool_help.h"
 
 HEAD

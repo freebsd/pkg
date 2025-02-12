@@ -142,11 +142,7 @@ int main(int argc, char *argv[])
     /* gethostbyname() resolve */
     struct hostent *he;
 
-#ifdef __AMIGA__
-    he = gethostbyname((unsigned char *)host);
-#else
     he = gethostbyname(host);
-#endif
 
     rc = !he;
   }

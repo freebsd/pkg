@@ -72,9 +72,9 @@ static int serverlogslocked = 0;
 
 static long prevtestno = -1;    /* previous test number we served */
 static long prevpartno = -1;    /* previous part number we served */
-static bool prevbounce = FALSE; /* instructs the server to override the
-                                   requested part number to prevpartno + 1 when
-                                   prevtestno and current test are the same */
+static bool prevbounce = FALSE; /* instructs the server to increase the part
+                                   number for a test in case the identical
+                                   testno+partno request shows up again */
 
 #define RCMD_NORMALREQ 0 /* default request, use the tests file normally */
 #define RCMD_IDLE      1 /* told to sit idle */
@@ -641,10 +641,12 @@ static void storerequest(char *reqbuf, size_t totalsize)
 
 storerequest_cleanup:
 
-  res = fclose(dump);
+  do {
+    res = fclose(dump);
+  } while(res && ((error = errno) == EINTR));
   if(res)
     logmsg("Error closing file %s error: %d %s",
-           dumpfile, errno, strerror(errno));
+           dumpfile, error, strerror(error));
 }
 
 /* return 0 on success, non-zero on failure */
@@ -974,10 +976,12 @@ static int send_doc(curl_socket_t sock, struct httprequest *req)
     req->rtp_buffersize = 0;
   }
 
-  res = fclose(dump);
+  do {
+    res = fclose(dump);
+  } while(res && ((error = errno) == EINTR));
   if(res)
     logmsg("Error closing file %s error: %d %s",
-           responsedump, errno, strerror(errno));
+           responsedump, error, strerror(error));
 
   if(got_exit_signal) {
     free(ptr);
@@ -1319,8 +1323,9 @@ int main(int argc, char *argv[])
 
       if(prevbounce) {
         /* bounce treatment requested */
-        if(req.testno == prevtestno) {
-          req.partno = prevpartno + 1;
+        if((req.testno == prevtestno) &&
+           (req.partno == prevpartno)) {
+          req.partno++;
           logmsg("BOUNCE part number to %ld", req.partno);
         }
         else {

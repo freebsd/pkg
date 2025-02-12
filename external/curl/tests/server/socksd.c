@@ -78,8 +78,6 @@
 #include "server_sockaddr.h"
 #include "warnless.h"
 
-#include "tool_binmode.h"
-
 /* include memdebug.h last */
 #include "memdebug.h"
 
@@ -719,37 +717,16 @@ static bool incoming(curl_socket_t listenfd)
     FD_ZERO(&fds_err);
 
     /* there's always a socket to wait for */
-#if defined(__DJGPP__)
-#pragma GCC diagnostic push
-#pragma GCC diagnostic ignored "-Warith-conversion"
-#endif
     FD_SET(sockfd, &fds_read);
-#if defined(__DJGPP__)
-#pragma GCC diagnostic pop
-#endif
 
     for(i = 0; i < 2; i++) {
       if(c[i].used) {
         curl_socket_t fd = c[i].clientfd;
-#if defined(__DJGPP__)
-#pragma GCC diagnostic push
-#pragma GCC diagnostic ignored "-Warith-conversion"
-#endif
         FD_SET(fd, &fds_read);
-#if defined(__DJGPP__)
-#pragma GCC diagnostic pop
-#endif
         if((int)fd > maxfd)
           maxfd = (int)fd;
         fd = c[i].remotefd;
-#if defined(__DJGPP__)
-#pragma GCC diagnostic push
-#pragma GCC diagnostic ignored "-Warith-conversion"
-#endif
         FD_SET(fd, &fds_read);
-#if defined(__DJGPP__)
-#pragma GCC diagnostic pop
-#endif
         if((int)fd > maxfd)
           maxfd = (int)fd;
       }
@@ -1100,11 +1077,11 @@ int main(int argc, char *argv[])
 #ifdef _WIN32
   win32_init();
   atexit(win32_cleanup);
-#endif
 
-  CURL_SET_BINMODE(stdin);
-  CURL_SET_BINMODE(stdout);
-  CURL_SET_BINMODE(stderr);
+  setmode(fileno(stdin), O_BINARY);
+  setmode(fileno(stdout), O_BINARY);
+  setmode(fileno(stderr), O_BINARY);
+#endif
 
   install_signal_handlers(false);
 
@@ -1167,7 +1144,7 @@ socks5_cleanup:
     sclose(sock);
 
 #ifdef USE_UNIX_SOCKETS
-  if(unlink_socket && socket_domain == AF_UNIX && unix_socket) {
+  if(unlink_socket && socket_domain == AF_UNIX) {
     error = unlink(unix_socket);
     logmsg("unlink(%s) = %d (%s)", unix_socket, error, strerror(error));
   }

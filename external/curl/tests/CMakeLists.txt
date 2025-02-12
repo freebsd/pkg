@@ -39,7 +39,7 @@ add_subdirectory(libtest)
 add_subdirectory(unit)
 add_subdirectory(certs EXCLUDE_FROM_ALL)
 
-function(curl_add_runtests _targetname _test_flags)
+function(add_runtests _targetname _test_flags)
   if(CURL_TEST_BUNDLES)
     set(_test_flags "${_test_flags} -bundle")
   endif()
@@ -49,7 +49,7 @@ function(curl_add_runtests _targetname _test_flags)
   # Skip walking through dependent targets before running tests in CI.
   # This avoids: GNU Make doing a slow re-evaluation of all targets and
   # skipping them, MSBuild doing a re-evaluation, and actually rebuilding them.
-  set(_depends "")
+  unset(_depends)
   if(NOT _targetname STREQUAL "test-ci")
     set(_depends "testdeps")
   endif()
@@ -68,8 +68,8 @@ function(curl_add_runtests _targetname _test_flags)
   )
 endfunction()
 
-function(curl_add_pytests _targetname _test_flags)
-  set(_depends "")
+function(add_pytest _targetname _test_flags)
+  unset(_depends)
   if(NOT _targetname STREQUAL "pytest-ci")
     set(_depends "test-http-clients")
   endif()
@@ -102,14 +102,14 @@ configure_file(
   "${CMAKE_CURRENT_SOURCE_DIR}/configurehelp.pm.in"
   "${CMAKE_CURRENT_BINARY_DIR}/configurehelp.pm" @ONLY)
 
-curl_add_runtests(test-quiet     "-a -s")
-curl_add_runtests(test-am        "-a -am")
-curl_add_runtests(test-full      "-a -p -r")
+add_runtests(test-quiet     "-a -s")
+add_runtests(test-am        "-a -am")
+add_runtests(test-full      "-a -p -r")
 # ~flaky means that it ignores results of tests using the flaky keyword
-curl_add_runtests(test-nonflaky  "-a -p ~flaky ~timing-dependent")
-curl_add_runtests(test-ci        "-a -p ~flaky ~timing-dependent -r -rm -j20")
-curl_add_runtests(test-torture   "-a -t -j20")
-curl_add_runtests(test-event     "-a -e")
+add_runtests(test-nonflaky  "-a -p ~flaky ~timing-dependent")
+add_runtests(test-ci        "-a -p ~flaky ~timing-dependent -r -rm -j20")
+add_runtests(test-torture   "-a -t -j20")
+add_runtests(test-event     "-a -e")
 
-curl_add_pytests(curl-pytest      "")
-curl_add_pytests(curl-pytest-ci   "-v")
+add_pytest(curl-pytest      "")
+add_pytest(curl-pytest-ci   "-v")

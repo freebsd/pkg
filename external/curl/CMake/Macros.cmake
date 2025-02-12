@@ -27,7 +27,7 @@
 # This macro is intended to be called multiple times with a sequence of
 # possibly dependent header files.  Some headers depend on others to be
 # compiled correctly.
-macro(check_include_file_concat_curl _file _variable)
+macro(check_include_file_concat _file _variable)
   check_include_files("${CURL_INCLUDES};${_file}" ${_variable})
   if(${_variable})
     list(APPEND CURL_INCLUDES ${_file})
@@ -62,25 +62,21 @@ macro(curl_internal_test _curl_test)
   endif()
 endmacro()
 
-macro(curl_dependency_option _option_name _find_name _desc_name)
-  set(${_option_name} "AUTO" CACHE STRING "Build curl with ${_desc_name} support (AUTO, ON or OFF)")
-  set_property(CACHE ${_option_name} PROPERTY STRINGS "AUTO" "ON" "OFF")
+macro(curl_dependency_option _dependency)
+  set(CURL_${_dependency} "AUTO" CACHE STRING "Build curl with ${_dependency} support (AUTO, ON or OFF)")
+  set_property(CACHE CURL_${_dependency} PROPERTY STRINGS "AUTO" "ON" "OFF")
 
-  if(${_option_name} STREQUAL "AUTO")
-    find_package(${_find_name})
-  elseif(${_option_name})
-    find_package(${_find_name} REQUIRED)
+  if(CURL_${_dependency} STREQUAL "AUTO")
+    find_package(${_dependency})
+  elseif(CURL_${_dependency})
+    find_package(${_dependency} REQUIRED)
   endif()
 endmacro()
 
-# Convert the passed paths to libpath linker options and add them to CMAKE_REQUIRED_*.
+# Convert the passed paths to libpath linker options and add them to CMAKE_REQUIRED_LINK_OPTIONS.
 macro(curl_required_libpaths _libpaths_arg)
-  if(CMAKE_VERSION VERSION_LESS 3.31)
-    set(_libpaths "${_libpaths_arg}")
-    foreach(_libpath IN LISTS _libpaths)
-      list(APPEND CMAKE_REQUIRED_LINK_OPTIONS "${CMAKE_LIBRARY_PATH_FLAG}${_libpath}")
-    endforeach()
-  else()
-    list(APPEND CMAKE_REQUIRED_LINK_DIRECTORIES "${_libpaths_arg}")
-  endif()
+  set(_libpaths "${_libpaths_arg}")
+  foreach(_libpath IN LISTS _libpaths)
+    list(APPEND CMAKE_REQUIRED_LINK_OPTIONS "${CMAKE_LIBRARY_PATH_FLAG}${_libpath}")
+  endforeach()
 endmacro()
