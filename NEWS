@@ -1,3 +1,11 @@
+Changes from 2.0.99.3 to 2.0.99.4
+- sort list in manifest for reproducibility
+- limite shlibs_requires to file starting with "lib"
+- on !pkgbase ignore lib32 compat if the lib32 set is not installed
+- update: be functionnal again with less than 300MB of memory available
+- small performances improvements in package loading and checksum validation
+- sqlite: update to 3.49.0
+
 Changes from 2.0.99.2 to 2.0.99.3
 - elf: prevent absolute path for DT_NEEDED libs
 - curl: be verbose about the fetch error
