@@ -18,11 +18,11 @@ DEPFILES_NONEMPTY=	$(DEPFILES) /nonexistent
 .SUFFIXES: .pico .in .bin .binin .so.1 .so.1in .suppress.in .suppress
 
 .c.o:
-	$(CC) -Wall -Wextra -std=gnu11 -D_GNU_SOURCE=1 -MT $@ -MD -MP -MF $*.Tpo -o $@ -c $(CFLAGS) $(LOCAL_CFLAGS) $<
+	$(CC) -Wall -Wextra -std=gnu17 -D_GNU_SOURCE=1 -MT $@ -MD -MP -MF $*.Tpo -o $@ -c $(CFLAGS) $(LOCAL_CFLAGS) $<
 	mv $*.Tpo $*.Po
 
 .c.pico:
-	$(CC) -Wall -Wextra -std=gnu11 -D_GNU_SOURCE=1 -MT $@ -MD -MP -MF $*.Tpico -o $@ -c $(CFLAGS) $(LOCAL_CFLAGS) $(SHOBJ_CFLAGS) $<
+	$(CC) -Wall -Wextra -std=gnu17 -D_GNU_SOURCE=1 -MT $@ -MD -MP -MF $*.Tpico -o $@ -c $(CFLAGS) $(LOCAL_CFLAGS) $(SHOBJ_CFLAGS) $<
 	mv $*.Tpico $*.Ppico
 
 .in:
