@@ -6,6 +6,8 @@
 *.pico
 *.po
 *.Po
+*.Tpo
+*.Tpico
 *.lo
 *.la
 *.core
