@@ -227,7 +227,9 @@ analyse_elf(struct pkg *pkg, const char *fpath)
 			continue;
 		}
 
-
+		if (strncmp(shlib, "lib", 3) != 0) {
+			continue;
+		}
 
 		if (dyn->d_tag == DT_SONAME) {
 			pkg_addshlib_provided(pkg, shlib, flags);
@@ -237,8 +239,6 @@ analyse_elf(struct pkg *pkg, const char *fpath)
 			 * neovim is an example, skip them for now
 			 */
 			if (*shlib == '/')
-				continue;
-			if (strncmp(shlib, "lib", 3) != 0)
 				continue;
 			pkg_addshlib_required(pkg, shlib, flags);
 		}
