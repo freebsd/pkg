@@ -111,6 +111,7 @@ bool mkdirat_p(int fd, const char *path);
 int get_socketpair(int *);
 int checkflags(const char *mode, int *optr);
 bool match_ucl_lists(const char *buffer, const ucl_object_t *globs, const ucl_object_t *regexes);
+bool pkg_match_paths_list(const ucl_object_t *paths, const char *file);
 char *get_dirname(char *dir);
 char *rtrimspace(char *buf);
 void hidden_tempfile(char *buf, int buflen, const char *path);

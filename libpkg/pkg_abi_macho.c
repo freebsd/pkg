@@ -301,8 +301,12 @@ cleanup:
 }
 
 static int
-analyse_macho(int fd, struct pkg *pkg)
+analyse_macho(int fd, struct pkg *pkg, char **provided,
+    enum pkg_shlib_flags *provided_flags)
 {
+	assert(*provided == NULL);
+	assert(*provided_flags == PKG_SHLIB_FLAGS_NONE);
+
 	ssize_t x;
 	pkg_error_t ret = EPKG_END;
 
@@ -381,7 +385,11 @@ analyse_macho(int fd, struct pkg *pkg)
 				xasprintf(&lib_with_version, "%s-%"PRIuFAST16".%"PRIuFAST16, basename, dylib->current_version.major, dylib->current_version.minor);
 			}
 			if (LC_ID_DYLIB == loadcmd) {
-				pkg_addshlib_provided(pkg, lib_with_version, PKG_SHLIB_FLAGS_NONE);
+				if (*provided != NULL) {
+					pkg_emit_error("malformed Macho-O file has multiple LC_ID_DYLIB entries");
+					goto cleanup;
+				}
+				*provided = xstrdup(lib_with_version);
 			} else {
 				pkg_addshlib_required(pkg, lib_with_version, PKG_SHLIB_FLAGS_NONE);
 			}
@@ -416,8 +424,12 @@ pkg_analyse_init_macho(__unused const char *stage)
 }
 
 int
-pkg_analyse_macho(const bool developer_mode, struct pkg *pkg, const char *fpath)
+pkg_analyse_macho(const bool developer_mode, struct pkg *pkg,
+    const char *fpath, char **provided, enum pkg_shlib_flags *provided_flags)
 {
+	assert(*provided == NULL);
+	assert(*provided_flags == PKG_SHLIB_FLAGS_NONE);
+
 	int ret = EPKG_OK;
 	pkg_debug(1, "Analysing Mach-O %s", fpath);
 
@@ -428,7 +440,7 @@ pkg_analyse_macho(const bool developer_mode, struct pkg *pkg, const char *fpath)
 		// Be consistent with analyse_elf and return no error if fpath cannot be opened
 		return ret;
 	} else {
-		ret = analyse_macho(fd, pkg);
+		ret = analyse_macho(fd, pkg, provided, provided_flags);
 		if (-1 == close(fd)) {
 			pkg_emit_errno("close_pkg_analyse_macho", fpath);
 			ret = EPKG_FATAL;
