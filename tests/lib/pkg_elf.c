@@ -48,6 +48,8 @@ ATF_TC_BODY(analyse_elf, tc)
 {
 	struct pkg *p = NULL;
 	char *binpath = NULL;
+	char *provided = NULL;
+	enum pkg_shlib_flags provided_flags = PKG_SHLIB_FLAGS_NONE;
 
 	ctx.abi.os = PKG_OS_FREEBSD;
 	ctx.abi.arch = PKG_ARCH_AMD64;
@@ -58,27 +60,37 @@ ATF_TC_BODY(analyse_elf, tc)
 	ATF_REQUIRE(p != NULL);
 
 	ATF_REQUIRE_EQ(tll_length(p->shlibs_required), 0);
+	ATF_REQUIRE_EQ(pkg_analyse_elf(false, p, binpath, &provided, &provided_flags), EPKG_OK);
 	ATF_REQUIRE_EQ(tll_length(p->shlibs_provided), 0);
-	ATF_REQUIRE_EQ(pkg_analyse_elf(false, p, binpath), EPKG_OK);
-	ATF_REQUIRE_EQ(tll_length(p->shlibs_provided), 1);
-	ATF_REQUIRE_STREQ(tll_front(p->shlibs_provided), "libtestfbsd.so.1");
+	ATF_REQUIRE_STREQ(provided, "libtestfbsd.so.1");
+	ATF_REQUIRE_EQ(provided_flags, PKG_SHLIB_FLAGS_NONE);
 	ATF_REQUIRE_EQ(tll_length(p->shlibs_required), 1);
 	ATF_REQUIRE_STREQ(tll_front(p->shlibs_required), "libc.so.7");
+	free(provided);
 	free(binpath);
 
+	provided = NULL;
+	provided_flags = PKG_SHLIB_FLAGS_NONE;
 	xasprintf(&binpath, "%s/Makefile", atf_tc_get_config_var(tc, "srcdir"));
-	ATF_REQUIRE_EQ(pkg_analyse_elf(false, p, binpath), EPKG_END);
-	ATF_REQUIRE_EQ(tll_length(p->shlibs_provided), 1);
+	ATF_REQUIRE_EQ(pkg_analyse_elf(false, p, binpath, &provided, &provided_flags), EPKG_END);
+	ATF_REQUIRE_EQ(tll_length(p->shlibs_provided), 0);
+	ATF_REQUIRE_EQ(provided, NULL);
+	ATF_REQUIRE_EQ(provided_flags, PKG_SHLIB_FLAGS_NONE);
 	ATF_REQUIRE_EQ(tll_length(p->shlibs_required), 1);
+	free(provided);
 	free(binpath);
 
+	provided = NULL;
+	provided_flags = PKG_SHLIB_FLAGS_NONE;
 	xasprintf(&binpath, "%s/frontend/libtest2fbsd.so.1", atf_tc_get_config_var(tc, "srcdir"));
-	ATF_REQUIRE_EQ(pkg_analyse_elf(false, p, binpath), EPKG_OK);
-	ATF_REQUIRE_EQ(tll_length(p->shlibs_provided), 2);
-	ATF_REQUIRE_STREQ(tll_back(p->shlibs_provided), "libtest2fbsd.so.1");
+	ATF_REQUIRE_EQ(pkg_analyse_elf(false, p, binpath, &provided, &provided_flags), EPKG_OK);
+	ATF_REQUIRE_EQ(tll_length(p->shlibs_provided), 0);
+	ATF_REQUIRE_STREQ(provided, "libtest2fbsd.so.1");
+	ATF_REQUIRE_EQ(provided_flags, PKG_SHLIB_FLAGS_NONE);
 	ATF_REQUIRE_EQ(tll_length(p->shlibs_required), 2);
 	ATF_REQUIRE_STREQ(tll_front(p->shlibs_required), "libc.so.7");
 	ATF_REQUIRE_STREQ(tll_back(p->shlibs_required), "libfoo.so.1");
+	free(provided);
 	free(binpath);
 
 	pkg_free(p);

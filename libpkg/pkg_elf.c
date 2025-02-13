@@ -65,8 +65,12 @@ typedef Elf32_Nhdr Elf_Note;
 #endif
 
 static int
-analyse_elf(struct pkg *pkg, const char *fpath)
+analyse_elf(struct pkg *pkg, const char *fpath, char **provided,
+    enum pkg_shlib_flags *provided_flags)
 {
+	assert(*provided == NULL);
+	assert(*provided_flags == PKG_SHLIB_FLAGS_NONE);
+
 	int ret = EPKG_OK;
 
 	pkg_debug(1, "analysing elf %s", fpath);
@@ -232,7 +236,13 @@ analyse_elf(struct pkg *pkg, const char *fpath)
 		}
 
 		if (dyn->d_tag == DT_SONAME) {
-			pkg_addshlib_provided(pkg, shlib, flags);
+			if (*provided != NULL) {
+				pkg_emit_error("malformed ELF file %s has "
+				    "multiple DT_SONAME entries", fpath);
+				goto cleanup;
+			}
+			*provided = xstrdup(shlib);
+			*provided_flags = flags;
 		} else if (dyn->d_tag == DT_NEEDED) {
 			/*
 			 * some packages record fullpath to a lib
@@ -659,9 +669,13 @@ int pkg_analyse_init_elf(__unused const char* stage) {
 	return (EPKG_OK);
 }
 
-int pkg_analyse_elf(const bool developer_mode, struct pkg *pkg, const char *fpath)
+int pkg_analyse_elf(const bool developer_mode, struct pkg *pkg,
+    const char *fpath, char **provided, enum pkg_shlib_flags *provided_flags)
 {
-	int ret = analyse_elf(pkg, fpath);
+	assert(*provided == NULL);
+	assert(*provided_flags == PKG_SHLIB_FLAGS_NONE);
+
+	int ret = analyse_elf(pkg, fpath, provided, provided_flags);
 	if (developer_mode) {
 		if (ret != EPKG_OK && ret != EPKG_END) {
 			return EPKG_WARN;

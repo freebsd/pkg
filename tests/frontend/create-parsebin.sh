@@ -13,6 +13,8 @@ genmanifest() {
     local PKG_SHA256=""
     local NL="
 "
+    local hide_provided="$1"
+    shift
 
     bin_meta "$1"
     while [ -n "$1" ]; do
@@ -28,6 +30,10 @@ genmanifest() {
         PKG_FLATSIZE=$((${PKG_FLATSIZE}+${file1_size}))
         shift
     done
+
+    if [ -n "${hide_provided}" ]; then
+        Xshlibs_provided=""
+    fi
 
 	cat << EOF > ${PKG_NAME}.manifest
 name: ${PKG_NAME}
@@ -94,15 +100,17 @@ EOF
 do_check() {
     local PKG_NAME=$1
     local file1=$(atf_get_srcdir)/$2
+    local hide_provided=$3
 
-    genmanifest ${PKG_NAME} ${file1}
+    genmanifest ${PKG_NAME} "${hide_provided}" ${file1}
 
     # cat ${PKG_NAME}.manifest
     atf_check \
         -o empty \
         -e empty \
         -s exit:0 \
-        pkg -o IGNORE_OSMAJOR=1 -o ABI_FILE=${file1} create -M ./${PKG_NAME}.manifest -r ${TMPDIR}
+        pkg -o IGNORE_OSMAJOR=1 -o ABI_FILE=${file1} $hide_provided \
+        create -M ./${PKG_NAME}.manifest -r ${TMPDIR}
 
     # cat ${PKG_NAME}.expected
     atf_check \
@@ -122,5 +130,6 @@ create_from_bin_body() {
         macosfatlib.bin "macosfatlib.bin#x86_64" "macosfatlib.bin#aarch64"
     do
         do_check testbin $bin
+        do_check testbin $bin "-o SHLIB_PROVIDE_PATHS_NATIVE=/does/not/exist"
     done
 }

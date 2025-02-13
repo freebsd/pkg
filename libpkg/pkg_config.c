@@ -430,6 +430,26 @@ static struct config_entry c[] = {
 	},
 	{
 		PKG_ARRAY,
+		"SHLIB_PROVIDE_PATHS_NATIVE",
+		NULL,
+	},
+	{
+		PKG_ARRAY,
+		"SHLIB_PROVIDE_PATHS_COMPAT_32",
+		NULL,
+	},
+	{
+		PKG_ARRAY,
+		"SHLIB_PROVIDE_PATHS_COMPAT_LINUX",
+		NULL,
+	},
+	{
+		PKG_ARRAY,
+		"SHLIB_PROVIDE_PATHS_COMPAT_LINUX_32",
+		NULL,
+	},
+	{
+		PKG_ARRAY,
 		"SHLIB_REQUIRE_IGNORE_GLOB",
 		NULL,
 	},

@@ -97,6 +97,75 @@ match_ucl_lists(const char *buf, const ucl_object_t *globs, const ucl_object_t *
 	return (false);
 }
 
+/* Check if two absolute directory paths are equal, collapsing consecutive
+ * path separators and ignoring trailing path separators. */
+static bool
+dir_paths_equal(const char *a, const char *b)
+{
+	assert(a != NULL);
+	assert(b != NULL);
+	assert(*a == '/');
+	assert(*b == '/');
+
+	while (*a == *b) {
+		if (*a == '\0') {
+			return (true);
+		}
+
+		/* Skip over consecutive path separators */
+		if (*a == '/') {
+			while (*a == '/') a++;
+			while (*b == '/') b++;
+		} else {
+			a++;
+			b++;
+		}
+	}
+
+	/* There may be trailing path separators on one path but not the other */
+	while (*a == '/') a++;
+	while (*b == '/') b++;
+
+	return (*a == *b);
+}
+
+/*
+ * Given a ucl list of directory paths, check if the file is in one of the
+ * directories in the list (subdirectories not included).
+ *
+ * Asserts that file is an absolute path that does not end in /. */
+bool
+pkg_match_paths_list(const ucl_object_t *paths, const char *file)
+{
+	assert(file != NULL);
+	assert(file[0] == '/');
+
+	char *copy = xstrdup(file);
+	char *final_slash = strrchr(copy, '/');
+	assert(final_slash != NULL);
+	assert(*(final_slash + 1) != '\0');
+	if (final_slash == copy) {
+		*(final_slash + 1) = '\0';
+	} else {
+		*final_slash = '\0';
+	}
+	const char *dirname = copy;
+
+	bool found = false;
+	const ucl_object_t *cur;
+	ucl_object_iter_t it = NULL;
+	while ((cur = ucl_object_iterate(paths, &it, true))) {
+		if (dir_paths_equal(dirname, ucl_object_tostring(cur))) {
+			found = true;
+			break;
+		}
+	}
+
+	free(copy);
+
+	return (found);
+}
+
 int
 pkg_mkdirs(const char *_path)
 {

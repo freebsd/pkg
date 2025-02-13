@@ -22,6 +22,7 @@
 #include "private/binfmt.h"
 #include "private/event.h"
 #include "private/pkg.h"
+#include "private/utils.h"
 #include "xmalloc.h"
 
 #define _PATH_UNAME "/usr/bin/uname"
@@ -448,7 +449,8 @@ pkg_analyse_files(struct pkgdb *db __unused, struct pkg *pkg, const char *stage)
 	bool failures = false;
 
 	int (*pkg_analyse_init)(const char *stage);
-	int (*pkg_analyse)(const bool developer_mode, struct pkg *pkg, const char *fpath);
+	int (*pkg_analyse)(const bool developer_mode, struct pkg *pkg,
+	    const char *fpath, char **provided, enum pkg_shlib_flags *flags);
 	int (*pkg_analyse_close)();
 
 	if (0 == strncmp(pkg->abi, "Darwin", 6)) {
@@ -479,6 +481,11 @@ pkg_analyse_files(struct pkgdb *db __unused, struct pkg *pkg, const char *stage)
 		pkg->flags &= ~(PKG_CONTAINS_ELF_OBJECTS |
 		    PKG_CONTAINS_STATIC_LIBS | PKG_CONTAINS_LA);
 
+	/* shlibs that are provided by files in the package but not matched by
+	   SHLIB_PROVIDE_PATHS_* are still used to filter the shlibs
+	   required by the package */
+	stringlist_t internal_provided = tll_init();
+
 	while (pkg_files(pkg, &file) == EPKG_OK) {
 		if (stage != NULL)
 			snprintf(fpath, sizeof(fpath), "%s/%s", stage,
@@ -486,9 +493,42 @@ pkg_analyse_files(struct pkgdb *db __unused, struct pkg *pkg, const char *stage)
 		else
 			strlcpy(fpath, file->path, sizeof(fpath));
 
-		ret = pkg_analyse(ctx.developer_mode, pkg, fpath);
+		char *provided = NULL;
+		enum pkg_shlib_flags provided_flags = PKG_SHLIB_FLAGS_NONE;
+		ret = pkg_analyse(ctx.developer_mode, pkg, fpath, &provided, &provided_flags);
 		if (EPKG_WARN == ret) {
 			failures = true;
+		}
+
+		if (provided != NULL) {
+			const ucl_object_t *paths = NULL;
+
+			switch (provided_flags) {
+			case PKG_SHLIB_FLAGS_NONE:
+				paths = pkg_config_get("SHLIB_PROVIDE_PATHS_NATIVE");
+				break;
+			case PKG_SHLIB_FLAGS_COMPAT_32:
+				paths = pkg_config_get("SHLIB_PROVIDE_PATHS_COMPAT_32");
+				break;
+			case PKG_SHLIB_FLAGS_COMPAT_LINUX:
+				paths = pkg_config_get("SHLIB_PROVIDE_PATHS_COMPAT_LINUX");
+				break;
+			case (PKG_SHLIB_FLAGS_COMPAT_32 | PKG_SHLIB_FLAGS_COMPAT_LINUX):
+				paths = pkg_config_get("SHLIB_PROVIDE_PATHS_COMPAT_LINUX_32");
+				break;
+			default:
+				assert(0);
+			}
+			assert(paths != NULL);
+
+			/* If the corresponding PATHS option isn't set (i.e. an empty ucl array)
+			   don't do any filtering for backwards compatibility. */
+			if (ucl_array_size(paths) == 0 || pkg_match_paths_list(paths, file->path)) {
+				pkg_addshlib_provided(pkg, provided, provided_flags);
+				free(provided);
+			} else {
+				tll_push_back(internal_provided, provided);
+			}
 		}
 	}
 
@@ -497,7 +537,8 @@ pkg_analyse_files(struct pkgdb *db __unused, struct pkg *pkg, const char *stage)
 	 */
 	tll_foreach(pkg->shlibs_required, s)
 	{
-		if (stringlist_contains(&pkg->shlibs_provided, s->item)) {
+		if (stringlist_contains(&pkg->shlibs_provided, s->item) ||
+		    stringlist_contains(&internal_provided, s->item)) {
 			pkg_debug(2,
 			    "remove %s from required shlibs as the "
 			    "package %s provides this library itself",
@@ -520,6 +561,8 @@ pkg_analyse_files(struct pkgdb *db __unused, struct pkg *pkg, const char *stage)
 			}
 		}
 	}
+
+	tll_free_and_free(internal_provided, free);
 
 	/*
 	 * if the package is not supposed to provide share libraries then
