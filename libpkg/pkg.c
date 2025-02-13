@@ -996,10 +996,6 @@ pkg_addshlib_provided(struct pkg *pkg, const char *name,
 	assert(pkg != NULL);
 	assert(name != NULL && name[0] != '\0');
 
-	/* ignore files which are not starting with lib */
-	if (strncmp(name, "lib", 3) != 0)
-		return (EPKG_OK);
-
 	char *full_name = pkg_shlib_name_with_flags(name, flags);
 
 	/* silently ignore duplicates in case of shlibs */
