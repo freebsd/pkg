@@ -46,6 +46,7 @@ scripts/sbin/pkg2ng
 # Generated files:
 
 /autosetup/jimsh0
+/configure_call
 /Kyuafile
 /Makefile
 /compat/Makefile
@@ -95,6 +96,7 @@ scripts/sbin/pkg2ng
 /tests/frontend/libtest2fbsd.so.1
 /tests/frontend/libtestfbsd.so.1
 /tests/frontend/test_environment.sh
+/tests/hash
 /tests/lua
 /tests/metalog
 /tests/merge
