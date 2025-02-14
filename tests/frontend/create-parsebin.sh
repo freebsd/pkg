@@ -131,5 +131,6 @@ create_from_bin_body() {
     do
         do_check testbin $bin
         do_check testbin $bin "-o SHLIB_PROVIDE_PATHS_NATIVE=/does/not/exist"
+        do_check testbin $bin "-o SHLIB_PROVIDE_IGNORE_GLOB=*"
     done
 }
