@@ -966,14 +966,6 @@ pkg_addshlib_required(struct pkg *pkg, const char *name,
 
 	char *full_name = pkg_shlib_name_with_flags(name, flags);
 
-	if (match_ucl_lists(full_name,
-	    pkg_config_get("SHLIB_REQUIRE_IGNORE_GLOB"),
-	    pkg_config_get("SHLIB_REQUIRE_IGNORE_REGEX"))) {
-		dbg(3, "ignoring shlib %s required by package %s", full_name, pkg->name);
-		free(full_name);
-		return (EPKG_OK);
-	}
-
 	/* silently ignore duplicates in case of shlibs */
 	tll_foreach(pkg->shlibs_required, s) {
 		if (STREQ(s->item, full_name)) {

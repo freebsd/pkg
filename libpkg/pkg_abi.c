@@ -546,6 +546,16 @@ pkg_analyse_files(struct pkgdb *db __unused, struct pkg *pkg, const char *stage)
 			tll_remove_and_free(pkg->shlibs_required, s, free);
 			continue;
 		}
+		if (match_ucl_lists(s->item,
+		    pkg_config_get("SHLIB_REQUIRE_IGNORE_GLOB"),
+		    pkg_config_get("SHLIB_REQUIRE_IGNORE_REGEX"))) {
+			pkg_debug(2,
+			    "remove %s from required shlibs for package %s as it "
+			    "is matched by SHLIB_REQUIRE_IGNORE_GLOB/REGEX.",
+			    s->item, pkg->name);
+			tll_remove_and_free(pkg->shlibs_required, s, free);
+			continue;
+		}
 		file = NULL;
 		while (pkg_files(pkg, &file) == EPKG_OK) {
 			if ((lib = strstr(file->path, s->item)) != NULL &&
@@ -563,6 +573,19 @@ pkg_analyse_files(struct pkgdb *db __unused, struct pkg *pkg, const char *stage)
 	}
 
 	tll_free_and_free(internal_provided, free);
+
+	tll_foreach(pkg->shlibs_provided, s) {
+		if (match_ucl_lists(s->item,
+		    pkg_config_get("SHLIB_PROVIDE_IGNORE_GLOB"),
+		    pkg_config_get("SHLIB_PROVIDE_IGNORE_REGEX"))) {
+			pkg_debug(2,
+			    "remove %s from provided shlibs for package %s as it "
+			    "is matched by SHLIB_PROVIDE_IGNORE_GLOB/REGEX.",
+			    s->item, pkg->name);
+			tll_remove_and_free(pkg->shlibs_provided, s, free);
+			continue;
+		}
+	}
 
 	/*
 	 * if the package is not supposed to provide share libraries then
