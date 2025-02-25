@@ -1,3 +1,6 @@
+Changes from 2.0.99.4 to 2.0.99.5
+- allow to filter out and fine control which libs are provided
+
 Changes from 2.0.99.3 to 2.0.99.4
 - sort list in manifest for reproducibility
 - limite shlibs_requires to file starting with "lib"
