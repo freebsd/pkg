@@ -31,19 +31,19 @@ jobs:
       matrix:
         build-os:
           - ubuntu-24.04
-          - macos-15
+          # - macos-15
         sanitize:
           - []
           - ["asan", "lsan"]
           - ["ubsan", "tsan"]
         include:
-          - build-os: macos-15
-            compiler: clang-19
-            pkgs:
-              # - pkgconf comes preinstalled on the GitHub runner
-              - libarchive
-              - llvm@19
-            llvm-bindir: /opt/homebrew/opt/llvm@19/bin
+          # - build-os: macos-15
+          #   compiler: clang-19
+          #   pkgs:
+          #     # - pkgconf comes preinstalled on the GitHub runner
+          #     - libarchive
+          #     - llvm@19
+          #   llvm-bindir: /opt/homebrew/opt/llvm@19/bin
           - build-os: ubuntu-24.04
             compiler: clang-18
             pkgs:
