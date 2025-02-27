@@ -312,7 +312,7 @@ show_version_info(int version)
 	char *config = pkg_config_dump();
 	printf("%s\n", config);
 	free(config);
-	
+
 	show_plugin_info();
 	show_repository_info();
 
@@ -722,24 +722,25 @@ main(int argc, char **argv)
 		do_activation_test(argc);
 
 	if (argc >= 1 && STREQ(argv[0], "bootstrap")) {
-		int force = 0, yes = 0;
+		bool force = false;
+		bool yes = false;
 		while ((ch = getopt(argc, argv, "fy")) != -1) {
 			switch (ch) {
 			case 'f':
-				force = 1;
+				force = true;
 				break;
 			case 'y':
-				yes = 1;
+				yes = true;
 				break;
 			default:
 				errx(EXIT_FAILURE, "Invalid argument provided");
 				break;
 			}
 		}
-		if (force == 0) {
+		if (!force) {
 			printf("pkg(8) already installed, use -f to force.\n");
 			exit(EXIT_SUCCESS);
-		} else if (force == 1) {
+		} else {
 			if (access("/usr/sbin/pkg", R_OK) == 0) {
 				/* Only 10.0+ supported 'bootstrap -f' */
 #if __FreeBSD_version < 1000502
@@ -821,4 +822,3 @@ main(int argc, char **argv)
 
 	return (ret);
 }
-
