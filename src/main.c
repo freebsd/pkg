@@ -736,7 +736,7 @@ main(int argc, char **argv)
 				break;
 			}
 		}
-		if (yes == 0 && force == 0) {
+		if (force == 0) {
 			printf("pkg(8) already installed, use -f to force.\n");
 			exit(EXIT_SUCCESS);
 		} else if (force == 1) {

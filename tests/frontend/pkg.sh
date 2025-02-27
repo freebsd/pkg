@@ -7,7 +7,8 @@ tests_init \
 	pkg_config_defaults \
 	pkg_create_manifest_bad_syntax \
 	pkg_repo_load_order \
-	double_entry
+	double_entry \
+	bootstrap
 
 pkg_no_database_body() {
         atf_skip_on Linux Test fails on Linux
@@ -100,4 +101,10 @@ PKG_ENV : {
 }
 EOF
 	atf_check -o ignore pkg -C ./pkg.conf -vv
+}
+
+bootstrap_body()
+{
+	atf_check -o ignore pkg bootstrap
+	atf_check -o ignore pkg bootstrap -y
 }
