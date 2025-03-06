@@ -131,6 +131,7 @@ _pkg_config_opts() {
 		'LOCK_RETRIES[number of retries to obtain a lock]:retries' \
 		'LOCK_WAIT[wait time to regain a lock]:wait time (seconds):' \
 		'METALOG[if set, write a METALOG of the extracted files]:string' \
+		'MINOR_OSVER_CONFIRM[ask user to confirm minor FreeBSD OS version mismatch]:boolean:(yes no)' \
 		'NAMESERVER[hostname or IPv\[46\] address of a nameserver for DNS resolution]:name server:_hosts' \
 		'OSVERSION[FreeBSD OS version]:version' \
 		'PERMISSIVE[ignore conflicts while registering a package]:boolean:(yes no)' \
