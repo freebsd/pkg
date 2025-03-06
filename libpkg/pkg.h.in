@@ -737,6 +737,7 @@ int pkgdb_set2(struct pkgdb *db, struct pkg *pkg, ...);
  * @return Previous debug level.
  */
 int64_t pkg_set_debug_level(int64_t debug_level);
+int pkg_set_ignore_osversion(bool ignore);
 int pkg_set_rootdir(const char *rootdir);
 int pkg_set_ischrooted(bool ischrooted);
 

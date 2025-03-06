@@ -1827,6 +1827,18 @@ pkg_set_debug_level(int64_t new_debug_level) {
 }
 
 int
+pkg_set_ignore_osversion(bool ignore) {
+	if (pkg_initialized())
+		return (EPKG_FATAL);
+
+	ucl_object_insert_key(config,
+		ucl_object_frombool(ignore),
+		"IGNORE_OSVERSION", sizeof("IGNORE_OSVERSION"), false);
+
+	return (EPKG_OK);
+}
+
+int
 pkg_set_rootdir(const char *rootdir) {
 	if (pkg_initialized())
 		return (EPKG_FATAL);
