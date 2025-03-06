@@ -34,14 +34,6 @@ Experimental support in curl means:
 
 ## Experimental features right now
 
-### The Hyper HTTP backend
-
-Graduation requirements:
-
-- HTTP/1 and HTTP/2 support, including multiplexing
-
-(Hyper is marked for deprecation. It cannot graduate.)
-
 ###  HTTP/3 support (non-ngtcp2 backends)
 
 Graduation requirements:
@@ -71,3 +63,28 @@ Graduation requirements:
 
 - it has been given time to mature, so no earlier than April 2025 (twelve
   months after being added here)
+
+## SSL session import/export
+
+Import/Export of SSL sessions tickets in libcurl and curl command line
+option '--ssl-session <filename>' for faster TLS handshakes and use
+of TLSv1.3/QUIC Early Data (0-RTT).
+
+Graduation requirements:
+
+- the implementation is considered safe
+
+- feedback from users saying that session export works for their use cases
+
+## HTTPS RR
+
+HTTPS records support is a requirement for ECH but is provided as a
+stand-alone feature that is itself considered EXPERIMENTAL.
+
+Graduation requirements:
+
+- HTTPS records work for DoH, c-ares and the threaded resolver
+
+- HTTPS records can control ALPN and port number, at least
+
+- There are options to control HTTPS use

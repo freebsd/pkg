@@ -425,9 +425,9 @@ static int writeit(struct testcase *test, struct tftphdr * volatile *dpp,
   bfs[current].counter = ct;      /* set size of data to write */
   current = !current;             /* switch to other buffer */
   if(bfs[current].counter != BF_FREE)     /* if not free */
-    write_behind(test, convert);     /* flush it */
+    write_behind(test, convert);          /* flush it */
   bfs[current].counter = BF_ALLOC;        /* mark as alloc'd */
-  *dpp =  &bfs[current].buf.hdr;
+  *dpp = &bfs[current].buf.hdr;
   return ct;                      /* this is a lie of course */
 }
 
@@ -448,21 +448,20 @@ static ssize_t write_behind(struct testcase *test, int convert)
   struct tftphdr *dp;
 
   b = &bfs[nextone];
-  if(b->counter < -1)            /* anything to flush? */
+  if(b->counter < -1)             /* anything to flush? */
     return 0;                     /* just nop if nothing to do */
 
   if(!test->ofile) {
     char outfile[256];
     msnprintf(outfile, sizeof(outfile), "%s/upload.%ld", logdir, test->testno);
-#ifdef _WIN32
-    test->ofile = open(outfile, O_CREAT|O_RDWR|O_BINARY, 0777);
-#else
-    test->ofile = open(outfile, O_CREAT|O_RDWR, 0777);
-#endif
+    test->ofile = open(outfile, O_CREAT|O_RDWR|CURL_O_BINARY, 0777);
     if(test->ofile == -1) {
       logmsg("Couldn't create and/or open file %s for upload!", outfile);
       return -1; /* failure! */
     }
+  }
+  else if(test->ofile <= 0) {
+    return -1; /* failure! */
   }
 
   count = b->counter;             /* remember byte count */
@@ -512,21 +511,20 @@ skipit:
 
 static int synchnet(curl_socket_t f /* socket to flush */)
 {
-
-#if defined(HAVE_IOCTLSOCKET)
-  unsigned long i;
-#else
-  int i;
-#endif
   int j = 0;
   char rbuf[PKTSIZE];
   srvr_sockaddr_union_t fromaddr;
   curl_socklen_t fromaddrlen;
 
   for(;;) {
-#if defined(HAVE_IOCTLSOCKET)
+#if defined(HAVE_IOCTLSOCKET_CAMEL_FIONBIO)
+    long i;
+    (void) IoctlSocket(f, FIONBIO, &i);
+#elif defined(HAVE_IOCTLSOCKET)
+    unsigned long i;
     (void) ioctlsocket(f, FIONREAD, &i);
 #else
+    int i;
     (void) ioctl(f, FIONREAD, &i);
 #endif
     if(i) {
@@ -953,7 +951,7 @@ static int do_tftp(struct testcase *test, struct tftphdr *tp, ssize_t size)
       break;
   } while(1);
 
-  if(*cp) {
+  if(*cp || !mode) {
     nak(EBADOP);
     fclose(server);
     return 3;

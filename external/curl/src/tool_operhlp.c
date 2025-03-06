@@ -66,7 +66,7 @@ bool output_expected(const char *url, const char *uploadfile)
 
 bool stdin_upload(const char *uploadfile)
 {
-  return (!strcmp(uploadfile, "-") || !strcmp(uploadfile, "."));
+  return !strcmp(uploadfile, "-") || !strcmp(uploadfile, ".");
 }
 
 /* Convert a CURLUcode into a CURLcode */
@@ -238,23 +238,6 @@ CURLcode get_url_file_name(struct GlobalConfig *global,
       }
 #endif /* _WIN32 || MSDOS */
 
-      /* in case we built debug enabled, we allow an environment variable
-       * named CURL_TESTDIR to prefix the given filename to put it into a
-       * specific directory
-       */
-#ifdef DEBUGBUILD
-      {
-        char *tdir = curl_getenv("CURL_TESTDIR");
-        if(tdir) {
-          char *alt = aprintf("%s/%s", tdir, *filename);
-          Curl_safefree(*filename);
-          *filename = alt;
-          curl_free(tdir);
-          if(!*filename)
-            return CURLE_OUT_OF_MEMORY;
-        }
-      }
-#endif
       return CURLE_OK;
     }
   }

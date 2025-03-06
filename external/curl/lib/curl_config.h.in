@@ -1,8 +1,5 @@
 /* lib/curl_config.h.in.  Generated from configure.ac by autoheader.  */
 
-/* Ignore c-ares deprecation warnings */
-#undef CARES_NO_DEPRECATED
-
 /* to enable curl debug memory tracking */
 #undef CURLDEBUG
 
@@ -162,9 +159,6 @@
 /* cpu-machine-OS */
 #undef CURL_OS
 
-/* IP address type in sockaddr */
-#undef CURL_SA_FAMILY_T
-
 /* built with multiple SSL backends */
 #undef CURL_WITH_MULTI_SSL
 
@@ -173,6 +167,9 @@
 
 /* Define to the type of arg 2 for gethostname. */
 #undef GETHOSTNAME_TYPE_ARG2
+
+/* Define to 1 if symbol `ADDRESS_FAMILY' exists */
+#undef HAVE_ADDRESS_FAMILY
 
 /* Define to 1 if you have the alarm function. */
 #undef HAVE_ALARM
@@ -214,27 +211,14 @@
 /* Define to 1 if you have the CloseSocket camel case function. */
 #undef HAVE_CLOSESOCKET_CAMEL
 
-/* Define to 1 if you have the <crypto.h> header file. */
-#undef HAVE_CRYPTO_H
-
 /* Define to 1 if you have the fseeko declaration */
 #undef HAVE_DECL_FSEEKO
-
-/* Define to 1 if you have the declaration of `getpwuid_r', and to 0 if you
-   don't. */
-#undef HAVE_DECL_GETPWUID_R
-
-/* "Set if getpwuid_r() declaration is missing" */
-#undef HAVE_DECL_GETPWUID_R_MISSING
 
 /* if you have <dirent.h> */
 #undef HAVE_DIRENT_H
 
 /* Define to 1 if you have the <dlfcn.h> header file. */
 #undef HAVE_DLFCN_H
-
-/* Define to 1 if you have the <err.h> header file. */
-#undef HAVE_ERR_H
 
 /* Define to 1 if you have the `eventfd' function. */
 #undef HAVE_EVENTFD
@@ -277,9 +261,6 @@
 
 /* Define to 1 if you have the `geteuid' function. */
 #undef HAVE_GETEUID
-
-/* Define to 1 if you have the gethostbyname function. */
-#undef HAVE_GETHOSTBYNAME
 
 /* Define to 1 if you have the gethostbyname_r function. */
 #undef HAVE_GETHOSTBYNAME_R
@@ -347,9 +328,6 @@
 /* if you have GNU GSS */
 #undef HAVE_GSSGNU
 
-/* Define to 1 if you have the <hyper.h> header file. */
-#undef HAVE_HYPER_H
-
 /* Define to 1 if you have the <idn2.h> header file. */
 #undef HAVE_IDN2_H
 
@@ -367,9 +345,6 @@
 
 /* Define to 1 if you have the <inttypes.h> header file. */
 #undef HAVE_INTTYPES_H
-
-/* Define to 1 if you have the ioctl function. */
-#undef HAVE_IOCTL
 
 /* Define to 1 if you have the ioctlsocket function. */
 #undef HAVE_IOCTLSOCKET
@@ -422,9 +397,6 @@
 
 /* Define to 1 if you have the <libpsl.h> header file. */
 #undef HAVE_LIBPSL_H
-
-/* Define to 1 if using LibreSSL. */
-#undef HAVE_LIBRESSL
 
 /* Define to 1 if you have the <librtmp/rtmp.h> header file. */
 #undef HAVE_LIBRTMP_RTMP_H
@@ -527,9 +499,6 @@
 /* Define to 1 if you have the <openssl/x509.h> header file. */
 #undef HAVE_OPENSSL_X509_H
 
-/* Define to 1 if you have the <pem.h> header file. */
-#undef HAVE_PEM_H
-
 /* Define to 1 if you have the `pipe' function. */
 #undef HAVE_PIPE
 
@@ -557,11 +526,14 @@
 /* Define to 1 if you have the <quiche.h> header file. */
 #undef HAVE_QUICHE_H
 
+/* Define to 1 if you have the `realpath' function. */
+#undef HAVE_REALPATH
+
 /* Define to 1 if you have the recv function. */
 #undef HAVE_RECV
 
-/* Define to 1 if you have the <rsa.h> header file. */
-#undef HAVE_RSA_H
+/* Define to 1 if symbol `sa_family_t' exists */
+#undef HAVE_SA_FAMILY_T
 
 /* Define to 1 if you have the `sched_yield' function. */
 #undef HAVE_SCHED_YIELD
@@ -577,9 +549,6 @@
 
 /* Define to 1 if you have the `sendmsg' function. */
 #undef HAVE_SENDMSG
-
-/* Define to 1 if you have the <setjmp.h> header file. */
-#undef HAVE_SETJMP_H
 
 /* Define to 1 if you have the `setlocale' function. */
 #undef HAVE_SETLOCALE
@@ -613,12 +582,6 @@
 
 /* Define to 1 if you have the socketpair function. */
 #undef HAVE_SOCKETPAIR
-
-/* Define to 1 if you have the `SSL_ech_set1_echconfig' function. */
-#undef HAVE_SSL_ECH_SET1_ECHCONFIG
-
-/* Define to 1 if you have the <ssl.h> header file. */
-#undef HAVE_SSL_H
 
 /* Define to 1 if you have the `SSL_set0_wbio' function. */
 #undef HAVE_SSL_SET0_WBIO
@@ -726,9 +689,6 @@
 /* Define to 1 if you have the <sys/utime.h> header file. */
 #undef HAVE_SYS_UTIME_H
 
-/* Define to 1 if you have the <sys/wait.h> header file. */
-#undef HAVE_SYS_WAIT_H
-
 /* Define to 1 if you have the <sys/xattr.h> header file. */
 #undef HAVE_SYS_XATTR_H
 
@@ -782,9 +742,6 @@
 
 /* Define this symbol if your OS supports changing the contents of argv */
 #undef HAVE_WRITABLE_ARGV
-
-/* Define to 1 if you have the <x509.h> header file. */
-#undef HAVE_X509_H
 
 /* if libzstd is in use */
 #undef HAVE_ZSTD
@@ -881,9 +838,6 @@
 /* enable HTTPS RR support */
 #undef USE_HTTPSRR
 
-/* if hyper is in use */
-#undef USE_HYPER
-
 /* Define if you want to enable IPv6 support */
 #undef USE_IPV6
 
@@ -917,29 +871,11 @@
 /* if ngtcp2 is in use */
 #undef USE_NGTCP2
 
-/* if ngtcp2_crypto_boringssl is in use */
-#undef USE_NGTCP2_CRYPTO_BORINGSSL
-
-/* if ngtcp2_crypto_gnutls is in use */
-#undef USE_NGTCP2_CRYPTO_GNUTLS
-
-/* if ngtcp2_crypto_quictls is in use */
-#undef USE_NGTCP2_CRYPTO_QUICTLS
-
-/* if ngtcp2_crypto_wolfssl is in use */
-#undef USE_NGTCP2_CRYPTO_WOLFSSL
-
-/* if ngtcp2 + nghttp3 is in use */
-#undef USE_NGTCP2_H3
-
 /* Use OpenLDAP-specific code */
 #undef USE_OPENLDAP
 
 /* if OpenSSL is in use */
 #undef USE_OPENSSL
-
-/* if openssl quic + nghttp3 is in use */
-#undef USE_OPENSSL_H3
 
 /* if openssl QUIC is in use */
 #undef USE_OPENSSL_QUIC
@@ -956,6 +892,9 @@
 /* enable Secure Transport */
 #undef USE_SECTRANSP
 
+/* if SSL session export support is available */
+#undef USE_SSLS_EXPORT
+
 /* if you want POSIX threaded DNS lookup */
 #undef USE_THREADS_POSIX
 
@@ -967,6 +906,9 @@
 
 /* Use Unix domain sockets */
 #undef USE_UNIX_SOCKETS
+
+/* if Watt-32 is in use */
+#undef USE_WATT32
 
 /* Define to 1 if you are building a Windows target with crypto API support.
    */
@@ -981,10 +923,6 @@
 
 /* Use Windows LDAP implementation */
 #undef USE_WIN32_LDAP
-
-/* Define to 1 if you are building a Windows target without large file
-   support. */
-#undef USE_WIN32_SMALL_FILES
 
 /* to enable SSPI support */
 #undef USE_WINDOWS_SSPI

@@ -34,17 +34,21 @@
 # - `LIBGSASL_INCLUDE_DIRS`:  The libgsasl include directories.
 # - `LIBGSASL_LIBRARIES`:     The libgsasl library names.
 # - `LIBGSASL_LIBRARY_DIRS`:  The libgsasl library directories.
+# - `LIBGSASL_PC_REQUIRES`:   The libgsasl pkg-config packages.
 # - `LIBGSASL_CFLAGS`:        Required compiler flags.
 # - `LIBGSASL_VERSION`:       Version of libgsasl.
+
+set(LIBGSASL_PC_REQUIRES "libgsasl")
 
 if(CURL_USE_PKGCONFIG AND
    NOT DEFINED LIBGSASL_INCLUDE_DIR AND
    NOT DEFINED LIBGSASL_LIBRARY)
   find_package(PkgConfig QUIET)
-  pkg_check_modules(LIBGSASL "libgsasl")
+  pkg_check_modules(LIBGSASL ${LIBGSASL_PC_REQUIRES})
 endif()
 
 if(LIBGSASL_FOUND)
+  set(Libgsasl_FOUND TRUE)
   string(REPLACE ";" " " LIBGSASL_CFLAGS "${LIBGSASL_CFLAGS}")
   message(STATUS "Found Libgsasl (via pkg-config): ${LIBGSASL_INCLUDE_DIRS} (found version \"${LIBGSASL_VERSION}\")")
 else()

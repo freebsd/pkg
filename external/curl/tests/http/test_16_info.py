@@ -52,7 +52,7 @@ class TestInfo:
 
     # download plain file
     @pytest.mark.parametrize("proto", ['http/1.1', 'h2', 'h3'])
-    def test_16_01_info_download(self, env: Env, httpd, nghttpx, repeat, proto):
+    def test_16_01_info_download(self, env: Env, httpd, nghttpx, proto):
         if proto == 'h3' and not env.have_h3():
             pytest.skip("h3 not supported")
         count = 2
@@ -67,7 +67,7 @@ class TestInfo:
 
     # download plain file with a 302 redirect
     @pytest.mark.parametrize("proto", ['http/1.1', 'h2', 'h3'])
-    def test_16_02_info_302_download(self, env: Env, httpd, nghttpx, repeat, proto):
+    def test_16_02_info_302_download(self, env: Env, httpd, nghttpx, proto):
         if proto == 'h3' and not env.have_h3():
             pytest.skip("h3 not supported")
         count = 2
@@ -83,7 +83,7 @@ class TestInfo:
             self.check_stat(idx, s, r, dl_size=30, ul_size=0)
 
     @pytest.mark.parametrize("proto", ['http/1.1', 'h2', 'h3'])
-    def test_16_03_info_upload(self, env: Env, httpd, nghttpx, proto, repeat):
+    def test_16_03_info_upload(self, env: Env, httpd, nghttpx, proto):
         if proto == 'h3' and not env.have_h3():
             pytest.skip("h3 not supported")
         count = 2
@@ -104,7 +104,7 @@ class TestInfo:
 
     # download plain file via http: ('time_appconnect' is 0)
     @pytest.mark.parametrize("proto", ['http/1.1'])
-    def test_16_04_info_http_download(self, env: Env, httpd, nghttpx, repeat, proto):
+    def test_16_04_info_http_download(self, env: Env, httpd, nghttpx, proto):
         count = 2
         curl = CurlClient(env=env)
         url = f'http://{env.domain1}:{env.http_port}/data.json?[0-{count-1}]'
@@ -144,7 +144,7 @@ class TestInfo:
             'time_pretransfer', 'time_starttransfer', 'time_total'
         }
         # stat keys where we expect a positive value
-        pos_keys = {'time_pretransfer', 'time_starttransfer', 'time_total'}
+        pos_keys = {'time_pretransfer', 'time_starttransfer', 'time_total', 'time_queue'}
         if s['num_connects'] > 0:
             pos_keys.add('time_connect')
             if url.startswith('https:'):
@@ -167,3 +167,9 @@ class TestInfo:
         # assert that transfer start is before total
         assert s['time_starttransfer'] <= s['time_total'], f'"time_starttransfer" '\
             f'greater than "time_total", {s}'
+        if s['num_redirects'] > 0:
+            assert s['time_queue'] < s['time_starttransfer'], f'"time_queue" '\
+                f'greater/equal than "time_starttransfer", {s}'
+        else:
+            assert s['time_queue'] <= s['time_starttransfer'], f'"time_queue" '\
+                f'greater than "time_starttransfer", {s}'

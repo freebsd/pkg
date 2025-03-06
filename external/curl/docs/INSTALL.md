@@ -180,6 +180,11 @@ library check.
 
 Building for Windows XP is required as a minimum.
 
+You can build curl with:
+
+- Microsoft Visual Studio 2008 v9.0 or later (`_MSC_VER >= 1500`)
+- MinGW-w64
+
 ## Building Windows DLLs and C runtime (CRT) linkage issues
 
  As a general rule, building a DLL with static CRT linkage is highly
@@ -211,17 +216,34 @@ Run `make`
 
 ## MS-DOS
 
-Requires DJGPP in the search path and pointing to the Watt-32 stack via
-`WATT_PATH=c:/djgpp/net/watt`.
+You can use either autotools or cmake:
 
-Run `make -f Makefile.dist djgpp` in the root curl dir.
+    ./configure \
+      CC=/path/to/djgpp/bin/i586-pc-msdosdjgpp-gcc \
+      AR=/path/to/djgpp/bin/i586-pc-msdosdjgpp-ar \
+      RANLIB=/path/to/djgpp/bin/i586-pc-msdosdjgpp-ranlib \
+      WATT_ROOT=/path/to/djgpp/net/watt \
+      --host=i586-pc-msdosdjgpp \
+      --with-openssl=/path/to/djgpp \
+      --with-zlib=/path/to/djgpp \
+      --without-libpsl \
+      --disable-shared
 
-For build configuration options, please see the mingw-w64 section.
+    cmake . \
+      -DCMAKE_SYSTEM_NAME=DOS \
+      -DCMAKE_C_COMPILER_TARGET=i586-pc-msdosdjgpp \
+      -DCMAKE_C_COMPILER=/path/to/djgpp/bin/i586-pc-msdosdjgpp-gcc \
+      -DWATT_ROOT=/path/to/djgpp/net/watt \
+      -DOPENSSL_INCLUDE_DIR=/path/to/djgpp/include \
+      -DOPENSSL_SSL_LIBRARY=/path/to/djgpp/lib/libssl.a \
+      -DOPENSSL_CRYPTO_LIBRARY=/path/to/djgpp/lib/libcrypto.a \
+      -DZLIB_INCLUDE_DIR=/path/to/djgpp/include \
+      -DZLIB_LIBRARY=/path/to/djgpp/lib/libz.a \
+      -DCURL_USE_LIBPSL=OFF
 
 Notes:
 
- - DJGPP 2.04 beta has a `sscanf()` bug so the URL parsing is not done
-   properly. Use DJGPP 2.03 until they fix it.
+ - Requires DJGPP 2.04 or upper.
 
  - Compile Watt-32 (and OpenSSL) with the same version of DJGPP. Otherwise
    things go wrong because things like FS-extensions and `errno` values have
@@ -229,9 +251,31 @@ Notes:
 
 ## AmigaOS
 
-Run `make -f Makefile.dist amiga` in the root curl dir.
+You can use either autotools or cmake:
 
-For build configuration options, please see the mingw-w64 section.
+    ./configure \
+      CC=/opt/amiga/bin/m68k-amigaos-gcc \
+      AR=/opt/amiga/bin/m68k-amigaos-ar \
+      RANLIB=/opt/amiga/bin/m68k-amigaos-ranlib \
+      --host=m68k-amigaos \
+      --with-amissl \
+      CFLAGS='-O0 -msoft-float -mcrt=clib2' \
+      CPPFLAGS=-I/path/to/AmiSSL/Developer/include \
+      LDFLAGS=-L/path/to/AmiSSL/Developer/lib/AmigaOS3 \
+      LIBS='-lnet -lm -latomic' \
+      --without-libpsl \
+      --disable-shared
+
+    cmake . \
+      -DAMIGA=1 \
+      -DCMAKE_SYSTEM_NAME=Generic \
+      -DCMAKE_C_COMPILER_TARGET=m68k-unknown-amigaos \
+      -DCMAKE_C_COMPILER=/opt/amiga/bin/m68k-amigaos-gcc \
+      -DCMAKE_C_FLAGS='-O0 -msoft-float -mcrt=clib2' \
+      -DAMISSL_INCLUDE_DIR=/path/to/AmiSSL/Developer/include \
+      -DAMISSL_STUBS_LIBRARY=/path/to/AmiSSL/Developer/lib/AmigaOS3/libamisslstubs.a \
+      -DAMISSL_AUTO_LIBRARY=/path/to/AmiSSL/Developer/lib/AmigaOS3/libamisslauto.a \
+      -DCURL_USE_LIBPSL=OFF
 
 ## Disabling Specific Protocols in Windows builds
 
@@ -260,7 +304,7 @@ necessary to make the definition of the preprocessor symbol `USE_LWIPSOCK`
 visible to libcurl and curl compilation processes. To set this definition you
 have the following alternatives:
 
- - Modify `lib/config-win32.h` and `src/config-win32.h`
+ - Modify `lib/config-win32.h`
  - Modify `winbuild/Makefile.vc`
  - Modify the "Preprocessor Definitions" in the libcurl project
 
@@ -323,6 +367,15 @@ make -j8
 make install
 ```
 
+With CMake:
+
+```bash
+cmake . \
+  -DCMAKE_OSX_ARCHITECTURES=x86_64 \
+  -DCMAKE_OSX_DEPLOYMENT_TARGET=10.8 \
+  -DCMAKE_OSX_SYSROOT="$(xcrun --sdk macosx --show-sdk-path)"
+```
+
 The above command lines build curl for macOS platform with `x86_64`
 architecture and `10.8` as deployment target.
 
@@ -337,6 +390,15 @@ export CFLAGS="-arch $ARCH -isysroot $(xcrun -sdk $SDK --show-sdk-path) -m$SDK-v
 ./configure --host=$ARCH-apple-darwin --prefix $(pwd)/artifacts --with-secure-transport
 make -j8
 make install
+```
+
+With CMake (3.16 or upper recommended):
+
+```bash
+cmake . \
+  -DCMAKE_SYSTEM_NAME=iOS \
+  -DCMAKE_OSX_ARCHITECTURES=arm64 \
+  -DCMAKE_OSX_DEPLOYMENT_TARGET=11.0
 ```
 
 Another example for watchOS simulator for macs with Apple Silicon:
@@ -357,14 +419,26 @@ In all above, the built libraries and executables can be found in the
 
 # Android
 
-When building curl for Android it is recommended to use a Linux/macOS
-environment since using curl's `configure` script is the easiest way to build
-curl for Android. Before you can build curl for Android, you need to install
-the Android NDK first. This can be done using the SDK Manager that is part of
-Android Studio. Once you have installed the Android NDK, you need to figure
-out where it has been installed and then set up some environment variables
-before launching `configure`. On macOS, those variables could look like this
-to compile for `aarch64` and API level 29:
+When building curl for Android you can you CMake or curl's `configure` script.
+
+Before you can build curl for Android, you need to install the Android NDK
+first. This can be done using the SDK Manager that is part of Android Studio.
+Once you have installed the Android NDK, you need to figure out where it has
+been installed and then set up some environment variables before launching
+the build.
+
+Examples to compile for `aarch64` and API level 29:
+
+with CMake, where `ANDROID_NDK_HOME` points into your NDK:
+
+    cmake . \
+      -DANDROID_ABI=arm64-v8a \
+      -DANDROID_PLATFORM=android-29 \
+      -DCMAKE_TOOLCHAIN_FILE="$ANDROID_NDK_HOME/build/cmake/android.toolchain.cmake" \
+      -DCURL_ENABLE_SSL=OFF \
+      -DCURL_USE_LIBPSL=OFF
+
+with `configure`, on macOS:
 
 ```bash
 export ANDROID_NDK_HOME=~/Library/Android/sdk/ndk/25.1.8937393 # Point into your NDK.
@@ -372,8 +446,8 @@ export HOST_TAG=darwin-x86_64 # Same tag for Apple Silicon. Other OS values here
 export TOOLCHAIN=$ANDROID_NDK_HOME/toolchains/llvm/prebuilt/$HOST_TAG
 export AR=$TOOLCHAIN/bin/llvm-ar
 export AS=$TOOLCHAIN/bin/llvm-as
-export CC=$TOOLCHAIN/bin/aarch64-linux-android21-clang
-export CXX=$TOOLCHAIN/bin/aarch64-linux-android21-clang++
+export CC=$TOOLCHAIN/bin/aarch64-linux-android29-clang
+export CXX=$TOOLCHAIN/bin/aarch64-linux-android29-clang++
 export LD=$TOOLCHAIN/bin/ld
 export RANLIB=$TOOLCHAIN/bin/llvm-ranlib
 export STRIP=$TOOLCHAIN/bin/llvm-strip
@@ -572,20 +646,22 @@ This is a probably incomplete list of known CPU architectures and operating
 systems that curl has been compiled for. If you know a system curl compiles
 and runs on, that is not listed, please let us know.
 
-## 101 Operating Systems
+## 104 Operating Systems
 
-    AIX, AmigaOS, Android, ArcoOS, Aros, Atari FreeMiNT, BeOS, Blackberry 10,
-    Blackberry Tablet OS, Cell OS, CheriBSD, Chrome OS, Cisco IOS, DG/UX,
-    Dragonfly BSD, DR DOS, eCOS, FreeBSD, FreeDOS, FreeRTOS, Fuchsia, Garmin OS,
-    Genode, Haiku, HardenedBSD, HP-UX, Hurd, illumos, Integrity, iOS, ipadOS, IRIX,
-    Linux, Lua RTOS, Mac OS 9, macOS, Mbed, Meego, Micrium, MINIX, Moblin, MorphOS,
-    MPE/iX, MS-DOS, NCR MP-RAS, NetBSD, Netware, NextStep, Nintendo Switch,
-    NonStop OS, NuttX, OpenBSD, OpenStep, Orbis OS, OS/2, OS/400, OS21, Plan 9,
-    PlayStation Portable, QNX, Qubes OS, ReactOS, Redox, RISC OS, ROS, RTEMS,
-    Sailfish OS, SCO Unix, Serenity, SINIX-Z, SkyOS, Solaris, Sortix, SunOS,
-    Syllable OS, Symbian, Tizen, TPF, Tru64, tvOS, ucLinux, Ultrix, UNICOS,
-    UnixWare, VMS, vxWorks, watchOS, Wear OS, WebOS, Wii system software, Wii U,
-    Windows, Windows CE, Xbox System, Xenix, Zephyr, z/OS, z/TPF, z/VM, z/VSE
+    AIX, AmigaOS, Android, ArcoOS, Aros, Atari FreeMiNT, BeOS, Blackberry
+    10, Blackberry Tablet OS, Cell OS, CheriBSD, Chrome OS, Cisco IOS,
+    DG/UX, DR DOS, Dragonfly BSD, eCOS, FreeBSD, FreeDOS, FreeRTOS, Fuchsia,
+    Garmin OS, Genode, Haiku, HardenedBSD, HP-UX, Hurd, IBM I, illumos,
+    Integrity, iOS, ipadOS, IRIX, Linux, Lua RTOS, Mac OS 9, macOS, Maemo,
+    Mbed, Meego, Micrium, MINIX, Minoca, Moblin, MorphOS, MPE/iX, MS-DOS,
+    NCR MP-RAS, NetBSD, Netware, NextStep, Nintendo 3DS Nintendo Switch,
+    NonStop OS, NuttX, OpenBSD, OpenStep, Orbis OS, OS/2, OS21, Plan 9,
+    PlayStation Portable, QNX, Qubes OS, ReactOS, Redox, RISC OS, ROS,
+    RTEMS, Sailfish OS, SCO Unix, Serenity, SINIX-Z, SkyOS, software,
+    Solaris, Sortix, SunOS, Syllable OS, Symbian, Tizen, TPF, Tru64, tvOS,
+    ucLinux, Ultrix, UNICOS, UnixWare, VMS, vxWorks, watchOS, Wear OS,
+    WebOS, Wii system Wii U, Windows CE, Windows, Xbox System, Xenix, z/OS,
+    z/TPF, z/VM, z/VSE, Zephyr
 
 ## 28 CPU Architectures
 

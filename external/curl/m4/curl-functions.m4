@@ -742,7 +742,6 @@ AC_DEFUN([CURL_CHECK_FUNC_CLOSESOCKET_CAMEL], [
   AC_REQUIRE([CURL_INCLUDES_BSDSOCKET])dnl
   #
   tst_links_closesocket_camel="unknown"
-  tst_proto_closesocket_camel="unknown"
   tst_compi_closesocket_camel="unknown"
   tst_allow_closesocket_camel="unknown"
   #
@@ -764,20 +763,6 @@ AC_DEFUN([CURL_CHECK_FUNC_CLOSESOCKET_CAMEL], [
   ])
   #
   if test "$tst_links_closesocket_camel" = "yes"; then
-    AC_MSG_CHECKING([if CloseSocket is prototyped])
-    AC_EGREP_CPP([CloseSocket],[
-      $curl_includes_bsdsocket
-      $curl_includes_sys_socket
-    ],[
-      AC_MSG_RESULT([yes])
-      tst_proto_closesocket_camel="yes"
-    ],[
-      AC_MSG_RESULT([no])
-      tst_proto_closesocket_camel="no"
-    ])
-  fi
-  #
-  if test "$tst_proto_closesocket_camel" = "yes"; then
     AC_MSG_CHECKING([if CloseSocket is compilable])
     AC_COMPILE_IFELSE([
       AC_LANG_PROGRAM([[
@@ -809,7 +794,6 @@ AC_DEFUN([CURL_CHECK_FUNC_CLOSESOCKET_CAMEL], [
   #
   AC_MSG_CHECKING([if CloseSocket might be used])
   if test "$tst_links_closesocket_camel" = "yes" &&
-     test "$tst_proto_closesocket_camel" = "yes" &&
      test "$tst_compi_closesocket_camel" = "yes" &&
      test "$tst_allow_closesocket_camel" = "yes"; then
     AC_MSG_RESULT([yes])
@@ -1494,103 +1478,6 @@ AC_DEFUN([CURL_CHECK_FUNC_GETADDRINFO], [
     else
       curl_cv_func_getaddrinfo_threadsafe="no"
     fi
-  fi
-])
-
-
-dnl CURL_CHECK_FUNC_GETHOSTBYNAME
-dnl -------------------------------------------------
-dnl Verify if gethostbyname is available, prototyped,
-dnl and can be compiled. If all of these are true,
-dnl and usage has not been previously disallowed with
-dnl shell variable curl_disallow_gethostbyname, then
-dnl HAVE_GETHOSTBYNAME will be defined.
-
-AC_DEFUN([CURL_CHECK_FUNC_GETHOSTBYNAME], [
-  AC_REQUIRE([CURL_INCLUDES_WINSOCK2])dnl
-  AC_REQUIRE([CURL_INCLUDES_NETDB])dnl
-  #
-  tst_links_gethostbyname="unknown"
-  tst_proto_gethostbyname="unknown"
-  tst_compi_gethostbyname="unknown"
-  tst_allow_gethostbyname="unknown"
-  #
-  AC_MSG_CHECKING([if gethostbyname can be linked])
-  AC_LINK_IFELSE([
-    AC_LANG_PROGRAM([[
-      $curl_includes_winsock2
-      $curl_includes_bsdsocket
-      $curl_includes_netdb
-    ]],[[
-      if(0 != gethostbyname(0))
-        return 1;
-    ]])
-  ],[
-    AC_MSG_RESULT([yes])
-    tst_links_gethostbyname="yes"
-  ],[
-    AC_MSG_RESULT([no])
-    tst_links_gethostbyname="no"
-  ])
-  #
-  if test "$tst_links_gethostbyname" = "yes"; then
-    AC_MSG_CHECKING([if gethostbyname is prototyped])
-    AC_EGREP_CPP([gethostbyname],[
-      $curl_includes_winsock2
-      $curl_includes_bsdsocket
-      $curl_includes_netdb
-    ],[
-      AC_MSG_RESULT([yes])
-      tst_proto_gethostbyname="yes"
-    ],[
-      AC_MSG_RESULT([no])
-      tst_proto_gethostbyname="no"
-    ])
-  fi
-  #
-  if test "$tst_proto_gethostbyname" = "yes"; then
-    AC_MSG_CHECKING([if gethostbyname is compilable])
-    AC_COMPILE_IFELSE([
-      AC_LANG_PROGRAM([[
-        $curl_includes_winsock2
-        $curl_includes_bsdsocket
-        $curl_includes_netdb
-      ]],[[
-        if(0 != gethostbyname(0))
-          return 1;
-      ]])
-    ],[
-      AC_MSG_RESULT([yes])
-      tst_compi_gethostbyname="yes"
-    ],[
-      AC_MSG_RESULT([no])
-      tst_compi_gethostbyname="no"
-    ])
-  fi
-  #
-  if test "$tst_compi_gethostbyname" = "yes"; then
-    AC_MSG_CHECKING([if gethostbyname usage allowed])
-    if test "x$curl_disallow_gethostbyname" != "xyes"; then
-      AC_MSG_RESULT([yes])
-      tst_allow_gethostbyname="yes"
-    else
-      AC_MSG_RESULT([no])
-      tst_allow_gethostbyname="no"
-    fi
-  fi
-  #
-  AC_MSG_CHECKING([if gethostbyname might be used])
-  if test "$tst_links_gethostbyname" = "yes" &&
-     test "$tst_proto_gethostbyname" = "yes" &&
-     test "$tst_compi_gethostbyname" = "yes" &&
-     test "$tst_allow_gethostbyname" = "yes"; then
-    AC_MSG_RESULT([yes])
-    AC_DEFINE_UNQUOTED(HAVE_GETHOSTBYNAME, 1,
-      [Define to 1 if you have the gethostbyname function.])
-    curl_cv_func_gethostbyname="yes"
-  else
-    AC_MSG_RESULT([no])
-    curl_cv_func_gethostbyname="no"
   fi
 ])
 
@@ -2614,7 +2501,7 @@ dnl Verify if ioctl is available, prototyped, and
 dnl can be compiled. If all of these are true, and
 dnl usage has not been previously disallowed with
 dnl shell variable curl_disallow_ioctl, then
-dnl HAVE_IOCTL will be defined.
+dnl curl_cv_func_ioctl is set to "yes".
 
 AC_DEFUN([CURL_CHECK_FUNC_IOCTL], [
   AC_REQUIRE([CURL_INCLUDES_STROPTS])dnl
@@ -2683,8 +2570,6 @@ AC_DEFUN([CURL_CHECK_FUNC_IOCTL], [
      test "$tst_compi_ioctl" = "yes" &&
      test "$tst_allow_ioctl" = "yes"; then
     AC_MSG_RESULT([yes])
-    AC_DEFINE_UNQUOTED(HAVE_IOCTL, 1,
-      [Define to 1 if you have the ioctl function.])
     curl_cv_func_ioctl="yes"
     CURL_CHECK_FUNC_IOCTL_FIONBIO
     CURL_CHECK_FUNC_IOCTL_SIOCGIFADDR
@@ -2967,7 +2852,6 @@ AC_DEFUN([CURL_CHECK_FUNC_IOCTLSOCKET_CAMEL], [
   AC_REQUIRE([CURL_INCLUDES_BSDSOCKET])dnl
   #
   tst_links_ioctlsocket_camel="unknown"
-  tst_proto_ioctlsocket_camel="unknown"
   tst_compi_ioctlsocket_camel="unknown"
   tst_allow_ioctlsocket_camel="unknown"
   #
@@ -2987,19 +2871,6 @@ AC_DEFUN([CURL_CHECK_FUNC_IOCTLSOCKET_CAMEL], [
   ])
   #
   if test "$tst_links_ioctlsocket_camel" = "yes"; then
-    AC_MSG_CHECKING([if IoctlSocket is prototyped])
-    AC_EGREP_CPP([IoctlSocket],[
-      $curl_includes_bsdsocket
-    ],[
-      AC_MSG_RESULT([yes])
-      tst_proto_ioctlsocket_camel="yes"
-    ],[
-      AC_MSG_RESULT([no])
-      tst_proto_ioctlsocket_camel="no"
-    ])
-  fi
-  #
-  if test "$tst_proto_ioctlsocket_camel" = "yes"; then
     AC_MSG_CHECKING([if IoctlSocket is compilable])
     AC_COMPILE_IFELSE([
       AC_LANG_PROGRAM([[
@@ -3030,7 +2901,6 @@ AC_DEFUN([CURL_CHECK_FUNC_IOCTLSOCKET_CAMEL], [
   #
   AC_MSG_CHECKING([if IoctlSocket might be used])
   if test "$tst_links_ioctlsocket_camel" = "yes" &&
-     test "$tst_proto_ioctlsocket_camel" = "yes" &&
      test "$tst_compi_ioctlsocket_camel" = "yes" &&
      test "$tst_allow_ioctlsocket_camel" = "yes"; then
     AC_MSG_RESULT([yes])
@@ -4639,19 +4509,21 @@ AC_DEFUN([CURL_SIZEOF], [
   r=0
   dnl Check the sizes in a reasonable order
   for typesize in 8 4 2 16 1; do
-    AC_COMPILE_IFELSE([AC_LANG_PROGRAM([[
-#include <sys/types.h>
-$2
-]],
-    [switch(0) {
-      case 0:
-      case (sizeof($1) == $typesize):;
-    }
-    ]) ],
-      [
-        r=$typesize],
-      [
-        r=0])
+    AC_COMPILE_IFELSE([
+      AC_LANG_PROGRAM([[
+        #include <sys/types.h>
+        $2
+      ]],[
+        switch(0) {
+          case 0:
+          case (sizeof($1) == $typesize):;
+        }
+      ])
+    ],[
+      r=$typesize
+    ],[
+      r=0
+    ])
     dnl get out of the loop once matched
     if test $r -gt 0; then
       break;

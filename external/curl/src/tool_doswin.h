@@ -40,20 +40,10 @@ typedef enum {
 
 SANITIZEcode sanitize_file_name(char **const sanitized, const char *file_name,
                                 int flags);
-#ifdef UNITTESTS
-SANITIZEcode truncate_dryrun(const char *path, const size_t truncate_pos);
-SANITIZEcode msdosify(char **const sanitized, const char *file_name,
-                      int flags);
-SANITIZEcode rename_if_reserved_dos_device_name(char **const sanitized,
-                                                const char *file_name,
-                                                int flags);
-#endif /* UNITTESTS */
 
-#if defined(MSDOS) && (defined(__DJGPP__) || defined(__GO32__))
-
+#ifdef __DJGPP__
 char **__crt0_glob_function(char *arg);
-
-#endif /* MSDOS && (__DJGPP__ || __GO32__) */
+#endif
 
 #ifdef _WIN32
 

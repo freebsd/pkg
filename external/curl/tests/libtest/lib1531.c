@@ -31,7 +31,7 @@
 #define TEST_HANG_TIMEOUT 60 * 1000
 
 static char const testData[] = ".abc\0xyz";
-static off_t const testDataSize = sizeof(testData) - 1;
+static curl_off_t const testDataSize = sizeof(testData) - 1;
 
 CURLcode test(char *URL)
 {
@@ -46,7 +46,7 @@ CURLcode test(char *URL)
 
   global_init(CURL_GLOBAL_ALL);
 
-  /* Allocate one CURL handle per transfer */
+  /* Allocate one curl handle per transfer */
   easy = curl_easy_init();
 
   /* init a multi stack */
@@ -57,8 +57,7 @@ CURLcode test(char *URL)
 
   /* set the options (I left out a few, you'll get the point anyway) */
   curl_easy_setopt(easy, CURLOPT_URL, URL);
-  curl_easy_setopt(easy, CURLOPT_POSTFIELDSIZE_LARGE,
-                   (curl_off_t)testDataSize);
+  curl_easy_setopt(easy, CURLOPT_POSTFIELDSIZE_LARGE, testDataSize);
   curl_easy_setopt(easy, CURLOPT_POSTFIELDS, testData);
 
   /* we start some action by calling perform right away */
@@ -115,7 +114,8 @@ CURLcode test(char *URL)
       rc = 0;
 #else
       /* Portable sleep for platforms other than Windows. */
-      struct timeval wait = { 0, 100 * 1000 }; /* 100ms */
+      struct timeval wait = {0};
+      wait.tv_usec = 100 * 1000; /* 100ms */
       rc = select(0, NULL, NULL, NULL, &wait);
 #endif
     }
@@ -152,7 +152,7 @@ CURLcode test(char *URL)
 test_cleanup:
   curl_multi_cleanup(multi_handle);
 
-  /* Free the CURL handles */
+  /* Free the curl handles */
   curl_easy_cleanup(easy);
   curl_global_cleanup();
 

@@ -47,7 +47,7 @@ numerical IP addresses. If you specify multiple IP addresses they need to be
 separated by comma. If libcurl is built to support IPv6, each of the ADDRESS
 entries can of course be either IPv4 or IPv6 style addressing.
 
-Specify the host as a single ampersand (`*`) to match all names. This wildcard
+Specify the host as a single asterisk (`*`) to match all names. This wildcard
 is resolved last so any resolve with a specific host and port number is given
 priority.
 
@@ -121,4 +121,7 @@ Support for adding non-permanent entries by using the "+" prefix was added in
 
 # RETURN VALUE
 
-Returns CURLE_OK if the option is supported, and CURLE_UNKNOWN_OPTION if not.
+curl_easy_setopt(3) returns a CURLcode indicating success or error.
+
+CURLE_OK (0) means everything was OK, non-zero means an error occurred, see
+libcurl-errors(3).

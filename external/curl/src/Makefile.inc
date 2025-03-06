@@ -60,7 +60,6 @@ CURLX_HFILES = \
 CURL_CFILES = \
   slist_wc.c \
   terminal.c \
-  tool_binmode.c \
   tool_bname.c \
   tool_cb_dbg.c \
   tool_cb_hdr.c \
@@ -80,7 +79,6 @@ CURL_CFILES = \
   tool_getpass.c \
   tool_help.c \
   tool_helpers.c \
-  tool_hugehelp.c \
   tool_ipfs.c \
   tool_libinfo.c \
   tool_listhelp.c \
@@ -93,6 +91,7 @@ CURL_CFILES = \
   tool_progress.c \
   tool_setopt.c \
   tool_sleep.c \
+  tool_ssls.c \
   tool_stderr.c \
   tool_strdup.c \
   tool_urlglob.c \
@@ -126,7 +125,6 @@ CURL_HFILES = \
   tool_getpass.h \
   tool_help.h \
   tool_helpers.h \
-  tool_hugehelp.h \
   tool_ipfs.h \
   tool_libinfo.h \
   tool_main.h \
@@ -140,6 +138,7 @@ CURL_HFILES = \
   tool_setopt.h \
   tool_setup.h \
   tool_sleep.h \
+  tool_ssls.h \
   tool_stderr.h \
   tool_strdup.h \
   tool_urlglob.h \

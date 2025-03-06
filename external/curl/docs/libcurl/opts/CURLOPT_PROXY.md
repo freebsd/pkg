@@ -90,9 +90,6 @@ proxy. Such tunneling is activated with CURLOPT_HTTPPROXYTUNNEL(3).
 Setting the proxy string to "" (an empty string) explicitly disables the use
 of a proxy, even if there is an environment variable set for it.
 
-A proxy host string can also include protocol scheme (http://) and embedded
-user + password.
-
 Unix domain sockets are supported for socks proxies since 7.84.0. Set
 localhost for the host part. e.g. socks5h://localhost/path/to/socket.sock
 
@@ -105,6 +102,14 @@ cannot be used.
 Doing FTP over an HTTP proxy without CURLOPT_HTTPPROXYTUNNEL(3) set makes
 libcurl do HTTP with an FTP URL over the proxy. For such transfers, common FTP
 specific options do not work, for example CURLOPT_USE_SSL(3).
+
+# Authentication
+
+The proxy can also be specified with its associated credentials like for
+ordinary URLs in the style: `scheme://username:password@hostname`
+
+Alternatively, set them using CURLOPT_PROXYUSERNAME(3) and
+CURLOPT_PROXYPASSWORD(3).
 
 # Environment variables
 
@@ -153,5 +158,7 @@ error.
 
 # RETURN VALUE
 
-Returns CURLE_OK if proxies are supported, CURLE_UNKNOWN_OPTION if not, or
-CURLE_OUT_OF_MEMORY if there was insufficient heap space.
+curl_easy_setopt(3) returns a CURLcode indicating success or error.
+
+CURLE_OK (0) means everything was OK, non-zero means an error occurred, see
+libcurl-errors(3).

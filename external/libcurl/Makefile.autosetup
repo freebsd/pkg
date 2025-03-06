@@ -70,12 +70,14 @@ SRCS=	\
 	strdup.c \
 	strerror.c \
 	strtoofft.c \
+	strparse.c \
 	timeval.c \
 	transfer.c \
 	url.c \
 	urlapi.c \
 	warnless.c \
 	vtls.c \
+	vtls_scache.c \
 	openssl.c \
 	keylog.c \
 	hostcheck.c \

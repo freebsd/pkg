@@ -39,9 +39,13 @@ left out and X and Y are byte indexes.
 HTTP transfers also support several intervals, separated with commas as in
 *"X-Y,N-M"*. Using this kind of multiple intervals causes the HTTP server
 to send the response document in pieces (using standard MIME separation
-techniques). Unfortunately, the HTTP standard (RFC 7233 section 3.1) allows
-servers to ignore range requests so even when you set CURLOPT_RANGE(3)
-for a request, you may end up getting the full response sent back.
+techniques) as a multiple part response which libcurl returns as-is. It
+contains meta information in addition to the requested bytes. Parsing or
+otherwise transforming this response is the responsibility of the caller.
+
+Unfortunately, the HTTP standard (RFC 7233 section 3.1) allows servers to
+ignore range requests so even when you set CURLOPT_RANGE(3) for a request, you
+may end up getting the full response sent back.
 
 For RTSP, the formatting of a range should follow RFC 2326 Section 12.29. For
 RTSP, byte ranges are **not** permitted. Instead, ranges should be given in
@@ -88,5 +92,7 @@ FILE since 7.18.0, RTSP since 7.20.0
 
 # RETURN VALUE
 
-Returns CURLE_OK on success or
-CURLE_OUT_OF_MEMORY if there was insufficient heap space.
+curl_easy_setopt(3) returns a CURLcode indicating success or error.
+
+CURLE_OK (0) means everything was OK, non-zero means an error occurred, see
+libcurl-errors(3).

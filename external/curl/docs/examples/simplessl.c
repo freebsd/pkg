@@ -74,13 +74,15 @@ int main(void)
 #endif
 
   headerfile = fopen(pHeaderFile, "wb");
+  if(!headerfile)
+    return 1;
 
   curl_global_init(CURL_GLOBAL_DEFAULT);
 
   curl = curl_easy_init();
   if(curl) {
     /* what call to write: */
-    curl_easy_setopt(curl, CURLOPT_URL, "HTTPS://your.favourite.ssl.site");
+    curl_easy_setopt(curl, CURLOPT_URL, "HTTPS://secure.site.example");
     curl_easy_setopt(curl, CURLOPT_HEADERDATA, headerfile);
 
 #ifdef _MSC_VER
@@ -145,6 +147,8 @@ int main(void)
   }
 
   curl_global_cleanup();
+
+  fclose(headerfile);
 
   return 0;
 }
