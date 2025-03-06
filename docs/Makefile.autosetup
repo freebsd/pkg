@@ -28,6 +28,7 @@ MAN8=	pkg-add.8 \
 	pkg-query.8 \
 	pkg-register.8 \
 	pkg-repo.8 \
+	pkg-repositories.8 \
 	pkg-rquery.8 \
 	pkg-search.8 \
 	pkg-set.8 \

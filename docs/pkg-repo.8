@@ -256,6 +256,7 @@ filename.
 .Sh SEE ALSO
 .Xr pkg_create 3 ,
 .Xr pkg_printf 3 ,
+.Xr pkg_repo_create 3 ,
 .Xr pkg_repos 3 ,
 .Xr pkg-keywords 5 ,
 .Xr pkg-lua-script 5 ,
@@ -277,9 +278,11 @@ filename.
 .Xr pkg-fetch 8 ,
 .Xr pkg-info 8 ,
 .Xr pkg-install 8 ,
+.Xr pkg-key 8 ,
 .Xr pkg-lock 8 ,
 .Xr pkg-query 8 ,
 .Xr pkg-register 8 ,
+.Xr pkg-repositories 8 ,
 .Xr pkg-rquery 8 ,
 .Xr pkg-search 8 ,
 .Xr pkg-set 8 ,
@@ -387,6 +390,5 @@ option in the repository configuration file:
 .Dl pkg repo /usr/ports/packages eddsa:repo.key
 .Pp
 A signing server for EdDSA could be constructed with the
-.Xr pkg-key 8
 .Fl -sign
 option.

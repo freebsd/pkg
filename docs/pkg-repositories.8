@@ -14,52 +14,50 @@
 .\"
 .\"     @(#)pkg.8
 .\"
-.Dd January 6, 2021
-.Dt PKG-ALIAS 8
+.Dd March 6, 2025
+.Dt PKG-REPOSITORIES 8
 .Os
 .Sh NAME
-.Nm "pkg alias"
-.Nd display configured aliases
+.Nm "pkg repositories"
+.Nd display configured repositories
 .Sh SYNOPSIS
 .Nm
-.Op Fl q
+.Op Fl d
+.Op Fl e
 .Op Fl l
-.Op Ar alias
+.Op Ar repositories
 .Pp
-.Nm "pkg alias"
-.Op Fl -quiet
+.Nm "pkg repositories"
+.Op Fl -disabled
+.Op Fl -enabled
 .Op Fl -list
-.Op Ar alias
+.Op Ar repositories
 .Sh DESCRIPTION
 .Nm
-displays configured aliases
-If given the name of an existing alias only shows the aliased arguments to
-.Xr pkg 8 .
-Without arguments all aliases and their respective
-.Xr pkg 8
-arguments are printed.
+displays configured repositorieses.
+.Pp
+If given the name of an existing repository as an argument, only print its
+configuration.
+Without arguments all repositorieses are printed.
 .Sh OPTIONS
 The following options are supported by
 .Nm :
 .Bl -tag -width quiet
+.It Fl d, Fl -disabled
+Print disabled repositories only.
+.It Fl d, Fl -enabled
+Print enabled repositories only.
 .It Fl l , Fl -list
-Print all aliases, one alias per line, without their
-.Xr pkg 8
-arguments.
-.It Fl q , Fl -quiet
-Force quiet output (suppress column headers).
+Print the list of repository names.
 .El
 .Sh FILES
 .Xr pkg.conf 5
+.Xr pkg-repository 5
 .Sh EXAMPLES
-Display all aliases:
-.Dl % pkg alias
-.Pp
-Display
-.Xr pkg 8
-for alias
-.Dq Li size :
-.Dl % pkg alias size
+Display all repositories:
+.Dl % pkg repositories -l
+Display all repositories configurations:
+.Dl % pkg repositories
 .Sh SEE ALSO
 .Xr pkg_create 3 ,
 .Xr pkg_printf 3 ,
@@ -73,6 +71,7 @@ for alias
 .Xr pkg.conf 5 ,
 .Xr pkg 8 ,
 .Xr pkg-add 8 ,
+.Xr pkg-alias 8 ,
 .Xr pkg-annotate 8 ,
 .Xr pkg-audit 8 ,
 .Xr pkg-autoremove 8 ,
@@ -89,7 +88,6 @@ for alias
 .Xr pkg-query 8 ,
 .Xr pkg-register 8 ,
 .Xr pkg-repo 8 ,
-.Xr pkg-repositories 8 ,
 .Xr pkg-rquery 8 ,
 .Xr pkg-search 8 ,
 .Xr pkg-set 8 ,
