@@ -1191,7 +1191,7 @@ pkg_add_check_pkg_archive(struct pkg_add_db *db, struct pkg *pkg,
 			free(pattern);
 		}
 		tll_foreach(*db->localpkgs, p) {
-			pkghash_safe_add(lpkgs, p->item->name, xstrdup(p->item->repopath), NULL);
+			pkghash_safe_add(lpkgs, p->item->name, xstrdup(p->item->repopath), free);
 			tll_foreach(p->item->shlibs_provided, sp) {
 				pkghash_safe_add(shlibs_provides, sp->item, xstrdup(p->item->repopath), free);
 			}
