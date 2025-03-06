@@ -459,16 +459,18 @@ is_valid_os_version(struct pkg *pkg)
 		int abi_osversion = pkg_abi_get_freebsd_osversion(&ctx.abi);
 		if (pkg_osversion > abi_osversion) {
 			if (pkg_osversion - abi_osversion < 100000) {
-				/* Negligible difference, ask user to enforce */
+				/* Negligible difference, optionally require confirmation */
+				if (!(pkg_object_bool(pkg_config_get("MINOR_OSVER_CONFIRM")))
+					osver_mismatch_allowed = 1;
 				if (osver_mismatch_allowed == -1) {
 					snprintf(query_buf, sizeof(query_buf),
 							"Newer FreeBSD version for package %s:\n"
-							"To ignore this error set IGNORE_OSVERSION=yes\n"
+							"To disable minor version confirmation, set MINOR_OSVER_CONFIRM=no\n"
 							"- package: %d\n"
 							"- running userland: %d\n"
-							"Ignore the mismatch and continue? ", pkg->name,
+							"Allow minor version mismatch and continue? ", pkg->name,
 							pkg_osversion, abi_osversion);
-					ret = pkg_emit_query_yesno(false, query_buf);
+					ret = pkg_emit_query_yesno(true, query_buf);
 					osver_mismatch_allowed = ret;
 				}
 

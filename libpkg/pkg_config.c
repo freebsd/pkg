@@ -370,6 +370,10 @@ static struct config_entry c[] = {
 	},
 	{
 		PKG_BOOL,
+		"MINOR_OSVER_CONFIRM",
+		"YES",
+	{
+		PKG_BOOL,
 		"BACKUP_LIBRARIES",
 		"NO",
 	},
