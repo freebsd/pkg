@@ -58,6 +58,7 @@ enum pkg_solve_rule_type {
 	PKG_RULE_REQUEST_CONFLICT,
 	PKG_RULE_REQUEST,
 	PKG_RULE_REQUIRE,
+	PKG_RULE_VITAL,
 	PKG_RULE_MAX
 };
 
@@ -68,6 +69,7 @@ static const char *rule_reasons[] = {
 	[PKG_RULE_EXPLICIT_CONFLICT] = "conflict",
 	[PKG_RULE_REQUEST] = "request",
 	[PKG_RULE_REQUIRE] = "require",
+	[PKG_RULE_VITAL] = "vital",
 	[PKG_RULE_MAX] = NULL
 };
 
@@ -244,6 +246,13 @@ pkg_print_rule_buf(struct pkg_solve_rule *rule, xstring *sb)
 		break;
 	case PKG_RULE_REQUEST_CONFLICT:
 		fprintf(sb->fp, "The following packages in request are candidates for installation: ");
+		LL_FOREACH(rule->items, it) {
+			fprintf(sb->fp, "%s-%s%s", it->var->uid, it->var->unit->pkg->version,
+					it->next ? ", " : "");
+		}
+		break;
+	case PKG_RULE_VITAL:
+		fprintf(sb->fp, "The following packages are vital: ");
 		LL_FOREACH(rule->items, it) {
 			fprintf(sb->fp, "%s-%s%s", it->var->uid, it->var->unit->pkg->version,
 					it->next ? ", " : "");
@@ -499,6 +508,46 @@ pkg_solve_add_require_rule(struct pkg_solve_problem *problem,
 	return (EPKG_OK);
 }
 
+static int
+pkg_solve_add_vital_rule(struct pkg_solve_problem *problem,
+		struct pkg_solve_variable *var)
+{
+	struct pkg_solve_variable *cur_var, *local_var = NULL, *remote_var = NULL;
+	struct pkg_solve_rule *rule = NULL;
+	struct pkg *pkg;
+
+	LL_FOREACH(var, cur_var) {
+		pkg = cur_var->unit->pkg;
+
+		if (pkg->type == PKG_INSTALLED) {
+			local_var = cur_var;
+		} else {
+			remote_var = cur_var;
+		}
+	}
+
+	if (local_var && remote_var) {
+		/* Vital upgrade rule: ( L | R ) must be true */
+		dbg(4, "Add vital rule: want either %s(l) or %s(r)", local_var->unit->pkg->uid, remote_var->unit->pkg->uid);
+		rule = pkg_solve_rule_new(PKG_RULE_VITAL);
+		/* L */
+		pkg_solve_item_new(rule, local_var, 1);
+		/* R */
+		pkg_solve_item_new(rule, remote_var, 1);
+	} else if(local_var) {
+		/* Vital keep local rule: ( L ) must be true */
+		dbg(4, "Add vital rule: want %s(l) to stay", local_var->unit->pkg->uid);
+		rule = pkg_solve_rule_new(PKG_RULE_VITAL);
+		/* L */
+		pkg_solve_item_new(rule, local_var, 1);
+	}
+
+	if (rule)
+		tll_push_front(problem->rules, rule);
+
+	return (EPKG_OK);
+}
+
 static struct pkg_solve_variable *
 pkg_solve_find_var_in_chain(struct pkg_solve_variable *var,
 	struct pkg_job_universe_item *item)
@@ -687,6 +736,13 @@ pkg_solve_process_universe_variable(struct pkg_solve_problem *problem,
 		tll_foreach(pkg->requires, r) {
 			if (pkg_solve_add_require_rule(problem, cur_var,
 			    r->item, cur_var->assumed_reponame) != EPKG_OK) {
+				continue;
+			}
+		}
+
+		/* Vital flag */
+		if (pkg->vital && !force) {
+			if (pkg_solve_add_vital_rule(problem, cur_var) != EPKG_OK) {
 				continue;
 			}
 		}
@@ -1132,7 +1188,7 @@ reiterate:
 		for (i = 0; i < problem->nvars; i ++) {
 			struct pkg_solve_variable *var = &problem->variables[i];
 
-			if (var->flags & PKG_VAR_TOP || var->unit->pkg->vital) {
+			if (var->flags & PKG_VAR_TOP) {
 				if (var->flags & PKG_VAR_FAILED) {
 					var->flags ^= PKG_VAR_INSTALL | PKG_VAR_FAILED;
 				}

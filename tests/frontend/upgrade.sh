@@ -10,7 +10,8 @@ tests_init \
 	file_become_dir \
 	dir_become_file \
 	dir_is_symlink_to_a_dir \
-	vital
+	vital \
+	vital_force
 
 issue1881_body() {
 	atf_check -s exit:0 sh ${RESOURCEDIR}/test_subr.sh new_pkg pkg1 pkg_a 1
@@ -322,6 +323,45 @@ Checking integrity... done (1 conflicting)
   - myplop-2 conflicts with mymeta-1 on ${TMPDIR}/file-pkg-1/file
 Cannot solve problem using SAT solver, trying another plan
 Checking integrity... done (0 conflicting)
+Your packages are up to date.
+"
+	ERROR=""
+	atf_check -o inline:"${OUTPUT}" -e inline:"${ERROR}" -s exit:0 pkg -o REPOS_DIR="$TMPDIR/repoconf" -r ${TMPDIR}/target -o PKG_CACHEDIR="$TMPDIR" upgrade -y
+}
+
+vital_force_body() {
+	atf_check -s exit:0 sh ${RESOURCEDIR}/test_subr.sh new_pkg "meta" "mymeta" "1"
+	mkdir file-pkg-1
+	cat << EOF >> meta.ucl
+vital = true;
+EOF
+	echo entry > file-pkg-1/file
+	echo "${TMPDIR}/file-pkg-1/file" > plist-1
+	atf_check pkg create -M meta.ucl -p plist-1
+	mkdir target
+	atf_check -o ignore pkg -o REPOS_DIR="${TMPDIR}" -r ${TMPDIR}/target install -Uy ${TMPDIR}/mymeta-1.pkg
+	atf_check -s exit:0 sh ${RESOURCEDIR}/test_subr.sh new_pkg "plop" "myplop" "1"
+	atf_check pkg create -M plop.ucl
+	atf_check -o ignore pkg -o REPOS_DIR="${TMPDIR}" -r ${TMPDIR}/target install -Uy ${TMPDIR}/myplop-1.pkg
+	atf_check -s exit:0 sh ${RESOURCEDIR}/test_subr.sh new_pkg "plop" "myplop" "2"
+	echo "${TMPDIR}/file-pkg-1/file" > plist-2
+	atf_check pkg create -M plop.ucl -p plist-2
+	mkdir repoconf
+	cat << EOF > repoconf/repo.conf
+local: {
+	url: file:///$TMPDIR,
+	enabled: true
+}
+EOF
+
+	atf_check -o ignore pkg repo .
+	atf_check -o ignore pkg -o REPOS_DIR="$TMPDIR/repoconf" -r ${TMPDIR}/target -o PKG_CACHEDIR="$TMPDIR" update
+	OUTPUT="Updating local repository catalogue...
+local repository is up to date.
+All repositories are up to date.
+Checking integrity... done (1 conflicting)
+  - myplop-2 conflicts with mymeta-1 on ${TMPDIR}/file-pkg-1/file
+Checking integrity... done (0 conflicting)
 The following 2 package(s) will be affected (of 0 checked):
 
 Installed packages to be UPGRADED:
@@ -332,10 +372,11 @@ Installed packages to be REMOVED:
 
 Number of packages to be removed: 1
 Number of packages to be upgraded: 1
+[1/2] Deinstalling mymeta-1...
+[1/2] Deleting files for mymeta-1:  done
+[2/2] Upgrading myplop from 1 to 2...
+[2/2] Extracting myplop-2:  done
 "
-	ERROR="pkg: Cannot delete vital package: mymeta!
-pkg: If you are sure you want to remove mymeta
-pkg: unset the 'vital' flag with: pkg set -v 0 mymeta
-"
-	atf_check -o inline:"${OUTPUT}" -e inline:"${ERROR}" -s exit:3 pkg -o REPOS_DIR="$TMPDIR/repoconf" -r ${TMPDIR}/target -o PKG_CACHEDIR="$TMPDIR" upgrade -y
+	ERROR=""
+	atf_check -o inline:"${OUTPUT}" -e inline:"${ERROR}" -s exit:0 pkg -o REPOS_DIR="$TMPDIR/repoconf" -r ${TMPDIR}/target -o PKG_CACHEDIR="$TMPDIR" upgrade -fy myplop-2
 }
