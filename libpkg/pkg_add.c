@@ -1238,7 +1238,7 @@ pkg_add_check_pkg_archive(struct pkg_add_db *db, struct pkg *pkg,
 	}
 
 	tll_foreach(pkg->shlibs_required, s) {
-		if (!db->pkgbase && db->system_shlibs != NULL) {
+		if (!db->pkgbase && db->system_shlibs == NULL) {
 			int ret;
 			ret = scan_system_shlibs(&db->system_shlibs, ctx.pkg_rootdir);
 			if (ret == EPKG_NOCOMPAT32)
