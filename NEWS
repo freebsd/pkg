@@ -1,3 +1,6 @@
+Changes from 2.0.99.6 to 2.0.99.7
+- fix in non pkgbase context
+
 Changes from 2.0.99.5 to 2.0.99.6
 - add: readd support for provides/requires
 - fix pkg bootstrap -y
