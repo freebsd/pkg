@@ -44,7 +44,10 @@
 struct pkg_add_db {
 	struct pkgdb *db;
 	pkg_chain_t *localpkgs;
+	struct pkghash *system_shlibs;
 	bool local_scaned;
+	bool ignore_compat32;
+	bool pkgbase;
 };
 
 static int pkg_add_common(struct pkg_add_db *db, const char *path, unsigned flags, const char *reloc, struct pkg *remote, struct pkg *local, struct triggers *t);
@@ -1235,6 +1238,14 @@ pkg_add_check_pkg_archive(struct pkg_add_db *db, struct pkg *pkg,
 	}
 
 	tll_foreach(pkg->shlibs_required, s) {
+		if (!db->pkgbase && db->system_shlibs != NULL) {
+			int ret;
+			ret = scan_system_shlibs(&db->system_shlibs, ctx.pkg_rootdir);
+			if (ret == EPKG_NOCOMPAT32)
+				db->ignore_compat32 = true;
+		}
+		if (pkghash_get(db->system_shlibs, s->item) != NULL)
+			continue;
 		pkghash_entry *founddep = NULL;
 		if (pkgdb_is_shlib_provided(db->db, s->item))
 			continue;
@@ -1634,9 +1645,12 @@ pkg_add(struct pkgdb *db, const char *path, unsigned flags,
 	padb.db = db;
 	padb.localpkgs = &localpkgs;
 	padb.local_scaned = false;
+	padb.ignore_compat32 = false;
+	padb.pkgbase = pkgdb_file_exists(db, "/usr/bin/uname");
 
 	ret = pkg_add_common(&padb, path, flags, location, NULL, NULL, NULL);
 	tll_free_and_free(localpkgs, pkg_free);
+	pkghash_destroy(padb.system_shlibs);
 	return (ret);
 }
 
@@ -1648,6 +1662,8 @@ pkg_add_from_remote(struct pkgdb *db, const char *path, unsigned flags,
 
 	memset(&padb, 0, sizeof(padb));
 	padb.db = db;
+	padb.ignore_compat32 = false;
+	padb.pkgbase = pkgdb_file_exists(db, "/usr/bin/uname");
 
 	return pkg_add_common(&padb, path, flags, location, rp, NULL, t);
 }
@@ -1661,6 +1677,8 @@ pkg_add_upgrade(struct pkgdb *db, const char *path, unsigned flags,
 
 	memset(&padb, 0, sizeof(padb));
 	padb.db = db;
+	padb.ignore_compat32 = false;
+	padb.pkgbase = pkgdb_file_exists(db, "/usr/bin/uname");
 
 	if (pkgdb_ensure_loaded(db, lp,
 	    PKG_LOAD_FILES|PKG_LOAD_SCRIPTS|PKG_LOAD_DIRS|PKG_LOAD_LUA_SCRIPTS) != EPKG_OK)
