@@ -1,3 +1,11 @@
+Changes from 2.0.99.5 to 2.0.99.6
+- add: readd support for provides/requires
+- fix pkg bootstrap -y
+- fix memory leaks
+- libpkg: allow non interactive way to set IGNORE OSVERSION
+- update libcurl to 8.12.1
+- fix progression counters
+
 Changes from 2.0.99.4 to 2.0.99.5
 - allow to filter out and fine control which libs are provided
 
