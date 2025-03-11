@@ -63,6 +63,7 @@ exec_install(int argc, char **argv)
 	int		 mode, repo_type;
 	int		 done = 0;
 	int		 lock_type = PKGDB_LOCK_ADVISORY;
+	int		 nbactions = 0;
 	bool		 rc = true;
 	bool		 local_only = false;
 	match_t		 match = MATCH_EXACT;
@@ -88,8 +89,6 @@ exec_install(int argc, char **argv)
 		{ "yes",		no_argument,		NULL,	'y' },
 		{ NULL,			0,			NULL,	0   },
 	};
-
-	nbactions = nbdone = 0;
 
 	if (STREQ(argv[0], "add")) {
 		auto_update = false;

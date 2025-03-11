@@ -31,8 +31,6 @@ int case_sensitive; /* Case sensitive queries */
 int force; /* Forced operation */
 int quiet; /* Silent output */
 int newpkgversion; /* New package version is available */
-int nbactions;
-int nbdone;
 int nbtodl;
 
 void
@@ -46,8 +44,6 @@ set_globals(void)
 	force = 0;
 	quiet = 0;
 	newpkgversion = 0;
-	nbactions = 0;
-	nbdone = 0;
 	nbtodl = 0;
 }
 

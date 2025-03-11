@@ -86,6 +86,8 @@ static time_t begin = 0;
 static int add_deps_depth;
 static tll(struct cleanup *) cleanup_list = tll_init();
 static bool signal_handler_installed = false;
+static size_t nbactions = 0;
+static size_t nbdone = 0;
 
 /* units for format_size */
 static const char *unit_SI[] = { " ", "k", "M", "G", "T", };
@@ -173,7 +175,7 @@ job_status_begin(xstring *msg)
 	}
 
 	if ((nbtodl > 0 || nbactions > 0) && nbdone > 0)
-		fprintf(msg->fp, "[%d/%d] ", nbdone, (nbtodl) ? nbtodl : nbactions);
+		fprintf(msg->fp, "[%zu/%zu] ", nbdone, (nbtodl) ? nbtodl : nbactions);
 	if (nbtodl > 0 && nbtodl == nbdone) {
 		nbtodl = 0;
 		nbdone = 0;
@@ -674,7 +676,8 @@ event_callback(void *data, struct pkg_event *ev)
 		fprintf(msg_buf->fp, "Restoring");
 		break;
 	case PKG_EVENT_NEW_ACTION:
-		nbdone++;
+		nbactions = ev->e_action.total;
+		nbdone = ev->e_action.current;
 		break;
 	case PKG_EVENT_MESSAGE:
 		if (messages == NULL)

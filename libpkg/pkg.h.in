@@ -1502,6 +1502,10 @@ struct pkg_event {
 			const char *name;
 			bool cleanup;
 		} e_trigger;
+		struct {
+			size_t total;
+			size_t current;
+		} e_action;
 	};
 };
 

@@ -256,6 +256,7 @@ exec_check(int argc, char **argv)
 	int nbpkgs = 0;
 	int i, processed, total = 0;
 	int verbose = 0;
+	int nbactions;
 
 	struct option longopts[] = {
 		{ "all",		no_argument,	NULL,	'a' },
@@ -360,7 +361,6 @@ exec_check(int argc, char **argv)
 		return (EXIT_FAILURE);
 
 	i = 0;
-	nbdone = 0;
 	do {
 		/* XXX: This is really quirky, it would be cleaner to pass
 		 * in multiple matches and only run this top-loop once. */
@@ -397,7 +397,6 @@ exec_check(int argc, char **argv)
 				if (!verbose)
 					progressbar_tick(processed, total);
 				else {
-					++nbdone;
 					job_status_begin(msg);
 					pkg_fprintf(msg->fp, "Checking %n-%v:",
 					    pkg, pkg);

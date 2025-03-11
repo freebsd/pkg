@@ -20,8 +20,6 @@
 #define ll_foreach(head, el) for (el=head; el != NULL; el = (el)->next)
 
 extern bool quiet;
-extern int nbactions;
-extern int nbdone;
 extern bool newpkgversion;
 extern int nbtodl;
 

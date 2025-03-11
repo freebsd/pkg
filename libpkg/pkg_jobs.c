@@ -2090,6 +2090,8 @@ pkg_jobs_execute(struct pkg_jobs *j)
 	struct pkg *p;
 	int retcode = EPKG_FATAL;
 	pkg_plugin_hook_t pre, post;
+	size_t total_actions;
+	size_t current_action = 0;
 
 //j->triggers.cleanup = triggers_load(true);
 	if (j->type == PKG_JOBS_INSTALL) {
@@ -2123,9 +2125,11 @@ pkg_jobs_execute(struct pkg_jobs *j)
 	if (retcode != EPKG_OK)
 		return (retcode);
 
+	total_actions = tll_length(j->jobs);
 	tll_foreach(j->jobs, _p) {
 		struct pkg_solved *ps = _p->item;
 
+		pkg_emit_new_action(++current_action, total_actions);
 		switch (ps->type) {
 		case PKG_SOLVED_DELETE:
 			if ((j->flags & PKG_FLAG_FORCE) == 0) {

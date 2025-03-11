@@ -59,6 +59,7 @@ exec_delete(int argc, char **argv)
 	int		 i;
 	int		 lock_type = PKGDB_LOCK_ADVISORY;
 	int		 locked_pkgs = 0;
+	int		 nbactions = 0;
 
 	struct option longopts[] = {
 		{ "all",			no_argument,	NULL,	'a' },
@@ -75,7 +76,6 @@ exec_delete(int argc, char **argv)
 		{ NULL,				0,		NULL,	0   },
 	};
 
-	nbactions = nbdone = 0;
 
 	while ((ch = getopt_long(argc, argv, "+aCDfginqRxy", longopts, NULL)) != -1) {
 		switch (ch) {

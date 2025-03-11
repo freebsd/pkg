@@ -73,7 +73,6 @@ pkg_delete(struct pkg *pkg, struct pkg *rpkg, struct pkgdb *db, int flags,
 	if (rpkg != NULL && pkgdb_ensure_loaded(db, rpkg, load_flags) != EPKG_OK)
 		return (EPKG_FATAL);
 
-	pkg_emit_new_action();
 	pkg_emit_deinstall_begin(pkg);
 
 	/* If the package is locked */

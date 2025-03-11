@@ -1083,11 +1083,13 @@ pkg_emit_progress_tick(int64_t current, int64_t total)
 }
 
 void
-pkg_emit_new_action(void)
+pkg_emit_new_action(size_t current, size_t total)
 {
 	struct pkg_event ev;
 
 	ev.type = PKG_EVENT_NEW_ACTION;
+	ev.e_action.total = total;
+	ev.e_action.current = current;
 
 	pkg_emit_event(&ev);
 }

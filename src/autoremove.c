@@ -50,7 +50,7 @@ exec_autoremove(int argc, char **argv)
 	struct pkg_jobs *jobs = NULL;
 	int retcode = EXIT_SUCCESS;
 	int ch;
-	nbactions = nbdone = 0;
+	int nbactions = 0;
 	pkg_flags f = PKG_FLAG_FORCE;
 	bool rc = false;
 	int lock_type = PKGDB_LOCK_ADVISORY;
