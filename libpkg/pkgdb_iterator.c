@@ -600,7 +600,7 @@ pkgdb_load_shlib_required(sqlite3 *sqlite, struct pkg *pkg)
 		"  FROM pkg_shlibs_required, shlibs AS s"
 		"  WHERE package_id = ?1"
 		"    AND shlib_id = s.id"
-		"  ORDER by name DESC";
+		"  ORDER by name ASC";
 
 	assert(pkg != NULL);
 
@@ -623,7 +623,7 @@ pkgdb_load_shlib_provided(sqlite3 *sqlite, struct pkg *pkg)
 		"  FROM pkg_shlibs_provided, shlibs AS s"
 		"  WHERE package_id = ?1"
 		"    AND shlib_id = s.id"
-		"  ORDER by name DESC";
+		"  ORDER by name ASC";
 
 	assert(pkg != NULL);
 
