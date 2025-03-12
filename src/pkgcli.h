@@ -252,7 +252,7 @@ bool query_yesno(bool deft, const char *msg, ...);
 int query_select(const char *msg, const char **opts, int ncnt, int deft);
 bool query_tty_yesno(bool deft, const char *msg, ...);
 int info_flags(uint64_t opt, bool remote);
-void print_info(struct pkg * const pkg, uint64_t opt);
+void print_info(struct pkgdb *db, struct pkg * const pkg, uint64_t opt);
 int print_jobs_summary(struct pkg_jobs *j, const char *msg, ...);
 
 void job_status_begin(xstring *);

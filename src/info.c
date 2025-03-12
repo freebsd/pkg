@@ -295,7 +295,7 @@ exec_info(int argc, char **argv)
 			close(fd);
 			return (1);
 		}
-		print_info(pkg, opt);
+		print_info(NULL, pkg, opt);
 		close(fd);
 		pkg_free(pkg);
 		return (EXIT_SUCCESS);
@@ -500,7 +500,7 @@ exec_info(int argc, char **argv)
 			if (pkg_exists)
 				retcode = EXIT_SUCCESS;
 			else
-				print_info(pkg, opt);
+				print_info(db, pkg, opt);
 		}
 		if (ret != EPKG_END) {
 			retcode = EXIT_FAILURE;

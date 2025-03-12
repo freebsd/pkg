@@ -275,9 +275,9 @@ info_flags(uint64_t opt, bool remote)
 	if (opt & INFO_ANNOTATIONS)
 		flags |= PKG_LOAD_ANNOTATIONS;
 	if (opt & INFO_DEPS)
-		flags |= PKG_LOAD_DEPS;
+		flags |= PKG_LOAD_DEPS|PKG_LOAD_SHLIBS_REQUIRED|PKG_LOAD_REQUIRES;
 	if (opt & INFO_RDEPS)
-		flags |= PKG_LOAD_RDEPS;
+		flags |= PKG_LOAD_RDEPS|PKG_LOAD_SHLIBS_PROVIDED|PKG_LOAD_PROVIDES;
 	if (opt & INFO_FILES)
 		flags |= PKG_LOAD_FILES;
 	if (opt & INFO_DIRS)
@@ -310,7 +310,7 @@ info_flags(uint64_t opt, bool remote)
 }
 
 void
-print_info(struct pkg * const pkg, uint64_t options)
+print_info(struct pkgdb *db, struct pkg * const pkg, uint64_t options)
 {
 	bool print_tag = false;
 	bool show_locks = false;
@@ -608,6 +608,53 @@ print_info(struct pkg * const pkg, uint64_t options)
 						pkg_printf("%d%{\t%dn-%dv\n%|%}", pkg);
 				}
 			}
+			if (db != NULL) {
+				struct pkg_stringlist *sl = NULL;
+				struct pkg_stringlist_iterator	*slit;
+				struct pkgbase *pb;
+				bool shlibstag = false;
+				bool reqtag = false;
+				const char *buf;
+				struct pkgdb_it *it;
+				struct pkg *p = NULL;
+
+				pkg_get(pkg, PKG_ATTR_SHLIBS_REQUIRED, &sl);
+				pb = pkgbase_new(db);
+				slit = pkg_stringlist_iterator(sl);
+				while ((buf = pkg_stringlist_next(slit))) {
+					if (pkgbase_provide_shlib(pb, buf))
+						continue;
+					if (!shlibstag) {
+						if (print_tag)
+							printf("%-15s:\n", "Shared library requirements");
+						shlibstag = true;
+					}
+					it = pkgdb_query_shlib_provide(db, buf);
+					while (pkgdb_it_next(it, &p, PKG_LOAD_BASIC) == EPKG_OK) {
+						pkg_printf("\t%n-%v (%S)\n", p, p, buf);
+					}
+					pkgdb_it_free(it);
+				}
+				free(slit);
+				free(sl);
+
+				pkg_get(pkg, PKG_ATTR_REQUIRES, &sl);
+				slit = pkg_stringlist_iterator(sl);
+				while ((buf = pkg_stringlist_next(slit))) {
+					if (!reqtag) {
+						if (print_tag)
+							printf("%-15s:\n", "Requirements");
+						reqtag = true;
+					}
+					it = pkgdb_query_provide(db, buf);
+					while (pkgdb_it_next(it, &p, PKG_LOAD_BASIC) == EPKG_OK) {
+						pkg_printf("\t%n-%v (%S)\n", p, p, buf);
+					}
+					pkgdb_it_free(it);
+				}
+				free(slit);
+				free(sl);
+			}
 			break;
 		case INFO_RDEPS:
 			if (pkg_list_count(pkg, PKG_RDEPS) > 0) {
@@ -624,6 +671,53 @@ print_info(struct pkg * const pkg, uint64_t options)
 					else
 						pkg_printf("%r%{\t%rn-%rv\n%|%}", pkg);
 				}
+			}
+			if (db != NULL) {
+				struct pkg_stringlist *sl = NULL;
+				struct pkg_stringlist_iterator	*slit;
+				struct pkgbase *pb;
+				bool shlibstag = false;
+				bool reqtag = false;
+				const char *buf;
+				struct pkgdb_it *it;
+				struct pkg *p = NULL;
+
+				pkg_get(pkg, PKG_ATTR_SHLIBS_PROVIDED, &sl);
+				pb = pkgbase_new(db);
+				slit = pkg_stringlist_iterator(sl);
+				while ((buf = pkg_stringlist_next(slit))) {
+					if (pkgbase_provide_shlib(pb, buf))
+						continue;
+					if (!shlibstag) {
+						if (print_tag)
+							printf("%-15s:\n", "Shared library provided");
+						shlibstag = true;
+					}
+					it = pkgdb_query_shlib_require(db, buf);
+					while (pkgdb_it_next(it, &p, PKG_LOAD_BASIC) == EPKG_OK) {
+						pkg_printf("\t%n-%v (%S)\n", p, p, buf);
+					}
+					pkgdb_it_free(it);
+				}
+				free(slit);
+				free(sl);
+
+				pkg_get(pkg, PKG_ATTR_PROVIDES, &sl);
+				slit = pkg_stringlist_iterator(sl);
+				while ((buf = pkg_stringlist_next(slit))) {
+					if (!reqtag) {
+						if (print_tag)
+							printf("%-15s:\n", "Provides");
+						reqtag = true;
+					}
+					it = pkgdb_query_require(db, buf);
+					while (pkgdb_it_next(it, &p, PKG_LOAD_BASIC) == EPKG_OK) {
+						pkg_printf("\t%n-%v (%S)\n", p, p, buf);
+					}
+					pkgdb_it_free(it);
+				}
+				free(slit);
+				free(sl);
 			}
 			break;
 		case INFO_FILES: /* Installed pkgs only */

@@ -456,7 +456,7 @@ exec_search(int argc, char **argv)
 
 	flags = info_flags(opt, true);
 	while ((ret = pkgdb_it_next(it, &pkg, flags)) == EPKG_OK) {
-		print_info(pkg, opt);
+		print_info(NULL, pkg, opt);
 		atleastone = true;
 	}
 
