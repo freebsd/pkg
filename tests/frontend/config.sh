@@ -6,7 +6,8 @@ tests_init \
 	duplicate_pkgs_notallowed \
 	inline_repo \
 	nameserver \
-	expansion
+	expansion \
+	validate_shlib_provide_paths
 #	duplicate_pkgs_allowed \
 
 duplicate_pkgs_allowed_body() {
@@ -139,4 +140,21 @@ expansion_body() {
 	echo "DOT_FILE=\${ARCH}" > pkg.conf
 	atf_check -o inline:"${ARCH}\n" pkg -C ${TMPDIR}/pkg.conf config dot_file
 
+}
+
+validate_shlib_provide_paths_body() {
+	for option in \
+		SHLIB_PROVIDE_PATHS_NATIVE \
+		SHLIB_PROVIDE_PATHS_COMPAT_32 \
+		SHLIB_PROVIDE_PATHS_COMPAT_LINUX \
+		SHLIB_PROVIDE_PATHS_COMPAT_LINUX_32
+	do
+		atf_check -o inline:"/bar/foo\n" -s exit:0 pkg -o $option=/bar/foo config $option
+
+		ERROR="pkg: Invalid value for config option ${option}, 'foo' is not an absolute path.
+pkg: Cannot parse configuration file!
+"
+		atf_check -e inline:"${ERROR}" -s exit:1 pkg -o $option=foo config $option
+		atf_check -e inline:"${ERROR}" -s exit:1 pkg -o $option=/bar/foo,foo config $option
+	done
 }
