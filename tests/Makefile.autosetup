@@ -15,7 +15,8 @@ TESTS=	\
 	metalog \
 	vec \
 	pkg_elf \
-	hash
+	hash \
+	shlibs
 
 TESTS_SH= \
 	frontend/pkg.sh \
@@ -114,6 +115,7 @@ metalog_OBJS=	lib/metalog.o
 vec_OBJS=	lib/vec.o
 pkg_elf_OBJS=	lib/pkg_elf.o
 hash_OBJS=	lib/hash.o
+shlibs_OBJS=	lib/shlibs.o
 
 SRCS=	\
 	$(packing_OBJS:.o=.c) \
@@ -131,6 +133,7 @@ SRCS=	\
 	$(vec_OBJS:.o=.c) \
 	$(pkg_elf_OBJS:.o=.c) \
 	$(hash_OBJS:.o=.c) \
+	$(shlibs_OBJS:.o=.c) \
 
 include $(MK)/common.mk
 
