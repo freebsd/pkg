@@ -439,13 +439,56 @@ pkg_arch_to_legacy(const char *arch, char *dest, size_t sz)
 	return (0);
 }
 
+void
+pkg_cleanup_shlibs_required(struct pkg *pkg, stringlist_t *internal_provided)
+{
+	struct pkg_file *file = NULL;
+	const char *lib;
+
+	tll_foreach(pkg->shlibs_required, s)
+	{
+		if (stringlist_contains(&pkg->shlibs_provided, s->item) ||
+		    stringlist_contains(internal_provided, s->item)) {
+			pkg_debug(2,
+			    "remove %s from required shlibs as the "
+			    "package %s provides this library itself",
+			    s->item, pkg->name);
+			tll_remove_and_free(pkg->shlibs_required, s, free);
+			continue;
+		}
+		if (match_ucl_lists(s->item,
+		    pkg_config_get("SHLIB_REQUIRE_IGNORE_GLOB"),
+		    pkg_config_get("SHLIB_REQUIRE_IGNORE_REGEX"))) {
+			pkg_debug(2,
+			    "remove %s from required shlibs for package %s as it "
+			    "is matched by SHLIB_REQUIRE_IGNORE_GLOB/REGEX.",
+			    s->item, pkg->name);
+			tll_remove_and_free(pkg->shlibs_required, s, free);
+			continue;
+		}
+		file = NULL;
+		while (pkg_files(pkg, &file) == EPKG_OK) {
+			if ((lib = strstr(file->path, s->item)) != NULL &&
+			    strlen(lib) == strlen(s->item) && lib[-1] == '/') {
+				pkg_debug(2,
+				    "remove %s from required shlibs as "
+				    "the package %s provides this file itself",
+				    s->item, pkg->name);
+
+				tll_remove_and_free(pkg->shlibs_required, s,
+				    free);
+				break;
+			}
+		}
+	}
+}
+
 int
 pkg_analyse_files(struct pkgdb *db __unused, struct pkg *pkg, const char *stage)
 {
 	struct pkg_file *file = NULL;
 	int ret = EPKG_OK;
 	char fpath[MAXPATHLEN + 1];
-	const char *lib;
 	bool failures = false;
 
 	int (*pkg_analyse_init)(const char *stage);
@@ -535,43 +578,7 @@ pkg_analyse_files(struct pkgdb *db __unused, struct pkg *pkg, const char *stage)
 	/*
 	 * Do not depend on libraries that a package provides itself
 	 */
-	tll_foreach(pkg->shlibs_required, s)
-	{
-		if (stringlist_contains(&pkg->shlibs_provided, s->item) ||
-		    stringlist_contains(&internal_provided, s->item)) {
-			pkg_debug(2,
-			    "remove %s from required shlibs as the "
-			    "package %s provides this library itself",
-			    s->item, pkg->name);
-			tll_remove_and_free(pkg->shlibs_required, s, free);
-			continue;
-		}
-		if (match_ucl_lists(s->item,
-		    pkg_config_get("SHLIB_REQUIRE_IGNORE_GLOB"),
-		    pkg_config_get("SHLIB_REQUIRE_IGNORE_REGEX"))) {
-			pkg_debug(2,
-			    "remove %s from required shlibs for package %s as it "
-			    "is matched by SHLIB_REQUIRE_IGNORE_GLOB/REGEX.",
-			    s->item, pkg->name);
-			tll_remove_and_free(pkg->shlibs_required, s, free);
-			continue;
-		}
-		file = NULL;
-		while (pkg_files(pkg, &file) == EPKG_OK) {
-			if ((lib = strstr(file->path, s->item)) != NULL &&
-			    strlen(lib) == strlen(s->item) && lib[-1] == '/') {
-				pkg_debug(2,
-				    "remove %s from required shlibs as "
-				    "the package %s provides this file itself",
-				    s->item, pkg->name);
-
-				tll_remove_and_free(pkg->shlibs_required, s,
-				    free);
-				break;
-			}
-		}
-	}
-
+	pkg_cleanup_shlibs_required(pkg, &internal_provided);
 	tll_free_and_free(internal_provided, free);
 
 	tll_foreach(pkg->shlibs_provided, s) {

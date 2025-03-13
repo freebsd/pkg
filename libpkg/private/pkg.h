@@ -864,5 +864,6 @@ char * expand_plist_variables(const char *in, kvlist_t *vars);
 
 int scan_system_shlibs(pkghash **system_shlibs, const char *rootdir);
 void pkg_lists_sort(struct pkg *p);
+void pkg_cleanup_shlibs_required(struct pkg *pkg, stringlist_t *internal_provided);
 
 #endif
