@@ -70,12 +70,14 @@ exec_add(int argc, char **argv)
 	int ch;
 	int i;
 	int failedpkgcount = 0;
+	int scriptnoexec = 0;
 	pkg_flags f = PKG_FLAG_NONE;
 	const char *location = NULL;
 
 	/* options descriptor */
 	struct option longopts[] = {
 		{ "no-scripts",          no_argument,            NULL,           'I' },
+		{ "script-no-exec",      no_argument,            &scriptnoexec,  1 },
 		{ "automatic",           no_argument,            NULL,           'A' },
 		{ "force",               no_argument,            NULL,           'f' },
 		{ "accept-missing",      no_argument,            NULL,           'M' },
@@ -104,6 +106,10 @@ exec_add(int argc, char **argv)
 			break;
 		case 1:
 			location = optarg;
+			break;
+		case 0:
+			if (scriptnoexec == 1)
+				f |= PKG_ADD_NOEXEC;
 			break;
 		default:
 			usage_add();

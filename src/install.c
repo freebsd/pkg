@@ -64,6 +64,7 @@ exec_install(int argc, char **argv)
 	int		 done = 0;
 	int		 lock_type = PKGDB_LOCK_ADVISORY;
 	int		 nbactions = 0;
+	int		 scriptnoexec = 0;
 	bool		 rc = true;
 	bool		 local_only = false;
 	match_t		 match = MATCH_EXACT;
@@ -78,6 +79,7 @@ exec_install(int argc, char **argv)
 		{ "glob",		no_argument,		NULL,	'g' },
 		{ "case-insensitive",	no_argument,		NULL,	'i' },
 		{ "no-scripts",		no_argument,		NULL,	'I' },
+		{ "script-no-exec",	no_argument,		&scriptnoexec,	1 },
 		{ "local-only",		no_argument,		NULL,	'l' },
 		{ "ignore-missing",	no_argument,		NULL,	'M' },
 		{ "dry-run",		no_argument,		NULL,	'n' },
@@ -151,6 +153,10 @@ exec_install(int argc, char **argv)
 			break;
 		case 'y':
 			yes = true;
+			break;
+		case 0:
+			if (scriptnoexec == 1)
+				f |= PKG_FLAG_NOEXEC;
 			break;
 		default:
 			usage_install();

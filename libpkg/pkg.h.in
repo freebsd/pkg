@@ -414,7 +414,8 @@ typedef enum _pkg_flags {
 	PKG_FLAG_FETCH_MIRROR = (1U << 10),
 	PKG_FLAG_USE_IPV4 = (1U << 11),
 	PKG_FLAG_USE_IPV6 = (1U << 12),
-	PKG_FLAG_UPGRADE_VULNERABLE = (1U << 13)
+	PKG_FLAG_UPGRADE_VULNERABLE = (1U << 13),
+	PKG_FLAG_NOEXEC = (1U << 14)
 } pkg_flags;
 
 typedef enum _pkg_stats_t {
@@ -1050,6 +1051,7 @@ int pkg_add(struct pkgdb *db, const char *path, unsigned flags,
 #define PKG_ADD_NOSCRIPT		(1U << 4)
 #define PKG_ADD_FORCE_MISSING		(1U << 5)
 #define PKG_ADD_SPLITTED_UPGRADE	(1U << 6)
+#define PKG_ADD_NOEXEC			(1U << 7)
 
 /**
  * Allocate a new pkg_jobs.

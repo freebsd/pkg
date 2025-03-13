@@ -626,6 +626,7 @@ int pkg_delete(struct pkg *pkg, struct pkg *rpkg, struct pkgdb *db, int flags,
     struct triggers *);
 #define PKG_DELETE_UPGRADE	(1 << 1)	/* delete as a split upgrade */
 #define PKG_DELETE_NOSCRIPT	(1 << 2)	/* don't run delete scripts */
+#define PKG_DELETE_NOEXEC	(1 << 3)	/* don't run delete scripts which execute things*/
 
 int pkg_fetch_file_to_fd(struct pkg_repo *repo, int dest, struct fetch_item *,
     bool silent);
@@ -660,7 +661,7 @@ int pkg_repo_load_fingerprints(struct pkg_repo *repo);
 
 int pkg_start_stop_rc_scripts(struct pkg *, pkg_rc_attr attr);
 
-int pkg_script_run(struct pkg *, pkg_script type, bool upgrade);
+int pkg_script_run(struct pkg *, pkg_script type, bool upgrade, bool noexec);
 int pkg_lua_script_run(struct pkg *, pkg_lua_script type, bool upgrade);
 ucl_object_t *pkg_lua_script_to_ucl(stringlist_t *);
 int pkg_script_run_child(int pid, int *pstat, int inputfd, const char* script_name);

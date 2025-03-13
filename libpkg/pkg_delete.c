@@ -90,12 +90,13 @@ pkg_delete(struct pkg *pkg, struct pkg *rpkg, struct pkgdb *db, int flags,
 		pkg_start_stop_rc_scripts(pkg, PKG_RC_STOP);
 
 	if ((flags & (PKG_DELETE_NOSCRIPT | PKG_DELETE_UPGRADE)) == 0) {
+		bool noexec = ((flags & PKG_DELETE_NOEXEC) == PKG_DELETE_NOEXEC);
 		pkg_open_root_fd(pkg);
 		ret = pkg_lua_script_run(pkg, PKG_LUA_PRE_DEINSTALL, false);
 		if (ret != EPKG_OK && ctx.developer_mode)
 			return (ret);
-		ret = pkg_script_run(pkg, PKG_SCRIPT_PRE_DEINSTALL, false);
-		if (ret != EPKG_OK && ctx.developer_mode)
+		ret = pkg_script_run(pkg, PKG_SCRIPT_PRE_DEINSTALL, false, noexec);
+		if (ret != EPKG_OK && (ctx.developer_mode || noexec))
 			return (ret);
 	}
 
@@ -106,8 +107,11 @@ pkg_delete(struct pkg *pkg, struct pkg *rpkg, struct pkgdb *db, int flags,
 		return (ret);
 
 	if ((flags & (PKG_DELETE_NOSCRIPT | PKG_DELETE_UPGRADE)) == 0) {
+		bool noexec = ((flags & PKG_DELETE_NOEXEC) == PKG_DELETE_NOEXEC);
 		pkg_lua_script_run(pkg, PKG_LUA_POST_DEINSTALL, false);
-		pkg_script_run(pkg, PKG_SCRIPT_POST_DEINSTALL, false);
+		ret = pkg_script_run(pkg, PKG_SCRIPT_POST_DEINSTALL, false, noexec);
+		if (ret != EPKG_OK && (ctx.developer_mode || noexec))
+			return (ret);
 	}
 
 	ret = pkg_delete_dirs(db, pkg, NULL);
