@@ -159,13 +159,25 @@ pkgdb_regex_delete(void *p)
 void
 pkgdb_now(sqlite3_context *ctx, int argc, __unused sqlite3_value **argv)
 {
+	int64_t t = (int64_t)time(NULL);
+	const char *date_env;
+
 	if (argc != 0) {
 		sqlite3_result_error(ctx, "Invalid usage of now() "
 		    "no arguments expected\n", -1);
 		return;
 	}
 
-	sqlite3_result_int64(ctx, (int64_t)time(NULL));
+	if ((date_env = getenv("PKG_INSTALL_EPOCH")) != NULL)
+	{
+		const char *errstr = NULL;
+		int64_t temp_t = strtonum(date_env, 0, INT64_MAX, &errstr);
+		if (errstr == NULL) {
+			t = temp_t;
+		}
+	}
+
+	sqlite3_result_int64(ctx, t);
 }
 
 static void
