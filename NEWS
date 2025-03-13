@@ -1,3 +1,6 @@
+Changes from 2.0.99.7 to 2.0.99.8
+- make info -d and -r show provides/requires
+
 Changes from 2.0.99.6 to 2.0.99.7
 - fix in non pkgbase context
 
