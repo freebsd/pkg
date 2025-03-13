@@ -483,6 +483,9 @@ delete_process_provides(struct pkg_jobs *j, struct pkg *lp, const char *provide,
 	struct pkg_job_request *req;
 	bool ret = true;
 
+	/* check for pkgbase shlibs and provides */
+	if (pkghash_get(j->system_shlibs, provide) != NULL)
+		return (ret);
 	/* if something else to provide the same thing we can safely delete */
 	lit = provideq(j->db, provide);
 	if (lit == NULL)
