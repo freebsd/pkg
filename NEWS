@@ -1,3 +1,6 @@
+Changes from 2.0.99.9 to 2.0.99.10
+- fix providing library via symlinks
+
 Changes from 2.0.99.8 to 2.0.99.9
 - pkg delete considers base libraries when not running on pkgbase system
 - install: allow overwrite installation timestamp with PKG_INSTALL_EPOCH
