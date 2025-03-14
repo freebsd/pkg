@@ -528,8 +528,11 @@ pkg_analyse_files(struct pkgdb *db __unused, struct pkg *pkg, const char *stage)
 	   SHLIB_PROVIDE_PATHS_* are still used to filter the shlibs
 	   required by the package */
 	stringlist_t internal_provided = tll_init();
+	/* list of shlibs that are in the path to be evaluated for provided but are symlinks */
+	stringlist_t maybe_provided = tll_init();
 
 	while (pkg_files(pkg, &file) == EPKG_OK) {
+		struct stat st;
 		if (stage != NULL)
 			snprintf(fpath, sizeof(fpath), "%s/%s", stage,
 			    file->path);
@@ -538,6 +541,7 @@ pkg_analyse_files(struct pkgdb *db __unused, struct pkg *pkg, const char *stage)
 
 		char *provided = NULL;
 		enum pkg_shlib_flags provided_flags = PKG_SHLIB_FLAGS_NONE;
+
 		ret = pkg_analyse(ctx.developer_mode, pkg, fpath, &provided, &provided_flags);
 		if (EPKG_WARN == ret) {
 			failures = true;
@@ -564,17 +568,36 @@ pkg_analyse_files(struct pkgdb *db __unused, struct pkg *pkg, const char *stage)
 			}
 			assert(paths != NULL);
 
+			if (lstat(fpath, &st) != 0) {
+				pkg_emit_errno("lstat() failed for", fpath);
+				continue;
+			}
 			/* If the corresponding PATHS option isn't set (i.e. an empty ucl array)
 			   don't do any filtering for backwards compatibility. */
 			if (ucl_array_size(paths) == 0 || pkg_match_paths_list(paths, file->path)) {
-				pkg_addshlib_provided(pkg, provided, provided_flags);
-				free(provided);
+				lstat(fpath, &st);
+				if (S_ISREG(st.st_mode)) {
+					pkg_addshlib_provided(pkg, provided, provided_flags);
+				} else {
+					tll_push_back(maybe_provided, pkg_shlib_name_with_flags(provided, provided_flags));
+				}
 			} else {
-				tll_push_back(internal_provided, provided);
+				tll_push_back(internal_provided, pkg_shlib_name_with_flags(provided, provided_flags));
 			}
+			free(provided);
 		}
 	}
 
+	tll_foreach(maybe_provided, s) {
+		tll_foreach(internal_provided, ip) {
+			if (STREQ(s->item, ip->item)) {
+				pkg_addshlib_provided(pkg, s->item, PKG_SHLIB_FLAGS_NONE);
+				tll_remove_and_free(internal_provided, ip, free);
+			}
+		}
+		tll_remove_and_free(maybe_provided, s, free);
+	}
+	tll_free(maybe_provided);
 	/*
 	 * Do not depend on libraries that a package provides itself
 	 */

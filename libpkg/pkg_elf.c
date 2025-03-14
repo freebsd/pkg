@@ -78,8 +78,8 @@ analyse_elf(struct pkg *pkg, const char *fpath, char **provided,
 	struct stat sb;
 	if (lstat(fpath, &sb) != 0)
 		pkg_emit_errno("fstat() failed for", fpath);
-	/* ignore empty files and non regular files */
-	if (sb.st_size == 0 || !S_ISREG(sb.st_mode))
+	/* ignore empty files */
+	if (sb.st_size == 0)
 		return (EPKG_END); /* Empty file or sym-link: no results */
 
 	int fd = open(fpath, O_RDONLY, 0);
