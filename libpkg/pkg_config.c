@@ -1050,6 +1050,33 @@ config_validate_debug_flags(const ucl_object_t *o)
 	return (ret);
 }
 
+static bool
+config_validate_shlib_provide_paths() {
+	const char *config_options[] = {
+		"SHLIB_PROVIDE_PATHS_NATIVE",
+		"SHLIB_PROVIDE_PATHS_COMPAT_32",
+		"SHLIB_PROVIDE_PATHS_COMPAT_LINUX",
+		"SHLIB_PROVIDE_PATHS_COMPAT_LINUX_32",
+		NULL,
+	};
+	bool valid = true;
+	for (const char **option = config_options; *option != NULL; option++) {
+		const ucl_object_t *paths = pkg_config_get(*option);
+		const ucl_object_t *cur;
+		ucl_object_iter_t it = NULL;
+		while ((cur = ucl_object_iterate(paths, &it, true))) {
+			const char *path = ucl_object_tostring(cur);
+			if (path[0] != '/') {
+				pkg_emit_error("Invalid value for config option %s, "
+				    "'%s' is not an absolute path.",
+				    *option, path);
+				valid = false;
+			}
+		}
+	}
+	return valid;
+}
+
 /* Parses ABI_FILE, ABI, ALTABI, and OSVERSION from the given ucl file and sets
  * the values in the environment. These values must be parsed separately from
  * the rest of the config because they are made available as variable expansions
@@ -1485,6 +1512,11 @@ pkg_ini(const char *path, const char *reposdir, pkg_init_flags flags)
 	parsed = true;
 	ucl_object_unref(obj);
 	ucl_parser_free(p);
+
+	if (!config_validate_shlib_provide_paths()) {
+		err = EPKG_FATAL;
+		goto out;
+	}
 
 	{
 		/* Even though we no longer support setting ABI/ALTABI/OSVERSION
