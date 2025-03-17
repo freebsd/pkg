@@ -2,6 +2,8 @@
 .\" FreeBSD pkg - a next generation package for the installation and maintenance
 .\" of non-core utilities.
 .\"
+.\" Copyright (c) 2025 The FreeBSD Project
+.\"
 .\" Redistribution and use in source and binary forms, with or without
 .\" modification, are permitted provided that the following conditions
 .\" are met:
@@ -11,11 +13,21 @@
 .\"    notice, this list of conditions and the following disclaimer in the
 .\"    documentation and/or other materials provided with the distribution.
 .\"
+.\" THIS SOFTWARE IS PROVIDED BY THE AUTHOR AND CONTRIBUTORS ``AS IS'' AND
+.\" ANY EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT LIMITED TO, THE
+.\" IMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS FOR A PARTICULAR PURPOSE
+.\" ARE DISCLAIMED.  IN NO EVENT SHALL THE AUTHOR OR CONTRIBUTORS BE LIABLE
+.\" FOR ANY DIRECT, INDIRECT, INCIDENTAL, SPECIAL, EXEMPLARY, OR CONSEQUENTIAL
+.\" DAMAGES (INCLUDING, BUT NOT LIMITED TO, PROCUREMENT OF SUBSTITUTE GOODS
+.\" OR SERVICES; LOSS OF USE, DATA, OR PROFITS; OR BUSINESS INTERRUPTION)
+.\" HOWEVER CAUSED AND ON ANY THEORY OF LIABILITY, WHETHER IN CONTRACT, STRICT
+.\" LIABILITY, OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY
+.\" OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
+.\" SUCH DAMAGE.
 .\"
 .\"     @(#)pkg.1
-.\" $FreeBSD$
 .\"
-.Dd July 02, 2024
+.Dd March 17, 2025
 .Dt PKG.CONF 5
 .Os
 .Sh NAME
@@ -606,10 +618,23 @@ An environment variable with the same name as the option in the
 configuration file always overrides the value of an option set in the
 file.
 .Sh EXAMPLES
-Repository configuration file:
+.Fx
+latest repository configuration:
 .Bd -literal -offset indent
 FreeBSD: {
     url: "pkg+https://pkg.freebsd.org/${ABI}/latest",
+    enabled: true,
+    signature_type: "fingerprints",
+    fingerprints: "/usr/share/keys/pkg",
+    mirror_type: "srv"
+}
+.Ed
+.Pp
+.Fx
+quarterly kernel modules repository configuration:
+.Bd -literal -offset indent
+FreeBSD-kmods: {
+    url: "pkg+https://pkg.freebsd.org/${ABI}/kmods_quarterly_${VERSION_MINOR}",
     enabled: true,
     signature_type: "fingerprints",
     fingerprints: "/usr/share/keys/pkg",
