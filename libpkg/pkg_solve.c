@@ -686,6 +686,7 @@ pkg_solve_process_universe_variable(struct pkg_solve_problem *problem,
 	struct pkg_job_request *jreq = NULL;
 	bool chain_added = false;
 	bool force = j->flags & PKG_FLAG_FORCE;
+	bool force_overrides_vital = pkg_object_bool(pkg_config_get("FORCE_CAN_REMOVE_VITAL"));
 
 	LL_FOREACH(var, cur_var) {
 		pkg = cur_var->unit->pkg;
@@ -741,7 +742,8 @@ pkg_solve_process_universe_variable(struct pkg_solve_problem *problem,
 		}
 
 		/* Vital flag */
-		if (pkg->vital && !force) {
+		bool add_vital = force_overrides_vital ? !force : true;
+		if (pkg->vital && add_vital) {
 			if (pkg_solve_add_vital_rule(problem, cur_var) != EPKG_OK) {
 				continue;
 			}
