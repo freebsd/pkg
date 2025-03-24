@@ -330,6 +330,11 @@ static struct config_entry c[] = {
 	},
 	{
 		PKG_BOOL,
+		"FORCE_CAN_REMOVE_VITAL",
+		"YES",
+	},
+	{
+		PKG_BOOL,
 		"PKG_CREATE_VERBOSE",
 		"NO",
 	},
