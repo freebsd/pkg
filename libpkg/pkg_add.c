@@ -1215,7 +1215,6 @@ pkg_add_check_pkg_archive(struct pkg_add_db *db, struct pkg *pkg,
 	retcode = EPKG_FATAL;
 	pkg_emit_add_deps_begin(pkg);
 
-	printf("la\n");
 	while (pkg_deps(pkg, &dep) == EPKG_OK) {
 		pkghash_entry *founddep = NULL;
 
