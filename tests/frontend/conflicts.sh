@@ -6,7 +6,8 @@ tests_init \
 	more_complex_choice \
 	complex_conflicts \
 	fileexists_notinpkg \
-	find_conflicts
+	find_conflicts \
+	find_conflicts_digest
 
 # install foo
 # foo depends on bar-1.0
@@ -486,4 +487,64 @@ ${JAILED}[2/2] Extracting test2-1:  done
 		-o inline:"${OUTPUT}" \
 		-s exit:0 \
 		pkg -o REPOS_DIR="${TMPDIR}/reposconf" -o PKG_CACHEDIR="${TMPDIR}" install -y test2-1
+}
+
+
+digest_pkg() {
+	printf "%s\n" "$1" > a
+	atf_check -s exit:0 sh ${RESOURCEDIR}/test_subr.sh new_manifest test 1 /
+	cat << EOF >> +MANIFEST
+files: {
+	${TMPDIR}/a: "",
+}
+EOF
+	atf_check \
+		-o empty \
+		-e empty \
+		-s exit:0 \
+		pkg create -M +MANIFEST -o .
+
+	atf_check \
+		-o inline:"Creating repository in .:  done\nPacking files for repository:  done\n" \
+		-e empty \
+		-s exit:0 \
+		pkg repo .
+
+	rm -rf reposconf
+	mkdir reposconf
+	cat << EOF >> reposconf/repo.conf
+local: {
+	url: file:///${TMPDIR},
+	enabled: true
+}
+EOF
+}
+
+
+find_conflicts_digest_body() {
+	digest_pkg a
+	cp -p test-1.pkg /tmp/t1a.pkg
+	digest_pkg_a=$(pkg -o REPOS_DIR="${TMPDIR}/reposconf" -o PKG_CACHEDIR="${TMPDIR}" query -F test-1.pkg %X)
+	# rquery_pkg_a=$(pkg -o REPOS_DIR="${TMPDIR}/reposconf" -o PKG_CACHEDIR="${TMPDIR}" rquery %X test)
+	atf_check \
+		-o ignore \
+		-e ignore \
+		-s exit:0 \
+		pkg -o REPOS_DIR="${TMPDIR}/reposconf" -o PKG_CACHEDIR="${TMPDIR}" install -y test-1
+	query_pkg_a=$(pkg -o REPOS_DIR="${TMPDIR}/reposconf" -o PKG_CACHEDIR="${TMPDIR}" query %X test)
+
+	# Same package, different contents, different checksum
+	digest_pkg b
+	cp -p test-1.pkg /tmp/t1b.pkg
+	digest_pkg_b=$(pkg -o REPOS_DIR="${TMPDIR}/reposconf" -o PKG_CACHEDIR="${TMPDIR}" query -F test-1.pkg %X)
+	# rquery_pkg_b=$(pkg -o REPOS_DIR="${TMPDIR}/reposconf" -o PKG_CACHEDIR="${TMPDIR}" rquery %X test)
+	atf_check \
+		-o ignore \
+		-e ignore \
+		-s exit:0 \
+		pkg -o REPOS_DIR="${TMPDIR}/reposconf" -o PKG_CACHEDIR="${TMPDIR}" upgrade -y
+	query_pkg_b=$(pkg -o REPOS_DIR="${TMPDIR}/reposconf" -o PKG_CACHEDIR="${TMPDIR}" query %X test)
+	atf_check_equal "${digest_pkg_a}" "${query_pkg_a}"
+	atf_check_equal "${digest_pkg_b}" "${query_pkg_b}"
+	atf_check_not_equal "${query_pkg_a}" "${query_pkg_b}"
 }
