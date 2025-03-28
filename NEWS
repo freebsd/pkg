@@ -1,3 +1,10 @@
+Changes form 2.0.99.10 to 2.1
+- pkg.conf(5): mention kmods repo
+- validate SHLIB_PROVIDE_PATHS_* options
+- pkg(8): mention -vv
+- new the FORCE_CAN_REMOVE_VITAL boolean config option
+- micro optimise pkg add
+
 Changes from 2.0.99.9 to 2.0.99.10
 - fix providing library via symlinks
 
