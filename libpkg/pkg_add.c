@@ -1271,7 +1271,7 @@ pkg_add_check_pkg_archive(struct pkg_add_db *db, struct pkg *pkg,
 				goto cleanup;
 			continue;
 		}
-		if (scanned) {
+		if (!scanned) {
 			scan_local_pkgs(db, fromstdin, &l, bd, ext);
 			scanned = true;
 		}
@@ -1305,7 +1305,7 @@ pkg_add_check_pkg_archive(struct pkg_add_db *db, struct pkg *pkg,
 				goto cleanup;
 			continue;
 		}
-		if (scanned) {
+		if (!scanned) {
 			scan_local_pkgs(db, fromstdin, &l, bd, ext);
 			scanned = true;
 		}
