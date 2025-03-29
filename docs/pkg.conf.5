@@ -124,9 +124,9 @@ If set to
 .Sy true
 and if an upgrade will remove a library, then
 .Xr pkg 8
-will backup the library to the path defined by
-.Cm BACKUP_LIBRARY_PATH
-. An initial backup will create the 
+will backup the library at the path defined by
+.Cm BACKUP_LIBRARY_PATH .
+An initial backup will create the 
 .Qq compat-libraries
 package. The package version will be bumped whenever an additional library is backed up.
 Default: NO.
