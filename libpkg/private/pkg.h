@@ -241,6 +241,7 @@ struct pkg {
 	struct pkg_repo		*repo;
 };
 typedef tll(struct pkg *) pkg_chain_t;
+typedef vec_t(struct pkg *) pkgs_t;
 
 typedef enum {
 	SCRIPT_UNKNOWN = 0,
