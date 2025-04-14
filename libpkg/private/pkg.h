@@ -28,8 +28,6 @@
 #include "private/fetch.h"
 #include "pkghash.h"
 
-#define UCL_COUNT(obj) ((obj)?((obj)->len):0)
-
 #define PKG_NUM_SCRIPTS 9
 #define PKG_NUM_LUA_SCRIPTS 5
 
