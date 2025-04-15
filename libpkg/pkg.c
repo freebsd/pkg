@@ -104,7 +104,7 @@ pkg_free(struct pkg *pkg)
 	pkg->flags &= ~PKG_LOAD_LICENSES;
 
 	tll_free_and_free(pkg->message, pkg_message_free);
-	tll_free_and_free(pkg->annotations, pkg_kv_free);
+	vec_free_and_free(&pkg->annotations, pkg_kv_free);
 
 	vec_free_and_free(&pkg->dir_to_del, free);
 
@@ -1026,9 +1026,9 @@ pkg_kv_get(const kvlist_t *kv, const char *tag)
 {
 	assert(tag != NULL);
 
-	tll_foreach(*kv, k) {
-		if (STREQ(k->item->key, tag))
-			return (k->item->value);
+	vec_foreach(*kv, i) {
+		if (STREQ(kv->d[i]->key, tag))
+			return (kv->d[i]->value);
 	}
 
 	return (NULL);
@@ -1042,8 +1042,8 @@ pkg_kv_add(kvlist_t *list, const char *key, const char *val, const char *title)
 	assert(val != NULL);
 	assert(title != NULL);
 
-	tll_foreach(*list, k) {
-		if (!STREQ(k->item->key, key))
+	vec_foreach(*list, i) {
+		if (!STREQ(list->d[i]->key, key))
 			continue;
 		if (ctx.developer_mode) {
 			pkg_emit_error("duplicate %s: %s, fatal"
@@ -1056,7 +1056,7 @@ pkg_kv_add(kvlist_t *list, const char *key, const char *val, const char *title)
 	}
 
 	kv = pkg_kv_new(key, val);
-	tll_push_back(*list, kv);
+	vec_push(list, kv);
 
 	return (EPKG_OK);
 }

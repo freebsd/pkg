@@ -275,14 +275,15 @@ ATF_TC_BODY(parse_plist, tc)
 ATF_TC_BODY(expand_plist_variables, tc)
 {
 	char *plop;
-	kvlist_t kv = tll_init();
+	kvlist_t kv;
+	vec_init(&kv);
 
 	plop = expand_plist_variables("%%this%% is a line", &kv);
 	ATF_REQUIRE_STREQ(plop, "%%this%% is a line");
 	free(plop);
 
 	struct pkg_kv *keyval = pkg_kv_new("this", "@comment ");
-	tll_push_back(kv, keyval);
+	vec_push(&kv, keyval);
 
 	plop = expand_plist_variables("%%this%% is a line", &kv);
 	ATF_REQUIRE_STREQ(plop, "@comment  is a line");
@@ -297,7 +298,7 @@ ATF_TC_BODY(expand_plist_variables, tc)
 	free(plop);
 
 	struct pkg_kv *kv2 = pkg_kv_new("new", "var");
-	tll_push_back(kv, kv2);
+	vec_push(&kv, kv2);
 
 	plop = expand_plist_variables("%%this%% %F is a %%new%% line", &kv);
 	ATF_REQUIRE_STREQ(plop, "@comment  %F is a var line");
@@ -319,7 +320,7 @@ ATF_TC_BODY(expand_plist_variables, tc)
 	ATF_REQUIRE_STREQ(plop, "@comment  %F is %%kof a var line %");
 	free(plop);
 
-	tll_free_and_free(kv, pkg_kv_free);
+	vec_free_and_free(&kv, pkg_kv_free);
 }
 
 ATF_TP_ADD_TCS(tp)

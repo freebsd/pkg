@@ -164,13 +164,9 @@ pkg_kvlist_iterator(struct pkg_kvlist *l)
 struct pkg_kv *
 pkg_kvlist_next(struct pkg_kvlist_iterator *it)
 {
-	if (it->cur == NULL)
-		it->cur = it->list->head;
-	else
-		it->cur = ((__typeof__(it->list->head))it->cur)->next;
-	if (it->cur == NULL)
+	if (it->pos >= it->list->len)
 		return (NULL);
-	return (((__typeof__(it->list->head))it->cur)->item);
+	return (it->list->d[it->pos++]);
 }
 
 struct pkg_stringlist_iterator *

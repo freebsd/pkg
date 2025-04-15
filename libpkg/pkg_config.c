@@ -780,7 +780,7 @@ add_repo(const ucl_object_t *obj, struct pkg_repo *r, const char *rname, pkg_ini
 		while ((cur = ucl_iterate_object(env, &it, true))) {
 			kv = pkg_kv_new(ucl_object_key(cur),
 			    ucl_object_tostring_forced(cur));
-			tll_push_back(r->env, kv);
+			vec_push(&r->env, kv);
 		}
 	}
 }
@@ -1711,7 +1711,7 @@ pkg_repo_free(struct pkg_repo *r)
 	pkg_repo_meta_free(r->meta);
 	if (r->fetcher != NULL && r->fetcher->cleanup != NULL)
 		r->fetcher->cleanup(r);
-	tll_free_and_free(r->env, pkg_kv_free);
+	vec_free_and_free(&r->env, pkg_kv_free);
 	free(r->dbpath);
 	free(r);
 }

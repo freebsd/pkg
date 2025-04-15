@@ -99,7 +99,7 @@
 } while (0)
 #define DL_FREE(head, free_func) DL_FREE2(head, free_func, prev, next)
 
-typedef tll(struct pkg_kv *) kvlist_t;
+typedef vec_t(struct pkg_kv *) kvlist_t;
 
 typedef enum {
 	IPALL = 0,
@@ -117,7 +117,7 @@ struct pkg_stringlist {
 
 struct pkg_kvlist_iterator {
 	kvlist_t *list;
-	void *cur;
+	size_t pos;
 };
 
 struct pkg_stringlist_iterator {

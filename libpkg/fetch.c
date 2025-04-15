@@ -228,12 +228,14 @@ pkg_fetch_file_to_fd(struct pkg_repo *repo, int dest, struct fetch_item *fi,
     bool silent)
 {
 	struct pkg_kv	*kv;
-	kvlist_t	 envtorestore = tll_init();
+	kvlist_t	 envtorestore;
 	stringlist_t	 envtounset = tll_init();
 	char		*tmp;
 	int		 retcode = EPKG_OK;
 	struct pkg_repo	*fakerepo = NULL;
 	size_t           nsz;
+
+	vec_init(&envtorestore);
 
 	/* A URL of the form http://host.example.com/ where
 	 * host.example.com does not resolve as a simple A record is
@@ -278,16 +280,16 @@ pkg_fetch_file_to_fd(struct pkg_repo *repo, int dest, struct fetch_item *fi,
 	}
 
 	repo->silent = silent;
-	tll_foreach(repo->env, k) {
-		if ((tmp = getenv(k->item->key)) != NULL) {
+	vec_foreach(repo->env, i) {
+		if ((tmp = getenv(repo->env.d[i]->key)) != NULL) {
 			kv = xcalloc(1, sizeof(*kv));
-			kv->key = xstrdup(k->item->key);
+			kv->key = xstrdup(repo->env.d[i]->key);
 			kv->value = xstrdup(tmp);
-			tll_push_back(envtorestore, kv);
+			vec_push(&envtorestore, kv);
 		} else {
-			tll_push_back(envtounset, k->item->key);
+			tll_push_back(envtounset, repo->env.d[i]->key);
 		}
-		setenv(k->item->key, k->item->value, 1);
+		setenv(repo->env.d[i]->key, repo->env.d[i]->value, 1);
 	}
 
 	if ((retcode = repo->fetcher->open(repo, fi)) != EPKG_OK)
@@ -299,11 +301,11 @@ pkg_fetch_file_to_fd(struct pkg_repo *repo, int dest, struct fetch_item *fi,
 		pkg_emit_fetch_finished(fi->url);
 
 cleanup:
-	tll_foreach(envtorestore, k) {
-		setenv(k->item->key, k->item->value, 1);
-		tll_remove_and_free(envtorestore, k, pkg_kv_free);
+	vec_foreach(envtorestore, i) {
+		setenv(envtorestore.d[i]->key, envtorestore.d[i]->value, 1);
+		vec_remove_and_free(&envtorestore, i, pkg_kv_free);
 	}
-	tll_free(envtorestore);
+	vec_free(&envtorestore);
 	tll_foreach(envtounset, k) {
 		unsetenv(k->item);
 		tll_remove(envtounset, k);
