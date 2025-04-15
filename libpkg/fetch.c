@@ -229,13 +229,14 @@ pkg_fetch_file_to_fd(struct pkg_repo *repo, int dest, struct fetch_item *fi,
 {
 	struct pkg_kv	*kv;
 	kvlist_t	 envtorestore;
-	stringlist_t	 envtounset = tll_init();
+	c_charv_t		 envtounset;
 	char		*tmp;
 	int		 retcode = EPKG_OK;
 	struct pkg_repo	*fakerepo = NULL;
 	size_t           nsz;
 
 	vec_init(&envtorestore);
+	vec_init(&envtounset);
 
 	/* A URL of the form http://host.example.com/ where
 	 * host.example.com does not resolve as a simple A record is
@@ -287,7 +288,7 @@ pkg_fetch_file_to_fd(struct pkg_repo *repo, int dest, struct fetch_item *fi,
 			kv->value = xstrdup(tmp);
 			vec_push(&envtorestore, kv);
 		} else {
-			tll_push_back(envtounset, repo->env.d[i]->key);
+			vec_push(&envtounset, repo->env.d[i]->key);
 		}
 		setenv(repo->env.d[i]->key, repo->env.d[i]->value, 1);
 	}
@@ -306,11 +307,9 @@ cleanup:
 		vec_remove_and_free(&envtorestore, i, pkg_kv_free);
 	}
 	vec_free(&envtorestore);
-	tll_foreach(envtounset, k) {
-		unsetenv(k->item);
-		tll_remove(envtounset, k);
-	}
-	tll_free(envtounset);
+	while (vec_len(&envtounset) > 0)
+		unsetenv(vec_pop(&envtounset));
+	vec_free(&envtounset);
 
 	if (repo->fetcher != NULL && repo->fetcher->close != NULL)
 		repo->fetcher->close(repo);
