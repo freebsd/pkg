@@ -75,13 +75,13 @@ bin_meta() {
 			XABI=FreeBSD:13:armv6
 			XALTABI=freebsd:13:armv6:32:el:eabi:hardfp
 			XFreeBSD_version=1304000
-			Xshlibs_required="libgcc_s.so.1 libc.so.7"
+			Xshlibs_required="libc.so.7 libgcc_s.so.1"
 			;;
 		*freebsd-armv7.bin)
 			XABI=FreeBSD:14:armv7
 			XALTABI=freebsd:14:armv7:32:el:eabi:hardfp
 			XFreeBSD_version=1401000
-			Xshlibs_required="libgcc_s.so.1 libc.so.7"
+			Xshlibs_required="libc.so.7 libgcc_s.so.1"
 			;;
 		*freebsd-i386.bin)
 			XABI=FreeBSD:14:i386

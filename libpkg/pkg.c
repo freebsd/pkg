@@ -32,6 +32,7 @@ pkg_new(struct pkg **pkg, pkg_t type)
 	*pkg = xcalloc(1, sizeof(struct pkg));
 	(*pkg)->type = type;
 	(*pkg)->rootfd = -1;
+	(*pkg)->list_sorted = false;
 
 	return (EPKG_OK);
 }
@@ -1700,9 +1701,27 @@ pkg_cf_cmp(struct pkg_config_file *a, struct pkg_config_file *b)
 {
 	return (STREQ(a->path, b->path));
 }
+
+static int
+char_cmp(const void *a, const void *b) {
+    return strcmp(*(char **)a, *(char **)b);
+}
+
 void
 pkg_lists_sort(struct pkg *p)
 {
+	if (p->list_sorted)
+		return;
+	p->list_sorted = true;
+
+	qsort(p->categories.d, p->categories.len, sizeof(char *), char_cmp);
+	qsort(p->licenses.d, p->licenses.len, sizeof(char *), char_cmp);
+	qsort(p->users.d, p->users.len, sizeof(char *), char_cmp);
+	qsort(p->groups.d, p->groups.len, sizeof(char *), char_cmp);
+	qsort(p->shlibs_required.d, p->shlibs_required.len, sizeof(char *), char_cmp);
+	qsort(p->shlibs_provided.d, p->shlibs_provided.len, sizeof(char *), char_cmp);
+	qsort(p->provides.d, p->provides.len, sizeof(p->provides.d[0]), char_cmp);
+	qsort(p->requires.d, p->requires.len, sizeof(p->requires.d[0]), char_cmp);
 	DL_SORT(p->depends, pkg_dep_cmp);
 	DL_SORT(p->files, pkg_file_cmp);
 	DL_SORT(p->dirs, pkg_dir_cmp);

@@ -178,6 +178,7 @@ struct pkg {
 	bool		 locked;
 	bool		 automatic;
 	bool		 vital;
+	bool		 list_sorted;
 	int64_t		 id;
 	xstring		*scripts[PKG_NUM_SCRIPTS];
 	charv_t	 lua_scripts[PKG_NUM_LUA_SCRIPTS];
