@@ -1132,11 +1132,11 @@ scan_local_pkgs(struct pkg_add_db *db, bool fromstdin, struct localhashes *l, co
 		}
 		vec_foreach(db->localpkgs, i) {
 			struct pkg *p = db->localpkgs.d[i];
-			tll_foreach(p->shlibs_provided, sp) {
-				pkghash_safe_add(l->shlibs_provides, sp->item, xstrdup(p->repopath), free);
+			vec_foreach(p->shlibs_provided, j) {
+				pkghash_safe_add(l->shlibs_provides, p->shlibs_provided.d[j], xstrdup(p->repopath), free);
 			}
-			tll_foreach(p->provides, sp) {
-				pkghash_safe_add(l->provides, sp->item, xstrdup(p->repopath), free);
+			vec_foreach(p->provides, j) {
+				pkghash_safe_add(l->provides, p->provides.d[j], xstrdup(p->repopath), free);
 			}
 		}
 	}
@@ -1264,21 +1264,22 @@ pkg_add_check_pkg_archive(struct pkg_add_db *db, struct pkg *pkg,
 		}
 	}
 
-	tll_foreach(pkg->shlibs_required, s) {
+	vec_foreach(pkg->shlibs_required, i) {
+		const char *s = pkg->shlibs_required.d[i];
 		if (!db->pkgbase && db->system_shlibs == NULL) {
 			int ret;
 			ret = scan_system_shlibs(&db->system_shlibs, ctx.pkg_rootdir);
 			if (ret == EPKG_NOCOMPAT32)
 				db->ignore_compat32 = true;
 		}
-		if (pkghash_get(db->system_shlibs, s->item) != NULL)
+		if (pkghash_get(db->system_shlibs, s) != NULL)
 			continue;
 		pkghash_entry *founddep = NULL;
-		if (pkgdb_is_shlib_provided(db->db, s->item))
+		if (pkgdb_is_shlib_provided(db->db, s))
 			continue;
 
 		if (fromstdin) {
-			pkg_emit_error("Missing shlib dependency: %s", s->item);
+			pkg_emit_error("Missing shlib dependency: %s", s);
 			if ((flags & PKG_ADD_FORCE_MISSING) == 0)
 				goto cleanup;
 			continue;
@@ -1287,8 +1288,8 @@ pkg_add_check_pkg_archive(struct pkg_add_db *db, struct pkg *pkg,
 			scan_local_pkgs(db, fromstdin, &l, bd, ext);
 			scanned = true;
 		}
-		if ((founddep = pkghash_get(l.shlibs_provides, s->item)) == NULL) {
-			pkg_emit_error("Missing shlib dependency: %s", s->item);
+		if ((founddep = pkghash_get(l.shlibs_provides, s)) == NULL) {
+			pkg_emit_error("Missing shlib dependency: %s", s);
 			if ((flags & PKG_ADD_FORCE_MISSING) == 0)
 				goto cleanup;
 			continue;
@@ -1306,13 +1307,14 @@ pkg_add_check_pkg_archive(struct pkg_add_db *db, struct pkg *pkg,
 		}
 	}
 
-	tll_foreach(pkg->requires, s) {
+	vec_foreach(pkg->requires, i) {
+		const char *s = pkg->requires.d[i];
 		pkghash_entry *founddep = NULL;
-		if (pkgdb_is_provided(db->db, s->item))
+		if (pkgdb_is_provided(db->db, s))
 			continue;
 
 		if (fromstdin) {
-			pkg_emit_error("Missing require dependency: %s", s->item);
+			pkg_emit_error("Missing require dependency: %s", s);
 			if ((flags & PKG_ADD_FORCE_MISSING) == 0)
 				goto cleanup;
 			continue;
@@ -1321,8 +1323,8 @@ pkg_add_check_pkg_archive(struct pkg_add_db *db, struct pkg *pkg,
 			scan_local_pkgs(db, fromstdin, &l, bd, ext);
 			scanned = true;
 		}
-		if ((founddep = pkghash_get(l.provides, s->item)) == NULL) {
-			pkg_emit_error("Missing require dependency: %s", s->item);
+		if ((founddep = pkghash_get(l.provides, s)) == NULL) {
+			pkg_emit_error("Missing require dependency: %s", s);
 			if ((flags & PKG_ADD_FORCE_MISSING) == 0)
 				goto cleanup;
 			continue;
@@ -1388,7 +1390,7 @@ pkg_add_cleanup_old(struct pkgdb *db, struct pkg *old, struct pkg *new, struct t
 					const char *libname;
 					libname = strrchr(f->path, '/');
 					if (libname != NULL &&
-					    stringlist_contains(&old->shlibs_provided, libname+1)) {
+					    charv_contains(&old->shlibs_provided, libname+1, false)) {
 						backup_library(db, old, f->path);
 					}
 				}

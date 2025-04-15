@@ -1,6 +1,6 @@
 /*
  * Copyright (c) 2014, Vsevolod Stakhov
- * Copyright (c) 2012-2024 Baptiste Daroussin <bapt@FreeBSD.org>
+ * Copyright (c) 2012-2025 Baptiste Daroussin <bapt@FreeBSD.org>
  * Copyright (c) 2012 Julien Laffaye <jlaffaye@FreeBSD.org>
  * Copyright (c) 2024 Serenity Cyber Security, LLC
  *                    Author: Gleb Popov <arrowd@FreeBSD.org>
@@ -181,22 +181,22 @@ try_again:
 		}
 	}
 
-	tll_foreach(pkg->categories, c) {
-		ret = pkg_repo_binary_run_prstatement(CAT1, c->item);
+	vec_foreach(pkg->categories, i) {
+		const char *s = pkg->categories.d[i];
+		ret = pkg_repo_binary_run_prstatement(CAT1, s);
 		if (ret == SQLITE_DONE)
-			ret = pkg_repo_binary_run_prstatement(CAT2, package_id,
-			    c->item);
+			ret = pkg_repo_binary_run_prstatement(CAT2, package_id, s);
 		if (ret != SQLITE_DONE) {
 			ERROR_SQLITE(sqlite, pkg_repo_binary_sql_prstatement(CAT2));
 			return (EPKG_FATAL);
 		}
 	}
 
-	tll_foreach(pkg->licenses, l) {
-		ret = pkg_repo_binary_run_prstatement(LIC1, l->item);
+	vec_foreach(pkg->licenses, i) {
+		const char *s = pkg->licenses.d[i];
+		ret = pkg_repo_binary_run_prstatement(LIC1, s);
 		if (ret == SQLITE_DONE)
-			ret = pkg_repo_binary_run_prstatement(LIC2, package_id,
-			    l->item);
+			ret = pkg_repo_binary_run_prstatement(LIC2, package_id, s);
 		if (ret != SQLITE_DONE) {
 			ERROR_SQLITE(sqlite, pkg_repo_binary_sql_prstatement(LIC2));
 			return (EPKG_FATAL);
@@ -215,44 +215,44 @@ try_again:
 		}
 	}
 
-	tll_foreach(pkg->shlibs_required, s) {
-		ret = pkg_repo_binary_run_prstatement(SHLIB1, s->item);
+	vec_foreach(pkg->shlibs_required, i) {
+		const char *s = pkg->shlibs_required.d[i];
+		ret = pkg_repo_binary_run_prstatement(SHLIB1, s);
 		if (ret == SQLITE_DONE)
-			ret = pkg_repo_binary_run_prstatement(SHLIB_REQD, package_id,
-			    s->item);
+			ret = pkg_repo_binary_run_prstatement(SHLIB_REQD, package_id, s);
 		if (ret != SQLITE_DONE) {
 			ERROR_SQLITE(sqlite, pkg_repo_binary_sql_prstatement(SHLIB_REQD));
 			return (EPKG_FATAL);
 		}
 	}
 
-	tll_foreach(pkg->shlibs_provided, s) {
-		ret = pkg_repo_binary_run_prstatement(SHLIB1, s->item);
+	vec_foreach(pkg->shlibs_provided, i) {
+		const char *s = pkg->shlibs_provided.d[i];
+		ret = pkg_repo_binary_run_prstatement(SHLIB1, s);
 		if (ret == SQLITE_DONE)
-			ret = pkg_repo_binary_run_prstatement(SHLIB_PROV, package_id,
-			    s->item);
+			ret = pkg_repo_binary_run_prstatement(SHLIB_PROV, package_id, s);
 		if (ret != SQLITE_DONE) {
 			ERROR_SQLITE(sqlite, pkg_repo_binary_sql_prstatement(SHLIB_PROV));
 			return (EPKG_FATAL);
 		}
 	}
 
-	tll_foreach(pkg->provides, p) {
-		ret = pkg_repo_binary_run_prstatement(PROVIDE, p->item);
+	vec_foreach(pkg->provides, i) {
+		const char *s = pkg->provides.d[i];
+		ret = pkg_repo_binary_run_prstatement(PROVIDE, s);
 		if (ret == SQLITE_DONE)
-			ret = pkg_repo_binary_run_prstatement(PROVIDES, package_id,
-			    p->item);
+			ret = pkg_repo_binary_run_prstatement(PROVIDES, package_id, s);
 		if (ret != SQLITE_DONE) {
 			ERROR_SQLITE(sqlite, pkg_repo_binary_sql_prstatement(PROVIDES));
 			return (EPKG_FATAL);
 		}
 	}
 
-	tll_foreach(pkg->requires, r) {
-		ret = pkg_repo_binary_run_prstatement(REQUIRE, r->item);
+	vec_foreach(pkg->requires, i) {
+		const char *s = pkg->requires.d[i];
+		ret = pkg_repo_binary_run_prstatement(REQUIRE, s);
 		if (ret == SQLITE_DONE)
-			ret = pkg_repo_binary_run_prstatement(REQUIRES, package_id,
-			    r->item);
+			ret = pkg_repo_binary_run_prstatement(REQUIRES, package_id, s);
 		if (ret != SQLITE_DONE) {
 			ERROR_SQLITE(sqlite, pkg_repo_binary_sql_prstatement(REQUIRES));
 			return (EPKG_FATAL);

@@ -1,5 +1,5 @@
 /*-
- * Copyright (c) 2011-2012 Baptiste Daroussin <bapt@FreeBSD.org>
+ * Copyright (c) 2011-2025 Baptiste Daroussin <bapt@FreeBSD.org>
  * Copyright (c) 2012-2013 Matthew Seaman <matthew@FreeBSD.org>
  * Copyright (c) 2024 The FreeBSD Foundation
  *
@@ -440,42 +440,43 @@ pkg_arch_to_legacy(const char *arch, char *dest, size_t sz)
 }
 
 void
-pkg_cleanup_shlibs_required(struct pkg *pkg, stringlist_t *internal_provided)
+pkg_cleanup_shlibs_required(struct pkg *pkg, charv_t *internal_provided)
 {
 	struct pkg_file *file = NULL;
 	const char *lib;
 
-	tll_foreach(pkg->shlibs_required, s)
-	{
-		if (stringlist_contains(&pkg->shlibs_provided, s->item) ||
-		    stringlist_contains(internal_provided, s->item)) {
+	vec_foreach(pkg->shlibs_required, i) {
+		const char *s = pkg->shlibs_required.d[i];
+		printf("* %s\n", s);
+		if (charv_contains(&pkg->shlibs_provided, s, false) ||
+		    charv_contains(internal_provided, s, false)) {
 			pkg_debug(2,
 			    "remove %s from required shlibs as the "
 			    "package %s provides this library itself",
-			    s->item, pkg->name);
-			tll_remove_and_free(pkg->shlibs_required, s, free);
+			    s, pkg->name);
+			vec_remove_and_free(&pkg->shlibs_required, i, free);
 			continue;
 		}
-		if (match_ucl_lists(s->item,
+		if (match_ucl_lists(s,
 		    pkg_config_get("SHLIB_REQUIRE_IGNORE_GLOB"),
 		    pkg_config_get("SHLIB_REQUIRE_IGNORE_REGEX"))) {
 			pkg_debug(2,
 			    "remove %s from required shlibs for package %s as it "
 			    "is matched by SHLIB_REQUIRE_IGNORE_GLOB/REGEX.",
-			    s->item, pkg->name);
-			tll_remove_and_free(pkg->shlibs_required, s, free);
+			    s, pkg->name);
+			vec_remove_and_free(&pkg->shlibs_required, i, free);
 			continue;
 		}
 		file = NULL;
 		while (pkg_files(pkg, &file) == EPKG_OK) {
-			if ((lib = strstr(file->path, s->item)) != NULL &&
-			    strlen(lib) == strlen(s->item) && lib[-1] == '/') {
+			if ((lib = strstr(file->path, s)) != NULL &&
+			    strlen(lib) == strlen(s) && lib[-1] == '/') {
 				pkg_debug(2,
 				    "remove %s from required shlibs as "
 				    "the package %s provides this file itself",
-				    s->item, pkg->name);
+				    s, pkg->name);
 
-				tll_remove_and_free(pkg->shlibs_required, s,
+				vec_remove_and_free(&pkg->shlibs_required, i,
 				    free);
 				break;
 			}
@@ -506,12 +507,12 @@ pkg_analyse_files(struct pkgdb *db __unused, struct pkg *pkg, const char *stage)
 		pkg_analyse_close=pkg_analyse_close_elf;
 	}
 
-	if (tll_length(pkg->shlibs_required) != 0) {
-		tll_free_and_free(pkg->shlibs_required, free);
+	if (vec_len(&pkg->shlibs_required) != 0) {
+		vec_free_and_free(&pkg->shlibs_required, free);
 	}
 
-	if (tll_length(pkg->shlibs_provided) != 0) {
-		tll_free_and_free(pkg->shlibs_provided, free);
+	if (vec_len(&pkg->shlibs_provided) != 0) {
+		vec_free_and_free(&pkg->shlibs_provided, free);
 	}
 
 	ret = pkg_analyse_init(stage);
@@ -527,9 +528,11 @@ pkg_analyse_files(struct pkgdb *db __unused, struct pkg *pkg, const char *stage)
 	/* shlibs that are provided by files in the package but not matched by
 	   SHLIB_PROVIDE_PATHS_* are still used to filter the shlibs
 	   required by the package */
-	stringlist_t internal_provided = tll_init();
+	charv_t internal_provided;
+	vec_init(&internal_provided);
 	/* list of shlibs that are in the path to be evaluated for provided but are symlinks */
-	stringlist_t maybe_provided = tll_init();
+	charv_t maybe_provided;
+	vec_init(&maybe_provided);
 
 	while (pkg_files(pkg, &file) == EPKG_OK) {
 		struct stat st;
@@ -579,40 +582,40 @@ pkg_analyse_files(struct pkgdb *db __unused, struct pkg *pkg, const char *stage)
 				if (S_ISREG(st.st_mode)) {
 					pkg_addshlib_provided(pkg, provided, provided_flags);
 				} else {
-					tll_push_back(maybe_provided, pkg_shlib_name_with_flags(provided, provided_flags));
+					vec_push(&maybe_provided, pkg_shlib_name_with_flags(provided, provided_flags));
 				}
 			} else {
-				tll_push_back(internal_provided, pkg_shlib_name_with_flags(provided, provided_flags));
+				vec_push(&internal_provided, pkg_shlib_name_with_flags(provided, provided_flags));
 			}
 			free(provided);
 		}
 	}
 
-	tll_foreach(maybe_provided, s) {
-		tll_foreach(internal_provided, ip) {
-			if (STREQ(s->item, ip->item)) {
-				pkg_addshlib_provided(pkg, s->item, PKG_SHLIB_FLAGS_NONE);
-				tll_remove_and_free(internal_provided, ip, free);
+	vec_foreach(maybe_provided, i) {
+		vec_foreach(internal_provided, j) {
+			if (STREQ(maybe_provided.d[i], internal_provided.d[j])) {
+				pkg_addshlib_provided(pkg, maybe_provided.d[i], PKG_SHLIB_FLAGS_NONE);
+				vec_remove_and_free(&internal_provided, j, free);
 			}
 		}
-		tll_remove_and_free(maybe_provided, s, free);
+		vec_remove_and_free(&maybe_provided, i, free);
 	}
-	tll_free(maybe_provided);
+	vec_free(&maybe_provided);
 	/*
 	 * Do not depend on libraries that a package provides itself
 	 */
 	pkg_cleanup_shlibs_required(pkg, &internal_provided);
-	tll_free_and_free(internal_provided, free);
+	vec_free_and_free(&internal_provided, free);
 
-	tll_foreach(pkg->shlibs_provided, s) {
-		if (match_ucl_lists(s->item,
+	vec_foreach(pkg->shlibs_provided, i) {
+		if (match_ucl_lists(pkg->shlibs_provided.d[i],
 		    pkg_config_get("SHLIB_PROVIDE_IGNORE_GLOB"),
 		    pkg_config_get("SHLIB_PROVIDE_IGNORE_REGEX"))) {
 			pkg_debug(2,
 			    "remove %s from provided shlibs for package %s as it "
 			    "is matched by SHLIB_PROVIDE_IGNORE_GLOB/REGEX.",
-			    s->item, pkg->name);
-			tll_remove_and_free(pkg->shlibs_provided, s, free);
+			    pkg->shlibs_provided.d[i], pkg->name);
+			vec_remove_and_free(&pkg->shlibs_provided, i, free);
 			continue;
 		}
 	}
@@ -622,7 +625,7 @@ pkg_analyse_files(struct pkgdb *db __unused, struct pkg *pkg, const char *stage)
 	 * drop the provided one
 	 */
 	if (pkg_kv_get(&pkg->annotations, "no_provide_shlib") != NULL) {
-		tll_free_and_free(pkg->shlibs_provided, free);
+		vec_free_and_free(&pkg->shlibs_provided, free);
 	}
 
 	if (failures)

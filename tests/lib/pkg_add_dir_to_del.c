@@ -38,26 +38,26 @@ ATF_TC_BODY(pkg_add_dir_to_del, tc)
 	ATF_REQUIRE_EQ(EPKG_OK, pkg_new(&p, PKG_FILE));
 	pkg_set(p, PKG_ATTR_PREFIX, "/usr/local");
 
-	ATF_REQUIRE_EQ(tll_length(p->dir_to_del), 0);
+	ATF_REQUIRE_EQ(vec_len(&p->dir_to_del), 0);
 
 	pkg_add_dir_to_del(p, "/usr/local/plop/bla", NULL);
 
-	ATF_REQUIRE_STREQ(tll_back(p->dir_to_del), "/usr/local/plop/");
+	ATF_REQUIRE_STREQ(vec_last(&p->dir_to_del), "/usr/local/plop/");
 
 	pkg_add_dir_to_del(p, NULL, "/usr/local/plop");
 
-	ATF_REQUIRE_EQ(tll_length(p->dir_to_del), 1);
+	ATF_REQUIRE_EQ(vec_len(&p->dir_to_del), 1);
 
 	pkg_add_dir_to_del(p, NULL, "/var/run/yeah");
 
-	ATF_REQUIRE_STREQ(tll_back(p->dir_to_del), "/var/run/yeah/");
+	ATF_REQUIRE_STREQ(vec_last(&p->dir_to_del), "/var/run/yeah/");
 
 	pkg_free(p);
 }
 
 ATF_TP_ADD_TCS(tp)
 {
-	ATF_TP_ADD_TC(tp, pkg_add_dir_to_del); 
+	ATF_TP_ADD_TC(tp, pkg_add_dir_to_del);
 
 	return (atf_no_error());
 }

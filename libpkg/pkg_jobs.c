@@ -562,15 +562,15 @@ pkg_jobs_process_delete_request(struct pkg_jobs *j)
 				rc = EPKG_FATAL;
 		}
 
-		tll_foreach(lp->provides, i) {
-			if (!delete_process_provides(j, lp, i->item,
+		vec_foreach(lp->provides, i) {
+			if (!delete_process_provides(j, lp, lp->provides.d[i],
 			    pkgdb_query_provide, pkgdb_query_require,
 			    &to_process))
 				rc = EPKG_FATAL;
 		}
 
-		tll_foreach(lp->shlibs_provided, i) {
-			if (!delete_process_provides(j, lp, i->item,
+		vec_foreach(lp->shlibs_provided, i) {
+			if (!delete_process_provides(j, lp, lp->shlibs_provided.d[i],
 			    pkgdb_query_shlib_provide,
 			    pkgdb_query_shlib_require, &to_process))
 				rc = EPKG_FATAL;
@@ -663,8 +663,8 @@ pkg_jobs_test_automatic(struct pkg_jobs *j, struct pkg *p)
 			return (false);
 	}
 
-	tll_foreach(p->provides, i) {
-		it = pkgdb_query_require(j->db, i->item);
+	vec_foreach(p->provides, i) {
+		it = pkgdb_query_require(j->db, p->provides.d[i]);
 		if (it == NULL)
 			continue;
 		npkg = NULL;
@@ -678,8 +678,8 @@ pkg_jobs_test_automatic(struct pkg_jobs *j, struct pkg *p)
 		pkgdb_it_free(it);
 	}
 
-	tll_foreach(p->shlibs_provided, i) {
-		it = pkgdb_query_shlib_require(j->db, i->item);
+	vec_foreach(p->shlibs_provided, i) {
+		it = pkgdb_query_shlib_require(j->db, p->shlibs_provided.d[i]);
 		if (it == NULL)
 			continue;
 		npkg = NULL;
@@ -1180,19 +1180,19 @@ pkg_jobs_need_upgrade(struct pkghash *system_shlibs, struct pkg *rp, struct pkg 
 	}
 
 	/* Provides */
-	if (tll_length(rp->provides) != tll_length(lp->provides)) {
+	if (vec_len(&rp->provides) != vec_len(&lp->provides)) {
 		free(rp->reason);
 		rp->reason = xstrdup("provides changed");
 		return (true);
 	}
-	l1 = xcalloc(tll_length(lp->provides), sizeof (char*));
+	l1 = xcalloc(vec_len(&lp->provides), sizeof (char*));
 	i = 0;
-	tll_foreach(lp->provides, l) {
-		l1[i++] = l->item;
+	vec_foreach(lp->provides, j) {
+		l1[i++] = lp->provides.d[j];
 	}
 	i = 0;
-	tll_foreach(rp->provides, r) {
-		if (!STREQ(r->item, l1[i])) {
+	vec_foreach(rp->provides, j) {
+		if (!STREQ(rp->provides.d[j], l1[i])) {
 			free(rp->reason);
 			rp->reason = xstrdup("provides changed");
 			free(l1);
@@ -1202,19 +1202,19 @@ pkg_jobs_need_upgrade(struct pkghash *system_shlibs, struct pkg *rp, struct pkg 
 	free(l1);
 
 	/* Requires */
-	if (tll_length(rp->requires) != tll_length(lp->requires)) {
+	if (vec_len(&rp->requires) != vec_len(&lp->requires)) {
 		free(rp->reason);
 		rp->reason = xstrdup("requires changed");
 		return (true);
 	}
-	l1 = xcalloc(tll_length(lp->requires), sizeof (char*));
+	l1 = xcalloc(vec_len(&lp->requires), sizeof (char*));
 	i = 0;
-	tll_foreach(lp->requires, l) {
-		l1[i++] = l->item;
+	vec_foreach(lp->requires, j) {
+		l1[i++] = lp->requires.d[j];
 	}
 	i = 0;
-	tll_foreach(rp->requires, r) {
-		if (!STREQ(r->item, l1[i])) {
+	vec_foreach(rp->requires, j) {
+		if (!STREQ(rp->requires.d[j], l1[i])) {
 			free(rp->reason);
 			rp->reason = xstrdup("requires changed");
 			free(l1);
@@ -1224,19 +1224,19 @@ pkg_jobs_need_upgrade(struct pkghash *system_shlibs, struct pkg *rp, struct pkg 
 	free(l1);
 
 	/* Finish by the shlibs */
-	if (tll_length(rp->shlibs_provided) != tll_length(lp->shlibs_provided)) {
+	if (vec_len(&rp->shlibs_provided) != vec_len(&lp->shlibs_provided)) {
 		free(rp->reason);
 		rp->reason = xstrdup("provided shared library changed");
 		return (true);
 	}
-	l1 = xcalloc(tll_length(lp->shlibs_provided), sizeof (char*));
+	l1 = xcalloc(vec_len(&lp->shlibs_provided), sizeof (char*));
 	i = 0;
-	tll_foreach(lp->shlibs_provided, l) {
-		l1[i++] = l->item;
+	vec_foreach(lp->shlibs_provided, j) {
+		l1[i++] = lp->shlibs_provided.d[j];
 	}
 	i = 0;
-	tll_foreach(rp->shlibs_provided, r) {
-		if (!STREQ(r->item, l1[i])) {
+	vec_foreach(rp->shlibs_provided, j) {
+		if (!STREQ(rp->shlibs_provided.d[j], l1[i])) {
 			free(rp->reason);
 			rp->reason = xstrdup("provided shared library changed");
 			free(l1);
@@ -1246,20 +1246,20 @@ pkg_jobs_need_upgrade(struct pkghash *system_shlibs, struct pkg *rp, struct pkg 
 	}
 	free(l1);
 
-	size_t cntr = tll_length(rp->shlibs_required);
-	size_t cntl = tll_length(lp->shlibs_required);
+	size_t cntr = vec_len(&rp->shlibs_required);
+	size_t cntl = vec_len(&lp->shlibs_required);
 	if (cntr != cntl) {
 		if (system_shlibs != NULL) {
 		/*
 		 * before considering shlibs we need to check if we are running
 		 * pkgbase
 		 */
-			tll_foreach(rp->shlibs_required, r) {
-				if (pkghash_get(system_shlibs, r->item) != NULL)
+			vec_foreach(rp->shlibs_required, i) {
+				if (pkghash_get(system_shlibs, rp->shlibs_required.d[i]) != NULL)
 					cntr--;
 			}
-			tll_foreach(lp->shlibs_required, l) {
-				if (pkghash_get(system_shlibs, l->item) != NULL)
+			vec_foreach(lp->shlibs_required, i) {
+				if (pkghash_get(system_shlibs, lp->shlibs_required.d[i]) != NULL)
 					cntl--;
 			}
 		}
@@ -1269,18 +1269,18 @@ pkg_jobs_need_upgrade(struct pkghash *system_shlibs, struct pkg *rp, struct pkg 
 			return (true);
 		}
 	}
-	l1 = xcalloc(tll_length(lp->shlibs_required), sizeof (char*));
+	l1 = xcalloc(vec_len(&lp->shlibs_required), sizeof (char*));
 	i = 0;
-	tll_foreach(lp->shlibs_required, l) {
-		if (pkghash_get(system_shlibs, l->item) != NULL)
+	vec_foreach(lp->shlibs_required, j) {
+		if (pkghash_get(system_shlibs, lp->shlibs_required.d[j]) != NULL)
 			continue;
-		l1[i++] = l->item;
+		l1[i++] = lp->shlibs_required.d[j];
 	}
 	i = 0;
-	tll_foreach(rp->shlibs_required, r) {
-		if (pkghash_get(system_shlibs, r->item) != NULL)
+	vec_foreach(rp->shlibs_required, j) {
+		if (pkghash_get(system_shlibs, rp->shlibs_required.d[j]) != NULL)
 			continue;
-		if (!STREQ(r->item, l1[i])) {
+		if (!STREQ(rp->shlibs_required.d[j], l1[i])) {
 			free(rp->reason);
 			rp->reason = xstrdup("required shared library changed");
 			free(l1);

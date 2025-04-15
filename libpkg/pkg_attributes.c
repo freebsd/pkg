@@ -1,29 +1,9 @@
 /*-
- * Copyright (c) 2011-2013 Baptiste Daroussin <bapt@FreeBSD.org>
+ * Copyright (c) 2011-2025 Baptiste Daroussin <bapt@FreeBSD.org>
  * Copyright (c) 2011-2012 Julien Laffaye <jlaffaye@FreeBSD.org>
  * Copyright (c) 2013 Matthew Seaman <matthew@FreeBSD.org>
- * All rights reserved.
  *
- * Redistribution and use in source and binary forms, with or without
- * modification, are permitted provided that the following conditions
- * are met:
- * 1. Redistributions of source code must retain the above copyright
- *    notice, this list of conditions and the following disclaimer
- *    in this position and unchanged.
- * 2. Redistributions in binary form must reproduce the above copyright
- *    notice, this list of conditions and the following disclaimer in the
- *    documentation and/or other materials provided with the distribution.
- *
- * THIS SOFTWARE IS PROVIDED BY THE AUTHOR(S) ``AS IS'' AND ANY EXPRESS OR
- * IMPLIED WARRANTIES, INCLUDING, BUT NOT LIMITED TO, THE IMPLIED WARRANTIES
- * OF MERCHANTABILITY AND FITNESS FOR A PARTICULAR PURPOSE ARE DISCLAIMED.
- * IN NO EVENT SHALL THE AUTHOR(S) BE LIABLE FOR ANY DIRECT, INDIRECT,
- * INCIDENTAL, SPECIAL, EXEMPLARY, OR CONSEQUENTIAL DAMAGES (INCLUDING, BUT
- * NOT LIMITED TO, PROCUREMENT OF SUBSTITUTE GOODS OR SERVICES; LOSS OF USE,
- * DATA, OR PROFITS; OR BUSINESS INTERRUPTION) HOWEVER CAUSED AND ON ANY
- * THEORY OF LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY, OR TORT
- * (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF
- * THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
+ * SPDX-License-Identifier: BSD-2-Clause
  */
 
 #include <assert.h>
@@ -204,13 +184,9 @@ pkg_stringlist_iterator(struct pkg_stringlist *l)
 const char *
 pkg_stringlist_next(struct pkg_stringlist_iterator *it)
 {
-	if (it->cur == NULL)
-		it->cur = it->list->head;
-	else
-		it->cur = ((__typeof__(it->list->head))it->cur)->next;
-	if (it->cur == NULL)
+	if (it->pos >= it->list->len)
 		return (NULL);
-	return (((__typeof__(it->list->head))it->cur)->item);
+	return (it->list->d[it->pos++]);
 }
 
 struct pkg_el *
@@ -356,8 +332,8 @@ pkg_get_element(struct pkg *p, pkg_attr a)
 bool
 stringlist_contains(stringlist_t *l, const char *name)
 {
-	tll_foreach(*l, e) {
-		if (STREQ(e->item, name))
+	tll_foreach(*l, s) {
+		if (STREQ(s->item, name))
 			return (true);
 	}
 	return (false);

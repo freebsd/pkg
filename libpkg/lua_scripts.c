@@ -1,27 +1,7 @@
 /*-
- * Copyright (c) 2019 Baptiste Daroussin <bapt@FreeBSD.org>
- * All rights reserved.
- * 
- * Redistribution and use in source and binary forms, with or without
- * modification, are permitted provided that the following conditions
- * are met:
- * 1. Redistributions of source code must retain the above copyright
- *    notice, this list of conditions and the following disclaimer
- *    in this position and unchanged.
- * 2. Redistributions in binary form must reproduce the above copyright
- *    notice, this list of conditions and the following disclaimer in the
- *    documentation and/or other materials provided with the distribution.
- * 
- * THIS SOFTWARE IS PROVIDED BY THE AUTHOR(S) ``AS IS'' AND ANY EXPRESS OR
- * IMPLIED WARRANTIES, INCLUDING, BUT NOT LIMITED TO, THE IMPLIED WARRANTIES
- * OF MERCHANTABILITY AND FITNESS FOR A PARTICULAR PURPOSE ARE DISCLAIMED.
- * IN NO EVENT SHALL THE AUTHOR(S) BE LIABLE FOR ANY DIRECT, INDIRECT,
- * INCIDENTAL, SPECIAL, EXEMPLARY, OR CONSEQUENTIAL DAMAGES (INCLUDING, BUT
- * NOT LIMITED TO, PROCUREMENT OF SUBSTITUTE GOODS OR SERVICES; LOSS OF USE,
- * DATA, OR PROFITS; OR BUSINESS INTERRUPTION) HOWEVER CAUSED AND ON ANY
- * THEORY OF LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY, OR TORT
- * (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF
- * THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
+ * Copyright (c) 2019-2025 Baptiste Daroussin <bapt@FreeBSD.org>
+ *
+ * SPDX-License-Identifier: BSD-2-Clause
  */
 
 #include "pkg_config.h"
@@ -60,7 +40,7 @@ pkg_lua_script_run(struct pkg * const pkg, pkg_lua_script type, bool upgrade)
 	int cur_pipe[2];
 	char *line = NULL;
 
-	if (tll_length(pkg->lua_scripts[type]) == 0)
+	if (vec_len(&pkg->lua_scripts[type]) == 0)
 		return (EPKG_OK);
 
 	if (!pkg_object_bool(pkg_config_get("RUN_SCRIPTS"))) {
@@ -72,7 +52,8 @@ pkg_lua_script_run(struct pkg * const pkg, pkg_lua_script type, bool upgrade)
 	do_reap = procctl(P_PID, mypid, PROC_REAP_ACQUIRE, NULL) == 0;
 #endif
 
-	tll_foreach(pkg->lua_scripts[type], s) {
+	vec_foreach(pkg->lua_scripts[type], i) {
+		char *script = pkg->lua_scripts[type].d[i];
 		if (get_socketpair(cur_pipe) == -1) {
 			pkg_emit_errno("pkg_lua_script_script", "socketpair");
 			goto cleanup;
@@ -115,13 +96,13 @@ pkg_lua_script_run(struct pkg * const pkg, pkg_lua_script type, bool upgrade)
 			lua_override_ios(L, true);
 
 			/* parse and set arguments of the line is in the comments */
-			if (STARTS_WITH(s->item, "-- args: ")) {
+			if (STARTS_WITH(script, "-- args: ")) {
 				char *walk, *begin, *line = NULL;
 				int spaces, argc = 0;
 				char **args = NULL;
 
-				walk = strchr(s->item, '\n');
-				begin = s->item + strlen("-- args: ");
+				walk = strchr(script, '\n');
+				begin = script + strlen("-- args: ");
 				line = xstrndup(begin, walk - begin);
 				spaces = pkg_utils_count_spaces(line);
 				args = xmalloc((spaces + 1)* sizeof(char *));
@@ -132,8 +113,8 @@ pkg_lua_script_run(struct pkg * const pkg, pkg_lua_script type, bool upgrade)
 				lua_args_table(L, args, argc);
 			}
 
-			pkg_debug(3, "Scripts: executing lua\n--- BEGIN ---\n%s\nScripts: --- END ---", s->item);
-			if (luaL_dostring(L, s->item)) {
+			pkg_debug(3, "Scripts: executing lua\n--- BEGIN ---\n%s\nScripts: --- END ---", script);
+			if (luaL_dostring(L, script)) {
 				pkg_emit_error("Failed to execute lua script: %s", lua_tostring(L, -1));
 				lua_close(L);
 				_exit(1);
@@ -183,14 +164,14 @@ cleanup:
 }
 
 ucl_object_t *
-pkg_lua_script_to_ucl(stringlist_t *scripts)
+pkg_lua_script_to_ucl(charv_t *scripts)
 {
 	ucl_object_t *array;
 
 	array = ucl_object_typed_new(UCL_ARRAY);
-	tll_foreach(*scripts, s)
-		ucl_array_append(array, ucl_object_fromstring_common(s->item,
-		    strlen(s->item), UCL_STRING_RAW|UCL_STRING_TRIM));
+	vec_foreach(*scripts, i)
+		ucl_array_append(array, ucl_object_fromstring_common(scripts->d[i],
+		    strlen(scripts->d[i]), UCL_STRING_RAW|UCL_STRING_TRIM));
 
 	return (array);
 }
@@ -206,7 +187,7 @@ pkg_lua_script_from_ucl(struct pkg *pkg, const ucl_object_t *obj, pkg_lua_script
 			pkg_emit_error("lua scripts be strings");
 			return (EPKG_FATAL);
 		}
-		tll_push_back(pkg->lua_scripts[type], xstrdup(ucl_object_tostring(cur)));
+		vec_push(&pkg->lua_scripts[type], xstrdup(ucl_object_tostring(cur)));
 	}
 	return (EPKG_OK);
 }

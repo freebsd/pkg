@@ -167,21 +167,22 @@ pkg_add_dir_to_del(struct pkg *pkg, const char *file, const char *dir)
 		path[len] = '\0';
 	}
 
-	tll_foreach(pkg->dir_to_del, d) {
-		len2 = strlen(d->item);
-		if (len2 >= len && strncmp(path, d->item, len) == 0)
+	vec_foreach(pkg->dir_to_del, i) {
+		len2 = strlen(pkg->dir_to_del.d[i]);
+		if (len2 >= len && strncmp(path, pkg->dir_to_del.d[i], len) == 0)
 			return;
 
-		if (strncmp(path, d->item, len2) == 0) {
+		if (strncmp(path, pkg->dir_to_del.d[i], len2) == 0) {
 			pkg_debug(1, "Replacing in deletion %s with %s",
-			    d->item, path);
-			tll_remove_and_free(pkg->dir_to_del, d, free);
-			break;
+			    pkg->dir_to_del.d[i], path);
+			free(pkg->dir_to_del.d[i]);
+			pkg->dir_to_del.d[i] = xstrdup(path);
+			return;
 		}
 	}
 
 	pkg_debug(1, "Adding to deletion %s", path);
-	tll_push_back(pkg->dir_to_del, xstrdup(path));
+	vec_push(&pkg->dir_to_del, xstrdup(path));
 }
 
 static void
@@ -272,9 +273,8 @@ pkg_effective_rmdir(struct pkgdb *db, struct pkg *pkg)
 	char prefix_r[MAXPATHLEN];
 
 	snprintf(prefix_r, sizeof(prefix_r), "%s", pkg->prefix[0] ? pkg->prefix + 1 : "");
-	tll_foreach(pkg->dir_to_del, d) {
-		rmdir_p(db, pkg, d->item, prefix_r);
-		tll_remove_and_free(pkg->dir_to_del, d, free);
+	vec_foreach(pkg->dir_to_del, i) {
+		rmdir_p(db, pkg, pkg->dir_to_del.d[i], prefix_r);
 	}
 }
 
@@ -408,7 +408,7 @@ pkg_delete_dir(struct pkg *pkg, struct pkg_dir *dir)
 	if ((strncmp(prefix_rel, path, len) == 0) && path[len] == '/') {
 		pkg_add_dir_to_del(pkg, NULL, path);
 	} else {
-		tll_push_back(pkg->dir_to_del, xstrdup(path));
+		vec_push(&pkg->dir_to_del, xstrdup(path));
 	}
 }
 
