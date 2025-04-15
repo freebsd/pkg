@@ -456,7 +456,7 @@ pkg_jobs_add_req(struct pkg_jobs *j, struct pkg *pkg)
 }
 
 static bool
-append_to_del_request(struct pkg_jobs *j, pkg_chain_t *to_process, const char *uid, const char *reqname)
+append_to_del_request(struct pkg_jobs *j, pkgs_t *to_process, const char *uid, const char *reqname)
 {
 	struct pkg *p;
 
@@ -468,7 +468,7 @@ append_to_del_request(struct pkg_jobs *j, pkg_chain_t *to_process, const char *u
 		   reqname);
 		return (false);
 	}
-	tll_push_back(*to_process, p);
+	vec_push(to_process, p);
 	return (true);
 }
 
@@ -476,7 +476,7 @@ bool
 delete_process_provides(struct pkg_jobs *j, struct pkg *lp, const char *provide,
     struct pkgdb_it *(*provideq)(struct pkgdb *db, const char *req),
     struct pkgdb_it *(*requireq)(struct pkgdb *db, const char *req),
-    pkg_chain_t *to_process)
+    pkgs_t *to_process)
 {
 	struct pkgdb_it *lit, *rit;
 	struct pkg *pkg;
@@ -537,8 +537,10 @@ pkg_jobs_process_delete_request(struct pkg_jobs *j)
 	struct pkg_dep *d = NULL;
 	struct pkg *lp;
 	int rc = EPKG_OK;
-	pkg_chain_t to_process = tll_init();
+	pkgs_t to_process;
 	pkghash_it it;
+
+	vec_init(&to_process);
 
 	if (force)
 		return (EPKG_OK);
@@ -578,17 +580,17 @@ pkg_jobs_process_delete_request(struct pkg_jobs *j)
 	if (rc == EPKG_FATAL)
 		return (rc);
 
-	tll_foreach(to_process, pit) {
-		lp = pit->item;
+	vec_foreach(to_process, pit) {
+		lp = to_process.d[pit];
 		if (pkg_jobs_add_req(j, lp) == NULL) {
-			tll_free(to_process);
+			vec_free(&to_process);
 			return (EPKG_FATAL);
 		}
 	}
 
-	if (tll_length(to_process) > 0)
+	if (vec_len(&to_process) > 0)
 		rc = pkg_jobs_process_delete_request(j);
-	tll_free(to_process);
+	vec_free(&to_process);
 
 	return (rc);
 }
