@@ -304,7 +304,7 @@ show_version_info(int version)
 	printf("%-24s: %s\n", "libpkg", pkg_libversion());
 
 	pkg_kvl_t *lib = pkg_external_libs_version();
-	for (size_t i = 0; i < lib->len; i++) {
+	vec_foreach(*lib, i) {
 		printf("%-24s: %s\n", lib->d[i]->key, lib->d[i]->value);
 	}
 	free(lib);

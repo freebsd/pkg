@@ -44,7 +44,7 @@
 static bool
 _find_repo(c_charv_t *reponames, const char *name)
 {
-	for (size_t i = 0; i < reponames->len; i++) {
+	vec_foreach(*reponames, i) {
 		if (STREQ(name, reponames->d[i]))
 			return (true);
 	}
@@ -113,7 +113,7 @@ pkgcli_update(bool force, bool strict, c_charv_t *reponames)
 			if (reponames == NULL || reponames->len == 0)
 				printf("All repositories are up to date.\n");
 			else {
-				for (size_t i = 0; i < reponames->len; i++)
+				vec_foreach(*reponames, i)
 					printf("%s%s", i == 0 ? "" : ", ", reponames->d[i]);
 				printf(" %s up to date.\n", reponames->len == 1 ? "is" : "are");
 			}
