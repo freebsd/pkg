@@ -328,13 +328,3 @@ pkg_get_element(struct pkg *p, pkg_attr a)
 
 	return (e);
 }
-
-bool
-stringlist_contains(stringlist_t *l, const char *name)
-{
-	tll_foreach(*l, s) {
-		if (STREQ(s->item, name))
-			return (true);
-	}
-	return (false);
-}
