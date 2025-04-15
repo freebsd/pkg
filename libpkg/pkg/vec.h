@@ -73,7 +73,7 @@
 #define vec_remove_and_free(v, cnt, free_func) \
 	do {                                                    \
 		free_func((v)->d[cnt]);                         \
-		for (size_t _i = cnt; _i < (v)->len; _i++) {    \
+		for (size_t _i = cnt; _i < (v)->len - 1; _i++) {    \
 			(v)->d[_i] = (v)->d[_i + 1];            \
 		}                                               \
 		(v)->len--;                                     \
