@@ -447,7 +447,6 @@ pkg_cleanup_shlibs_required(struct pkg *pkg, charv_t *internal_provided)
 
 	vec_foreach(pkg->shlibs_required, i) {
 		const char *s = pkg->shlibs_required.d[i];
-		printf("* %s\n", s);
 		if (charv_contains(&pkg->shlibs_provided, s, false) ||
 		    charv_contains(internal_provided, s, false)) {
 			pkg_debug(2,
