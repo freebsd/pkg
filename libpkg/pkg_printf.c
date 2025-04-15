@@ -860,20 +860,20 @@ format_annotations(xstring *buf, const void *data, struct percent_esc *p)
 	int			count;
 
 	if (p->flags & (PP_ALTERNATE_FORM1|PP_ALTERNATE_FORM2)) {
-		return (list_count(buf, tll_length(pkg->annotations), p));
+		return (list_count(buf, vec_len(&pkg->annotations), p));
 	} else {
 		set_list_defaults(p, "%An: %Av\n", "");
 
 		count = 1;
 		fflush(p->sep_fmt->fp);
 		fflush(p->item_fmt->fp);
-		tll_foreach(pkg->annotations, k) {
+		vec_foreach(pkg->annotations, i) {
 			if (count > 1)
 				iterate_item(buf, pkg, p->sep_fmt->buf,
-					     k->item, count, PP_A);
+					     pkg->annotations.d[i], count, PP_A);
 
 			iterate_item(buf, pkg, p->item_fmt->buf,
-				     k->item, count, PP_A);
+				     pkg->annotations.d[i], count, PP_A);
 			count++;
 		}
 	}

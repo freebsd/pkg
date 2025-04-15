@@ -2087,8 +2087,8 @@ pkgdb_insert_annotations(struct pkg *pkg, int64_t package_id, sqlite3 *s)
 {
 	struct pkg_kv	*kv;
 
-	tll_foreach(pkg->annotations, k) {
-		kv = k->item;
+	vec_foreach(pkg->annotations, i) {
+		kv = pkg->annotations.d[i];
 		if (run_prstmt(ANNOTATE1, kv->key)
 		    != SQLITE_DONE
 		    ||

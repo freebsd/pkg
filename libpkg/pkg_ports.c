@@ -1091,7 +1091,7 @@ expand_plist_variables(const char *in, kvlist_t *vars)
 	const char *cp;
 	size_t len;
 
-	if (tll_length(*vars) == 0)
+	if (vec_len(vars) == 0)
 		return (xstrdup(in));
 
 	buf = xstring_new();
@@ -1129,10 +1129,10 @@ expand_plist_variables(const char *in, kvlist_t *vars)
 		len = in - cp -1;
 		/* we have a variable */
 		bool found = false;
-		tll_foreach(*vars, i) {
-			if (strncmp(cp, i->item->key, len) != 0)
+		vec_foreach(*vars, i) {
+			if (strncmp(cp, vars->d[i]->key, len) != 0)
 				continue;
-			fputs(i->item->value, buf->fp);
+			fputs(vars->d[i]->value, buf->fp);
 			found = true;
 			in++;
 			break;
@@ -1209,15 +1209,15 @@ add_variable(struct plist *p, char *line, struct file_attr *a __unused)
 	while (*val != '\0' && isspace(*val))
 		val++;
 
-	tll_foreach(p->variables, v) {
-		if (STREQ(v->item->key, key)) {
-			free(v->item->value);
-			v->item->value = xstrdup(val);
+	vec_foreach(p->variables, i) {
+		if (STREQ(p->variables.d[i]->key, key)) {
+			free(p->variables.d[i]->value);
+			p->variables.d[i]->value = xstrdup(val);
 			return (EPKG_OK);
 		}
 	}
 	struct pkg_kv *kv = pkg_kv_new(key, val);
-	tll_push_back(p->variables, kv);
+	vec_push(&p->variables, kv);
 	return (EPKG_OK);
 }
 
