@@ -20,7 +20,6 @@
 #define vec_free(v) \
 	do { \
 		free((v)->d); \
-		(v)->d == NULL; \
 		memset((v), 0, sizeof(*(v))); \
 	} while (0)
 
