@@ -120,14 +120,14 @@ pkg_delete(struct pkg *pkg, struct pkg *rpkg, struct pkgdb *db, int flags,
 
 	if ((flags & PKG_DELETE_UPGRADE) == 0) {
 		pkg_emit_deinstall_finished(pkg);
-		tll_foreach(pkg->message, m) {
-			if (m->item->type == PKG_MESSAGE_REMOVE) {
+		vec_foreach(pkg->message, i) {
+			if (pkg->message.d[i]->type == PKG_MESSAGE_REMOVE) {
 				if (message == NULL) {
 					message = xstring_new();
 					pkg_fprintf(message->fp, "Message from "
 					    "%n-%v:\n", pkg, pkg);
 				}
-				fprintf(message->fp, "%s\n", m->item->str);
+				fprintf(message->fp, "%s\n", pkg->message.d[i]->str);
 			}
 		}
 		if (pkg_has_message(pkg) && message != NULL) {

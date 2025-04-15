@@ -103,7 +103,7 @@ pkg_free(struct pkg *pkg)
 	vec_free_and_free(&pkg->licenses, free);
 	pkg->flags &= ~PKG_LOAD_LICENSES;
 
-	tll_free_and_free(pkg->message, pkg_message_free);
+	vec_free_and_free(&pkg->message, pkg_message_free);
 	vec_free_and_free(&pkg->annotations, pkg_kv_free);
 
 	vec_free_and_free(&pkg->dir_to_del, free);
@@ -247,7 +247,7 @@ pkg_set_s(struct pkg *pkg, pkg_attr attr, const char *str)
 		pkg->comment = xstrdup(str);
 		break;
 	case PKG_ATTR_MESSAGE:
-		tll_free_and_free(pkg->message, pkg_message_free);
+		vec_free_and_free(&pkg->message, pkg_message_free);
 		if (*str == '[') {
 			pkg_message_from_str(pkg, str, strlen(str));
 		} else {
@@ -1409,7 +1409,7 @@ pkg_is_installed(struct pkgdb *db, const char *name)
 bool
 pkg_has_message(struct pkg *p)
 {
-	return (tll_length(p->message) > 0);
+	return (vec_len(&p->message) > 0);
 }
 
 bool
@@ -1506,7 +1506,7 @@ pkg_message_from_ucl(struct pkg *pkg, const ucl_object_t *obj)
 		msg = xcalloc(1, sizeof(*msg));
 		msg->str = xstrdup(ucl_object_tostring(obj));
 		msg->type = PKG_MESSAGE_ALWAYS;
-		tll_push_back(pkg->message, msg);
+		vec_push(&pkg->message, msg);
 		return (EPKG_OK);
 	}
 
@@ -1542,7 +1542,7 @@ pkg_message_from_ucl(struct pkg *pkg, const ucl_object_t *obj)
 				    " message will always be printed");
 		}
 		if (msg->type != PKG_MESSAGE_UPGRADE) {
-			tll_push_back(pkg->message, msg);
+			vec_push(&pkg->message, msg);
 			continue;
 		}
 
@@ -1556,7 +1556,7 @@ pkg_message_from_ucl(struct pkg *pkg, const ucl_object_t *obj)
 			msg->maximum_version = xstrdup(ucl_object_tostring(elt));
 		}
 
-		tll_push_back(pkg->message, msg);
+		vec_push(&pkg->message, msg);
 	}
 
 	return (EPKG_OK);
@@ -1612,8 +1612,8 @@ pkg_message_to_ucl(const struct pkg *pkg)
 	ucl_object_t *obj;
 
 	array = ucl_object_typed_new(UCL_ARRAY);
-	tll_foreach(pkg->message, t) {
-		msg = t->item;
+	vec_foreach(pkg->message, i) {
+		msg = pkg->message.d[i];
 		obj = ucl_object_typed_new (UCL_OBJECT);
 
 		ucl_object_insert_key(obj,
@@ -1662,7 +1662,7 @@ pkg_message_to_str(struct pkg *pkg)
 	ucl_object_t *obj;
 	char *ret = NULL;
 
-	if (tll_length(pkg->message) <= 0)
+	if (vec_len(&pkg->message) <= 0)
 		return (NULL);
 
 	obj = pkg_message_to_ucl(pkg);

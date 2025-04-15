@@ -173,7 +173,7 @@ struct pkg_repo;
 struct url;
 struct fetcher;
 struct pkg_message;
-typedef tll(struct pkg_message *) messages_t;
+typedef vec_t(struct pkg_message *) messages_t;
 
 struct pkg {
 	bool		 direct;
