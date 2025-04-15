@@ -1,6 +1,5 @@
 image: freebsd/latest
 packages:
-  - kyua
   - pkgconf
   - python3
 sources:
@@ -9,7 +8,7 @@ tasks:
   - configure: |
       mkdir build
       cd build
-      ../pkg/configure 
+      ../pkg/configure
   - build: |
       cd build
       make
