@@ -392,7 +392,7 @@ check_for_hardlink(hardlinks_t *hl, struct stat *st)
 {
 	struct hardlink *h;
 
-	for (size_t i = 0; i < hl->len; i++) {
+	vec_foreach(*hl, i) {
 		h = hl->d[i];
 		if (h->ino == st->st_ino &&
 		    h->dev == st->st_dev)
@@ -1076,7 +1076,7 @@ get_http_auth(void)
 bool
 c_charv_contains(c_charv_t *v, const char *el, bool casesensitive)
 {
-	for (size_t i = 0; i < v->len; i ++) {
+	vec_foreach(*v, i) {
 		if (casesensitive) {
 			if (STREQ(v->d[i], el))
 				return (true);

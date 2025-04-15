@@ -418,7 +418,7 @@ get_tempdir(struct pkg_add_context *context, const char *path, tempdirs_t *tempd
 {
 	struct tempdir *tmpdir = NULL;
 
-	for (size_t i = 0; i < tempdirs->len; i++) {
+	vec_foreach(*tempdirs, i) {
 		tmpdir = tempdirs->d[i];
 		if (strncmp(tmpdir->name, path, tmpdir->len) == 0 && path[tmpdir->len] == '/') {
 			reopen_tempdir(context->rootfd, tmpdir);
@@ -641,7 +641,7 @@ create_hardlink(struct pkg_add_context *context, struct pkg_file *f, const char 
 		return (EPKG_FATAL);
 	}
 	if (fh->temppath[0] == '\0') {
-		for (size_t i = 0; i < tempdirs->len; i++) {
+		vec_foreach(*tempdirs, i) {
 			if (strncmp(tempdirs->d[i]->name, fh->path, tempdirs->d[i]->len) == 0 &&
 			    fh->path[tempdirs->d[i]->len] == '/' ) {
 				tmphdir = tempdirs->d[i];
@@ -1006,7 +1006,7 @@ pkg_extract_finalize(struct pkg *pkg, tempdirs_t *tempdirs)
 
 
 	if (tempdirs != NULL) {
-		for (size_t i = 0; i < tempdirs->len; i++) {
+		vec_foreach(*tempdirs, i) {
 			struct tempdir *t = tempdirs->d[i];
 			if (renameat(pkg->rootfd, RELATIVE_PATH(t->temp),
 			    pkg->rootfd, RELATIVE_PATH(t->name)) != 0) {
@@ -1086,7 +1086,7 @@ static bool
 should_append_pkg(pkgs_t *localpkgs, struct pkg *p)
 {
 	/* only keep the highest version is we fine one */
-	for (size_t i = 0; i < localpkgs->len; i++) {
+	vec_foreach(*localpkgs, i) {
 		struct pkg *lp = localpkgs->d[i];
 		if (strcmp(lp->name, p->name) == 0) {
 			if (pkg_version_cmp(lp->version, p->version) == -1) {
@@ -1130,7 +1130,7 @@ scan_local_pkgs(struct pkg_add_db *db, bool fromstdin, struct localhashes *l, co
 			globfree(&g);
 			free(pattern);
 		}
-		for (size_t i = 0; i < db->localpkgs.len; i++) {
+		vec_foreach(db->localpkgs, i) {
 			struct pkg *p = db->localpkgs.d[i];
 			tll_foreach(p->shlibs_provided, sp) {
 				pkghash_safe_add(l->shlibs_provides, sp->item, xstrdup(p->repopath), free);
@@ -1145,7 +1145,7 @@ scan_local_pkgs(struct pkg_add_db *db, bool fromstdin, struct localhashes *l, co
 static const char *
 _localpkgs_get(pkgs_t *pkgs, const char *name)
 {
-	for (size_t i = 0; i < pkgs->len; i++) {
+	vec_foreach(*pkgs, i) {
 		if (STREQ(pkgs->d[i]->name, name))
 			return (pkgs->d[i]->repopath);
 	}
@@ -1933,7 +1933,7 @@ pkg_add_fromdir(struct pkg *pkg, const char *src, struct pkgdb *db __unused)
 				    " '%s'", RELATIVE_PATH(f->path));
 			}
 			path = NULL;
-			for (size_t i = 0; i < hardlinks.len; i++) {
+			vec_foreach(hardlinks, i) {
 				struct hardlink *hit = hardlinks.d[i];
 				if (hit->ino == st.st_ino &&
 				    hit->dev == st.st_dev) {
