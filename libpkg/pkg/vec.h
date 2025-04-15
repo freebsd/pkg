@@ -1,5 +1,5 @@
 /*-
- * Copyright(c) 2024 Baptiste Daroussin <bapt@FreeBSD.org>
+ * Copyright(c) 2024-2025 Baptiste Daroussin <bapt@FreeBSD.org>
  *
  * SPDX-License-Identifier: BSD-2-Clause
  */
@@ -67,6 +67,21 @@
 
 #define vec_pop(v) \
 	(v)->d[--(v)->len]
+
+#define vec_remove_and_free(v, cnt, free_func) \
+	do {                                                    \
+		free_func((v)->d[cnt]);                         \
+		for (size_t _i = cnt; i < (v)->len -1; _i++) {  \
+			(v)->d[_i] = (v)->d[_i + 1];            \
+		}                                               \
+		(v)->len--;                                     \
+	} while (0)
+
+#define vec_len(v) \
+	(v)->len
+
+#define vec_foreach(list, __i) \
+	for (size_t __i = 0; __i < (list).len; __i++)
 
 typedef vec_t(char *) charv_t;
 typedef vec_t(const char *) c_charv_t;
