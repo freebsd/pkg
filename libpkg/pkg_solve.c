@@ -308,7 +308,7 @@ pkg_solve_handle_provide (struct pkg_solve_problem *problem,
 		pkg = curvar->unit->pkg;
 
 		if (pr->is_shlib) {
-			libfound = stringlist_contains(&pkg->shlibs_provided, pr->provide);
+			libfound = charv_contains(&pkg->shlibs_provided, pr->provide, false);
 			/* Skip incompatible ABI as well */
 			if (libfound && !STREQ(pkg->abi, orig->abi)) {
 				dbg(2, "require %s: package %s-%s(%c) provides wrong ABI %s, "
@@ -318,7 +318,7 @@ pkg_solve_handle_provide (struct pkg_solve_problem *problem,
 			}
 		}
 		else {
-			providefound = stringlist_contains(&pkg->provides, pr->provide);
+			providefound = charv_contains(&pkg->provides, pr->provide, false);
 		}
 
 		if (!providefound && !libfound) {
@@ -721,22 +721,23 @@ pkg_solve_process_universe_variable(struct pkg_solve_problem *problem,
 		}
 
 		/* Shlibs */
-		tll_foreach(pkg->shlibs_required, s) {
+		vec_foreach(pkg->shlibs_required, i) {
+			const char *s = pkg->shlibs_required.d[i];
 			/* Ignore 32 bit libraries */
-			if (j->ignore_compat32 && str_ends_with(s->item, ":32"))
+			if (j->ignore_compat32 && str_ends_with(s, ":32"))
 				continue;
-			if (pkghash_get(j->system_shlibs, s->item) != NULL) {
+			if (pkghash_get(j->system_shlibs, s) != NULL) {
 				/* The shlib is provided by the system */
 				continue;
 			}
 			if (pkg_solve_add_require_rule(problem, cur_var,
-			    s->item, cur_var->assumed_reponame) != EPKG_OK) {
+			    s, cur_var->assumed_reponame) != EPKG_OK) {
 				continue;
 			}
 		}
-		tll_foreach(pkg->requires, r) {
+		vec_foreach(pkg->requires, i) {
 			if (pkg_solve_add_require_rule(problem, cur_var,
-			    r->item, cur_var->assumed_reponame) != EPKG_OK) {
+			    pkg->requires.d[i], cur_var->assumed_reponame) != EPKG_OK) {
 				continue;
 			}
 		}

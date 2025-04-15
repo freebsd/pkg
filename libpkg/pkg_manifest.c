@@ -1,29 +1,9 @@
 /*-
- * Copyright (c) 2011-2023 Baptiste Daroussin <bapt@FreeBSD.org>
+ * Copyright (c) 2011-2025 Baptiste Daroussin <bapt@FreeBSD.org>
  * Copyright (c) 2011-2012 Julien Laffaye <jlaffaye@FreeBSD.org>
  * Copyright (c) 2013-2014 Vsevolod Stakhov <vsevolod@FreeBSD.org>
- * All rights reserved.
  *
- * Redistribution and use in source and binary forms, with or without
- * modification, are permitted provided that the following conditions
- * are met:
- * 1. Redistributions of source code must retain the above copyright
- *    notice, this list of conditions and the following disclaimer
- *    in this position and unchanged.
- * 2. Redistributions in binary form must reproduce the above copyright
- *    notice, this list of conditions and the following disclaimer in the
- *    documentation and/or other materials provided with the distribution.
- *
- * THIS SOFTWARE IS PROVIDED BY THE AUTHOR(S) ``AS IS'' AND ANY EXPRESS OR
- * IMPLIED WARRANTIES, INCLUDING, BUT NOT LIMITED TO, THE IMPLIED WARRANTIES
- * OF MERCHANTABILITY AND FITNESS FOR A PARTICULAR PURPOSE ARE DISCLAIMED.
- * IN NO EVENT SHALL THE AUTHOR(S) BE LIABLE FOR ANY DIRECT, INDIRECT,
- * INCIDENTAL, SPECIAL, EXEMPLARY, OR CONSEQUENTIAL DAMAGES (INCLUDING, BUT
- * NOT LIMITED TO, PROCUREMENT OF SUBSTITUTE GOODS OR SERVICES; LOSS OF USE,
- * DATA, OR PROFITS; OR BUSINESS INTERRUPTION) HOWEVER CAUSED AND ON ANY
- * THEORY OF LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY, OR TORT
- * (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF
- * THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
+ * SPDX-License-Identifier: BSD-2-Clause
  */
 
 #include <sys/types.h>
@@ -983,10 +963,10 @@ pkg_emit_object(struct pkg *pkg, short flags)
 
 	dbg(4, "Emitting licenses");
 	seq = NULL;
-	tll_foreach(pkg->licenses, l) {
+	vec_foreach(pkg->licenses, i) {
 		if (seq == NULL)
 			seq = ucl_object_typed_new(UCL_ARRAY);
-		ucl_array_append(seq, ucl_object_fromstring(l->item));
+		ucl_array_append(seq, ucl_object_fromstring(pkg->licenses.d[i]));
 	}
 	if (seq)
 		ucl_object_insert_key(top, seq, "licenses", 8, false);
@@ -1018,50 +998,50 @@ pkg_emit_object(struct pkg *pkg, short flags)
 
 	dbg(4, "Emitting categories");
 	seq = NULL;
-	tll_foreach(pkg->categories, c) {
+	vec_foreach(pkg->categories, i) {
 		if (seq == NULL)
 			seq = ucl_object_typed_new(UCL_ARRAY);
-		ucl_array_append(seq, ucl_object_fromstring(c->item));
+		ucl_array_append(seq, ucl_object_fromstring(pkg->categories.d[i]));
 	}
 	if (seq)
 		ucl_object_insert_key(top, seq, "categories", 10, false);
 
 	dbg(4, "Emitting users");
 	seq = NULL;
-	tll_foreach(pkg->users, u) {
+	vec_foreach(pkg->users, i) {
 		if (seq == NULL)
 			seq = ucl_object_typed_new(UCL_ARRAY);
-		ucl_array_append(seq, ucl_object_fromstring(u->item));
+		ucl_array_append(seq, ucl_object_fromstring(pkg->users.d[i]));
 	}
 	if (seq)
 		ucl_object_insert_key(top, seq, "users", 5, false);
 
 	dbg(4, "Emitting groups");
 	seq = NULL;
-	tll_foreach(pkg->groups, g) {
+	vec_foreach(pkg->groups, i) {
 		if (seq == NULL)
 			seq = ucl_object_typed_new(UCL_ARRAY);
-		ucl_array_append(seq, ucl_object_fromstring(g->item));
+		ucl_array_append(seq, ucl_object_fromstring(pkg->groups.d[i]));
 	}
 	if (seq)
 		ucl_object_insert_key(top, seq, "groups", 6, false);
 
 	dbg(4, "Emitting shibs_required");
 	seq = NULL;
-	tll_foreach(pkg->shlibs_required, s) {
+	vec_foreach(pkg->shlibs_required, i) {
 		if (seq == NULL)
 			seq = ucl_object_typed_new(UCL_ARRAY);
-		ucl_array_append(seq, ucl_object_fromstring(s->item));
+		ucl_array_append(seq, ucl_object_fromstring(pkg->shlibs_required.d[i]));
 	}
 	if (seq)
 		ucl_object_insert_key(top, seq, "shlibs_required", 15, false);
 
 	dbg(4, "Emitting shlibs_provided");
 	seq = NULL;
-	tll_foreach(pkg->shlibs_provided, s) {
+	vec_foreach(pkg->shlibs_provided, i) {
 		if (seq == NULL)
 			seq = ucl_object_typed_new(UCL_ARRAY);
-		ucl_array_append(seq, ucl_object_fromstring(s->item));
+		ucl_array_append(seq, ucl_object_fromstring(pkg->shlibs_provided.d[i]));
 	}
 	if (seq)
 		ucl_object_insert_key(top, seq, "shlibs_provided", 15, false);
@@ -1078,20 +1058,20 @@ pkg_emit_object(struct pkg *pkg, short flags)
 
 	dbg(4, "Emitting provides");
 	seq = NULL;
-	tll_foreach(pkg->provides, p) {
+	vec_foreach(pkg->provides, i) {
 		if (seq == NULL)
 			seq = ucl_object_typed_new(UCL_ARRAY);
-		ucl_array_append(seq, ucl_object_fromstring(p->item));
+		ucl_array_append(seq, ucl_object_fromstring(pkg->provides.d[i]));
 	}
 	if (seq)
 		ucl_object_insert_key(top, seq, "provides", 8, false);
 
 	dbg(4, "Emitting requires");
 	seq = NULL;
-	tll_foreach(pkg->requires, r) {
+	vec_foreach(pkg->requires, i) {
 		if (seq == NULL)
 			seq = ucl_object_typed_new(UCL_ARRAY);
-		ucl_array_append(seq, ucl_object_fromstring(r->item));
+		ucl_array_append(seq, ucl_object_fromstring(pkg->requires.d[i]));
 	}
 	if (seq)
 		ucl_object_insert_key(top, seq, "requires", 8, false);
@@ -1220,7 +1200,7 @@ pkg_emit_object(struct pkg *pkg, short flags)
 		dbg(4, "Emitting lua scripts");
 		map = NULL;
 		for (i = 0; i < PKG_NUM_LUA_SCRIPTS; i++) {
-			if (tll_length(pkg->lua_scripts[i]) == 0)
+			if (vec_len(&pkg->lua_scripts[i]) == 0)
 				continue;
 			switch(i) {
 			case PKG_LUA_PRE_INSTALL:

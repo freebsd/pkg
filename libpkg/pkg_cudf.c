@@ -136,12 +136,12 @@ cudf_emit_pkg(struct pkg *pkg, int version, FILE *f,
 	}
 
 	column = 0;
-	if (tll_length(pkg->provides) > 0) {
+	if (vec_len(&pkg->provides) > 0) {
 		if (fprintf(f, "provides: ") < 0)
 			return (EPKG_FATAL);
-		tll_foreach(pkg->provides, p) {
-			if (cudf_print_element(f, p->item,
-			    column + 1 == tll_length(pkg->provides), &column) < 0) {
+		vec_foreach(pkg->provides, i) {
+			if (cudf_print_element(f, pkg->provides.d[i],
+			    column + 1 == vec_len(&pkg->provides), &column) < 0) {
 				return (EPKG_FATAL);
 			}
 		}

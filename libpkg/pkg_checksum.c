@@ -206,7 +206,6 @@ pkg_checksum_generate(struct pkg *pkg, char *dest, size_t destlen,
 	struct pkg_option *option = NULL;
 	struct pkg_dep *dep = NULL;
 	struct pkg_file *f = NULL;
-	int i;
 	bool is_group = false;
 	vec_init(&tofree);
 
@@ -228,20 +227,20 @@ pkg_checksum_generate(struct pkg *pkg, char *dest, size_t destlen,
 		LL_APPEND(entries, kv_new(option->key, option->value));
 	}
 
-	tll_foreach(pkg->shlibs_required, s) {
-		LL_APPEND(entries, kv_new("required_shlib", s->item));
+	vec_foreach(pkg->shlibs_required, i) {
+		LL_APPEND(entries, kv_new("required_shlib", pkg->shlibs_required.d[i]));
 	}
 
-	tll_foreach(pkg->shlibs_provided, s) {
-		LL_APPEND(entries, kv_new("provided_shlib", s->item));
+	vec_foreach(pkg->shlibs_provided, i) {
+		LL_APPEND(entries, kv_new("provided_shlib", pkg->shlibs_provided.d[i]));
 	}
 
-	tll_foreach(pkg->users, u) {
-		LL_APPEND(entries, kv_new("user", u->item));
+	vec_foreach(pkg->users, i) {
+		LL_APPEND(entries, kv_new("user", pkg->users.d[i]));
 	}
 
-	tll_foreach(pkg->groups, g) {
-		LL_APPEND(entries, kv_new("group", g->item));
+	vec_foreach(pkg->groups, i) {
+		LL_APPEND(entries, kv_new("group", pkg->groups.d[i]));
 	}
 
 	while (pkg_deps(pkg, &dep) == EPKG_OK) {
@@ -254,12 +253,12 @@ pkg_checksum_generate(struct pkg *pkg, char *dest, size_t destlen,
 		}
 	}
 
-	tll_foreach(pkg->provides, p) {
-		LL_APPEND(entries, kv_new("provide", p->item));
+	vec_foreach(pkg->provides, i) {
+		LL_APPEND(entries, kv_new("provide", pkg->provides.d[i]));
 	}
 
-	tll_foreach(pkg->requires, r) {
-		LL_APPEND(entries, kv_new("require", r->item));
+	vec_foreach(pkg->requires, i) {
+		LL_APPEND(entries, kv_new("require", pkg->requires.d[i]));
 	}
 
 	if (inc_scripts) {
@@ -270,8 +269,8 @@ pkg_checksum_generate(struct pkg *pkg, char *dest, size_t destlen,
 			}
 		}
 		for (int i = 0; i < PKG_NUM_LUA_SCRIPTS; i++) {
-			tll_foreach(pkg->lua_scripts[i], s)
-				LL_APPEND(entries, kv_new("lua_script", s->item));
+			vec_foreach(pkg->lua_scripts[i], j)
+				LL_APPEND(entries, kv_new("lua_script", pkg->lua_scripts[i].d[j]));
 		}
 	}
 
@@ -290,7 +289,7 @@ pkg_checksum_generate(struct pkg *pkg, char *dest, size_t destlen,
 	}
 
 	if (checksum_types[type].encfunc) {
-		i = snprintf(dest, destlen, "%d%c%d%c", PKG_CHECKSUM_CUR_VERSION,
+		size_t i = snprintf(dest, destlen, "%d%c%d%c", PKG_CHECKSUM_CUR_VERSION,
 				PKG_CKSUM_SEPARATOR, type, PKG_CKSUM_SEPARATOR);
 		assert(i < destlen);
 		checksum_types[type].encfunc(bdigest, blen, dest + i, destlen - i);

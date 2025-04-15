@@ -1,5 +1,5 @@
 /*-
- * Copyright (c) 2011-2024 Baptiste Daroussin <bapt@FreeBSD.org>
+ * Copyright (c) 2011-2025 Baptiste Daroussin <bapt@FreeBSD.org>
  * Copyright (c) 2011-2012 Julien Laffaye <jlaffaye@FreeBSD.org>
  * Copyright (c) 2012 Bryan Drewery <bryan@shatow.net>
  * Copyright (c) 2013 Matthew Seaman <matthew@FreeBSD.org>
@@ -76,7 +76,7 @@ pkg_free(struct pkg *pkg)
 	for (int i = 0; i < PKG_NUM_SCRIPTS; i++)
 		xstring_free(pkg->scripts[i]);
 	for (int i = 0; i < PKG_NUM_LUA_SCRIPTS; i++)
-		tll_free_and_free(pkg->lua_scripts[i], free);
+		vec_free_and_free(&pkg->lua_scripts[i], free);
 
 	pkg_list_free(pkg, PKG_DEPS);
 	pkg_list_free(pkg, PKG_RDEPS);
@@ -85,27 +85,27 @@ pkg_free(struct pkg *pkg)
 	pkg_list_free(pkg, PKG_OPTIONS);
 	pkg_list_free(pkg, PKG_CONFIG_FILES);
 
-	tll_free_and_free(pkg->users, free);
+	vec_free_and_free(&pkg->users, free);
 	pkg->flags &= ~PKG_LOAD_USERS;
-	tll_free_and_free(pkg->groups, free);
+	vec_free_and_free(&pkg->groups, free);
 	pkg->flags &= ~PKG_LOAD_GROUPS;
-	tll_free_and_free(pkg->shlibs_required, free);
+	vec_free_and_free(&pkg->shlibs_required, free);
 	pkg->flags &= ~PKG_LOAD_SHLIBS_REQUIRED;
-	tll_free_and_free(pkg->shlibs_provided, free);
+	vec_free_and_free(&pkg->shlibs_provided, free);
 	pkg->flags &= ~PKG_LOAD_SHLIBS_REQUIRED;
-	tll_free_and_free(pkg->provides, free);
+	vec_free_and_free(&pkg->provides, free);
 	pkg->flags &= ~PKG_LOAD_PROVIDES;
-	tll_free_and_free(pkg->requires, free);
+	vec_free_and_free(&pkg->requires, free);
 	pkg->flags &= ~PKG_LOAD_REQUIRES;
-	tll_free_and_free(pkg->categories, free);
+	vec_free_and_free(&pkg->categories, free);
 	pkg->flags &= ~PKG_LOAD_CATEGORIES;
-	tll_free_and_free(pkg->licenses, free);
+	vec_free_and_free(&pkg->licenses, free);
 	pkg->flags &= ~PKG_LOAD_LICENSES;
 
 	tll_free_and_free(pkg->message, pkg_message_free);
 	tll_free_and_free(pkg->annotations, pkg_kv_free);
 
-	tll_free_and_free(pkg->dir_to_del, free);
+	vec_free_and_free(&pkg->dir_to_del, free);
 
 	if (pkg->rootfd != -1)
 		close(pkg->rootfd);
@@ -405,45 +405,13 @@ pkg_each(config_files, struct pkg_config_file, config_files);
 int
 pkg_adduser(struct pkg *pkg, const char *name)
 {
-	assert(pkg != NULL);
-	assert(name != NULL && name[0] != '\0');
-
-	tll_foreach(pkg->users, u) {
-		if (!STREQ(u->item, name))
-			continue;
-		if (ctx.developer_mode) {
-			pkg_emit_error("duplicate user listing: %s, fatal (developer mode)", name);
-			return (EPKG_FATAL);
-		}
-		pkg_emit_error("duplicate user listing: %s, ignoring", name);
-		return (EPKG_OK);
-	}
-
-	tll_push_back(pkg->users, xstrdup(name));
-
-	return (EPKG_OK);
+	return (pkg_addstring(&pkg->users, name, "user"));
 }
 
 int
 pkg_addgroup(struct pkg *pkg, const char *name)
 {
-	assert(pkg != NULL);
-	assert(name != NULL && name[0] != '\0');
-
-	tll_foreach(pkg->groups, g) {
-		if (!STREQ(g->item, name))
-			continue;
-		if (ctx.developer_mode) {
-			pkg_emit_error("duplicate group listing: %s, fatal (developer mode)", name);
-			return (EPKG_FATAL);
-		}
-		pkg_emit_error("duplicate group listing: %s, ignoring", name);
-		return (EPKG_OK);
-	}
-
-	tll_push_back(pkg->groups, xstrdup(name));
-
-	return (EPKG_OK);
+	return (pkg_addstring(&pkg->groups, name, "group"));
 }
 
 int
@@ -601,14 +569,12 @@ pkg_addconfig_file(struct pkg *pkg, const char *path, const char *content)
 }
 
 int
-pkg_addstring(stringlist_t *list, const char *val, const char *title)
+pkg_addstring(charv_t *list, const char *val, const char *title)
 {
 	assert(val != NULL);
 	assert(title != NULL);
 
-	tll_foreach(*list, v) {
-		if (!STREQ(v->item, val))
-			continue;
+	if (charv_contains(list, val, false)) {
 		if (ctx.developer_mode) {
 			pkg_emit_error("duplicate %s listing: %s, fatal"
 			    " (developer mode)", title, val);
@@ -619,7 +585,7 @@ pkg_addstring(stringlist_t *list, const char *val, const char *title)
 		return (EPKG_OK);
 	}
 
-	tll_push_back(*list, xstrdup(val));
+	vec_push(list, xstrdup(val));
 
 	return (EPKG_OK);
 }
@@ -696,7 +662,7 @@ pkg_add_lua_script(struct pkg *pkg, const char *data, pkg_lua_script type)
 	if (type >= PKG_LUA_UNKNOWN)
 		return (EPKG_FATAL);
 
-	tll_push_back(pkg->lua_scripts[type], xstrdup(data));
+	vec_push(&pkg->lua_scripts[type], xstrdup(data));
 
 	return (EPKG_OK);
 }
@@ -967,14 +933,12 @@ pkg_addshlib_required(struct pkg *pkg, const char *name,
 	char *full_name = pkg_shlib_name_with_flags(name, flags);
 
 	/* silently ignore duplicates in case of shlibs */
-	tll_foreach(pkg->shlibs_required, s) {
-		if (STREQ(s->item, full_name)) {
-			free(full_name);
-			return (EPKG_OK);
-		}
+	if (charv_contains(&pkg->shlibs_required, full_name, false)) {
+		free(full_name);
+		return (EPKG_OK);
 	}
 
-	tll_push_back(pkg->shlibs_required, full_name);
+	vec_push(&pkg->shlibs_required, full_name);
 
 	dbg(3, "added shlib deps for %s on %s", pkg->name, full_name);
 
@@ -991,14 +955,12 @@ pkg_addshlib_provided(struct pkg *pkg, const char *name,
 	char *full_name = pkg_shlib_name_with_flags(name, flags);
 
 	/* silently ignore duplicates in case of shlibs */
-	tll_foreach(pkg->shlibs_provided, s) {
-		if (STREQ(s->item, full_name)) {
-			free(full_name);
-			return (EPKG_OK);
-		}
+	if (charv_contains(&pkg->shlibs_provided, full_name, false)) {
+		free(full_name);
+		return (EPKG_OK);
 	}
 
-	tll_push_back(pkg->shlibs_provided, full_name);
+	vec_push(&pkg->shlibs_provided, full_name);
 
 	dbg(3, "added shlib provide %s for %s", full_name, pkg->name);
 
@@ -1035,12 +997,10 @@ pkg_addrequire(struct pkg *pkg, const char *name)
 	assert(name != NULL && name[0] != '\0');
 
 	/* silently ignore duplicates in case of conflicts */
-	tll_foreach(pkg->requires, p) {
-		if (STREQ(p->item, name))
-			return (EPKG_OK);
-	}
+	if (charv_contains(&pkg->requires, name, false))
+		return (EPKG_OK);
 
-	tll_push_back(pkg->requires, xstrdup(name));
+	vec_push(&pkg->requires, xstrdup(name));
 
 	return (EPKG_OK);
 }
@@ -1052,12 +1012,10 @@ pkg_addprovide(struct pkg *pkg, const char *name)
 	assert(name != NULL && name[0] != '\0');
 
 	/* silently ignore duplicates in case of conflicts */
-	tll_foreach(pkg->provides, p) {
-		if (STREQ(p->item, name))
-			return (EPKG_OK);
-	}
+	if (charv_contains(&pkg->provides, name, false))
+		return (EPKG_OK);
 
-	tll_push_back(pkg->provides, xstrdup(name));
+	vec_push(&pkg->provides, xstrdup(name));
 
 	return (EPKG_OK);
 }
@@ -1121,17 +1079,17 @@ pkg_list_count(const struct pkg *pkg, pkg_list list)
 	case PKG_CONFIG_FILES:
 		return (pkghash_count(pkg->config_files_hash));
 	case PKG_USERS:
-		return (tll_length(pkg->users));
+		return (vec_len(&pkg->users));
 	case PKG_GROUPS:
-		return (tll_length(pkg->groups));
+		return (vec_len(&pkg->groups));
 	case PKG_SHLIBS_REQUIRED:
-		return (tll_length(pkg->shlibs_required));
+		return (vec_len(&pkg->shlibs_required));
 	case PKG_SHLIBS_PROVIDED:
-		return (tll_length(pkg->shlibs_provided));
+		return (vec_len(&pkg->shlibs_provided));
 	case PKG_REQUIRES:
-		return (tll_length(pkg->requires));
+		return (vec_len(&pkg->requires));
 	case PKG_PROVIDES:
-		return (tll_length(pkg->provides));
+		return (vec_len(&pkg->provides));
 	}
 
 	return (0);

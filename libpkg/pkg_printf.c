@@ -913,7 +913,7 @@ format_shlibs_required(xstring *buf, const void *data, struct percent_esc *p)
 	const struct pkg	*pkg = data;
 
 	if (p->flags & (PP_ALTERNATE_FORM1|PP_ALTERNATE_FORM2))
-		return (list_count(buf, tll_length(pkg->shlibs_required), p));
+		return (list_count(buf, vec_len(&pkg->shlibs_required), p));
 	else {
 		int			 count;
 
@@ -922,13 +922,13 @@ format_shlibs_required(xstring *buf, const void *data, struct percent_esc *p)
 		count = 1;
 		fflush(p->sep_fmt->fp);
 		fflush(p->item_fmt->fp);
-		tll_foreach(pkg->shlibs_required, r) {
+		vec_foreach(pkg->shlibs_required, i) {
 			if (count > 1)
 				iterate_item(buf, pkg, p->sep_fmt->buf,
-					     r->item, count, PP_B);
+					     pkg->shlibs_required.d[i], count, PP_B);
 
 			iterate_item(buf, pkg, p->item_fmt->buf,
-				     r->item, count, PP_B);
+				     pkg->shlibs_required.d[i], count, PP_B);
 			count++;
 		}
 	}
@@ -960,19 +960,19 @@ format_categories(xstring *buf, const void *data, struct percent_esc *p)
 	int			 count = 0;
 
 	if (p->flags & (PP_ALTERNATE_FORM1|PP_ALTERNATE_FORM2)) {
-		return (list_count(buf, tll_length(pkg->categories), p));
+		return (list_count(buf, vec_len(&pkg->categories), p));
 	} else {
 		set_list_defaults(p, "%Cn", ", ");
 
 		count = 1;
 		fflush(p->sep_fmt->fp);
 		fflush(p->item_fmt->fp);
-		tll_foreach(pkg->categories, c) {
+		vec_foreach(pkg->categories, i) {
 			if (count > 1)
 				iterate_item(buf, pkg, p->sep_fmt->buf,
-				    c->item, count, PP_C);
+				    pkg->categories.d[i], count, PP_C);
 
-			iterate_item(buf, pkg, p->item_fmt->buf, c->item,
+			iterate_item(buf, pkg, p->item_fmt->buf, pkg->categories.d[i],
 			    count, PP_C);
 			count++;
 		}
@@ -1175,7 +1175,7 @@ format_groups(xstring *buf, const void *data, struct percent_esc *p)
 	const struct pkg	*pkg = data;
 
 	if (p->flags & (PP_ALTERNATE_FORM1|PP_ALTERNATE_FORM2))
-		return (list_count(buf, tll_length(pkg->groups), p));
+		return (list_count(buf, vec_len(&pkg->groups), p));
 	else {
 		int	 count;
 
@@ -1184,13 +1184,13 @@ format_groups(xstring *buf, const void *data, struct percent_esc *p)
 		count = 1;
 		fflush(p->sep_fmt->fp);
 		fflush(p->item_fmt->fp);
-		tll_foreach(pkg->groups, g) {
+		vec_foreach(pkg->groups, i) {
 			if (count > 1)
 				iterate_item(buf, pkg, p->sep_fmt->buf,
-					     g->item, count, PP_G);
+					     pkg->groups.d[i], count, PP_G);
 
 			iterate_item(buf, pkg,p->item_fmt->buf,
-				     g->item, count, PP_G);
+				     pkg->groups.d[i], count, PP_G);
 			count++;
 		}
 	}
@@ -1231,19 +1231,19 @@ format_licenses(xstring *buf, const void *data, struct percent_esc *p)
 	int			 count = 0;
 
 	if (p->flags & (PP_ALTERNATE_FORM1|PP_ALTERNATE_FORM2)) {
-		return (list_count(buf, tll_length(pkg->licenses), p));
+		return (list_count(buf, vec_len(&pkg->licenses), p));
 	} else {
 		set_list_defaults(p, "%Ln", " %l ");
 
 		count = 1;
 		fflush(p->sep_fmt->fp);
 		fflush(p->item_fmt->fp);
-		tll_foreach(pkg->licenses, l) {
+		vec_foreach(pkg->licenses, i) {
 			if (count > 1)
 				iterate_item(buf, pkg, p->sep_fmt->buf,
-				    l->item, count, PP_L);
+				    pkg->licenses.d[i], count, PP_L);
 
-			iterate_item(buf, pkg, p->item_fmt->buf, l->item,
+			iterate_item(buf, pkg, p->item_fmt->buf, pkg->licenses.d[i],
 			    count, PP_L);
 			count++;
 		}
@@ -1461,7 +1461,7 @@ format_users(xstring *buf, const void *data, struct percent_esc *p)
 	const struct pkg	*pkg = data;
 
 	if (p->flags & (PP_ALTERNATE_FORM1|PP_ALTERNATE_FORM2))
-		return (list_count(buf, tll_length(pkg->users), p));
+		return (list_count(buf, vec_len(&pkg->users), p));
 	else {
 		int	 count;
 
@@ -1470,13 +1470,13 @@ format_users(xstring *buf, const void *data, struct percent_esc *p)
 		count = 1;
 		fflush(p->sep_fmt->fp);
 		fflush(p->item_fmt->fp);
-		tll_foreach(pkg->users, u) {
+		vec_foreach(pkg->users, i) {
 			if (count > 1)
 				iterate_item(buf, pkg, p->sep_fmt->buf,
-					     u->item, count, PP_U);
+					     pkg->users.d[i], count, PP_U);
 
 			iterate_item(buf, pkg, p->item_fmt->buf,
-				     u->item, count, PP_U);
+				     pkg->users.d[i], count, PP_U);
 			count++;
 		}
 	}
@@ -1527,7 +1527,7 @@ format_required(xstring *buf, const void *data, struct percent_esc *p)
 	const struct pkg	*pkg = data;
 
 	if (p->flags & (PP_ALTERNATE_FORM1|PP_ALTERNATE_FORM2))
-		return (list_count(buf, tll_length(pkg->requires), p));
+		return (list_count(buf, vec_len(&pkg->requires), p));
 	else {
 		int	 count;
 
@@ -1536,13 +1536,13 @@ format_required(xstring *buf, const void *data, struct percent_esc *p)
 		count = 1;
 		fflush(p->sep_fmt->fp);
 		fflush(p->item_fmt->fp);
-		tll_foreach(pkg->requires, r) {
+		vec_foreach(pkg->requires, i) {
 			if (count > 1)
 				iterate_item(buf, pkg, p->sep_fmt->buf,
-					     r->item, count, PP_Y);
+					     pkg->requires.d[i], count, PP_Y);
 
 			iterate_item(buf, pkg, p->item_fmt->buf,
-				     r->item, count, PP_Y);
+				     pkg->requires.d[i], count, PP_Y);
 			count++;
 		}
 	}
@@ -1584,7 +1584,7 @@ format_shlibs_provided(xstring *buf, const void *data, struct percent_esc *p)
 	const struct pkg	*pkg = data;
 
 	if (p->flags & (PP_ALTERNATE_FORM1|PP_ALTERNATE_FORM2))
-		return (list_count(buf, tll_length(pkg->shlibs_provided), p));
+		return (list_count(buf, vec_len(&pkg->shlibs_provided), p));
 	else {
 		int	 count;
 
@@ -1593,13 +1593,13 @@ format_shlibs_provided(xstring *buf, const void *data, struct percent_esc *p)
 		count = 1;
 		fflush(p->sep_fmt->fp);
 		fflush(p->item_fmt->fp);
-		tll_foreach(pkg->shlibs_provided, r) {
+		vec_foreach(pkg->shlibs_provided, i) {
 			if (count > 1)
 				iterate_item(buf, pkg, p->sep_fmt->buf,
-					     r->item, count, PP_b);
+					     pkg->shlibs_provided.d[i], count, PP_b);
 
 			iterate_item(buf, pkg, p->item_fmt->buf,
-				     r->item, count, PP_b);
+				     pkg->shlibs_provided.d[i], count, PP_b);
 			count++;
 		}
 	}
@@ -1925,7 +1925,7 @@ format_provided(xstring *buf, const void *data, struct percent_esc *p)
 	const struct pkg	*pkg = data;
 
 	if (p->flags & (PP_ALTERNATE_FORM1|PP_ALTERNATE_FORM2))
-		return (list_count(buf, tll_length(pkg->provides), p));
+		return (list_count(buf, vec_len(&pkg->provides), p));
 	else {
 		int	 count;
 
@@ -1934,13 +1934,13 @@ format_provided(xstring *buf, const void *data, struct percent_esc *p)
 		count = 1;
 		fflush(p->sep_fmt->fp);
 		fflush(p->item_fmt->fp);
-		tll_foreach(pkg->provides, r) {
+		vec_foreach(pkg->provides, i) {
 			if (count > 1)
 				iterate_item(buf, pkg, p->sep_fmt->buf,
-					     r->item, count, PP_y);
+					     pkg->provides.d[i], count, PP_y);
 
 			iterate_item(buf, pkg, p->item_fmt->buf,
-				     r->item, count, PP_y);
+				     pkg->provides.d[i], count, PP_y);
 			count++;
 		}
 	}

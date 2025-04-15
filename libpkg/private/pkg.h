@@ -112,7 +112,7 @@ struct pkg_kvlist {
 };
 
 struct pkg_stringlist {
-	stringlist_t *list;
+	charv_t *list;
 };
 
 struct pkg_kvlist_iterator {
@@ -121,8 +121,8 @@ struct pkg_kvlist_iterator {
 };
 
 struct pkg_stringlist_iterator {
-	stringlist_t *list;
-	void *cur;
+	charv_t *list;
+	size_t pos;
 };
 
 struct pkg_ctx {
@@ -182,7 +182,7 @@ struct pkg {
 	bool		 vital;
 	int64_t		 id;
 	xstring		*scripts[PKG_NUM_SCRIPTS];
-	stringlist_t	 lua_scripts[PKG_NUM_LUA_SCRIPTS];
+	charv_t	 lua_scripts[PKG_NUM_LUA_SCRIPTS];
 	char			*name;
 	char			*origin;
 	char			*version;
@@ -214,29 +214,29 @@ struct pkg {
 	struct pkg_dep		*depends;
 	pkghash			*rdepshash;
 	struct pkg_dep		*rdepends;
-	stringlist_t		 categories;
-	stringlist_t		 licenses;
+	charv_t		 categories;
+	charv_t		 licenses;
 	pkghash			*filehash;
 	struct pkg_file		*files;
 	pkghash			*dirhash;
 	struct pkg_dir		*dirs;
 	pkghash			*optionshash;
 	struct pkg_option	*options;
-	stringlist_t		 users;
-	stringlist_t		 groups;
-	stringlist_t		 shlibs_required;
-	stringlist_t		 shlibs_provided;
+	charv_t		 users;
+	charv_t		 groups;
+	charv_t		 shlibs_required;
+	charv_t		 shlibs_provided;
 	pkghash			*conflictshash;
 	struct pkg_conflict	*conflicts;
-	stringlist_t		 provides;
-	stringlist_t		 requires;
+	charv_t		 provides;
+	charv_t		 requires;
 	pkghash			*config_files_hash;
 	struct pkg_config_file	*config_files;
 	kvlist_t		 annotations;
 	unsigned			flags;
 	int		rootfd;
 	char		rootpath[MAXPATHLEN];
-	stringlist_t	dir_to_del;
+	charv_t	dir_to_del;
 	pkg_t		 type;
 	struct pkg_repo		*repo;
 };
@@ -664,7 +664,7 @@ int pkg_start_stop_rc_scripts(struct pkg *, pkg_rc_attr attr);
 
 int pkg_script_run(struct pkg *, pkg_script type, bool upgrade, bool noexec);
 int pkg_lua_script_run(struct pkg *, pkg_lua_script type, bool upgrade);
-ucl_object_t *pkg_lua_script_to_ucl(stringlist_t *);
+ucl_object_t *pkg_lua_script_to_ucl(charv_t *);
 int pkg_script_run_child(int pid, int *pstat, int inputfd, const char* script_name);
 
 int pkg_open2(struct pkg **p, struct archive **a, struct archive_entry **ae,
@@ -791,7 +791,7 @@ int pkg_adddir(struct pkg *pkg, const char *path, bool check_duplicates);
 int pkg_adddir_attr(struct pkg *pkg, const char *path, const char *uname,
     const char *gname, mode_t perm, u_long fflags, bool check_duplicates);
 
-int pkg_addstring(stringlist_t *s, const char *value, const char *title);
+int pkg_addstring(charv_t *s, const char *value, const char *title);
 int pkg_kv_add(kvlist_t *kv, const char *key, const char *value, const char *title);
 const char *pkg_kv_get(const kvlist_t *kv, const char *key);
 int pkg_adduser(struct pkg *pkg, const char *name);
@@ -866,6 +866,6 @@ char * expand_plist_variables(const char *in, kvlist_t *vars);
 
 int scan_system_shlibs(pkghash **system_shlibs, const char *rootdir);
 void pkg_lists_sort(struct pkg *p);
-void pkg_cleanup_shlibs_required(struct pkg *pkg, stringlist_t *internal_provided);
+void pkg_cleanup_shlibs_required(struct pkg *pkg, charv_t *internal_provided);
 
 #endif

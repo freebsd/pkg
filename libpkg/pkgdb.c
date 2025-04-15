@@ -1,5 +1,5 @@
 /*-
- * Copyright (c) 2011-2024 Baptiste Daroussin <bapt@FreeBSD.org>
+ * Copyright (c) 2011-2025 Baptiste Daroussin <bapt@FreeBSD.org>
  * Copyright (c) 2011-2012 Julien Laffaye <jlaffaye@FreeBSD.org>
  * Copyright (c) 2011 Will Andrews <will@FreeBSD.org>
  * Copyright (c) 2011 Philippe Pepiot <phil@philpep.org>
@@ -1833,10 +1833,10 @@ pkgdb_register_pkg(struct pkgdb *db, struct pkg *pkg, int forced,
 	 * Insert categories
 	 */
 
-	tll_foreach(pkg->categories, c) {
-		ret = run_prstmt(CATEGORY1, c->item);
+	vec_foreach(pkg->categories, i) {
+		ret = run_prstmt(CATEGORY1, pkg->categories.d[i]);
 		if (ret == SQLITE_DONE)
-			ret = run_prstmt(CATEGORY2, package_id, c->item);
+			ret = run_prstmt(CATEGORY2, package_id, pkg->categories.d[i]);
 		if (ret != SQLITE_DONE) {
 			ERROR_STMT_SQLITE(s, STMT(CATEGORY2));
 			goto cleanup;
@@ -1847,11 +1847,11 @@ pkgdb_register_pkg(struct pkgdb *db, struct pkg *pkg, int forced,
 	 * Insert licenses
 	 */
 
-	tll_foreach(pkg->licenses, l) {
-		if (run_prstmt(LICENSES1, l->item)
+	vec_foreach(pkg->licenses, i) {
+		if (run_prstmt(LICENSES1, pkg->licenses.d[i])
 		    != SQLITE_DONE
 		    ||
-		    run_prstmt(LICENSES2, package_id, l->item)
+		    run_prstmt(LICENSES2, package_id, pkg->licenses.d[i])
 		    != SQLITE_DONE) {
 			ERROR_STMT_SQLITE(s, STMT(LICENSES2));
 			goto cleanup;
@@ -1862,11 +1862,11 @@ pkgdb_register_pkg(struct pkgdb *db, struct pkg *pkg, int forced,
 	 * Insert users
 	 */
 
-	tll_foreach(pkg->users, u) {
-		if (run_prstmt(USERS1, u->item)
+	vec_foreach(pkg->users, i) {
+		if (run_prstmt(USERS1, pkg->users.d[i])
 		    != SQLITE_DONE
 		    ||
-		    run_prstmt(USERS2, package_id, u->item)
+		    run_prstmt(USERS2, package_id, pkg->users.d[i])
 		    != SQLITE_DONE) {
 			ERROR_STMT_SQLITE(s, STMT(USERS2));
 			goto cleanup;
@@ -1877,11 +1877,11 @@ pkgdb_register_pkg(struct pkgdb *db, struct pkg *pkg, int forced,
 	 * Insert groups
 	 */
 
-	tll_foreach(pkg->groups, g) {
-		if (run_prstmt(GROUPS1, g->item)
+	vec_foreach(pkg->groups, i) {
+		if (run_prstmt(GROUPS1, pkg->groups.d[i])
 		    != SQLITE_DONE
 		    ||
-		    run_prstmt(GROUPS2, package_id, g->item)
+		    run_prstmt(GROUPS2, package_id, pkg->groups.d[i])
 		    != SQLITE_DONE) {
 			ERROR_STMT_SQLITE(s, STMT(GROUPS2));
 			goto cleanup;
@@ -1986,10 +1986,10 @@ pkgdb_insert_lua_scripts(struct pkg *pkg, int64_t package_id, sqlite3 *s)
 	int64_t			 i;
 
 	for (i = 0; i < PKG_NUM_LUA_SCRIPTS; i++) {
-		tll_foreach(pkg->lua_scripts[i], script) {
-			if (run_prstmt(LUASCRIPT1, script->item) != SQLITE_DONE
+		vec_foreach(pkg->lua_scripts[i], j) {
+			if (run_prstmt(LUASCRIPT1, pkg->lua_scripts[i].d[j]) != SQLITE_DONE
 			    ||
-			    run_prstmt(LUASCRIPT2, script->item, package_id, i) != SQLITE_DONE) {
+			    run_prstmt(LUASCRIPT2, pkg->lua_scripts[i].d[j], package_id, i) != SQLITE_DONE) {
 				ERROR_STMT_SQLITE(s, STMT(LUASCRIPT2));
 				return (EPKG_FATAL);
 			}
@@ -2001,11 +2001,11 @@ pkgdb_insert_lua_scripts(struct pkg *pkg, int64_t package_id, sqlite3 *s)
 int
 pkgdb_update_shlibs_required(struct pkg *pkg, int64_t package_id, sqlite3 *s)
 {
-	tll_foreach(pkg->shlibs_required, r) {
-		if (run_prstmt(SHLIBS1, r->item)
+	vec_foreach(pkg->shlibs_required, i) {
+		if (run_prstmt(SHLIBS1, pkg->shlibs_required.d[i])
 		    != SQLITE_DONE
 		    ||
-		    run_prstmt(SHLIBS_REQD, package_id, r->item)
+		    run_prstmt(SHLIBS_REQD, package_id, pkg->shlibs_required.d[i])
 		    != SQLITE_DONE) {
 			ERROR_STMT_SQLITE(s, STMT(SHLIBS_REQD));
 			return (EPKG_FATAL);
@@ -2034,11 +2034,11 @@ pkgdb_update_config_file_content(struct pkg *p, sqlite3 *s)
 int
 pkgdb_update_shlibs_provided(struct pkg *pkg, int64_t package_id, sqlite3 *s)
 {
-	tll_foreach(pkg->shlibs_provided, r) {
-		if (run_prstmt(SHLIBS1, r->item)
+	vec_foreach(pkg->shlibs_provided, i) {
+		if (run_prstmt(SHLIBS1, pkg->shlibs_provided.d[i])
 		    != SQLITE_DONE
 		    ||
-		    run_prstmt(SHLIBS_PROV, package_id, r->item)
+		    run_prstmt(SHLIBS_PROV, package_id, pkg->shlibs_provided.d[i])
 		    != SQLITE_DONE) {
 			ERROR_STMT_SQLITE(s, STMT(SHLIBS_PROV));
 			return (EPKG_FATAL);
@@ -2051,11 +2051,11 @@ pkgdb_update_shlibs_provided(struct pkg *pkg, int64_t package_id, sqlite3 *s)
 int
 pkgdb_update_requires(struct pkg *pkg, int64_t package_id, sqlite3 *s)
 {
-	tll_foreach(pkg->requires, r) {
-		if (run_prstmt(REQUIRE, r->item)
+	vec_foreach(pkg->requires, i) {
+		if (run_prstmt(REQUIRE, pkg->requires.d[i])
 		    != SQLITE_DONE
 		    ||
-		    run_prstmt(PKG_REQUIRE, package_id, r->item)
+		    run_prstmt(PKG_REQUIRE, package_id, pkg->requires.d[i])
 		    != SQLITE_DONE) {
 			ERROR_STMT_SQLITE(s, STMT(PKG_REQUIRE));
 			return (EPKG_FATAL);
@@ -2068,11 +2068,11 @@ pkgdb_update_requires(struct pkg *pkg, int64_t package_id, sqlite3 *s)
 int
 pkgdb_update_provides(struct pkg *pkg, int64_t package_id, sqlite3 *s)
 {
-	tll_foreach(pkg->provides, p) {
-		if (run_prstmt(PROVIDE, p->item)
+	vec_foreach(pkg->provides, i) {
+		if (run_prstmt(PROVIDE, pkg->provides.d[i])
 		    != SQLITE_DONE
 		    ||
-		    run_prstmt(PKG_PROVIDE, package_id, p->item)
+		    run_prstmt(PKG_PROVIDE, package_id, pkg->provides.d[i])
 		    != SQLITE_DONE) {
 			ERROR_STMT_SQLITE(s, STMT(PKG_PROVIDE));
 			return (EPKG_FATAL);

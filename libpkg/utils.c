@@ -1074,6 +1074,22 @@ get_http_auth(void)
 }
 
 bool
+charv_contains(charv_t *v, const char *el, bool casesensitive)
+{
+	vec_foreach(*v, i) {
+		if (casesensitive) {
+			if (STREQ(v->d[i], el))
+				return (true);
+		} else {
+			if (STRIEQ(v->d[i], el)) {
+				return (true);
+			}
+		}
+	}
+	return (false);
+}
+
+bool
 c_charv_contains(c_charv_t *v, const char *el, bool casesensitive)
 {
 	vec_foreach(*v, i) {
