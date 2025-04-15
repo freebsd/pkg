@@ -1058,8 +1058,6 @@ pkg_jobs_need_upgrade(struct pkghash *system_shlibs, struct pkg *rp, struct pkg 
 	struct pkg_option *lo = NULL, *ro = NULL;
 	struct pkg_dep *ld = NULL, *rd = NULL;
 	struct pkg_conflict *lc = NULL, *rc = NULL;
-	const char **l1;
-	size_t i;
 
 	/* If no local package, then rp is obviously need to be added */
 	if (lp == NULL)
@@ -1185,21 +1183,16 @@ pkg_jobs_need_upgrade(struct pkghash *system_shlibs, struct pkg *rp, struct pkg 
 		rp->reason = xstrdup("provides changed");
 		return (true);
 	}
-	l1 = xcalloc(vec_len(&lp->provides), sizeof (char*));
-	i = 0;
-	vec_foreach(lp->provides, j) {
-		l1[i++] = lp->provides.d[j];
-	}
-	i = 0;
-	vec_foreach(rp->provides, j) {
-		if (!STREQ(rp->provides.d[j], l1[i])) {
+	pkg_lists_sort(lp);
+	pkg_lists_sort(rp);
+
+	vec_foreach(lp->provides, i) {
+		if (!STREQ(lp->provides.d[i], rp->provides.d[i])) {
 			free(rp->reason);
 			rp->reason = xstrdup("provides changed");
-			free(l1);
 			return (true);
 		}
 	}
-	free(l1);
 
 	/* Requires */
 	if (vec_len(&rp->requires) != vec_len(&lp->requires)) {
@@ -1207,21 +1200,13 @@ pkg_jobs_need_upgrade(struct pkghash *system_shlibs, struct pkg *rp, struct pkg 
 		rp->reason = xstrdup("requires changed");
 		return (true);
 	}
-	l1 = xcalloc(vec_len(&lp->requires), sizeof (char*));
-	i = 0;
-	vec_foreach(lp->requires, j) {
-		l1[i++] = lp->requires.d[j];
-	}
-	i = 0;
-	vec_foreach(rp->requires, j) {
-		if (!STREQ(rp->requires.d[j], l1[i])) {
+	vec_foreach(lp->requires, i) {
+		if (!STREQ(lp->requires.d[i], rp->requires.d[i])) {
 			free(rp->reason);
 			rp->reason = xstrdup("requires changed");
-			free(l1);
 			return (true);
 		}
 	}
-	free(l1);
 
 	/* Finish by the shlibs */
 	if (vec_len(&rp->shlibs_provided) != vec_len(&lp->shlibs_provided)) {
@@ -1229,67 +1214,41 @@ pkg_jobs_need_upgrade(struct pkghash *system_shlibs, struct pkg *rp, struct pkg 
 		rp->reason = xstrdup("provided shared library changed");
 		return (true);
 	}
-	l1 = xcalloc(vec_len(&lp->shlibs_provided), sizeof (char*));
-	i = 0;
-	vec_foreach(lp->shlibs_provided, j) {
-		l1[i++] = lp->shlibs_provided.d[j];
-	}
-	i = 0;
-	vec_foreach(rp->shlibs_provided, j) {
-		if (!STREQ(rp->shlibs_provided.d[j], l1[i])) {
+	vec_foreach(lp->shlibs_provided, i) {
+		if (!STREQ(lp->shlibs_provided.d[i], rp->shlibs_provided.d[i])) {
 			free(rp->reason);
 			rp->reason = xstrdup("provided shared library changed");
-			free(l1);
 			return (true);
 		}
-		i++;
 	}
-	free(l1);
 
 	size_t cntr = vec_len(&rp->shlibs_required);
 	size_t cntl = vec_len(&lp->shlibs_required);
-	if (cntr != cntl) {
-		if (system_shlibs != NULL) {
-		/*
-		 * before considering shlibs we need to check if we are running
-		 * pkgbase
-		 */
-			vec_foreach(rp->shlibs_required, i) {
-				if (pkghash_get(system_shlibs, rp->shlibs_required.d[i]) != NULL)
-					cntr--;
-			}
-			vec_foreach(lp->shlibs_required, i) {
-				if (pkghash_get(system_shlibs, lp->shlibs_required.d[i]) != NULL)
-					cntl--;
-			}
-		}
-		if (cntr != cntl) {
-			free(rp->reason);
-			rp->reason = xstrdup("required shared library changed");
-			return (true);
-		}
+	if (cntr != cntl & system_shlibs == NULL) {
+		free(rp->reason);
+		rp->reason = xstrdup("required shared library changed");
+		return (true);
 	}
-	l1 = xcalloc(vec_len(&lp->shlibs_required), sizeof (char*));
-	i = 0;
-	vec_foreach(lp->shlibs_required, j) {
-		if (pkghash_get(system_shlibs, lp->shlibs_required.d[j]) != NULL)
-			continue;
-		l1[i++] = lp->shlibs_required.d[j];
-	}
-	i = 0;
-	vec_foreach(rp->shlibs_required, j) {
-		if (pkghash_get(system_shlibs, rp->shlibs_required.d[j]) != NULL)
-			continue;
-		if (!STREQ(rp->shlibs_required.d[j], l1[i])) {
-			free(rp->reason);
-			rp->reason = xstrdup("required shared library changed");
-			free(l1);
-			return (true);
-		}
-		i++;
-	}
-	free(l1);
+	size_t i, j;
 
+	for (i = 0, j = 0; i < cntl && j < cntr; i++, j++) {
+		if (STREQ(lp->shlibs_required.d[i], rp->shlibs_required.d[j]))
+				continue;
+		if (system_shlibs != NULL) {
+			if (pkghash_get(system_shlibs, lp->shlibs_required.d[i]) != NULL) {
+				j--;
+				continue;
+			}
+			if (pkghash_get(system_shlibs, rp->shlibs_required.d[j]) != NULL) {
+				i++;
+				continue;
+			}
+		}
+		free(rp->reason);
+		rp->reason = xstrdup("required shared library changed");
+		return (true);
+		break;
+	}
 	return (false);
 }
 
