@@ -1714,14 +1714,22 @@ pkg_lists_sort(struct pkg *p)
 		return;
 	p->list_sorted = true;
 
-	qsort(p->categories.d, p->categories.len, sizeof(char *), char_cmp);
-	qsort(p->licenses.d, p->licenses.len, sizeof(char *), char_cmp);
-	qsort(p->users.d, p->users.len, sizeof(char *), char_cmp);
-	qsort(p->groups.d, p->groups.len, sizeof(char *), char_cmp);
-	qsort(p->shlibs_required.d, p->shlibs_required.len, sizeof(char *), char_cmp);
-	qsort(p->shlibs_provided.d, p->shlibs_provided.len, sizeof(char *), char_cmp);
-	qsort(p->provides.d, p->provides.len, sizeof(p->provides.d[0]), char_cmp);
-	qsort(p->requires.d, p->requires.len, sizeof(p->requires.d[0]), char_cmp);
+	if (p->categories.d)
+		qsort(p->categories.d, p->categories.len, sizeof(char *), char_cmp);
+	if (p->licenses.d)
+		qsort(p->licenses.d, p->licenses.len, sizeof(char *), char_cmp);
+	if (p->users.d)
+		qsort(p->users.d, p->users.len, sizeof(char *), char_cmp);
+	if (p->groups.d)
+		qsort(p->groups.d, p->groups.len, sizeof(char *), char_cmp);
+	if (p->shlibs_required.d)
+		qsort(p->shlibs_required.d, p->shlibs_required.len, sizeof(char *), char_cmp);
+	if (p->shlibs_provided.d)
+		qsort(p->shlibs_provided.d, p->shlibs_provided.len, sizeof(char *), char_cmp);
+	if (p->provides.d)
+		qsort(p->provides.d, p->provides.len, sizeof(p->provides.d[0]), char_cmp);
+	if (p->requires.d)
+		qsort(p->requires.d, p->requires.len, sizeof(p->requires.d[0]), char_cmp);
 	DL_SORT(p->depends, pkg_dep_cmp);
 	DL_SORT(p->files, pkg_file_cmp);
 	DL_SORT(p->dirs, pkg_dir_cmp);
