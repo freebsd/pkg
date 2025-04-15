@@ -707,7 +707,7 @@ apply_keyword_file(ucl_object_t *obj, struct plist *p, char *line, struct file_a
 				else if (STRIEQ(ucl_object_tostring(elt), "upgrade"))
 					msg->type = PKG_MESSAGE_UPGRADE;
 			}
-			tll_push_back(p->pkg->message, msg);
+			vec_push(&p->pkg->message, msg);
 		}
 	}
 
@@ -1355,10 +1355,10 @@ pkg_add_port(struct pkgdb *db, struct pkg *pkg, const char *input_path,
 		pkg_emit_install_finished(pkg, NULL);
 		if (pkg_has_message(pkg))
 			message = xstring_new();
-		tll_foreach(pkg->message, m) {
-			if (m->item->type == PKG_MESSAGE_ALWAYS ||
-			    m->item->type == PKG_MESSAGE_INSTALL) {
-				fprintf(message->fp, "%s\n", m->item->str);
+		vec_foreach(pkg->message, i) {
+			if (pkg->message.d[i]->type == PKG_MESSAGE_ALWAYS ||
+			    pkg->message.d[i]->type == PKG_MESSAGE_INSTALL) {
+				fprintf(message->fp, "%s\n", pkg->message.d[i]->str);
 			}
 		}
 		if (pkg_has_message(pkg)) {

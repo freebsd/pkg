@@ -1623,8 +1623,8 @@ pkg_add_common(struct pkg_add_db *db, const char *path, unsigned flags,
 	else
 		pkg_emit_upgrade_finished(pkg, local);
 
-	tll_foreach(pkg->message, m) {
-		msg = m->item;
+	vec_foreach(pkg->message, i) {
+		msg = pkg->message.d[i];
 		msgstr = NULL;
 		if (msg->type == PKG_MESSAGE_ALWAYS) {
 			msgstr = msg->str;

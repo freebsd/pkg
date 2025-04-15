@@ -882,7 +882,7 @@ populate_pkg(sqlite3_stmt *stmt, struct pkg *pkg) {
 						struct pkg_message *message;
 						message = xcalloc(1, sizeof(*message));
 						message->str = xstrdup(msg);
-						tll_push_back(pkg->message, message);
+						vec_push(&pkg->message, message);
 					}
 				}
 				break;
