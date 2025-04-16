@@ -50,7 +50,6 @@
 #include "private/pkgdb.h"
 #include "private/utils.h"
 #include "private/pkg_deps.h"
-#include "tllist.h"
 #include "pkg/vec.h"
 
 #include "private/db_upgrades.h"
@@ -2924,30 +2923,31 @@ pkgdb_begin_solver(struct pkgdb *db)
 		"CREATE INDEX pkg_digest_id ON packages(name, manifestdigest);";
 	struct pkgdb_it *it;
 	struct pkg *p = NULL;
-	tll(struct pkg *) pkglist = tll_init();
+	pkgs_t pkglist;
 	int rc = EPKG_OK;
 	int64_t cnt = 0, cur = 0;
 
+	vec_init(&pkglist);
 	it = pkgdb_query_cond(db, " WHERE manifestdigest IS NULL OR manifestdigest==''",
 		NULL, MATCH_ALL);
 	if (it != NULL) {
 		while (pkgdb_it_next(it, &p, PKG_LOAD_BASIC|PKG_LOAD_OPTIONS) == EPKG_OK) {
 			pkg_checksum_calculate(p, NULL, false, true, false);
-			tll_push_front(pkglist, p);
+			vec_push(&pkglist, p);
 			p = NULL;
 			cnt ++;
 		}
 		pkgdb_it_free(it);
 
-		if (tll_length(pkglist) > 0) {
+		if (vec_len(&pkglist) > 0) {
 			rc = sql_exec(db->sqlite, update_digests_sql);
 			if (rc != EPKG_OK) {
 				ERROR_SQLITE(db->sqlite, update_digests_sql);
 			}
 			else {
 				pkg_emit_progress_start("Updating database digests format");
-				tll_foreach(pkglist, pit) {
-					p = pit->item;
+				vec_foreach(pkglist, i) {
+					p = pkglist.d[i];
 					pkg_emit_progress_tick(cur++, cnt);
 					rc = run_prstmt(UPDATE_DIGEST, p->digest, p->id);
 					if (rc != SQLITE_DONE) {
@@ -2968,7 +2968,7 @@ pkgdb_begin_solver(struct pkgdb *db)
 		if (rc == EPKG_OK)
 			rc = sql_exec(db->sqlite, solver_sql);
 
-		tll_free_and_free(pkglist, pkg_free);
+		vec_free_and_free(&pkglist, pkg_free);
 	} else {
 		rc = sql_exec(db->sqlite, solver_sql);
 	}
