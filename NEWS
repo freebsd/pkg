@@ -1,3 +1,7 @@
+Chanegs from 2.1.99.0 to 2.1.99.1
+- strong refactoring in internal containers code.
+- performances improvements in pkg_add
+
 Changes from 2.0.99.10 to 2.1.99.0
 - pkg.conf(5): mention kmods repo
 - validate SHLIB_PROVIDE_PATHS_* options
