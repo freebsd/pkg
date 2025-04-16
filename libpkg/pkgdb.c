@@ -846,7 +846,7 @@ pkgdb_open_repos(struct pkgdb *db, const char *reponame)
 			/* We need read only access here */
 			if (r->ops->open(r, R_OK) == EPKG_OK) {
 				r->ops->init(r);
-				tll_push_front(db->repos, r);
+				vec_push(&db->repos, r);
 			} else
 				pkg_emit_error("Repository %s cannot be opened."
 				    " 'pkg update' required", r->name);
@@ -1146,7 +1146,7 @@ pkgdb_close(struct pkgdb *db)
 
 	if (db->sqlite != NULL) {
 
-		tll_free_and_free(db->repos, pkgdb_free_repo);
+		vec_free_and_free(&db->repos, pkgdb_free_repo);
 
 		if (!sqlite3_db_readonly(db->sqlite, "main"))
 			pkg_plugins_hook_run(PKG_PLUGIN_HOOK_PKGDB_CLOSE_RW, NULL, db);
@@ -2884,14 +2884,14 @@ pkgdb_stats(struct pkgdb *db, pkg_stats_t type)
 	case PKG_STATS_REMOTE_UNIQUE:
 	case PKG_STATS_REMOTE_COUNT:
 	case PKG_STATS_REMOTE_SIZE:
-		tll_foreach(db->repos, rit) {
-			if (rit->item->ops->stat != NULL)
-				stats += rit->item->ops->stat(rit->item, type);
+		vec_foreach(db->repos, i) {
+			if (db->repos.d[i]->ops->stat != NULL)
+				stats += db->repos.d[i]->ops->stat(db->repos.d[i], type);
 		}
 		return (stats);
 		break;
 	case PKG_STATS_REMOTE_REPOS:
-		return (tll_length(db->repos));
+		return (vec_len(&db->repos));
 		break;
 	}
 

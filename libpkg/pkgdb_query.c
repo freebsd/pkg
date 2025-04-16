@@ -1,5 +1,5 @@
 /*-
- * Copyright (c) 2011-2022 Baptiste Daroussin <bapt@FreeBSD.org>
+ * Copyright (c) 2011-2025 Baptiste Daroussin <bapt@FreeBSD.org>
  * Copyright (c) 2011-2012 Julien Laffaye <jlaffaye@FreeBSD.org>
  * Copyright (c) 2011 Will Andrews <will@FreeBSD.org>
  * Copyright (c) 2011 Philippe Pepiot <phil@philpep.org>
@@ -10,28 +10,8 @@
  * Copyright (c) 2013-2014 Vsevolod Stakhov <vsevolod@FreeBSD.org>
  * Copyright (c) 2023 Serenity Cyber Security, LLC
  *                    Author: Gleb Popov <arrowd@FreeBSD.org>
- * All rights reserved.
  *
- * Redistribution and use in source and binary forms, with or without
- * modification, are permitted provided that the following conditions
- * are met:
- * 1. Redistributions of source code must retain the above copyright
- *    notice, this list of conditions and the following disclaimer
- *    in this position and unchanged.
- * 2. Redistributions in binary form must reproduce the above copyright
- *    notice, this list of conditions and the following disclaimer in the
- *    documentation and/or other materials provided with the distribution.
- *
- * THIS SOFTWARE IS PROVIDED BY THE AUTHOR(S) ``AS IS'' AND ANY EXPRESS OR
- * IMPLIED WARRANTIES, INCLUDING, BUT NOT LIMITED TO, THE IMPLIED WARRANTIES
- * OF MERCHANTABILITY AND FITNESS FOR A PARTICULAR PURPOSE ARE DISCLAIMED.
- * IN NO EVENT SHALL THE AUTHOR(S) BE LIABLE FOR ANY DIRECT, INDIRECT,
- * INCIDENTAL, SPECIAL, EXEMPLARY, OR CONSEQUENTIAL DAMAGES (INCLUDING, BUT
- * NOT LIMITED TO, PROCUREMENT OF SUBSTITUTE GOODS OR SERVICES; LOSS OF USE,
- * DATA, OR PROFITS; OR BUSINESS INTERRUPTION) HOWEVER CAUSED AND ON ANY
- * THEORY OF LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY, OR TORT
- * (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF
- * THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
+ * SPDX-License-Identifier: BSD-2-Clause
  */
 
 #include "pkg/vec.h"
@@ -423,12 +403,12 @@ pkgdb_repo_query_cond2(struct pkgdb *db, const char *cond, const char *pattern, 
 	if (it == NULL)
 		return (NULL);
 
-	tll_foreach(db->repos, cur) {
-		if (consider_this_repo(repos, cur->item->name)) {
+	vec_foreach(db->repos, i) {
+		if (consider_this_repo(repos, db->repos.d[i]->name)) {
 			if (pattern != NULL && *pattern == '@')
-				rit = cur->item->ops->groupquery(cur->item, pattern + 1, match);
+				rit = db->repos.d[i]->ops->groupquery(db->repos.d[i], pattern + 1, match);
 			else
-				rit = cur->item->ops->query(cur->item, cond, pattern, match);
+				rit = db->repos.d[i]->ops->query(db->repos.d[i], cond, pattern, match);
 			if (rit != NULL)
 				pkgdb_it_repo_attach(it, rit);
 		}
@@ -459,10 +439,10 @@ pkgdb_repo_shlib_require(struct pkgdb *db, const char *require, c_charv_t *repos
 	if (it == NULL)
 		return (NULL);
 
-	tll_foreach(db->repos, cur) {
-		if (consider_this_repo(repos, cur->item->name)) {
-			if (cur->item->ops->shlib_required != NULL) {
-				rit = cur->item->ops->shlib_required(cur->item, require);
+	vec_foreach(db->repos, i) {
+		if (consider_this_repo(repos, db->repos.d[i]->name)) {
+			if (db->repos.d[i]->ops->shlib_required != NULL) {
+				rit = db->repos.d[i]->ops->shlib_required(db->repos.d[i], require);
 				if (rit != NULL)
 					pkgdb_it_repo_attach(it, rit);
 			}
@@ -482,10 +462,10 @@ pkgdb_repo_shlib_provide(struct pkgdb *db, const char *require, c_charv_t *repos
 	if (it == NULL)
 		return (NULL);
 
-	tll_foreach(db->repos, cur) {
-		if (consider_this_repo(repos, cur->item->name)) {
-			if (cur->item->ops->shlib_required != NULL) {
-				rit = cur->item->ops->shlib_provided(cur->item, require);
+	vec_foreach(db->repos, i) {
+		if (consider_this_repo(repos, db->repos.d[i]->name)) {
+			if (db->repos.d[i]->ops->shlib_required != NULL) {
+				rit = db->repos.d[i]->ops->shlib_provided(db->repos.d[i], require);
 				if (rit != NULL)
 					pkgdb_it_repo_attach(it, rit);
 			}
@@ -505,10 +485,10 @@ pkgdb_repo_require(struct pkgdb *db, const char *require, c_charv_t *repo)
 	if (it == NULL)
 		return (NULL);
 
-	tll_foreach(db->repos, cur) {
-		if (consider_this_repo(repo, cur->item->name)) {
-			if (cur->item->ops->required != NULL) {
-				rit = cur->item->ops->required(cur->item, require);
+	vec_foreach(db->repos, i) {
+		if (consider_this_repo(repo, db->repos.d[i]->name)) {
+			if (db->repos.d[i]->ops->required != NULL) {
+				rit = db->repos.d[i]->ops->required(db->repos.d[i], require);
 				if (rit != NULL)
 					pkgdb_it_repo_attach(it, rit);
 			}
@@ -528,10 +508,10 @@ pkgdb_repo_provide(struct pkgdb *db, const char *require, c_charv_t *repo)
 	if (it == NULL)
 		return (NULL);
 
-	tll_foreach(db->repos, cur) {
-		if (consider_this_repo(repo, cur->item->name)) {
-			if (cur->item->ops->required != NULL) {
-				rit = cur->item->ops->provided(cur->item, require);
+	vec_foreach(db->repos, i) {
+		if (consider_this_repo(repo, db->repos.d[i]->name)) {
+			if (db->repos.d[i]->ops->required != NULL) {
+				rit = db->repos.d[i]->ops->provided(db->repos.d[i], require);
 				if (rit != NULL)
 					pkgdb_it_repo_attach(it, rit);
 			}
@@ -569,16 +549,16 @@ pkgdb_repo_search2(struct pkgdb *db, const char *pattern, match_t match,
 	if (it == NULL)
 		return (NULL);
 
-	tll_foreach(db->repos, cur) {
-		if (consider_this_repo(repos, cur->item->name)) {
-			if (cur->item->ops->search != NULL) {
-				rit = cur->item->ops->search(cur->item, pattern, match,
+	vec_foreach(db->repos, i) {
+		if (consider_this_repo(repos, db->repos.d[i]->name)) {
+			if (db->repos.d[i]->ops->search != NULL) {
+				rit = db->repos.d[i]->ops->search(db->repos.d[i], pattern, match,
 					field, sort);
 				if (rit != NULL)
 					pkgdb_it_repo_attach(it, rit);
 			}
-			if (cur->item->ops->groupsearch != NULL) {
-				rit = cur->item->ops->groupsearch(cur->item, pattern, match, field);
+			if (db->repos.d[i]->ops->groupsearch != NULL) {
+				rit = db->repos.d[i]->ops->groupsearch(db->repos.d[i], pattern, match, field);
 				if (rit != NULL)
 					pkgdb_it_repo_attach(it, rit);
 			}
@@ -617,10 +597,10 @@ pkgdb_all_search2(struct pkgdb *db, const char *pattern, match_t match,
 
 	it = pkgdb_query(db, pattern, match);
 
-	tll_foreach(db->repos, cur) {
-		if (consider_this_repo(repos, cur->item->name)) {
-			if (cur->item->ops->search != NULL) {
-				rit = cur->item->ops->search(cur->item, pattern, match,
+	vec_foreach(db->repos, i) {
+		if (consider_this_repo(repos, db->repos.d[i]->name)) {
+			if (db->repos.d[i]->ops->search != NULL) {
+				rit = db->repos.d[i]->ops->search(db->repos.d[i], pattern, match,
 					field, sort);
 				if (rit != NULL)
 					pkgdb_it_repo_attach(it, rit);
