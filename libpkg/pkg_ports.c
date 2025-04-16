@@ -518,7 +518,7 @@ populate_keywords(struct plist *p)
 		a = xmalloc(sizeof(struct action));
 		k->keyword = xstrdup(keyacts[i].key);
 		a->perform = keyacts[i].action;
-		tll_push_back(k->actions, a);
+		vec_push(&k->actions, a);
 		pkghash_safe_add(p->keywords, k->keyword, k, NULL);
 	}
 }
@@ -527,7 +527,7 @@ static void
 keyword_free(struct keyword *k)
 {
 	free(k->keyword);
-	tll_free_and_free(k->actions, free);
+	vec_free_and_free(&k->actions, free);
 	free(k);
 }
 
@@ -907,8 +907,8 @@ parse_keywords(struct plist *plist, char *keyword,
 
 	k = pkghash_get_value(plist->keywords, keyword);
 	if (k != NULL) {
-		tll_foreach(k->actions, a) {
-			ret = a->item->perform(plist, line, attr);
+		vec_foreach(k->actions, i) {
+			ret = k->actions.d[i]->perform(plist, line, attr);
 			if (ret != EPKG_OK)
 				break;
 		}

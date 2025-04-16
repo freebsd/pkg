@@ -559,7 +559,7 @@ struct pkg_repo {
 	struct pkg_repo *next, *prev;
 };
 
-typedef tll(struct action *) actions_t;
+typedef vec_t(struct action *) actions_t;
 struct keyword {
 	char *keyword;
 	actions_t actions;
