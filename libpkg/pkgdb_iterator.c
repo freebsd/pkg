@@ -1118,16 +1118,15 @@ pkgdb_it_next(struct pkgdb_it *it, struct pkg **pkg_p, unsigned flags)
 			return (r);
 	}
 
-	if (tll_length(it->remote) != 0) {
-		if (it->opq_it == NULL)
-			it->opq_it = it->remote.head;
-		__typeof__(*(it->remote).head) *lit = it->opq_it;
-		rit = lit->item;
+	if (vec_len(&it->remote) != 0) {
+		if (it->remote_pos >= it->remote.len)
+			it->remote_pos = 0;
+		struct pkg_repo_it *rit = it->remote.d[it->remote_pos];
 		ret = rit->ops->next(rit, pkg_p, flags);
 		if (ret != EPKG_OK) {
-			if (it->opq_it == it->remote.tail)
+			if (it->remote_pos == it->remote.len -1 )
 				return (EPKG_END);
-			it->opq_it = lit->next;
+			it->remote_pos++;
 			return (pkgdb_it_next(it, pkg_p, flags));
 		}
 
@@ -1182,8 +1181,8 @@ pkgdb_it_reset(struct pkgdb_it *it)
 	if (it->local != NULL) {
 		pkgdb_sqlite_it_reset(it->local);
 	}
-	tll_foreach(it->remote, cur) {
-		cur->item->ops->reset(cur->item);
+	vec_foreach(it->remote, i) {
+		it->remote.d[i]->ops->reset(it->remote.d[i]);
 	}
 }
 
@@ -1197,7 +1196,7 @@ pkgdb_it_free(struct pkgdb_it *it)
 		pkgdb_sqlite_it_free(it->local);
 		free(it->local);
 	}
-	tll_free_and_free(it->remote, remote_free);
+	vec_free_and_free(&it->remote, remote_free);
 
 	free(it);
 }
@@ -1221,7 +1220,7 @@ pkgdb_it_new_sqlite(struct pkgdb *db, sqlite3_stmt *s, int type, short flags)
 
 	it->local->flags = flags;
 	it->local->finished = 0;
-	it->opq_it = it->remote.head;
+	it->remote_pos = 0;
 
 	return (it);
 }
@@ -1241,7 +1240,7 @@ pkgdb_it_new_repo(struct pkgdb *db)
 void
 pkgdb_it_repo_attach(struct pkgdb_it *it, struct pkg_repo_it *rit)
 {
-	tll_push_front(it->remote, rit);
+	vec_push(&it->remote, rit);
 }
 
 int
@@ -1267,10 +1266,10 @@ pkgdb_ensure_loaded(struct pkgdb *db, struct pkg *pkg, unsigned flags)
 	if (pkg->type == PKG_INSTALLED)
 		return (pkgdb_ensure_loaded_sqlite(db->sqlite, pkg, flags));
 
-	tll_foreach(db->repos, cur) {
-		if (cur->item == pkg->repo) {
-			if (cur->item->ops->ensure_loaded) {
-				return (cur->item->ops->ensure_loaded(cur->item,
+	vec_foreach(db->repos, i) {
+		if (db->repos.d[i] == pkg->repo) {
+			if (db->repos.d[i]->ops->ensure_loaded) {
+				return (db->repos.d[i]->ops->ensure_loaded(db->repos.d[i],
 				    pkg, flags));
 			}
 		}
