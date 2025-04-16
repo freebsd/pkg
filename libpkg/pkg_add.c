@@ -26,7 +26,6 @@
 #include <sys/wait.h>
 #include <time.h>
 #include <xstring.h>
-#include <tllist.h>
 
 #include "pkg.h"
 #include "private/event.h"
