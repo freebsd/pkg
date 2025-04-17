@@ -1297,7 +1297,7 @@ pkg_add_check_pkg_archive(struct pkg_add_db *db, struct pkg *pkg,
 		}
 		if ((flags & PKG_ADD_UPGRADE) == 0 &&
 				access(founddep->value, F_OK) == 0) {
-			pkg_debug(2, "Installing %s because of shlibs_required: %s", founddep, s);
+			pkg_debug(2, "Installing %s because of shlibs_required: %s", founddep->value, s);
 			ret = pkg_add_common(db, founddep->value, PKG_ADD_AUTOMATIC, location, NULL, NULL, NULL);
 
 			if (ret != EPKG_OK)
