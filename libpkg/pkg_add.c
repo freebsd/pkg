@@ -1266,6 +1266,7 @@ pkg_add_check_pkg_archive(struct pkg_add_db *db, struct pkg *pkg,
 
 	vec_foreach(pkg->shlibs_required, i) {
 		const char *s = pkg->shlibs_required.d[i];
+		pkg_debug(2, "%s requires %s", pkg->name, s);
 		if (!db->pkgbase && db->system_shlibs == NULL) {
 			int ret;
 			ret = scan_system_shlibs(&db->system_shlibs, ctx.pkg_rootdir);
