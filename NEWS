@@ -1,4 +1,7 @@
-Chanegs from 2.1.99.0 to 2.1.99.1
+Changes from 2.1.99.1 to 2.1.99.2
+- fix regression regarding shlibs_required
+
+Changes from 2.1.99.0 to 2.1.99.1
 - strong refactoring in internal containers code.
 - performances improvements in pkg_add
 
