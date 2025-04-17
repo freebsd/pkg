@@ -454,6 +454,7 @@ pkg_cleanup_shlibs_required(struct pkg *pkg, charv_t *internal_provided)
 			    "package %s provides this library itself",
 			    s, pkg->name);
 			vec_remove_and_free(&pkg->shlibs_required, i, free);
+			i--;
 			continue;
 		}
 		if (match_ucl_lists(s,
@@ -464,6 +465,7 @@ pkg_cleanup_shlibs_required(struct pkg *pkg, charv_t *internal_provided)
 			    "is matched by SHLIB_REQUIRE_IGNORE_GLOB/REGEX.",
 			    s, pkg->name);
 			vec_remove_and_free(&pkg->shlibs_required, i, free);
+			i--;
 			continue;
 		}
 		file = NULL;
@@ -477,6 +479,7 @@ pkg_cleanup_shlibs_required(struct pkg *pkg, charv_t *internal_provided)
 
 				vec_remove_and_free(&pkg->shlibs_required, i,
 				    free);
+				i--;
 				break;
 			}
 		}
