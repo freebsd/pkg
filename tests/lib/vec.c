@@ -12,6 +12,7 @@
 ATF_TC_WITHOUT_HEAD(c_charv_t);
 ATF_TC_WITHOUT_HEAD(c_charv_contains);
 ATF_TC_WITHOUT_HEAD(charv_t);
+ATF_TC_WITHOUT_HEAD(vec_remove_and_free);
 
 ATF_TC_BODY(c_charv_t, tc)
 {
@@ -120,11 +121,35 @@ ATF_TC_BODY(c_charv_contains, tc)
 	vec_free(&list);
 }
 
+ATF_TC_BODY(vec_remove_and_free, tc)
+{
+	charv_t list;
+
+	vec_init(&list);
+	vec_push(&list, xstrdup("test1"));
+	ATF_REQUIRE_EQ(list.len, 1);
+	vec_remove_and_free(&list, 0, free);
+	ATF_REQUIRE_EQ(list.len, 0);
+	vec_push(&list, xstrdup("test2"));
+	vec_push(&list, xstrdup("test3"));
+	vec_push(&list, xstrdup("test4"));
+	ATF_REQUIRE_EQ(list.len, 3);
+	vec_foreach(list, i) {
+		if (strcmp(list.d[i], "test3") == 0) {
+			vec_remove_and_free(&list, i, free);
+		}
+	}
+	ATF_REQUIRE_EQ(list.len, 2);
+	ATF_REQUIRE_STREQ(list.d[0], "test2");
+	ATF_REQUIRE_STREQ(list.d[1], "test4");
+}
+
 ATF_TP_ADD_TCS(tp)
 {
 	ATF_TP_ADD_TC(tp, c_charv_t);
 	ATF_TP_ADD_TC(tp, charv_t);
 	ATF_TP_ADD_TC(tp, c_charv_contains);
+	ATF_TP_ADD_TC(tp, vec_remove_and_free);
 
 	return (atf_no_error());
 }
