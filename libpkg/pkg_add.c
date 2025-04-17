@@ -1252,6 +1252,7 @@ pkg_add_check_pkg_archive(struct pkg_add_db *db, struct pkg *pkg,
 
 		if ((flags & PKG_ADD_UPGRADE) == 0 &&
 				access(founddep, F_OK) == 0) {
+			pkg_debug(2, "Installing %s because of direct dependency: %s", founddep, dep->name);
 			ret = pkg_add_common(db, founddep, PKG_ADD_AUTOMATIC, location, NULL, NULL, NULL);
 
 			if (ret != EPKG_OK)
@@ -1295,6 +1296,7 @@ pkg_add_check_pkg_archive(struct pkg_add_db *db, struct pkg *pkg,
 		}
 		if ((flags & PKG_ADD_UPGRADE) == 0 &&
 				access(founddep->value, F_OK) == 0) {
+			pkg_debug(2, "Installing %s because of shlibs_required: %s", founddep, s);
 			ret = pkg_add_common(db, founddep->value, PKG_ADD_AUTOMATIC, location, NULL, NULL, NULL);
 
 			if (ret != EPKG_OK)
@@ -1330,6 +1332,7 @@ pkg_add_check_pkg_archive(struct pkg_add_db *db, struct pkg *pkg,
 		}
 		if ((flags & PKG_ADD_UPGRADE) == 0 &&
 				access(founddep->value, F_OK) == 0) {
+			pkg_debug(2, "Installing %s because of requires: %s", founddep, s);
 			ret = pkg_add_common(db, founddep->value, PKG_ADD_AUTOMATIC, location, NULL, NULL, NULL);
 
 			if (ret != EPKG_OK)
