@@ -1,3 +1,7 @@
+Changes from 2.1.0 to 2.1.1
+- fix cases where upgrade detection was missed
+- improvement performances
+
 Changes form 2.0.99.10 to 2.1
 - pkg.conf(5): mention kmods repo
 - validate SHLIB_PROVIDE_PATHS_* options
