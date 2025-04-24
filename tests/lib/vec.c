@@ -13,6 +13,7 @@ ATF_TC_WITHOUT_HEAD(c_charv_t);
 ATF_TC_WITHOUT_HEAD(c_charv_contains);
 ATF_TC_WITHOUT_HEAD(charv_t);
 ATF_TC_WITHOUT_HEAD(vec_remove_and_free);
+ATF_TC_WITHOUT_HEAD(charv_search);
 
 ATF_TC_BODY(c_charv_t, tc)
 {
@@ -144,12 +145,25 @@ ATF_TC_BODY(vec_remove_and_free, tc)
 	ATF_REQUIRE_STREQ(list.d[1], "test4");
 }
 
+ATF_TC_BODY(charv_search, tc)
+{
+	charv_t list;
+	vec_init(&list);
+
+	ATF_REQUIRE(charv_search(&list, "key") == NULL);
+	vec_push(&list, xstrdup("bla"));
+	ATF_REQUIRE(charv_search(&list, "key") == NULL);
+	ATF_REQUIRE_STREQ(charv_search(&list, "bla"), "bla");
+	vec_free_and_free(&list, free);
+}
+
 ATF_TP_ADD_TCS(tp)
 {
 	ATF_TP_ADD_TC(tp, c_charv_t);
 	ATF_TP_ADD_TC(tp, charv_t);
 	ATF_TP_ADD_TC(tp, c_charv_contains);
 	ATF_TP_ADD_TC(tp, vec_remove_and_free);
+	ATF_TP_ADD_TC(tp, charv_search);
 
 	return (atf_no_error());
 }
