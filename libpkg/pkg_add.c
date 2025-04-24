@@ -1102,8 +1102,8 @@ should_append_pkg(pkgs_t *localpkgs, struct pkg *p)
 }
 
 struct localhashes {
-	struct pkghash *shlibs_provides;
-	struct pkghash *provides;
+	kvlist_t shlibs_provides;
+	kvlist_t provides;
 };
 
 static void
@@ -1132,12 +1132,14 @@ scan_local_pkgs(struct pkg_add_db *db, bool fromstdin, struct localhashes *l, co
 		vec_foreach(db->localpkgs, i) {
 			struct pkg *p = db->localpkgs.d[i];
 			vec_foreach(p->shlibs_provided, j) {
-				pkghash_safe_add(l->shlibs_provides, p->shlibs_provided.d[j], xstrdup(p->repopath), free);
+				vec_push(&l->shlibs_provides, pkg_kv_new(p->shlibs_provided.d[j], p->repopath));
 			}
 			vec_foreach(p->provides, j) {
-				pkghash_safe_add(l->provides, p->provides.d[j], xstrdup(p->repopath), free);
+				vec_push(&l->provides, pkg_kv_new(p->provides.d[j], p->repopath));
 			}
 		}
+		pkg_kv_sort(&l->shlibs_provides);
+		pkg_kv_sort(&l->provides);
 	}
 }
 
@@ -1275,7 +1277,7 @@ pkg_add_check_pkg_archive(struct pkg_add_db *db, struct pkg *pkg,
 		}
 		if (pkghash_get(db->system_shlibs, s) != NULL)
 			continue;
-		pkghash_entry *founddep = NULL;
+		const struct pkg_kv *founddep = NULL;
 		if (pkgdb_is_shlib_provided(db->db, s))
 			continue;
 
@@ -1289,7 +1291,7 @@ pkg_add_check_pkg_archive(struct pkg_add_db *db, struct pkg *pkg,
 			scan_local_pkgs(db, fromstdin, &l, bd, ext);
 			scanned = true;
 		}
-		if ((founddep = pkghash_get(l.shlibs_provides, s)) == NULL) {
+		if ((founddep = pkg_kv_search(&l.shlibs_provides, s)) == NULL) {
 			pkg_emit_error("Missing shlib dependency: %s", s);
 			if ((flags & PKG_ADD_FORCE_MISSING) == 0)
 				goto cleanup;
@@ -1311,7 +1313,7 @@ pkg_add_check_pkg_archive(struct pkg_add_db *db, struct pkg *pkg,
 
 	vec_foreach(pkg->requires, i) {
 		const char *s = pkg->requires.d[i];
-		pkghash_entry *founddep = NULL;
+		const struct pkg_kv *founddep = NULL;
 		if (pkgdb_is_provided(db->db, s))
 			continue;
 
@@ -1325,7 +1327,7 @@ pkg_add_check_pkg_archive(struct pkg_add_db *db, struct pkg *pkg,
 			scan_local_pkgs(db, fromstdin, &l, bd, ext);
 			scanned = true;
 		}
-		if ((founddep = pkghash_get(l.provides, s)) == NULL) {
+		if ((founddep = pkg_kv_search(&l.provides, s)) == NULL) {
 			pkg_emit_error("Missing require dependency: %s", s);
 			if ((flags & PKG_ADD_FORCE_MISSING) == 0)
 				goto cleanup;
@@ -1333,7 +1335,7 @@ pkg_add_check_pkg_archive(struct pkg_add_db *db, struct pkg *pkg,
 		}
 		if ((flags & PKG_ADD_UPGRADE) == 0 &&
 				access(founddep->value, F_OK) == 0) {
-			pkg_debug(2, "Installing %s because of requires: %s", founddep, s);
+			pkg_debug(2, "Installing %s because of requires: %s", founddep->value, s);
 			ret = pkg_add_common(db, founddep->value, PKG_ADD_AUTOMATIC, location, NULL, NULL, NULL);
 
 			if (ret != EPKG_OK)
@@ -1347,8 +1349,8 @@ pkg_add_check_pkg_archive(struct pkg_add_db *db, struct pkg *pkg,
 
 	retcode = EPKG_OK;
 cleanup:
-	pkghash_destroy(l.provides);
-	pkghash_destroy(l.shlibs_provides);
+	vec_free_and_free(&l.shlibs_provides, pkg_kv_free);
+	vec_free_and_free(&l.provides, pkg_kv_free);
 	pkg_emit_add_deps_finished(pkg);
 
 	return (retcode);
