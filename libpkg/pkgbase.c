@@ -24,17 +24,17 @@
 #include "xmalloc.h"
 
 struct pkgbase {
-	struct pkghash *system_shlibs;
+	charv_t system_shlibs;
 	/*
 	 * unused yet but will be in the future when we will start using
 	 * provides/requires in pkgbase
 	 */
-	struct pkghash *provides;
+	charv_t provides;
 	bool ignore_compat32;
 };
 
 static int
-scan_dir_for_shlibs(pkghash **shlib_list, const char *dir,
+scan_dir_for_shlibs(charv_t *shlib_list, const char *dir,
     enum pkg_shlib_flags flags)
 {
 	DIR *dirp= opendir(dir);
@@ -74,9 +74,8 @@ scan_dir_for_shlibs(pkghash **shlib_list, const char *dir,
 
 		/* We have a valid shared library name. */
 		char *full = pkg_shlib_name_with_flags(dp->d_name, flags);
-		pkghash_safe_add(*shlib_list, full, NULL, NULL);
+		vec_push(shlib_list, full);
 		cnt++;
-		free(full);
 	}
 	if (cnt == 0)
 		errno = ENOENT;
@@ -96,7 +95,7 @@ static struct {
 };
 
 int
-scan_system_shlibs(pkghash **system_shlibs, const char *rootdir)
+scan_system_shlibs(charv_t *system_shlibs, const char *rootdir)
 {
 	int r = EPKG_OK;
 	for (int i = 0; i < NELEM(system_shlib_table); i++) {
@@ -115,6 +114,7 @@ scan_system_shlibs(pkghash **system_shlibs, const char *rootdir)
 			return (ret);
 		}
 	}
+	qsort(system_shlibs->d, system_shlibs->len, sizeof(char *), char_cmp);
 
 	return (r);
 }
@@ -136,8 +136,8 @@ pkgbase_free(struct pkgbase *pb)
 {
 	if (pb == NULL)
 		return;
-	pkghash_destroy(pb->system_shlibs);
-	pkghash_destroy(pb->provides);
+	vec_free_and_free(&pb->system_shlibs, free);
+	vec_free_and_free(&pb->provides, free);
 	free(pb);
 }
 
@@ -146,11 +146,11 @@ pkgbase_provide_shlib(struct pkgbase *pb, const char *shlib)
 {
 	if (pb->ignore_compat32 && str_ends_with(shlib, ":32"))
 		return (true);
-	return (pkghash_get(pb->system_shlibs, shlib) != NULL);
+	return (charv_search(&pb->system_shlibs, shlib) != NULL);
 }
 
 bool
 pkgbase_provide(struct pkgbase *pb, const char *provide)
 {
-	return (pkghash_get(pb->provides, provide) != NULL);
+	return (charv_search(&pb->provides, provide) != NULL);
 }

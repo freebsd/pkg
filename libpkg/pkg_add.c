@@ -43,7 +43,7 @@
 struct pkg_add_db {
 	struct pkgdb *db;
 	pkgs_t localpkgs;
-	struct pkghash *system_shlibs;
+	charv_t system_shlibs;
 	bool local_scanned;
 	bool ignore_compat32;
 	bool pkgbase;
@@ -1267,15 +1267,15 @@ pkg_add_check_pkg_archive(struct pkg_add_db *db, struct pkg *pkg,
 	}
 
 	vec_foreach(pkg->shlibs_required, i) {
-		const char *s = pkg->shlibs_required.d[i];
+		char *s = pkg->shlibs_required.d[i];
 		pkg_debug(2, "%s requires %s", pkg->name, s);
-		if (!db->pkgbase && db->system_shlibs == NULL) {
+		if (!db->pkgbase && db->system_shlibs.len == 0) {
 			int ret;
 			ret = scan_system_shlibs(&db->system_shlibs, ctx.pkg_rootdir);
 			if (ret == EPKG_NOCOMPAT32)
 				db->ignore_compat32 = true;
 		}
-		if (pkghash_get(db->system_shlibs, s) != NULL)
+		if (charv_search(&db->system_shlibs, s) != NULL)
 			continue;
 		const struct pkg_kv *founddep = NULL;
 		if (pkgdb_is_shlib_provided(db->db, s))
@@ -1312,7 +1312,7 @@ pkg_add_check_pkg_archive(struct pkg_add_db *db, struct pkg *pkg,
 	}
 
 	vec_foreach(pkg->requires, i) {
-		const char *s = pkg->requires.d[i];
+		char *s = pkg->requires.d[i];
 		const struct pkg_kv *founddep = NULL;
 		if (pkgdb_is_provided(db->db, s))
 			continue;
@@ -1697,7 +1697,7 @@ pkg_add(struct pkgdb *db, const char *path, unsigned flags,
 
 	ret = pkg_add_common(&padb, path, flags, location, NULL, NULL, NULL);
 	vec_free_and_free(&padb.localpkgs, pkg_free);
-	pkghash_destroy(padb.system_shlibs);
+	vec_free_and_free(&padb.system_shlibs, free);
 	return (ret);
 }
 
