@@ -726,7 +726,7 @@ pkg_solve_process_universe_variable(struct pkg_solve_problem *problem,
 			/* Ignore 32 bit libraries */
 			if (j->ignore_compat32 && str_ends_with(s, ":32"))
 				continue;
-			if (pkghash_get(j->system_shlibs, s) != NULL) {
+			if (charv_search(&j->system_shlibs, s) != NULL) {
 				/* The shlib is provided by the system */
 				continue;
 			}
@@ -987,7 +987,7 @@ pkg_solve_set_initial_assumption(struct pkg_solve_problem *problem,
 			    conservative, assumed_reponame, true);
 
 			if (local && (STREQ(selected->pkg->digest, local->pkg->digest) ||
-				      !pkg_jobs_need_upgrade(problem->j->system_shlibs, selected->pkg, local->pkg))) {
+				      !pkg_jobs_need_upgrade(&problem->j->system_shlibs, selected->pkg, local->pkg))) {
 				selected = local;
 			}
 		}

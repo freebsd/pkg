@@ -218,7 +218,7 @@ pkg_jobs_free(struct pkg_jobs *j)
 		ucl_object_unref(j->triggers.schema);
 	pkghash_destroy(j->orphaned);
 	pkghash_destroy(j->notorphaned);
-	pkghash_destroy(j->system_shlibs);
+	vec_free_and_free(&j->system_shlibs, free);
 	free(j);
 }
 
@@ -484,7 +484,7 @@ delete_process_provides(struct pkg_jobs *j, struct pkg *lp, const char *provide,
 	bool ret = true;
 
 	/* check for pkgbase shlibs and provides */
-	if (pkghash_get(j->system_shlibs, provide) != NULL)
+	if (charv_search(&j->system_shlibs, provide) != NULL)
 		return (ret);
 	/* if something else to provide the same thing we can safely delete */
 	lit = provideq(j->db, provide);
@@ -1052,7 +1052,7 @@ pkg_jobs_find_remote_pattern(struct pkg_jobs *j, struct job_pattern *jp)
 }
 
 bool
-pkg_jobs_need_upgrade(struct pkghash *system_shlibs, struct pkg *rp, struct pkg *lp)
+pkg_jobs_need_upgrade(charv_t *system_shlibs, struct pkg *rp, struct pkg *lp)
 {
 	int ret, ret1, ret2;
 	struct pkg_option *lo = NULL, *ro = NULL;
@@ -1235,11 +1235,11 @@ pkg_jobs_need_upgrade(struct pkghash *system_shlibs, struct pkg *rp, struct pkg 
 		if (STREQ(lp->shlibs_required.d[i], rp->shlibs_required.d[j]))
 				continue;
 		if (system_shlibs != NULL) {
-			if (pkghash_get(system_shlibs, lp->shlibs_required.d[i]) != NULL) {
+			if (charv_search(system_shlibs, lp->shlibs_required.d[i]) != NULL) {
 				j--;
 				continue;
 			}
-			if (pkghash_get(system_shlibs, rp->shlibs_required.d[j]) != NULL) {
+			if (charv_search(system_shlibs, rp->shlibs_required.d[j]) != NULL) {
 				i++;
 				continue;
 			}
@@ -1880,7 +1880,7 @@ pkg_jobs_solve(struct pkg_jobs *j)
 {
 	int ret;
 
-	if (j->system_shlibs == NULL) {
+	if (j->system_shlibs.len == 0) {
 		/* If /usr/bin/uname is in the pkg database, we are targeting
 		 * a pkgbase system and should rely on the pkgbase packages to
 		 * provide system shlibs. */
