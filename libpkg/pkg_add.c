@@ -44,7 +44,7 @@ struct pkg_add_db {
 	struct pkgdb *db;
 	pkgs_t localpkgs;
 	struct pkghash *system_shlibs;
-	bool local_scaned;
+	bool local_scanned;
 	bool ignore_compat32;
 	bool pkgbase;
 };
@@ -1110,11 +1110,11 @@ static void
 scan_local_pkgs(struct pkg_add_db *db, bool fromstdin, struct localhashes *l, const char *bd, const char *ext)
 {
 	if (!fromstdin) {
-		if (!db->local_scaned) {
+		if (!db->local_scanned) {
 			glob_t g;
 			char *pattern;
 			xasprintf(&pattern, "%s/*%s" , bd, ext);
-			db->local_scaned = true;
+			db->local_scanned = true;
 			if (glob(pattern, 0, NULL, &g) == 0) {
 				for (int i = 0; i <g.gl_pathc; i++) {
 					struct pkg *p = NULL;
@@ -1689,7 +1689,7 @@ pkg_add(struct pkgdb *db, const char *path, unsigned flags,
 
 	memset(&padb, 0, sizeof(padb));
 	padb.db = db;
-	padb.local_scaned = false;
+	padb.local_scanned = false;
 	padb.ignore_compat32 = false;
 	padb.pkgbase = pkgdb_file_exists(db, "/usr/bin/uname");
 
