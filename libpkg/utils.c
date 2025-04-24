@@ -1120,3 +1120,19 @@ str_ends_with(const char *str, const char *end)
 		return (false);
 	return (strncmp(str + (sl - el), end, (sl - el)) == 0);
 }
+
+int
+char_cmp(const void *a, const void *b) {
+	return strcmp(*(char **)a, *(char **)b);
+}
+
+const char *
+charv_search(charv_t *v, const char *el)
+{
+	if (v->len == 0)
+		return (NULL);
+	const char **res = bsearch(&el, v->d, v->len, sizeof(char *), char_cmp);
+	if (res == NULL)
+		return (NULL);
+	return *res;
+}

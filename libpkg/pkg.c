@@ -1702,11 +1702,6 @@ pkg_cf_cmp(struct pkg_config_file *a, struct pkg_config_file *b)
 	return (STREQ(a->path, b->path));
 }
 
-static int
-char_cmp(const void *a, const void *b) {
-    return strcmp(*(char **)a, *(char **)b);
-}
-
 void
 pkg_lists_sort(struct pkg *p)
 {
