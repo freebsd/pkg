@@ -165,15 +165,11 @@ struct pkg_kv *
 pkg_kv_search(kvlist_t *kv, char *el)
 {
 	struct pkg_kv target =  { .key = el, .value = NULL };
-	printf("Searching %s\n", target.key);
 	if (kv->len == 0)
 		return (NULL);
 	struct pkg_kv *res = bsearch(&target, *kv->d, kv->len, sizeof(struct pkg_kv), kv_cmp);
-	if (res == NULL) {
-		printf("Not found\n");
-		printf("%s\n", kv->d[0]->key);
+	if (res == NULL)
 		return (NULL);
-	}
 	return (res);
 }
 
