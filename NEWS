@@ -1,3 +1,7 @@
+Chanegs from 2.1.1 to 2.1.2
+- more performances improvements for pkg add
+- fix regression introduced in 2.1.1
+
 Changes from 2.1.0 to 2.1.1
 - fix cases where upgrade detection was missed
 - improvement performances
