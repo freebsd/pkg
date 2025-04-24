@@ -675,6 +675,8 @@ void pkg_list_free(struct pkg *, pkg_list);
 
 struct pkg_kv *pkg_kv_new(const char *key, const char *val);
 void pkg_kv_free(struct pkg_kv *);
+struct pkg_kv *pkg_kv_search(kvlist_t *, char *);
+void pkg_kv_sort(kvlist_t *);
 
 void pkg_dep_free(struct pkg_dep *);
 void pkg_file_free(struct pkg_file *);
