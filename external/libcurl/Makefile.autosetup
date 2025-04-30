@@ -48,6 +48,7 @@ SRCS=	\
 	idn.c \
 	if2ip.c \
 	llist.c \
+	macos.c \
 	mime.c \
 	mprintf.c \
 	multi.c \

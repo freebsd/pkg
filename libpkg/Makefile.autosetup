@@ -125,7 +125,9 @@ LOCAL_LDFLAGS+= -ldl
 @endif
 
 @if pkgos_darwin
-LOCAL_LDFLAGS+=	-lresolv
+LOCAL_LDFLAGS+=	-lresolv -lz \
+	-framework CoreFoundation -framework CoreServices \
+	-framework SystemConfiguration
 @else
 @if pkgos_freebsd
 LOCAL_LDFLAGS+=	-Wl,--version-script=$(top_srcdir)/libpkg/libpkg.ver,--undefined-version
