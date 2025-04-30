@@ -114,7 +114,8 @@ scan_system_shlibs(charv_t *system_shlibs, const char *rootdir)
 			return (ret);
 		}
 	}
-	qsort(system_shlibs->d, system_shlibs->len, sizeof(char *), char_cmp);
+	if (system_shlibd->d)
+		qsort(system_shlibs->d, system_shlibs->len, sizeof(char *), char_cmp);
 
 	return (r);
 }
