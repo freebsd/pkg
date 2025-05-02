@@ -58,7 +58,12 @@ pkg_repo_binary_get_user_version(sqlite3 *sqlite, int *reposcver)
 	const char *sql = "PRAGMA user_version;";
 
 	if (sqlite3_prepare_v2(sqlite, sql, -1, &stmt, NULL) != SQLITE_OK) {
-		ERROR_SQLITE(sqlite, sql);
+		if(geteuid() != 0) {
+			pkg_emit_error("Database upgrade is needed but pkg doesn't have write access in file %s:%d: %s, "
+			    "please run it as root once to upgrade the DB.", __FILE__, __LINE__, sqlite3_errmsg(sqlite));
+		} else {
+			ERROR_SQLITE(sqlite, sql);
+		}
 		return (EPKG_FATAL);
 	}
 

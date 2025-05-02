@@ -2340,8 +2340,14 @@ get_pragma(sqlite3 *s, const char *sql, int64_t *res, bool silence)
 	assert(s != NULL && sql != NULL);
 
 	if (sqlite3_prepare_v2(s, sql, -1, &stmt, NULL) != SQLITE_OK) {
-		if (!silence)
-			ERROR_SQLITE(s, sql);
+		if (!silence) {
+			if(geteuid() != 0) {
+				pkg_emit_error("Database upgrade is needed but pkg doesn't have write access in file %s:%d: %s, "
+					"please run it as root once to upgrade the DB.", __FILE__, __LINE__, sqlite3_errmsg(s));
+			} else {
+				ERROR_SQLITE(s, sql);
+			}
+		}
 		return (EPKG_OK);
 	}
 	pkgdb_debug(4, stmt);
