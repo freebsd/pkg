@@ -1,30 +1,10 @@
 /*-
- * Copyright (c) 2011-2020 Baptiste Daroussin <bapt@FreeBSD.org>
+ * Copyright (c) 2011-2025 Baptiste Daroussin <bapt@FreeBSD.org>
  * Copyright (c) 2011-2012 Julien Laffaye <jlaffaye@FreeBSD.org>
  * Copyright (c) 2011 Will Andrews <will@FreeBSD.org>
  * Copyright (c) 2015 Matthew Seaman <matthew@FreeBSD.org>
- * All rights reserved.
  *
- * Redistribution and use in source and binary forms, with or without
- * modification, are permitted provided that the following conditions
- * are met:
- * 1. Redistributions of source code must retain the above copyright
- *    notice, this list of conditions and the following disclaimer
- *    in this position and unchanged.
- * 2. Redistributions in binary form must reproduce the above copyright
- *    notice, this list of conditions and the following disclaimer in the
- *    documentation and/or other materials provided with the distribution.
- *
- * THIS SOFTWARE IS PROVIDED BY THE AUTHOR(S) ``AS IS'' AND ANY EXPRESS OR
- * IMPLIED WARRANTIES, INCLUDING, BUT NOT LIMITED TO, THE IMPLIED WARRANTIES
- * OF MERCHANTABILITY AND FITNESS FOR A PARTICULAR PURPOSE ARE DISCLAIMED.
- * IN NO EVENT SHALL THE AUTHOR(S) BE LIABLE FOR ANY DIRECT, INDIRECT,
- * INCIDENTAL, SPECIAL, EXEMPLARY, OR CONSEQUENTIAL DAMAGES (INCLUDING, BUT
- * NOT LIMITED TO, PROCUREMENT OF SUBSTITUTE GOODS OR SERVICES; LOSS OF USE,
- * DATA, OR PROFITS; OR BUSINESS INTERRUPTION) HOWEVER CAUSED AND ON ANY
- * THEORY OF LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY, OR TORT
- * (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF
- * THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
+ * SPDX-License-Identifier: BSD-2-Clause
  */
 
 #ifdef HAVE_CONFIG_H
@@ -47,11 +27,8 @@
 #include <string.h>
 #include <strings.h>
 #include <unistd.h>
-#include <tllist.h>
 
 #include "pkgcli.h"
-
-tll(struct pkg *) pkg_head = tll_init();
 
 void
 usage_create(void)
@@ -81,6 +58,9 @@ pkg_create_matches(int argc, char **argv, match_t match, struct pkg_create *pc)
 	    PKG_LOAD_PROVIDES | PKG_LOAD_REQUIRES |
 	    PKG_LOAD_SHLIBS_PROVIDED | PKG_LOAD_ANNOTATIONS | PKG_LOAD_LUA_SCRIPTS;
 	bool foundone;
+	vec_t(struct pkg *) pkglist;
+
+	vec_init(&pkglist);
 
 	if (pkgdb_open(&db, PKGDB_DEFAULT) != EPKG_OK) {
 		pkgdb_close(db);
@@ -110,7 +90,7 @@ pkg_create_matches(int argc, char **argv, match_t match, struct pkg_create *pc)
 
 		foundone = false;
 		while ((ret = pkgdb_it_next(it, &pkg, query_flags)) == EPKG_OK) {
-			tll_push_back(pkg_head, pkg);
+			vec_push(&pkglist, pkg);
 			pkg = NULL;
 			foundone = true;
 		}
@@ -125,19 +105,19 @@ pkg_create_matches(int argc, char **argv, match_t match, struct pkg_create *pc)
 			retcode = EXIT_FAILURE;
 	}
 
-	tll_foreach(pkg_head, el) {
-		pkg_printf("Creating package for %n-%v\n", el->item, el->item);
-		ret = pkg_create_i(pc, el->item, false);
+	vec_foreach(pkglist, i) {
+		pkg_printf("Creating package for %n-%v\n", pkglist.d[i], pkglist.d[i]);
+		ret = pkg_create_i(pc, pkglist.d[i], false);
 		if (ret == EPKG_EXIST) {
 			pkg_printf("%n-%v already packaged, skipping...\n",
-			  el->item, el->item);
+			  pkglist.d[i], pkglist.d[i]);
 		}
 		if (ret != EPKG_OK && ret != EPKG_EXIST)
 			retcode = EXIT_FAILURE;
-		tll_remove_and_free(pkg_head, el, pkg_free);
 	}
 
 cleanup:
+	vec_free_and_free(&pkglist, pkg_free);
 	pkgdb_release_lock(db, PKGDB_LOCK_READONLY);
 	pkgdb_close(db);
 
