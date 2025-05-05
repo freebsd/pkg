@@ -254,7 +254,7 @@ exec_search(int argc, char **argv)
 	struct pkg	*pkg = NULL;
 	bool		 atleastone = false;
 	bool		 old_quiet;
-	c_charv_t	reponames;
+	c_charv_t	reponames = vec_init();
 
 	struct option longopts[] = {
 		{ "case-sensitive",	no_argument,		NULL,	'C' },
@@ -280,7 +280,6 @@ exec_search(int argc, char **argv)
 		{ NULL,			0,			NULL,	0   },
 	};
 
-	vec_init(&reponames);
 	while ((ch = getopt_long(argc, argv, "+CcDdefgiL:opqQ:r:RS:sUx", longopts, NULL)) != -1) {
 		switch (ch) {
 		case 'C':

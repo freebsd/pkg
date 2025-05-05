@@ -119,8 +119,7 @@ pkg_jobs_set_flags(struct pkg_jobs *j, pkg_flags flags)
 int
 pkg_jobs_set_repository(struct pkg_jobs *j, const char *ident)
 {
-	c_charv_t idents;
-	vec_init(&idents);
+	c_charv_t idents = vec_init();
 	if (ident != NULL)
 		vec_push(&idents, ident);
 	return (pkg_jobs_set_repositories(j, &idents));
@@ -537,10 +536,8 @@ pkg_jobs_process_delete_request(struct pkg_jobs *j)
 	struct pkg_dep *d = NULL;
 	struct pkg *lp;
 	int rc = EPKG_OK;
-	pkgs_t to_process;
+	pkgs_t to_process = vec_init();
 	pkghash_it it;
-
-	vec_init(&to_process);
 
 	if (force)
 		return (EPKG_OK);

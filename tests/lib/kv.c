@@ -12,9 +12,7 @@ ATF_TC_WITHOUT_HEAD(kv_search);
 
 ATF_TC_BODY(kv_sort, tc)
 {
-	kvlist_t kvl;
-
-	vec_init(&kvl);
+	kvlist_t kvl = vec_init();
 
 	ATF_REQUIRE_EQ_MSG(kvl.d, NULL, "vec_init failed");
 	ATF_REQUIRE_EQ_MSG(kvl.cap, 0, "vec_init failed");
@@ -44,9 +42,7 @@ ATF_TC_BODY(kv_sort, tc)
 
 ATF_TC_BODY(kv_search, tc)
 {
-	kvlist_t kvl;
-
-	vec_init(&kvl);
+	kvlist_t kvl = vec_init();
 
 	ATF_REQUIRE_EQ_MSG(kvl.d, NULL, "vec_init failed");
 	ATF_REQUIRE_EQ_MSG(kvl.cap, 0, "vec_init failed");

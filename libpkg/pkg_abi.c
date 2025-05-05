@@ -530,11 +530,9 @@ pkg_analyse_files(struct pkgdb *db __unused, struct pkg *pkg, const char *stage)
 	/* shlibs that are provided by files in the package but not matched by
 	   SHLIB_PROVIDE_PATHS_* are still used to filter the shlibs
 	   required by the package */
-	charv_t internal_provided;
-	vec_init(&internal_provided);
+	charv_t internal_provided = vec_init();
 	/* list of shlibs that are in the path to be evaluated for provided but are symlinks */
-	charv_t maybe_provided;
-	vec_init(&maybe_provided);
+	charv_t maybe_provided = vec_init();
 
 	while (pkg_files(pkg, &file) == EPKG_OK) {
 		struct stat st;

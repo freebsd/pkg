@@ -275,8 +275,7 @@ ATF_TC_BODY(parse_plist, tc)
 ATF_TC_BODY(expand_plist_variables, tc)
 {
 	char *plop;
-	kvlist_t kv;
-	vec_init(&kv);
+	kvlist_t kv = vec_init();
 
 	plop = expand_plist_variables("%%this%% is a line", &kv);
 	ATF_REQUIRE_STREQ(plop, "%%this%% is a line");

@@ -17,9 +17,8 @@ ATF_TC_WITHOUT_HEAD(charv_search);
 
 ATF_TC_BODY(c_charv_t, tc)
 {
-	c_charv_t list;
+	c_charv_t list = vec_init();
 
-	vec_init(&list);
 	ATF_REQUIRE_EQ_MSG(list.d, NULL, "vec_init failed");
 	ATF_REQUIRE_EQ_MSG(list.cap, 0, "vec_init failed");
 	ATF_REQUIRE_EQ_MSG(list.len, 0, "vec_init failed");
@@ -55,9 +54,8 @@ ATF_TC_BODY(c_charv_t, tc)
 
 ATF_TC_BODY(charv_t, tc)
 {
-	charv_t list;
+	charv_t list = vec_init();
 
-	vec_init(&list);
 	ATF_REQUIRE_EQ_MSG(list.d, NULL, "vec_init failed");
 	ATF_REQUIRE_EQ_MSG(list.cap, 0, "vec_init failed");
 	ATF_REQUIRE_EQ_MSG(list.len, 0, "vec_init failed");
@@ -93,9 +91,8 @@ ATF_TC_BODY(charv_t, tc)
 
 ATF_TC_BODY(c_charv_contains, tc)
 {
-	c_charv_t list;
+	c_charv_t list = vec_init();
 
-	vec_init(&list);
 	ATF_REQUIRE_EQ_MSG(list.d, NULL, "vec_init failed");
 	ATF_REQUIRE_EQ_MSG(list.cap, 0, "vec_init failed");
 	ATF_REQUIRE_EQ_MSG(list.len, 0, "vec_init failed");
@@ -124,9 +121,8 @@ ATF_TC_BODY(c_charv_contains, tc)
 
 ATF_TC_BODY(vec_remove_and_free, tc)
 {
-	charv_t list;
+	charv_t list = vec_init();
 
-	vec_init(&list);
 	vec_push(&list, xstrdup("test1"));
 	ATF_REQUIRE_EQ(list.len, 1);
 	vec_remove_and_free(&list, 0, free);
@@ -147,8 +143,7 @@ ATF_TC_BODY(vec_remove_and_free, tc)
 
 ATF_TC_BODY(charv_search, tc)
 {
-	charv_t list;
-	vec_init(&list);
+	charv_t list = vec_init();
 
 	ATF_REQUIRE(charv_search(&list, "key") == NULL);
 	vec_push(&list, xstrdup("bla"));

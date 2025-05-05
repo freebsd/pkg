@@ -244,7 +244,7 @@ exec_check(int argc, char **argv)
 	int i, processed, total = 0;
 	int verbose = 0;
 	int nbactions;
-	charv_t dh;
+	charv_t dh = vec_init();
 
 	struct option longopts[] = {
 		{ "all",		no_argument,	NULL,	'a' },
@@ -262,8 +262,6 @@ exec_check(int argc, char **argv)
 		{ "yes",		no_argument,	NULL,	'y' },
 		{ NULL,			0,		NULL,	0   },
 	};
-
-	vec_init(&dh);
 
 	processed = 0;
 

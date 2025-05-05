@@ -250,7 +250,7 @@ exec_upgrade(int argc, char **argv)
 	int		 scriptnoexec = 0;
 	bool	rc = true;
 	pkg_flags	 f = PKG_FLAG_NONE | PKG_FLAG_PKG_VERSION_TEST;
-	c_charv_t	reponames;
+	c_charv_t	reponames = vec_init();
 
 	struct option longopts[] = {
 		{ "case-sensitive",	no_argument,		NULL,	'C' },
@@ -269,8 +269,6 @@ exec_upgrade(int argc, char **argv)
 		{ "vulnerable",		no_argument,		NULL,		'v' },
 		{ NULL,			0,			NULL,	0   },
 	};
-
-	vec_init(&reponames);
 
 	while ((ch = getopt_long(argc, argv, "+CfFgiInqr:Uxyv", longopts, NULL)) != -1) {
 		switch (ch) {

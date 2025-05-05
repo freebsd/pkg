@@ -14,8 +14,7 @@ ATF_TC_WITHOUT_HEAD(cleanup_shlibs_required_consecutive_provided);
 ATF_TC_BODY(cleanup_shlibs_required, tc)
 {
 	struct pkg *p;
-	charv_t internal_provided;
-	vec_init(&internal_provided);
+	charv_t internal_provided = vec_init();
 
 	ATF_REQUIRE_EQ(pkg_new(&p, PKG_FILE), EPKG_OK);
 	ATF_REQUIRE(p != NULL);
@@ -36,8 +35,7 @@ ATF_TC_BODY(cleanup_shlibs_required, tc)
 ATF_TC_BODY(cleanup_shlibs_required_multiple_provided, tc)
 {
 	struct pkg *p;
-	charv_t internal_provided;
-	vec_init(&internal_provided);
+	charv_t internal_provided = vec_init();
 
 	ATF_REQUIRE_EQ(pkg_new(&p, PKG_FILE), EPKG_OK);
 	ATF_REQUIRE(p != NULL);
@@ -59,8 +57,7 @@ ATF_TC_BODY(cleanup_shlibs_required_multiple_provided, tc)
 ATF_TC_BODY(cleanup_shlibs_required_consecutive_provided, tc)
 {
 	struct pkg *p;
-	charv_t internal_provided;
-	vec_init(&internal_provided);
+	charv_t internal_provided = vec_init();
 
 	ATF_REQUIRE_EQ(pkg_new(&p, PKG_FILE), EPKG_OK);
 	ATF_REQUIRE(p != NULL);

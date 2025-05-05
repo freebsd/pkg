@@ -992,10 +992,9 @@ pkgdb_nfs_corruption(sqlite3 *db)
 int
 pkgdb_open_all(struct pkgdb **db_p, pkgdb_t type, const char *reponame)
 {
-	c_charv_t r;
+	c_charv_t r = vec_init();
 	int ret;
 
-	vec_init(&r);
 	if (reponame != NULL)
 		vec_push(&r, reponame);
 
@@ -2923,11 +2922,10 @@ pkgdb_begin_solver(struct pkgdb *db)
 		"CREATE INDEX pkg_digest_id ON packages(name, manifestdigest);";
 	struct pkgdb_it *it;
 	struct pkg *p = NULL;
-	pkgs_t pkglist;
+	pkgs_t pkglist = vec_init();
 	int rc = EPKG_OK;
 	int64_t cnt = 0, cur = 0;
 
-	vec_init(&pkglist);
 	it = pkgdb_query_cond(db, " WHERE manifestdigest IS NULL OR manifestdigest==''",
 		NULL, MATCH_ALL);
 	if (it != NULL) {

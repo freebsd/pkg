@@ -69,7 +69,7 @@ exec_install(int argc, char **argv)
 	bool		 local_only = false;
 	match_t		 match = MATCH_EXACT;
 	pkg_flags	 f = PKG_FLAG_NONE | PKG_FLAG_PKG_VERSION_TEST;
-	c_charv_t	reponames;
+	c_charv_t	reponames = vec_init();
 
 	struct option longopts[] = {
 		{ "automatic",		no_argument,		NULL,	'A' },
@@ -99,7 +99,6 @@ exec_install(int argc, char **argv)
 		quiet = true;
 	}
 
-	vec_init(&reponames);
 	while ((ch = getopt_long(argc, argv, "+ACfFgiIlMnqr:RUxy", longopts, NULL)) != -1) {
 		switch (ch) {
 		case 'A':
