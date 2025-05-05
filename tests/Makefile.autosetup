@@ -16,7 +16,8 @@ TESTS=	\
 	vec \
 	pkg_elf \
 	hash \
-	shlibs
+	shlibs \
+	kv
 
 TESTS_SH= \
 	frontend/pkg.sh \
@@ -116,6 +117,7 @@ vec_OBJS=	lib/vec.o
 pkg_elf_OBJS=	lib/pkg_elf.o
 hash_OBJS=	lib/hash.o
 shlibs_OBJS=	lib/shlibs.o
+kv_OBJS=	lib/kv.o
 
 SRCS=	\
 	$(packing_OBJS:.o=.c) \
@@ -134,6 +136,7 @@ SRCS=	\
 	$(pkg_elf_OBJS:.o=.c) \
 	$(hash_OBJS:.o=.c) \
 	$(shlibs_OBJS:.o=.c) \
+	$(kv_OBJS:.o=.c) \
 
 include $(MK)/common.mk
 

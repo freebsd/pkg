@@ -155,8 +155,8 @@ pkg_kv_free(struct pkg_kv *c)
 
 static int
 kv_cmp(const void *a, const void *b) {
-	struct pkg_kv *ka = (struct pkg_kv *)a;
-	struct pkg_kv *kb = (struct pkg_kv *)b;
+	struct pkg_kv *ka = *(struct pkg_kv **)a;
+	struct pkg_kv *kb = *(struct pkg_kv **)b;
 
 	return (strcmp(ka->key, kb->key));
 }
@@ -165,12 +165,13 @@ struct pkg_kv *
 pkg_kv_search(kvlist_t *kv, char *el)
 {
 	struct pkg_kv target =  { .key = el, .value = NULL };
+	struct pkg_kv *tgt = &target;
 	if (kv->len == 0)
 		return (NULL);
-	struct pkg_kv *res = bsearch(&target, *kv->d, kv->len, sizeof(struct pkg_kv), kv_cmp);
+	struct pkg_kv **res = bsearch(&tgt, kv->d, kv->len, sizeof(kv->d[0]), kv_cmp);
 	if (res == NULL)
 		return (NULL);
-	return (res);
+	return (*res);
 }
 
 void
