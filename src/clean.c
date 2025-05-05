@@ -2,29 +2,9 @@
  * Copyright (c) 2011-2012 Julien Laffaye <jlaffaye@FreeBSD.org>
  * Copyright (c) 2013-2014 Matthew Seaman <matthew@FreeBSD.org>
  * Copyright (c) 2014 Vsevolod Stakhov <vsevolod@FreeBSD.org>
- * Copyright (c) 2016 Baptiste Daroussin <bapt@FreeBSD.org>
- * All rights reserved.
+ * Copyright (c) 2016-2025 Baptiste Daroussin <bapt@FreeBSD.org>
  *
- * Redistribution and use in source and binary forms, with or without
- * modification, are permitted provided that the following conditions
- * are met:
- * 1. Redistributions of source code must retain the above copyright
- *    notice, this list of conditions and the following disclaimer
- *    in this position and unchanged.
- * 2. Redistributions in binary form must reproduce the above copyright
- *    notice, this list of conditions and the following disclaimer in the
- *    documentation and/or other materials provided with the distribution.
- *
- * THIS SOFTWARE IS PROVIDED BY THE AUTHOR(S) ``AS IS'' AND ANY EXPRESS OR
- * IMPLIED WARRANTIES, INCLUDING, BUT NOT LIMITED TO, THE IMPLIED WARRANTIES
- * OF MERCHANTABILITY AND FITNESS FOR A PARTICULAR PURPOSE ARE DISCLAIMED.
- * IN NO EVENT SHALL THE AUTHOR(S) BE LIABLE FOR ANY DIRECT, INDIRECT,
- * INCIDENTAL, SPECIAL, EXEMPLARY, OR CONSEQUENTIAL DAMAGES (INCLUDING, BUT
- * NOT LIMITED TO, PROCUREMENT OF SUBSTITUTE GOODS OR SERVICES; LOSS OF USE,
- * DATA, OR PROFITS; OR BUSINESS INTERRUPTION) HOWEVER CAUSED AND ON ANY
- * THEORY OF LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY, OR TORT
- * (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF
- * THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
+ * SPDX-License-Identifier: BSD-2-Clause
  */
 
 #ifdef HAVE_CONFIG_H
@@ -59,8 +39,7 @@
 #include "pkgcli.h"
 #include "pkghash.h"
 #include "xmalloc.h"
-
-typedef tll(char *) dl_list;
+#include "pkg/vec.h"
 
 #define OUT_OF_DATE	(1U<<0)
 #define REMOVED		(1U<<1)
@@ -69,7 +48,7 @@ typedef tll(char *) dl_list;
 #define ALL		(1U<<4)
 
 static size_t
-add_to_dellist(int fd, dl_list *dl, const char *cachedir, const char *path)
+add_to_dellist(int fd, charv_t *dl, const char *cachedir, const char *path)
 {
 	static bool first_entry = true;
 	struct stat st;
@@ -93,13 +72,13 @@ add_to_dellist(int fd, dl_list *dl, const char *cachedir, const char *path)
 	relpath = path + strlen(cachedir) + 1;
 	if (fstatat(fd, relpath, &st, AT_SYMLINK_NOFOLLOW) != -1 && S_ISREG(st.st_mode))
 		sz = st.st_size;
-	tll_push_back(*dl, store_path);
+	vec_push(dl, store_path);
 
 	return (sz);
 }
 
 static int
-delete_dellist(int fd, const char *cachedir,  dl_list *dl, int total)
+delete_dellist(int fd, const char *cachedir,  charv_t *dl)
 {
 	struct stat st;
 	int retcode = EXIT_SUCCESS;
@@ -107,15 +86,15 @@ delete_dellist(int fd, const char *cachedir,  dl_list *dl, int total)
 	unsigned int count = 0, processed = 0;
 	char *file, *relpath;
 
-	count = tll_length(*dl);
+	count = dl->len;
 	progressbar_start("Deleting files");
-	tll_foreach(*dl, it) {
+	vec_foreach(*dl, i) {
 		flag = 0;
-		relpath = file = it->item;
+		relpath = file = dl->d[i];
 		relpath += strlen(cachedir) + 1;
 		if (fstatat(fd, relpath, &st, AT_SYMLINK_NOFOLLOW) == -1) {
 			++processed;
-			progressbar_tick(processed, total);
+			progressbar_tick(processed, dl->len);
 			warn("can't stat %s", file);
 			continue;
 		}
@@ -126,11 +105,11 @@ delete_dellist(int fd, const char *cachedir,  dl_list *dl, int total)
 			retcode = EXIT_FAILURE;
 		}
 		free(file);
-		it->item = NULL;
+		dl->d[i] = NULL;
 		++processed;
-		progressbar_tick(processed, total);
+		progressbar_tick(processed, dl->len);
 	}
-	progressbar_tick(processed, total);
+	progressbar_tick(processed, dl->len);
 
 	if (!quiet) {
 		if (retcode != EXIT_SUCCESS)
@@ -160,7 +139,7 @@ populate_sums(struct pkgdb *db)
 		free(cksum);
 	}
 	pkgdb_it_free(it);
-	
+
 	return (suml);
 }
 
@@ -194,7 +173,7 @@ extract_filename_sum(const char *fname, char sum[])
 
 static int
 recursive_analysis(int fd, struct pkgdb *db, const char *dir,
-    const char *cachedir, dl_list *dl, pkghash **sumlist, bool all,
+    const char *cachedir, charv_t *dl, pkghash **sumlist, bool all,
     size_t *total)
 {
 	DIR *d;
@@ -283,7 +262,7 @@ exec_clean(int argc, char **argv)
 {
 	struct pkgdb	*db = NULL;
 	pkghash		*sumlist = NULL;
-	dl_list		 dl = tll_init();
+	charv_t		 dl;
 	const char	*cachedir;
 	bool		 all = false;
 	int		 retcode;
@@ -294,6 +273,8 @@ exec_clean(int argc, char **argv)
 #ifdef HAVE_CAPSICUM
 	cap_rights_t rights;
 #endif
+
+	vec_init(&dl);
 
 	struct option longopts[] = {
 		{ "all",	no_argument,	NULL,	'a' },
@@ -385,7 +366,7 @@ exec_clean(int argc, char **argv)
 	    &total);
 	pkghash_destroy(sumlist);
 
-	if (tll_length(dl) == 0) {
+	if (dl.len == 0) {
 		if (!quiet)
 			printf("Nothing to do.\n");
 		retcode = EXIT_SUCCESS;
@@ -400,7 +381,7 @@ exec_clean(int argc, char **argv)
 	if (!dry_run) {
 			if (query_yesno(false,
 			  "\nProceed with cleaning the cache? ")) {
-				retcode = delete_dellist(cachefd, cachedir, &dl, tll_length(dl));
+				retcode = delete_dellist(cachefd, cachedir, &dl);
 			}
 	} else {
 		retcode = EXIT_SUCCESS;
@@ -409,7 +390,7 @@ exec_clean(int argc, char **argv)
 cleanup:
 	pkgdb_release_lock(db, PKGDB_LOCK_READONLY);
 	pkgdb_close(db);
-	tll_free_and_free(dl, free);
+	vec_free_and_free(&dl, free);
 
 	if (cachefd != -1)
 		close(cachefd);
