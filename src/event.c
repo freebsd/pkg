@@ -54,7 +54,6 @@
 #ifdef HAVE_LIBUTIL_H
 #include <libutil.h>
 #endif
-#include <tllist.h>
 
 #include <bsd_compat.h>
 
@@ -84,7 +83,7 @@ static int64_t bytes_per_second;
 static time_t last_update;
 static time_t begin = 0;
 static int add_deps_depth;
-static tll(struct cleanup *) cleanup_list = tll_init();
+static vec_t(struct cleanup *) cleanup_list = vec_init();
 static bool signal_handler_installed = false;
 static size_t nbactions = 0;
 static size_t nbdone = 0;
@@ -99,11 +98,11 @@ cleanup_handler(int dummy __unused)
 {
 	struct cleanup *ev;
 
-	if (tll_length(cleanup_list) == 0)
+	if (cleanup_list.len == 0)
 		return;
 	warnx("\nsignal received, cleaning up");
-	tll_foreach(cleanup_list, it) {
-		ev = it->item;
+	vec_foreach(cleanup_list, i) {
+		ev = cleanup_list.d[i];
 		ev->cb(ev->data);
 	}
 	exit(1);
@@ -692,16 +691,16 @@ event_callback(void *data, struct pkg_event *ev)
 		evtmp = xmalloc(sizeof(struct cleanup));
 		evtmp->cb = ev->e_cleanup_callback.cleanup_cb;
 		evtmp->data = ev->e_cleanup_callback.data;
-		tll_push_back(cleanup_list, evtmp);
+		vec_push(&cleanup_list, evtmp);
 		break;
 	case PKG_EVENT_CLEANUP_CALLBACK_UNREGISTER:
 		if (!signal_handler_installed)
 			break;
-		tll_foreach(cleanup_list, it) {
-			evtmp = it->item;
+		vec_foreach(cleanup_list, i) {
+			evtmp = cleanup_list.d[i];
 			if (evtmp->cb == ev->e_cleanup_callback.cleanup_cb &&
 			    evtmp->data == ev->e_cleanup_callback.data) {
-				tll_remove_and_free(cleanup_list, it, free);
+				vec_remove_and_free(&cleanup_list, i, free);
 				break;
 			}
 		}
