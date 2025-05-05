@@ -36,7 +36,6 @@
 #include <signal.h>
 
 #include <pkg.h>
-#include <tllist.h>
 #include <xmalloc.h>
 
 #include "pkgcli.h"
@@ -104,7 +103,7 @@ struct plugcmd {
 	const char *desc;
 	int (*exec)(int argc, char **argv);
 };
-static tll(struct plugcmd *)plugins = tll_init();
+static vec_t(struct plugcmd *)plugins = vec_init();
 
 typedef int (register_cmd)(int idx, const char **name, const char **desc, int (**exec)(int argc, char **argv));
 typedef int (nb_cmd)(void);
@@ -178,9 +177,9 @@ usage(const char *conffile, const char *reposdir, FILE *out, enum pkg_usage_reas
 
 			fprintf(out, "\nCommands provided by plugins:\n");
 
-			tll_foreach(plugins, it) {
-				fprintf(out, "\t%-15s%s\n", it->item->name,
-				    it->item->desc);
+			vec_foreach(plugins, i) {
+				fprintf(out, "\t%-15s%s\n", plugins.d[i]->name,
+				    plugins.d[i]->desc);
 			}
 		}
 		fprintf(out, "\nFor more information on the different commands"
@@ -227,9 +226,9 @@ exec_help(int argc, char **argv)
 	plugins_enabled = pkg_object_bool(pkg_config_get("PKG_ENABLE_PLUGINS"));
 
 	if (plugins_enabled) {
-		tll_foreach(plugins, it) {
-			if (STREQ(it->item->name, argv[1])) {
-				xasprintf(&manpage, "/usr/bin/man pkg-%s", it->item->name);
+		vec_foreach(plugins, i) {
+			if (STREQ(plugins.d[i]->name, argv[1])) {
+				xasprintf(&manpage, "/usr/bin/man pkg-%s", plugins.d[i]->name);
 				system(manpage);
 				free(manpage);
 
@@ -709,7 +708,7 @@ main(int argc, char **argv)
 				for (j = 0; j < n ; j++) {
 					c = xmalloc(sizeof(struct plugcmd));
 					reg(j, &c->name, &c->desc, &c->exec);
-					tll_push_back(plugins, c);
+					vec_push(&plugins, c);
 				}
 			}
 		}
@@ -790,10 +789,10 @@ main(int argc, char **argv)
 		/* Check if a plugin provides the requested command */
 		ret = EPKG_FATAL;
 		if (plugins_enabled) {
-			tll_foreach(plugins, it) {
-				if (STREQ(it->item->name, argv[0])) {
+			vec_foreach(plugins, i) {
+				if (STREQ(plugins.d[i]->name, argv[0])) {
 					plugin_found = true;
-					ret = it->item->exec(argc, argv);
+					ret = plugins.d[i]->exec(argc, argv);
 					break;
 				}
 			}
