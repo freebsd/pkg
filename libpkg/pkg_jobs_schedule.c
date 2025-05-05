@@ -200,8 +200,10 @@ pkg_jobs_schedule_dbg_job(pkg_solved_list *jobs, struct pkg_solved *job)
 	    job->items[0]->pkg->uid);
 
 	debug_edges = true;
-	tll_foreach(*jobs, it) {
-		pkg_jobs_schedule_graph_edge(job, it->item);
+	vec_foreach(*jobs, i) {
+		if (jobs->d[i] == NULL)
+			continue;
+		pkg_jobs_schedule_graph_edge(job, jobs->d[i]);
 	}
 	debug_edges = false;
 }
@@ -210,8 +212,10 @@ static bool
 pkg_jobs_schedule_has_incoming_edge(pkg_solved_list *nodes,
     struct pkg_solved *node)
 {
-	tll_foreach(*nodes, it) {
-		if (pkg_jobs_schedule_graph_edge(it->item, node)) {
+	vec_foreach(*nodes, i) {
+		if (nodes->d[i] == NULL)
+			continue;
+		if (pkg_jobs_schedule_graph_edge(nodes->d[i], node)) {
 			return (true);
 		}
 	}
@@ -238,8 +242,11 @@ pkg_jobs_schedule_priority(struct pkg_solved *node)
 
 /* This comparison function is used as a tiebreaker in the topological sort. */
 static int
-pkg_jobs_schedule_cmp_available(struct pkg_solved *a, struct pkg_solved *b)
+pkg_jobs_schedule_cmp_available(const void *va, const void *vb)
 {
+	struct pkg_solved *a = *(struct pkg_solved **)va;
+	struct pkg_solved *b = *(struct pkg_solved **)vb;
+
 	int ret = pkg_jobs_schedule_priority(b) - pkg_jobs_schedule_priority(a);
 	if (ret == 0) {
 		/* Falling back to lexicographical ordering ensures that job execution
@@ -254,34 +261,39 @@ pkg_jobs_schedule_cmp_available(struct pkg_solved *a, struct pkg_solved *b)
 static void
 pkg_jobs_schedule_topological_sort(pkg_solved_list *jobs)
 {
-	pkg_solved_list sorted = tll_init();
-	pkg_solved_list available = tll_init();
+	pkg_solved_list sorted = vec_init();
+	pkg_solved_list available = vec_init();
+	size_t left = jobs->len;
 
 	/* Place all job nodes with no incoming edges in available */
-	tll_foreach(*jobs, it) {
-		if (!pkg_jobs_schedule_has_incoming_edge(jobs, it->item) &&
-		    !pkg_jobs_schedule_has_incoming_edge(&available, it->item)) {
-			tll_push_front(available, it->item);
-			tll_remove(*jobs, it);
+	vec_foreach(*jobs, i) {
+		if (!pkg_jobs_schedule_has_incoming_edge(jobs, jobs->d[i]) &&
+		    !pkg_jobs_schedule_has_incoming_edge(&available, jobs->d[i])) {
+			vec_push(&available, jobs->d[i]);
+			jobs->d[i] = NULL;
+			left--;
 		}
 	}
 
-	while (tll_length(available) > 0) {
+	while (available.len > 0) {
 		/* Add the highest priority job from the set of available jobs
 		 * to the sorted list */
-		tll_sort(available, pkg_jobs_schedule_cmp_available);
-		struct pkg_solved *node = tll_pop_front(available);
-		tll_push_back(sorted, node);
+		qsort(available.d, available.len, sizeof(available.d[0]), pkg_jobs_schedule_cmp_available);
+		struct pkg_solved *node = vec_pop(&available);
+		vec_push(&sorted, node);
 
 		/* Again, place all job nodes with no incoming edges in the set
 		 * of available jobs, ignoring any incoming edges from job nodes
 		 * already added to the sorted list */
-		tll_foreach(*jobs, it) {
-			if (pkg_jobs_schedule_graph_edge(node, it->item)) {
-				if (!pkg_jobs_schedule_has_incoming_edge(jobs, it->item) &&
-				    !pkg_jobs_schedule_has_incoming_edge(&available, it->item)) {
-					tll_push_front(available, it->item);
-					tll_remove(*jobs, it);
+		vec_foreach(*jobs, i) {
+			if (jobs->d[i] == NULL)
+				continue;
+			if (pkg_jobs_schedule_graph_edge(node, jobs->d[i])) {
+				if (!pkg_jobs_schedule_has_incoming_edge(jobs, jobs->d[i]) &&
+				    !pkg_jobs_schedule_has_incoming_edge(&available, jobs->d[i])) {
+					vec_push(&available, jobs->d[i]);
+					jobs->d[i] = NULL;
+					left--;
 				}
 			}
 		}
@@ -290,9 +302,10 @@ pkg_jobs_schedule_topological_sort(pkg_solved_list *jobs)
 	/* The jobs list will only be non-empty at this point if there is a
 	 * cycle in the graph and all cycles must be eliminated by splitting
 	 * upgrade jobs before calling this function. */
-	assert(tll_length(*jobs) == 0);
+	assert(left == 0);
 
-	*jobs = sorted;
+	free(jobs->d);
+	jobs->d = sorted.d;
 }
 
 /*
@@ -311,12 +324,12 @@ pkg_jobs_schedule_find_cycle(pkg_solved_list *jobs,
 	node->path_next = *path;
 	*path = node;
 
-	tll_foreach(*jobs, it) {
-		if (pkg_jobs_schedule_graph_edge(node, it->item)) {
-			switch (it->item->mark){
+	vec_foreach(*jobs, i) {
+		if (pkg_jobs_schedule_graph_edge(node, jobs->d[i])) {
+			switch (jobs->d[i]->mark){
 			case PKG_SOLVED_CYCLE_MARK_NONE:;
 				struct pkg_solved *cycle =
-				    pkg_jobs_schedule_find_cycle(jobs, path, it->item);
+				    pkg_jobs_schedule_find_cycle(jobs, path, jobs->d[i]);
 				if (cycle != NULL) {
 					return (cycle);
 				}
@@ -324,7 +337,7 @@ pkg_jobs_schedule_find_cycle(pkg_solved_list *jobs,
 			case PKG_SOLVED_CYCLE_MARK_DONE:
 				break;
 			case PKG_SOLVED_CYCLE_MARK_PATH:
-				return (it->item); /* Found a cycle */
+				return (jobs->d[i]); /* Found a cycle */
 			default:
 				assert(false);
 			}
@@ -345,21 +358,21 @@ int pkg_jobs_schedule(struct pkg_jobs *j)
 	while (true) {
 		dbg(3, "checking job scheduling graph for cycles...");
 
-		tll_foreach(j->jobs, it) {
-			it->item->mark = PKG_SOLVED_CYCLE_MARK_NONE;
-			it->item->path_next = NULL;
+		vec_foreach(j->jobs, i) {
+			j->jobs.d[i]->mark = PKG_SOLVED_CYCLE_MARK_NONE;
+			j->jobs.d[i]->path_next = NULL;
 
-			pkg_jobs_schedule_dbg_job(&j->jobs, it->item);
+			pkg_jobs_schedule_dbg_job(&j->jobs, j->jobs.d[i]);
 		}
 
 		/* The graph may not be connected, in which case it is necessary to
 		 * run multiple searches for cycles from different start nodes. */
 		struct pkg_solved *path = NULL;
 		struct pkg_solved *cycle = NULL;
-		tll_foreach(j->jobs, it) {
-			switch (it->item->mark) {
+		vec_foreach(j->jobs, i) {
+			switch (j->jobs.d[i]->mark) {
 			case PKG_SOLVED_CYCLE_MARK_NONE:
-				cycle = pkg_jobs_schedule_find_cycle(&j->jobs, &path, it->item);
+				cycle = pkg_jobs_schedule_find_cycle(&j->jobs, &path, j->jobs.d[i]);
 				break;
 			case PKG_SOLVED_CYCLE_MARK_DONE:
 				break;
@@ -409,7 +422,7 @@ int pkg_jobs_schedule(struct pkg_jobs *j)
 		path->type = PKG_SOLVED_UPGRADE_INSTALL;
 		path->items[1] = NULL;
 		path->xlink = new;
-		tll_push_back(j->jobs, new);
+		vec_push(&j->jobs, new);
 	}
 
 	pkg_jobs_schedule_topological_sort(&j->jobs);

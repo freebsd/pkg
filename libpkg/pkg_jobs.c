@@ -67,7 +67,6 @@
 #include "private/pkg.h"
 #include "private/pkgdb.h"
 #include "private/pkg_jobs.h"
-#include "tllist.h"
 
 extern struct pkg_ctx ctx;
 
@@ -205,7 +204,7 @@ pkg_jobs_free(struct pkg_jobs *j)
 	j->request_delete = NULL;
 
 	pkg_jobs_universe_free(j->universe);
-	tll_free_and_free(j->jobs, free);
+	vec_free_and_free(&j->jobs, free);
 	LL_FREE(j->patterns, pkg_jobs_pattern_free);
 	if (j->triggers.cleanup != NULL) {
 		vec_free_and_free(j->triggers.cleanup, trigger_free);
@@ -307,26 +306,28 @@ pkg_jobs_iter(struct pkg_jobs *j, void **iter,
 {
 	struct pkg_solved *s;
 	struct {
-		typeof(*(j->jobs.head)) *it;
+		pkg_solved_list *list;
+		size_t pos;
 	} *t;
 	t = *iter;
 	if (*iter == NULL) {
 		t = xcalloc(1, sizeof(*t));
 		*iter = t;
-	} else if (t->it == NULL) {
+	} else if (t->pos >= t->list->len) {
 			free(t);
 			return (false);
 	}
 
-	if (tll_length(j->jobs) == 0)
+	if (j->jobs.len == 0)
 		return (false);
-	if (t->it == NULL)
-		t->it = j->jobs.head;
-	s = t->it->item;
+	if (t->list == NULL) {
+		t->list = &j->jobs;
+		t->pos = 0;
+	}
+	s = t->list->d[t->pos++];
 	*new = s->items[0]->pkg;
 	*old = s->items[1] ? s->items[1]->pkg : NULL;
 	*type = s->type;
-	t->it = t->it->next;
 	return (true);
 }
 
@@ -1363,8 +1364,8 @@ pkg_jobs_set_deinstall_reasons(struct pkg_jobs *j)
 	struct pkg_job_request *jreq;
 	struct pkg *req_pkg, *pkg;
 
-	tll_foreach(j->jobs, it) {
-		sit = it->item;
+	vec_foreach(j->jobs, i) {
+		sit = j->jobs.d[i];
 		jreq = pkg_jobs_find_deinstall_request(sit->items[0], j, 0);
 		if (jreq != NULL && jreq->item->unit != sit->items[0]) {
 			req_pkg = jreq->item->pkg;
@@ -1900,10 +1901,10 @@ pkg_jobs_solve(struct pkg_jobs *j)
 	 * conflicts if we can check for and solve conflicts without first
 	 * needing to fetch.
 	 */
-	tll_foreach(j->jobs, job) {
+	vec_foreach(j->jobs, i) {
 		struct pkg *p;
 
-		p = ((struct pkg_solved *)job->item)->items[0]->pkg;
+		p = ((struct pkg_solved *)j->jobs.d[i])->items[0]->pkg;
 		if (p->type != PKG_REMOTE)
 			continue;
 
@@ -1922,7 +1923,7 @@ pkg_jobs_solve(struct pkg_jobs *j)
 			rc = pkg_jobs_check_conflicts(j);
 			if (rc == EPKG_CONFLICT) {
 				/* Cleanup results */
-				tll_free_and_free(j->jobs, free);
+				vec_free_and_free(&j->jobs, free);
 				has_conflicts = true;
 				pkg_jobs_solve(j);
 			}
@@ -1940,7 +1941,7 @@ pkg_jobs_count(struct pkg_jobs *j)
 {
 	assert(j != NULL);
 
-	return (tll_length(j->jobs));
+	return (j->jobs.len);
 }
 
 int
@@ -2086,9 +2087,9 @@ pkg_jobs_execute(struct pkg_jobs *j)
 	if (retcode != EPKG_OK)
 		return (retcode);
 
-	total_actions = tll_length(j->jobs);
-	tll_foreach(j->jobs, _p) {
-		struct pkg_solved *ps = _p->item;
+	total_actions = j->jobs.len;
+	vec_foreach(j->jobs, i) {
+		struct pkg_solved *ps = j->jobs.d[i];
 
 		pkg_emit_new_action(++current_action, total_actions);
 		switch (ps->type) {
@@ -2180,7 +2181,7 @@ pkg_jobs_apply(struct pkg_jobs *j)
 						rc = pkg_jobs_check_conflicts(j);
 						if (rc == EPKG_CONFLICT) {
 							/* Cleanup results */
-							tll_free_and_free(j->jobs, free);
+							vec_free_and_free(&j->jobs, free);
 							has_conflicts = true;
 							rc = pkg_jobs_solve(j);
 						}
@@ -2241,8 +2242,8 @@ pkg_jobs_fetch(struct pkg_jobs *j)
 		cachedir = j->destdir;
 
 	/* check for available size to fetch */
-	tll_foreach(j->jobs, _p) {
-		struct pkg_solved *ps = _p->item;
+	vec_foreach(j->jobs, i) {
+		struct pkg_solved *ps = j->jobs.d[i];
 		if (ps->type != PKG_SOLVED_DELETE && ps->type != PKG_SOLVED_UPGRADE_REMOVE) {
 			p = ps->items[0]->pkg;
 			if (p->type != PKG_REMOTE)
@@ -2307,8 +2308,8 @@ pkg_jobs_fetch(struct pkg_jobs *j)
 		return (EPKG_OK); /* don't download anything */
 
 	/* Fetch */
-	tll_foreach(j->jobs, _p) {
-		struct pkg_solved *ps = _p->item;
+	vec_foreach(j->jobs, i) {
+		struct pkg_solved *ps = j->jobs.d[i];
 		if (ps->type != PKG_SOLVED_DELETE && ps->type != PKG_SOLVED_UPGRADE_REMOVE) {
 			p = ps->items[0]->pkg;
 			if (p->type != PKG_REMOTE)
@@ -2339,8 +2340,8 @@ pkg_jobs_check_conflicts(struct pkg_jobs *j)
 	pkg_emit_integritycheck_begin();
 	j->conflicts_registered = 0;
 
-	tll_foreach(j->jobs, _p) {
-		struct pkg_solved *ps = _p->item;
+	vec_foreach(j->jobs, i) {
+		struct pkg_solved *ps = j->jobs.d[i];
 		if (ps->type == PKG_SOLVED_DELETE || ps->type == PKG_SOLVED_UPGRADE_REMOVE) {
 			continue;
 		}
