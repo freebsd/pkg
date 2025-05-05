@@ -31,7 +31,6 @@
 #include <errno.h>
 #include <pwd.h>
 #include <pkg.h>
-#include <tllist.h>
 #include <xmalloc.h>
 
 #include <bsd_compat.h>
@@ -804,7 +803,7 @@ struct pkg_solved_display {
 	pkg_solved_t solved_type;
 };
 
-typedef tll(struct pkg_solved_display *) pkg_solved_display_t;
+typedef vec_t(struct pkg_solved_display *) pkg_solved_display_t;
 
 static void
 set_jobs_summary_pkg(struct pkg_jobs *jobs, struct pkg *new_pkg,
@@ -840,7 +839,7 @@ set_jobs_summary_pkg(struct pkg_jobs *jobs, struct pkg *new_pkg,
 
 	if (old_pkg != NULL && pkg_is_locked(old_pkg)) {
 		it->display_type = PKG_DISPLAY_LOCKED;
-		tll_push_back(disp[it->display_type], it);
+		vec_push(&disp[it->display_type], it);
 		return;
 	}
 
@@ -935,7 +934,7 @@ set_jobs_summary_pkg(struct pkg_jobs *jobs, struct pkg *new_pkg,
 
 		break;
 	}
-	tll_push_back(disp[it->display_type], it);
+	vec_push(&disp[it->display_type], it);
 }
 
 static void
@@ -1078,7 +1077,6 @@ print_jobs_summary(struct pkg_jobs *jobs, const char *msg, ...)
 	int type, displayed = 0;
 	int64_t dlsize, oldsize, newsize;
 	pkg_solved_display_t disp[PKG_DISPLAY_MAX];
-	struct pkg_solved_display **displays;
 	bool first = true;
 	size_t bytes_change, limbytes;
 	struct jobs_sum_number sum;
@@ -1095,7 +1093,7 @@ print_jobs_summary(struct pkg_jobs *jobs, const char *msg, ...)
 	}
 
 	for (type = 0; type < PKG_DISPLAY_MAX; type ++) {
-		if (tll_length(disp[type]) != 0) {
+		if (disp[type].len != 0) {
 			/* Space between each section. */
 			if (!first)
 				putchar('\n');
@@ -1109,18 +1107,12 @@ print_jobs_summary(struct pkg_jobs *jobs, const char *msg, ...)
 				msg = NULL;
 			}
 			printf("%s:\n", pkg_display_messages[type]);
-			displays = xcalloc(tll_length(disp[type]), sizeof(*displays));
-			size_t i = 0;
-			tll_foreach(disp[type], d) {
-				displays[i++] = d->item;
-			}
-			qsort(displays, i, sizeof(displays[0]), namecmp);
-			for (i = 0; i < tll_length(disp[type]); i++) {
-				display_summary_item(displays[i], dlsize);
+			qsort(disp[type].d, disp[type].len, sizeof(disp[type].d[0]), namecmp);
+			vec_foreach(disp[type], i) {
+				display_summary_item(disp[type].d[i], dlsize);
 				displayed ++;
 			}
-			tll_free_and_free(disp[type], free);
-			free(displays);
+			vec_free_and_free(&disp[type], free);
 		}
 	}
 
