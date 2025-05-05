@@ -27,7 +27,6 @@
 #include <atf-c.h>
 #include <pkg.h>
 #include <private/pkg.h>
-#include <tllist.h>
 
 ATF_TC_WITHOUT_HEAD(pkg_add_dir_to_del);
 
