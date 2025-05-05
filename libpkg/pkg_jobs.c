@@ -208,7 +208,7 @@ pkg_jobs_free(struct pkg_jobs *j)
 	tll_free_and_free(j->jobs, free);
 	LL_FREE(j->patterns, pkg_jobs_pattern_free);
 	if (j->triggers.cleanup != NULL) {
-		tll_free_and_free(*j->triggers.cleanup, trigger_free);
+		vec_free_and_free(j->triggers.cleanup, trigger_free);
 		free(j->triggers.cleanup);
 	}
 	if (j->triggers.dfd != -1)
