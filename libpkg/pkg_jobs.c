@@ -81,7 +81,7 @@ struct pkg_jobs_locked {
 	void *context;
 };
 static __thread struct pkg_jobs_locked *pkgs_job_lockedpkg;
-typedef tll(int64_t) candidates_t;
+typedef vec_t(int64_t) candidates_t;
 
 #define IS_DELETE(j) ((j)->type == PKG_JOBS_DEINSTALL || (j)->type == PKG_JOBS_AUTOREMOVE)
 
@@ -1507,7 +1507,7 @@ pkg_jobs_find_install_candidates(struct pkg_jobs *j)
 
 		if ((j->flags & PKG_FLAG_FORCE) ||
 						pkg_jobs_check_remote_candidate(j, pkg)) {
-			tll_push_front(*candidates, pkg->id);
+			vec_push(candidates, pkg->id);
 		}
 		pkg_free(pkg);
 		pkg = NULL;
@@ -1534,15 +1534,15 @@ jobs_solve_full_upgrade(struct pkg_jobs *j)
 	assert(!j->solved);
 
 	candidates = pkg_jobs_find_install_candidates(j);
-	jcount = tll_length(*candidates);
+	jcount = candidates->len;
 
 	pkg_emit_progress_start("Checking for upgrades (%zd candidates)",
 			jcount);
 
-	tll_foreach(*candidates, c) {
+	vec_foreach(*candidates, i) {
 		pkg_emit_progress_tick(++elt_num, jcount);
 		sqlite3_snprintf(sizeof(sqlbuf), sqlbuf, " WHERE p.id=%" PRId64,
-		    c->item);
+		    candidates->d[i]);
 		if ((it = pkgdb_query_cond(j->db, sqlbuf, NULL, MATCH_ALL)) == NULL)
 			return (EPKG_FATAL);
 
@@ -1554,7 +1554,7 @@ jobs_solve_full_upgrade(struct pkg_jobs *j)
 		pkg_free(pkg);
 		pkgdb_it_free(it);
 	}
-	tll_free(*candidates);
+	vec_free(candidates);
 	free(candidates);
 	pkg_emit_progress_tick(jcount, jcount);
 
