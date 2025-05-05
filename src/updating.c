@@ -1,28 +1,8 @@
 /*-
- * Copyright (c) 2011-2022 Baptiste Daroussin <bapt@FreeBSD.org>
+ * Copyright (c) 2011-2025 Baptiste Daroussin <bapt@FreeBSD.org>
  * Copyright (c) 2014 Matthew Seaman <matthew@FreeBSD.org>
- * All rights reserved.
  *
- * Redistribution and use in source and binary forms, with or without
- * modification, are permitted provided that the following conditions
- * are met:
- * 1. Redistributions of source code must retain the above copyright
- *    notice, this list of conditions and the following disclaimer
- *    in this position and unchanged.
- * 2. Redistributions in binary form must reproduce the above copyright
- *    notice, this list of conditions and the following disclaimer in the
- *    documentation and/or other materials provided with the distribution.
- *
- * THIS SOFTWARE IS PROVIDED BY THE AUTHOR(S) ``AS IS'' AND ANY EXPRESS OR
- * IMPLIED WARRANTIES, INCLUDING, BUT NOT LIMITED TO, THE IMPLIED WARRANTIES
- * OF MERCHANTABILITY AND FITNESS FOR A PARTICULAR PURPOSE ARE DISCLAIMED.
- * IN NO EVENT SHALL THE AUTHOR(S) BE LIABLE FOR ANY DIRECT, INDIRECT,
- * INCIDENTAL, SPECIAL, EXEMPLARY, OR CONSEQUENTIAL DAMAGES (INCLUDING, BUT
- * NOT LIMITED TO, PROCUREMENT OF SUBSTITUTE GOODS OR SERVICES; LOSS OF USE,
- * DATA, OR PROFITS; OR BUSINESS INTERRUPTION) HOWEVER CAUSED AND ON ANY
- * THEORY OF LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY, OR TORT
- * (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF
- * THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
+ * SPDX-License-Identifier: BSD-2-Clause
  */
 
 #ifdef HAVE_CONFIG_H
@@ -43,31 +23,16 @@
 #include <unistd.h>
 #include <ctype.h>
 #include <regex.h>
-#include <tllist.h>
 
 #include "pkgcli.h"
-
-struct installed_ports {
-	char *origin;
-};
 
 struct regex_cache {
 	char *pattern;
 	regex_t reg;
 };
 
-
 static void
-installed_ports_free(struct installed_ports *p) 
-{
-	if (!p)
-		return;
-	free(p->origin);
-	free(p);
-}
-
-static void
-regex_cache_free(struct regex_cache *p) 
+regex_cache_free(struct regex_cache *p)
 {
 	if (!p)
 		return;
@@ -138,8 +103,9 @@ matcher(const char *affects, const char *origin, bool ignorecase)
 	size_t len;
 	char *re, *buf, *p, **words;
 	struct regex_cache *ent;
-	tll(struct regex_cache *) cache = tll_init();
+	vec_t(struct regex_cache *) cache;
 
+	vec_init(&cache);
 	len = strlen(affects);
 	buf = strdup(affects);
 	if (buf == NULL)
@@ -200,14 +166,14 @@ matcher(const char *affects, const char *origin, bool ignorecase)
 		}
 
 		found = 0;
-		tll_foreach(cache, it) {
+		vec_foreach(cache, j) {
 			if (ignorecase)
-				rc = strcasecmp(words[i], it->item->pattern);
+				rc = strcasecmp(words[i], cache.d[j]->pattern);
 			else
-				rc = strcmp(words[i], it->item->pattern);
+				rc = strcmp(words[i], cache.d[j]->pattern);
 			if (rc == 0) {
 				found++;
-				if (regexec(&it->item->reg, origin, 0, NULL, 0) == 0) {
+				if (regexec(&cache.d[j]->reg, origin, 0, NULL, 0) == 0) {
 					ret = 1;
 					break;
 				}
@@ -231,7 +197,7 @@ matcher(const char *affects, const char *origin, bool ignorecase)
 			}
 			regcomp(&ent->reg, re, (ignorecase) ? REG_ICASE|REG_EXTENDED : REG_EXTENDED);
 			free(re);
-			tll_push_front(cache, ent);
+			vec_push(&cache, ent);
 			if (regexec(&ent->reg, origin, 0, NULL, 0) == 0) {
 				ret = 1;
 				break;
@@ -240,8 +206,7 @@ matcher(const char *affects, const char *origin, bool ignorecase)
 	}
 
 out:
-	tll_foreach(cache, it)
-		tll_remove_and_free(cache, it, regex_cache_free);
+	vec_free_and_free(&cache, regex_cache_free);
 	free(words);
 	free(buf);
 	return (ret);
@@ -254,8 +219,7 @@ exec_updating(int argc, char **argv)
 	char			*dateline = NULL;
 	char			*updatingfile = NULL;
 	bool			caseinsensitive = false;
-	struct installed_ports	*port;
-	tll(struct installed_ports *) origins = tll_init();
+	charv_t 		 origins;
 	int			 ch;
 	char			*line = NULL;
 	size_t			 linecap = 0;
@@ -270,6 +234,8 @@ exec_updating(int argc, char **argv)
 #ifdef HAVE_CAPSICUM
 	cap_rights_t rights;
 #endif
+
+	vec_init(&origins);
 
 	struct option longopts[] = {
 		{ "date",	required_argument,	NULL,	'd' },
@@ -351,15 +317,14 @@ exec_updating(int argc, char **argv)
 		}
 
 		while (pkgdb_it_next(it, &pkg, PKG_LOAD_BASIC) == EPKG_OK) {
-			port = malloc(sizeof(struct installed_ports));
-			pkg_asprintf(&port->origin, "%o", pkg);
-			tll_push_front(origins, port);
+			char *orig;
+			pkg_asprintf(&orig, "%o", pkg);
+			vec_push(&origins, orig);
 		}
 	} else {
 		while (*argv) {
-			port = malloc(sizeof(struct installed_ports));
-			port->origin = strdup(*argv);
-			tll_push_front(origins, port);
+			char *orig = strdup(*argv);
+			vec_push(&origins, orig);
 			argv++;
 		}
 	}
@@ -377,8 +342,8 @@ exec_updating(int argc, char **argv)
 		tmp = NULL;
 		if (found == 0) {
 			if (strstr(line, "AFFECTS") != NULL) {
-				tll_foreach(origins, it) {
-					if (matcher(line, it->item->origin, caseinsensitive) != 0) {
+				vec_foreach(origins, i) {
+					if (matcher(line, origins.d[i], caseinsensitive) != 0) {
 						tmp = "";
 						break;
 					}
@@ -402,8 +367,7 @@ exec_updating(int argc, char **argv)
 	fclose(fd);
 
 cleanup:
-	tll_foreach(origins, it)
-		tll_remove_and_free(origins, it, installed_ports_free);
+	vec_free_and_free(&origins, free);
 	pkgdb_it_free(it);
 	pkgdb_release_lock(db, PKGDB_LOCK_READONLY);
 	pkgdb_close(db);
