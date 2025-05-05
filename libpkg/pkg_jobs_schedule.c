@@ -251,7 +251,7 @@ pkg_jobs_schedule_cmp_available(const void *va, const void *vb)
 	if (ret == 0) {
 		/* Falling back to lexicographical ordering ensures that job execution
 		 * order is always consistent and makes testing easier. */
-		return strcmp(a->items[0]->pkg->uid, b->items[0]->pkg->uid);
+		return strcmp(b->items[0]->pkg->uid, a->items[0]->pkg->uid);
 	} else {
 		return ret;
 	}
