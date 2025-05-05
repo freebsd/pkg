@@ -1,30 +1,10 @@
 /*-
- * Copyright (c) 2011-2012 Baptiste Daroussin <bapt@FreeBSD.org>
+ * Copyright (c) 2011-2025 Baptiste Daroussin <bapt@FreeBSD.org>
  * Copyright (c) 2011-2012 Julien Laffaye <jlaffaye@FreeBSD.org>
  * Copyright (c) 2011-2012 Marin Atanasov Nikolov <dnaeon@gmail.com>
  * Copyright (c) 2014 Matthew Seaman <matthew@FreeBSD.org>
- * All rights reserved.
- * 
- * Redistribution and use in source and binary forms, with or without
- * modification, are permitted provided that the following conditions
- * are met:
- * 1. Redistributions of source code must retain the above copyright
- *    notice, this list of conditions and the following disclaimer
- *    in this position and unchanged.
- * 2. Redistributions in binary form must reproduce the above copyright
- *    notice, this list of conditions and the following disclaimer in the
- *    documentation and/or other materials provided with the distribution.
- * 
- * THIS SOFTWARE IS PROVIDED BY THE AUTHOR(S) ``AS IS'' AND ANY EXPRESS OR
- * IMPLIED WARRANTIES, INCLUDING, BUT NOT LIMITED TO, THE IMPLIED WARRANTIES
- * OF MERCHANTABILITY AND FITNESS FOR A PARTICULAR PURPOSE ARE DISCLAIMED.
- * IN NO EVENT SHALL THE AUTHOR(S) BE LIABLE FOR ANY DIRECT, INDIRECT,
- * INCIDENTAL, SPECIAL, EXEMPLARY, OR CONSEQUENTIAL DAMAGES (INCLUDING, BUT
- * NOT LIMITED TO, PROCUREMENT OF SUBSTITUTE GOODS OR SERVICES; LOSS OF USE,
- * DATA, OR PROFITS; OR BUSINESS INTERRUPTION) HOWEVER CAUSED AND ON ANY
- * THEORY OF LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY, OR TORT
- * (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF
- * THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
+ *
+ * SPDX-License-Identifier: BSD-2-Clause
  */
 
 #include <sys/param.h>
@@ -41,9 +21,6 @@
 #include "pkgcli.h"
 #include <string.h>
 #include <xmalloc.h>
-#include <tllist.h>
-
-typedef tll(char *) charlist;
 
 void
 usage_which(void)
@@ -56,10 +33,10 @@ static bool is_there(char *);
 int get_match(char **, char **, char *);
 
 static bool
-already_in_list(charlist *list, const char *pattern)
+already_in_list(charv_t *list, const char *pattern)
 {
-	tll_foreach(*list, it) {
-		if (STREQ(it->item, pattern))
+	vec_foreach(*list, i) {
+		if (STREQ(list->d[i], pattern))
 			return (true);
 	}
 
@@ -82,7 +59,9 @@ exec_which(int argc, char **argv)
 	bool		 search = false;
 	bool		 search_s = false;
 	bool		 show_match = false;
-	charlist	 patterns = tll_init();
+	charv_t		 patterns;
+
+	vec_init(&patterns);
 
 	struct option longopts[] = {
 		{ "glob",		no_argument,	NULL,	'g' },
@@ -184,7 +163,7 @@ exec_which(int argc, char **argv)
 						/* ensure not not append twice an entry if PATH is messy */
 						if (already_in_list(&patterns, pathabs))
 							continue;
-						tll_push_back(patterns, xstrdup(pathabs));
+						vec_push(&patterns, xstrdup(pathabs));
 						free(match);
 					}
 				}
@@ -194,18 +173,18 @@ exec_which(int argc, char **argv)
 
 		if (!glob && !search) {
 			pkg_absolutepath(argv[0], pathabs, sizeof(pathabs), false);
-			tll_push_back(patterns, xstrdup(pathabs));
+			vec_push(&patterns, xstrdup(pathabs));
 		} else if (!search) {
 			if (strlcpy(pathabs, argv[0], sizeof(pathabs)) >= sizeof(pathabs)) {
 				retcode = EXIT_FAILURE;
 				goto cleanup;
                         }
-			tll_push_back(patterns, xstrdup(pathabs));
+			vec_push(&patterns, xstrdup(pathabs));
 		}
 
 
-		tll_foreach(patterns, item) {
-			if ((it = pkgdb_query_which(db, item->item, glob)) == NULL) {
+		vec_foreach(patterns, i) {
+			if ((it = pkgdb_query_which(db, patterns.d[i], glob)) == NULL) {
 				retcode = EXIT_FAILURE;
 				goto cleanup;
 			}
@@ -218,30 +197,30 @@ exec_which(int argc, char **argv)
 				else if (quiet && !orig && !show_match)
 					pkg_printf("%n-%v\n", pkg, pkg);
 				else if (!quiet && orig && !show_match)
-					pkg_printf("%S was installed by package %o\n", item->item, pkg);
+					pkg_printf("%S was installed by package %o\n", patterns.d[i], pkg);
 				else if (!quiet && !orig && !show_match)
-					pkg_printf("%S was installed by package %n-%v\n", item->item, pkg, pkg);
+					pkg_printf("%S was installed by package %n-%v\n", patterns.d[i], pkg, pkg);
 				else if (glob && show_match) {
 					if (!quiet)
-						pkg_printf("%S was glob searched and found in package %n-%v\n", item->item, pkg, pkg, pkg);
+						pkg_printf("%S was glob searched and found in package %n-%v\n", patterns.d[i], pkg, pkg, pkg);
 					while(pkg_files(pkg, &file) == EPKG_OK) {
 						pkg_asprintf(&match, "%Fn", file);
 						if (match == NULL)
 							err(EXIT_FAILURE, "pkg_asprintf");
-						if(!fnmatch(item->item, match, 0))
+						if(!fnmatch(patterns.d[i], match, 0))
 							printf("%s\n", match);
 						free(match);
 					}
 				}
 			}
 			if (retcode != EXIT_SUCCESS && !quiet)
-				printf("%s was not found in the database\n", item->item);
+				printf("%s was not found in the database\n", patterns.d[i]);
 
 			pkg_free(pkg);
 			pkgdb_it_free(it);
 
 		}
-		tll_free_and_free(patterns, free);
+		vec_free_and_free(&patterns, free);
 
 		argc--;
 		argv++;
