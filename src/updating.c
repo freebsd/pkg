@@ -103,9 +103,8 @@ matcher(const char *affects, const char *origin, bool ignorecase)
 	size_t len;
 	char *re, *buf, *p, **words;
 	struct regex_cache *ent;
-	vec_t(struct regex_cache *) cache;
+	vec_t(struct regex_cache *) cache = vec_init();
 
-	vec_init(&cache);
 	len = strlen(affects);
 	buf = strdup(affects);
 	if (buf == NULL)
@@ -219,7 +218,7 @@ exec_updating(int argc, char **argv)
 	char			*dateline = NULL;
 	char			*updatingfile = NULL;
 	bool			caseinsensitive = false;
-	charv_t 		 origins;
+	charv_t 		 origins = vec_init();
 	int			 ch;
 	char			*line = NULL;
 	size_t			 linecap = 0;
@@ -234,8 +233,6 @@ exec_updating(int argc, char **argv)
 #ifdef HAVE_CAPSICUM
 	cap_rights_t rights;
 #endif
-
-	vec_init(&origins);
 
 	struct option longopts[] = {
 		{ "date",	required_argument,	NULL,	'd' },

@@ -1048,7 +1048,6 @@ plist_new(struct pkg *pkg, const char *stage)
 	p->post_install_buf = xstring_new();
 	p->pre_deinstall_buf = xstring_new();
 	p->post_deinstall_buf = xstring_new();
-	vec_init(&p->hardlinks);
 
 	populate_keywords(p);
 

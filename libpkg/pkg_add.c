@@ -1455,14 +1455,12 @@ pkg_add_common(struct pkg_add_db *db, const char *path, unsigned flags,
 	int			 retcode = EPKG_OK;
 	int			 ret;
 	int			 nfiles;
-	tempdirs_t		 tempdirs;
+	tempdirs_t		 tempdirs = vec_init();
 	struct pkg_add_context	 context;
 
 	memset(&context, 0, sizeof(context));
 
 	assert(path != NULL);
-
-	vec_init(&tempdirs);
 
 	/*
 	 * Open the package archive file, read all the meta files and set the
@@ -1787,18 +1785,16 @@ pkg_add_fromdir(struct pkg *pkg, const char *src, struct pkgdb *db __unused)
 	struct group *gr, grent;
 	int err, fd, fromfd;
 	int retcode;
-	hardlinks_t hardlinks;
+	hardlinks_t hardlinks = vec_init();
 	const char *path;
 	char buffer[1024];
 	size_t link_len;
 	bool install_as_user;
-	tempdirs_t tempdirs;
+	tempdirs_t tempdirs = vec_init();
 	struct pkg_add_context context;
 
 	memset(&context, 0, sizeof(context));
 
-	vec_init(&hardlinks);
-	vec_init(&tempdirs);
 	install_as_user = (getenv("INSTALL_AS_USER") != NULL);
 
 	fromfd = open(src, O_DIRECTORY);

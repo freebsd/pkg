@@ -14,8 +14,8 @@
 #define vec_t(Type) \
   struct { Type *d; size_t len, cap; }
 
-#define vec_init(v) \
-	memset((v), 0, sizeof(*(v)))
+#define vec_init() \
+	{ .d = NULL, .len = 0, .cap = 0 }
 
 #define vec_foreach(list, __i) \
 	for (size_t __i = 0; __i < (list).len; __i++)

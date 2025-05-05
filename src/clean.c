@@ -29,7 +29,6 @@
 #include <stdbool.h>
 #include <string.h>
 #include <unistd.h>
-#include <tllist.h>
 #include <fcntl.h>
 #include <dirent.h>
 #include <errno.h>
@@ -262,7 +261,7 @@ exec_clean(int argc, char **argv)
 {
 	struct pkgdb	*db = NULL;
 	pkghash		*sumlist = NULL;
-	charv_t		 dl;
+	charv_t		 dl = vec_init();
 	const char	*cachedir;
 	bool		 all = false;
 	int		 retcode;
@@ -273,8 +272,6 @@ exec_clean(int argc, char **argv)
 #ifdef HAVE_CAPSICUM
 	cap_rights_t rights;
 #endif
-
-	vec_init(&dl);
 
 	struct option longopts[] = {
 		{ "all",	no_argument,	NULL,	'a' },

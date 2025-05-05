@@ -228,15 +228,12 @@ pkg_fetch_file_to_fd(struct pkg_repo *repo, int dest, struct fetch_item *fi,
     bool silent)
 {
 	struct pkg_kv	*kv;
-	kvlist_t	 envtorestore;
-	c_charv_t		 envtounset;
+	kvlist_t	 envtorestore = vec_init();
+	c_charv_t		 envtounset = vec_init();
 	char		*tmp;
 	int		 retcode = EPKG_OK;
 	struct pkg_repo	*fakerepo = NULL;
 	size_t           nsz;
-
-	vec_init(&envtorestore);
-	vec_init(&envtounset);
 
 	/* A URL of the form http://host.example.com/ where
 	 * host.example.com does not resolve as a simple A record is

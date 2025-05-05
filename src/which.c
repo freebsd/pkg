@@ -59,9 +59,7 @@ exec_which(int argc, char **argv)
 	bool		 search = false;
 	bool		 search_s = false;
 	bool		 show_match = false;
-	charv_t		 patterns;
-
-	vec_init(&patterns);
+	charv_t		 patterns = vec_init();
 
 	struct option longopts[] = {
 		{ "glob",		no_argument,	NULL,	'g' },

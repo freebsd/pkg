@@ -121,7 +121,7 @@ exec_rquery(int argc, char **argv)
 	bool			 onematched = false;
 	bool			 old_quiet;
 	bool			 index_output = false;
-	c_charv_t		reponames;
+	c_charv_t		reponames = vec_init();
 
 	struct option longopts[] = {
 		{ "all",		no_argument,		NULL,	'a' },
@@ -138,7 +138,6 @@ exec_rquery(int argc, char **argv)
 
 	portsdir = pkg_object_string(pkg_config_get("PORTSDIR"));
 
-	vec_init(&reponames);
 	while ((ch = getopt_long(argc, argv, "+aCgiIxe:r:U", longopts, NULL)) != -1) {
 		switch (ch) {
 		case 'a':

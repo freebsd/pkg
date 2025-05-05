@@ -807,7 +807,7 @@ exec_version(int argc, char **argv)
 	match_t		 match = MATCH_ALL;
 	char		*pattern = NULL;
 	int		 ch;
-	c_charv_t	reponames;
+	c_charv_t	reponames = vec_init();
 
 	struct option longopts[] = {
 		{ "case-sensitive",	no_argument,		NULL,	'C' },
@@ -833,7 +833,6 @@ exec_version(int argc, char **argv)
 		{ NULL,			0,			NULL,	0   },
 	};
 
-	vec_init(&reponames);
 	while ((ch = getopt_long(argc, argv, "+Ce:g:hIiL:l:n:O:oPqRr:TtUvx:",
 				 longopts, NULL)) != -1) {
 		switch (ch) {

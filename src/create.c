@@ -58,9 +58,7 @@ pkg_create_matches(int argc, char **argv, match_t match, struct pkg_create *pc)
 	    PKG_LOAD_PROVIDES | PKG_LOAD_REQUIRES |
 	    PKG_LOAD_SHLIBS_PROVIDED | PKG_LOAD_ANNOTATIONS | PKG_LOAD_LUA_SCRIPTS;
 	bool foundone;
-	vec_t(struct pkg *) pkglist;
-
-	vec_init(&pkglist);
+	vec_t(struct pkg *) pkglist = vec_init();
 
 	if (pkgdb_open(&db, PKGDB_DEFAULT) != EPKG_OK) {
 		pkgdb_close(db);

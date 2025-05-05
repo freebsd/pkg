@@ -81,9 +81,7 @@ do_lock_unlock(struct pkgdb *db, int match, const char *pkgname,
 	int		 retcode;
 	int		 exitcode = EXIT_SUCCESS;
 	bool		 gotone = false;
-	vec_t(struct pkg *)pkgs;
-
-	vec_init(&pkgs);
+	vec_t(struct pkg *)pkgs = vec_init();
 
 	if (pkgdb_obtain_lock(db, PKGDB_LOCK_EXCLUSIVE) != EPKG_OK) {
 		pkgdb_close(db);

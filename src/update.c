@@ -149,7 +149,7 @@ exec_update(int argc, char **argv)
 {
 	int		 ret;
 	int		 ch;
-	c_charv_t 	reponames;
+	c_charv_t 	reponames = vec_init();
 
 	struct option longopts[] = {
 		{ "force",	no_argument,		NULL,	'f' },
@@ -158,7 +158,6 @@ exec_update(int argc, char **argv)
 		{ NULL,		0,			NULL,	0   },
 	};
 
-	vec_init(&reponames);
 	while ((ch = getopt_long(argc, argv, "+fqr:", longopts, NULL)) != -1) {
 		switch (ch) {
 		case 'f':

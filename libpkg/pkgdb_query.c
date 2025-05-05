@@ -378,10 +378,8 @@ struct pkgdb_it *
 pkgdb_repo_query_cond(struct pkgdb *db, const char *cond, const char *pattern, match_t match,
     const char *repo)
 {
-	c_charv_t r;
+	c_charv_t r = vec_init();
 	struct pkgdb_it *ret;
-
-	vec_init(&r);
 
 	if (repo != NULL)
 		vec_push(&r, repo);
@@ -525,10 +523,9 @@ struct pkgdb_it *
 pkgdb_repo_search(struct pkgdb *db, const char *pattern, match_t match,
     pkgdb_field field, pkgdb_field sort, const char *repo)
 {
-	c_charv_t r;
+	c_charv_t r = vec_init();
 	struct pkgdb_it *ret;
 
-	vec_init(&r);
 	if (repo != NULL)
 		vec_push(&r, repo);
 
@@ -572,10 +569,8 @@ struct pkgdb_it *
 pkgdb_all_search(struct pkgdb *db, const char *pattern, match_t match,
     pkgdb_field field, pkgdb_field sort, const char *repo)
 {
-	c_charv_t r;
+	c_charv_t r = vec_init();
 	struct pkgdb_it *ret;
-
-	vec_init(&r);
 
 	if (repo != NULL)
 		vec_push(&r, repo);

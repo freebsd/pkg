@@ -64,7 +64,7 @@ exec_fetch(int argc, char **argv)
 	unsigned	 mode;
 	match_t		 match = MATCH_EXACT;
 	pkg_flags	 f = PKG_FLAG_NONE;
-	c_charv_t	reponames;
+	c_charv_t	reponames = vec_init();
 
 	struct option longopts[] = {
 		{ "all",		no_argument,		NULL,	'a' },
@@ -82,7 +82,6 @@ exec_fetch(int argc, char **argv)
 		{ NULL,			0,			NULL,	0   },
 	};
 
-	vec_init(&reponames);
 	while ((ch = getopt_long(argc, argv, "+aCdgiqr:Uuxyo:", longopts, NULL)) != -1) {
 		switch (ch) {
 		case 'a':

@@ -68,9 +68,8 @@ pkg_create_from_dir(struct pkg *pkg, const char *root,
 	const char	*relocation;
 	char		*manifest;
 	ucl_object_t	*obj;
-	hardlinks_t	 hardlinks;
+	hardlinks_t	 hardlinks = vec_init();
 
-	vec_init(&hardlinks);
 	if (pkg_is_valid(pkg) != EPKG_OK) {
 		pkg_emit_error("the package is not valid");
 		return (EPKG_FATAL);

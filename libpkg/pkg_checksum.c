@@ -202,12 +202,11 @@ pkg_checksum_generate(struct pkg *pkg, char *dest, size_t destlen,
 	char *olduid;
 	size_t blen;
 	struct kv *entries = NULL;
-	charv_t tofree;
+	charv_t tofree = vec_init();
 	struct pkg_option *option = NULL;
 	struct pkg_dep *dep = NULL;
 	struct pkg_file *f = NULL;
 	bool is_group = false;
-	vec_init(&tofree);
 
 	if (pkg == NULL || type >= PKG_HASH_TYPE_UNKNOWN ||
 					destlen < checksum_types[type].hlen)
