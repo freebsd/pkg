@@ -1,26 +1,7 @@
 /*-
- * Copyright (c) 2020-2022 Baptiste Daroussin <bapt@FreeBSD.org>
+ * Copyright (c) 2020-2025 Baptiste Daroussin <bapt@FreeBSD.org>
  *
- * Redistribution and use in source and binary forms, with or without
- * modification, are permitted provided that the following conditions
- * are met:
- * 1. Redistributions of source code must retain the above copyright
- *    notice, this list of conditions and the following disclaimer
- *    in this position and unchanged.
- * 2. Redistributions in binary form must reproduce the above copyright
- *    notice, this list of conditions and the following disclaimer in the
- *    documentation and/or other materials provided with the distribution.
- *
- * THIS SOFTWARE IS PROVIDED BY THE AUTHOR(S) ``AS IS'' AND ANY EXPRESS OR
- * IMPLIED WARRANTIES, INCLUDING, BUT NOT LIMITED TO, THE IMPLIED WARRANTIES
- * OF MERCHANTABILITY AND FITNESS FOR A PARTICULAR PURPOSE ARE DISCLAIMED.
- * IN NO EVENT SHALL THE AUTHOR(S) BE LIABLE FOR ANY DIRECT, INDIRECT,
- * INCIDENTAL, SPECIAL, EXEMPLARY, OR CONSEQUENTIAL DAMAGES (INCLUDING, BUT
- * NOT LIMITED TO, PROCUREMENT OF SUBSTITUTE GOODS OR SERVICES; LOSS OF USE,
- * DATA, OR PROFITS; OR BUSINESS INTERRUPTION) HOWEVER CAUSED AND ON ANY
- * THEORY OF LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY, OR TORT
- * (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF
- * THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
+ * SPDX-License-Identifier: BSD-2-Clause
  */
 
 #include "pkg_config.h"
@@ -290,7 +271,7 @@ trigger_is_it_a_cleanup(struct triggers *t, const char *path)
 		if (t->cleanup == NULL)
 			t->cleanup = xcalloc(1, sizeof(*t->cleanup));
 
-		tll_push_back(*t->cleanup, trig);
+		vec_push(t->cleanup, trig);
 	}
 }
 
@@ -340,7 +321,7 @@ triggers_load(bool cleanup_only)
 			continue;
 		t = trigger_load(dfd, e->d_name, cleanup_only, schema);
 		if (t != NULL)
-			tll_push_back(*triggers, t);
+			vec_push(triggers, t);
 	}
 
 	closedir(d);
@@ -544,11 +525,11 @@ triggers_execute(trigger_t *cleanup_triggers)
 	triggers = triggers_load(false);
 	pkg_emit_triggers_begin();
 	if (cleanup_triggers != NULL) {
-		tll_foreach(*cleanup_triggers, it) {
-			pkg_emit_trigger(it->item->name, true);
-			if (it->item->cleanup.type == SCRIPT_LUA) {
-				ret = trigger_execute_lua(it->item->cleanup.script,
-				    it->item->cleanup.sandbox, NULL);
+		vec_foreach(*cleanup_triggers, i) {
+			pkg_emit_trigger(cleanup_triggers->d[i]->name, true);
+			if (cleanup_triggers->d[i]->cleanup.type == SCRIPT_LUA) {
+				ret = trigger_execute_lua(cleanup_triggers->d[i]->cleanup.script,
+				    cleanup_triggers->d[i]->cleanup.sandbox, NULL);
 			}
 			if (ret != EPKG_OK)
 				goto cleanup;
@@ -558,19 +539,19 @@ triggers_execute(trigger_t *cleanup_triggers)
 	if (ctx.touched_dir_hash) {
 		pkghash_it it = pkghash_iterator(ctx.touched_dir_hash);
 		while (pkghash_next(&it)) {
-			tll_foreach(*triggers, t)
-				trigger_check_match(t->item, it.key);
+			vec_foreach(*triggers, i)
+				trigger_check_match(triggers->d[i], it.key);
 			/* We need to check if that matches a trigger */
 		}
 	}
 
-	tll_foreach(*triggers, it) {
-		if (it->item->matched == NULL)
+	vec_foreach(*triggers, i) {
+		if (triggers->d[i]->matched == NULL)
 			continue;
-		pkg_emit_trigger(it->item->name, false);
-		if (it->item->script.type == SCRIPT_LUA) {
-			ret = trigger_execute_lua(it->item->script.script,
-			    it->item->script.sandbox, it->item->matched);
+		pkg_emit_trigger(triggers->d[i]->name, false);
+		if (triggers->d[i]->script.type == SCRIPT_LUA) {
+			ret = trigger_execute_lua(triggers->d[i]->script.script,
+			    triggers->d[i]->script.sandbox, triggers->d[i]->matched);
 		}
 		if (ret != EPKG_OK)
 			goto cleanup;
@@ -578,7 +559,7 @@ triggers_execute(trigger_t *cleanup_triggers)
 	pkg_emit_triggers_finished();
 
 cleanup:
-	tll_free_and_free(*triggers, trigger_free);
+	vec_free_and_free(triggers, trigger_free);
 	free(triggers);
 
 	return (EPKG_OK);
