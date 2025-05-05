@@ -1,5 +1,5 @@
 /*-
- * Copyright (c) 2011-2024 Baptiste Daroussin <bapt@FreeBSD.org>
+ * Copyright (c) 2011-2025 Baptiste Daroussin <bapt@FreeBSD.org>
  * Copyright (c) 2011-2012 Marin Atanasov Nikolov <dnaeon@gmail.com>
  * Copyright (c) 2014 Matthew Seaman <matthew@FreeBSD.org>
  * Copyright (c) 2016 Vsevolod Stakhov <vsevolod@FreeBSD.org>
@@ -19,21 +19,18 @@
 #include <unistd.h>
 
 #include <pkg.h>
-#include <tllist.h>
 #include <xmalloc.h>
 
 #include "pkgcli.h"
 
-typedef tll(char *) deps_entries;
-
-static int check_deps(struct pkgdb *db, struct pkg *pkg, deps_entries *dh,
+static int check_deps(struct pkgdb *db, struct pkg *pkg, charv_t *dh,
     bool noinstall, xstring *out);
-static void add_missing_dep(struct pkg_dep *d, deps_entries *dh, int *nbpkgs);
-static int fix_deps(struct pkgdb *db, deps_entries *dh, int nbpkgs);
-static void check_summary(struct pkgdb *db, deps_entries *dh);
+static void add_missing_dep(struct pkg_dep *d, charv_t *dh, int *nbpkgs);
+static int fix_deps(struct pkgdb *db, charv_t *dh, int nbpkgs);
+static void check_summary(struct pkgdb *db, charv_t *dh);
 
 static int
-check_deps(struct pkgdb *db, struct pkg *p, deps_entries *dh, bool noinstall, xstring *out)
+check_deps(struct pkgdb *db, struct pkg *p, charv_t *dh, bool noinstall, xstring *out)
 {
 	struct pkg_dep *dep = NULL;
 	struct pkgdb_it *it;
@@ -108,7 +105,7 @@ check_deps(struct pkgdb *db, struct pkg *p, deps_entries *dh, bool noinstall, xs
 }
 
 static void
-add_missing_dep(struct pkg_dep *d, deps_entries *dh, int *nbpkgs)
+add_missing_dep(struct pkg_dep *d, charv_t *dh, int *nbpkgs)
 {
 	const char *name = NULL;
 
@@ -117,35 +114,26 @@ add_missing_dep(struct pkg_dep *d, deps_entries *dh, int *nbpkgs)
 	/* do not add duplicate entries in the queue */
 	name = pkg_dep_name(d);
 
-	tll_foreach(*dh, it) {
-		if (STREQ(it->item, name))
+	vec_foreach(*dh, i) {
+		if (STREQ(dh->d[i], name))
 			return;
 	}
 	(*nbpkgs)++;
 
-	tll_push_back(*dh, xstrdup(name));
+	vec_push(dh, xstrdup(name));
 }
 
 static int
-fix_deps(struct pkgdb *db, deps_entries *dh, int nbpkgs)
+fix_deps(struct pkgdb *db, charv_t *dh, int nbpkgs)
 {
 	struct pkg_jobs *jobs = NULL;
-	char **pkgs = NULL;
-	int i = 0;
 	bool rc;
 	pkg_flags f = PKG_FLAG_AUTOMATIC;
 
 	assert(db != NULL);
 	assert(nbpkgs > 0);
 
-	if ((pkgs = calloc(nbpkgs, sizeof (char *))) == NULL)
-		err(1, "calloc()");
-
-	tll_foreach(*dh, it)
-		pkgs[i++] = it->item;
-
 	if (pkgdb_open(&db, PKGDB_REMOTE) != EPKG_OK) {
-		free(pkgs);
 		return (EPKG_ENODB);
 	}
 
@@ -155,7 +143,7 @@ fix_deps(struct pkgdb *db, deps_entries *dh, int nbpkgs)
 
 	pkg_jobs_set_flags(jobs, f);
 
-	if (pkg_jobs_add(jobs, MATCH_EXACT, pkgs, nbpkgs) == EPKG_FATAL) {
+	if (pkg_jobs_add(jobs, MATCH_EXACT, dh->d, dh->len) == EPKG_FATAL) {
 		goto cleanup;
 	}
 
@@ -187,7 +175,6 @@ fix_deps(struct pkgdb *db, deps_entries *dh, int nbpkgs)
 	}
 
 cleanup:
-	free(pkgs);
 	if (jobs != NULL)
 		pkg_jobs_free(jobs);
 
@@ -195,7 +182,7 @@ cleanup:
 }
 
 static void
-check_summary(struct pkgdb *db, deps_entries *dh)
+check_summary(struct pkgdb *db, charv_t *dh)
 {
 	struct pkg *pkg = NULL;
 	struct pkgdb_it *it = NULL;
@@ -205,15 +192,15 @@ check_summary(struct pkgdb *db, deps_entries *dh)
 
 	printf(">>> Summary of actions performed:\n\n");
 
-	tll_foreach(*dh, e) {
-		if ((it = pkgdb_query(db, e->item, MATCH_EXACT)) == NULL)
+	vec_foreach(*dh, i) {
+		if ((it = pkgdb_query(db, dh->d[i], MATCH_EXACT)) == NULL)
 			return;
 
 		if (pkgdb_it_next(it, &pkg, PKG_LOAD_BASIC) != EPKG_OK) {
 			fixed = false;
-			printf("%s dependency failed to be fixed\n", e->item);
+			printf("%s dependency failed to be fixed\n", dh->d[i]);
 		} else
-			printf("%s dependency has been fixed\n", e->item);
+			printf("%s dependency has been fixed\n", dh->d[i]);
 
 		pkgdb_it_free(it);
 	}
@@ -257,6 +244,7 @@ exec_check(int argc, char **argv)
 	int i, processed, total = 0;
 	int verbose = 0;
 	int nbactions;
+	charv_t dh;
 
 	struct option longopts[] = {
 		{ "all",		no_argument,	NULL,	'a' },
@@ -275,7 +263,7 @@ exec_check(int argc, char **argv)
 		{ NULL,			0,		NULL,	0   },
 	};
 
-	deps_entries dh = tll_init();
+	vec_init(&dh);
 
 	processed = 0;
 
@@ -470,7 +458,7 @@ cleanup:
 	if (!verbose)
 		progressbar_stop();
 	xstring_free(msg);
-	tll_free_and_free(dh, free);
+	vec_free_and_free(&dh, free);
 	pkg_free(pkg);
 	pkgdb_close(db);
 
