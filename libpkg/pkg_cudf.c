@@ -350,7 +350,7 @@ pkg_jobs_cudf_insert_res_job (pkg_solved_list *target,
 	if (it_old != NULL)
 		res->items[1] = it_old;
 
-	tll_push_back(*target, res);
+	vec_push(target, res);
 }
 
 struct pkg_cudf_entry {

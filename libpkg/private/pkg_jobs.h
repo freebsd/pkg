@@ -97,7 +97,7 @@ struct pkg_solved {
 	enum pkg_solved_cycle_mark mark;/* scheduling cycle detection */
 	struct pkg_solved *path_next;	/* scheduling cycle detection */
 };
-typedef tll(struct pkg_solved *) pkg_solved_list;
+typedef vec_t(struct pkg_solved *) pkg_solved_list;
 
 struct pkg_job_provide {
 	struct pkg_job_universe_item *un;
