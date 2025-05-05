@@ -1,27 +1,8 @@
 /*-
  * Copyright (c) 2012-2014 Matthew Seaman <matthew@FreeBSD.org>
- * Copyright (c) 2015-2024 Baptiste Daroussin <bapt@FreeBSD.org>
+ * Copyright (c) 2015-2025 Baptiste Daroussin <bapt@FreeBSD.org>
  *
- * Redistribution and use in source and binary forms, with or without
- * modification, are permitted provided that the following conditions
- * are met:
- * 1. Redistributions of source code must retain the above copyright
- *    notice, this list of conditions and the following disclaimer
- *    in this position and unchanged.
- * 2. Redistributions in binary form must reproduce the above copyright
- *    notice, this list of conditions and the following disclaimer in the
- *    documentation and/or other materials provided with the distribution.
- *
- * THIS SOFTWARE IS PROVIDED BY THE AUTHOR(S) ``AS IS'' AND ANY EXPRESS OR
- * IMPLIED WARRANTIES, INCLUDING, BUT NOT LIMITED TO, THE IMPLIED WARRANTIES
- * OF MERCHANTABILITY AND FITNESS FOR A PARTICULAR PURPOSE ARE DISCLAIMED.
- * IN NO EVENT SHALL THE AUTHOR(S) BE LIABLE FOR ANY DIRECT, INDIRECT,
- * INCIDENTAL, SPECIAL, EXEMPLARY, OR CONSEQUENTIAL DAMAGES (INCLUDING, BUT
- * NOT LIMITED TO, PROCUREMENT OF SUBSTITUTE GOODS OR SERVICES; LOSS OF USE,
- * DATA, OR PROFITS; OR BUSINESS INTERRUPTION) HOWEVER CAUSED AND ON ANY
- * THEORY OF LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY, OR TORT
- * (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF
- * THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
+ * SPDX-License-Identifier: BSD-2-Clause
  */
 
 #include <err.h>
@@ -31,7 +12,6 @@
 #include <unistd.h>
 
 #include <pkg.h>
-#include <tllist.h>
 
 #include "pkgcli.h"
 
@@ -101,7 +81,9 @@ do_lock_unlock(struct pkgdb *db, int match, const char *pkgname,
 	int		 retcode;
 	int		 exitcode = EXIT_SUCCESS;
 	bool		 gotone = false;
-	tll(struct pkg *)pkgs = tll_init();
+	vec_t(struct pkg *)pkgs;
+
+	vec_init(&pkgs);
 
 	if (pkgdb_obtain_lock(db, PKGDB_LOCK_EXCLUSIVE) != EPKG_OK) {
 		pkgdb_close(db);
@@ -117,11 +99,11 @@ do_lock_unlock(struct pkgdb *db, int match, const char *pkgname,
 
 	while (pkgdb_it_next(it, &pkg, 0) == EPKG_OK) {
 		gotone = true;
-		tll_push_back(pkgs, pkg);
+		vec_push(&pkgs, pkg);
 		pkg = NULL;
 	}
-	tll_foreach(pkgs, p) {
-		retcode = lockfct(db, p->item, match != MATCH_EXACT);
+	vec_foreach(pkgs, i) {
+		retcode = lockfct(db, pkgs.d[i], match != MATCH_EXACT);
 		if (retcode != EPKG_OK) {
 			exitcode = EXIT_FAILURE;
 			goto cleanup;
@@ -133,7 +115,7 @@ do_lock_unlock(struct pkgdb *db, int match, const char *pkgname,
 	        exitcode = EXIT_FAILURE;
 
 cleanup:
-	tll_free_and_free(pkgs, pkg_free);
+	vec_free_and_free(&pkgs, pkg_free);
 	pkgdb_it_free(it);
 
 	pkgdb_release_lock(db, PKGDB_LOCK_EXCLUSIVE);
