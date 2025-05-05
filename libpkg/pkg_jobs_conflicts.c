@@ -37,7 +37,7 @@
 #include "private/pkg_jobs.h"
 #include "siphash.h"
 
-typedef tll(struct pkg_job_request *) conflict_chain_t;
+typedef vec_t(struct pkg_job_request *) conflict_chain_t;
 
 TREE_DEFINE(pkg_jobs_conflict_item, entry);
 
@@ -55,8 +55,10 @@ pkg_conflicts_sipkey_init(void)
 }
 
 static int
-pkg_conflicts_chain_cmp_cb(struct pkg_job_request *a, struct pkg_job_request *b)
+pkg_conflicts_chain_cmp(const void *jra, const void *jrb)
 {
+	const struct pkg_job_request *a = *(const struct pkg_job_request **)jra;
+	const struct pkg_job_request *b = *(const struct pkg_job_request **)jrb;
 	const char *vera, *verb;
 
 	if (a->skip || b->skip) {
@@ -80,11 +82,11 @@ pkg_conflicts_request_resolve_chain(struct pkg *req, conflict_chain_t *chain)
 	 * First of all prefer pure origins, where the last element of
 	 * an origin is pkg name
 	 */
-	tll_foreach(*chain, e) {
-		slash_pos = strrchr(e->item->item->pkg->origin, '/');
+	vec_foreach(*chain, i) {
+		slash_pos = strrchr(chain->d[i]->item->pkg->origin, '/');
 		if (slash_pos != NULL) {
 			if (STREQ(slash_pos + 1, req->name)) {
-				selected = e->item;
+				selected = chain->d[i];
 				break;
 			}
 		}
@@ -93,16 +95,16 @@ pkg_conflicts_request_resolve_chain(struct pkg *req, conflict_chain_t *chain)
 	if (selected == NULL) {
 		/* XXX: add manual selection here */
 		/* Sort list by version of package */
-		tll_sort(*chain, pkg_conflicts_chain_cmp_cb);
-		selected = tll_front(*chain);
+		qsort(chain->d, chain->len, sizeof(chain->d[0]), pkg_conflicts_chain_cmp);
+		selected = chain->d[0];
 	}
 
 	pkg_debug(2, "select %s in the chain of conflicts for %s",
 	    selected->item->pkg->name, req->name);
 	/* Disable conflicts from a request */
-	tll_foreach(*chain, e) {
-		if (e->item != selected)
-			e->item->skip = true;
+	vec_foreach(*chain, i) {
+		if (chain->d[i] != selected)
+			chain->d[i]->skip = true;
 	}
 
 	return (EPKG_OK);
@@ -119,7 +121,7 @@ pkg_conflicts_request_resolve(struct pkg_jobs *j)
 	it = pkghash_iterator(j->request_add);
 	while (pkghash_next(&it)) {
 		req = it.value;
-		conflict_chain_t  chain = tll_init();
+		conflict_chain_t  chain = vec_init();
 		if (req->skip)
 			continue;
 
@@ -128,20 +130,20 @@ pkg_conflicts_request_resolve(struct pkg_jobs *j)
 			if (unit != NULL) {
 				found = pkghash_get_value(j->request_add, unit->pkg->uid);
 				if (found != NULL && !found->skip) {
-					tll_push_front(chain, found);
+					vec_push(&chain, found);
 				}
 			}
 		}
-		if (tll_length(chain) > 0) {
+		if (chain.len > 0) {
 			/* Add package itself */
-			tll_push_front(chain, req);
+			vec_push(&chain, req);
 
 			if (pkg_conflicts_request_resolve_chain(req->item->pkg, &chain) != EPKG_OK) {
-				tll_free(chain);
+				vec_free(&chain);
 				return (EPKG_FATAL);
 			}
 		}
-		tll_free(chain);
+		vec_free(&chain);
 	}
 
 	return (EPKG_OK);
