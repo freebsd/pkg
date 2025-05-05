@@ -13,7 +13,6 @@
 #include <private/pkg_abi.h>
 #include <private/binfmt.h>
 #include <xstring.h>
-#include <tllist.h>
 #include <pkg.h>
 
 #ifndef __unused

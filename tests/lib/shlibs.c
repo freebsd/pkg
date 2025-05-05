@@ -6,7 +6,6 @@
 
 #include <atf-c.h>
 #include <private/pkg.h>
-#include <tllist.h>
 
 ATF_TC_WITHOUT_HEAD(cleanup_shlibs_required);
 ATF_TC_WITHOUT_HEAD(cleanup_shlibs_required_multiple_provided);
