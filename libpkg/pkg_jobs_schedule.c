@@ -304,6 +304,7 @@ pkg_jobs_schedule_topological_sort(pkg_solved_list *jobs)
 	 * upgrade jobs before calling this function. */
 	assert(left == 0);
 
+	vec_free(&available);
 	free(jobs->d);
 	jobs->d = sorted.d;
 }
