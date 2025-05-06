@@ -1731,3 +1731,31 @@ pkg_lists_sort(struct pkg *p)
 	DL_SORT(p->options, pkg_option_cmp);
 	DL_SORT(p->config_files, pkg_cf_cmp);
 }
+
+static int
+pkgs_cmp(const void *a, const void *b)
+{
+	struct pkg *pa = *(struct pkg **)a;
+	struct pkg *pb = *(struct pkg **)b;
+
+	return (strcmp(pa->name, pb->name));
+}
+
+void
+pkgs_sort(pkgs_t *pkgs)
+{
+	if (pkgs->len == 0)
+		return;
+	qsort(pkgs->d, pkgs->len, sizeof(pkgs->d[0]), pkgs_cmp);
+}
+
+struct pkg **
+pkgs_search(pkgs_t *pkgs, char *el)
+{
+	struct pkg target = { .name = el };
+	struct pkg *tgt = &target;
+	if (pkgs->len == 0)
+		return (NULL);
+	struct pkg **res = bsearch(&tgt, pkgs->d, pkgs->len, sizeof(pkgs->d[0]), pkgs_cmp);
+	return (res);
+}

@@ -1085,19 +1085,18 @@ static bool
 should_append_pkg(pkgs_t *localpkgs, struct pkg *p)
 {
 	/* only keep the highest version is we fine one */
-	vec_foreach(*localpkgs, i) {
-		struct pkg *lp = localpkgs->d[i];
-		if (strcmp(lp->name, p->name) == 0) {
-			if (pkg_version_cmp(lp->version, p->version) == -1) {
-				pkg_free(localpkgs->d[i]);
-				localpkgs->d[i] = p;
-				return (true);
-			}
-			return (false);
+	struct pkg **lp = pkgs_search(localpkgs, p->name);
+	if (lp != NULL) {
+		if (pkg_version_cmp((*lp)->version, p->version) == -1) {
+			pkg_free(*lp);
+			*lp = p;
+			return (true);
 		}
+		return (false);
 	}
 	/* none found we should append */
 	vec_push(localpkgs, p);
+	pkgs_sort(localpkgs);
 	return (true);
 }
 
@@ -1146,10 +1145,9 @@ scan_local_pkgs(struct pkg_add_db *db, bool fromstdin, struct localhashes *l, co
 static const char *
 _localpkgs_get(pkgs_t *pkgs, const char *name)
 {
-	vec_foreach(*pkgs, i) {
-		if (STREQ(pkgs->d[i]->name, name))
-			return (pkgs->d[i]->repopath);
-	}
+	struct pkg **lp = pkgs_search(pkgs, name);
+	if (lp != NULL)
+		return ((*lp)->repopath);
 	return (NULL);
 }
 

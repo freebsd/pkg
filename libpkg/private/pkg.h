@@ -244,6 +244,9 @@ struct pkg {
 typedef tll(struct pkg *) pkg_chain_t;
 typedef vec_t(struct pkg *) pkgs_t;
 
+struct pkg **pkgs_search(pkgs_t *, char *);
+void pkgs_sort(pkgs_t *);
+
 typedef enum {
 	SCRIPT_UNKNOWN = 0,
 	SCRIPT_SHELL,
