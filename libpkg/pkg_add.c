@@ -1085,7 +1085,7 @@ static bool
 should_append_pkg(pkgs_t *localpkgs, struct pkg *p)
 {
 	/* only keep the highest version is we fine one */
-	struct pkg **lp = pkgs_search(localpkgs, p->name);
+	struct pkg **lp = pkgs_insert_sorted(localpkgs, p);
 	if (lp != NULL) {
 		if (pkg_version_cmp((*lp)->version, p->version) == -1) {
 			pkg_free(*lp);
@@ -1094,9 +1094,6 @@ should_append_pkg(pkgs_t *localpkgs, struct pkg *p)
 		}
 		return (false);
 	}
-	/* none found we should append */
-	vec_push(localpkgs, p);
-	pkgs_sort(localpkgs);
 	return (true);
 }
 

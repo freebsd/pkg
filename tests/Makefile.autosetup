@@ -8,6 +8,7 @@ TESTS=	\
 	pkg_add_dir_to_del \
 	pkg_printf \
 	pkg_validation \
+	pkg \
 	plist \
 	lua \
 	ssh \
@@ -118,6 +119,7 @@ pkg_elf_OBJS=	lib/pkg_elf.o
 hash_OBJS=	lib/hash.o
 shlibs_OBJS=	lib/shlibs.o
 kv_OBJS=	lib/kv.o
+pkg_OBJS=	lib/pkg.o
 
 SRCS=	\
 	$(packing_OBJS:.o=.c) \
@@ -137,6 +139,7 @@ SRCS=	\
 	$(hash_OBJS:.o=.c) \
 	$(shlibs_OBJS:.o=.c) \
 	$(kv_OBJS:.o=.c) \
+	$(pkg_OBJS:.o=.c)
 
 include $(MK)/common.mk
 

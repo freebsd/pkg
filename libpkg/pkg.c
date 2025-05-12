@@ -1749,6 +1749,8 @@ pkgs_sort(pkgs_t *pkgs)
 	qsort(pkgs->d, pkgs->len, sizeof(pkgs->d[0]), pkgs_cmp);
 }
 
+DEFINE_VEC_INSERT_SORTED_FUNC(pkgs_t, pkgs, struct pkg *, pkgs_cmp)
+
 struct pkg **
 pkgs_search(pkgs_t *pkgs, char *el)
 {
