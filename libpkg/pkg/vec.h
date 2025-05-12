@@ -55,7 +55,7 @@
 
 #define vec_push(v, _d)                                            \
 	do {                                                          \
-		if ((v)->len + 1 > (v)->cap) {                            \
+		if ((v)->len >= (v)->cap) {                            \
 			if ((v)->cap == 0)                              \
 				(v)->cap = 1;                          \
 			else                                          \
@@ -82,6 +82,35 @@
 #define vec_len(v) \
 	(v)->len
 
+#define DEFINE_VEC_INSERT_SORTED_PROTO(type, name, element_type) \
+	element_type *name##_insert_sorted(type *v, element_type el)
+
+#define DEFINE_VEC_INSERT_SORTED_FUNC(type, _name, element_type, compare_func) \
+	element_type *_name##_insert_sorted(type *v, element_type el) { \
+		/* Verify if the element already exists */ \
+		if (v->len > 0) { \
+			type *found = bsearch(&el, v->d, v->len, sizeof(element_type), compare_func); \
+			if (found != NULL){ \
+				return (found); \
+			} \
+		} \
+		if (v->len >= v->cap) { \
+			v->cap = (v->cap == 0) ? 1 : v->cap * 2; \
+			v->d = realloc(v->d, v->cap * sizeof(element_type)); \
+			if (v->d == NULL) \
+				abort(); \
+		} \
+		/* Find where to insert */ \
+		size_t i; \
+		for (i = v->len; i > 0 && compare_func(&v->d[i - 1], &el) > 0; i--) { \
+			v->d[i] = v->d[i - 1]; \
+		} \
+		v->d[i] = el; \
+		v->len++; \
+		return (NULL); \
+	}
+
 typedef vec_t(char *) charv_t;
 typedef vec_t(const char *) c_charv_t;
+
 #endif

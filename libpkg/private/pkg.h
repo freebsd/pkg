@@ -244,6 +244,7 @@ struct pkg {
 typedef tll(struct pkg *) pkg_chain_t;
 typedef vec_t(struct pkg *) pkgs_t;
 
+DEFINE_VEC_INSERT_SORTED_PROTO(pkgs_t, pkgs, struct pkg *);
 struct pkg **pkgs_search(pkgs_t *, char *);
 void pkgs_sort(pkgs_t *);
 
