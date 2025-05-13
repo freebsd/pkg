@@ -26,7 +26,7 @@ ATF_TC_BODY(kv_insert_sorted, tc)
 	ATF_REQUIRE_EQ(kvl.len, 1);
 
 	kv = pkg_kv_new("akey", "value");
-	ATF_REQUIRE(pkg_kv_insert_sorted(&kvl, kv) != NULL);
+	ATF_REQUIRE_EQ(pkg_kv_insert_sorted(&kvl, kv), NULL);
 	ATF_REQUIRE_EQ(kvl.len, 2);
 	ATF_REQUIRE_STREQ(kvl.d[0]->key, "akey");
 	ATF_REQUIRE_STREQ(kvl.d[1]->key, "key");
