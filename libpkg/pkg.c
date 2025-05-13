@@ -1042,9 +1042,9 @@ pkg_kv_add(kvlist_t *list, const char *key, const char *val, const char *title)
 	assert(val != NULL);
 	assert(title != NULL);
 
-	vec_foreach(*list, i) {
-		if (!STREQ(list->d[i]->key, key))
-			continue;
+	kv = pkg_kv_new(key, val);
+	if (pkg_kv_insert_sorted(list, kv) != NULL) {
+		pkg_kv_free(kv);
 		if (ctx.developer_mode) {
 			pkg_emit_error("duplicate %s: %s, fatal"
 				    " (developer mode)", title, key);
@@ -1054,9 +1054,6 @@ pkg_kv_add(kvlist_t *list, const char *key, const char *val, const char *title)
 		    "ignoring", title, val);
 		return (EPKG_OK);
 	}
-
-	kv = pkg_kv_new(key, val);
-	vec_push(list, kv);
 
 	return (EPKG_OK);
 }

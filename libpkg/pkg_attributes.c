@@ -174,6 +174,8 @@ pkg_kv_search(kvlist_t *kv, char *el)
 	return (*res);
 }
 
+DEFINE_VEC_INSERT_SORTED_FUNC(kvlist_t, pkg_kv, struct pkg_kv *, kv_cmp)
+
 void
 pkg_kv_sort(kvlist_t *kv)
 {

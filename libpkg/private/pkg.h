@@ -683,6 +683,7 @@ struct pkg_kv *pkg_kv_new(const char *key, const char *val);
 void pkg_kv_free(struct pkg_kv *);
 struct pkg_kv *pkg_kv_search(kvlist_t *, char *);
 void pkg_kv_sort(kvlist_t *);
+DEFINE_VEC_INSERT_SORTED_PROTO(kvlist_t, pkg_kv, struct pkg_kv *);
 
 void pkg_dep_free(struct pkg_dep *);
 void pkg_file_free(struct pkg_file *);
