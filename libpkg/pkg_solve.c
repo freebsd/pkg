@@ -308,7 +308,7 @@ pkg_solve_handle_provide (struct pkg_solve_problem *problem,
 		pkg = curvar->unit->pkg;
 
 		if (pr->is_shlib) {
-			libfound = charv_contains(&pkg->shlibs_provided, pr->provide, false);
+			libfound = (charv_search(&pkg->shlibs_provided, pr->provide) != NULL);
 			/* Skip incompatible ABI as well */
 			if (libfound && !STREQ(pkg->abi, orig->abi)) {
 				dbg(2, "require %s: package %s-%s(%c) provides wrong ABI %s, "
@@ -318,7 +318,7 @@ pkg_solve_handle_provide (struct pkg_solve_problem *problem,
 			}
 		}
 		else {
-			providefound = charv_contains(&pkg->provides, pr->provide, false);
+			providefound = (charv_search(&pkg->provides, pr->provide) != NULL);
 		}
 
 		if (!providefound && !libfound) {

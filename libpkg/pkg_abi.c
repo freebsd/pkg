@@ -447,8 +447,8 @@ pkg_cleanup_shlibs_required(struct pkg *pkg, charv_t *internal_provided)
 
 	vec_foreach(pkg->shlibs_required, i) {
 		const char *s = pkg->shlibs_required.d[i];
-		if (charv_contains(&pkg->shlibs_provided, s, false) ||
-		    charv_contains(internal_provided, s, false)) {
+		if (charv_search(&pkg->shlibs_provided, s) != NULL ||
+		    charv_search(internal_provided, s) != NULL) {
 			pkg_debug(2,
 			    "remove %s from required shlibs as the "
 			    "package %s provides this library itself",
