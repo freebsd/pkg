@@ -14,6 +14,7 @@ ATF_TC_WITHOUT_HEAD(c_charv_contains);
 ATF_TC_WITHOUT_HEAD(charv_t);
 ATF_TC_WITHOUT_HEAD(vec_remove_and_free);
 ATF_TC_WITHOUT_HEAD(charv_search);
+ATF_TC_WITHOUT_HEAD(charv_insert_sorted);
 
 ATF_TC_BODY(c_charv_t, tc)
 {
@@ -152,6 +153,26 @@ ATF_TC_BODY(charv_search, tc)
 	vec_free_and_free(&list, free);
 }
 
+ATF_TC_BODY(charv_insert_sorted, tc)
+{
+	charv_t list = vec_init();
+
+	char *p = xstrdup("bla");
+	ATF_REQUIRE_EQ(charv_insert_sorted(&list, p), NULL);
+	ATF_REQUIRE_EQ(list.len, 1);
+	ATF_REQUIRE_STREQ(list.d[0], "bla");
+
+	ATF_REQUIRE(charv_insert_sorted(&list, p) != NULL);
+	ATF_REQUIRE_EQ(list.len, 1);
+	ATF_REQUIRE_STREQ(list.d[0], "bla");
+
+	p = xstrdup("a");
+	ATF_REQUIRE_EQ(charv_insert_sorted(&list, p), NULL);
+	ATF_REQUIRE_EQ(list.len, 2);
+	ATF_REQUIRE_STREQ(list.d[0], "a");
+	ATF_REQUIRE_STREQ(list.d[1], "bla");
+}
+
 ATF_TP_ADD_TCS(tp)
 {
 	ATF_TP_ADD_TC(tp, c_charv_t);
@@ -159,6 +180,7 @@ ATF_TP_ADD_TCS(tp)
 	ATF_TP_ADD_TC(tp, c_charv_contains);
 	ATF_TP_ADD_TC(tp, vec_remove_and_free);
 	ATF_TP_ADD_TC(tp, charv_search);
+	ATF_TP_ADD_TC(tp, charv_insert_sorted);
 
 	return (atf_no_error());
 }
