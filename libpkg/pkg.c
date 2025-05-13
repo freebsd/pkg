@@ -575,7 +575,9 @@ pkg_addstring(charv_t *list, const char *val, const char *title)
 	assert(val != NULL);
 	assert(title != NULL);
 
-	if (charv_contains(list, val, false)) {
+	char *tmp = xstrdup(val);
+	if (charv_insert_sorted(list, tmp) != NULL) {
+		free(tmp);
 		if (ctx.developer_mode) {
 			pkg_emit_error("duplicate %s listing: %s, fatal"
 			    " (developer mode)", title, val);
@@ -585,8 +587,6 @@ pkg_addstring(charv_t *list, const char *val, const char *title)
 		    "ignoring", title, val);
 		return (EPKG_OK);
 	}
-
-	vec_push(list, xstrdup(val));
 
 	return (EPKG_OK);
 }
@@ -934,12 +934,10 @@ pkg_addshlib_required(struct pkg *pkg, const char *name,
 	char *full_name = pkg_shlib_name_with_flags(name, flags);
 
 	/* silently ignore duplicates in case of shlibs */
-	if (charv_contains(&pkg->shlibs_required, full_name, false)) {
+	if (charv_insert_sorted(&pkg->shlibs_required, full_name) != NULL) {
 		free(full_name);
 		return (EPKG_OK);
 	}
-
-	vec_push(&pkg->shlibs_required, full_name);
 
 	dbg(3, "added shlib deps for %s on %s", pkg->name, full_name);
 
@@ -956,12 +954,10 @@ pkg_addshlib_provided(struct pkg *pkg, const char *name,
 	char *full_name = pkg_shlib_name_with_flags(name, flags);
 
 	/* silently ignore duplicates in case of shlibs */
-	if (charv_contains(&pkg->shlibs_provided, full_name, false)) {
+	if (charv_insert_sorted(&pkg->shlibs_provided, full_name) != NULL) {
 		free(full_name);
 		return (EPKG_OK);
 	}
-
-	vec_push(&pkg->shlibs_provided, full_name);
 
 	dbg(3, "added shlib provide %s for %s", full_name, pkg->name);
 
@@ -997,11 +993,13 @@ pkg_addrequire(struct pkg *pkg, const char *name)
 	assert(pkg != NULL);
 	assert(name != NULL && name[0] != '\0');
 
-	/* silently ignore duplicates in case of conflicts */
-	if (charv_contains(&pkg->requires, name, false))
-		return (EPKG_OK);
+	char *tmp = xstrdup(name);
 
-	vec_push(&pkg->requires, xstrdup(name));
+	if (charv_insert_sorted(&pkg->requires, tmp) != NULL) {
+		/* silently ignore duplicates in case of conflicts */
+		free(tmp);
+		return (EPKG_OK);
+	}
 
 	return (EPKG_OK);
 }
@@ -1012,11 +1010,13 @@ pkg_addprovide(struct pkg *pkg, const char *name)
 	assert(pkg != NULL);
 	assert(name != NULL && name[0] != '\0');
 
-	/* silently ignore duplicates in case of conflicts */
-	if (charv_contains(&pkg->provides, name, false))
-		return (EPKG_OK);
+	char *tmp = xstrdup(name);
 
-	vec_push(&pkg->provides, xstrdup(name));
+	if (charv_insert_sorted(&pkg->provides, tmp) != NULL) {
+		/* silently ignore duplicates in case of conflicts */
+		free(tmp);
+		return (EPKG_OK);
+	}
 
 	return (EPKG_OK);
 }
@@ -1709,22 +1709,6 @@ pkg_lists_sort(struct pkg *p)
 		return;
 	p->list_sorted = true;
 
-	if (p->categories.d)
-		qsort(p->categories.d, p->categories.len, sizeof(char *), char_cmp);
-	if (p->licenses.d)
-		qsort(p->licenses.d, p->licenses.len, sizeof(char *), char_cmp);
-	if (p->users.d)
-		qsort(p->users.d, p->users.len, sizeof(char *), char_cmp);
-	if (p->groups.d)
-		qsort(p->groups.d, p->groups.len, sizeof(char *), char_cmp);
-	if (p->shlibs_required.d)
-		qsort(p->shlibs_required.d, p->shlibs_required.len, sizeof(char *), char_cmp);
-	if (p->shlibs_provided.d)
-		qsort(p->shlibs_provided.d, p->shlibs_provided.len, sizeof(char *), char_cmp);
-	if (p->provides.d)
-		qsort(p->provides.d, p->provides.len, sizeof(p->provides.d[0]), char_cmp);
-	if (p->requires.d)
-		qsort(p->requires.d, p->requires.len, sizeof(p->requires.d[0]), char_cmp);
 	DL_SORT(p->depends, pkg_dep_cmp);
 	DL_SORT(p->files, pkg_file_cmp);
 	DL_SORT(p->dirs, pkg_dir_cmp);

@@ -1126,6 +1126,8 @@ char_cmp(const void *a, const void *b) {
 	return strcmp(*(char **)a, *(char **)b);
 }
 
+DEFINE_VEC_INSERT_SORTED_FUNC(charv_t, charv, char *, char_cmp);
+
 const char *
 charv_search(charv_t *v, const char *el)
 {

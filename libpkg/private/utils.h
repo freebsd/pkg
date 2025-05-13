@@ -102,5 +102,6 @@ bool charv_contains(charv_t *, const char *, bool);
 bool str_ends_with(const char *str, const char *end);
 int char_cmp(const void *a, const void *b);
 const char *charv_search(charv_t *, const char *);
+DEFINE_VEC_INSERT_SORTED_PROTO(charv_t, charv, char *);
 
 #endif
