@@ -1128,14 +1128,16 @@ scan_local_pkgs(struct pkg_add_db *db, bool fromstdin, struct localhashes *l, co
 		vec_foreach(db->localpkgs, i) {
 			struct pkg *p = db->localpkgs.d[i];
 			vec_foreach(p->shlibs_provided, j) {
-				vec_push(&l->shlibs_provides, pkg_kv_new(p->shlibs_provided.d[j], p->repopath));
+				struct pkg_kv *kv = pkg_kv_new(p->shlibs_provided.d[j], p->repopath);
+				if (pkg_kv_insert_sorted(&l->shlibs_provides, kv) != NULL)
+					pkg_kv_free(kv);
 			}
 			vec_foreach(p->provides, j) {
-				vec_push(&l->provides, pkg_kv_new(p->provides.d[j], p->repopath));
+				struct pkg_kv *kv = pkg_kv_new(p->provides.d[j], p->repopath);
+				if (pkg_kv_insert_sorted(&l->provides, kv) != NULL)
+					pkg_kv_free(kv);
 			}
 		}
-		pkg_kv_sort(&l->shlibs_provides);
-		pkg_kv_sort(&l->provides);
 	}
 }
 

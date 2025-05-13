@@ -8,7 +8,29 @@
 #include <private/pkg.h>
 
 ATF_TC_WITHOUT_HEAD(kv_sort);
+ATF_TC_WITHOUT_HEAD(kv_insert_sorted);
 ATF_TC_WITHOUT_HEAD(kv_search);
+
+ATF_TC_BODY(kv_insert_sorted, tc)
+{
+	kvlist_t kvl = vec_init();
+
+	ATF_REQUIRE_EQ_MSG(kvl.d, NULL, "vec_init failed");
+	ATF_REQUIRE_EQ_MSG(kvl.cap, 0, "vec_init failed");
+	ATF_REQUIRE_EQ_MSG(kvl.len, 0, "vec_init failed");
+
+	struct pkg_kv *kv = pkg_kv_new("key", "value");
+	ATF_REQUIRE_EQ(pkg_kv_insert_sorted(&kvl, kv), NULL);
+	ATF_REQUIRE_EQ(kvl.len, 1);
+	ATF_REQUIRE(pkg_kv_insert_sorted(&kvl, kv) != NULL);
+	ATF_REQUIRE_EQ(kvl.len, 1);
+
+	kv = pkg_kv_new("akey", "value");
+	ATF_REQUIRE(pkg_kv_insert_sorted(&kvl, kv) != NULL);
+	ATF_REQUIRE_EQ(kvl.len, 2);
+	ATF_REQUIRE_STREQ(kvl.d[0]->key, "akey");
+	ATF_REQUIRE_STREQ(kvl.d[1]->key, "key");
+}
 
 ATF_TC_BODY(kv_sort, tc)
 {
@@ -91,6 +113,7 @@ ATF_TC_BODY(kv_search, tc)
 
 ATF_TP_ADD_TCS(tp)
 {
+	ATF_TP_ADD_TC(tp, kv_insert_sorted);
 	ATF_TP_ADD_TC(tp, kv_sort);
 	ATF_TP_ADD_TC(tp, kv_search);
 
