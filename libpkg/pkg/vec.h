@@ -89,7 +89,7 @@
 	element_type *_name##_insert_sorted(type *v, element_type el) { \
 		/* Verify if the element already exists */ \
 		if (v->len > 0) { \
-			type *found = bsearch(&el, v->d, v->len, sizeof(element_type), compare_func); \
+			element_type *found = bsearch(&el, v->d, v->len, sizeof(element_type), compare_func); \
 			if (found != NULL){ \
 				return (found); \
 			} \
