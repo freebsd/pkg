@@ -69,15 +69,16 @@ OTHER_LIBS+=	-lfts
 OTHER_LIBS+=	-ldl
 @endif
 
-@if HAVE_LIBMD
-OTHER_LIBS+=	-lmd
-@endif
-
 @if PKG_OPENSSL_LIBS
 LOCAL_CFLAGS+=	@PKG_OPENSSL_CFLAGS@
 OTHER_LIBS+=	@PKG_OPENSSL_LDFLAGS@ @PKG_OPENSSL_LIBS@
 @else
 OTHER_LIBS+=	-lssl -lcrypto
+@endif
+
+# libmd must be linked after libssl/libcrypto.
+@if HAVE_LIBMD
+OTHER_LIBS+=	-lmd
 @endif
 
 @if PKG_LIBCURL_LIBS
