@@ -45,7 +45,6 @@
 #include "private/pkg.h"
 #include "private/pkgdb.h"
 #include "private/pkg_jobs.h"
-#include "tllist.h"
 
 #define IS_DELETE(j) ((j)->type == PKG_JOBS_DEINSTALL || (j)->type == PKG_JOBS_AUTOREMOVE)
 
@@ -95,12 +94,12 @@ pkg_jobs_universe_get_local(struct pkg_jobs_universe *universe,
 	return (pkg);
 }
 
-static pkg_chain_t *
+static pkgs_t *
 pkg_jobs_universe_get_remote(struct pkg_jobs_universe *universe,
 	const char *uid, unsigned flag)
 {
 	struct pkg *pkg = NULL;
-	pkg_chain_t *result = NULL;
+	pkgs_t *result = NULL;
 	struct pkgdb_it *it;
 	struct pkg_job_universe_item *unit, *cur, *found;
 
@@ -136,8 +135,8 @@ pkg_jobs_universe_get_remote(struct pkg_jobs_universe *universe,
 
 	while (pkgdb_it_next(it, &pkg, flag) == EPKG_OK) {
 		if (result == NULL)
-			result = xcalloc(1, sizeof(pkg_chain_t));
-		tll_push_front(*result, pkg);
+			result = xcalloc(1, sizeof(pkgs_t));
+		vec_push(result, pkg);
 		pkg = NULL;
 	}
 
@@ -241,7 +240,7 @@ pkg_jobs_universe_process_deps(struct pkg_jobs_universe *universe,
 	int rc;
 	struct pkg_job_universe_item *unit;
 	struct pkg *npkg, *rpkg, *lpkg;
-	pkg_chain_t *rpkgs = NULL;
+	pkgs_t *rpkgs = NULL;
 	bool found = false;
 
 	rpkg = NULL;
@@ -317,8 +316,8 @@ pkg_jobs_universe_process_deps(struct pkg_jobs_universe *universe,
 
 		found = false;
 		/* Iteration one */
-		tll_foreach(*rpkgs, rit) {
-			rpkg = rit->item;
+		vec_rforeach(*rpkgs, i) {
+			rpkg = rpkgs->d[i];
 
 			if (pkg->reponame && rpkg->reponame &&
 					STREQ(pkg->reponame, rpkg->reponame)) {
@@ -329,8 +328,8 @@ pkg_jobs_universe_process_deps(struct pkg_jobs_universe *universe,
 
 		/* Fallback if a dependency is not found in the same repo */
 		if (!found) {
-			tll_foreach(*rpkgs, rit) {
-				rpkg = rit->item;
+			vec_rforeach(*rpkgs, i) {
+				rpkg = rpkgs->d[i];
 
 				if (npkg != NULL) {
 					/* Set reason for upgrades */
@@ -344,7 +343,7 @@ pkg_jobs_universe_process_deps(struct pkg_jobs_universe *universe,
 
 				/* Special case if we cannot find any package */
 				if (npkg == NULL && rc != EPKG_OK) {
-					tll_free(*rpkgs);
+					vec_free(rpkgs);
 					free(rpkgs);
 					return (rc);
 				}
@@ -363,13 +362,13 @@ pkg_jobs_universe_process_deps(struct pkg_jobs_universe *universe,
 
 			rc = pkg_jobs_universe_process_item(universe, rpkg, NULL);
 			if (npkg == NULL && rc != EPKG_OK) {
-				tll_free(*rpkgs);
+				vec_free(rpkgs);
 				free(rpkgs);
 				return (rc);
 			}
 		}
 
-		tll_free(*rpkgs);
+		vec_free(rpkgs);
 		free(rpkgs);
 	}
 
@@ -982,7 +981,7 @@ pkg_jobs_universe_get_upgrade_candidates(struct pkg_jobs_universe *universe,
 					PKG_LOAD_REQUIRES|PKG_LOAD_PROVIDES|
 					PKG_LOAD_SHLIBS_REQUIRED|PKG_LOAD_SHLIBS_PROVIDED|
 					PKG_LOAD_ANNOTATIONS|PKG_LOAD_CONFLICTS;
-	tll(struct pkg *) candidates = tll_init();
+	pkgs_t candidates = vec_init();
 
 	unit = pkghash_get_value(universe->items, uid);
 	if (unit != NULL) {
@@ -1026,7 +1025,7 @@ pkg_jobs_universe_get_upgrade_candidates(struct pkg_jobs_universe *universe,
 			else if (pkg_version_change_between(pkg, selected) == PKG_UPGRADE)
 				selected = pkg;
 		}
-		tll_push_front(candidates, pkg);
+		vec_push(&candidates, pkg);
 		pkg = NULL;
 	}
 
@@ -1038,17 +1037,17 @@ pkg_jobs_universe_get_upgrade_candidates(struct pkg_jobs_universe *universe,
 	}
 	if (selected != lp) {
 		/* We need to add the whole chain of upgrade candidates */
-		tll_foreach(candidates, cit) {
-			pkg_jobs_universe_add_pkg(universe, cit->item, force, NULL);
+		vec_rforeach(candidates, i) {
+			pkg_jobs_universe_add_pkg(universe, candidates.d[i], force, NULL);
 		}
 	}
 	else {
-		tll_free_and_free(candidates, pkg_free);
+		vec_free_and_free(&candidates, pkg_free);
 		return (NULL);
 	}
 
 	unit = pkghash_get_value(universe->items, uid);
-	tll_free(candidates);
+	vec_free(&candidates);
 
 	return (unit);
 }

@@ -239,7 +239,6 @@ struct pkg {
 	pkg_t		 type;
 	struct pkg_repo		*repo;
 };
-typedef tll(struct pkg *) pkg_chain_t;
 typedef vec_t(struct pkg *) pkgs_t;
 
 DEFINE_VEC_INSERT_SORTED_PROTO(pkgs_t, pkgs, struct pkg *);
