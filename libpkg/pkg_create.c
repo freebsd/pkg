@@ -500,6 +500,7 @@ load_metadata(struct pkg *pkg, const char *metadata, const char *plist,
 	}
 
 	if ((pkg_parse_manifest_fileat(fd, pkg, "+MANIFEST")) != EPKG_OK) {
+		pkg_emit_error("Error parsing %s/+MANIFEST", metadata);
 		close(fd);
 		return (EPKG_FATAL);
 	}

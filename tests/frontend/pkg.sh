@@ -71,7 +71,7 @@ files:
 EOF
 	atf_check \
 	    -o empty \
-	    -e inline:"${PROGNAME}: Bad format in manifest for key: files\n" \
+	    -e inline:"${PROGNAME}: Bad format in manifest for key: files\n${PROGNAME}: Error parsing testpkg/.metadir/+MANIFEST\n" \
 	    -s exit:1 \
 	    pkg create -q -m testpkg/.metadir -r testpkg
 }
