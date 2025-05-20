@@ -1107,23 +1107,53 @@ scan_local_pkgs(struct pkg_add_db *db, bool fromstdin, struct localhashes *l, co
 {
 	if (!fromstdin) {
 		if (!db->local_scanned) {
-			glob_t g;
-			char *pattern;
-			xasprintf(&pattern, "%s/*%s" , bd, ext);
-			db->local_scanned = true;
-			if (glob(pattern, 0, NULL, &g) == 0) {
-				for (int i = 0; i <g.gl_pathc; i++) {
-					struct pkg *p = NULL;
-					if (pkg_open(&p, g.gl_pathv[i],
-					    PKG_OPEN_MANIFEST_COMPACT) == EPKG_OK) {
-						if (should_append_pkg(&db->localpkgs, p)) {
-							p->repopath = xstrdup(g.gl_pathv[i]);
+			bool package_building = (getenv("PACKAGE_BUILDING") != NULL);
+			bool cache_exist = false;
+			if (package_building) {
+				FILE * fp;
+				if ((fp = fopen("/tmp/pkg_add_cache", "r")) != NULL) {
+					cache_exist = true;
+					char *line = NULL;
+					size_t linecap = 0;
+					ssize_t linelen;
+					while ((linelen = getline(&line, &linecap, fp)) > 0) {
+						struct pkg * p = NULL;
+						pkg_new(&p, PKG_FILE);
+						pkg_parse_manifest(p, line, linelen);
+						vec_push(&db->localpkgs, p);
+					}
+					free(line);
+				}
+			}
+			if (db->localpkgs.len == 0) {
+				glob_t g;
+				char *pattern;
+				xasprintf(&pattern, "%s/*%s" , bd, ext);
+				db->local_scanned = true;
+				if (glob(pattern, 0, NULL, &g) == 0) {
+					for (int i = 0; i <g.gl_pathc; i++) {
+						struct pkg *p = NULL;
+						if (pkg_open(&p, g.gl_pathv[i],
+									PKG_OPEN_MANIFEST_COMPACT) == EPKG_OK) {
+							if (should_append_pkg(&db->localpkgs, p)) {
+								p->repopath = xstrdup(g.gl_pathv[i]);
+							}
 						}
 					}
 				}
+				globfree(&g);
+				free(pattern);
 			}
-			globfree(&g);
-			free(pattern);
+			if (package_building && !cache_exist) {
+				FILE *fp = fopen("/tmp/pkg_add_cache", "w");
+				if (fp != NULL) {
+					vec_foreach(db->localpkgs, i) {
+						pkg_emit_manifest_file(db->localpkgs.d[i], fp, PKG_MANIFEST_EMIT_COMPACT);
+						fputs("\n", fp);
+					}
+					fclose(fp);
+				}
+			}
 		}
 		vec_foreach(db->localpkgs, i) {
 			struct pkg *p = db->localpkgs.d[i];
