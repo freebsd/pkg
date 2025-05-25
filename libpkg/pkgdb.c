@@ -1816,7 +1816,7 @@ pkgdb_register_pkg(struct pkgdb *db, struct pkg *pkg, int forced,
 			goto cleanup;
 		}
 		if ((ret = run_prstmt(DIRS2, package_id, dir->path,
-		    true)) != SQLITE_DONE) {
+		    (int64_t)true)) != SQLITE_DONE) {
 			if (ret == SQLITE_CONSTRAINT) {
 				pkg_emit_error("Another package is already "
 				    "providing directory: %s",
