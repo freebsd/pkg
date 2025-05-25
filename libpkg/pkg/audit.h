@@ -29,6 +29,9 @@
 extern "C" {
 #endif
 
+#include <time.h>
+#include <ucl.h>
+
 #define EQ 1
 #define LT 2
 #define LTE 3
@@ -43,6 +46,7 @@ struct pkg_audit_version {
 struct pkg_audit_versions_range {
 	struct pkg_audit_version v1;
 	struct pkg_audit_version v2;
+	int type;
 	struct pkg_audit_versions_range *next;
 };
 
@@ -56,9 +60,22 @@ struct pkg_audit_pkgname {
 	struct pkg_audit_pkgname *next;
 };
 
+struct pkg_audit_reference {
+	char *url;
+	int type;
+	struct pkg_audit_reference *next;
+};
+
+struct pkg_audit_ecosystem {
+	char *original;
+	char *name;
+	ucl_object_t *params;
+};
+
 struct pkg_audit_package {
 	struct pkg_audit_pkgname *names;
 	struct pkg_audit_versions_range *versions;
+	struct pkg_audit_ecosystem *ecosystem;
 	struct pkg_audit_package *next;
 };
 
@@ -68,6 +85,10 @@ struct pkg_audit_entry {
 	struct pkg_audit_pkgname *names;
 	struct pkg_audit_versions_range *versions;
 	struct pkg_audit_cve *cve;
+	struct pkg_audit_reference *references;
+	struct tm modified;
+	struct tm published;
+	struct tm discovery;
 	char *url;
 	char *desc;
 	char *id;
