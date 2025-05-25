@@ -149,7 +149,7 @@ try_again:
 	    pkg->origin, pkg->name, pkg->version, pkg->comment, pkg->desc,
 	    arch, pkg->maintainer, pkg->www, pkg->prefix, pkg->pkgsize,
 	    pkg->flatsize, (int64_t)pkg->licenselogic, pkg->sum, pkg->repopath,
-	    pkg->digest, pkg->old_digest, pkg->vital)) != SQLITE_DONE) {
+	    pkg->digest, pkg->old_digest, (int64_t)pkg->vital)) != SQLITE_DONE) {
 		if (ret == SQLITE_CONSTRAINT) {
 			ERROR_SQLITE(sqlite, "grmbl");
 			switch(pkg_repo_binary_delete_conflicting(pkg->origin,
