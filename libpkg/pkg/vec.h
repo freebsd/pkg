@@ -22,7 +22,7 @@
 
 /* intmax_t because the value can be negative */
 #define vec_rforeach(list, __i) \
-	for (int __i = (list).len -1 ; __i >= 0; __i--)
+	for (ssize_t __i = ((ssize_t)(list).len) -1 ; __i >= 0; __i--)
 
 #define vec_free(v) \
 	do { \
