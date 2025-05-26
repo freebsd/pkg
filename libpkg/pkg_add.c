@@ -1102,6 +1102,47 @@ struct localhashes {
 	kvlist_t provides;
 };
 
+static FILE *
+open_cache_read(void)
+{
+	FILE *fp;
+	int cfd, fd;
+
+	cfd = pkg_get_cachedirfd();
+	if (cfd == -1)
+		return (NULL);
+	if ((fd = openat(cfd, "pkg_add_cache", O_RDONLY)) == -1)
+		return (NULL);
+	if ((fp = fdopen(fd, "r")) == NULL)
+		close(fd);
+	return (fp);
+}
+
+static FILE *
+open_cache_write(void)
+{
+	FILE *fp;
+	int cfd, fd;
+
+	cfd = pkg_get_cachedirfd();
+	if (cfd == -1) {
+		if (errno == ENOENT) {
+			if (pkg_mkdirs(ctx.cachedir) != EPKG_OK)
+				return (NULL);
+		} else {
+			return (NULL);
+		}
+		cfd = pkg_get_cachedirfd();
+		if (cfd == -1)
+			return (NULL);
+	}
+	if ((fd = openat(cfd, "pkg_add_cache", O_WRONLY|O_TRUNC)) == -1)
+		return (NULL);
+	if ((fp = fdopen(fd, "w")) == NULL)
+		close(fd);
+	return (fp);
+}
+
 static void
 scan_local_pkgs(struct pkg_add_db *db, bool fromstdin, struct localhashes *l, const char *bd, const char *ext)
 {
@@ -1111,7 +1152,7 @@ scan_local_pkgs(struct pkg_add_db *db, bool fromstdin, struct localhashes *l, co
 			bool cache_exist = false;
 			if (package_building) {
 				FILE * fp;
-				if ((fp = fopen("/tmp/pkg_add_cache", "r")) != NULL) {
+				if ((fp = open_cache_read()) != NULL) {
 					cache_exist = true;
 					char *line = NULL;
 					size_t linecap = 0;
