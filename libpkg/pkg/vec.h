@@ -20,7 +20,7 @@
 #define vec_foreach(list, __i) \
 	for (size_t __i = 0; __i < (list).len; __i++)
 
-/* intmax_t because the value can be negative */
+/* ssize_t because the value can be negative */
 #define vec_rforeach(list, __i) \
 	for (ssize_t __i = ((ssize_t)(list).len) -1 ; __i >= 0; __i--)
 
