@@ -1,3 +1,14 @@
+Changes from 2.1.99.3 to 2.1.99.4
+- add a cache file for pkg_add()
+- fix 32bits issues
+- improve error message when failing at parsing manifest printing the path of
+  the manifest.
+
+Changes from 2.1.99.2 to 2.1.99.3
+- more work on pkg add performances
+- pkg(8): document -o options
+- fix pkg-static issue due to symbols collisions between libmd and libcrypto
+
 Changes from 2.1.99.1 to 2.1.99.2
 - fix regression regarding shlibs_required
 
