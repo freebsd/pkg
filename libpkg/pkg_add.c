@@ -1186,7 +1186,7 @@ scan_local_pkgs(struct pkg_add_db *db, bool fromstdin, struct localhashes *l, co
 				free(pattern);
 			}
 			if (package_building && !cache_exist) {
-				FILE *fp = fopen("/tmp/pkg_add_cache", "w");
+				FILE *fp = open_cache_write();
 				if (fp != NULL) {
 					vec_foreach(db->localpkgs, i) {
 						pkg_emit_manifest_file(db->localpkgs.d[i], fp, PKG_MANIFEST_EMIT_COMPACT);
