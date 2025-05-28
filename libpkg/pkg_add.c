@@ -247,7 +247,7 @@ attempt_to_merge(int rootfd, struct pkg_config_file *rcf, struct pkg *local,
 	newconf = xstring_new();
 	if (merge_3way(lcf->content, localconf, rcf->content, newconf) != 0) {
 		xstring_free(newconf);
-		pkg_emit_error("Impossible to merge configuration file");
+		pkg_emit_error("Impossible to merge configuration file: %s", rcf->path);
 	} else {
 		char *conf = xstring_get(newconf);
 		rcf->newcontent = conf;
