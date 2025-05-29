@@ -93,17 +93,18 @@ register_backup(struct pkgdb *db, int fd, const char *path)
 void
 backup_library(struct pkgdb *db, struct pkg *p, const char *path)
 {
-	const char *libname = strrchr(path, '/');
+	const char *libname;
 	char buf[BUFSIZ];
 	char *outbuf;
 	int from, to, backupdir;
 	ssize_t nread, nwritten;
 
+	if ((libname = strrchr(path, '/')) == NULL)
+		return;
+
 	pkg_open_root_fd(p);
 	to = -1;
 
-	if (libname == NULL)
-		return;
 	/* skip the initial / */
 	libname++;
 
@@ -141,6 +142,7 @@ backup_library(struct pkgdb *db, struct pkg *p, const char *path)
 		goto out;
 	}
 
+	memset(buf, '\0', sizeof(buf));
 	while ((nread = read(from, buf, sizeof(buf))) > 0) {
 		outbuf = buf;
 		do {
