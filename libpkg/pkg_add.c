@@ -1084,7 +1084,7 @@ pkg_extract_finalize(struct pkg *pkg, tempdirs_t *tempdirs)
 bool
 append_pkg_if_newer(pkgs_t *localpkgs, struct pkg *p)
 {
-	/* only keep the highest version is we fine one */
+	/* only keep the highest version if we fine one */
 	struct pkg **lp = pkgs_insert_sorted(localpkgs, p);
 	if (lp != NULL) {
 		if (pkg_version_cmp((*lp)->version, p->version) == -1) {
