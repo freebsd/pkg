@@ -244,6 +244,7 @@ typedef vec_t(struct pkg *) pkgs_t;
 DEFINE_VEC_INSERT_SORTED_PROTO(pkgs_t, pkgs, struct pkg *);
 struct pkg **pkgs_search(pkgs_t *, char *);
 void pkgs_sort(pkgs_t *);
+bool append_pkg_if_newer(pkgs_t *pkgs, struct pkg *p);
 
 typedef enum {
 	SCRIPT_UNKNOWN = 0,

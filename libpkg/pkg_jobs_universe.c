@@ -136,7 +136,7 @@ pkg_jobs_universe_get_remote(struct pkg_jobs_universe *universe,
 	while (pkgdb_it_next(it, &pkg, flag) == EPKG_OK) {
 		if (result == NULL)
 			result = xcalloc(1, sizeof(pkgs_t));
-		vec_push(result, pkg);
+		append_pkg_if_newer(result, pkg);
 		pkg = NULL;
 	}
 

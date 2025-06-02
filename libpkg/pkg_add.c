@@ -1081,8 +1081,8 @@ pkg_extract_finalize(struct pkg *pkg, tempdirs_t *tempdirs)
 	return (EPKG_OK);
 }
 
-static bool
-should_append_pkg(pkgs_t *localpkgs, struct pkg *p)
+bool
+append_pkg_if_newer(pkgs_t *localpkgs, struct pkg *p)
 {
 	/* only keep the highest version is we fine one */
 	struct pkg **lp = pkgs_insert_sorted(localpkgs, p);
@@ -1176,7 +1176,7 @@ scan_local_pkgs(struct pkg_add_db *db, bool fromstdin, struct localhashes *l, co
 						struct pkg *p = NULL;
 						if (pkg_open(&p, g.gl_pathv[i],
 									PKG_OPEN_MANIFEST_COMPACT) == EPKG_OK) {
-							if (should_append_pkg(&db->localpkgs, p)) {
+							if (append_pkg_if_newer(&db->localpkgs, p)) {
 								p->repopath = xstrdup(g.gl_pathv[i]);
 							}
 						}
