@@ -14,11 +14,11 @@
 #include <sqlite3.h>
 #include "pkg/vec.h"
 
+typedef vec_t(struct pkg_repo *) repos_t;
 struct pkgdb {
 	sqlite3		*sqlite;
 	bool		 prstmt_initialized;
-
-	vec_t(struct pkg_repo *) repos;
+	repos_t repos;
 };
 
 struct pkgdb_sqlite_it {

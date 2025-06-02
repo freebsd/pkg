@@ -832,6 +832,16 @@ pkgdb_open(struct pkgdb **db_p, pkgdb_t type)
 	return (pkgdb_open_all(db_p, type, NULL));
 }
 
+/* the higher the better */
+static int
+repos_prio_cmp(const void *a, const void *b)
+{
+	struct pkg_repo *ra = *(struct pkg_repo **)a;
+	struct pkg_repo *rb = *(struct pkg_repo **)b;
+
+	return ((ra->priority < rb->priority) - (ra->priority > rb->priority));
+}
+
 static int
 pkgdb_open_repos(struct pkgdb *db, const char *reponame)
 {
@@ -852,6 +862,7 @@ pkgdb_open_repos(struct pkgdb *db, const char *reponame)
 				    " 'pkg update' required", r->name);
 		}
 	}
+	qsort(db->repos.d, db->repos.len, sizeof(db->repos.d[0]), repos_prio_cmp);
 
 	return (EPKG_OK);
 }
