@@ -156,7 +156,7 @@ pkg_jobs_schedule_graph_edge(struct pkg_solved *a, struct pkg_solved *b)
 	}
 
 	if (a_new != NULL && b_new != NULL &&
-	    pkg_jobs_schedule_direct_depends(b_new, a_new)) {
+	    pkg_jobs_schedule_direct_depends(a_new, b_new)) {
 		if (debug_edges) {
 			dbg(4, "  edge to %s %s, new depends on new",
 			    pkg_jobs_schedule_job_type_string(b),
