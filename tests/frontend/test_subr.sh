@@ -17,6 +17,23 @@ EOD
 EOF
 }
 
+new_pkgf() {
+	cat << EOF > $1.ucl
+name: $2
+origin: $3
+version: "$4"
+maintainer: test
+categories: [test]
+comment: a test
+www: http://test
+prefix: ${5}
+abi: "*"
+desc: <<EOD
+This is a test
+EOD
+EOF
+}
+
 new_manifest() {
 	cat << EOF > +MANIFEST
 name: "$1"

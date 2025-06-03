@@ -15,7 +15,11 @@ pkg_puppet_body() {
 	touch rubygemhiera.file
 	touch rubygems.file
 
-	atf_check -s exit:0 sh ${RESOURCEDIR}/test_subr.sh new_pkg rubygemrubyaugeas rubygem-ruby-augeas 1.0
+	atf_check -s exit:0 sh ${RESOURCEDIR}/test_subr.sh new_pkgf \
+		rubygemrubyaugeas \
+		rubygem-ruby-augeas \
+		textproc/rubygem-augeas \
+		1.0
 	cat << EOF >> rubygemrubyaugeas.ucl
 deps: {
 	ruby: {
@@ -32,7 +36,11 @@ files: {
 }
 EOF
 
-	atf_check -s exit:0 sh ${RESOURCEDIR}/test_subr.sh new_pkg puppet puppet 1.0
+	atf_check -s exit:0 sh ${RESOURCEDIR}/test_subr.sh new_pkgf \
+		puppet \
+		puppet \
+		sysutils/puppet \
+		1.0
 	cat << EOF >> puppet.ucl
 deps: {
 	ruby: {
@@ -53,7 +61,11 @@ files: {
 }
 EOF
 
-	atf_check -s exit:0 sh ${RESOURCEDIR}/test_subr.sh new_pkg ruby ruby 2.0
+	atf_check -s exit:0 sh ${RESOURCEDIR}/test_subr.sh new_pkgf \
+		ruby \
+		ruby \
+		lang/ruby20 \
+		2.0
 	cat << EOF >> ruby.ucl
 shlibs_provided [
 	"libruby20.so.20",
@@ -63,7 +75,11 @@ files: {
 }
 EOF
 
-	atf_check -s exit:0 sh ${RESOURCEDIR}/test_subr.sh new_pkg rubygem-hiera rubygem-hiera 1.0
+	atf_check -s exit:0 sh ${RESOURCEDIR}/test_subr.sh new_pkgf \
+		rubygem-hiera \
+		rubygem-hiera \
+		lang/rubygem-hiera \
+		1.0
 	cat << EOF >> rubygem-hiera.ucl
 deps: {
 	ruby: {
@@ -80,7 +96,11 @@ files: {
 }
 EOF
 
-	atf_check -s exit:0 sh ${RESOURCEDIR}/test_subr.sh new_pkg ruby-gems20 ruby20-gems 1.0
+	atf_check -s exit:0 sh ${RESOURCEDIR}/test_subr.sh new_pkgf \
+		ruby-gems20  \
+		ruby20-gems \
+		lang/ruby-gems \
+		1.0
 	cat << EOF >> ruby-gems20.ucl
 deps: {
 	ruby {
@@ -126,7 +146,11 @@ EOF
 	rm *.txz
 	rm *.pkg
 
-	atf_check -s exit:0 sh ${RESOURCEDIR}/test_subr.sh new_pkg rubygemrubyaugeas.new rubygem-ruby-augeas 1.0
+	atf_check -s exit:0 sh ${RESOURCEDIR}/test_subr.sh new_pkgf \
+		rubygemrubyaugeas.new \
+		rubygem-ruby-augeas \
+		textproc/rubygem-augeas \
+		1.0
 	cat << EOF >> rubygemrubyaugeas.new.ucl
 deps: {
 	ruby: {
@@ -143,7 +167,11 @@ files: {
 }
 EOF
 
-	atf_check -s exit:0 sh ${RESOURCEDIR}/test_subr.sh new_pkg puppet.new puppet 1.0
+	atf_check -s exit:0 sh ${RESOURCEDIR}/test_subr.sh new_pkgf \
+		puppet.new \
+		puppet \
+		lang/ruby21 \
+		1.0
 	cat << EOF >> puppet.new.ucl
 deps: {
 	ruby: {
