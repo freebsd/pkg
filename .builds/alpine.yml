@@ -6,6 +6,7 @@ packages:
   - make
   - pkgconf
   - kyua
+  - atf-dev
   - gcompat
   - tcl
   - musl-fts-dev
