@@ -560,6 +560,14 @@ ${JAILED}Fetching data.pkg:  done
 Processing entries:  done
 local repository update completed. 4 packages processed.
 All repositories are up to date.
+"
+	atf_check \
+		-o inline:"${OUTPUT}" \
+		pkg -C /dev/null -o REPOS_DIR="${TMPDIR}/reposconf" -o PKG_CACHEDIR="${TMPDIR}" -r ${TMPDIR}/target update -f
+
+OUTPUT="Updating local repository catalogue...
+local repository is up to date.
+All repositories are up to date.
 Checking for upgrades (2 candidates):  done
 Processing candidates (2 candidates):  done
 Checking integrity... done (2 conflicting)
