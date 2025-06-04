@@ -1,4 +1,4 @@
-/* 
+/*
  * Copyright (c) 2014, Vsevolod Stakhov
  * Copyright (c) 2024, Baptiste Daroussin
  *
@@ -57,10 +57,8 @@ pkg_repo_binary_get_user_version(sqlite3 *sqlite, int *reposcver)
 	int retcode;
 	const char *sql = "PRAGMA user_version;";
 
-	if (sqlite3_prepare_v2(sqlite, sql, -1, &stmt, NULL) != SQLITE_OK) {
-		ERROR_SQLITE(sqlite, sql);
+	if ((stmt = prepare_sql(sqlite, sql)) == NULL)
 		return (EPKG_FATAL);
-	}
 
 	if (sqlite3_step(stmt) == SQLITE_ROW) {
 		*reposcver = sqlite3_column_int64(stmt, 0);

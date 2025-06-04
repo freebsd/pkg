@@ -184,11 +184,9 @@ pkg_repo_binary_init_prstatements(sqlite3 *sqlite)
 	last = PRSTMT_LAST;
 
 	for (i = 0; i < last; i++) {
-		ret = sqlite3_prepare_v2(sqlite, SQL(i), -1, &STMT(i), NULL);
-		if (ret != SQLITE_OK) {
-			ERROR_SQLITE(sqlite, SQL(i));
+		STMT(i) = prepare_sql(sqlite, SQL(i));
+		if (STMT(i) == NULL)
 			return (EPKG_FATAL);
-		}
 	}
 
 	return (EPKG_OK);

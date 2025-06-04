@@ -1187,20 +1187,20 @@ pkgdb_close(struct pkgdb *db)
 static int
 run_transaction(sqlite3 *sqlite, const char *query, const char *savepoint)
 {
-	int		 ret;
+	int		 ret = SQLITE_OK;
 	sqlite3_stmt	*stmt;
 	char *sql = NULL;
 
 	assert(sqlite != NULL);
 
 	xasprintf(&sql, "%s %s", query, savepoint != NULL ? savepoint : "");
-	ret = sqlite3_prepare_v2(sqlite, sql, strlen(sql) + 1, &stmt, NULL);
+	stmt = prepare_sql(sqlite, sql);
+	if (stmt == NULL)
+		return (EPKG_FATAL);
 	pkgdb_debug(4, stmt);
 
-	if (ret == SQLITE_OK) {
-		PKGDB_SQLITE_RETRY_ON_BUSY(ret)
-			ret = sqlite3_step(stmt);
-	}
+	PKGDB_SQLITE_RETRY_ON_BUSY(ret)
+		ret = sqlite3_step(stmt);
 
 	if (ret != SQLITE_OK && ret != SQLITE_DONE) {
 		ERROR_STMT_SQLITE(sqlite, stmt);

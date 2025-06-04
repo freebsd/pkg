@@ -174,10 +174,8 @@ pkgdb_query_cond(struct pkgdb *db, const char *cond, const char *pattern, match_
 				" ORDER BY p.name", comp);
 	}
 
-	if (sqlite3_prepare_v2(db->sqlite, sql, -1, &stmt, NULL) != SQLITE_OK) {
-		ERROR_SQLITE(db->sqlite, sql);
+	if ((stmt = prepare_sql(db->sqlite, sql)) == NULL)
 		return (NULL);
-	}
 
 	if (match != MATCH_ALL)
 		sqlite3_bind_text(stmt, 1, pattern, -1, SQLITE_TRANSIENT);
@@ -207,9 +205,8 @@ pkgdb_file_exists(struct pkgdb *db, const char *path)
 	sqlite3_snprintf(sizeof(sql), sql,
 	    "select path from files where path = ?1;");
 
-	if (sqlite3_prepare_v2(db->sqlite, sql, -1, &stmt, NULL) != SQLITE_OK) {
-		ERROR_SQLITE(db->sqlite, sql);
-	}
+	if ((stmt = prepare_sql(db->sqlite, sql)) == NULL)
+		return (ret);
 
 	sqlite3_bind_text(stmt, 1, path, -1, SQLITE_TRANSIENT);
 	pkgdb_debug(4, stmt);
@@ -242,10 +239,8 @@ pkgdb_query_which(struct pkgdb *db, const char *path, bool glob)
 			"LEFT JOIN files AS f ON p.id = f.package_id "
 			"WHERE f.path %s ?1 GROUP BY p.id;", glob ? "GLOB" : "=");
 
-	if (sqlite3_prepare_v2(db->sqlite, sql, -1, &stmt, NULL) != SQLITE_OK) {
-		ERROR_SQLITE(db->sqlite, sql);
+	if ((stmt = prepare_sql(db->sqlite, sql)) == NULL)
 		return (NULL);
-	}
 
 	sqlite3_bind_text(stmt, 1, path, -1, SQLITE_TRANSIENT);
 	pkgdb_debug(4, stmt);
@@ -269,10 +264,8 @@ pkgdb_query_shlib_require(struct pkgdb *db, const char *shlib)
 
 	assert(db != NULL);
 
-	if (sqlite3_prepare_v2(db->sqlite, sql, -1, &stmt, NULL) != SQLITE_OK) {
-		ERROR_SQLITE(db->sqlite, sql);
+	if ((stmt = prepare_sql(db->sqlite, sql)) == NULL)
 		return (NULL);
-	}
 
 	sqlite3_bind_text(stmt, 1, shlib, -1, SQLITE_TRANSIENT);
 	pkgdb_debug(4, stmt);
@@ -296,10 +289,8 @@ pkgdb_query_shlib_provide(struct pkgdb *db, const char *shlib)
 
 	assert(db != NULL);
 
-	if (sqlite3_prepare_v2(db->sqlite, sql, -1, &stmt, NULL) != SQLITE_OK) {
-		ERROR_SQLITE(db->sqlite, sql);
+	if ((stmt = prepare_sql(db->sqlite, sql)) == NULL)
 		return (NULL);
-	}
 
 	sqlite3_bind_text(stmt, 1, shlib, -1, SQLITE_TRANSIENT);
 	pkgdb_debug(4, stmt);
@@ -323,10 +314,8 @@ pkgdb_query_require(struct pkgdb *db, const char *req)
 
 	assert(db != NULL);
 
-	if (sqlite3_prepare_v2(db->sqlite, sql, -1, &stmt, NULL) != SQLITE_OK) {
-		ERROR_SQLITE(db->sqlite, sql);
+	if ((stmt = prepare_sql(db->sqlite, sql)) == NULL)
 		return (NULL);
-	}
 
 	sqlite3_bind_text(stmt, 1, req, -1, SQLITE_TRANSIENT);
 	pkgdb_debug(4, stmt);
@@ -350,10 +339,8 @@ pkgdb_query_provide(struct pkgdb *db, const char *req)
 
 	assert(db != NULL);
 
-	if (sqlite3_prepare_v2(db->sqlite, sql, -1, &stmt, NULL) != SQLITE_OK) {
-		ERROR_SQLITE(db->sqlite, sql);
+	if ((stmt = prepare_sql(db->sqlite, sql)) == NULL)
 		return (NULL);
-	}
 
 	sqlite3_bind_text(stmt, 1, req, -1, SQLITE_TRANSIENT);
 	pkgdb_debug(4, stmt);
