@@ -509,11 +509,17 @@ EOF
 	atf_check \
 		pkg create -M testb.ucl -p plist
 	pkg repo .
-	mkdir reposconf
 	mkdir target
-	echo "local: { url: file://${TMPDIR} }" > reposconf/local.conf
+	mkdir reposconf
+	cat << EOF >> reposconf/repo.conf
+local: {
+	url: file:///${TMPDIR},
+	enabled: true
+}
+EOF
+
 	atf_check \
-		pkg -o REPOS_DIR=${TMPDIR}/reposconf -r ${TMPDIR}/target install -qy testb
+		pkg -C /dev/null -o REPOS_DIR="${TMPDIR}/reposconf" -o PKG_CACHEDIR="${TMPDIR}" -r ${TMPDIR}/target install -qy testb
 	atf_check -s exit:0 sh ${RESOURCEDIR}/test_subr.sh new_pkg "testa-lib" "testa-lib" "2.0"
 	echo "entry" > a
 	echo "${TMPDIR}/a" > plist
@@ -583,5 +589,5 @@ ${JAILED}[3/3] Extracting testa-lib-2.0:  done
 "
 	atf_check \
 		-o inline:"${OUTPUT}" \
-		pkg -o REPOS_DIR=${TMPDIR}/reposconf -r ${TMPDIR}/target upgrade -y
+		pkg -C /dev/null -o REPOS_DIR="${TMPDIR}/reposconf" -o PKG_CACHEDIR="${TMPDIR}" -r ${TMPDIR}/target upgrade -y
 }
