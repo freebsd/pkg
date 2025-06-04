@@ -2646,6 +2646,7 @@ pkgdb_check_lock_pid(struct pkgdb *db)
 			}
 		}
 	}
+	sqlite3_finalize(stmt);
 
 	if (found == 0)
 		return (EPKG_END);
