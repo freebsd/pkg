@@ -403,7 +403,7 @@ int pkg_jobs_schedule(struct pkg_jobs *j)
 		 * will break the given cycle but is it possible that one of the choices
 		 * would break additional cycles as well?
 		 */
-		while (path->type != PKG_SOLVED_UPGRADE) {
+		while (path->type != PKG_SOLVED_UPGRADE && path->items[1]->pkg->conflicts == NULL) {
 			if (path == cycle) {
 				pkg_emit_error("found job scheduling cycle without upgrade job");
 			 	return (EPKG_FATAL);
