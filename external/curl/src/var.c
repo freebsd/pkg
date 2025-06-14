@@ -23,21 +23,17 @@
  ***************************************************************************/
 #include "tool_setup.h"
 
-#include "curlx.h"
-
+#include <curlx.h>
 #include "tool_cfgable.h"
 #include "tool_getparam.h"
 #include "tool_helpers.h"
 #include "tool_findfile.h"
 #include "tool_msgs.h"
 #include "tool_parsecfg.h"
-#include "dynbuf.h"
-#include "curl_base64.h"
 #include "tool_paramhlp.h"
 #include "tool_writeout_json.h"
 #include "var.h"
-
-#include "memdebug.h" /* keep this as LAST include */
+#include <memdebug.h> /* keep this as LAST include */
 
 #define MAX_EXPAND_CONTENT 10000000
 #define MAX_VAR_LEN 128 /* max length of a name */
@@ -60,7 +56,7 @@ void varcleanup(struct GlobalConfig *global)
   while(list) {
     struct tool_var *t = list;
     list = list->next;
-    free((char *)t->content);
+    free(CURL_UNCONST(t->content));
     free(t);
   }
 }
@@ -91,13 +87,15 @@ static const struct tool_var *varcontent(struct GlobalConfig *global,
 #define FUNC_URL_LEN (sizeof(FUNC_URL) - 1)
 #define FUNC_B64 "b64"
 #define FUNC_B64_LEN (sizeof(FUNC_B64) - 1)
+#define FUNC_64DEC "64dec" /* base64 decode */
+#define FUNC_64DEC_LEN (sizeof(FUNC_64DEC) - 1)
 
 static ParameterError varfunc(struct GlobalConfig *global,
                               char *c, /* content */
                               size_t clen, /* content length */
                               char *f, /* functions */
                               size_t flen, /* function string length */
-                              struct curlx_dynbuf *out)
+                              struct dynbuf *out)
 {
   bool alloc = FALSE;
   ParameterError err = PARAM_OK;
@@ -117,7 +115,7 @@ static ParameterError varfunc(struct GlobalConfig *global,
       f += FUNC_TRIM_LEN;
       if(clen) {
         /* skip leading white space, including CRLF */
-        while(*c && ISSPACE(*c)) {
+        while(ISSPACE(*c)) {
           c++;
           len--;
         }
@@ -179,6 +177,27 @@ static ParameterError varfunc(struct GlobalConfig *global,
           break;
       }
     }
+    else if(FUNCMATCH(f, FUNC_64DEC, FUNC_64DEC_LEN)) {
+      f += FUNC_64DEC_LEN;
+      curlx_dyn_reset(out);
+      if(clen) {
+        unsigned char *enc;
+        size_t elen;
+        CURLcode result = curlx_base64_decode(c, &enc, &elen);
+        /* put it in the output */
+        if(result) {
+          if(curlx_dyn_add(out, "[64dec-fail]"))
+            err = PARAM_NO_MEM;
+        }
+        else {
+          if(curlx_dyn_addn(out, enc, elen))
+            err = PARAM_NO_MEM;
+          curl_free(enc);
+        }
+        if(err)
+          break;
+      }
+    }
     else {
       /* unsupported function */
       errorf(global, "unknown variable function in '%.*s'",
@@ -205,7 +224,7 @@ static ParameterError varfunc(struct GlobalConfig *global,
 }
 
 ParameterError varexpand(struct GlobalConfig *global,
-                         const char *line, struct curlx_dynbuf *out,
+                         const char *line, struct dynbuf *out,
                          bool *replaced)
 {
   CURLcode result;
@@ -284,10 +303,10 @@ ParameterError varexpand(struct GlobalConfig *global,
         else {
           char *value;
           size_t vlen = 0;
-          struct curlx_dynbuf buf;
+          struct dynbuf buf;
           const struct tool_var *v = varcontent(global, name, nlen);
           if(v) {
-            value = (char *)v->content;
+            value = (char *)CURL_UNCONST(v->content);
             vlen = v->clen;
           }
           else
@@ -425,25 +444,19 @@ ParameterError setvariable(struct GlobalConfig *global,
       clen = strlen(ge);
     }
   }
-  if(*line == '[') {
+  if(*line == '[' && ISDIGIT(line[1])) {
     /* is there a byte range specified? [num-num] */
-    if(ISDIGIT(line[1])) {
-      char *endp;
-      if(curlx_strtoofft(&line[1], &endp, 10, &startoffset) || (*endp != '-'))
-        return PARAM_VAR_SYNTAX;
-      else {
-        char *p = endp + 1; /* pass the '-' */
-        if(*p != ']') {
-          if(curlx_strtoofft(p, &endp, 10, &endoffset) || (*endp != ']'))
-            return PARAM_VAR_SYNTAX;
-          line = &endp[1];  /* pass the ']' */
-        }
-        else
-          line = &p[1]; /* pass the ']' */
-      }
-      if(startoffset > endoffset)
+    line++;
+    if(curlx_str_number(&line, &startoffset, CURL_OFF_T_MAX) ||
+       curlx_str_single(&line, '-'))
+      return PARAM_VAR_SYNTAX;
+    if(curlx_str_single(&line, ']')) {
+      if(curlx_str_number(&line, &endoffset, CURL_OFF_T_MAX) ||
+         curlx_str_single(&line, ']'))
         return PARAM_VAR_SYNTAX;
     }
+    if(startoffset > endoffset)
+      return PARAM_VAR_SYNTAX;
   }
   if(content)
     ;
@@ -454,7 +467,7 @@ ParameterError setvariable(struct GlobalConfig *global,
     struct dynbuf fname;
     line++;
 
-    Curl_dyn_init(&fname, MAX_FILENAME);
+    curlx_dyn_init(&fname, MAX_FILENAME);
 
     use_stdin = !strcmp(line, "-");
     if(use_stdin)
@@ -473,7 +486,7 @@ ParameterError setvariable(struct GlobalConfig *global,
       if(clen)
         contalloc = TRUE;
     }
-    Curl_dyn_free(&fname);
+    curlx_dyn_free(&fname);
     if(!use_stdin && file)
       fclose(file);
     if(err)
@@ -483,7 +496,7 @@ ParameterError setvariable(struct GlobalConfig *global,
     line++;
     clen = strlen(line);
     /* this is the exact content */
-    content = (char *)line;
+    content = (char *)CURL_UNCONST(line);
     if(startoffset || (endoffset != CURL_OFF_T_MAX)) {
       if(startoffset >= (curl_off_t)clen)
         clen = 0;

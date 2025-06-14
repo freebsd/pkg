@@ -23,13 +23,11 @@
  ***************************************************************************/
 #include "tool_setup.h"
 
-#include "curlx.h"
+#include <curlx.h>
 #include "tool_cfgable.h"
 #include "tool_writeout.h"
 #include "tool_writeout_json.h"
-#include "dynbuf.h"
-
-#include "memdebug.h" /* keep this as LAST include */
+#include <memdebug.h> /* keep this as LAST include */
 
 static int writeTime(FILE *stream, const struct writeoutvar *wovar,
                      struct per_transfer *per, CURLcode per_result,
@@ -127,6 +125,8 @@ static const struct writeoutvar variables[] = {
   {"time_starttransfer", VAR_STARTTRANSFER_TIME, CURLINFO_STARTTRANSFER_TIME_T,
    writeTime},
   {"time_total", VAR_TOTAL_TIME, CURLINFO_TOTAL_TIME_T, writeTime},
+  {"tls_earlydata", VAR_TLS_EARLYDATA_SENT, CURLINFO_EARLYDATA_SENT_T,
+   writeOffset},
   {"url", VAR_INPUT_URL, CURLINFO_NONE, writeString},
   {"url.fragment", VAR_INPUT_URLFRAGMENT, CURLINFO_NONE, writeString},
   {"url.host", VAR_INPUT_URLHOST, CURLINFO_NONE, writeString},
@@ -425,7 +425,7 @@ static int writeString(FILE *stream, const struct writeoutvar *wovar,
     if(use_json)
       fprintf(stream, "\"%s\":null", wovar->name);
   }
-  curl_free((char *)freestr);
+  curl_free((char *)CURL_UNCONST(freestr));
 
   curlx_dyn_free(&buf);
   return 1; /* return 1 if anything was written */
@@ -577,7 +577,7 @@ void ourWriteOut(struct OperationConfig *config, struct per_transfer *per,
           if(!curlx_dyn_addn(&name, ptr, vlen)) {
             find.name = curlx_dyn_ptr(&name);
             wv = bsearch(&find,
-                         variables, sizeof(variables)/sizeof(variables[0]),
+                         variables, CURL_ARRAYSIZE(variables),
                          sizeof(variables[0]), matchvar);
           }
           if(wv) {
@@ -601,7 +601,7 @@ void ourWriteOut(struct OperationConfig *config, struct per_transfer *per,
               break;
             case VAR_JSON:
               ourWriteOutJSON(stream, variables,
-                              sizeof(variables)/sizeof(variables[0]),
+                              CURL_ARRAYSIZE(variables),
                               per, per_result);
               break;
             case VAR_HEADER_JSON:

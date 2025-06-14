@@ -7,7 +7,7 @@ Protocols: HTTP
 Added: 7.88.0
 Mutexed: http1.1 http1.0 http2 http2-prior-knowledge http3
 Requires: HTTP/3
-Help: Use HTTP v3 only
+Help: Use HTTP/3 only
 Category: http
 Multi: mutex
 See-also:
@@ -20,7 +20,7 @@ Example:
 
 # `--http3-only`
 
-Instructs curl to use HTTP/3 to the host in the URL, with no fallback to
+Instruct curl to use HTTP/3 to the host in the URL, with no fallback to
 earlier HTTP versions. HTTP/3 can only be used for HTTPS and not for HTTP
 URLs. For HTTP, this option triggers an error.
 

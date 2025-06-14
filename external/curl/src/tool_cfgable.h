@@ -23,6 +23,8 @@
  * SPDX-License-Identifier: curl
  *
  ***************************************************************************/
+
+#include <curl/mprintf.h>
 #include "tool_setup.h"
 #include "tool_sdecls.h"
 #include "tool_urlglob.h"
@@ -36,6 +38,29 @@
 #define BIT(x) unsigned int x:1
 #endif
 #endif
+
+/* make the tool use the libcurl *printf family */
+# undef printf
+# undef fprintf
+# undef msnprintf
+# undef vprintf
+# undef vfprintf
+# undef mvsnprintf
+# undef aprintf
+# undef vaprintf
+# define printf curl_mprintf
+# define fprintf curl_mfprintf
+# define msnprintf curl_msnprintf
+# define vprintf curl_mvprintf
+# define vfprintf curl_mvfprintf
+# define mvsnprintf curl_mvsnprintf
+# define aprintf curl_maprintf
+# define vaprintf curl_mvaprintf
+
+#define checkprefix(a,b)    curl_strnequal(b, STRCONST(a))
+
+#define tool_safefree(ptr)                      \
+  do { free((ptr)); (ptr) = NULL;} while(0)
 
 struct GlobalConfig;
 
@@ -55,7 +80,7 @@ struct State {
 
 struct OperationConfig {
   struct State state;             /* for create_transfer() */
-  struct curlx_dynbuf postdata;
+  struct dynbuf postdata;
   char *useragent;
   struct curl_slist *cookies;  /* cookies to serialize into a single line */
   char *cookiejar;          /* write to this file */
@@ -135,6 +160,7 @@ struct OperationConfig {
   char *etag_compare_file;
   char *customrequest;
   char *ssl_ec_curves;
+  char *ssl_signature_algorithms;
   char *krblevel;
   char *request_target;
   char *writeout;           /* %-styled format string to output */
@@ -192,7 +218,7 @@ struct OperationConfig {
   long retry_delay;         /* delay between retries (in seconds) */
   long retry_maxtime;       /* maximum time to keep retrying */
 
-  long mime_options;        /* Mime option flags. */
+  unsigned long mime_options; /* Mime option flags. */
   long tftp_blksize;        /* TFTP BLKSIZE option */
   long alivetime;           /* keepalive-time */
   long alivecnt;            /* keepalive-cnt */
@@ -200,13 +226,11 @@ struct OperationConfig {
   long expect100timeout_ms;
   long happy_eyeballs_timeout_ms; /* happy eyeballs timeout in milliseconds.
                                      0 is valid. default: CURL_HET_DEFAULT. */
-  curl_TimeCond timecond;
+  unsigned long timecond;
   HttpReq httpreq;
-  int proxyver;             /* set to CURLPROXY_HTTP* define */
+  long proxyver;             /* set to CURLPROXY_HTTP* define */
   int ftp_ssl_ccc_mode;
   int ftp_filemethod;
-  int default_node_flags;   /* default flags to search for each 'node', which
-                               is basically each given URL to transfer */
   enum {
     CLOBBER_DEFAULT, /* Provides compatibility with previous versions of curl,
                         by using the default behavior for -o, -O, and -J.
@@ -216,7 +240,9 @@ struct OperationConfig {
     CLOBBER_NEVER, /* If the file exists, always fail */
     CLOBBER_ALWAYS /* If the file exists, always overwrite it */
   } file_clobber_mode;
+  unsigned char upload_flags; /* Bitmask for --upload-flags */
   unsigned short porttouse;
+  BIT(remote_name_all);   /* --remote-name-all */
   BIT(remote_time);
   BIT(cookiesession);       /* new session? */
   BIT(encoding);            /* Accept-Encoding please */
@@ -323,12 +349,13 @@ struct GlobalConfig {
   FILE *trace_stream;
   char *libcurl;                  /* Output libcurl code to this filename */
   char *ssl_sessions;             /* file to load/save SSL session tickets */
-  char *help_category;            /* The help category, if set */
+  char *knownhosts;               /* known host path, if set. curl_free()
+                                     this */
   struct tool_var *variables;
   struct OperationConfig *first;
   struct OperationConfig *current;
   struct OperationConfig *last;
-  long ms_per_transfer;           /* start next transfer after (at least) this
+  timediff_t ms_per_transfer;     /* start next transfer after (at least) this
                                      many milliseconds */
   trace tracetype;
   int progressmode;               /* CURL_PROGRESS_BAR / CURL_PROGRESS_STATS */

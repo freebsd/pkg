@@ -3,6 +3,8 @@ include @builddir@/mk/defs.mk
 LIB=	curl
 .PATH:	$(top_srcdir)/external/curl/lib
 VPATH=	$(top_srcdir)/external/curl/lib
+.PATH:	$(top_srcdir)/external/curl/lib/curlx
+VPATH=	$(top_srcdir)/external/curl/lib/curlx
 .PATH:	$(top_srcdir)/external/curl/lib/vtls
 VPATH+=	$(top_srcdir)/external/curl/lib/vtls
 .PATH:	$(top_srcdir)/external/curl/lib/vauth
@@ -12,7 +14,8 @@ VPATH+=	$(top_srcdir)/external/curl/lib/vquic
 
 SRCS=	\
 	version.c \
-	asyn-thread.c \
+	asyn-base.c \
+	asyn-thrdd.c \
 	base64.c \
 	bufref.c \
 	cf-https-connect.c \
@@ -37,7 +40,6 @@ SRCS=	\
 	getinfo.c \
 	hash.c \
 	headers.c \
-	hostasyn.c \
 	hostip.c \
 	hostip4.c \
 	hostip6.c \
@@ -70,7 +72,6 @@ SRCS=	\
 	strcase.c \
 	strdup.c \
 	strerror.c \
-	strtoofft.c \
 	strparse.c \
 	timeval.c \
 	transfer.c \
@@ -101,7 +102,15 @@ SRCS=	\
 	cw-out.c \
 	request.c \
 	socketpair.c \
-	timediff.c
+	timediff.c \
+	uint-table.c \
+	uint-bset.c \
+	uint-spbset.c \
+	uint-hash.c \
+	cshutdn.c \
+	multi_ev.c \
+	cw-pause.c \
+	strequal.c
 
 LOCAL_CFLAGS=	-DHAVE_CONFIG_H \
 		-DBUILDING_LIBCURL \

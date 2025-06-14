@@ -79,7 +79,7 @@ contain zero-valued bytes.
 
 followed by a pointer to the contents of this part, the actual data to send
 away. libcurl copies the provided data, so your application does not need to
-keep it around after this function call. If the data is not null terminated,
+keep it around after this function call. If the data is not null-terminated,
 or if you would like it to contain zero bytes, you must set the length of the
 name with **CURLFORM_CONTENTSLENGTH**. The copied data is freed by
 curl_formfree(3).
@@ -316,4 +316,4 @@ filenames are now escaped before transmission.
 # RETURN VALUE
 
 0 means everything was OK, non-zero means an error occurred corresponding to a
-CURL_FORMADD_* constant defined in *\<curl/curl.h\>*.
+`CURL_FORMADD_*` constant defined in *\<curl/curl.h\>*.

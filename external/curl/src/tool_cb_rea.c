@@ -27,7 +27,7 @@
 #include <sys/select.h>
 #endif
 
-#include "curlx.h"
+#include <curlx.h>
 
 #include "tool_cfgable.h"
 #include "tool_cb_rea.h"
@@ -36,7 +36,7 @@
 #include "tool_msgs.h"
 #include "tool_sleep.h"
 
-#include "memdebug.h" /* keep this as LAST include */
+#include <memdebug.h> /* keep this as LAST include */
 
 /*
 ** callback for CURLOPT_READFUNCTION
@@ -55,8 +55,8 @@ size_t tool_read_cb(char *buffer, size_t sz, size_t nmemb, void *userdata)
   }
 
   if(config->timeout_ms) {
-    struct timeval now = tvnow();
-    long msdelta = tvdiff(now, per->start);
+    struct curltime now = curlx_now();
+    long msdelta = (long)curlx_timediff(now, per->start);
 
     if(msdelta > config->timeout_ms)
       /* timeout */
@@ -91,7 +91,7 @@ size_t tool_read_cb(char *buffer, size_t sz, size_t nmemb, void *userdata)
   rc = read(per->infd, buffer, sz*nmemb);
   if(rc < 0) {
     if(errno == EAGAIN) {
-      errno = 0;
+      CURL_SETERRNO(0);
       config->readbusy = TRUE;
       return CURL_READFUNC_PAUSE;
     }
@@ -132,17 +132,16 @@ int tool_readbusy_cb(void *clientp,
   if(config->readbusy) {
     /* lame code to keep the rate down because the input might not deliver
        anything, get paused again and come back here immediately */
-    static long rate = 500;
-    static struct timeval prev;
+    static timediff_t rate = 500;
+    static struct curltime prev;
     static curl_off_t ulprev;
 
     if(ulprev == ulnow) {
       /* it did not upload anything since last call */
-      struct timeval now = tvnow();
+      struct curltime now = curlx_now();
       if(prev.tv_sec)
         /* get a rolling average rate */
-        /* rate = rate - rate/4 + tvdiff(now, prev)/4; */
-        rate -= rate/4 - tvdiff(now, prev)/4;
+        rate -= rate/4 - curlx_timediff(now, prev)/4;
       prev = now;
     }
     else {

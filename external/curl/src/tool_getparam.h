@@ -242,6 +242,7 @@ typedef enum {
   C_SHOW_ERROR,
   C_SHOW_HEADERS,
   C_SILENT,
+  C_SIGNATURE_ALGORITHMS,
   C_SKIP_EXISTING,
   C_SOCKS4,
   C_SOCKS4A,
@@ -293,6 +294,7 @@ typedef enum {
   C_IP_TOS,
   C_UNIX_SOCKET,
   C_UPLOAD_FILE,
+  C_UPLOAD_FLAGS,
   C_URL,
   C_URL_QUERY,
   C_USE_ASCII,
@@ -315,6 +317,8 @@ typedef enum {
 #define ARG_TYPEMASK 0x03
 #define ARGTYPE(x) ((x) & ARG_TYPEMASK)
 
+#define ARG_DEPR 0x10 /* deprecated option */
+#define ARG_CLEAR 0x20 /* clear cmdline argument */
 #define ARG_TLS 0x40 /* requires TLS support */
 #define ARG_NO 0x80 /* set if the option is documented as --no-* */
 
@@ -345,7 +349,6 @@ typedef enum {
   PARAM_NEXT_OPERATION,
   PARAM_NO_PREFIX,
   PARAM_NUMBER_TOO_LARGE,
-  PARAM_NO_NOT_BOOLEAN,
   PARAM_CONTDISP_RESUME_FROM, /* --continue-at and --remote-header-name */
   PARAM_READ_ERROR,
   PARAM_EXPAND_ERROR, /* --expand problem */
@@ -360,8 +363,7 @@ struct OperationConfig;
 const struct LongShort *findlongopt(const char *opt);
 const struct LongShort *findshortopt(char letter);
 
-ParameterError getparameter(const char *flag, char *nextarg,
-                            argv_item_t cleararg,
+ParameterError getparameter(const char *flag, const char *nextarg,
                             bool *usedarg,
                             struct GlobalConfig *global,
                             struct OperationConfig *operation);
@@ -374,5 +376,19 @@ void parse_cert_parameter(const char *cert_parameter,
 
 ParameterError parse_args(struct GlobalConfig *config, int argc,
                           argv_item_t argv[]);
+
+#if defined(UNICODE) && defined(_WIN32) && !defined(UNDER_CE)
+
+#define convert_UTF8_to_tchar(ptr) curlx_convert_UTF8_to_wchar((ptr))
+#define convert_tchar_to_UTF8(ptr) curlx_convert_wchar_to_UTF8((ptr))
+#define unicodefree(ptr) curlx_unicodefree(ptr)
+
+#else
+
+#define convert_UTF8_to_tchar(ptr) (const char *)(ptr)
+#define convert_tchar_to_UTF8(ptr) (const char *)(ptr)
+#define unicodefree(ptr) do {} while(0)
+
+#endif
 
 #endif /* HEADER_CURL_TOOL_GETPARAM_H */

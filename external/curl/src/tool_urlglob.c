@@ -23,14 +23,12 @@
  ***************************************************************************/
 #include "tool_setup.h"
 
-#include "curlx.h"
+#include <curlx.h>
 #include "tool_cfgable.h"
 #include "tool_doswin.h"
 #include "tool_urlglob.h"
 #include "tool_vms.h"
-#include "dynbuf.h"
-
-#include "memdebug.h" /* keep this as LAST include */
+#include <memdebug.h> /* keep this as LAST include */
 
 #define GLOBERROR(string, column, code) \
   glob->error = string, glob->pos = column, code
@@ -85,7 +83,7 @@ static int multiply(curl_off_t *amount, curl_off_t with)
   return 0;
 }
 
-static CURLcode glob_set(struct URLGlob *glob, char **patternp,
+static CURLcode glob_set(struct URLGlob *glob, const char **patternp,
                          size_t *posp, curl_off_t *amount,
                          int globindex)
 {
@@ -95,8 +93,8 @@ static CURLcode glob_set(struct URLGlob *glob, char **patternp,
   struct URLPattern *pat;
   bool done = FALSE;
   char *buf = glob->glob_buffer;
-  char *pattern = *patternp;
-  char *opattern = pattern;
+  const char *pattern = *patternp;
+  const char *opattern = pattern;
   size_t opos = *posp-1;
 
   pat = &glob->pattern[glob->size];
@@ -180,7 +178,7 @@ static CURLcode glob_set(struct URLGlob *glob, char **patternp,
   return CURLE_OK;
 }
 
-static CURLcode glob_range(struct URLGlob *glob, char **patternp,
+static CURLcode glob_range(struct URLGlob *glob, const char **patternp,
                            size_t *posp, curl_off_t *amount,
                            int globindex)
 {
@@ -191,8 +189,8 @@ static CURLcode glob_range(struct URLGlob *glob, char **patternp,
      expression is checked for well-formedness and collected until the next ']'
   */
   struct URLPattern *pat;
-  char *pattern = *patternp;
-  char *c;
+  const char *pattern = *patternp;
+  const char *c;
 
   pat = &glob->pattern[glob->size];
   pat->globindex = globindex;
@@ -214,13 +212,13 @@ static CURLcode glob_range(struct URLGlob *glob, char **patternp,
       pmatch = TRUE;
 
       if(end_c == ':') {
-        char *endp;
-        errno = 0;
-        step = strtoul(&pattern[4], &endp, 10);
-        if(errno || &pattern[4] == endp || *endp != ']')
+        curl_off_t num;
+        const char *p = &pattern[4];
+        if(curlx_str_number(&p, &num, 256) || curlx_str_single(&p, ']'))
           step = 0;
         else
-          pattern = endp + 1;
+          step = (unsigned long)num;
+        pattern = p;
       }
       else if(end_c != ']')
         /* then this is wrong */
@@ -232,7 +230,7 @@ static CURLcode glob_range(struct URLGlob *glob, char **patternp,
 
     *posp += (pattern - *patternp);
 
-    if(!pmatch || !step || step > (unsigned)INT_MAX ||
+    if(!pmatch || !step ||
        (min_c == max_c && step != 1) ||
        (min_c != max_c && (min_c > max_c || step > (unsigned)(max_c - min_c) ||
                            (max_c - min_c) > ('z' - 'a'))))
@@ -251,10 +249,10 @@ static CURLcode glob_range(struct URLGlob *glob, char **patternp,
   }
   else if(ISDIGIT(*pattern)) {
     /* numeric range detected */
-    unsigned long min_n;
+    unsigned long min_n = 0;
     unsigned long max_n = 0;
     unsigned long step_n = 0;
-    char *endp;
+    curl_off_t num;
 
     pat->type = UPTNumRange;
     pat->content.NumRange.padlength = 0;
@@ -269,48 +267,27 @@ static CURLcode glob_range(struct URLGlob *glob, char **patternp,
       }
     }
 
-    errno = 0;
-    min_n = strtoul(pattern, &endp, 10);
-    if(errno || (endp == pattern))
-      endp = NULL;
-    else {
-      if(*endp != '-')
-        endp = NULL;
-      else {
-        pattern = endp + 1;
-        while(*pattern && ISBLANK(*pattern))
-          pattern++;
-        if(!ISDIGIT(*pattern)) {
-          endp = NULL;
-          goto fail;
+    if(!curlx_str_number(&pattern, &num, CURL_OFF_T_MAX)) {
+      min_n = (unsigned long)num;
+      if(!curlx_str_single(&pattern, '-')) {
+        curlx_str_passblanks(&pattern);
+        if(!curlx_str_number(&pattern, &num, CURL_OFF_T_MAX)) {
+          max_n = (unsigned long)num;
+          if(!curlx_str_single(&pattern, ']'))
+            step_n = 1;
+          else if(!curlx_str_single(&pattern, ':') &&
+                  !curlx_str_number(&pattern, &num, CURL_OFF_T_MAX) &&
+                  !curlx_str_single(&pattern, ']')) {
+            step_n = (unsigned long)num;
+          }
+          /* else bad syntax */
         }
-        errno = 0;
-        max_n = strtoul(pattern, &endp, 10);
-        if(errno)
-          /* overflow */
-          endp = NULL;
-        else if(*endp == ':') {
-          pattern = endp + 1;
-          errno = 0;
-          step_n = strtoul(pattern, &endp, 10);
-          if(errno)
-            /* over/underflow situation */
-            endp = NULL;
-        }
-        else
-          step_n = 1;
-        if(endp && (*endp == ']')) {
-          pattern = endp + 1;
-        }
-        else
-          endp = NULL;
       }
     }
 
-fail:
     *posp += (pattern - *patternp);
 
-    if(!endp || !step_n ||
+    if(!step_n ||
        (min_n == max_n && step_n != 1) ||
        (min_n != max_n && (min_n > max_n || step_n > (max_n - min_n))))
       /* the pattern is not well-formed */
@@ -371,7 +348,7 @@ static bool peek_ipv6(const char *str, size_t *skip)
   return rc ? FALSE : TRUE;
 }
 
-static CURLcode glob_parse(struct URLGlob *glob, char *pattern,
+static CURLcode glob_parse(struct URLGlob *glob, const char *pattern,
                            size_t pos, curl_off_t *amount)
 {
   /* processes a literal string component of a URL
@@ -470,7 +447,7 @@ CURLcode glob_url(struct URLGlob **glob, char *url, curl_off_t *urlnum,
 
   glob_expand = calloc(1, sizeof(struct URLGlob));
   if(!glob_expand) {
-    Curl_safefree(glob_buffer);
+    tool_safefree(glob_buffer);
     return CURLE_OUT_OF_MEMORY;
   }
   glob_expand->urllen = strlen(url);
@@ -520,13 +497,13 @@ void glob_cleanup(struct URLGlob **globp)
       for(elem = glob->pattern[i].content.Set.size - 1;
           elem >= 0;
           --elem) {
-        Curl_safefree(glob->pattern[i].content.Set.elements[elem]);
+        tool_safefree(glob->pattern[i].content.Set.elements[elem]);
       }
-      Curl_safefree(glob->pattern[i].content.Set.elements);
+      tool_safefree(glob->pattern[i].content.Set.elements);
     }
   }
-  Curl_safefree(glob->glob_buffer);
-  Curl_safefree(glob);
+  tool_safefree(glob->glob_buffer);
+  tool_safefree(glob);
   *globp = NULL;
 }
 
@@ -626,12 +603,13 @@ CURLcode glob_next_url(char **globbed, struct URLGlob *glob)
 
 #define MAX_OUTPUT_GLOB_LENGTH (10*1024)
 
-CURLcode glob_match_url(char **result, char *filename, struct URLGlob *glob)
+CURLcode glob_match_url(char **result, const char *filename,
+                        struct URLGlob *glob)
 {
   char numbuf[18];
-  char *appendthis = (char *)"";
+  const char *appendthis = "";
   size_t appendlen = 0;
-  struct curlx_dynbuf dyn;
+  struct dynbuf dyn;
 
   *result = NULL;
 
@@ -642,11 +620,11 @@ CURLcode glob_match_url(char **result, char *filename, struct URLGlob *glob)
 
   while(*filename) {
     if(*filename == '#' && ISDIGIT(filename[1])) {
-      char *ptr = filename;
-      unsigned long num = strtoul(&filename[1], &filename, 10);
+      const char *ptr = filename;
+      curl_off_t num;
       struct URLPattern *pat = NULL;
-
-      if(num && (num < glob->size)) {
+      filename++;
+      if(!curlx_str_number(&filename, &num, glob->size) && num) {
         unsigned long i;
         num--; /* make it zero based */
         /* find the correct glob entry */

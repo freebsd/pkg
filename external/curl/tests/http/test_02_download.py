@@ -30,6 +30,7 @@ import logging
 import math
 import os
 import re
+import sys
 from datetime import timedelta
 import pytest
 
@@ -42,13 +43,6 @@ log = logging.getLogger(__name__)
 class TestDownload:
 
     @pytest.fixture(autouse=True, scope='class')
-    def _class_scope(self, env, httpd, nghttpx):
-        if env.have_h3():
-            nghttpx.start_if_needed()
-        httpd.clear_extra_configs()
-        httpd.reload()
-
-    @pytest.fixture(autouse=True, scope='class')
     def _class_scope(self, env, httpd):
         indir = httpd.docs_dir
         env.make_data_file(indir=indir, fname="data-10k", fsize=10*1024)
@@ -56,6 +50,7 @@ class TestDownload:
         env.make_data_file(indir=indir, fname="data-1m", fsize=1024*1024)
         env.make_data_file(indir=indir, fname="data-10m", fsize=10*1024*1024)
         env.make_data_file(indir=indir, fname="data-50m", fsize=50*1024*1024)
+        env.make_data_gzipbomb(indir=indir, fname="bomb-100m.txt", fsize=100*1024*1024)
 
     # download 1 file
     @pytest.mark.parametrize("proto", ['http/1.1', 'h2', 'h3'])
@@ -82,6 +77,9 @@ class TestDownload:
     def test_02_03_download_sequential(self, env: Env, httpd, nghttpx, proto):
         if proto == 'h3' and not env.have_h3():
             pytest.skip("h3 not supported")
+        if (proto == 'http/1.1' or proto == 'h2') and env.curl_uses_lib('mbedtls') and \
+           sys.platform.startswith('darwin') and env.ci_run:
+            pytest.skip('mbedtls 3.6.3 fails this test on macOS CI runners')
         count = 10
         curl = CurlClient(env=env)
         urln = f'https://{env.authority_for(env.domain1, proto)}/data.json?[0-{count-1}]'
@@ -93,6 +91,9 @@ class TestDownload:
     def test_02_04_download_parallel(self, env: Env, httpd, nghttpx, proto):
         if proto == 'h3' and not env.have_h3():
             pytest.skip("h3 not supported")
+        if proto == 'h2' and env.curl_uses_lib('mbedtls') and \
+           sys.platform.startswith('darwin') and env.ci_run:
+            pytest.skip('mbedtls 3.6.3 fails this test on macOS CI runners')
         count = 10
         max_parallel = 5
         curl = CurlClient(env=env)
@@ -115,6 +116,9 @@ class TestDownload:
             pytest.skip("h3 not supported")
         if proto == 'h3' and env.curl_uses_lib('msh3'):
             pytest.skip("msh3 shaky here")
+        if proto == 'h2' and env.curl_uses_lib('mbedtls') and \
+           sys.platform.startswith('darwin') and env.ci_run:
+            pytest.skip('mbedtls 3.6.3 fails this test on macOS CI runners')
         count = 200
         curl = CurlClient(env=env)
         urln = f'https://{env.authority_for(env.domain1, proto)}/data.json?[0-{count-1}]'
@@ -132,6 +136,9 @@ class TestDownload:
     def test_02_06_download_many_parallel(self, env: Env, httpd, nghttpx, proto):
         if proto == 'h3' and not env.have_h3():
             pytest.skip("h3 not supported")
+        if proto == 'h2' and env.curl_uses_lib('mbedtls') and \
+           sys.platform.startswith('darwin') and env.ci_run:
+            pytest.skip('mbedtls 3.6.3 fails this test on macOS CI runners')
         count = 200
         max_parallel = 50
         curl = CurlClient(env=env)
@@ -280,7 +287,7 @@ class TestDownload:
                       remote_ip='127.0.0.1')
 
     @pytest.mark.skipif(condition=Env().slow_network, reason="not suitable for slow network tests")
-    def test_02_20_h2_small_frames(self, env: Env, httpd):
+    def test_02_20_h2_small_frames(self, env: Env, httpd, configures_httpd):
         # Test case to reproduce content corruption as observed in
         # https://github.com/curl/curl/issues/10525
         # To reliably reproduce, we need an Apache httpd that supports
@@ -289,11 +296,7 @@ class TestDownload:
         httpd.set_extra_config(env.domain1, lines=[
             'H2MaxDataFrameLen 1024',
         ])
-        assert httpd.stop()
-        if not httpd.start():
-            # no, not supported, bail out
-            httpd.set_extra_config(env.domain1, lines=None)
-            assert httpd.start()
+        if not httpd.reload_if_config_changed():
             pytest.skip('H2MaxDataFrameLen not supported')
         # ok, make 100 downloads with 2 parallel running and they
         # are expected to stumble into the issue when using `lib/http2.c`
@@ -307,14 +310,10 @@ class TestDownload:
         r.check_response(count=count, http_status=200)
         srcfile = os.path.join(httpd.docs_dir, 'data-1m')
         self.check_downloads(curl, srcfile, count)
-        # restore httpd defaults
-        httpd.set_extra_config(env.domain1, lines=None)
-        assert httpd.stop()
-        assert httpd.start()
 
-    # download via lib client, 1 at a time, pause/resume at different offsets
+    # download serial via lib client, pause/resume at different offsets
     @pytest.mark.parametrize("pause_offset", [0, 10*1024, 100*1023, 640000])
-    @pytest.mark.parametrize("proto", ['http/1.1', 'h2', 'h3'])
+    @pytest.mark.parametrize("proto", ['http/1.1', 'h3'])
     def test_02_21_lib_serial(self, env: Env, httpd, nghttpx, proto, pause_offset):
         if proto == 'h3' and not env.have_h3():
             pytest.skip("h3 not supported")
@@ -322,6 +321,29 @@ class TestDownload:
         docname = 'data-10m'
         url = f'https://localhost:{env.https_port}/{docname}'
         client = LocalClient(name='hx-download', env=env)
+        if not client.exists():
+            pytest.skip(f'example client not built: {client.name}')
+        r = client.run(args=[
+             '-n', f'{count}', '-P', f'{pause_offset}', '-V', proto, url
+        ])
+        r.check_exit_code(0)
+        srcfile = os.path.join(httpd.docs_dir, docname)
+        self.check_downloads(client, srcfile, count)
+
+    # h2 download parallel via lib client, pause/resume at different offsets
+    # debug-override stream window size to reproduce #16955
+    @pytest.mark.parametrize("pause_offset", [0, 10*1024, 100*1023, 640000])
+    @pytest.mark.parametrize("swin_max", [0, 10*1024])
+    def test_02_21_h2_lib_serial(self, env: Env, httpd, pause_offset, swin_max):
+        proto = 'h2'
+        count = 2
+        docname = 'data-10m'
+        url = f'https://localhost:{env.https_port}/{docname}'
+        run_env = os.environ.copy()
+        run_env['CURL_DEBUG'] = 'multi,http/2'
+        if swin_max > 0:
+            run_env['CURL_H2_STREAM_WIN_MAX'] = f'{swin_max}'
+        client = LocalClient(name='hx-download', env=env, run_env=run_env)
         if not client.exists():
             pytest.skip(f'example client not built: {client.name}')
         r = client.run(args=[
@@ -405,7 +427,7 @@ class TestDownload:
             '-n', f'{count}', '-m', f'{max_parallel}', '-a',
             '-A', f'{abort_offset}', '-V', proto, url
         ])
-        r.check_exit_code(0)
+        r.check_exit_code(42)  # CURLE_ABORTED_BY_CALLBACK
         srcfile = os.path.join(httpd.docs_dir, docname)
         # downloads should be there, but not necessarily complete
         self.check_downloads(client, srcfile, count, complete=False)
@@ -434,7 +456,7 @@ class TestDownload:
             '-n', f'{count}', '-m', f'{max_parallel}', '-a',
             '-F', f'{fail_offset}', '-V', proto, url
         ])
-        r.check_exit_code(0)
+        r.check_exit_code(23)  # CURLE_WRITE_ERROR
         srcfile = os.path.join(httpd.docs_dir, docname)
         # downloads should be there, but not necessarily complete
         self.check_downloads(client, srcfile, count, complete=False)
@@ -568,18 +590,22 @@ class TestDownload:
             '--parallel', '--http2'
         ])
         r.check_response(http_status=200, count=count)
-        # we see 3 connections, because Apache only every serves a single
-        # request via Upgrade: and then closed the connection.
-        assert r.total_connects == 3, r.dump_logs()
+        # we see up to 3 connections, because Apache wants to serve only a single
+        # request via Upgrade: and then closes the connection. But if a new
+        # request comes in time, it might still get served.
+        assert r.total_connects <= 3, r.dump_logs()
 
     # nghttpx is the only server we have that supports TLS early data
     @pytest.mark.skipif(condition=not Env.have_nghttpx(), reason="no nghttpx")
     @pytest.mark.parametrize("proto", ['http/1.1', 'h2', 'h3'])
     def test_02_32_earlydata(self, env: Env, httpd, nghttpx, proto):
-        if not env.curl_uses_lib('gnutls'):
-            pytest.skip('TLS earlydata only implemented in GnuTLS')
-        if proto == 'h3' and not env.have_h3():
+        if not env.curl_can_early_data():
+            pytest.skip('TLS earlydata not implemented')
+        if proto == 'h3' and \
+           (not env.have_h3() or not env.curl_can_h3_early_data()):
             pytest.skip("h3 not supported")
+        if proto != 'h3' and sys.platform.startswith('darwin') and env.ci_run:
+            pytest.skip('failing on macOS CI runners')
         count = 2
         docname = 'data-10k'
         # we want this test to always connect to nghttpx, since it is
@@ -615,15 +641,17 @@ class TestDownload:
         assert reused_session, 'session was not reused for 2nd transfer'
         assert earlydata[0] == 0, f'{earlydata}'
         if proto == 'http/1.1':
-            assert earlydata[1] == 69, f'{earlydata}'
+            assert earlydata[1] == 111, f'{earlydata}'
         elif proto == 'h2':
-            assert earlydata[1] == 107, f'{earlydata}'
+            assert earlydata[1] == 127, f'{earlydata}'
         elif proto == 'h3':
-            assert earlydata[1] == 67, f'{earlydata}'
+            assert earlydata[1] == 109, f'{earlydata}'
 
     @pytest.mark.parametrize("proto", ['http/1.1', 'h2'])
     @pytest.mark.parametrize("max_host_conns", [0, 1, 5])
     def test_02_33_max_host_conns(self, env: Env, httpd, nghttpx, proto, max_host_conns):
+        if not env.curl_is_debug():
+            pytest.skip('only works for curl debug builds')
         if proto == 'h3' and not env.have_h3():
             pytest.skip("h3 not supported")
         count = 50
@@ -631,7 +659,9 @@ class TestDownload:
         docname = 'data-10k'
         port = env.port_for(proto)
         url = f'https://{env.domain1}:{port}/{docname}'
-        client = LocalClient(name='hx-download', env=env)
+        run_env = os.environ.copy()
+        run_env['CURL_DEBUG'] = 'multi'
+        client = LocalClient(name='hx-download', env=env, run_env=run_env)
         if not client.exists():
             pytest.skip(f'example client not built: {client.name}')
         r = client.run(args=[
@@ -658,6 +688,8 @@ class TestDownload:
     @pytest.mark.parametrize("proto", ['http/1.1', 'h2'])
     @pytest.mark.parametrize("max_total_conns", [0, 1, 5])
     def test_02_34_max_total_conns(self, env: Env, httpd, nghttpx, proto, max_total_conns):
+        if not env.curl_is_debug():
+            pytest.skip('only works for curl debug builds')
         if proto == 'h3' and not env.have_h3():
             pytest.skip("h3 not supported")
         count = 50
@@ -665,7 +697,9 @@ class TestDownload:
         docname = 'data-10k'
         port = env.port_for(proto)
         url = f'https://{env.domain1}:{port}/{docname}'
-        client = LocalClient(name='hx-download', env=env)
+        run_env = os.environ.copy()
+        run_env['CURL_DEBUG'] = 'multi'
+        client = LocalClient(name='hx-download', env=env, run_env=run_env)
         if not client.exists():
             pytest.skip(f'example client not built: {client.name}')
         r = client.run(args=[
@@ -688,3 +722,30 @@ class TestDownload:
                     n = int(m.group(1))
                     assert n <= max_total_conns
             assert matched_lines > 0
+
+    # 2 parallel transers, pause and resume. Load a 100 MB zip bomb from
+    # the server with "Content-Encoding: gzip" that gets exloded during
+    # response writing to the client. Client pauses after 1MB unzipped data
+    # and causes buffers to fill while the server sends more response
+    # data.
+    # * http/1.1: not much buffering is done as curl does no longer
+    #   serve the connections that are paused
+    # * h2/h3: server continues sending what the stream window allows and
+    #   since the one connection involved unpaused transfers, data continues
+    #   to be received, requiring buffering.
+    @pytest.mark.parametrize("proto", ['http/1.1', 'h2', 'h3'])
+    def test_02_35_pause_bomb(self, env: Env, httpd, nghttpx, proto):
+        if proto == 'h3' and not env.have_h3():
+            pytest.skip("h3 not supported")
+        count = 2
+        pause_offset = 1024 * 1024
+        docname = 'bomb-100m.txt.var'
+        url = f'https://localhost:{env.https_port}/{docname}'
+        client = LocalClient(name='hx-download', env=env)
+        if not client.exists():
+            pytest.skip(f'example client not built: {client.name}')
+        r = client.run(args=[
+             '-n', f'{count}', '-m', f'{count}',
+             '-P', f'{pause_offset}', '-V', proto, url
+        ])
+        r.check_exit_code(0)

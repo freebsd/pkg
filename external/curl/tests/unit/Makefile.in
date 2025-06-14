@@ -114,10 +114,12 @@ PRE_UNINSTALL = :
 POST_UNINSTALL = :
 build_triplet = @build@
 host_triplet = @host@
+@DEBUGBUILD_TRUE@am__append_1 = -DDEBUGBUILD
+@CURLDEBUG_TRUE@am__append_2 = -DCURLDEBUG
 @BUILD_UNITTESTS_TRUE@@USE_TEST_BUNDLES_FALSE@noinst_PROGRAMS =  \
 @BUILD_UNITTESTS_TRUE@@USE_TEST_BUNDLES_FALSE@	$(am__EXEEXT_1)
 @BUILD_UNITTESTS_TRUE@@USE_TEST_BUNDLES_TRUE@noinst_PROGRAMS =  \
-@BUILD_UNITTESTS_TRUE@@USE_TEST_BUNDLES_TRUE@	units$(EXEEXT)
+@BUILD_UNITTESTS_TRUE@@USE_TEST_BUNDLES_TRUE@	$(am__EXEEXT_2)
 subdir = tests/unit
 ACLOCAL_M4 = $(top_srcdir)/aclocal.m4
 am__aclocal_m4_deps = $(top_srcdir)/m4/curl-amissl.m4 \
@@ -158,11 +160,9 @@ CONFIG_CLEAN_VPATH_FILES =
 @BUILD_UNITTESTS_TRUE@@USE_TEST_BUNDLES_FALSE@	unit1304$(EXEEXT) \
 @BUILD_UNITTESTS_TRUE@@USE_TEST_BUNDLES_FALSE@	unit1305$(EXEEXT) \
 @BUILD_UNITTESTS_TRUE@@USE_TEST_BUNDLES_FALSE@	unit1307$(EXEEXT) \
-@BUILD_UNITTESTS_TRUE@@USE_TEST_BUNDLES_FALSE@	unit1308$(EXEEXT) \
 @BUILD_UNITTESTS_TRUE@@USE_TEST_BUNDLES_FALSE@	unit1309$(EXEEXT) \
 @BUILD_UNITTESTS_TRUE@@USE_TEST_BUNDLES_FALSE@	unit1323$(EXEEXT) \
 @BUILD_UNITTESTS_TRUE@@USE_TEST_BUNDLES_FALSE@	unit1330$(EXEEXT) \
-@BUILD_UNITTESTS_TRUE@@USE_TEST_BUNDLES_FALSE@	unit1394$(EXEEXT) \
 @BUILD_UNITTESTS_TRUE@@USE_TEST_BUNDLES_FALSE@	unit1395$(EXEEXT) \
 @BUILD_UNITTESTS_TRUE@@USE_TEST_BUNDLES_FALSE@	unit1396$(EXEEXT) \
 @BUILD_UNITTESTS_TRUE@@USE_TEST_BUNDLES_FALSE@	unit1397$(EXEEXT) \
@@ -172,7 +172,6 @@ CONFIG_CLEAN_VPATH_FILES =
 @BUILD_UNITTESTS_TRUE@@USE_TEST_BUNDLES_FALSE@	unit1601$(EXEEXT) \
 @BUILD_UNITTESTS_TRUE@@USE_TEST_BUNDLES_FALSE@	unit1602$(EXEEXT) \
 @BUILD_UNITTESTS_TRUE@@USE_TEST_BUNDLES_FALSE@	unit1603$(EXEEXT) \
-@BUILD_UNITTESTS_TRUE@@USE_TEST_BUNDLES_FALSE@	unit1604$(EXEEXT) \
 @BUILD_UNITTESTS_TRUE@@USE_TEST_BUNDLES_FALSE@	unit1605$(EXEEXT) \
 @BUILD_UNITTESTS_TRUE@@USE_TEST_BUNDLES_FALSE@	unit1606$(EXEEXT) \
 @BUILD_UNITTESTS_TRUE@@USE_TEST_BUNDLES_FALSE@	unit1607$(EXEEXT) \
@@ -185,7 +184,6 @@ CONFIG_CLEAN_VPATH_FILES =
 @BUILD_UNITTESTS_TRUE@@USE_TEST_BUNDLES_FALSE@	unit1615$(EXEEXT) \
 @BUILD_UNITTESTS_TRUE@@USE_TEST_BUNDLES_FALSE@	unit1616$(EXEEXT) \
 @BUILD_UNITTESTS_TRUE@@USE_TEST_BUNDLES_FALSE@	unit1620$(EXEEXT) \
-@BUILD_UNITTESTS_TRUE@@USE_TEST_BUNDLES_FALSE@	unit1621$(EXEEXT) \
 @BUILD_UNITTESTS_TRUE@@USE_TEST_BUNDLES_FALSE@	unit1650$(EXEEXT) \
 @BUILD_UNITTESTS_TRUE@@USE_TEST_BUNDLES_FALSE@	unit1651$(EXEEXT) \
 @BUILD_UNITTESTS_TRUE@@USE_TEST_BUNDLES_FALSE@	unit1652$(EXEEXT) \
@@ -194,17 +192,24 @@ CONFIG_CLEAN_VPATH_FILES =
 @BUILD_UNITTESTS_TRUE@@USE_TEST_BUNDLES_FALSE@	unit1655$(EXEEXT) \
 @BUILD_UNITTESTS_TRUE@@USE_TEST_BUNDLES_FALSE@	unit1656$(EXEEXT) \
 @BUILD_UNITTESTS_TRUE@@USE_TEST_BUNDLES_FALSE@	unit1657$(EXEEXT) \
+@BUILD_UNITTESTS_TRUE@@USE_TEST_BUNDLES_FALSE@	unit1658$(EXEEXT) \
 @BUILD_UNITTESTS_TRUE@@USE_TEST_BUNDLES_FALSE@	unit1660$(EXEEXT) \
 @BUILD_UNITTESTS_TRUE@@USE_TEST_BUNDLES_FALSE@	unit1661$(EXEEXT) \
 @BUILD_UNITTESTS_TRUE@@USE_TEST_BUNDLES_FALSE@	unit1663$(EXEEXT) \
 @BUILD_UNITTESTS_TRUE@@USE_TEST_BUNDLES_FALSE@	unit1664$(EXEEXT) \
+@BUILD_UNITTESTS_TRUE@@USE_TEST_BUNDLES_FALSE@	unit1979$(EXEEXT) \
+@BUILD_UNITTESTS_TRUE@@USE_TEST_BUNDLES_FALSE@	unit1980$(EXEEXT) \
 @BUILD_UNITTESTS_TRUE@@USE_TEST_BUNDLES_FALSE@	unit2600$(EXEEXT) \
 @BUILD_UNITTESTS_TRUE@@USE_TEST_BUNDLES_FALSE@	unit2601$(EXEEXT) \
 @BUILD_UNITTESTS_TRUE@@USE_TEST_BUNDLES_FALSE@	unit2602$(EXEEXT) \
 @BUILD_UNITTESTS_TRUE@@USE_TEST_BUNDLES_FALSE@	unit2603$(EXEEXT) \
 @BUILD_UNITTESTS_TRUE@@USE_TEST_BUNDLES_FALSE@	unit2604$(EXEEXT) \
 @BUILD_UNITTESTS_TRUE@@USE_TEST_BUNDLES_FALSE@	unit3200$(EXEEXT) \
-@BUILD_UNITTESTS_TRUE@@USE_TEST_BUNDLES_FALSE@	unit3205$(EXEEXT)
+@BUILD_UNITTESTS_TRUE@@USE_TEST_BUNDLES_FALSE@	unit3205$(EXEEXT) \
+@BUILD_UNITTESTS_TRUE@@USE_TEST_BUNDLES_FALSE@	unit3211$(EXEEXT) \
+@BUILD_UNITTESTS_TRUE@@USE_TEST_BUNDLES_FALSE@	unit3212$(EXEEXT) \
+@BUILD_UNITTESTS_TRUE@@USE_TEST_BUNDLES_FALSE@	unit3213$(EXEEXT)
+am__EXEEXT_2 = units$(EXEEXT)
 PROGRAMS = $(noinst_PROGRAMS)
 am__unit1300_SOURCES_DIST = unit1300.c curlcheck.h ../libtest/first.c \
 	../libtest/first.h
@@ -215,8 +220,7 @@ am__dirstamp = $(am__leading_dot)dirstamp
 @BUILD_UNITTESTS_TRUE@@USE_TEST_BUNDLES_FALSE@	$(am__objects_2)
 unit1300_OBJECTS = $(am_unit1300_OBJECTS)
 unit1300_LDADD = $(LDADD)
-unit1300_DEPENDENCIES = $(top_builddir)/src/libcurltool.la \
-	$(top_builddir)/lib/libcurlu.la
+unit1300_DEPENDENCIES = $(top_builddir)/lib/libcurlu.la
 AM_V_lt = $(am__v_lt_@AM_V@)
 am__v_lt_ = $(am__v_lt_@AM_DEFAULT_V@)
 am__v_lt_0 = --silent
@@ -227,421 +231,382 @@ am__unit1302_SOURCES_DIST = unit1302.c curlcheck.h ../libtest/first.c \
 @BUILD_UNITTESTS_TRUE@@USE_TEST_BUNDLES_FALSE@	$(am__objects_2)
 unit1302_OBJECTS = $(am_unit1302_OBJECTS)
 unit1302_LDADD = $(LDADD)
-unit1302_DEPENDENCIES = $(top_builddir)/src/libcurltool.la \
-	$(top_builddir)/lib/libcurlu.la
+unit1302_DEPENDENCIES = $(top_builddir)/lib/libcurlu.la
 am__unit1303_SOURCES_DIST = unit1303.c curlcheck.h ../libtest/first.c \
 	../libtest/first.h
 @BUILD_UNITTESTS_TRUE@@USE_TEST_BUNDLES_FALSE@am_unit1303_OBJECTS = unit1303.$(OBJEXT) \
 @BUILD_UNITTESTS_TRUE@@USE_TEST_BUNDLES_FALSE@	$(am__objects_2)
 unit1303_OBJECTS = $(am_unit1303_OBJECTS)
 unit1303_LDADD = $(LDADD)
-unit1303_DEPENDENCIES = $(top_builddir)/src/libcurltool.la \
-	$(top_builddir)/lib/libcurlu.la
+unit1303_DEPENDENCIES = $(top_builddir)/lib/libcurlu.la
 am__unit1304_SOURCES_DIST = unit1304.c curlcheck.h ../libtest/first.c \
 	../libtest/first.h
 @BUILD_UNITTESTS_TRUE@@USE_TEST_BUNDLES_FALSE@am_unit1304_OBJECTS = unit1304.$(OBJEXT) \
 @BUILD_UNITTESTS_TRUE@@USE_TEST_BUNDLES_FALSE@	$(am__objects_2)
 unit1304_OBJECTS = $(am_unit1304_OBJECTS)
 unit1304_LDADD = $(LDADD)
-unit1304_DEPENDENCIES = $(top_builddir)/src/libcurltool.la \
-	$(top_builddir)/lib/libcurlu.la
+unit1304_DEPENDENCIES = $(top_builddir)/lib/libcurlu.la
 am__unit1305_SOURCES_DIST = unit1305.c curlcheck.h ../libtest/first.c \
 	../libtest/first.h
 @BUILD_UNITTESTS_TRUE@@USE_TEST_BUNDLES_FALSE@am_unit1305_OBJECTS = unit1305.$(OBJEXT) \
 @BUILD_UNITTESTS_TRUE@@USE_TEST_BUNDLES_FALSE@	$(am__objects_2)
 unit1305_OBJECTS = $(am_unit1305_OBJECTS)
 unit1305_LDADD = $(LDADD)
-unit1305_DEPENDENCIES = $(top_builddir)/src/libcurltool.la \
-	$(top_builddir)/lib/libcurlu.la
+unit1305_DEPENDENCIES = $(top_builddir)/lib/libcurlu.la
 am__unit1307_SOURCES_DIST = unit1307.c curlcheck.h ../libtest/first.c \
 	../libtest/first.h
 @BUILD_UNITTESTS_TRUE@@USE_TEST_BUNDLES_FALSE@am_unit1307_OBJECTS = unit1307.$(OBJEXT) \
 @BUILD_UNITTESTS_TRUE@@USE_TEST_BUNDLES_FALSE@	$(am__objects_2)
 unit1307_OBJECTS = $(am_unit1307_OBJECTS)
 unit1307_LDADD = $(LDADD)
-unit1307_DEPENDENCIES = $(top_builddir)/src/libcurltool.la \
-	$(top_builddir)/lib/libcurlu.la
-am__unit1308_SOURCES_DIST = unit1308.c curlcheck.h ../libtest/first.c \
-	../libtest/first.h
-@BUILD_UNITTESTS_TRUE@@USE_TEST_BUNDLES_FALSE@am_unit1308_OBJECTS = unit1308.$(OBJEXT) \
-@BUILD_UNITTESTS_TRUE@@USE_TEST_BUNDLES_FALSE@	$(am__objects_2)
-unit1308_OBJECTS = $(am_unit1308_OBJECTS)
-unit1308_LDADD = $(LDADD)
-unit1308_DEPENDENCIES = $(top_builddir)/src/libcurltool.la \
-	$(top_builddir)/lib/libcurlu.la
+unit1307_DEPENDENCIES = $(top_builddir)/lib/libcurlu.la
 am__unit1309_SOURCES_DIST = unit1309.c curlcheck.h ../libtest/first.c \
 	../libtest/first.h
 @BUILD_UNITTESTS_TRUE@@USE_TEST_BUNDLES_FALSE@am_unit1309_OBJECTS = unit1309.$(OBJEXT) \
 @BUILD_UNITTESTS_TRUE@@USE_TEST_BUNDLES_FALSE@	$(am__objects_2)
 unit1309_OBJECTS = $(am_unit1309_OBJECTS)
 unit1309_LDADD = $(LDADD)
-unit1309_DEPENDENCIES = $(top_builddir)/src/libcurltool.la \
-	$(top_builddir)/lib/libcurlu.la
+unit1309_DEPENDENCIES = $(top_builddir)/lib/libcurlu.la
 am__unit1323_SOURCES_DIST = unit1323.c curlcheck.h ../libtest/first.c \
 	../libtest/first.h
 @BUILD_UNITTESTS_TRUE@@USE_TEST_BUNDLES_FALSE@am_unit1323_OBJECTS = unit1323.$(OBJEXT) \
 @BUILD_UNITTESTS_TRUE@@USE_TEST_BUNDLES_FALSE@	$(am__objects_2)
 unit1323_OBJECTS = $(am_unit1323_OBJECTS)
 unit1323_LDADD = $(LDADD)
-unit1323_DEPENDENCIES = $(top_builddir)/src/libcurltool.la \
-	$(top_builddir)/lib/libcurlu.la
+unit1323_DEPENDENCIES = $(top_builddir)/lib/libcurlu.la
 am__unit1330_SOURCES_DIST = unit1330.c curlcheck.h ../libtest/first.c \
 	../libtest/first.h
 @BUILD_UNITTESTS_TRUE@@USE_TEST_BUNDLES_FALSE@am_unit1330_OBJECTS = unit1330.$(OBJEXT) \
 @BUILD_UNITTESTS_TRUE@@USE_TEST_BUNDLES_FALSE@	$(am__objects_2)
 unit1330_OBJECTS = $(am_unit1330_OBJECTS)
 unit1330_LDADD = $(LDADD)
-unit1330_DEPENDENCIES = $(top_builddir)/src/libcurltool.la \
-	$(top_builddir)/lib/libcurlu.la
-am__unit1394_SOURCES_DIST = unit1394.c curlcheck.h ../libtest/first.c \
-	../libtest/first.h
-@BUILD_UNITTESTS_TRUE@@USE_TEST_BUNDLES_FALSE@am_unit1394_OBJECTS = unit1394.$(OBJEXT) \
-@BUILD_UNITTESTS_TRUE@@USE_TEST_BUNDLES_FALSE@	$(am__objects_2)
-unit1394_OBJECTS = $(am_unit1394_OBJECTS)
-unit1394_LDADD = $(LDADD)
-unit1394_DEPENDENCIES = $(top_builddir)/src/libcurltool.la \
-	$(top_builddir)/lib/libcurlu.la
+unit1330_DEPENDENCIES = $(top_builddir)/lib/libcurlu.la
 am__unit1395_SOURCES_DIST = unit1395.c curlcheck.h ../libtest/first.c \
 	../libtest/first.h
 @BUILD_UNITTESTS_TRUE@@USE_TEST_BUNDLES_FALSE@am_unit1395_OBJECTS = unit1395.$(OBJEXT) \
 @BUILD_UNITTESTS_TRUE@@USE_TEST_BUNDLES_FALSE@	$(am__objects_2)
 unit1395_OBJECTS = $(am_unit1395_OBJECTS)
 unit1395_LDADD = $(LDADD)
-unit1395_DEPENDENCIES = $(top_builddir)/src/libcurltool.la \
-	$(top_builddir)/lib/libcurlu.la
+unit1395_DEPENDENCIES = $(top_builddir)/lib/libcurlu.la
 am__unit1396_SOURCES_DIST = unit1396.c curlcheck.h ../libtest/first.c \
 	../libtest/first.h
 @BUILD_UNITTESTS_TRUE@@USE_TEST_BUNDLES_FALSE@am_unit1396_OBJECTS = unit1396.$(OBJEXT) \
 @BUILD_UNITTESTS_TRUE@@USE_TEST_BUNDLES_FALSE@	$(am__objects_2)
 unit1396_OBJECTS = $(am_unit1396_OBJECTS)
 unit1396_LDADD = $(LDADD)
-unit1396_DEPENDENCIES = $(top_builddir)/src/libcurltool.la \
-	$(top_builddir)/lib/libcurlu.la
+unit1396_DEPENDENCIES = $(top_builddir)/lib/libcurlu.la
 am__unit1397_SOURCES_DIST = unit1397.c curlcheck.h ../libtest/first.c \
 	../libtest/first.h
 @BUILD_UNITTESTS_TRUE@@USE_TEST_BUNDLES_FALSE@am_unit1397_OBJECTS = unit1397.$(OBJEXT) \
 @BUILD_UNITTESTS_TRUE@@USE_TEST_BUNDLES_FALSE@	$(am__objects_2)
 unit1397_OBJECTS = $(am_unit1397_OBJECTS)
 unit1397_LDADD = $(LDADD)
-unit1397_DEPENDENCIES = $(top_builddir)/src/libcurltool.la \
-	$(top_builddir)/lib/libcurlu.la
+unit1397_DEPENDENCIES = $(top_builddir)/lib/libcurlu.la
 am__unit1398_SOURCES_DIST = unit1398.c curlcheck.h ../libtest/first.c \
 	../libtest/first.h
 @BUILD_UNITTESTS_TRUE@@USE_TEST_BUNDLES_FALSE@am_unit1398_OBJECTS = unit1398.$(OBJEXT) \
 @BUILD_UNITTESTS_TRUE@@USE_TEST_BUNDLES_FALSE@	$(am__objects_2)
 unit1398_OBJECTS = $(am_unit1398_OBJECTS)
 unit1398_LDADD = $(LDADD)
-unit1398_DEPENDENCIES = $(top_builddir)/src/libcurltool.la \
-	$(top_builddir)/lib/libcurlu.la
+unit1398_DEPENDENCIES = $(top_builddir)/lib/libcurlu.la
 am__unit1399_SOURCES_DIST = unit1399.c curlcheck.h ../libtest/first.c \
 	../libtest/first.h
 @BUILD_UNITTESTS_TRUE@@USE_TEST_BUNDLES_FALSE@am_unit1399_OBJECTS = unit1399.$(OBJEXT) \
 @BUILD_UNITTESTS_TRUE@@USE_TEST_BUNDLES_FALSE@	$(am__objects_2)
 unit1399_OBJECTS = $(am_unit1399_OBJECTS)
 unit1399_LDADD = $(LDADD)
-unit1399_DEPENDENCIES = $(top_builddir)/src/libcurltool.la \
-	$(top_builddir)/lib/libcurlu.la
+unit1399_DEPENDENCIES = $(top_builddir)/lib/libcurlu.la
 am__unit1600_SOURCES_DIST = unit1600.c curlcheck.h ../libtest/first.c \
 	../libtest/first.h
 @BUILD_UNITTESTS_TRUE@@USE_TEST_BUNDLES_FALSE@am_unit1600_OBJECTS = unit1600.$(OBJEXT) \
 @BUILD_UNITTESTS_TRUE@@USE_TEST_BUNDLES_FALSE@	$(am__objects_2)
 unit1600_OBJECTS = $(am_unit1600_OBJECTS)
 unit1600_LDADD = $(LDADD)
-unit1600_DEPENDENCIES = $(top_builddir)/src/libcurltool.la \
-	$(top_builddir)/lib/libcurlu.la
+unit1600_DEPENDENCIES = $(top_builddir)/lib/libcurlu.la
 am__unit1601_SOURCES_DIST = unit1601.c curlcheck.h ../libtest/first.c \
 	../libtest/first.h
 @BUILD_UNITTESTS_TRUE@@USE_TEST_BUNDLES_FALSE@am_unit1601_OBJECTS = unit1601.$(OBJEXT) \
 @BUILD_UNITTESTS_TRUE@@USE_TEST_BUNDLES_FALSE@	$(am__objects_2)
 unit1601_OBJECTS = $(am_unit1601_OBJECTS)
 unit1601_LDADD = $(LDADD)
-unit1601_DEPENDENCIES = $(top_builddir)/src/libcurltool.la \
-	$(top_builddir)/lib/libcurlu.la
+unit1601_DEPENDENCIES = $(top_builddir)/lib/libcurlu.la
 am__unit1602_SOURCES_DIST = unit1602.c curlcheck.h ../libtest/first.c \
 	../libtest/first.h
 @BUILD_UNITTESTS_TRUE@@USE_TEST_BUNDLES_FALSE@am_unit1602_OBJECTS = unit1602.$(OBJEXT) \
 @BUILD_UNITTESTS_TRUE@@USE_TEST_BUNDLES_FALSE@	$(am__objects_2)
 unit1602_OBJECTS = $(am_unit1602_OBJECTS)
 unit1602_LDADD = $(LDADD)
-unit1602_DEPENDENCIES = $(top_builddir)/src/libcurltool.la \
-	$(top_builddir)/lib/libcurlu.la
+unit1602_DEPENDENCIES = $(top_builddir)/lib/libcurlu.la
 am__unit1603_SOURCES_DIST = unit1603.c curlcheck.h ../libtest/first.c \
 	../libtest/first.h
 @BUILD_UNITTESTS_TRUE@@USE_TEST_BUNDLES_FALSE@am_unit1603_OBJECTS = unit1603.$(OBJEXT) \
 @BUILD_UNITTESTS_TRUE@@USE_TEST_BUNDLES_FALSE@	$(am__objects_2)
 unit1603_OBJECTS = $(am_unit1603_OBJECTS)
 unit1603_LDADD = $(LDADD)
-unit1603_DEPENDENCIES = $(top_builddir)/src/libcurltool.la \
-	$(top_builddir)/lib/libcurlu.la
-am__unit1604_SOURCES_DIST = unit1604.c curlcheck.h ../libtest/first.c \
-	../libtest/first.h
-@BUILD_UNITTESTS_TRUE@@USE_TEST_BUNDLES_FALSE@am_unit1604_OBJECTS = unit1604.$(OBJEXT) \
-@BUILD_UNITTESTS_TRUE@@USE_TEST_BUNDLES_FALSE@	$(am__objects_2)
-unit1604_OBJECTS = $(am_unit1604_OBJECTS)
-unit1604_LDADD = $(LDADD)
-unit1604_DEPENDENCIES = $(top_builddir)/src/libcurltool.la \
-	$(top_builddir)/lib/libcurlu.la
+unit1603_DEPENDENCIES = $(top_builddir)/lib/libcurlu.la
 am__unit1605_SOURCES_DIST = unit1605.c curlcheck.h ../libtest/first.c \
 	../libtest/first.h
 @BUILD_UNITTESTS_TRUE@@USE_TEST_BUNDLES_FALSE@am_unit1605_OBJECTS = unit1605.$(OBJEXT) \
 @BUILD_UNITTESTS_TRUE@@USE_TEST_BUNDLES_FALSE@	$(am__objects_2)
 unit1605_OBJECTS = $(am_unit1605_OBJECTS)
 unit1605_LDADD = $(LDADD)
-unit1605_DEPENDENCIES = $(top_builddir)/src/libcurltool.la \
-	$(top_builddir)/lib/libcurlu.la
+unit1605_DEPENDENCIES = $(top_builddir)/lib/libcurlu.la
 am__unit1606_SOURCES_DIST = unit1606.c curlcheck.h ../libtest/first.c \
 	../libtest/first.h
 @BUILD_UNITTESTS_TRUE@@USE_TEST_BUNDLES_FALSE@am_unit1606_OBJECTS = unit1606.$(OBJEXT) \
 @BUILD_UNITTESTS_TRUE@@USE_TEST_BUNDLES_FALSE@	$(am__objects_2)
 unit1606_OBJECTS = $(am_unit1606_OBJECTS)
 unit1606_LDADD = $(LDADD)
-unit1606_DEPENDENCIES = $(top_builddir)/src/libcurltool.la \
-	$(top_builddir)/lib/libcurlu.la
+unit1606_DEPENDENCIES = $(top_builddir)/lib/libcurlu.la
 am__unit1607_SOURCES_DIST = unit1607.c curlcheck.h ../libtest/first.c \
 	../libtest/first.h
 @BUILD_UNITTESTS_TRUE@@USE_TEST_BUNDLES_FALSE@am_unit1607_OBJECTS = unit1607.$(OBJEXT) \
 @BUILD_UNITTESTS_TRUE@@USE_TEST_BUNDLES_FALSE@	$(am__objects_2)
 unit1607_OBJECTS = $(am_unit1607_OBJECTS)
 unit1607_LDADD = $(LDADD)
-unit1607_DEPENDENCIES = $(top_builddir)/src/libcurltool.la \
-	$(top_builddir)/lib/libcurlu.la
+unit1607_DEPENDENCIES = $(top_builddir)/lib/libcurlu.la
 am__unit1608_SOURCES_DIST = unit1608.c curlcheck.h ../libtest/first.c \
 	../libtest/first.h
 @BUILD_UNITTESTS_TRUE@@USE_TEST_BUNDLES_FALSE@am_unit1608_OBJECTS = unit1608.$(OBJEXT) \
 @BUILD_UNITTESTS_TRUE@@USE_TEST_BUNDLES_FALSE@	$(am__objects_2)
 unit1608_OBJECTS = $(am_unit1608_OBJECTS)
 unit1608_LDADD = $(LDADD)
-unit1608_DEPENDENCIES = $(top_builddir)/src/libcurltool.la \
-	$(top_builddir)/lib/libcurlu.la
+unit1608_DEPENDENCIES = $(top_builddir)/lib/libcurlu.la
 am__unit1609_SOURCES_DIST = unit1609.c curlcheck.h ../libtest/first.c \
 	../libtest/first.h
 @BUILD_UNITTESTS_TRUE@@USE_TEST_BUNDLES_FALSE@am_unit1609_OBJECTS = unit1609.$(OBJEXT) \
 @BUILD_UNITTESTS_TRUE@@USE_TEST_BUNDLES_FALSE@	$(am__objects_2)
 unit1609_OBJECTS = $(am_unit1609_OBJECTS)
 unit1609_LDADD = $(LDADD)
-unit1609_DEPENDENCIES = $(top_builddir)/src/libcurltool.la \
-	$(top_builddir)/lib/libcurlu.la
+unit1609_DEPENDENCIES = $(top_builddir)/lib/libcurlu.la
 am__unit1610_SOURCES_DIST = unit1610.c curlcheck.h ../libtest/first.c \
 	../libtest/first.h
 @BUILD_UNITTESTS_TRUE@@USE_TEST_BUNDLES_FALSE@am_unit1610_OBJECTS = unit1610.$(OBJEXT) \
 @BUILD_UNITTESTS_TRUE@@USE_TEST_BUNDLES_FALSE@	$(am__objects_2)
 unit1610_OBJECTS = $(am_unit1610_OBJECTS)
 unit1610_LDADD = $(LDADD)
-unit1610_DEPENDENCIES = $(top_builddir)/src/libcurltool.la \
-	$(top_builddir)/lib/libcurlu.la
+unit1610_DEPENDENCIES = $(top_builddir)/lib/libcurlu.la
 am__unit1611_SOURCES_DIST = unit1611.c curlcheck.h ../libtest/first.c \
 	../libtest/first.h
 @BUILD_UNITTESTS_TRUE@@USE_TEST_BUNDLES_FALSE@am_unit1611_OBJECTS = unit1611.$(OBJEXT) \
 @BUILD_UNITTESTS_TRUE@@USE_TEST_BUNDLES_FALSE@	$(am__objects_2)
 unit1611_OBJECTS = $(am_unit1611_OBJECTS)
 unit1611_LDADD = $(LDADD)
-unit1611_DEPENDENCIES = $(top_builddir)/src/libcurltool.la \
-	$(top_builddir)/lib/libcurlu.la
+unit1611_DEPENDENCIES = $(top_builddir)/lib/libcurlu.la
 am__unit1612_SOURCES_DIST = unit1612.c curlcheck.h ../libtest/first.c \
 	../libtest/first.h
 @BUILD_UNITTESTS_TRUE@@USE_TEST_BUNDLES_FALSE@am_unit1612_OBJECTS = unit1612.$(OBJEXT) \
 @BUILD_UNITTESTS_TRUE@@USE_TEST_BUNDLES_FALSE@	$(am__objects_2)
 unit1612_OBJECTS = $(am_unit1612_OBJECTS)
 unit1612_LDADD = $(LDADD)
-unit1612_DEPENDENCIES = $(top_builddir)/src/libcurltool.la \
-	$(top_builddir)/lib/libcurlu.la
+unit1612_DEPENDENCIES = $(top_builddir)/lib/libcurlu.la
 am__unit1614_SOURCES_DIST = unit1614.c curlcheck.h ../libtest/first.c \
 	../libtest/first.h
 @BUILD_UNITTESTS_TRUE@@USE_TEST_BUNDLES_FALSE@am_unit1614_OBJECTS = unit1614.$(OBJEXT) \
 @BUILD_UNITTESTS_TRUE@@USE_TEST_BUNDLES_FALSE@	$(am__objects_2)
 unit1614_OBJECTS = $(am_unit1614_OBJECTS)
 unit1614_LDADD = $(LDADD)
-unit1614_DEPENDENCIES = $(top_builddir)/src/libcurltool.la \
-	$(top_builddir)/lib/libcurlu.la
+unit1614_DEPENDENCIES = $(top_builddir)/lib/libcurlu.la
 am__unit1615_SOURCES_DIST = unit1615.c curlcheck.h ../libtest/first.c \
 	../libtest/first.h
 @BUILD_UNITTESTS_TRUE@@USE_TEST_BUNDLES_FALSE@am_unit1615_OBJECTS = unit1615.$(OBJEXT) \
 @BUILD_UNITTESTS_TRUE@@USE_TEST_BUNDLES_FALSE@	$(am__objects_2)
 unit1615_OBJECTS = $(am_unit1615_OBJECTS)
 unit1615_LDADD = $(LDADD)
-unit1615_DEPENDENCIES = $(top_builddir)/src/libcurltool.la \
-	$(top_builddir)/lib/libcurlu.la
+unit1615_DEPENDENCIES = $(top_builddir)/lib/libcurlu.la
 am__unit1616_SOURCES_DIST = unit1616.c curlcheck.h ../libtest/first.c \
 	../libtest/first.h
 @BUILD_UNITTESTS_TRUE@@USE_TEST_BUNDLES_FALSE@am_unit1616_OBJECTS = unit1616.$(OBJEXT) \
 @BUILD_UNITTESTS_TRUE@@USE_TEST_BUNDLES_FALSE@	$(am__objects_2)
 unit1616_OBJECTS = $(am_unit1616_OBJECTS)
 unit1616_LDADD = $(LDADD)
-unit1616_DEPENDENCIES = $(top_builddir)/src/libcurltool.la \
-	$(top_builddir)/lib/libcurlu.la
+unit1616_DEPENDENCIES = $(top_builddir)/lib/libcurlu.la
 am__unit1620_SOURCES_DIST = unit1620.c curlcheck.h ../libtest/first.c \
 	../libtest/first.h
 @BUILD_UNITTESTS_TRUE@@USE_TEST_BUNDLES_FALSE@am_unit1620_OBJECTS = unit1620.$(OBJEXT) \
 @BUILD_UNITTESTS_TRUE@@USE_TEST_BUNDLES_FALSE@	$(am__objects_2)
 unit1620_OBJECTS = $(am_unit1620_OBJECTS)
 unit1620_LDADD = $(LDADD)
-unit1620_DEPENDENCIES = $(top_builddir)/src/libcurltool.la \
-	$(top_builddir)/lib/libcurlu.la
-am__unit1621_SOURCES_DIST = unit1621.c curlcheck.h ../libtest/first.c \
-	../libtest/first.h
-@BUILD_UNITTESTS_TRUE@@USE_TEST_BUNDLES_FALSE@am_unit1621_OBJECTS = unit1621.$(OBJEXT) \
-@BUILD_UNITTESTS_TRUE@@USE_TEST_BUNDLES_FALSE@	$(am__objects_2)
-unit1621_OBJECTS = $(am_unit1621_OBJECTS)
-unit1621_LDADD = $(LDADD)
-unit1621_DEPENDENCIES = $(top_builddir)/src/libcurltool.la \
-	$(top_builddir)/lib/libcurlu.la
+unit1620_DEPENDENCIES = $(top_builddir)/lib/libcurlu.la
 am__unit1650_SOURCES_DIST = unit1650.c curlcheck.h ../libtest/first.c \
 	../libtest/first.h
 @BUILD_UNITTESTS_TRUE@@USE_TEST_BUNDLES_FALSE@am_unit1650_OBJECTS = unit1650.$(OBJEXT) \
 @BUILD_UNITTESTS_TRUE@@USE_TEST_BUNDLES_FALSE@	$(am__objects_2)
 unit1650_OBJECTS = $(am_unit1650_OBJECTS)
 unit1650_LDADD = $(LDADD)
-unit1650_DEPENDENCIES = $(top_builddir)/src/libcurltool.la \
-	$(top_builddir)/lib/libcurlu.la
+unit1650_DEPENDENCIES = $(top_builddir)/lib/libcurlu.la
 am__unit1651_SOURCES_DIST = unit1651.c curlcheck.h ../libtest/first.c \
 	../libtest/first.h
 @BUILD_UNITTESTS_TRUE@@USE_TEST_BUNDLES_FALSE@am_unit1651_OBJECTS = unit1651.$(OBJEXT) \
 @BUILD_UNITTESTS_TRUE@@USE_TEST_BUNDLES_FALSE@	$(am__objects_2)
 unit1651_OBJECTS = $(am_unit1651_OBJECTS)
 unit1651_LDADD = $(LDADD)
-unit1651_DEPENDENCIES = $(top_builddir)/src/libcurltool.la \
-	$(top_builddir)/lib/libcurlu.la
+unit1651_DEPENDENCIES = $(top_builddir)/lib/libcurlu.la
 am__unit1652_SOURCES_DIST = unit1652.c curlcheck.h ../libtest/first.c \
 	../libtest/first.h
 @BUILD_UNITTESTS_TRUE@@USE_TEST_BUNDLES_FALSE@am_unit1652_OBJECTS = unit1652.$(OBJEXT) \
 @BUILD_UNITTESTS_TRUE@@USE_TEST_BUNDLES_FALSE@	$(am__objects_2)
 unit1652_OBJECTS = $(am_unit1652_OBJECTS)
 unit1652_LDADD = $(LDADD)
-unit1652_DEPENDENCIES = $(top_builddir)/src/libcurltool.la \
-	$(top_builddir)/lib/libcurlu.la
+unit1652_DEPENDENCIES = $(top_builddir)/lib/libcurlu.la
 am__unit1653_SOURCES_DIST = unit1653.c curlcheck.h ../libtest/first.c \
 	../libtest/first.h
 @BUILD_UNITTESTS_TRUE@@USE_TEST_BUNDLES_FALSE@am_unit1653_OBJECTS = unit1653.$(OBJEXT) \
 @BUILD_UNITTESTS_TRUE@@USE_TEST_BUNDLES_FALSE@	$(am__objects_2)
 unit1653_OBJECTS = $(am_unit1653_OBJECTS)
 unit1653_LDADD = $(LDADD)
-unit1653_DEPENDENCIES = $(top_builddir)/src/libcurltool.la \
-	$(top_builddir)/lib/libcurlu.la
+unit1653_DEPENDENCIES = $(top_builddir)/lib/libcurlu.la
 am__unit1654_SOURCES_DIST = unit1654.c curlcheck.h ../libtest/first.c \
 	../libtest/first.h
 @BUILD_UNITTESTS_TRUE@@USE_TEST_BUNDLES_FALSE@am_unit1654_OBJECTS = unit1654.$(OBJEXT) \
 @BUILD_UNITTESTS_TRUE@@USE_TEST_BUNDLES_FALSE@	$(am__objects_2)
 unit1654_OBJECTS = $(am_unit1654_OBJECTS)
 unit1654_LDADD = $(LDADD)
-unit1654_DEPENDENCIES = $(top_builddir)/src/libcurltool.la \
-	$(top_builddir)/lib/libcurlu.la
+unit1654_DEPENDENCIES = $(top_builddir)/lib/libcurlu.la
 am__unit1655_SOURCES_DIST = unit1655.c curlcheck.h ../libtest/first.c \
 	../libtest/first.h
 @BUILD_UNITTESTS_TRUE@@USE_TEST_BUNDLES_FALSE@am_unit1655_OBJECTS = unit1655.$(OBJEXT) \
 @BUILD_UNITTESTS_TRUE@@USE_TEST_BUNDLES_FALSE@	$(am__objects_2)
 unit1655_OBJECTS = $(am_unit1655_OBJECTS)
 unit1655_LDADD = $(LDADD)
-unit1655_DEPENDENCIES = $(top_builddir)/src/libcurltool.la \
-	$(top_builddir)/lib/libcurlu.la
+unit1655_DEPENDENCIES = $(top_builddir)/lib/libcurlu.la
 am__unit1656_SOURCES_DIST = unit1656.c curlcheck.h ../libtest/first.c \
 	../libtest/first.h
 @BUILD_UNITTESTS_TRUE@@USE_TEST_BUNDLES_FALSE@am_unit1656_OBJECTS = unit1656.$(OBJEXT) \
 @BUILD_UNITTESTS_TRUE@@USE_TEST_BUNDLES_FALSE@	$(am__objects_2)
 unit1656_OBJECTS = $(am_unit1656_OBJECTS)
 unit1656_LDADD = $(LDADD)
-unit1656_DEPENDENCIES = $(top_builddir)/src/libcurltool.la \
-	$(top_builddir)/lib/libcurlu.la
+unit1656_DEPENDENCIES = $(top_builddir)/lib/libcurlu.la
 am__unit1657_SOURCES_DIST = unit1657.c curlcheck.h ../libtest/first.c \
 	../libtest/first.h
 @BUILD_UNITTESTS_TRUE@@USE_TEST_BUNDLES_FALSE@am_unit1657_OBJECTS = unit1657.$(OBJEXT) \
 @BUILD_UNITTESTS_TRUE@@USE_TEST_BUNDLES_FALSE@	$(am__objects_2)
 unit1657_OBJECTS = $(am_unit1657_OBJECTS)
 unit1657_LDADD = $(LDADD)
-unit1657_DEPENDENCIES = $(top_builddir)/src/libcurltool.la \
-	$(top_builddir)/lib/libcurlu.la
+unit1657_DEPENDENCIES = $(top_builddir)/lib/libcurlu.la
+am__unit1658_SOURCES_DIST = unit1658.c curlcheck.h ../libtest/first.c \
+	../libtest/first.h
+@BUILD_UNITTESTS_TRUE@@USE_TEST_BUNDLES_FALSE@am_unit1658_OBJECTS = unit1658.$(OBJEXT) \
+@BUILD_UNITTESTS_TRUE@@USE_TEST_BUNDLES_FALSE@	$(am__objects_2)
+unit1658_OBJECTS = $(am_unit1658_OBJECTS)
+unit1658_LDADD = $(LDADD)
+unit1658_DEPENDENCIES = $(top_builddir)/lib/libcurlu.la
 am__unit1660_SOURCES_DIST = unit1660.c curlcheck.h ../libtest/first.c \
 	../libtest/first.h
 @BUILD_UNITTESTS_TRUE@@USE_TEST_BUNDLES_FALSE@am_unit1660_OBJECTS = unit1660.$(OBJEXT) \
 @BUILD_UNITTESTS_TRUE@@USE_TEST_BUNDLES_FALSE@	$(am__objects_2)
 unit1660_OBJECTS = $(am_unit1660_OBJECTS)
 unit1660_LDADD = $(LDADD)
-unit1660_DEPENDENCIES = $(top_builddir)/src/libcurltool.la \
-	$(top_builddir)/lib/libcurlu.la
+unit1660_DEPENDENCIES = $(top_builddir)/lib/libcurlu.la
 am__unit1661_SOURCES_DIST = unit1661.c curlcheck.h ../libtest/first.c \
 	../libtest/first.h
 @BUILD_UNITTESTS_TRUE@@USE_TEST_BUNDLES_FALSE@am_unit1661_OBJECTS = unit1661.$(OBJEXT) \
 @BUILD_UNITTESTS_TRUE@@USE_TEST_BUNDLES_FALSE@	$(am__objects_2)
 unit1661_OBJECTS = $(am_unit1661_OBJECTS)
 unit1661_LDADD = $(LDADD)
-unit1661_DEPENDENCIES = $(top_builddir)/src/libcurltool.la \
-	$(top_builddir)/lib/libcurlu.la
+unit1661_DEPENDENCIES = $(top_builddir)/lib/libcurlu.la
 am__unit1663_SOURCES_DIST = unit1663.c curlcheck.h ../libtest/first.c \
 	../libtest/first.h
 @BUILD_UNITTESTS_TRUE@@USE_TEST_BUNDLES_FALSE@am_unit1663_OBJECTS = unit1663.$(OBJEXT) \
 @BUILD_UNITTESTS_TRUE@@USE_TEST_BUNDLES_FALSE@	$(am__objects_2)
 unit1663_OBJECTS = $(am_unit1663_OBJECTS)
 unit1663_LDADD = $(LDADD)
-unit1663_DEPENDENCIES = $(top_builddir)/src/libcurltool.la \
-	$(top_builddir)/lib/libcurlu.la
+unit1663_DEPENDENCIES = $(top_builddir)/lib/libcurlu.la
 am__unit1664_SOURCES_DIST = unit1664.c curlcheck.h ../libtest/first.c \
 	../libtest/first.h
 @BUILD_UNITTESTS_TRUE@@USE_TEST_BUNDLES_FALSE@am_unit1664_OBJECTS = unit1664.$(OBJEXT) \
 @BUILD_UNITTESTS_TRUE@@USE_TEST_BUNDLES_FALSE@	$(am__objects_2)
 unit1664_OBJECTS = $(am_unit1664_OBJECTS)
 unit1664_LDADD = $(LDADD)
-unit1664_DEPENDENCIES = $(top_builddir)/src/libcurltool.la \
-	$(top_builddir)/lib/libcurlu.la
+unit1664_DEPENDENCIES = $(top_builddir)/lib/libcurlu.la
+am__unit1979_SOURCES_DIST = unit1979.c curlcheck.h ../libtest/first.c \
+	../libtest/first.h
+@BUILD_UNITTESTS_TRUE@@USE_TEST_BUNDLES_FALSE@am_unit1979_OBJECTS = unit1979.$(OBJEXT) \
+@BUILD_UNITTESTS_TRUE@@USE_TEST_BUNDLES_FALSE@	$(am__objects_2)
+unit1979_OBJECTS = $(am_unit1979_OBJECTS)
+unit1979_LDADD = $(LDADD)
+unit1979_DEPENDENCIES = $(top_builddir)/lib/libcurlu.la
+am__unit1980_SOURCES_DIST = unit1980.c curlcheck.h ../libtest/first.c \
+	../libtest/first.h
+@BUILD_UNITTESTS_TRUE@@USE_TEST_BUNDLES_FALSE@am_unit1980_OBJECTS = unit1980.$(OBJEXT) \
+@BUILD_UNITTESTS_TRUE@@USE_TEST_BUNDLES_FALSE@	$(am__objects_2)
+unit1980_OBJECTS = $(am_unit1980_OBJECTS)
+unit1980_LDADD = $(LDADD)
+unit1980_DEPENDENCIES = $(top_builddir)/lib/libcurlu.la
 am__unit2600_SOURCES_DIST = unit2600.c curlcheck.h ../libtest/first.c \
 	../libtest/first.h
 @BUILD_UNITTESTS_TRUE@@USE_TEST_BUNDLES_FALSE@am_unit2600_OBJECTS = unit2600.$(OBJEXT) \
 @BUILD_UNITTESTS_TRUE@@USE_TEST_BUNDLES_FALSE@	$(am__objects_2)
 unit2600_OBJECTS = $(am_unit2600_OBJECTS)
 unit2600_LDADD = $(LDADD)
-unit2600_DEPENDENCIES = $(top_builddir)/src/libcurltool.la \
-	$(top_builddir)/lib/libcurlu.la
+unit2600_DEPENDENCIES = $(top_builddir)/lib/libcurlu.la
 am__unit2601_SOURCES_DIST = unit2601.c curlcheck.h ../libtest/first.c \
 	../libtest/first.h
 @BUILD_UNITTESTS_TRUE@@USE_TEST_BUNDLES_FALSE@am_unit2601_OBJECTS = unit2601.$(OBJEXT) \
 @BUILD_UNITTESTS_TRUE@@USE_TEST_BUNDLES_FALSE@	$(am__objects_2)
 unit2601_OBJECTS = $(am_unit2601_OBJECTS)
 unit2601_LDADD = $(LDADD)
-unit2601_DEPENDENCIES = $(top_builddir)/src/libcurltool.la \
-	$(top_builddir)/lib/libcurlu.la
+unit2601_DEPENDENCIES = $(top_builddir)/lib/libcurlu.la
 am__unit2602_SOURCES_DIST = unit2602.c curlcheck.h ../libtest/first.c \
 	../libtest/first.h
 @BUILD_UNITTESTS_TRUE@@USE_TEST_BUNDLES_FALSE@am_unit2602_OBJECTS = unit2602.$(OBJEXT) \
 @BUILD_UNITTESTS_TRUE@@USE_TEST_BUNDLES_FALSE@	$(am__objects_2)
 unit2602_OBJECTS = $(am_unit2602_OBJECTS)
 unit2602_LDADD = $(LDADD)
-unit2602_DEPENDENCIES = $(top_builddir)/src/libcurltool.la \
-	$(top_builddir)/lib/libcurlu.la
+unit2602_DEPENDENCIES = $(top_builddir)/lib/libcurlu.la
 am__unit2603_SOURCES_DIST = unit2603.c curlcheck.h ../libtest/first.c \
 	../libtest/first.h
 @BUILD_UNITTESTS_TRUE@@USE_TEST_BUNDLES_FALSE@am_unit2603_OBJECTS = unit2603.$(OBJEXT) \
 @BUILD_UNITTESTS_TRUE@@USE_TEST_BUNDLES_FALSE@	$(am__objects_2)
 unit2603_OBJECTS = $(am_unit2603_OBJECTS)
 unit2603_LDADD = $(LDADD)
-unit2603_DEPENDENCIES = $(top_builddir)/src/libcurltool.la \
-	$(top_builddir)/lib/libcurlu.la
+unit2603_DEPENDENCIES = $(top_builddir)/lib/libcurlu.la
 am__unit2604_SOURCES_DIST = unit2604.c curlcheck.h ../libtest/first.c \
 	../libtest/first.h
 @BUILD_UNITTESTS_TRUE@@USE_TEST_BUNDLES_FALSE@am_unit2604_OBJECTS = unit2604.$(OBJEXT) \
 @BUILD_UNITTESTS_TRUE@@USE_TEST_BUNDLES_FALSE@	$(am__objects_2)
 unit2604_OBJECTS = $(am_unit2604_OBJECTS)
 unit2604_LDADD = $(LDADD)
-unit2604_DEPENDENCIES = $(top_builddir)/src/libcurltool.la \
-	$(top_builddir)/lib/libcurlu.la
+unit2604_DEPENDENCIES = $(top_builddir)/lib/libcurlu.la
 am__unit3200_SOURCES_DIST = unit3200.c curlcheck.h ../libtest/first.c \
 	../libtest/first.h
 @BUILD_UNITTESTS_TRUE@@USE_TEST_BUNDLES_FALSE@am_unit3200_OBJECTS = unit3200.$(OBJEXT) \
 @BUILD_UNITTESTS_TRUE@@USE_TEST_BUNDLES_FALSE@	$(am__objects_2)
 unit3200_OBJECTS = $(am_unit3200_OBJECTS)
 unit3200_LDADD = $(LDADD)
-unit3200_DEPENDENCIES = $(top_builddir)/src/libcurltool.la \
-	$(top_builddir)/lib/libcurlu.la
+unit3200_DEPENDENCIES = $(top_builddir)/lib/libcurlu.la
 am__unit3205_SOURCES_DIST = unit3205.c curlcheck.h ../libtest/first.c \
 	../libtest/first.h
 @BUILD_UNITTESTS_TRUE@@USE_TEST_BUNDLES_FALSE@am_unit3205_OBJECTS = unit3205.$(OBJEXT) \
 @BUILD_UNITTESTS_TRUE@@USE_TEST_BUNDLES_FALSE@	$(am__objects_2)
 unit3205_OBJECTS = $(am_unit3205_OBJECTS)
 unit3205_LDADD = $(LDADD)
-unit3205_DEPENDENCIES = $(top_builddir)/src/libcurltool.la \
-	$(top_builddir)/lib/libcurlu.la
+unit3205_DEPENDENCIES = $(top_builddir)/lib/libcurlu.la
+am__unit3211_SOURCES_DIST = unit3211.c curlcheck.h ../libtest/first.c \
+	../libtest/first.h
+@BUILD_UNITTESTS_TRUE@@USE_TEST_BUNDLES_FALSE@am_unit3211_OBJECTS = unit3211.$(OBJEXT) \
+@BUILD_UNITTESTS_TRUE@@USE_TEST_BUNDLES_FALSE@	$(am__objects_2)
+unit3211_OBJECTS = $(am_unit3211_OBJECTS)
+unit3211_LDADD = $(LDADD)
+unit3211_DEPENDENCIES = $(top_builddir)/lib/libcurlu.la
+am__unit3212_SOURCES_DIST = unit3212.c curlcheck.h ../libtest/first.c \
+	../libtest/first.h
+@BUILD_UNITTESTS_TRUE@@USE_TEST_BUNDLES_FALSE@am_unit3212_OBJECTS = unit3212.$(OBJEXT) \
+@BUILD_UNITTESTS_TRUE@@USE_TEST_BUNDLES_FALSE@	$(am__objects_2)
+unit3212_OBJECTS = $(am_unit3212_OBJECTS)
+unit3212_LDADD = $(LDADD)
+unit3212_DEPENDENCIES = $(top_builddir)/lib/libcurlu.la
+am__unit3213_SOURCES_DIST = unit3213.c curlcheck.h ../libtest/first.c \
+	../libtest/first.h
+@BUILD_UNITTESTS_TRUE@@USE_TEST_BUNDLES_FALSE@am_unit3213_OBJECTS = unit3213.$(OBJEXT) \
+@BUILD_UNITTESTS_TRUE@@USE_TEST_BUNDLES_FALSE@	$(am__objects_2)
+unit3213_OBJECTS = $(am_unit3213_OBJECTS)
+unit3213_LDADD = $(LDADD)
+unit3213_DEPENDENCIES = $(top_builddir)/lib/libcurlu.la
 @BUILD_UNITTESTS_TRUE@@USE_TEST_BUNDLES_TRUE@nodist_units_OBJECTS = unit_bundle.$(OBJEXT)
 units_OBJECTS = $(nodist_units_OBJECTS)
 units_LDADD = $(LDADD)
-units_DEPENDENCIES = $(top_builddir)/src/libcurltool.la \
-	$(top_builddir)/lib/libcurlu.la
+units_DEPENDENCIES = $(top_builddir)/lib/libcurlu.la
 AM_V_P = $(am__v_P_@AM_V@)
 am__v_P_ = $(am__v_P_@AM_DEFAULT_V@)
 am__v_P_0 = false
@@ -661,30 +626,31 @@ am__depfiles_remade = ../libtest/$(DEPDIR)/first.Po \
 	./$(DEPDIR)/unit1300.Po ./$(DEPDIR)/unit1302.Po \
 	./$(DEPDIR)/unit1303.Po ./$(DEPDIR)/unit1304.Po \
 	./$(DEPDIR)/unit1305.Po ./$(DEPDIR)/unit1307.Po \
-	./$(DEPDIR)/unit1308.Po ./$(DEPDIR)/unit1309.Po \
-	./$(DEPDIR)/unit1323.Po ./$(DEPDIR)/unit1330.Po \
-	./$(DEPDIR)/unit1394.Po ./$(DEPDIR)/unit1395.Po \
+	./$(DEPDIR)/unit1309.Po ./$(DEPDIR)/unit1323.Po \
+	./$(DEPDIR)/unit1330.Po ./$(DEPDIR)/unit1395.Po \
 	./$(DEPDIR)/unit1396.Po ./$(DEPDIR)/unit1397.Po \
 	./$(DEPDIR)/unit1398.Po ./$(DEPDIR)/unit1399.Po \
 	./$(DEPDIR)/unit1600.Po ./$(DEPDIR)/unit1601.Po \
 	./$(DEPDIR)/unit1602.Po ./$(DEPDIR)/unit1603.Po \
-	./$(DEPDIR)/unit1604.Po ./$(DEPDIR)/unit1605.Po \
-	./$(DEPDIR)/unit1606.Po ./$(DEPDIR)/unit1607.Po \
-	./$(DEPDIR)/unit1608.Po ./$(DEPDIR)/unit1609.Po \
-	./$(DEPDIR)/unit1610.Po ./$(DEPDIR)/unit1611.Po \
-	./$(DEPDIR)/unit1612.Po ./$(DEPDIR)/unit1614.Po \
-	./$(DEPDIR)/unit1615.Po ./$(DEPDIR)/unit1616.Po \
-	./$(DEPDIR)/unit1620.Po ./$(DEPDIR)/unit1621.Po \
+	./$(DEPDIR)/unit1605.Po ./$(DEPDIR)/unit1606.Po \
+	./$(DEPDIR)/unit1607.Po ./$(DEPDIR)/unit1608.Po \
+	./$(DEPDIR)/unit1609.Po ./$(DEPDIR)/unit1610.Po \
+	./$(DEPDIR)/unit1611.Po ./$(DEPDIR)/unit1612.Po \
+	./$(DEPDIR)/unit1614.Po ./$(DEPDIR)/unit1615.Po \
+	./$(DEPDIR)/unit1616.Po ./$(DEPDIR)/unit1620.Po \
 	./$(DEPDIR)/unit1650.Po ./$(DEPDIR)/unit1651.Po \
 	./$(DEPDIR)/unit1652.Po ./$(DEPDIR)/unit1653.Po \
 	./$(DEPDIR)/unit1654.Po ./$(DEPDIR)/unit1655.Po \
 	./$(DEPDIR)/unit1656.Po ./$(DEPDIR)/unit1657.Po \
-	./$(DEPDIR)/unit1660.Po ./$(DEPDIR)/unit1661.Po \
-	./$(DEPDIR)/unit1663.Po ./$(DEPDIR)/unit1664.Po \
-	./$(DEPDIR)/unit2600.Po ./$(DEPDIR)/unit2601.Po \
-	./$(DEPDIR)/unit2602.Po ./$(DEPDIR)/unit2603.Po \
-	./$(DEPDIR)/unit2604.Po ./$(DEPDIR)/unit3200.Po \
-	./$(DEPDIR)/unit3205.Po ./$(DEPDIR)/unit_bundle.Po
+	./$(DEPDIR)/unit1658.Po ./$(DEPDIR)/unit1660.Po \
+	./$(DEPDIR)/unit1661.Po ./$(DEPDIR)/unit1663.Po \
+	./$(DEPDIR)/unit1664.Po ./$(DEPDIR)/unit1979.Po \
+	./$(DEPDIR)/unit1980.Po ./$(DEPDIR)/unit2600.Po \
+	./$(DEPDIR)/unit2601.Po ./$(DEPDIR)/unit2602.Po \
+	./$(DEPDIR)/unit2603.Po ./$(DEPDIR)/unit2604.Po \
+	./$(DEPDIR)/unit3200.Po ./$(DEPDIR)/unit3205.Po \
+	./$(DEPDIR)/unit3211.Po ./$(DEPDIR)/unit3212.Po \
+	./$(DEPDIR)/unit3213.Po ./$(DEPDIR)/unit_bundle.Po
 am__mv = mv -f
 COMPILE = $(CC) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(AM_CPPFLAGS) \
 	$(CPPFLAGS) $(AM_CFLAGS) $(CFLAGS)
@@ -706,50 +672,51 @@ am__v_CCLD_0 = @echo "  CCLD    " $@;
 am__v_CCLD_1 = 
 SOURCES = $(unit1300_SOURCES) $(unit1302_SOURCES) $(unit1303_SOURCES) \
 	$(unit1304_SOURCES) $(unit1305_SOURCES) $(unit1307_SOURCES) \
-	$(unit1308_SOURCES) $(unit1309_SOURCES) $(unit1323_SOURCES) \
-	$(unit1330_SOURCES) $(unit1394_SOURCES) $(unit1395_SOURCES) \
-	$(unit1396_SOURCES) $(unit1397_SOURCES) $(unit1398_SOURCES) \
-	$(unit1399_SOURCES) $(unit1600_SOURCES) $(unit1601_SOURCES) \
-	$(unit1602_SOURCES) $(unit1603_SOURCES) $(unit1604_SOURCES) \
+	$(unit1309_SOURCES) $(unit1323_SOURCES) $(unit1330_SOURCES) \
+	$(unit1395_SOURCES) $(unit1396_SOURCES) $(unit1397_SOURCES) \
+	$(unit1398_SOURCES) $(unit1399_SOURCES) $(unit1600_SOURCES) \
+	$(unit1601_SOURCES) $(unit1602_SOURCES) $(unit1603_SOURCES) \
 	$(unit1605_SOURCES) $(unit1606_SOURCES) $(unit1607_SOURCES) \
 	$(unit1608_SOURCES) $(unit1609_SOURCES) $(unit1610_SOURCES) \
 	$(unit1611_SOURCES) $(unit1612_SOURCES) $(unit1614_SOURCES) \
 	$(unit1615_SOURCES) $(unit1616_SOURCES) $(unit1620_SOURCES) \
-	$(unit1621_SOURCES) $(unit1650_SOURCES) $(unit1651_SOURCES) \
-	$(unit1652_SOURCES) $(unit1653_SOURCES) $(unit1654_SOURCES) \
-	$(unit1655_SOURCES) $(unit1656_SOURCES) $(unit1657_SOURCES) \
+	$(unit1650_SOURCES) $(unit1651_SOURCES) $(unit1652_SOURCES) \
+	$(unit1653_SOURCES) $(unit1654_SOURCES) $(unit1655_SOURCES) \
+	$(unit1656_SOURCES) $(unit1657_SOURCES) $(unit1658_SOURCES) \
 	$(unit1660_SOURCES) $(unit1661_SOURCES) $(unit1663_SOURCES) \
-	$(unit1664_SOURCES) $(unit2600_SOURCES) $(unit2601_SOURCES) \
-	$(unit2602_SOURCES) $(unit2603_SOURCES) $(unit2604_SOURCES) \
-	$(unit3200_SOURCES) $(unit3205_SOURCES) \
-	$(nodist_units_SOURCES)
+	$(unit1664_SOURCES) $(unit1979_SOURCES) $(unit1980_SOURCES) \
+	$(unit2600_SOURCES) $(unit2601_SOURCES) $(unit2602_SOURCES) \
+	$(unit2603_SOURCES) $(unit2604_SOURCES) $(unit3200_SOURCES) \
+	$(unit3205_SOURCES) $(unit3211_SOURCES) $(unit3212_SOURCES) \
+	$(unit3213_SOURCES) $(nodist_units_SOURCES)
 DIST_SOURCES = $(am__unit1300_SOURCES_DIST) \
 	$(am__unit1302_SOURCES_DIST) $(am__unit1303_SOURCES_DIST) \
 	$(am__unit1304_SOURCES_DIST) $(am__unit1305_SOURCES_DIST) \
-	$(am__unit1307_SOURCES_DIST) $(am__unit1308_SOURCES_DIST) \
-	$(am__unit1309_SOURCES_DIST) $(am__unit1323_SOURCES_DIST) \
-	$(am__unit1330_SOURCES_DIST) $(am__unit1394_SOURCES_DIST) \
+	$(am__unit1307_SOURCES_DIST) $(am__unit1309_SOURCES_DIST) \
+	$(am__unit1323_SOURCES_DIST) $(am__unit1330_SOURCES_DIST) \
 	$(am__unit1395_SOURCES_DIST) $(am__unit1396_SOURCES_DIST) \
 	$(am__unit1397_SOURCES_DIST) $(am__unit1398_SOURCES_DIST) \
 	$(am__unit1399_SOURCES_DIST) $(am__unit1600_SOURCES_DIST) \
 	$(am__unit1601_SOURCES_DIST) $(am__unit1602_SOURCES_DIST) \
-	$(am__unit1603_SOURCES_DIST) $(am__unit1604_SOURCES_DIST) \
-	$(am__unit1605_SOURCES_DIST) $(am__unit1606_SOURCES_DIST) \
-	$(am__unit1607_SOURCES_DIST) $(am__unit1608_SOURCES_DIST) \
-	$(am__unit1609_SOURCES_DIST) $(am__unit1610_SOURCES_DIST) \
-	$(am__unit1611_SOURCES_DIST) $(am__unit1612_SOURCES_DIST) \
-	$(am__unit1614_SOURCES_DIST) $(am__unit1615_SOURCES_DIST) \
-	$(am__unit1616_SOURCES_DIST) $(am__unit1620_SOURCES_DIST) \
-	$(am__unit1621_SOURCES_DIST) $(am__unit1650_SOURCES_DIST) \
+	$(am__unit1603_SOURCES_DIST) $(am__unit1605_SOURCES_DIST) \
+	$(am__unit1606_SOURCES_DIST) $(am__unit1607_SOURCES_DIST) \
+	$(am__unit1608_SOURCES_DIST) $(am__unit1609_SOURCES_DIST) \
+	$(am__unit1610_SOURCES_DIST) $(am__unit1611_SOURCES_DIST) \
+	$(am__unit1612_SOURCES_DIST) $(am__unit1614_SOURCES_DIST) \
+	$(am__unit1615_SOURCES_DIST) $(am__unit1616_SOURCES_DIST) \
+	$(am__unit1620_SOURCES_DIST) $(am__unit1650_SOURCES_DIST) \
 	$(am__unit1651_SOURCES_DIST) $(am__unit1652_SOURCES_DIST) \
 	$(am__unit1653_SOURCES_DIST) $(am__unit1654_SOURCES_DIST) \
 	$(am__unit1655_SOURCES_DIST) $(am__unit1656_SOURCES_DIST) \
-	$(am__unit1657_SOURCES_DIST) $(am__unit1660_SOURCES_DIST) \
-	$(am__unit1661_SOURCES_DIST) $(am__unit1663_SOURCES_DIST) \
-	$(am__unit1664_SOURCES_DIST) $(am__unit2600_SOURCES_DIST) \
-	$(am__unit2601_SOURCES_DIST) $(am__unit2602_SOURCES_DIST) \
-	$(am__unit2603_SOURCES_DIST) $(am__unit2604_SOURCES_DIST) \
-	$(am__unit3200_SOURCES_DIST) $(am__unit3205_SOURCES_DIST)
+	$(am__unit1657_SOURCES_DIST) $(am__unit1658_SOURCES_DIST) \
+	$(am__unit1660_SOURCES_DIST) $(am__unit1661_SOURCES_DIST) \
+	$(am__unit1663_SOURCES_DIST) $(am__unit1664_SOURCES_DIST) \
+	$(am__unit1979_SOURCES_DIST) $(am__unit1980_SOURCES_DIST) \
+	$(am__unit2600_SOURCES_DIST) $(am__unit2601_SOURCES_DIST) \
+	$(am__unit2602_SOURCES_DIST) $(am__unit2603_SOURCES_DIST) \
+	$(am__unit2604_SOURCES_DIST) $(am__unit3200_SOURCES_DIST) \
+	$(am__unit3205_SOURCES_DIST) $(am__unit3211_SOURCES_DIST) \
+	$(am__unit3212_SOURCES_DIST) $(am__unit3213_SOURCES_DIST)
 am__can_run_installinfo = \
   case $$AM_UPDATE_INFO_DIR in \
     n|no|NO) false;; \
@@ -975,14 +942,15 @@ AUTOMAKE_OPTIONS = foreign nostdinc
 # $(top_builddir)/lib is for libcurl's generated lib/curl_config.h file
 # $(top_srcdir)/lib for libcurl's lib/curl_setup.h and other "borrowed" files
 AM_CPPFLAGS = -I$(top_srcdir)/include -I$(top_builddir)/lib \
-	-I$(top_srcdir)/lib -I$(top_srcdir)/src \
-	-I$(top_srcdir)/tests/libtest -I$(top_srcdir)/tests/unit \
-	-DCURL_STATICLIB -DUNITTESTS
+	-I$(top_srcdir)/lib -I$(top_srcdir)/lib/curlx \
+	-I$(top_srcdir)/src -I$(top_srcdir)/tests/libtest \
+	-I$(top_srcdir)/tests/unit -DCURL_STATICLIB -DUNITTESTS \
+	-DBUILDING_LIBCURL $(am__append_1) $(am__append_2)
 EXTRA_DIST = CMakeLists.txt README.md
-LDADD = $(top_builddir)/src/libcurltool.la   \
-        $(top_builddir)/lib/libcurlu.la      \
+LDADD = $(top_builddir)/lib/libcurlu.la      \
         @LIBCURL_PC_LDFLAGS_PRIVATE@ @LIBCURL_PC_LIBS_PRIVATE@
 
+BUNDLE = units
 @BUILD_UNITTESTS_TRUE@@USE_TEST_BUNDLES_TRUE@nodist_units_SOURCES = unit_bundle.c
 @BUILD_UNITTESTS_TRUE@@USE_TEST_BUNDLES_TRUE@CLEANFILES = unit_bundle.c
 @BUILD_UNITTESTS_TRUE@@USE_TEST_BUNDLES_FALSE@FIRSTFILES = \
@@ -993,17 +961,20 @@ LDADD = $(top_builddir)/src/libcurltool.la   \
 
 # These are all unit test programs
 @BUILD_UNITTESTS_TRUE@@USE_TEST_BUNDLES_FALSE@UNITPROGS = unit1300          unit1302 unit1303 unit1304 unit1305 unit1307 \
-@BUILD_UNITTESTS_TRUE@@USE_TEST_BUNDLES_FALSE@ unit1308 unit1309 unit1323 \
-@BUILD_UNITTESTS_TRUE@@USE_TEST_BUNDLES_FALSE@ unit1330 unit1394 unit1395 unit1396 unit1397 unit1398 \
+@BUILD_UNITTESTS_TRUE@@USE_TEST_BUNDLES_FALSE@          unit1309 unit1323 \
+@BUILD_UNITTESTS_TRUE@@USE_TEST_BUNDLES_FALSE@ unit1330          unit1395 unit1396 unit1397 unit1398 \
 @BUILD_UNITTESTS_TRUE@@USE_TEST_BUNDLES_FALSE@ unit1399 \
-@BUILD_UNITTESTS_TRUE@@USE_TEST_BUNDLES_FALSE@ unit1600 unit1601 unit1602 unit1603 unit1604 unit1605 unit1606 unit1607 \
+@BUILD_UNITTESTS_TRUE@@USE_TEST_BUNDLES_FALSE@ unit1600 unit1601 unit1602 unit1603          unit1605 unit1606 unit1607 \
 @BUILD_UNITTESTS_TRUE@@USE_TEST_BUNDLES_FALSE@ unit1608 unit1609 unit1610 unit1611 unit1612 unit1614 unit1615 unit1616 \
-@BUILD_UNITTESTS_TRUE@@USE_TEST_BUNDLES_FALSE@ unit1620 unit1621 \
+@BUILD_UNITTESTS_TRUE@@USE_TEST_BUNDLES_FALSE@ unit1620 \
 @BUILD_UNITTESTS_TRUE@@USE_TEST_BUNDLES_FALSE@ unit1650 unit1651 unit1652 unit1653 unit1654 unit1655 unit1656 unit1657 \
+@BUILD_UNITTESTS_TRUE@@USE_TEST_BUNDLES_FALSE@ unit1658 \
 @BUILD_UNITTESTS_TRUE@@USE_TEST_BUNDLES_FALSE@ unit1660 unit1661 unit1663 unit1664 \
+@BUILD_UNITTESTS_TRUE@@USE_TEST_BUNDLES_FALSE@ unit1979 unit1980 \
 @BUILD_UNITTESTS_TRUE@@USE_TEST_BUNDLES_FALSE@ unit2600 unit2601 unit2602 unit2603 unit2604 \
 @BUILD_UNITTESTS_TRUE@@USE_TEST_BUNDLES_FALSE@ unit3200 \
-@BUILD_UNITTESTS_TRUE@@USE_TEST_BUNDLES_FALSE@ unit3205
+@BUILD_UNITTESTS_TRUE@@USE_TEST_BUNDLES_FALSE@ unit3205 \
+@BUILD_UNITTESTS_TRUE@@USE_TEST_BUNDLES_FALSE@ unit3211 unit3212 unit3213
 
 @BUILD_UNITTESTS_TRUE@@USE_TEST_BUNDLES_FALSE@unit1300_SOURCES = unit1300.c $(UNITFILES)
 @BUILD_UNITTESTS_TRUE@@USE_TEST_BUNDLES_FALSE@unit1302_SOURCES = unit1302.c $(UNITFILES)
@@ -1011,11 +982,9 @@ LDADD = $(top_builddir)/src/libcurltool.la   \
 @BUILD_UNITTESTS_TRUE@@USE_TEST_BUNDLES_FALSE@unit1304_SOURCES = unit1304.c $(UNITFILES)
 @BUILD_UNITTESTS_TRUE@@USE_TEST_BUNDLES_FALSE@unit1305_SOURCES = unit1305.c $(UNITFILES)
 @BUILD_UNITTESTS_TRUE@@USE_TEST_BUNDLES_FALSE@unit1307_SOURCES = unit1307.c $(UNITFILES)
-@BUILD_UNITTESTS_TRUE@@USE_TEST_BUNDLES_FALSE@unit1308_SOURCES = unit1308.c $(UNITFILES)
 @BUILD_UNITTESTS_TRUE@@USE_TEST_BUNDLES_FALSE@unit1309_SOURCES = unit1309.c $(UNITFILES)
 @BUILD_UNITTESTS_TRUE@@USE_TEST_BUNDLES_FALSE@unit1323_SOURCES = unit1323.c $(UNITFILES)
 @BUILD_UNITTESTS_TRUE@@USE_TEST_BUNDLES_FALSE@unit1330_SOURCES = unit1330.c $(UNITFILES)
-@BUILD_UNITTESTS_TRUE@@USE_TEST_BUNDLES_FALSE@unit1394_SOURCES = unit1394.c $(UNITFILES)
 @BUILD_UNITTESTS_TRUE@@USE_TEST_BUNDLES_FALSE@unit1395_SOURCES = unit1395.c $(UNITFILES)
 @BUILD_UNITTESTS_TRUE@@USE_TEST_BUNDLES_FALSE@unit1396_SOURCES = unit1396.c $(UNITFILES)
 @BUILD_UNITTESTS_TRUE@@USE_TEST_BUNDLES_FALSE@unit1397_SOURCES = unit1397.c $(UNITFILES)
@@ -1025,7 +994,6 @@ LDADD = $(top_builddir)/src/libcurltool.la   \
 @BUILD_UNITTESTS_TRUE@@USE_TEST_BUNDLES_FALSE@unit1601_SOURCES = unit1601.c $(UNITFILES)
 @BUILD_UNITTESTS_TRUE@@USE_TEST_BUNDLES_FALSE@unit1602_SOURCES = unit1602.c $(UNITFILES)
 @BUILD_UNITTESTS_TRUE@@USE_TEST_BUNDLES_FALSE@unit1603_SOURCES = unit1603.c $(UNITFILES)
-@BUILD_UNITTESTS_TRUE@@USE_TEST_BUNDLES_FALSE@unit1604_SOURCES = unit1604.c $(UNITFILES)
 @BUILD_UNITTESTS_TRUE@@USE_TEST_BUNDLES_FALSE@unit1605_SOURCES = unit1605.c $(UNITFILES)
 @BUILD_UNITTESTS_TRUE@@USE_TEST_BUNDLES_FALSE@unit1606_SOURCES = unit1606.c $(UNITFILES)
 @BUILD_UNITTESTS_TRUE@@USE_TEST_BUNDLES_FALSE@unit1607_SOURCES = unit1607.c $(UNITFILES)
@@ -1038,7 +1006,6 @@ LDADD = $(top_builddir)/src/libcurltool.la   \
 @BUILD_UNITTESTS_TRUE@@USE_TEST_BUNDLES_FALSE@unit1615_SOURCES = unit1615.c $(UNITFILES)
 @BUILD_UNITTESTS_TRUE@@USE_TEST_BUNDLES_FALSE@unit1616_SOURCES = unit1616.c $(UNITFILES)
 @BUILD_UNITTESTS_TRUE@@USE_TEST_BUNDLES_FALSE@unit1620_SOURCES = unit1620.c $(UNITFILES)
-@BUILD_UNITTESTS_TRUE@@USE_TEST_BUNDLES_FALSE@unit1621_SOURCES = unit1621.c $(UNITFILES)
 @BUILD_UNITTESTS_TRUE@@USE_TEST_BUNDLES_FALSE@unit1650_SOURCES = unit1650.c $(UNITFILES)
 @BUILD_UNITTESTS_TRUE@@USE_TEST_BUNDLES_FALSE@unit1651_SOURCES = unit1651.c $(UNITFILES)
 @BUILD_UNITTESTS_TRUE@@USE_TEST_BUNDLES_FALSE@unit1652_SOURCES = unit1652.c $(UNITFILES)
@@ -1047,10 +1014,13 @@ LDADD = $(top_builddir)/src/libcurltool.la   \
 @BUILD_UNITTESTS_TRUE@@USE_TEST_BUNDLES_FALSE@unit1655_SOURCES = unit1655.c $(UNITFILES)
 @BUILD_UNITTESTS_TRUE@@USE_TEST_BUNDLES_FALSE@unit1656_SOURCES = unit1656.c $(UNITFILES)
 @BUILD_UNITTESTS_TRUE@@USE_TEST_BUNDLES_FALSE@unit1657_SOURCES = unit1657.c $(UNITFILES)
+@BUILD_UNITTESTS_TRUE@@USE_TEST_BUNDLES_FALSE@unit1658_SOURCES = unit1658.c $(UNITFILES)
 @BUILD_UNITTESTS_TRUE@@USE_TEST_BUNDLES_FALSE@unit1660_SOURCES = unit1660.c $(UNITFILES)
 @BUILD_UNITTESTS_TRUE@@USE_TEST_BUNDLES_FALSE@unit1661_SOURCES = unit1661.c $(UNITFILES)
 @BUILD_UNITTESTS_TRUE@@USE_TEST_BUNDLES_FALSE@unit1663_SOURCES = unit1663.c $(UNITFILES)
 @BUILD_UNITTESTS_TRUE@@USE_TEST_BUNDLES_FALSE@unit1664_SOURCES = unit1664.c $(UNITFILES)
+@BUILD_UNITTESTS_TRUE@@USE_TEST_BUNDLES_FALSE@unit1979_SOURCES = unit1979.c $(UNITFILES)
+@BUILD_UNITTESTS_TRUE@@USE_TEST_BUNDLES_FALSE@unit1980_SOURCES = unit1980.c $(UNITFILES)
 @BUILD_UNITTESTS_TRUE@@USE_TEST_BUNDLES_FALSE@unit2600_SOURCES = unit2600.c $(UNITFILES)
 @BUILD_UNITTESTS_TRUE@@USE_TEST_BUNDLES_FALSE@unit2601_SOURCES = unit2601.c $(UNITFILES)
 @BUILD_UNITTESTS_TRUE@@USE_TEST_BUNDLES_FALSE@unit2602_SOURCES = unit2602.c $(UNITFILES)
@@ -1058,6 +1028,9 @@ LDADD = $(top_builddir)/src/libcurltool.la   \
 @BUILD_UNITTESTS_TRUE@@USE_TEST_BUNDLES_FALSE@unit2604_SOURCES = unit2604.c $(UNITFILES)
 @BUILD_UNITTESTS_TRUE@@USE_TEST_BUNDLES_FALSE@unit3200_SOURCES = unit3200.c $(UNITFILES)
 @BUILD_UNITTESTS_TRUE@@USE_TEST_BUNDLES_FALSE@unit3205_SOURCES = unit3205.c $(UNITFILES)
+@BUILD_UNITTESTS_TRUE@@USE_TEST_BUNDLES_FALSE@unit3211_SOURCES = unit3211.c $(UNITFILES)
+@BUILD_UNITTESTS_TRUE@@USE_TEST_BUNDLES_FALSE@unit3212_SOURCES = unit3212.c $(UNITFILES)
+@BUILD_UNITTESTS_TRUE@@USE_TEST_BUNDLES_FALSE@unit3213_SOURCES = unit3213.c $(UNITFILES)
 CHECKSRC = $(CS_$(V))
 CS_0 = @echo "  RUN     " $@;
 CS_1 = 
@@ -1138,10 +1111,6 @@ unit1307$(EXEEXT): $(unit1307_OBJECTS) $(unit1307_DEPENDENCIES) $(EXTRA_unit1307
 	@rm -f unit1307$(EXEEXT)
 	$(AM_V_CCLD)$(LINK) $(unit1307_OBJECTS) $(unit1307_LDADD) $(LIBS)
 
-unit1308$(EXEEXT): $(unit1308_OBJECTS) $(unit1308_DEPENDENCIES) $(EXTRA_unit1308_DEPENDENCIES) 
-	@rm -f unit1308$(EXEEXT)
-	$(AM_V_CCLD)$(LINK) $(unit1308_OBJECTS) $(unit1308_LDADD) $(LIBS)
-
 unit1309$(EXEEXT): $(unit1309_OBJECTS) $(unit1309_DEPENDENCIES) $(EXTRA_unit1309_DEPENDENCIES) 
 	@rm -f unit1309$(EXEEXT)
 	$(AM_V_CCLD)$(LINK) $(unit1309_OBJECTS) $(unit1309_LDADD) $(LIBS)
@@ -1153,10 +1122,6 @@ unit1323$(EXEEXT): $(unit1323_OBJECTS) $(unit1323_DEPENDENCIES) $(EXTRA_unit1323
 unit1330$(EXEEXT): $(unit1330_OBJECTS) $(unit1330_DEPENDENCIES) $(EXTRA_unit1330_DEPENDENCIES) 
 	@rm -f unit1330$(EXEEXT)
 	$(AM_V_CCLD)$(LINK) $(unit1330_OBJECTS) $(unit1330_LDADD) $(LIBS)
-
-unit1394$(EXEEXT): $(unit1394_OBJECTS) $(unit1394_DEPENDENCIES) $(EXTRA_unit1394_DEPENDENCIES) 
-	@rm -f unit1394$(EXEEXT)
-	$(AM_V_CCLD)$(LINK) $(unit1394_OBJECTS) $(unit1394_LDADD) $(LIBS)
 
 unit1395$(EXEEXT): $(unit1395_OBJECTS) $(unit1395_DEPENDENCIES) $(EXTRA_unit1395_DEPENDENCIES) 
 	@rm -f unit1395$(EXEEXT)
@@ -1193,10 +1158,6 @@ unit1602$(EXEEXT): $(unit1602_OBJECTS) $(unit1602_DEPENDENCIES) $(EXTRA_unit1602
 unit1603$(EXEEXT): $(unit1603_OBJECTS) $(unit1603_DEPENDENCIES) $(EXTRA_unit1603_DEPENDENCIES) 
 	@rm -f unit1603$(EXEEXT)
 	$(AM_V_CCLD)$(LINK) $(unit1603_OBJECTS) $(unit1603_LDADD) $(LIBS)
-
-unit1604$(EXEEXT): $(unit1604_OBJECTS) $(unit1604_DEPENDENCIES) $(EXTRA_unit1604_DEPENDENCIES) 
-	@rm -f unit1604$(EXEEXT)
-	$(AM_V_CCLD)$(LINK) $(unit1604_OBJECTS) $(unit1604_LDADD) $(LIBS)
 
 unit1605$(EXEEXT): $(unit1605_OBJECTS) $(unit1605_DEPENDENCIES) $(EXTRA_unit1605_DEPENDENCIES) 
 	@rm -f unit1605$(EXEEXT)
@@ -1246,10 +1207,6 @@ unit1620$(EXEEXT): $(unit1620_OBJECTS) $(unit1620_DEPENDENCIES) $(EXTRA_unit1620
 	@rm -f unit1620$(EXEEXT)
 	$(AM_V_CCLD)$(LINK) $(unit1620_OBJECTS) $(unit1620_LDADD) $(LIBS)
 
-unit1621$(EXEEXT): $(unit1621_OBJECTS) $(unit1621_DEPENDENCIES) $(EXTRA_unit1621_DEPENDENCIES) 
-	@rm -f unit1621$(EXEEXT)
-	$(AM_V_CCLD)$(LINK) $(unit1621_OBJECTS) $(unit1621_LDADD) $(LIBS)
-
 unit1650$(EXEEXT): $(unit1650_OBJECTS) $(unit1650_DEPENDENCIES) $(EXTRA_unit1650_DEPENDENCIES) 
 	@rm -f unit1650$(EXEEXT)
 	$(AM_V_CCLD)$(LINK) $(unit1650_OBJECTS) $(unit1650_LDADD) $(LIBS)
@@ -1282,6 +1239,10 @@ unit1657$(EXEEXT): $(unit1657_OBJECTS) $(unit1657_DEPENDENCIES) $(EXTRA_unit1657
 	@rm -f unit1657$(EXEEXT)
 	$(AM_V_CCLD)$(LINK) $(unit1657_OBJECTS) $(unit1657_LDADD) $(LIBS)
 
+unit1658$(EXEEXT): $(unit1658_OBJECTS) $(unit1658_DEPENDENCIES) $(EXTRA_unit1658_DEPENDENCIES) 
+	@rm -f unit1658$(EXEEXT)
+	$(AM_V_CCLD)$(LINK) $(unit1658_OBJECTS) $(unit1658_LDADD) $(LIBS)
+
 unit1660$(EXEEXT): $(unit1660_OBJECTS) $(unit1660_DEPENDENCIES) $(EXTRA_unit1660_DEPENDENCIES) 
 	@rm -f unit1660$(EXEEXT)
 	$(AM_V_CCLD)$(LINK) $(unit1660_OBJECTS) $(unit1660_LDADD) $(LIBS)
@@ -1297,6 +1258,14 @@ unit1663$(EXEEXT): $(unit1663_OBJECTS) $(unit1663_DEPENDENCIES) $(EXTRA_unit1663
 unit1664$(EXEEXT): $(unit1664_OBJECTS) $(unit1664_DEPENDENCIES) $(EXTRA_unit1664_DEPENDENCIES) 
 	@rm -f unit1664$(EXEEXT)
 	$(AM_V_CCLD)$(LINK) $(unit1664_OBJECTS) $(unit1664_LDADD) $(LIBS)
+
+unit1979$(EXEEXT): $(unit1979_OBJECTS) $(unit1979_DEPENDENCIES) $(EXTRA_unit1979_DEPENDENCIES) 
+	@rm -f unit1979$(EXEEXT)
+	$(AM_V_CCLD)$(LINK) $(unit1979_OBJECTS) $(unit1979_LDADD) $(LIBS)
+
+unit1980$(EXEEXT): $(unit1980_OBJECTS) $(unit1980_DEPENDENCIES) $(EXTRA_unit1980_DEPENDENCIES) 
+	@rm -f unit1980$(EXEEXT)
+	$(AM_V_CCLD)$(LINK) $(unit1980_OBJECTS) $(unit1980_LDADD) $(LIBS)
 
 unit2600$(EXEEXT): $(unit2600_OBJECTS) $(unit2600_DEPENDENCIES) $(EXTRA_unit2600_DEPENDENCIES) 
 	@rm -f unit2600$(EXEEXT)
@@ -1326,6 +1295,18 @@ unit3205$(EXEEXT): $(unit3205_OBJECTS) $(unit3205_DEPENDENCIES) $(EXTRA_unit3205
 	@rm -f unit3205$(EXEEXT)
 	$(AM_V_CCLD)$(LINK) $(unit3205_OBJECTS) $(unit3205_LDADD) $(LIBS)
 
+unit3211$(EXEEXT): $(unit3211_OBJECTS) $(unit3211_DEPENDENCIES) $(EXTRA_unit3211_DEPENDENCIES) 
+	@rm -f unit3211$(EXEEXT)
+	$(AM_V_CCLD)$(LINK) $(unit3211_OBJECTS) $(unit3211_LDADD) $(LIBS)
+
+unit3212$(EXEEXT): $(unit3212_OBJECTS) $(unit3212_DEPENDENCIES) $(EXTRA_unit3212_DEPENDENCIES) 
+	@rm -f unit3212$(EXEEXT)
+	$(AM_V_CCLD)$(LINK) $(unit3212_OBJECTS) $(unit3212_LDADD) $(LIBS)
+
+unit3213$(EXEEXT): $(unit3213_OBJECTS) $(unit3213_DEPENDENCIES) $(EXTRA_unit3213_DEPENDENCIES) 
+	@rm -f unit3213$(EXEEXT)
+	$(AM_V_CCLD)$(LINK) $(unit3213_OBJECTS) $(unit3213_LDADD) $(LIBS)
+
 units$(EXEEXT): $(units_OBJECTS) $(units_DEPENDENCIES) $(EXTRA_units_DEPENDENCIES) 
 	@rm -f units$(EXEEXT)
 	$(AM_V_CCLD)$(LINK) $(units_OBJECTS) $(units_LDADD) $(LIBS)
@@ -1344,11 +1325,9 @@ distclean-compile:
 @AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/unit1304.Po@am__quote@ # am--include-marker
 @AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/unit1305.Po@am__quote@ # am--include-marker
 @AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/unit1307.Po@am__quote@ # am--include-marker
-@AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/unit1308.Po@am__quote@ # am--include-marker
 @AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/unit1309.Po@am__quote@ # am--include-marker
 @AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/unit1323.Po@am__quote@ # am--include-marker
 @AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/unit1330.Po@am__quote@ # am--include-marker
-@AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/unit1394.Po@am__quote@ # am--include-marker
 @AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/unit1395.Po@am__quote@ # am--include-marker
 @AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/unit1396.Po@am__quote@ # am--include-marker
 @AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/unit1397.Po@am__quote@ # am--include-marker
@@ -1358,7 +1337,6 @@ distclean-compile:
 @AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/unit1601.Po@am__quote@ # am--include-marker
 @AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/unit1602.Po@am__quote@ # am--include-marker
 @AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/unit1603.Po@am__quote@ # am--include-marker
-@AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/unit1604.Po@am__quote@ # am--include-marker
 @AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/unit1605.Po@am__quote@ # am--include-marker
 @AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/unit1606.Po@am__quote@ # am--include-marker
 @AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/unit1607.Po@am__quote@ # am--include-marker
@@ -1371,7 +1349,6 @@ distclean-compile:
 @AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/unit1615.Po@am__quote@ # am--include-marker
 @AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/unit1616.Po@am__quote@ # am--include-marker
 @AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/unit1620.Po@am__quote@ # am--include-marker
-@AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/unit1621.Po@am__quote@ # am--include-marker
 @AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/unit1650.Po@am__quote@ # am--include-marker
 @AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/unit1651.Po@am__quote@ # am--include-marker
 @AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/unit1652.Po@am__quote@ # am--include-marker
@@ -1380,10 +1357,13 @@ distclean-compile:
 @AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/unit1655.Po@am__quote@ # am--include-marker
 @AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/unit1656.Po@am__quote@ # am--include-marker
 @AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/unit1657.Po@am__quote@ # am--include-marker
+@AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/unit1658.Po@am__quote@ # am--include-marker
 @AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/unit1660.Po@am__quote@ # am--include-marker
 @AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/unit1661.Po@am__quote@ # am--include-marker
 @AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/unit1663.Po@am__quote@ # am--include-marker
 @AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/unit1664.Po@am__quote@ # am--include-marker
+@AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/unit1979.Po@am__quote@ # am--include-marker
+@AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/unit1980.Po@am__quote@ # am--include-marker
 @AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/unit2600.Po@am__quote@ # am--include-marker
 @AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/unit2601.Po@am__quote@ # am--include-marker
 @AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/unit2602.Po@am__quote@ # am--include-marker
@@ -1391,6 +1371,9 @@ distclean-compile:
 @AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/unit2604.Po@am__quote@ # am--include-marker
 @AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/unit3200.Po@am__quote@ # am--include-marker
 @AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/unit3205.Po@am__quote@ # am--include-marker
+@AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/unit3211.Po@am__quote@ # am--include-marker
+@AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/unit3212.Po@am__quote@ # am--include-marker
+@AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/unit3213.Po@am__quote@ # am--include-marker
 @AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/unit_bundle.Po@am__quote@ # am--include-marker
 
 $(am__depfiles_remade):
@@ -1515,7 +1498,8 @@ distdir-am: $(DISTFILES)
 	done
 check-am: all-am
 check: check-am
-all-am: Makefile $(PROGRAMS)
+@NOT_CURL_CI_FALSE@all-local:
+all-am: Makefile $(PROGRAMS) all-local
 installdirs:
 install: install-am
 install-exec: install-exec-am
@@ -1552,7 +1536,7 @@ maintainer-clean-generic:
 	@echo "it deletes files that may require special tools to rebuild."
 clean: clean-am
 
-clean-am: clean-generic clean-libtool clean-noinstPROGRAMS \
+clean-am: clean-generic clean-libtool clean-local clean-noinstPROGRAMS \
 	mostlyclean-am
 
 distclean: distclean-am
@@ -1563,11 +1547,9 @@ distclean: distclean-am
 	-rm -f ./$(DEPDIR)/unit1304.Po
 	-rm -f ./$(DEPDIR)/unit1305.Po
 	-rm -f ./$(DEPDIR)/unit1307.Po
-	-rm -f ./$(DEPDIR)/unit1308.Po
 	-rm -f ./$(DEPDIR)/unit1309.Po
 	-rm -f ./$(DEPDIR)/unit1323.Po
 	-rm -f ./$(DEPDIR)/unit1330.Po
-	-rm -f ./$(DEPDIR)/unit1394.Po
 	-rm -f ./$(DEPDIR)/unit1395.Po
 	-rm -f ./$(DEPDIR)/unit1396.Po
 	-rm -f ./$(DEPDIR)/unit1397.Po
@@ -1577,7 +1559,6 @@ distclean: distclean-am
 	-rm -f ./$(DEPDIR)/unit1601.Po
 	-rm -f ./$(DEPDIR)/unit1602.Po
 	-rm -f ./$(DEPDIR)/unit1603.Po
-	-rm -f ./$(DEPDIR)/unit1604.Po
 	-rm -f ./$(DEPDIR)/unit1605.Po
 	-rm -f ./$(DEPDIR)/unit1606.Po
 	-rm -f ./$(DEPDIR)/unit1607.Po
@@ -1590,7 +1571,6 @@ distclean: distclean-am
 	-rm -f ./$(DEPDIR)/unit1615.Po
 	-rm -f ./$(DEPDIR)/unit1616.Po
 	-rm -f ./$(DEPDIR)/unit1620.Po
-	-rm -f ./$(DEPDIR)/unit1621.Po
 	-rm -f ./$(DEPDIR)/unit1650.Po
 	-rm -f ./$(DEPDIR)/unit1651.Po
 	-rm -f ./$(DEPDIR)/unit1652.Po
@@ -1599,10 +1579,13 @@ distclean: distclean-am
 	-rm -f ./$(DEPDIR)/unit1655.Po
 	-rm -f ./$(DEPDIR)/unit1656.Po
 	-rm -f ./$(DEPDIR)/unit1657.Po
+	-rm -f ./$(DEPDIR)/unit1658.Po
 	-rm -f ./$(DEPDIR)/unit1660.Po
 	-rm -f ./$(DEPDIR)/unit1661.Po
 	-rm -f ./$(DEPDIR)/unit1663.Po
 	-rm -f ./$(DEPDIR)/unit1664.Po
+	-rm -f ./$(DEPDIR)/unit1979.Po
+	-rm -f ./$(DEPDIR)/unit1980.Po
 	-rm -f ./$(DEPDIR)/unit2600.Po
 	-rm -f ./$(DEPDIR)/unit2601.Po
 	-rm -f ./$(DEPDIR)/unit2602.Po
@@ -1610,6 +1593,9 @@ distclean: distclean-am
 	-rm -f ./$(DEPDIR)/unit2604.Po
 	-rm -f ./$(DEPDIR)/unit3200.Po
 	-rm -f ./$(DEPDIR)/unit3205.Po
+	-rm -f ./$(DEPDIR)/unit3211.Po
+	-rm -f ./$(DEPDIR)/unit3212.Po
+	-rm -f ./$(DEPDIR)/unit3213.Po
 	-rm -f ./$(DEPDIR)/unit_bundle.Po
 	-rm -f Makefile
 distclean-am: clean-am distclean-compile distclean-generic \
@@ -1663,11 +1649,9 @@ maintainer-clean: maintainer-clean-am
 	-rm -f ./$(DEPDIR)/unit1304.Po
 	-rm -f ./$(DEPDIR)/unit1305.Po
 	-rm -f ./$(DEPDIR)/unit1307.Po
-	-rm -f ./$(DEPDIR)/unit1308.Po
 	-rm -f ./$(DEPDIR)/unit1309.Po
 	-rm -f ./$(DEPDIR)/unit1323.Po
 	-rm -f ./$(DEPDIR)/unit1330.Po
-	-rm -f ./$(DEPDIR)/unit1394.Po
 	-rm -f ./$(DEPDIR)/unit1395.Po
 	-rm -f ./$(DEPDIR)/unit1396.Po
 	-rm -f ./$(DEPDIR)/unit1397.Po
@@ -1677,7 +1661,6 @@ maintainer-clean: maintainer-clean-am
 	-rm -f ./$(DEPDIR)/unit1601.Po
 	-rm -f ./$(DEPDIR)/unit1602.Po
 	-rm -f ./$(DEPDIR)/unit1603.Po
-	-rm -f ./$(DEPDIR)/unit1604.Po
 	-rm -f ./$(DEPDIR)/unit1605.Po
 	-rm -f ./$(DEPDIR)/unit1606.Po
 	-rm -f ./$(DEPDIR)/unit1607.Po
@@ -1690,7 +1673,6 @@ maintainer-clean: maintainer-clean-am
 	-rm -f ./$(DEPDIR)/unit1615.Po
 	-rm -f ./$(DEPDIR)/unit1616.Po
 	-rm -f ./$(DEPDIR)/unit1620.Po
-	-rm -f ./$(DEPDIR)/unit1621.Po
 	-rm -f ./$(DEPDIR)/unit1650.Po
 	-rm -f ./$(DEPDIR)/unit1651.Po
 	-rm -f ./$(DEPDIR)/unit1652.Po
@@ -1699,10 +1681,13 @@ maintainer-clean: maintainer-clean-am
 	-rm -f ./$(DEPDIR)/unit1655.Po
 	-rm -f ./$(DEPDIR)/unit1656.Po
 	-rm -f ./$(DEPDIR)/unit1657.Po
+	-rm -f ./$(DEPDIR)/unit1658.Po
 	-rm -f ./$(DEPDIR)/unit1660.Po
 	-rm -f ./$(DEPDIR)/unit1661.Po
 	-rm -f ./$(DEPDIR)/unit1663.Po
 	-rm -f ./$(DEPDIR)/unit1664.Po
+	-rm -f ./$(DEPDIR)/unit1979.Po
+	-rm -f ./$(DEPDIR)/unit1980.Po
 	-rm -f ./$(DEPDIR)/unit2600.Po
 	-rm -f ./$(DEPDIR)/unit2601.Po
 	-rm -f ./$(DEPDIR)/unit2602.Po
@@ -1710,6 +1695,9 @@ maintainer-clean: maintainer-clean-am
 	-rm -f ./$(DEPDIR)/unit2604.Po
 	-rm -f ./$(DEPDIR)/unit3200.Po
 	-rm -f ./$(DEPDIR)/unit3205.Po
+	-rm -f ./$(DEPDIR)/unit3211.Po
+	-rm -f ./$(DEPDIR)/unit3212.Po
+	-rm -f ./$(DEPDIR)/unit3213.Po
 	-rm -f ./$(DEPDIR)/unit_bundle.Po
 	-rm -f Makefile
 maintainer-clean-am: distclean-am maintainer-clean-generic
@@ -1731,24 +1719,24 @@ uninstall-am:
 
 .MAKE: install-am install-strip
 
-.PHONY: CTAGS GTAGS TAGS all all-am am--depfiles check check-am clean \
-	clean-generic clean-libtool clean-noinstPROGRAMS cscopelist-am \
-	ctags ctags-am distclean distclean-compile distclean-generic \
-	distclean-libtool distclean-tags distdir dvi dvi-am html \
-	html-am info info-am install install-am install-data \
-	install-data-am install-dvi install-dvi-am install-exec \
-	install-exec-am install-html install-html-am install-info \
-	install-info-am install-man install-pdf install-pdf-am \
-	install-ps install-ps-am install-strip installcheck \
-	installcheck-am installdirs maintainer-clean \
-	maintainer-clean-generic mostlyclean mostlyclean-compile \
-	mostlyclean-generic mostlyclean-libtool pdf pdf-am ps ps-am \
-	tags tags-am uninstall uninstall-am
+.PHONY: CTAGS GTAGS TAGS all all-am all-local am--depfiles check \
+	check-am clean clean-generic clean-libtool clean-local \
+	clean-noinstPROGRAMS cscopelist-am ctags ctags-am distclean \
+	distclean-compile distclean-generic distclean-libtool \
+	distclean-tags distdir dvi dvi-am html html-am info info-am \
+	install install-am install-data install-data-am install-dvi \
+	install-dvi-am install-exec install-exec-am install-html \
+	install-html-am install-info install-info-am install-man \
+	install-pdf install-pdf-am install-ps install-ps-am \
+	install-strip installcheck installcheck-am installdirs \
+	maintainer-clean maintainer-clean-generic mostlyclean \
+	mostlyclean-compile mostlyclean-generic mostlyclean-libtool \
+	pdf pdf-am ps ps-am tags tags-am uninstall uninstall-am
 
 .PRECIOUS: Makefile
 
 
-@BUILD_UNITTESTS_TRUE@@USE_TEST_BUNDLES_TRUE@unit_bundle.c: $(top_srcdir)/tests/mk-bundle.pl
+@BUILD_UNITTESTS_TRUE@@USE_TEST_BUNDLES_TRUE@unit_bundle.c: $(top_srcdir)/tests/mk-bundle.pl Makefile.inc
 @BUILD_UNITTESTS_TRUE@@USE_TEST_BUNDLES_TRUE@	@PERL@ $(top_srcdir)/tests/mk-bundle.pl $(srcdir) > unit_bundle.c
 
 # ignore generated C files since they play by slightly different rules!
@@ -1756,6 +1744,11 @@ checksrc:
 	$(CHECKSRC)(@PERL@ $(top_srcdir)/scripts/checksrc.pl -D$(srcdir) \
 	  -W$(srcdir)/unit_bundle.c \
 	  $(srcdir)/*.[ch])
+
+@NOT_CURL_CI_TRUE@all-local: checksrc
+
+clean-local:
+	rm -f $(BUNDLE)
 
 # Tell versions [3.59,3.63) of GNU make to not export all variables.
 # Otherwise a system limit (for SysV at least) may be exceeded.

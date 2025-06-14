@@ -23,13 +23,9 @@
  ***************************************************************************/
 #include "tool_setup.h"
 
-#include "strcase.h"
-
-#include "curlx.h"
-
+#include <curlx.h>
 #include "tool_libinfo.h"
-
-#include "memdebug.h" /* keep this as LAST include */
+#include <memdebug.h> /* keep this as LAST include */
 
 /* global variable definitions, for libcurl runtime info */
 
@@ -127,7 +123,7 @@ static struct feature_name_presentp {
   {NULL,             NULL,                0}
 };
 
-static const char *fnames[sizeof(maybe_feature) / sizeof(maybe_feature[0])];
+static const char *fnames[CURL_ARRAYSIZE(maybe_feature)];
 const char * const *feature_names = fnames;
 size_t feature_count;
 

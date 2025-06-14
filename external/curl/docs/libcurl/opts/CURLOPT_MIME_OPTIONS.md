@@ -28,8 +28,8 @@ CURLcode curl_easy_setopt(CURL *handle, CURLOPT_MIME_OPTIONS, long options);
 
 # DESCRIPTION
 
-Pass a long that holds a bitmask of CURLMIMEOPT_* defines. Each bit is a
-Boolean flag used while encoding a MIME tree or multipart form data.
+Pass a long that holds a bitmask of options. Each bit is a boolean flag used
+while encoding a MIME tree or multipart form data.
 
 Available bits are:
 
@@ -69,7 +69,7 @@ int main(void)
 
   if(curl) {
     curl_easy_setopt(curl, CURLOPT_URL, "https://example.com");
-    curl_easy_setopt(curl, CURLOPT_MIME_OPTIONS, CURLMIMEOPT_FORMESCAPE);
+    curl_easy_setopt(curl, CURLOPT_MIME_OPTIONS, (long)CURLMIMEOPT_FORMESCAPE);
 
     form = curl_mime_init(curl);
     if(form) {

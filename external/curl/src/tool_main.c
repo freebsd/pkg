@@ -29,13 +29,15 @@
 #include <tchar.h>
 #endif
 
+#ifndef UNDER_CE
 #include <signal.h>
+#endif
 
 #ifdef HAVE_FCNTL_H
 #include <fcntl.h>
 #endif
 
-#include "curlx.h"
+#include <curlx.h>
 
 #include "tool_cfgable.h"
 #include "tool_doswin.h"
@@ -51,7 +53,7 @@
  * the library level code from this client-side is ugly, but we do this
  * anyway for convenience.
  */
-#include "memdebug.h" /* keep this as LAST include */
+#include <memdebug.h> /* keep this as LAST include */
 
 #ifdef __VMS
 /*
@@ -131,15 +133,15 @@ static void memory_tracking_init(void)
   /* if CURL_MEMLIMIT is set, this enables fail-on-alloc-number-N feature */
   env = curl_getenv("CURL_MEMLIMIT");
   if(env) {
-    char *endptr;
-    long num = strtol(env, &endptr, 10);
-    if((endptr != env) && (endptr == env + strlen(env)) && (num > 0))
-      curl_dbg_memlimit(num);
+    curl_off_t num;
+    const char *p = env;
+    if(!curlx_str_number(&p, &num, LONG_MAX))
+      curl_dbg_memlimit((long)num);
     curl_free(env);
   }
 }
 #else
-#  define memory_tracking_init() Curl_nop_stmt
+#  define memory_tracking_init() tool_nop_stmt
 #endif
 
 /*
@@ -195,13 +197,13 @@ static CURLcode main_init(struct GlobalConfig *config)
 
 static void free_globalconfig(struct GlobalConfig *config)
 {
-  Curl_safefree(config->trace_dump);
+  tool_safefree(config->trace_dump);
 
   if(config->trace_fopened && config->trace_stream)
     fclose(config->trace_stream);
   config->trace_stream = NULL;
 
-  Curl_safefree(config->libcurl);
+  tool_safefree(config->libcurl);
 }
 
 /*
@@ -224,7 +226,7 @@ static void main_free(struct GlobalConfig *config)
 /*
 ** curl tool main function.
 */
-#ifdef _UNICODE
+#if defined(_UNICODE) && !defined(UNDER_CE)
 #if defined(__GNUC__) || defined(__clang__)
 /* GCC does not know about wmain() */
 #pragma GCC diagnostic push
@@ -242,7 +244,7 @@ int main(int argc, char *argv[])
 
   tool_init_stderr();
 
-#ifdef _WIN32
+#if defined(_WIN32) && !defined(UNDER_CE)
   /* Undocumented diagnostic option to list the full paths of all loaded
      modules. This is purposely pre-init. */
   if(argc == 2 && !_tcscmp(argv[1], _T("--dump-module-paths"))) {
@@ -252,6 +254,8 @@ int main(int argc, char *argv[])
     curl_slist_free_all(head);
     return head ? 0 : 1;
   }
+#endif
+#ifdef _WIN32
   /* win32_init must be called before other init routines. */
   result = win32_init();
   if(result) {
@@ -295,7 +299,7 @@ int main(int argc, char *argv[])
 #endif
 }
 
-#ifdef _UNICODE
+#if defined(_UNICODE) && !defined(UNDER_CE)
 #if defined(__GNUC__) || defined(__clang__)
 #pragma GCC diagnostic pop
 #endif

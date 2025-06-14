@@ -335,12 +335,13 @@ CURLcode test(char *URL)
   void *conv_to_network_cb = NULL;
   void *conv_from_utf8_cb = NULL;
   void *interleavecb = NULL;
-  char *stringpointerextra = (char *)"moooo";
+  char *stringpointerextra = (char *)CURL_UNCONST("moooo");
   struct curl_slist *slist = NULL;
   struct curl_httppost *httppost = NULL;
   curl_mime *mimepost = NULL;
   FILE *stream = stderr;
   struct testdata object;
+  CURLU *curlu = (CURLU *)&object;
   char *charp;
   long val;
   curl_off_t oval;
@@ -348,7 +349,7 @@ CURLcode test(char *URL)
   curl_socket_t sockfd;
   struct curl_certinfo *certinfo;
   struct curl_tlssessioninfo *tlssession;
-  struct curl_blob blob = { (void *)"silly", 5, 0};
+  struct curl_blob blob = { CURL_UNCONST("silly"), 5, 0};
   CURLcode res = CURLE_OK;
   (void)URL; /* not used */
   global_init(CURL_GLOBAL_ALL);
@@ -360,7 +361,6 @@ CURLcode test(char *URL)
     goto test_cleanup;
   }
 
-  CURL_IGNORE_DEPRECATION(
 HEADER
     ;
 
@@ -495,7 +495,7 @@ MOO
             elsif(($name eq "CURLOPT_POSTFIELDS") ||
                   ($name eq "CURLOPT_COPYPOSTFIELDS")) {
                 # set size to zero to avoid it being "illegal"
-                print $fh "  (void)curl_easy_setopt(curl, CURLOPT_POSTFIELDSIZE, 0);\n";
+                print $fh "  (void)curl_easy_setopt(curl, CURLOPT_POSTFIELDSIZE, 0L);\n";
                 print $fh "${fpref} stringpointerextra);\n$fcheck";
             }
             elsif($name eq "CURLOPT_HTTPPOST") {
@@ -506,6 +506,9 @@ MOO
             }
             elsif($name eq "CURLOPT_STDERR") {
               print $fh "${fpref} stream);\n$fcheck";
+            }
+            elsif($name eq "CURLOPT_CURLU") {
+              print $fh "${fpref} curlu);\n$fcheck";
             }
             else {
               print $fh "${fpref} &object);\n$fcheck";
@@ -593,8 +596,9 @@ MOO
 
 
 print $fh <<FOOTER
-  )
-  curl_easy_setopt(curl, (CURLoption)1, 0);
+
+  /* NOLINTNEXTLINE(clang-analyzer-optin.core.EnumCastOutOfRange) */
+  curl_easy_setopt(curl, (CURLoption)1, 0L);
   res = CURLE_OK;
 test_cleanup:
   curl_easy_cleanup(curl);

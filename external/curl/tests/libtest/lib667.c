@@ -36,7 +36,7 @@ struct WriteThis {
 static size_t read_callback(char *ptr, size_t size, size_t nmemb, void *userp)
 {
   struct WriteThis *pooh = (struct WriteThis *)userp;
-  int eof = !*pooh->readptr;
+  int eof;
 
   if(size*nmemb < 1)
     return 0;
@@ -68,7 +68,7 @@ CURLcode test(char *URL)
    */
 
   if(curl_global_init(CURL_GLOBAL_ALL) != CURLE_OK) {
-    fprintf(stderr, "curl_global_init() failed\n");
+    curl_mfprintf(stderr, "curl_global_init() failed\n");
     return TEST_ERR_MAJOR_BAD;
   }
 
@@ -101,7 +101,7 @@ CURLcode test(char *URL)
   /* Send data. */
   res = curl_easy_perform(easy);
   if(res != CURLE_OK) {
-    fprintf(stderr, "curl_easy_perform() failed\n");
+    curl_mfprintf(stderr, "curl_easy_perform() failed\n");
   }
 
 test_cleanup:

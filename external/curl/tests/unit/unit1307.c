@@ -243,7 +243,8 @@ static const struct testcase tests[] = {
   { "?*?*?.?",                  "abcdef.c",               MATCH },
   { "?*?*?.?",                  "abcdef.cd",              NOMATCH },
 
-  { "Lindmätarv",               "Lindmätarv",             MATCH },
+  /* https://codepoints.net/U+00E4 Latin Small Letter A with Diaeresis */
+  { "Lindm\xc3\xa4tarv",        "Lindm\xc3\xa4tarv",      MATCH },
 
   { "",                         "",                       MATCH},
   {"**]*[*[\x13]**[*\x13)]*]*[**[*\x13~r-]*]**[.*]*[\xe3\xe3\xe3\xe3\xe3\xe3"
@@ -275,7 +276,6 @@ enum system {
 
 UNITTEST_START
 {
-  int testnum = sizeof(tests) / sizeof(struct testcase);
   int i;
   enum system machine;
 
@@ -292,7 +292,7 @@ UNITTEST_START
   machine = SYSTEM_CUSTOM;
 #endif
 
-  for(i = 0; i < testnum; i++) {
+  for(i = 0; i < (int)CURL_ARRAYSIZE(tests); i++) {
     int result = tests[i].result;
     int rc = Curl_fnmatch(NULL, tests[i].pattern, tests[i].string);
     if(result & (LINUX_DIFFER|MAC_DIFFER)) {

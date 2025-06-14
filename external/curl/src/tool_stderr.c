@@ -26,7 +26,7 @@
 #include "tool_stderr.h"
 #include "tool_msgs.h"
 
-#include "memdebug.h" /* keep this as LAST include */
+#include <memdebug.h> /* keep this as LAST include */
 
 FILE *tool_stderr;
 
@@ -36,7 +36,7 @@ void tool_init_stderr(void)
   tool_stderr = stderr;
 }
 
-void tool_set_stderr_file(struct GlobalConfig *global, char *filename)
+void tool_set_stderr_file(struct GlobalConfig *global, const char *filename)
 {
   FILE *fp;
 

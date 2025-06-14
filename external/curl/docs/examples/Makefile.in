@@ -136,6 +136,7 @@ POST_UNINSTALL = :
 build_triplet = @build@
 host_triplet = @host@
 @USE_CPPFLAG_CURL_STATICLIB_TRUE@am__append_1 = -DCURL_STATICLIB
+@DOING_NATIVE_WINDOWS_TRUE@am__append_2 = -DWIN32_LEAN_AND_MEAN
 check_PROGRAMS = 10-at-a-time$(EXEEXT) address-scope$(EXEEXT) \
 	altsvc$(EXEEXT) anyauthput$(EXEEXT) block_ip$(EXEEXT) \
 	certinfo$(EXEEXT) chkspeed$(EXEEXT) connect-to$(EXEEXT) \
@@ -1009,7 +1010,8 @@ EXTRA_DIST = README.md Makefile.example CMakeLists.txt \
 # $(top_srcdir)/include is for libcurl's external include files
 
 # Avoid libcurl obsolete stuff
-AM_CPPFLAGS = -I$(top_srcdir)/include -DCURL_NO_OLDIES $(am__append_1)
+AM_CPPFLAGS = -I$(top_srcdir)/include -DCURL_NO_OLDIES $(am__append_1) \
+	$(am__append_2)
 LIBDIR = $(top_builddir)/lib
 
 # Dependencies
@@ -1771,7 +1773,9 @@ distdir-am: $(DISTFILES)
 check-am: all-am
 	$(MAKE) $(AM_MAKEFLAGS) $(check_PROGRAMS)
 check: check-am
-all-am: Makefile
+@DEBUGBUILD_FALSE@all-local:
+@NOT_CURL_CI_FALSE@all-local:
+all-am: Makefile all-local
 installdirs:
 install: install-am
 install-exec: install-exec-am
@@ -2096,16 +2100,16 @@ uninstall-am:
 
 .MAKE: check-am install-am install-strip
 
-.PHONY: CTAGS GTAGS TAGS all all-am am--depfiles check check-am clean \
-	clean-checkPROGRAMS clean-generic clean-libtool cscopelist-am \
-	ctags ctags-am distclean distclean-compile distclean-generic \
-	distclean-libtool distclean-tags distdir dvi dvi-am html \
-	html-am info info-am install install-am install-data \
-	install-data-am install-dvi install-dvi-am install-exec \
-	install-exec-am install-html install-html-am install-info \
-	install-info-am install-man install-pdf install-pdf-am \
-	install-ps install-ps-am install-strip installcheck \
-	installcheck-am installdirs maintainer-clean \
+.PHONY: CTAGS GTAGS TAGS all all-am all-local am--depfiles check \
+	check-am clean clean-checkPROGRAMS clean-generic clean-libtool \
+	cscopelist-am ctags ctags-am distclean distclean-compile \
+	distclean-generic distclean-libtool distclean-tags distdir dvi \
+	dvi-am html html-am info info-am install install-am \
+	install-data install-data-am install-dvi install-dvi-am \
+	install-exec install-exec-am install-html install-html-am \
+	install-info install-info-am install-man install-pdf \
+	install-pdf-am install-ps install-ps-am install-strip \
+	installcheck installcheck-am installdirs maintainer-clean \
 	maintainer-clean-generic mostlyclean mostlyclean-compile \
 	mostlyclean-generic mostlyclean-libtool pdf pdf-am ps ps-am \
 	tags tags-am uninstall uninstall-am
@@ -2119,6 +2123,9 @@ all: $(check_PROGRAMS)
 
 checksrc:
 	$(CHECKSRC)(@PERL@ $(top_srcdir)/scripts/checksrc.pl -D$(srcdir) $(srcdir)/*.c)
+
+# for debug builds, we scan the sources on all regular make invokes
+@DEBUGBUILD_TRUE@@NOT_CURL_CI_TRUE@all-local: checksrc
 
 # Tell versions [3.59,3.63) of GNU make to not export all variables.
 # Otherwise a system limit (for SysV at least) may be exceeded.

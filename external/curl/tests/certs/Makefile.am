@@ -23,42 +23,28 @@
 ###########################################################################
 AUTOMAKE_OPTIONS = foreign
 
-SUBDIRS = scripts
-
 include Makefile.inc
 
-EXTRA_DIST = $(CERTCONFIGS) $(GENERATEDCERTS) $(SRPFILES) CMakeLists.txt
+EXTRA_DIST = $(CERTCONFIG_CA) $(CERTCONFIGS) $(SRPFILES) CMakeLists.txt \
+  genserv.pl
+
+DISTCLEANFILES = $(GENERATEDCERTS)
+
+all-am: test-ca.cacert
 
 # Rebuild the certificates
 
-clean-certs:
-	cd $(srcdir); rm -f $(GENERATEDCERTS)
+# Generate all certs in a single shot, but declare just a single target file
+# to support GNU Make <4.3 without the "grouped explicit targets" feature.
+test-ca.cacert: $(CERTCONFIG_CA) $(CERTCONFIGS) genserv.pl
+	$(PERL) $(srcdir)/genserv.pl test $(CERTCONFIGS)
 
-build-certs: $(srcdir)/EdelCurlRoot-ca.cacert $(srcdir)/Server-localhost-sv.pem \
-	$(srcdir)/Server-localhost.nn-sv.pem $(srcdir)/Server-localhost0h-sv.pem \
-	$(srcdir)/Server-localhost-firstSAN-sv.pem $(srcdir)/Server-localhost-lastSAN-sv.pem \
-	$(srcdir)/stunnel-sv.pem $(srcdir)/../stunnel.pem
-
-$(srcdir)/EdelCurlRoot-ca.cacert:
-	cd $(srcdir); scripts/genroot.sh EdelCurlRoot
-
-$(srcdir)/Server-localhost-sv.pem: $(srcdir)/EdelCurlRoot-ca.cacert
-	cd $(srcdir); scripts/genserv.sh Server-localhost EdelCurlRoot
-
-$(srcdir)/Server-localhost.nn-sv.pem: $(srcdir)/EdelCurlRoot-ca.cacert
-	cd $(srcdir); scripts/genserv.sh Server-localhost.nn EdelCurlRoot
-
-$(srcdir)/Server-localhost0h-sv.pem: $(srcdir)/EdelCurlRoot-ca.cacert
-	cd $(srcdir); scripts/genserv.sh Server-localhost0h EdelCurlRoot
-
-$(srcdir)/Server-localhost-firstSAN-sv.pem: $(srcdir)/EdelCurlRoot-ca.cacert
-	cd $(srcdir); scripts/genserv.sh Server-localhost-firstSAN EdelCurlRoot
-
-$(srcdir)/Server-localhost-lastSAN-sv.pem: $(srcdir)/EdelCurlRoot-ca.cacert
-	cd $(srcdir); scripts/genserv.sh Server-localhost-lastSAN EdelCurlRoot
-
-$(srcdir)/stunnel-sv.pem: $(srcdir)/EdelCurlRoot-ca.cacert
-	cd $(srcdir); scripts/genserv.sh stunnel EdelCurlRoot
-
- $(srcdir)/../stunnel.pem: $(srcdir)/stunnel-sv.pem
-	cp $< $@
+clean-local:
+	rm -f $(GENERATEDCERTS) \
+	  test-*.csr \
+	  test-*.der \
+	  test-*.keyenc \
+	  test-ca.cnt* \
+	  test-ca.db* \
+	  test-ca.raw* \
+	  test-ca.srl

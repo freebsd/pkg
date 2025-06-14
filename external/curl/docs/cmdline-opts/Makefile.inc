@@ -253,6 +253,7 @@ DPAGES = \
   show-error.md \
   show-headers.md \
   silent.md \
+  sigalgs.md \
   skip-existing.md \
   socks4.md \
   socks4a.md \
@@ -301,6 +302,7 @@ DPAGES = \
   trace.md \
   unix-socket.md \
   upload-file.md \
+  upload-flags.md \
   url.md \
   url-query.md \
   use-ascii.md \

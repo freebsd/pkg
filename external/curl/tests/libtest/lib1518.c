@@ -50,7 +50,7 @@ CURLcode test(char *URL)
 #endif
   curl = curl_easy_init();
   if(!curl) {
-    fprintf(stderr, "curl_easy_init() failed\n");
+    curl_mfprintf(stderr, "curl_easy_init() failed\n");
     curl_global_cleanup();
     return TEST_ERR_MAJOR_BAD;
   }
@@ -76,6 +76,8 @@ CURLcode test(char *URL)
 
   /* Perform the request, res will get the return code */
   res = curl_easy_perform(curl);
+  if(res)
+    goto test_cleanup;
 
   curl_easy_getinfo(curl, CURLINFO_RESPONSE_CODE, &curlResponseCode);
   curl_easy_getinfo(curl, CURLINFO_REDIRECT_COUNT, &curlRedirectCount);
@@ -83,16 +85,16 @@ CURLcode test(char *URL)
   curl_easy_getinfo(curl, CURLINFO_REDIRECT_URL, &redirectUrl);
   test_setopt(curl, CURLOPT_WRITEFUNCTION, writecb);
 
-  printf("res %d\n"
-         "status %ld\n"
-         "redirects %ld\n"
-         "effectiveurl %s\n"
-         "redirecturl %s\n",
-         res,
-         curlResponseCode,
-         curlRedirectCount,
-         effectiveUrl,
-         redirectUrl ? redirectUrl : "blank");
+  curl_mprintf("res %d\n"
+               "status %ld\n"
+               "redirects %ld\n"
+               "effectiveurl %s\n"
+               "redirecturl %s\n",
+               res,
+               curlResponseCode,
+               curlRedirectCount,
+               effectiveUrl,
+               redirectUrl ? redirectUrl : "blank");
 
 test_cleanup:
 

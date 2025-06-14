@@ -3,7 +3,7 @@ c: Copyright (C) Daniel Stenberg, <daniel@haxx.se>, et al.
 SPDX-License-Identifier: curl
 Long: proxy
 Short: x
-Arg: [protocol://]host[:port]
+Arg: <[protocol://]host[:port]>
 Help: Use this proxy
 Category: proxy
 Added: 4.0
@@ -22,12 +22,12 @@ Use the specified proxy.
 The proxy string can be specified with a protocol:// prefix. No protocol
 specified or http:// it is treated as an HTTP proxy. Use socks4://,
 socks4a://, socks5:// or socks5h:// to request a specific SOCKS version to be
-used.  (Added in 7.21.7)
+used. (Added in 7.21.7)
 
 Unix domain sockets are supported for socks proxy. Set localhost for the host
 part. e.g. socks5h://localhost/path/to/socket.sock
 
-HTTPS proxy support works set with the https:// protocol prefix for OpenSSL
+HTTPS proxy support works with the https:// protocol prefix for OpenSSL
 and GnuTLS (added in 7.52.0). It also works for BearSSL, mbedTLS, Rustls,
 Schannel, Secure Transport and wolfSSL (added in 7.87.0).
 
@@ -59,4 +59,4 @@ used.
 
 Doing FTP over an HTTP proxy without --proxytunnel makes curl do HTTP with an
 FTP URL over the proxy. For such transfers, common FTP specific options do not
-work, including --ftp-ssl-reqd and --ftp-ssl-control.
+work, including --ssl-reqd and --ftp-ssl-control.

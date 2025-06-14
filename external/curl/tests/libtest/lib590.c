@@ -45,13 +45,13 @@ CURLcode test(char *URL)
   long usedauth = 0;
 
   if(curl_global_init(CURL_GLOBAL_ALL) != CURLE_OK) {
-    fprintf(stderr, "curl_global_init() failed\n");
+    curl_mfprintf(stderr, "curl_global_init() failed\n");
     return TEST_ERR_MAJOR_BAD;
   }
 
   curl = curl_easy_init();
   if(!curl) {
-    fprintf(stderr, "curl_easy_init() failed\n");
+    curl_mfprintf(stderr, "curl_easy_init() failed\n");
     curl_global_cleanup();
     return TEST_ERR_MAJOR_BAD;
   }
@@ -61,13 +61,19 @@ CURLcode test(char *URL)
   test_setopt(curl, CURLOPT_PROXYAUTH,
               (long) (CURLAUTH_BASIC | CURLAUTH_DIGEST | CURLAUTH_NTLM));
   test_setopt(curl, CURLOPT_PROXY, libtest_arg2); /* set in first.c */
+
+  /* set the name + password twice to test that the API is fine with it */
+  test_setopt(curl, CURLOPT_PROXYUSERNAME, "me");
+  test_setopt(curl, CURLOPT_PROXYPASSWORD, "password");
   test_setopt(curl, CURLOPT_PROXYUSERPWD, "me:password");
 
   res = curl_easy_perform(curl);
+  if(res)
+    goto test_cleanup;
 
   res = curl_easy_getinfo(curl, CURLINFO_PROXYAUTH_USED, &usedauth);
   if(CURLAUTH_NTLM != usedauth) {
-    printf("CURLINFO_PROXYAUTH_USED did not say NTLM\n");
+    curl_mprintf("CURLINFO_PROXYAUTH_USED did not say NTLM\n");
   }
 
 test_cleanup:

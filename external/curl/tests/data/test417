@@ -2,6 +2,7 @@
 <info>
 <keywords>
 HTTPS
+--write-out
 %{certs}
 </keywords>
 </info>
@@ -25,14 +26,13 @@ SSL
 !wolfssl
 !bearssl
 !mbedtls
-!rustls
 </features>
 <server>
 http
 https
 </server>
 <name>
-%{certs}
+--write-out with %{certs}
 </name>
 <command option="no-include">
 --insecure https://%HOSTIP:%HTTPSPORT/%TESTNUMBER -w '%{certs}'
@@ -51,7 +51,7 @@ s/^(.*):(.*)[\r\n]*//
 </stripfile>
 <stdout>
 nomnom
-%strippemfile[%SRCDIR/certs/stunnel-sv.crt]strippemfile%
+%strippemfile[%CERTDIR/certs/test-localhost.crt]strippemfile%
 </stdout>
 
 </verify>

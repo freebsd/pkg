@@ -72,7 +72,7 @@ if($c)
 
     print <<HEAD
 #include <zlib.h>
-#include "memdebug.h" /* keep this as LAST include */
+#include <memdebug.h> /* keep this as LAST include */
 static const unsigned char hugehelpgz[] = {
   /* This mumbo-jumbo is the huge help text compressed with gzip.
      Thanks to this operation, the size of this data shrank from $gzip
@@ -82,12 +82,14 @@ HEAD
 ;
 
     my $c=0;
-    print " ";
     for(split(//, $gzippedContent)) {
         my $num=ord($_);
+        if(!($c % 12)) {
+            print " ";
+        }
         printf(" 0x%02x,", 0+$num);
         if(!(++$c % 12)) {
-            print "\n ";
+            print "\n";
         }
     }
     print "\n};\n";
@@ -122,8 +124,8 @@ void hugehelp(void)
   memset(&z, 0, sizeof(z_stream));
   z.zalloc = (alloc_func)zalloc_func;
   z.zfree = (free_func)zfree_func;
-  z.avail_in = (unsigned int)(sizeof(hugehelpgz) - HEADERLEN);
-  z.next_in = (unsigned char *)hugehelpgz + HEADERLEN;
+  z.avail_in = (uInt)(sizeof(hugehelpgz) - HEADERLEN);
+  z.next_in = (z_const Bytef *)hugehelpgz + HEADERLEN;
 
   if(inflateInit2(&z, -MAX_WBITS) != Z_OK)
     return;
@@ -162,8 +164,8 @@ void showhelp(const char *trigger, const char *arg, const char *endarg)
   memset(&z, 0, sizeof(z_stream));
   z.zalloc = (alloc_func)zalloc_func;
   z.zfree = (free_func)zfree_func;
-  z.avail_in = (unsigned int)(sizeof(hugehelpgz) - HEADERLEN);
-  z.next_in = (unsigned char *)hugehelpgz + HEADERLEN;
+  z.avail_in = (uInt)(sizeof(hugehelpgz) - HEADERLEN);
+  z.next_in = (z_const Bytef *)hugehelpgz + HEADERLEN;
 
   if(inflateInit2(&z, -MAX_WBITS) != Z_OK)
     return;
@@ -235,8 +237,8 @@ void showhelp(const char *trigger, const char *arg, const char *endarg)
   inithelpscan(&ctx, trigger, arg, endarg);
   while(curlman[i]) {
     size_t len = strlen(curlman[i]);
-    if(!helpscan((unsigned char *)curlman[i], len, &ctx) ||
-       !helpscan((unsigned char *)"\\n", 1, &ctx))
+    if(!helpscan((const unsigned char *)curlman[i], len, &ctx) ||
+       !helpscan((const unsigned char *)"\\n", 1, &ctx))
       break;
     i++;
   }

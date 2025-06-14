@@ -532,6 +532,7 @@ distdir-am: $(DISTFILES)
 check-am: all-am
 check: check-am
 @DEBUGBUILD_FALSE@all-local:
+@NOT_CURL_CI_FALSE@all-local:
 all-am: Makefile $(HEADERS) all-local
 installdirs:
 	for dir in "$(DESTDIR)$(pkgincludedir)"; do \
@@ -656,7 +657,7 @@ checksrc:
 	$(CHECKSRC)@PERL@ $(top_srcdir)/scripts/checksrc.pl -D$(top_srcdir)/include/curl $(pkginclude_HEADERS)
 
 # for debug builds, we scan the sources on all regular make invokes
-@DEBUGBUILD_TRUE@all-local: checksrc
+@DEBUGBUILD_TRUE@@NOT_CURL_CI_TRUE@all-local: checksrc
 
 # Tell versions [3.59,3.63) of GNU make to not export all variables.
 # Otherwise a system limit (for SysV at least) may be exceeded.

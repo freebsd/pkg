@@ -46,9 +46,9 @@ static int progressCallback(void *arg,
   (void)ultotal;
   (void)ulnow;
   res = curl_easy_recv(curl, buffer, 256, &n);
-  printf("curl_easy_recv returned %d\n", res);
+  curl_mprintf("curl_easy_recv returned %d\n", res);
   res = curl_easy_send(curl, buffer, n, &n);
-  printf("curl_easy_send returned %d\n", res);
+  curl_mprintf("curl_easy_send returned %d\n", res);
 
   return 1;
 }
@@ -64,10 +64,8 @@ CURLcode test(char *URL)
   easy_setopt(curl, CURLOPT_URL, URL);
   easy_setopt(curl, CURLOPT_TIMEOUT, (long)7);
   easy_setopt(curl, CURLOPT_NOSIGNAL, (long)1);
-  CURL_IGNORE_DEPRECATION(
-    easy_setopt(curl, CURLOPT_PROGRESSFUNCTION, progressCallback);
-    easy_setopt(curl, CURLOPT_PROGRESSDATA, NULL);
-  )
+  easy_setopt(curl, CURLOPT_PROGRESSFUNCTION, progressCallback);
+  easy_setopt(curl, CURLOPT_PROGRESSDATA, NULL);
   easy_setopt(curl, CURLOPT_NOPROGRESS, (long)0);
 
   res = curl_easy_perform(curl);

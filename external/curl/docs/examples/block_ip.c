@@ -29,9 +29,9 @@
  * filter IP addresses.
  */
 
-#ifdef __AMIGA__
+#if defined(__AMIGA__) || defined(UNDER_CE)
 #include <stdio.h>
-int main(void) { printf("AmigaOS is not supported.\n"); return 1; }
+int main(void) { printf("Platform not supported.\n"); return 1; }
 #else
 
 #ifdef _WIN32
@@ -41,8 +41,9 @@ int main(void) { printf("AmigaOS is not supported.\n"); return 1; }
 #ifndef _CRT_NONSTDC_NO_DEPRECATE
 #define _CRT_NONSTDC_NO_DEPRECATE
 #endif
-#ifndef _WIN32_WINNT
-#define _WIN32_WINNT 0x0600
+#if !defined(_WIN32_WINNT) || _WIN32_WINNT < 0x0600
+#undef _WIN32_WINNT
+#define _WIN32_WINNT 0x0600  /* Requires Windows Vista */
 #endif
 #include <winsock2.h>
 #include <ws2tcpip.h>
@@ -298,14 +299,19 @@ int main(void)
 
   filter = (struct connection_filter *)calloc(1, sizeof(*filter));
   if(!filter)
-    exit(1);
+    return 1;
 
-  if(curl_global_init(CURL_GLOBAL_DEFAULT))
-    exit(1);
+  if(curl_global_init(CURL_GLOBAL_DEFAULT)) {
+    free(filter);
+    return 1;
+  }
 
   curl = curl_easy_init();
-  if(!curl)
-    exit(1);
+  if(!curl) {
+    curl_global_cleanup();
+    free(filter);
+    return 1;
+  }
 
   /* Set the target URL */
   curl_easy_setopt(curl, CURLOPT_URL, "http://localhost");

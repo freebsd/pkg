@@ -9,7 +9,7 @@
  *
  * This software is licensed as described in the file COPYING, which
  * you should have received as part of this distribution. The terms
- * are also available at https://curl.haxx.se/docs/copyright.html.
+ * are also available at https://curl.se/docs/copyright.html.
  *
  * You may opt to use, copy, modify, merge, publish, distribute and/or sell
  * copies of the Software, and permit persons to whom the Software is
@@ -59,7 +59,7 @@ CURLcode test(char *URL)
           m = curl_multi_perform(multi, &running_handles);
 
         if(m)
-          fprintf(stderr, "curl_multi_perform failed\n");
+          curl_mfprintf(stderr, "curl_multi_perform failed\n");
       }
       /* Close the easy handle *before* the multi handle. Doing it the other
          way around avoids the issue. */

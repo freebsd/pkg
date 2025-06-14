@@ -52,13 +52,13 @@ CURLcode test(char *URL)
   struct curl_slist *hhl = NULL, *phl = NULL, *tmp = NULL;
 
   if(curl_global_init(CURL_GLOBAL_ALL) != CURLE_OK) {
-    fprintf(stderr, "curl_global_init() failed\n");
+    curl_mfprintf(stderr, "curl_global_init() failed\n");
     return TEST_ERR_MAJOR_BAD;
   }
 
   curl = curl_easy_init();
   if(!curl) {
-    fprintf(stderr, "curl_easy_init() failed\n");
+    curl_mfprintf(stderr, "curl_easy_init() failed\n");
     curl_global_cleanup();
     return TEST_ERR_MAJOR_BAD;
   }
@@ -78,11 +78,11 @@ CURLcode test(char *URL)
   test_setopt(curl, CURLOPT_PROXY, libtest_arg2);
   test_setopt(curl, CURLOPT_HTTPHEADER, hhl);
   test_setopt(curl, CURLOPT_PROXYHEADER, phl);
-  test_setopt(curl, CURLOPT_HEADEROPT, CURLHEADER_SEPARATE);
+  test_setopt(curl, CURLOPT_HEADEROPT, (long)CURLHEADER_SEPARATE);
   test_setopt(curl, CURLOPT_POST, 0L);
   test_setopt(curl, CURLOPT_UPLOAD, 1L);
   test_setopt(curl, CURLOPT_VERBOSE, 1L);
-  test_setopt(curl, CURLOPT_PROXYTYPE, CURLPROXY_HTTP);
+  test_setopt(curl, CURLOPT_PROXYTYPE, (long)CURLPROXY_HTTP);
   test_setopt(curl, CURLOPT_HEADER, 1L);
   test_setopt(curl, CURLOPT_WRITEFUNCTION, fwrite);
   test_setopt(curl, CURLOPT_READFUNCTION, read_callback);

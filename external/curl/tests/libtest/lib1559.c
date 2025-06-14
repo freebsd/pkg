@@ -32,38 +32,41 @@ CURLcode test(char *URL)
 {
   CURLcode res = CURLE_OK;
   CURL *curl = NULL;
-  char *longurl = malloc(EXCESSIVE);
+  char *longurl = NULL;
   CURLU *u;
   (void)URL;
-
-  if(!longurl)
-    return (CURLcode)1;
-
-  memset(longurl, 'a', EXCESSIVE);
-  longurl[EXCESSIVE-1] = 0;
 
   global_init(CURL_GLOBAL_ALL);
   easy_init(curl);
 
+  longurl = malloc(EXCESSIVE);
+  if(!longurl) {
+    res = TEST_ERR_MAJOR_BAD;
+    goto test_cleanup;
+  }
+
+  memset(longurl, 'a', EXCESSIVE);
+  longurl[EXCESSIVE-1] = 0;
+
   res = curl_easy_setopt(curl, CURLOPT_URL, longurl);
-  printf("CURLOPT_URL %d bytes URL == %d\n",
-         EXCESSIVE, res);
+  curl_mprintf("CURLOPT_URL %d bytes URL == %d\n",
+               EXCESSIVE, res);
 
   res = curl_easy_setopt(curl, CURLOPT_POSTFIELDS, longurl);
-  printf("CURLOPT_POSTFIELDS %d bytes data == %d\n",
-         EXCESSIVE, res);
+  curl_mprintf("CURLOPT_POSTFIELDS %d bytes data == %d\n",
+               EXCESSIVE, res);
 
   u = curl_url();
   if(u) {
     CURLUcode uc = curl_url_set(u, CURLUPART_URL, longurl, 0);
-    printf("CURLUPART_URL %d bytes URL == %d (%s)\n",
-           EXCESSIVE, (int)uc, curl_url_strerror(uc));
+    curl_mprintf("CURLUPART_URL %d bytes URL == %d (%s)\n",
+                 EXCESSIVE, (int)uc, curl_url_strerror(uc));
     uc = curl_url_set(u, CURLUPART_SCHEME, longurl, CURLU_NON_SUPPORT_SCHEME);
-    printf("CURLUPART_SCHEME %d bytes scheme == %d (%s)\n",
-           EXCESSIVE, (int)uc, curl_url_strerror(uc));
+    curl_mprintf("CURLUPART_SCHEME %d bytes scheme == %d (%s)\n",
+                 EXCESSIVE, (int)uc, curl_url_strerror(uc));
     uc = curl_url_set(u, CURLUPART_USER, longurl, 0);
-    printf("CURLUPART_USER %d bytes user == %d (%s)\n",
-           EXCESSIVE, (int)uc, curl_url_strerror(uc));
+    curl_mprintf("CURLUPART_USER %d bytes user == %d (%s)\n",
+                 EXCESSIVE, (int)uc, curl_url_strerror(uc));
     curl_url_cleanup(u);
   }
 

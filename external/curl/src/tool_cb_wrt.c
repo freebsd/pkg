@@ -30,14 +30,14 @@
 
 #include <sys/stat.h>
 
-#include "curlx.h"
+#include <curlx.h>
 
 #include "tool_cfgable.h"
 #include "tool_msgs.h"
 #include "tool_cb_wrt.h"
 #include "tool_operate.h"
 
-#include "memdebug.h" /* keep this as LAST include */
+#include <memdebug.h> /* keep this as LAST include */
 
 #ifdef _WIN32
 #define OPENMODE S_IREAD | S_IWRITE
@@ -68,6 +68,7 @@ bool tool_create_output_file(struct OutStruct *outs,
     do {
       fd = open(fname, O_CREAT | O_WRONLY | O_EXCL | CURL_O_BINARY, OPENMODE);
       /* Keep retrying in the hope that it is not interrupted sometime */
+      /* !checksrc! disable ERRNOVAR 1 */
     } while(fd == -1 && errno == EINTR);
     if(config->file_clobber_mode == CLOBBER_NEVER && fd == -1) {
       int next_num = 1;
@@ -86,6 +87,7 @@ bool tool_create_output_file(struct OutStruct *outs,
       }
       memcpy(newname, fname, len);
       newname[len] = '.';
+      /* !checksrc! disable ERRNOVAR 1 */
       while(fd == -1 && /* have not successfully opened a file */
             (errno == EEXIST || errno == EISDIR) &&
             /* because we keep having files that already exist */
@@ -138,7 +140,7 @@ size_t tool_write_cb(char *buffer, size_t sz, size_t nmemb, void *userdata)
   struct OperationConfig *config = per->config;
   size_t bytes = sz * nmemb;
   bool is_tty = config->global->isatty;
-#ifdef _WIN32
+#if defined(_WIN32) && !defined(UNDER_CE)
   CONSOLE_SCREEN_BUFFER_INFO console_info;
   intptr_t fhnd;
 #endif
@@ -210,7 +212,7 @@ size_t tool_write_cb(char *buffer, size_t sz, size_t nmemb, void *userdata)
     }
   }
 
-#ifdef _WIN32
+#if defined(_WIN32) && !defined(UNDER_CE)
   fhnd = _get_osfhandle(fileno(outs->stream));
   /* if Windows console then UTF-8 must be converted to UTF-16 */
   if(isatty(fileno(outs->stream)) &&
@@ -265,7 +267,7 @@ size_t tool_write_cb(char *buffer, size_t sz, size_t nmemb, void *userdata)
         WCHAR prefix[3] = {0};  /* UTF-16 (1-2 WCHARs) + NUL */
 
         if(MultiByteToWideChar(CP_UTF8, 0, (LPCSTR)outs->utf8seq, -1,
-                               prefix, sizeof(prefix)/sizeof(prefix[0]))) {
+                               prefix, CURL_ARRAYSIZE(prefix))) {
           DEBUGASSERT(prefix[2] == L'\0');
           if(!WriteConsoleW(
               (HANDLE) fhnd,
@@ -362,7 +364,12 @@ size_t tool_write_cb(char *buffer, size_t sz, size_t nmemb, void *userdata)
 
   if(config->nobuffer) {
     /* output buffering disabled */
-    int res = fflush(outs->stream);
+    int res;
+    do {
+      res = fflush(outs->stream);
+      /* Keep retrying in the hope that it is not interrupted sometime */
+      /* !checksrc! disable ERRNOVAR 1 */
+    } while(res && errno == EINTR);
     if(res)
       return CURL_WRITEFUNC_ERROR;
   }

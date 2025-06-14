@@ -44,7 +44,6 @@ CMAKE_DIST =                                    \
  CMake/FindLibssh.cmake                         \
  CMake/FindLibssh2.cmake                        \
  CMake/FindLibuv.cmake                          \
- CMake/FindMbedTLS.cmake                        \
  CMake/FindMSH3.cmake                           \
  CMake/FindMbedTLS.cmake                        \
  CMake/FindNGHTTP2.cmake                        \
@@ -60,6 +59,7 @@ CMAKE_DIST =                                    \
  CMake/OtherTests.cmake                         \
  CMake/PickyWarnings.cmake                      \
  CMake/Utilities.cmake                          \
+ CMake/unix-cache.cmake                         \
  CMake/win32-cache.cmake                        \
  CMakeLists.txt                                 \
  tests/cmake/CMakeLists.txt                     \
@@ -221,3 +221,6 @@ checksrc:
 tidy:
 	(cd src && $(MAKE) tidy)
 	(cd lib && $(MAKE) tidy)
+
+clean-local:
+	(cd tests && $(MAKE) clean)

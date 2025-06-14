@@ -131,7 +131,6 @@ AS_HELP_STRING([--disable-curldebug],[Disable curl debug memory tracking]),
       dnl as a request to disable curldebug.
       if test "$want_debug" = "yes"; then
         AC_MSG_RESULT([(assumed) yes])
-        AC_DEFINE(CURLDEBUG, 1, [to enable curl debug memory tracking])
       else
         AC_MSG_RESULT([no])
       fi
@@ -148,7 +147,6 @@ AS_HELP_STRING([--disable-curldebug],[Disable curl debug memory tracking]),
       dnl --disable-curldebug had been given setting shell variable
       dnl want_curldebug to 'no'.
       want_curldebug="yes"
-      AC_DEFINE(CURLDEBUG, 1, [to enable curl debug memory tracking])
       AC_MSG_RESULT([yes])
       ;;
   esac
@@ -183,7 +181,6 @@ AS_HELP_STRING([--disable-debug],[Disable debug build options]),
     *)
       dnl --enable-debug option used
       want_debug="yes"
-      AC_DEFINE(DEBUGBUILD, 1, [enable debug build options])
       ;;
   esac
   AC_MSG_RESULT([$want_debug])
@@ -504,11 +501,11 @@ AC_DEFUN([CURL_CHECK_LIB_ARES], [
       AC_LANG_PROGRAM([[
         #include <ares.h>
         /* set of dummy functions in case c-ares was built with debug */
-        void curl_dofree() { }
-        void curl_sclose() { }
-        void curl_domalloc() { }
-        void curl_docalloc() { }
-        void curl_socket() { }
+        void curl_dofree(void);   void curl_dofree(void) {}
+        void curl_sclose(void);   void curl_sclose(void) {}
+        void curl_domalloc(void); void curl_domalloc(void) {}
+        void curl_docalloc(void); void curl_docalloc(void) {}
+        void curl_socket(void);   void curl_socket(void) {}
       ]],[[
         ares_channel channel;
         ares_cancel(channel); /* added in 1.2.0 */

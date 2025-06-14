@@ -44,18 +44,27 @@ AM_CPPFLAGS = -I$(top_srcdir)/include        \
               -I$(top_builddir)/lib          \
               -I$(top_builddir)/src          \
               -I$(top_srcdir)/lib            \
+              -I$(top_srcdir)/lib/curlx      \
               -I$(top_srcdir)/src
 
 bin_PROGRAMS = curl
 
+curlinfo_SOURCES = curlinfo.c
+noinst_PROGRAMS = curlinfo
+
 if USE_CPPFLAG_CURL_STATICLIB
 AM_CPPFLAGS += -DCURL_STATICLIB
 endif
-AM_CPPFLAGS += -DBUILDING_CURL
+if DEBUGBUILD
+AM_CPPFLAGS += -DDEBUGBUILD
+endif
+if CURLDEBUG
+AM_CPPFLAGS += -DCURLDEBUG
+endif
 
 AM_LDFLAGS =
 if USE_UNICODE
-AM_LDFLAGS += -municode
+UNICODEFLAG = -municode
 endif
 
 include Makefile.inc
@@ -65,22 +74,16 @@ curl_hfiles_gen =
 CLEANFILES =
 
 if USE_UNITY
-curl_EXCLUDE =
-if DEBUGBUILD
-# We must compile this source separately to avoid memdebug.h redefinitions
-# applying to them.
-curl_EXCLUDE += ../lib/curl_multibyte.c
-endif
 if USE_CPPFLAG_CURL_STATICLIB
-curl_CURLX = $(CURLTOOL_LIBCURL_CFILES)
+curl_CURLX =
 else
 curl_CURLX = $(CURLX_CFILES)
 endif
 curltool_unity.c: $(top_srcdir)/scripts/mk-unity.pl $(CURL_CFILES) $(curl_cfiles_gen) $(curl_CURLX)
-	@PERL@ $(top_srcdir)/scripts/mk-unity.pl $(srcdir) $(CURL_CFILES) $(curl_cfiles_gen) $(curl_CURLX) --exclude $(curl_EXCLUDE) > curltool_unity.c
+	@PERL@ $(top_srcdir)/scripts/mk-unity.pl $(srcdir) $(CURL_CFILES) $(curl_cfiles_gen) $(curl_CURLX) > curltool_unity.c
 
 nodist_curl_SOURCES = curltool_unity.c
-curl_SOURCES = $(curl_EXCLUDE)
+curl_SOURCES =
 CLEANFILES += curltool_unity.c
 else
 # CURL_FILES comes from Makefile.inc
@@ -91,7 +94,7 @@ curl_SOURCES += $(CURL_RCFILES)
 $(CURL_RCFILES): tool_version.h
 endif
 
-curl_LDFLAGS = $(AM_LDFLAGS) $(CURL_LDFLAGS_BIN)
+curl_LDFLAGS = $(AM_LDFLAGS) $(CURL_LDFLAGS_BIN) $(UNICODEFLAG)
 
 # This might hold -Werror
 CFLAGS += @CURL_CFLAG_EXTRAS@
@@ -108,11 +111,11 @@ libcurltool_la_CPPFLAGS = $(AM_CPPFLAGS) -DCURL_STATICLIB -DUNITTESTS
 libcurltool_la_CFLAGS =
 libcurltool_la_LDFLAGS = -static $(LINKFLAGS)
 if USE_UNITY
-libcurltool_unity.c: $(top_srcdir)/scripts/mk-unity.pl $(CURL_CFILES) $(CURLTOOL_LIBCURL_CFILES)
-	@PERL@ $(top_srcdir)/scripts/mk-unity.pl $(srcdir) $(CURL_CFILES) $(CURLTOOL_LIBCURL_CFILES) --exclude $(curl_EXCLUDE) > libcurltool_unity.c
+libcurltool_unity.c: $(top_srcdir)/scripts/mk-unity.pl $(CURL_CFILES) $(curl_CURLX)
+	@PERL@ $(top_srcdir)/scripts/mk-unity.pl $(srcdir) $(CURL_CFILES) $(curl_CURLX) > libcurltool_unity.c
 
 nodist_libcurltool_la_SOURCES = libcurltool_unity.c
-libcurltool_la_SOURCES = $(curl_EXCLUDE)
+libcurltool_la_SOURCES =
 CLEANFILES += libcurltool_unity.c
 else
 libcurltool_la_SOURCES = $(CURL_FILES)
@@ -142,22 +145,29 @@ if HAVE_LIBZ
 # This generates the tool_hugehelp.c file in both uncompressed and
 # compressed formats.
 $(HUGE): $(ASCIIPAGE) $(MKHELP)
-	$(HUGECMD) (echo '#include "tool_setup.h"' > $(HUGE);   \
-	echo '#ifndef HAVE_LIBZ' >> $(HUGE);                    \
-	$(PERL) $(MKHELP) < $(ASCIIPAGE) >> $(HUGE);     \
-	echo '#else' >> $(HUGE);                                \
-	$(PERL) $(MKHELP) -c < $(ASCIIPAGE) >> $(HUGE);  \
+	$(HUGECMD)(                                                \
+	echo '/* !checksrc! disable COPYRIGHT all */' > $(HUGE);   \
+	echo '/* !checksrc! disable INCLUDEDUP all */' >> $(HUGE); \
+	echo '/* !checksrc! disable LONGLINE all */' >> $(HUGE);   \
+	echo '#include "tool_setup.h"' >> $(HUGE);                 \
+	echo '#ifndef HAVE_LIBZ' >> $(HUGE);                       \
+	$(PERL) $(MKHELP) < $(ASCIIPAGE) >> $(HUGE);               \
+	echo '#else' >> $(HUGE);                                   \
+	$(PERL) $(MKHELP) -c < $(ASCIIPAGE) >> $(HUGE);            \
 	echo '#endif /* HAVE_LIBZ */' >> $(HUGE) )
 else # HAVE_LIBZ
 # This generates the tool_hugehelp.c file uncompressed only
 $(HUGE): $(ASCIIPAGE) $(MKHELP)
-	$(HUGECMD)(echo '#include "tool_setup.h"' > $(HUGE);    \
+	$(HUGECMD)(                                                \
+	echo '/* !checksrc! disable COPYRIGHT all */' > $(HUGE);   \
+	echo '#include "tool_setup.h"' >> $(HUGE);                 \
 	$(PERL) $(MKHELP) < $(ASCIIPAGE) >> $(HUGE) )
 endif
 
 else # USE_MANUAL
 # built-in manual has been disabled, make a blank file
 $(HUGE):
+	echo '/* !checksrc! disable COPYRIGHT all */' > $(HUGE);   \
 	echo '#include "tool_hugehelp.h"' >> $(HUGE)
 endif
 
@@ -175,7 +185,8 @@ $(CA_EMBED_CSOURCE): $(MK_FILE_EMBED) $(CURL_CA_EMBED)
 	$(PERL) $(MK_FILE_EMBED) --var curl_ca_embed < $(CURL_CA_EMBED) > $(CA_EMBED_CSOURCE)
 else
 $(CA_EMBED_CSOURCE):
-	echo 'extern const void *curl_ca_embed; const void *curl_ca_embed;' > $(CA_EMBED_CSOURCE)
+	echo '/* !checksrc! disable COPYRIGHT all */' > $(CA_EMBED_CSOURCE)
+	echo 'extern const void *curl_ca_embed; const void *curl_ca_embed;' >> $(CA_EMBED_CSOURCE)
 endif
 
 CHECKSRC = $(CS_$(V))
@@ -185,16 +196,13 @@ CS_ = $(CS_0)
 
 # ignore generated C files since they play by slightly different rules!
 checksrc:
-	$(CHECKSRC)(@PERL@ $(top_srcdir)/scripts/checksrc.pl -D$(srcdir) \
-	  -W$(srcdir)/$(HUGE) \
-	  -W$(srcdir)/$(CA_EMBED_CSOURCE) \
-	  -W$(srcdir)/curltool_unity.c \
-	  -W$(srcdir)/libcurltool_unity.c \
-	  $(srcdir)/*.[ch])
+	$(CHECKSRC)(@PERL@ $(top_srcdir)/scripts/checksrc.pl -D$(srcdir) $(CURL_CFILES) $(CURL_HFILES))
 
+if NOT_CURL_CI
 if DEBUGBUILD
 # for debug builds, we scan the sources on all regular make invokes
 all-local: checksrc
+endif
 endif
 
 # disable the tests that are mostly causing false positives
@@ -206,14 +214,15 @@ endif
 TIDY := clang-tidy
 
 tidy: $(HUGE) $(CA_EMBED_CSOURCE)
-	$(TIDY) $(CURL_CFILES) $(curl_cfiles_gen) $(TIDYFLAGS) $(CURL_CLANG_TIDYFLAGS) -- $(curl_CPPFLAGS) $(CPPFLAGS) $(AM_CPPFLAGS) -DHAVE_CONFIG_H
+	(_curl_cfiles=`echo ' $(CURL_CFILES)' | sed -e 's/ +/ /g' -e 's| | $(srcdir)/|g'`; \
+	$(TIDY) $$_curl_cfiles $(curl_cfiles_gen) $(TIDYFLAGS) $(CURL_CLANG_TIDYFLAGS) -- $(curl_CPPFLAGS) $(CPPFLAGS) $(AM_CPPFLAGS) -DHAVE_CONFIG_H)
 
 listhelp:
 	(cd $(top_srcdir)/docs/cmdline-opts && make listhelp)
 
 if HAVE_WINDRES
 .rc.o:
-	$(RC) -I$(top_srcdir)/include -DCURL_EMBED_MANIFEST $(RCFLAGS) -i $< -o $@
+	$(RC) -I$(top_srcdir)/include $(RCFLAGS) -i $< -o $@
 endif
 
 dist-hook:

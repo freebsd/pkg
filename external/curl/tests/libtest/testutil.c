@@ -26,7 +26,7 @@
 #include "testutil.h"
 #include "memdebug.h"
 
-#if defined(_WIN32)
+#ifdef _WIN32
 
 struct timeval tutil_tvnow(void)
 {
@@ -129,39 +129,3 @@ double tutil_tvdiff_secs(struct timeval newer, struct timeval older)
       (double)(newer.tv_usec-older.tv_usec)/1000000.0;
   return (double)(newer.tv_usec-older.tv_usec)/1000000.0;
 }
-
-#ifdef _WIN32
-HMODULE win32_load_system_library(const TCHAR *filename)
-{
-#ifdef CURL_WINDOWS_UWP
-  (void)filename;
-  return NULL;
-#else
-  size_t filenamelen = _tcslen(filename);
-  size_t systemdirlen = GetSystemDirectory(NULL, 0);
-  size_t written;
-  TCHAR *path;
-
-  if(!filenamelen || filenamelen > 32768 ||
-     !systemdirlen || systemdirlen > 32768)
-    return NULL;
-
-  /* systemdirlen includes null character */
-  path = malloc(sizeof(TCHAR) * (systemdirlen + 1 + filenamelen));
-  if(!path)
-    return NULL;
-
-  /* if written >= systemdirlen then nothing was written */
-  written = GetSystemDirectory(path, (unsigned int)systemdirlen);
-  if(!written || written >= systemdirlen)
-    return NULL;
-
-  if(path[written - 1] != _T('\\'))
-    path[written++] = _T('\\');
-
-  _tcscpy(path + written, filename);
-
-  return LoadLibrary(path);
-#endif
-}
-#endif

@@ -23,8 +23,7 @@
  ***************************************************************************/
 #include "tool_setup.h"
 
-#include "curlx.h"
-
+#include <curlx.h>
 #include "tool_cfgable.h"
 #include "tool_getparam.h"
 #include "tool_helpers.h"
@@ -32,9 +31,7 @@
 #include "tool_msgs.h"
 #include "tool_parsecfg.h"
 #include "tool_util.h"
-#include "dynbuf.h"
-
-#include "memdebug.h" /* keep this as LAST include */
+#include <memdebug.h> /* keep this as LAST include */
 
 /* only acknowledge colon or equals as separators if the option was not
    specified with an initial dash! */
@@ -64,13 +61,13 @@ int parseconfig(const char *filename, struct GlobalConfig *global)
       }
       filename = pathalloc = curlrc;
     }
-#ifdef _WIN32 /* Windows */
+#if defined(_WIN32) && !defined(UNDER_CE)
     else {
       char *fullp;
       /* check for .curlrc then _curlrc in the dir of the executable */
-      file = Curl_execpath(".curlrc", &fullp);
+      file = tool_execpath(".curlrc", &fullp);
       if(!file)
-        file = Curl_execpath("_curlrc", &fullp);
+        file = tool_execpath("_curlrc", &fullp);
       if(file)
         /* this is the filename we read from */
         filename = fullp;
@@ -90,7 +87,7 @@ int parseconfig(const char *filename, struct GlobalConfig *global)
     char *param;
     int lineno = 0;
     bool dashed_option;
-    struct curlx_dynbuf buf;
+    struct dynbuf buf;
     bool fileerror = FALSE;
     curlx_dyn_init(&buf, MAX_CONFIG_LINE_LENGTH);
     DEBUGASSERT(filename);
@@ -105,28 +102,13 @@ int parseconfig(const char *filename, struct GlobalConfig *global)
         break;
       }
 
-      /* line with # in the first non-blank column is a comment! */
-      while(*line && ISSPACE(*line))
-        line++;
-
-      switch(*line) {
-      case '#':
-      case '/':
-      case '\r':
-      case '\n':
-      case '*':
-      case '\0':
-        curlx_dyn_reset(&buf);
-        continue;
-      }
-
       /* the option keywords starts here */
       option = line;
 
       /* the option starts with a dash? */
       dashed_option = (option[0] == '-');
 
-      while(*line && !ISSPACE(*line) && !ISSEP(*line, dashed_option))
+      while(*line && !ISBLANK(*line) && !ISSEP(*line, dashed_option))
         line++;
       /* ... and has ended here */
 
@@ -138,7 +120,7 @@ int parseconfig(const char *filename, struct GlobalConfig *global)
 #endif
 
       /* pass spaces and separator(s) */
-      while(*line && (ISSPACE(*line) || ISSEP(*line, dashed_option)))
+      while(ISBLANK(*line) || ISSEP(*line, dashed_option))
         line++;
 
       /* the parameter starts here (unless quoted) */
@@ -156,7 +138,7 @@ int parseconfig(const char *filename, struct GlobalConfig *global)
       }
       else {
         param = line; /* parameter starts here */
-        while(*line && !ISSPACE(*line))
+        while(*line && !ISSPACE(*line)) /* stop also on CRLF */
           line++;
 
         if(*line) {
@@ -165,7 +147,7 @@ int parseconfig(const char *filename, struct GlobalConfig *global)
           /* to detect mistakes better, see if there is data following */
           line++;
           /* pass all spaces */
-          while(*line && ISSPACE(*line))
+          while(ISBLANK(*line))
             line++;
 
           switch(*line) {
@@ -190,7 +172,7 @@ int parseconfig(const char *filename, struct GlobalConfig *global)
 #ifdef DEBUG_CONFIG
       fprintf(tool_stderr, "PARAM: \"%s\"\n",(param ? param : "(null)"));
 #endif
-      res = getparameter(option, param, NULL, &usedarg, global, operation);
+      res = getparameter(option, param, &usedarg, global, operation);
       operation = global->last;
 
       if(!res && param && *param && !usedarg)
@@ -238,7 +220,7 @@ int parseconfig(const char *filename, struct GlobalConfig *global)
       }
 
       if(alloced_param)
-        Curl_safefree(param);
+        tool_safefree(param);
     }
     curlx_dyn_free(&buf);
     if(file != stdin)
@@ -255,10 +237,10 @@ int parseconfig(const char *filename, struct GlobalConfig *global)
 
 /*
  * Copies the string from line to the buffer at param, unquoting
- * backslash-quoted characters and NUL-terminating the output string.
- * Stops at the first non-backslash-quoted double quote character or the
- * end of the input string. param must be at least as long as the input
- * string. Returns the pointer after the last handled input character.
+ * backslash-quoted characters and null-terminating the output string. Stops
+ * at the first non-backslash-quoted double quote character or the end of the
+ * input string. param must be at least as long as the input string. Returns
+ * the pointer after the last handled input character.
  */
 static const char *unslashquote(const char *line, char *param)
 {
@@ -294,11 +276,7 @@ static const char *unslashquote(const char *line, char *param)
   return line;
 }
 
-/*
- * Reads a line from the given file, ensuring is NUL terminated.
- */
-
-bool my_get_line(FILE *input, struct dynbuf *buf, bool *error)
+static bool get_line(FILE *input, struct dynbuf *buf, bool *error)
 {
   CURLcode result;
   char buffer[128];
@@ -319,23 +297,49 @@ bool my_get_line(FILE *input, struct dynbuf *buf, bool *error)
         return FALSE; /* error */
       }
 
-      else if(b[rlen-1] == '\n')
-        /* end of the line */
-        return TRUE; /* all good */
-
-      else if(feof(input)) {
-        /* append a newline */
-        result = curlx_dyn_addn(buf, "\n", 1);
-        if(result) {
-          /* too long line or out of memory */
-          *error = TRUE;
-          return FALSE; /* error */
-        }
+      else if(b[rlen-1] == '\n') {
+        /* end of the line, drop the newline */
+        size_t len = curlx_dyn_len(buf);
+        if(len)
+          curlx_dyn_setlen(buf, len - 1);
         return TRUE; /* all good */
       }
+
+      else if(feof(input))
+        return TRUE; /* all good */
     }
+    else if(curlx_dyn_len(buf))
+      return TRUE; /* all good */
     else
       break;
   }
   return FALSE;
+}
+
+/*
+ * Returns a line from the given file. Every line is null-terminated (no
+ * newline). Skips #-commented and space/tabs-only lines automatically.
+ */
+bool my_get_line(FILE *input, struct dynbuf *buf, bool *error)
+{
+  bool retcode;
+  do {
+    retcode = get_line(input, buf, error);
+    if(!*error && retcode) {
+      size_t len = curlx_dyn_len(buf);
+      if(len) {
+        const char *line = curlx_dyn_ptr(buf);
+        while(ISBLANK(*line))
+          line++;
+
+        /* a line with # in the first non-blank column is a comment! */
+        if((*line == '#') || !*line)
+          continue;
+      }
+      else
+        continue; /* avoid returning an empty line */
+    }
+    break;
+  } while(retcode);
+  return retcode;
 }

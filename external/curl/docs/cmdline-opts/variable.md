@@ -61,35 +61,50 @@ When expanding variables, curl supports a set of functions that can make the
 variable contents more convenient to use. You apply a function to a variable
 expansion by adding a colon and then list the desired functions in a
 comma-separated list that is evaluated in a left-to-right order. Variable
-content holding null bytes that are not encoded when expanded, causes an
+content holding null bytes that are not encoded when expanded causes an
 error.
 
 Available functions:
 
-## trim
+## `trim`
+
 removes all leading and trailing white space.
 
 Example:
 
-    curl --expand-url https.//example.com/{{url:trim}}
+    curl --expand-url https://example.com/{{var:trim}}
 
-## json
+## `json`
+
 outputs the content using JSON string quoting rules.
 
 Example:
 
     curl --expand-data {{data:json}} https://example.com
 
-## url
+## `url`
+
 shows the content URL (percent) encoded.
 
 Example:
 
     curl --expand-url https://example.com/{{path:url}}
 
-## b64
+## `b64`
+
 expands the variable base64 encoded
 
 Example:
 
     curl --expand-url https://example.com/{{var:b64}}
+
+## `64dec`
+
+decodes a base64 encoded character sequence. If the sequence is not possible
+to decode, it instead outputs `[64dec-fail]`
+
+Example:
+
+    curl --expand-url https://example.com/{{var:64dec}}
+
+(Added in 8.13.0)

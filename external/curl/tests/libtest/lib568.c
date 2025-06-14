@@ -53,13 +53,13 @@ CURLcode test(char *URL)
   struct curl_slist *custom_headers = NULL;
 
   if(curl_global_init(CURL_GLOBAL_ALL) != CURLE_OK) {
-    fprintf(stderr, "curl_global_init() failed\n");
+    curl_mfprintf(stderr, "curl_global_init() failed\n");
     return TEST_ERR_MAJOR_BAD;
   }
 
   curl = curl_easy_init();
   if(!curl) {
-    fprintf(stderr, "curl_easy_init() failed\n");
+    curl_mfprintf(stderr, "curl_easy_init() failed\n");
     curl_global_cleanup();
     return TEST_ERR_MAJOR_BAD;
   }
@@ -79,12 +79,17 @@ CURLcode test(char *URL)
   stream_uri = NULL;
 
   sdp = open(libtest_arg2, O_RDONLY);
+  if(sdp == -1) {
+    curl_mfprintf(stderr, "can't open %s\n", libtest_arg2);
+    res = TEST_ERR_MAJOR_BAD;
+    goto test_cleanup;
+  }
   fstat(sdp, &file_info);
   close(sdp);
 
   sdpf = fopen(libtest_arg2, "rb");
   if(!sdpf) {
-    fprintf(stderr, "can't open %s\n", libtest_arg2);
+    curl_mfprintf(stderr, "can't fopen %s\n", libtest_arg2);
     res = TEST_ERR_MAJOR_BAD;
     goto test_cleanup;
   }

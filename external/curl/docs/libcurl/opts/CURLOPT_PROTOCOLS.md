@@ -31,7 +31,7 @@ This option is deprecated. We strongly recommend using
 CURLOPT_PROTOCOLS_STR(3) instead because this option cannot control all
 available protocols.
 
-Pass a long that holds a bitmask of CURLPROTO_* defines. If used, this bitmask
+Pass a long that holds a bitmask of protocol bits. If used, this bitmask
 limits what protocols libcurl may use in the transfer. This allows you to have
 a libcurl built to support a wide range of protocols but still limit specific
 transfers to only be allowed to use a subset of them. By default libcurl
@@ -88,7 +88,7 @@ int main(int argc, char **argv)
 
     /* only allow HTTP, TFTP and SFTP */
     curl_easy_setopt(curl, CURLOPT_PROTOCOLS,
-                     CURLPROTO_HTTP | CURLPROTO_TFTP | CURLPROTO_SFTP);
+                     (long)CURLPROTO_HTTP | CURLPROTO_TFTP | CURLPROTO_SFTP);
 
     /* Perform the request */
     curl_easy_perform(curl);

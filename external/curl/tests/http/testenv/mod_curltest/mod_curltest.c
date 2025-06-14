@@ -254,6 +254,10 @@ static int curltest_echo_handler(request_rec *r)
   ct = apr_table_get(r->headers_in, "content-type");
   ap_set_content_type(r, ct ? ct : "application/octet-stream");
 
+  if(apr_table_get(r->headers_in, "TE"))
+    apr_table_setn(r->headers_out, "Request-TE",
+                   apr_table_get(r->headers_in, "TE"));
+
   bb = apr_brigade_create(r->pool, c->bucket_alloc);
   /* copy any request body into the response */
   rv = ap_setup_client_block(r, REQUEST_CHUNKED_DECHUNK);
@@ -335,6 +339,7 @@ static int curltest_tweak_handler(request_rec *r)
   int http_status = 200;
   apr_status_t error = APR_SUCCESS, body_error = APR_SUCCESS;
   int close_conn = 0, with_cl = 0;
+  int x_hd_len = 0, x_hd1_len = 0;
 
   if(strcmp(r->handler, "curltest-tweak")) {
     return DECLINED;
@@ -418,6 +423,14 @@ static int curltest_tweak_handler(request_rec *r)
             continue;
           }
         }
+        else if(!strcmp("x-hd", arg)) {
+          x_hd_len = (int)apr_atoi64(val);
+          continue;
+        }
+        else if(!strcmp("x-hd1", arg)) {
+          x_hd1_len = (int)apr_atoi64(val);
+          continue;
+        }
       }
       else if(!strcmp("close", arg)) {
         /* we are asked to close the connection */
@@ -450,9 +463,31 @@ static int curltest_tweak_handler(request_rec *r)
     apr_table_unset(r->headers_out, "Content-Length");
   /* Discourage content-encodings */
   apr_table_unset(r->headers_out, "Content-Encoding");
+  if(x_hd_len > 0) {
+    int i, hd_len = (16 * 1024);
+    int n = (x_hd_len / hd_len);
+    char *hd_val = apr_palloc(r->pool, x_hd_len);
+    memset(hd_val, 'X', hd_len);
+    hd_val[hd_len - 1] = 0;
+    for(i = 0; i < n; ++i) {
+      apr_table_setn(r->headers_out,
+                     apr_psprintf(r->pool, "X-Header-%d", i), hd_val);
+    }
+    if(x_hd_len % hd_len) {
+      hd_val[(x_hd_len % hd_len)] = 0;
+      apr_table_setn(r->headers_out,
+                     apr_psprintf(r->pool, "X-Header-%d", i), hd_val);
+    }
+  }
+  if(x_hd1_len > 0) {
+    char *hd_val = apr_palloc(r->pool, x_hd1_len);
+    memset(hd_val, 'Y', x_hd1_len);
+    hd_val[x_hd1_len - 1] = 0;
+    apr_table_setn(r->headers_out, "X-Mega-Header", hd_val);
+  }
+
   apr_table_setn(r->subprocess_env, "no-brotli", "1");
   apr_table_setn(r->subprocess_env, "no-gzip", "1");
-
   ap_set_content_type(r, "application/octet-stream");
   bb = apr_brigade_create(r->pool, c->bucket_alloc);
 

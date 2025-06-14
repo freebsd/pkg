@@ -37,11 +37,15 @@ BEGIN {
         $anyway
         $automakestyle
         $CURL
+        $CURLINFO
         $CURLVERSION
         $CURLVERNUM
         $DATE
         $has_shared
         $LIBDIR
+        $UNITDIR
+        $TUNITDIR
+        $SRVDIR
         $listonly
         $LOCKDIR
         $LOGDIR
@@ -71,11 +75,15 @@ BEGIN {
         $dev_null
     );
 }
-use pathhelp qw(exe_ext);
+use pathhelp qw(
+    exe_ext
+    dirsepadd
+);
 use Cwd qw(getcwd);
 use testutil qw(
     shell_quote
 );
+use File::Spec;
 
 
 #######################################################################
@@ -102,17 +110,23 @@ our $perlcmd=shell_quote($^X);
 our $perl="$perlcmd -I. " . shell_quote("-I$srcdir"); # invoke perl like this
 our $LOGDIR="log";  # root of the log directory; this will be different for
                     # each runner in multiprocess mode
-our $LIBDIR="./libtest";
+our $LIBDIR=dirsepadd("./libtest/" . ($ENV{'CURL_DIRSUFFIX'} || ''));
+our $UNITDIR=dirsepadd("./unit/" . ($ENV{'CURL_DIRSUFFIX'} || ''));
+our $TUNITDIR=dirsepadd("./tunit/" . ($ENV{'CURL_DIRSUFFIX'} || ''));
+our $SRVDIR=dirsepadd("./server/" . ($ENV{'CURL_DIRSUFFIX'} || ''));
 our $TESTDIR="$srcdir/data";
-our $CURL="../src/curl".exe_ext('TOOL'); # what curl binary to run on the tests
+our $CURL=dirsepadd("../src/" . ($ENV{'CURL_DIRSUFFIX'} || '')) .
+    "curl".exe_ext('TOOL'); # what curl binary to run on the tests
+our $CURLINFO=dirsepadd("../src/" . ($ENV{'CURL_DIRSUFFIX'} || '')) .
+    "curlinfo".exe_ext('TOOL'); # what curlinfo binary to run on the tests
+
 our $VCURL=$CURL;  # what curl binary to use to verify the servers with
                    # VCURL is handy to set to the system one when the one you
                    # just built hangs or crashes and thus prevent verification
 # the path to the script that analyzes the memory debug output file
 our $memanalyze="$perl " . shell_quote("$srcdir/memanalyze.pl");
 our $valgrind;     # path to valgrind, or empty if disabled
-our $bundle = 0;   # use bundled server, libtest, unit binaries
-our $dev_null = ($^O eq 'MSWin32' ? 'NUL' : '/dev/null');
+our $dev_null = File::Spec->devnull();   # null device path, eg: /dev/null
 
 # paths in $LOGDIR
 our $LOCKDIR = "lock";          # root of the server directory with lock files
@@ -125,7 +139,8 @@ our $SERVERCMD="server.cmd";    # copy server instructions here
 # other config variables
 our @protocols;   # array of lowercase supported protocol servers
 our %feature;     # hash of enabled features
-our $has_shared;  # built as a shared library
 our %keywords;    # hash of keywords from the test spec
+our $has_shared;  # built as a shared library
+our $bundle = 0;  # use bundled server, libtest, unit binaries
 
 1;

@@ -37,7 +37,9 @@
 
 /* based on sockfilt.c */
 
+#ifndef UNDER_CE
 #include <signal.h>
+#endif
 #ifdef HAVE_NETINET_IN_H
 #include <netinet/in.h>
 #endif
@@ -51,51 +53,24 @@
 #include <netdb.h>
 #endif
 
-#include "curlx.h" /* from the private lib dir */
+#include <curlx.h> /* from the private lib dir */
 #include "getpart.h"
-#include "inet_pton.h"
 #include "server_sockaddr.h"
-#include "warnless.h"
 
 #include "tool_binmode.h"
 
 /* include memdebug.h last */
-#include "memdebug.h"
-
-#ifdef USE_WINSOCK
-#undef  EINTR
-#define EINTR    4 /* errno.h value */
-#undef  EAGAIN
-#define EAGAIN  11 /* errno.h value */
-#undef  ENOMEM
-#define ENOMEM  12 /* errno.h value */
-#undef  EINVAL
-#define EINVAL  22 /* errno.h value */
-#endif
-
-#define DEFAULT_PORT 1883 /* MQTT default port */
-
-#ifndef DEFAULT_LOGFILE
-#define DEFAULT_LOGFILE "log/mqttd.log"
-#endif
-
-#ifndef DEFAULT_CONFIG
-#define DEFAULT_CONFIG "mqttd.config"
-#endif
+#include <memdebug.h>
 
 #define MQTT_MSG_CONNECT    0x10
 #define MQTT_MSG_CONNACK    0x20
 #define MQTT_MSG_PUBLISH    0x30
-#define MQTT_MSG_PUBACK     0x40
+/* #define MQTT_MSG_PUBACK     0x40 */
 #define MQTT_MSG_SUBSCRIBE  0x82
 #define MQTT_MSG_SUBACK     0x90
 #define MQTT_MSG_DISCONNECT 0xe0
 
-#define MQTT_CONNACK_LEN 4
-#define MQTT_SUBACK_LEN 5
-#define MQTT_CLIENTID_LEN 12 /* "curl0123abcd" */
-
-struct configurable {
+struct mqttd_configurable {
   unsigned char version; /* initial version byte in the request must match
                             this */
   bool publish_before_suback;
@@ -108,40 +83,23 @@ struct configurable {
 #define REQUEST_DUMP  "server.input"
 #define CONFIG_VERSION 5
 
-static struct configurable config;
+static struct mqttd_configurable m_config;
 
-const char *serverlogfile = DEFAULT_LOGFILE;
-static const char *configfile = DEFAULT_CONFIG;
-static const char *logdir = "log";
-static char loglockfile[256];
-
-#ifdef USE_IPV6
-static bool use_ipv6 = FALSE;
-#endif
-static const char *ipv_inuse = "IPv4";
-static unsigned short port = DEFAULT_PORT;
-
-static void resetdefaults(void)
+static void mqttd_resetdefaults(void)
 {
   logmsg("Reset to defaults");
-  config.version = CONFIG_VERSION;
-  config.publish_before_suback = FALSE;
-  config.short_publish = FALSE;
-  config.excessive_remaining = FALSE;
-  config.error_connack = 0;
-  config.testnum = 0;
+  m_config.version = CONFIG_VERSION;
+  m_config.publish_before_suback = FALSE;
+  m_config.short_publish = FALSE;
+  m_config.excessive_remaining = FALSE;
+  m_config.error_connack = 0;
+  m_config.testnum = 0;
 }
 
-static unsigned char byteval(char *value)
-{
-  unsigned long num = strtoul(value, NULL, 10);
-  return num & 0xff;
-}
-
-static void getconfig(void)
+static void mqttd_getconfig(void)
 {
   FILE *fp = fopen(configfile, FOPEN_READTEXT);
-  resetdefaults();
+  mqttd_resetdefaults();
   if(fp) {
     char buffer[512];
     logmsg("parse config file");
@@ -150,28 +108,28 @@ static void getconfig(void)
       char value[32];
       if(2 == sscanf(buffer, "%31s %31s", key, value)) {
         if(!strcmp(key, "version")) {
-          config.version = byteval(value);
-          logmsg("version [%d] set", config.version);
+          m_config.version = byteval(value);
+          logmsg("version [%d] set", m_config.version);
         }
         else if(!strcmp(key, "PUBLISH-before-SUBACK")) {
           logmsg("PUBLISH-before-SUBACK set");
-          config.publish_before_suback = TRUE;
+          m_config.publish_before_suback = TRUE;
         }
         else if(!strcmp(key, "short-PUBLISH")) {
           logmsg("short-PUBLISH set");
-          config.short_publish = TRUE;
+          m_config.short_publish = TRUE;
         }
         else if(!strcmp(key, "error-CONNACK")) {
-          config.error_connack = byteval(value);
-          logmsg("error-CONNACK = %d", config.error_connack);
+          m_config.error_connack = byteval(value);
+          logmsg("error-CONNACK = %d", m_config.error_connack);
         }
         else if(!strcmp(key, "Testnum")) {
-          config.testnum = atoi(value);
-          logmsg("testnum = %d", config.testnum);
+          m_config.testnum = atoi(value);
+          logmsg("testnum = %d", m_config.testnum);
         }
         else if(!strcmp(key, "excessive-remaining")) {
           logmsg("excessive-remaining set");
-          config.excessive_remaining = TRUE;
+          m_config.excessive_remaining = TRUE;
         }
       }
     }
@@ -180,25 +138,6 @@ static void getconfig(void)
   else {
     logmsg("No config file '%s' to read", configfile);
   }
-}
-
-static void loghex(unsigned char *buffer, ssize_t len)
-{
-  char data[12000];
-  ssize_t i;
-  unsigned char *ptr = buffer;
-  char *optr = data;
-  ssize_t width = 0;
-  int left = sizeof(data);
-
-  for(i = 0; i < len && (left >= 0); i++) {
-    msnprintf(optr, left, "%02x", ptr[i]);
-    width += 2;
-    optr += 2;
-    left -= 2;
-  }
-  if(width)
-    logmsg("'%s'", data);
 }
 
 typedef enum {
@@ -218,13 +157,13 @@ static void logprotocol(mqttdir dir,
   int left = sizeof(data);
 
   for(i = 0; i < len && (left >= 0); i++) {
-    msnprintf(optr, left, "%02x", ptr[i]);
+    snprintf(optr, left, "%02x", ptr[i]);
     optr += 2;
     left -= 2;
   }
-  fprintf(output, "%s %s %zx %s\n",
+  fprintf(output, "%s %s %x %s\n",
           dir == FROM_CLIENT ? "client" : "server",
-          prefix, remlen, data);
+          prefix, (int)remlen, data);
 }
 
 
@@ -237,7 +176,7 @@ static int connack(FILE *dump, curl_socket_t fd)
   };
   ssize_t rc;
 
-  packet[3] = config.error_connack;
+  packet[3] = m_config.error_connack;
 
   rc = swrite(fd, (char *)packet, sizeof(packet));
   if(rc > 0) {
@@ -362,7 +301,7 @@ static size_t encode_length(size_t packetlen,
 }
 
 
-static size_t decode_length(unsigned char *buf,
+static size_t decode_length(unsigned char *buffer,
                             size_t buflen, size_t *lenbytes)
 {
   size_t len = 0;
@@ -371,7 +310,7 @@ static size_t decode_length(unsigned char *buf,
   unsigned char encoded = 0x80;
 
   for(i = 0; (i < buflen) && (encoded & 0x80); i++) {
-    encoded = buf[i];
+    encoded = buffer[i];
     len += (encoded & 0x7f) * mult;
     mult *= 0x80;
   }
@@ -386,7 +325,7 @@ static size_t decode_length(unsigned char *buf,
 /* return 0 on success */
 static int publish(FILE *dump,
                    curl_socket_t fd, unsigned short packetid,
-                   char *topic, char *payload, size_t payloadlen)
+                   char *topic, const char *payload, size_t payloadlen)
 {
   size_t topiclen = strlen(topic);
   unsigned char *packet;
@@ -398,7 +337,7 @@ static int publish(FILE *dump,
   unsigned char rembuffer[4];
   size_t encodedlen;
 
-  if(config.excessive_remaining) {
+  if(m_config.excessive_remaining) {
     /* manually set illegal remaining length */
     rembuffer[0] = 0xff;
     rembuffer[1] = 0xff;
@@ -429,7 +368,7 @@ static int publish(FILE *dump,
   memcpy(&packet[payloadindex], payload, payloadlen);
 
   sendamount = packetlen;
-  if(config.short_publish)
+  if(m_config.short_publish)
     sendamount -= 2;
 
   rc = swrite(fd, (char *)packet, sendamount);
@@ -507,14 +446,14 @@ static curl_socket_t mqttit(curl_socket_t fd)
     'M','Q','T','T',  /* protocol name */
     0x04              /* protocol level */
   };
-  msnprintf(dumpfile, sizeof(dumpfile), "%s/%s", logdir, REQUEST_DUMP);
+  snprintf(dumpfile, sizeof(dumpfile), "%s/%s", logdir, REQUEST_DUMP);
   dump = fopen(dumpfile, "ab");
   if(!dump)
     goto end;
 
-  getconfig();
+  mqttd_getconfig();
 
-  testno = config.testnum;
+  testno = m_config.testnum;
 
   if(testno)
     logmsg("Found test number %ld", testno);
@@ -644,9 +583,15 @@ static curl_socket_t mqttit(curl_socket_t fd)
 
       logmsg("SUBSCRIBE to '%s' [%d]", topic, packet_id);
       stream = test2fopen(testno, logdir);
+      if(!stream) {
+        error = errno;
+        logmsg("fopen() failed with error (%d) %s", error, strerror(error));
+        logmsg("Couldn't open test file %ld", testno);
+        goto end;
+      }
       error = getpart(&data, &datalen, "reply", "data", stream);
       if(!error) {
-        if(!config.publish_before_suback) {
+        if(!m_config.publish_before_suback) {
           if(suback(dump, fd, packet_id)) {
             logmsg("failed sending SUBACK");
             free(data);
@@ -659,7 +604,7 @@ static curl_socket_t mqttit(curl_socket_t fd)
           goto end;
         }
         free(data);
-        if(config.publish_before_suback) {
+        if(m_config.publish_before_suback) {
           if(suback(dump, fd, packet_id)) {
             logmsg("failed sending SUBACK");
             goto end;
@@ -667,7 +612,7 @@ static curl_socket_t mqttit(curl_socket_t fd)
         }
       }
       else {
-        char *def = (char *)"this is random payload yes yes it is";
+        const char *def = "this is random payload yes yes it is";
         publish(dump, fd, packet_id, topic, def, strlen(def));
       }
       disconnect(dump, fd);
@@ -717,7 +662,7 @@ end:
   if sockfd is CURL_SOCKET_BAD, listendfd is a listening socket we must
   accept()
 */
-static bool incoming(curl_socket_t listenfd)
+static bool mqttd_incoming(curl_socket_t listenfd)
 {
   fd_set fds_read;
   fd_set fds_write;
@@ -764,10 +709,10 @@ static bool incoming(curl_socket_t listenfd)
         logmsg("signalled to die, exiting...");
         return FALSE;
       }
-    } while((rc == -1) && ((error = SOCKERRNO) == EINTR));
+    } while((rc == -1) && ((error = SOCKERRNO) == SOCKEINTR));
 
     if(rc < 0) {
-      logmsg("select() failed with error: (%d) %s",
+      logmsg("select() failed with error (%d) %s",
              error, strerror(error));
       return FALSE;
     }
@@ -776,12 +721,11 @@ static bool incoming(curl_socket_t listenfd)
       curl_socket_t newfd = accept(sockfd, NULL, NULL);
       if(CURL_SOCKET_BAD == newfd) {
         error = SOCKERRNO;
-        logmsg("accept(%" FMT_SOCKET_T ", NULL, NULL) "
-               "failed with error: (%d) %s", sockfd, error, sstrerror(error));
+        logmsg("accept() failed with error (%d) %s", error, sstrerror(error));
       }
       else {
-        logmsg("====> Client connect, fd %" FMT_SOCKET_T ". "
-               "Read config from %s", newfd, configfile);
+        logmsg("====> Client connect, fd %ld. "
+               "Read config from %s", (long)newfd, configfile);
         set_advisor_read_lock(loglockfile);
         (void)mqttit(newfd); /* until done */
         clear_advisor_read_lock(loglockfile);
@@ -795,8 +739,9 @@ static bool incoming(curl_socket_t listenfd)
   return TRUE;
 }
 
-static curl_socket_t sockdaemon(curl_socket_t sock,
-                                unsigned short *listenport)
+static curl_socket_t mqttd_sockdaemon(curl_socket_t sock,
+                                      unsigned short *listenport,
+                                      bool bind_only)
 {
   /* passive daemon style */
   srvr_sockaddr_union_t listener;
@@ -815,13 +760,15 @@ static curl_socket_t sockdaemon(curl_socket_t sock,
          (void *)&flag, sizeof(flag));
     if(rc) {
       error = SOCKERRNO;
-      logmsg("setsockopt(SO_REUSEADDR) failed with error: (%d) %s",
+      logmsg("setsockopt(SO_REUSEADDR) failed with error (%d) %s",
              error, sstrerror(error));
       if(maxretr) {
         rc = wait_ms(delay);
         if(rc) {
           /* should not happen */
-          logmsg("wait_ms() failed with error: %d", rc);
+          error = SOCKERRNO;
+          logmsg("wait_ms() failed with error (%d) %s",
+                 error, sstrerror(error));
           sclose(sock);
           return CURL_SOCKET_BAD;
         }
@@ -837,7 +784,7 @@ static curl_socket_t sockdaemon(curl_socket_t sock,
   } while(rc && maxretr--);
 
   if(rc) {
-    logmsg("setsockopt(SO_REUSEADDR) failed %d times in %d ms. Error: (%d) %s",
+    logmsg("setsockopt(SO_REUSEADDR) failed %d times in %d ms. Error (%d) %s",
            attempt, totdelay, error, strerror(error));
     logmsg("Continuing anyway...");
   }
@@ -865,7 +812,7 @@ static curl_socket_t sockdaemon(curl_socket_t sock,
 #endif /* USE_IPV6 */
   if(rc) {
     error = SOCKERRNO;
-    logmsg("Error binding socket on port %hu: (%d) %s",
+    logmsg("Error binding socket on port %hu (%d) %s",
            *listenport, error, sstrerror(error));
     sclose(sock);
     return CURL_SOCKET_BAD;
@@ -887,7 +834,7 @@ static curl_socket_t sockdaemon(curl_socket_t sock,
     memset(&localaddr.sa, 0, (size_t)la_size);
     if(getsockname(sock, &localaddr.sa, &la_size) < 0) {
       error = SOCKERRNO;
-      logmsg("getsockname() failed with error: (%d) %s",
+      logmsg("getsockname() failed with error (%d) %s",
              error, sstrerror(error));
       sclose(sock);
       return CURL_SOCKET_BAD;
@@ -915,12 +862,18 @@ static curl_socket_t sockdaemon(curl_socket_t sock,
     }
   }
 
+  /* bindonly option forces no listening */
+  if(bind_only) {
+    logmsg("instructed to bind port without listening");
+    return sock;
+  }
+
   /* start accepting connections */
   rc = listen(sock, 5);
   if(0 != rc) {
     error = SOCKERRNO;
-    logmsg("listen(%" FMT_SOCKET_T ", 5) failed with error: (%d) %s",
-           sock, error, sstrerror(error));
+    logmsg("listen(%ld, 5) failed with error (%d) %s",
+           (long)sock, error, sstrerror(error));
     sclose(sock);
     return CURL_SOCKET_BAD;
   }
@@ -935,11 +888,15 @@ int main(int argc, char *argv[])
   curl_socket_t msgsock = CURL_SOCKET_BAD;
   int wrotepidfile = 0;
   int wroteportfile = 0;
-  const char *pidname = ".mqttd.pid";
-  const char *portname = ".mqttd.port";
   bool juggle_again;
   int error;
   int arg = 1;
+
+  pidname = ".mqttd.pid";
+  portname = ".mqttd.port";
+  serverlogfile = "log/mqttd.log";
+  configfile = "mqttd.config";
+  server_port = 1883; /* MQTT default port */
 
   while(argc > arg) {
     if(!strcmp("--version", argv[arg])) {
@@ -1003,7 +960,7 @@ int main(int argc, char *argv[])
                   argv[arg]);
           return 0;
         }
-        port = curlx_ultous(ulnum);
+        server_port = util_ultous(ulnum);
         arg++;
       }
     }
@@ -1022,12 +979,12 @@ int main(int argc, char *argv[])
     }
   }
 
-  msnprintf(loglockfile, sizeof(loglockfile), "%s/%s/mqtt-%s.lock",
-            logdir, SERVERLOGS_LOCKDIR, ipv_inuse);
+  snprintf(loglockfile, sizeof(loglockfile), "%s/%s/mqtt-%s.lock",
+           logdir, SERVERLOGS_LOCKDIR, ipv_inuse);
 
 #ifdef _WIN32
-  win32_init();
-  atexit(win32_cleanup);
+  if(win32_init())
+    return 2;
 #endif
 
   CURL_SET_BINMODE(stdin);
@@ -1047,13 +1004,13 @@ int main(int argc, char *argv[])
 
   if(CURL_SOCKET_BAD == sock) {
     error = SOCKERRNO;
-    logmsg("Error creating socket: (%d) %s", error, sstrerror(error));
+    logmsg("Error creating socket (%d) %s", error, sstrerror(error));
     goto mqttd_cleanup;
   }
 
   {
     /* passive daemon style */
-    sock = sockdaemon(sock, &port);
+    sock = mqttd_sockdaemon(sock, &server_port, FALSE);
     if(CURL_SOCKET_BAD == sock) {
       goto mqttd_cleanup;
     }
@@ -1061,20 +1018,20 @@ int main(int argc, char *argv[])
   }
 
   logmsg("Running %s version", ipv_inuse);
-  logmsg("Listening on port %hu", port);
+  logmsg("Listening on port %hu", server_port);
 
   wrotepidfile = write_pidfile(pidname);
   if(!wrotepidfile) {
     goto mqttd_cleanup;
   }
 
-  wroteportfile = write_portfile(portname, port);
+  wroteportfile = write_portfile(portname, server_port);
   if(!wroteportfile) {
     goto mqttd_cleanup;
   }
 
   do {
-    juggle_again = incoming(sock);
+    juggle_again = mqttd_incoming(sock);
   } while(juggle_again);
 
 mqttd_cleanup:

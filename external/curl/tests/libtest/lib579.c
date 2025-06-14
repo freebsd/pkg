@@ -45,9 +45,13 @@ static size_t last_ul_total = 0;
 static void progress_final_report(void)
 {
   FILE *moo = fopen(libtest_arg2, "ab");
-  fprintf(moo, "Progress: end UL %zu/%zu\n", last_ul, last_ul_total);
+  curl_mfprintf(moo ? moo : stderr, "Progress: end UL %zu/%zu\n",
+                              last_ul, last_ul_total);
+  if(moo)
+    fclose(moo);
+  else
+    curl_mfprintf(stderr, "Progress: end UL, can't open %s\n", libtest_arg2);
   started = FALSE;
-  fclose(moo);
 }
 
 static int progress_callback(void *clientp, double dltotal, double dlnow,
@@ -65,9 +69,14 @@ static int progress_callback(void *clientp, double dltotal, double dlnow,
   last_ul_total = (size_t)ultotal;
   if(!started) {
     FILE *moo = fopen(libtest_arg2, "ab");
-    fprintf(moo, "Progress: start UL %zu/%zu\n", last_ul, last_ul_total);
+    curl_mfprintf(moo ? moo : stderr, "Progress: start UL %zu/%zu\n",
+                                last_ul, last_ul_total);
+    if(moo)
+      fclose(moo);
+    else
+      curl_mfprintf(stderr, "Progress: start UL, can't open %s\n",
+                    libtest_arg2);
     started = TRUE;
-    fclose(moo);
   }
 
   return 0;
@@ -101,20 +110,20 @@ CURLcode test(char *URL)
   pooh.counter = 0;
 
   if(curl_global_init(CURL_GLOBAL_ALL) != CURLE_OK) {
-    fprintf(stderr, "curl_global_init() failed\n");
+    curl_mfprintf(stderr, "curl_global_init() failed\n");
     return TEST_ERR_MAJOR_BAD;
   }
 
   curl = curl_easy_init();
   if(!curl) {
-    fprintf(stderr, "curl_easy_init() failed\n");
+    curl_mfprintf(stderr, "curl_easy_init() failed\n");
     curl_global_cleanup();
     return TEST_ERR_MAJOR_BAD;
   }
 
   slist = curl_slist_append(slist, "Transfer-Encoding: chunked");
   if(!slist) {
-    fprintf(stderr, "curl_slist_append() failed\n");
+    curl_mfprintf(stderr, "curl_slist_append() failed\n");
     curl_easy_cleanup(curl);
     curl_global_cleanup();
     return TEST_ERR_MAJOR_BAD;
@@ -146,9 +155,7 @@ CURLcode test(char *URL)
 
   /* we want to use our own progress function */
   test_setopt(curl, CURLOPT_NOPROGRESS, 0L);
-  CURL_IGNORE_DEPRECATION(
-    test_setopt(curl, CURLOPT_PROGRESSFUNCTION, progress_callback);
-  )
+  test_setopt(curl, CURLOPT_PROGRESSFUNCTION, progress_callback);
 
   /* Perform the request, res will get the return code */
   res = curl_easy_perform(curl);

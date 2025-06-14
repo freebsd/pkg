@@ -1,7 +1,6 @@
 /* lib/curl_config.h.in.  Generated from configure.ac by autoheader.  */
 
-/* to enable curl debug memory tracking */
-#undef CURLDEBUG
+/* !checksrc! disable COPYRIGHT all */
 
 /* Location of default ca bundle */
 #undef CURL_CA_BUNDLE
@@ -162,11 +161,11 @@
 /* built with multiple SSL backends */
 #undef CURL_WITH_MULTI_SSL
 
-/* enable debug build options */
-#undef DEBUGBUILD
-
 /* Define to the type of arg 2 for gethostname. */
 #undef GETHOSTNAME_TYPE_ARG2
+
+/* Define to 1 if you have the `accept4' function. */
+#undef HAVE_ACCEPT4
 
 /* Define to 1 if symbol `ADDRESS_FAMILY' exists */
 #undef HAVE_ADDRESS_FAMILY
@@ -337,10 +336,10 @@
 /* Define to 1 if you have the `if_nametoindex' function. */
 #undef HAVE_IF_NAMETOINDEX
 
-/* Define to 1 if you have a IPv6 capable working inet_ntop function. */
+/* Define to 1 if you have an IPv6 capable working inet_ntop function. */
 #undef HAVE_INET_NTOP
 
-/* Define to 1 if you have a IPv6 capable working inet_pton function. */
+/* Define to 1 if you have an IPv6 capable working inet_pton function. */
 #undef HAVE_INET_PTON
 
 /* Define to 1 if you have the <inttypes.h> header file. */
@@ -502,6 +501,9 @@
 /* Define to 1 if you have the `pipe' function. */
 #undef HAVE_PIPE
 
+/* Define to 1 if you have the `pipe2' function. */
+#undef HAVE_PIPE2
+
 /* Define to 1 if you have the `poll' function. */
 #undef HAVE_POLL
 
@@ -589,6 +591,9 @@
 /* Define to 1 if you have the `SSL_set1_ech_config_list' function. */
 #undef HAVE_SSL_SET1_ECH_CONFIG_LIST
 
+/* Define to 1 if you have the `SSL_set_quic_tls_cbs' function. */
+#undef HAVE_SSL_SET_QUIC_TLS_CBS
+
 /* Define to 1 if you have the `SSL_set_quic_use_legacy_codepoint' function.
    */
 #undef HAVE_SSL_SET_QUIC_USE_LEGACY_CODEPOINT
@@ -631,12 +636,6 @@
 
 /* Define to 1 if you have the <stropts.h> header file. */
 #undef HAVE_STROPTS_H
-
-/* Define to 1 if you have the strtok_r function. */
-#undef HAVE_STRTOK_R
-
-/* Define to 1 if you have the strtoll function. */
-#undef HAVE_STRTOLL
 
 /* if struct sockaddr_storage is defined */
 #undef HAVE_STRUCT_SOCKADDR_STORAGE
@@ -722,20 +721,24 @@
 /* Define to 1 if you have the <wolfssh/ssh.h> header file. */
 #undef HAVE_WOLFSSH_SSH_H
 
-/* if you have wolfSSL_BIO_new */
-#undef HAVE_WOLFSSL_BIO
+/* Define to 1 if you have the `wolfSSL_BIO_new' function. */
+#undef HAVE_WOLFSSL_BIO_NEW
+
+/* Define to 1 if you have the `wolfSSL_BIO_set_shutdown' function. */
+#undef HAVE_WOLFSSL_BIO_SET_SHUTDOWN
 
 /* Define to 1 if you have the `wolfSSL_CTX_GenerateEchConfig' function. */
 #undef HAVE_WOLFSSL_CTX_GENERATEECHCONFIG
 
-/* if you have wolfSSL_DES_ecb_encrypt */
+/* Define to 1 if you have the `wolfSSL_DES_ecb_encrypt' function. */
 #undef HAVE_WOLFSSL_DES_ECB_ENCRYPT
-
-/* if you have wolfSSL_BIO_set_shutdown */
-#undef HAVE_WOLFSSL_FULL_BIO
 
 /* Define to 1 if you have the `wolfSSL_get_peer_certificate' function. */
 #undef HAVE_WOLFSSL_GET_PEER_CERTIFICATE
+
+/* Define to 1 if you have the `wolfSSL_set_quic_use_legacy_codepoint'
+   function. */
+#undef HAVE_WOLFSSL_SET_QUIC_USE_LEGACY_CODEPOINT
 
 /* Define to 1 if you have the `wolfSSL_UseALPN' function. */
 #undef HAVE_WOLFSSL_USEALPN
@@ -763,6 +766,9 @@
 
 /* Define to 1 if _THREAD_SAFE preprocessor symbol must be defined. */
 #undef NEED_THREAD_SAFE
+
+/* openssl with new QUIC API */
+#undef OPENSSL_QUIC_API2
 
 /* Name of package */
 #undef PACKAGE
@@ -949,9 +955,6 @@
 
 /* Define to empty if `const' does not conform to ANSI C. */
 #undef const
-
-/* Type to use in place of in_addr_t when system does not provide it. */
-#undef in_addr_t
 
 /* Define to `unsigned int' if <sys/types.h> does not define. */
 #undef size_t

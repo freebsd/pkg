@@ -46,6 +46,9 @@ if test "x$OPT_OPENSSL" != xno; then
       my_ac_save_LIBS=$LIBS
       LIBS="-lgdi32 $LIBS"
       AC_LINK_IFELSE([ AC_LANG_PROGRAM([[
+        #ifndef WIN32_LEAN_AND_MEAN
+        #define WIN32_LEAN_AND_MEAN
+        #endif
         #include <windef.h>
         #include <wingdi.h>
         ]],
@@ -284,6 +287,7 @@ if test "x$OPT_OPENSSL" != xno; then
         #include <openssl/opensslv.h>
       ]],[[
         int dummy = LIBRESSL_VERSION_NUMBER;
+        (void)dummy;
       ]])
     ],[
       AC_MSG_RESULT([yes])
@@ -312,12 +316,17 @@ if test "x$OPT_OPENSSL" != xno; then
   fi
 
   dnl is this OpenSSL (fork) providing the original QUIC API?
-  AC_CHECK_FUNCS([SSL_set_quic_use_legacy_codepoint],
-                 [QUIC_ENABLED=yes])
+  AC_CHECK_FUNCS([SSL_set_quic_use_legacy_codepoint], [QUIC_ENABLED=yes])
   if test "$QUIC_ENABLED" = "yes"; then
     AC_MSG_NOTICE([OpenSSL fork speaks QUIC API])
   else
-    AC_MSG_NOTICE([OpenSSL version does not speak QUIC API])
+    AC_CHECK_FUNCS([SSL_set_quic_tls_cbs], [QUIC_ENABLED=yes])
+    if test "$QUIC_ENABLED" = "yes"; then
+      AC_MSG_NOTICE([OpenSSL with QUIC APIv2])
+      OPENSSL_QUIC_API2=1
+    else
+      AC_MSG_NOTICE([OpenSSL version does not speak any known QUIC API])
+    fi
   fi
 
   if test "$OPENSSL_ENABLED" = "1"; then
@@ -352,10 +361,13 @@ if test "$OPENSSL_ENABLED" = "1"; then
   AC_MSG_CHECKING([for SRP support in OpenSSL])
   AC_LINK_IFELSE([
     AC_LANG_PROGRAM([[
+      #ifndef OPENSSL_SUPPRESS_DEPRECATED
+      #define OPENSSL_SUPPRESS_DEPRECATED
+      #endif
       #include <openssl/ssl.h>
     ]],[[
-      SSL_CTX_set_srp_username(NULL, "");
-      SSL_CTX_set_srp_password(NULL, "");
+      SSL_CTX_set_srp_username(NULL, NULL);
+      SSL_CTX_set_srp_password(NULL, NULL);
     ]])
   ],[
     AC_MSG_RESULT([yes])

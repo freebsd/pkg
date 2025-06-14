@@ -41,7 +41,7 @@
 struct Ctx {
   const char *URL;
   CURLSH *share;
-  int result;
+  CURLcode result;
   int thread_id;
   struct curl_slist *contents;
 };
@@ -55,7 +55,7 @@ static size_t write_memory_callback(char *contents, size_t size,
   char *data = (char *)malloc(realsize + 1);
   struct curl_slist *item_append = NULL;
   if(!data) {
-    printf("not enough memory (malloc returned NULL)\n");
+    curl_mprintf("not enough memory (malloc returned NULL)\n");
     return 0;
   }
   memcpy(data, contents, realsize);
@@ -66,7 +66,7 @@ static size_t write_memory_callback(char *contents, size_t size,
     mem->contents = item_append;
   }
   else {
-    printf("not enough memory (curl_slist_append returned NULL)\n");
+    curl_mprintf("not enough memory (curl_slist_append returned NULL)\n");
     return 0;
   }
   return realsize;
@@ -74,7 +74,7 @@ static size_t write_memory_callback(char *contents, size_t size,
 
 static
 #if defined(USE_THREADS_POSIX) || defined(USE_THREADS_WIN32)
-#if defined(_WIN32_WCE) || defined(CURL_WINDOWS_UWP)
+#if defined(CURL_WINDOWS_UWP) || defined(UNDER_CE)
 DWORD
 #else
 unsigned int
@@ -95,7 +95,7 @@ test_thread(void *ptr)
   for(i = 0; i < PER_THREAD_SIZE; i++) {
     CURL *curl = curl_easy_init();
     if(curl) {
-      curl_easy_setopt(curl, CURLOPT_URL, (char *)ctx->URL);
+      curl_easy_setopt(curl, CURLOPT_URL, (char *)CURL_UNCONST(ctx->URL));
 
       /* use the share object */
       curl_easy_setopt(curl, CURLOPT_SHARE, ctx->share);
@@ -103,7 +103,7 @@ test_thread(void *ptr)
 
       curl_easy_setopt(curl, CURLOPT_WRITEFUNCTION, write_memory_callback);
       curl_easy_setopt(curl, CURLOPT_WRITEDATA, ptr);
-      curl_easy_setopt(curl, CURLOPT_VERBOSE, 1);
+      curl_easy_setopt(curl, CURLOPT_VERBOSE, 1L);
 
       /* Perform the request, res will get the return code */
       res = curl_easy_perform(curl);
@@ -112,15 +112,15 @@ test_thread(void *ptr)
       curl_easy_cleanup(curl);
       /* Check for errors */
       if(res != CURLE_OK) {
-        fprintf(stderr, "curl_easy_perform() failed: %s\n",
-                curl_easy_strerror(res));
+        curl_mfprintf(stderr, "curl_easy_perform() failed: %s\n",
+                      curl_easy_strerror(res));
         goto test_cleanup;
       }
     }
   }
 
 test_cleanup:
-  ctx->result = (int)res;
+  ctx->result = res;
   return 0;
 }
 
@@ -161,7 +161,7 @@ static void execute(CURLSH *share, struct Ctx *ctx)
   for(i = 0; i < THREAD_SIZE; i++) {
     if(thread[i]) {
       Curl_thread_join(&thread[i]);
-      Curl_thread_destroy(thread[i]);
+      Curl_thread_destroy(&thread[i]);
     }
   }
   curl_share_setopt(share, CURLSHOPT_LOCKFUNC, NULL);
@@ -186,7 +186,7 @@ static void execute(CURLSH *share, struct Ctx *ctx)
 
 CURLcode test(char *URL)
 {
-  int res = 0;
+  CURLcode res = CURLE_OK;
   int i;
   CURLSH* share;
   struct Ctx ctx[THREAD_SIZE];
@@ -195,7 +195,7 @@ CURLcode test(char *URL)
 
   share = curl_share_init();
   if(!share) {
-    fprintf(stderr, "curl_share_init() failed\n");
+    curl_mfprintf(stderr, "curl_share_init() failed\n");
     goto test_cleanup;
   }
 
@@ -203,7 +203,7 @@ CURLcode test(char *URL)
     ctx[i].share = share;
     ctx[i].URL = URL;
     ctx[i].thread_id = i;
-    ctx[i].result = 0;
+    ctx[i].result = CURLE_OK;
     ctx[i].contents = NULL;
   }
 
@@ -216,7 +216,7 @@ CURLcode test(char *URL)
     else {
       struct curl_slist *item = ctx[i].contents;
       while(item) {
-        printf("%s", item->data);
+        curl_mprintf("%s", item->data);
         item = item->next;
       }
     }
@@ -227,5 +227,5 @@ test_cleanup:
   if(share)
     curl_share_cleanup(share);
   curl_global_cleanup();
-  return (CURLcode)res;
+  return res;
 }

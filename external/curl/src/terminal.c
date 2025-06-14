@@ -28,8 +28,8 @@
 #endif
 
 #include "terminal.h"
-
-#include "memdebug.h" /* keep this as LAST include */
+#include <curlx.h>
+#include <memdebug.h> /* keep this as LAST include */
 
 #ifdef HAVE_TERMIOS_H
 #  include <termios.h>
@@ -47,10 +47,9 @@ unsigned int get_terminal_columns(void)
   unsigned int width = 0;
   char *colp = curl_getenv("COLUMNS");
   if(colp) {
-    char *endptr;
-    long num = strtol(colp, &endptr, 10);
-    if((endptr != colp) && (endptr == colp + strlen(colp)) && (num > 20) &&
-       (num < 10000))
+    curl_off_t num;
+    const char *p = colp;
+    if(!curlx_str_number(&p, &num, 10000) && (num > 20))
       width = (unsigned int)num;
     curl_free(colp);
   }
@@ -66,7 +65,7 @@ unsigned int get_terminal_columns(void)
     struct winsize ts;
     if(!ioctl(STDIN_FILENO, TIOCGWINSZ, &ts))
       cols = (int)ts.ws_col;
-#elif defined(_WIN32) && !defined(CURL_WINDOWS_UWP)
+#elif defined(_WIN32) && !defined(CURL_WINDOWS_UWP) && !defined(UNDER_CE)
     {
       HANDLE  stderr_hnd = GetStdHandle(STD_ERROR_HANDLE);
       CONSOLE_SCREEN_BUFFER_INFO console_info;

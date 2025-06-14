@@ -47,12 +47,12 @@ CURLcode test(char *URL)
 
   (void)URL;
 
-  msnprintf(dnsentry, sizeof(dnsentry), "localhost:%s:%s",
-            port, address);
-  printf("%s\n", dnsentry);
+  curl_msnprintf(dnsentry, sizeof(dnsentry), "localhost:%s:%s",
+                 port, address);
+  curl_mprintf("%s\n", dnsentry);
   slist = curl_slist_append(slist, dnsentry);
   if(!slist) {
-    fprintf(stderr, "curl_slist_append() failed\n");
+    curl_mfprintf(stderr, "curl_slist_append() failed\n");
     goto test_cleanup;
   }
 
@@ -69,15 +69,15 @@ CURLcode test(char *URL)
     /* get an easy handle */
     easy_init(curl[i]);
     /* specify target */
-    msnprintf(target_url, sizeof(target_url),
-              "https://localhost:%s/path/2502%04i",
-              port, i + 1);
+    curl_msnprintf(target_url, sizeof(target_url),
+                   "https://localhost:%s/path/2502%04i",
+                   port, i + 1);
     target_url[sizeof(target_url) - 1] = '\0';
     easy_setopt(curl[i], CURLOPT_URL, target_url);
     /* go http2 */
     easy_setopt(curl[i], CURLOPT_HTTP_VERSION, CURL_HTTP_VERSION_3ONLY);
     easy_setopt(curl[i], CURLOPT_CONNECTTIMEOUT_MS, (long)5000);
-    easy_setopt(curl[i], CURLOPT_CAINFO, "./certs/EdelCurlRoot-ca.cacert");
+    easy_setopt(curl[i], CURLOPT_CAINFO, libtest_arg4);
     /* wait for first connection established to see if we can share it */
     easy_setopt(curl[i], CURLOPT_PIPEWAIT, 1L);
     /* go verbose */
@@ -92,7 +92,7 @@ CURLcode test(char *URL)
     easy_setopt(curl[i], CURLOPT_RESOLVE, slist);
   }
 
-  fprintf(stderr, "Start at URL 0\n");
+  curl_mfprintf(stderr, "Start at URL 0\n");
 
   for(i = 0; i < NUM_HANDLES; i++) {
     /* add handle to multi */

@@ -26,17 +26,6 @@
 #include "warnless.h"
 #include "memdebug.h"
 
-/* For Windows, mainly (may be moved in a config file?) */
-#ifndef STDIN_FILENO
-#define STDIN_FILENO 0
-#endif
-#ifndef STDOUT_FILENO
-#define STDOUT_FILENO 1
-#endif
-#ifndef STDERR_FILENO
-#define STDERR_FILENO 2
-#endif
-
 CURLcode test(char *URL)
 {
   CURLcode res;
@@ -46,13 +35,13 @@ CURLcode test(char *URL)
 #endif
 
   if(curl_global_init(CURL_GLOBAL_ALL) != CURLE_OK) {
-    fprintf(stderr, "curl_global_init() failed\n");
+    curl_mfprintf(stderr, "curl_global_init() failed\n");
     return TEST_ERR_MAJOR_BAD;
   }
 
   curl = curl_easy_init();
   if(!curl) {
-    fprintf(stderr, "curl_easy_init() failed\n");
+    curl_mfprintf(stderr, "curl_easy_init() failed\n");
     curl_global_cleanup();
     return TEST_ERR_MAJOR_BAD;
   }
@@ -94,8 +83,12 @@ again:
 
       if(nread) {
         /* send received stuff to stdout */
+#ifdef UNDER_CE
+        if((size_t)fwrite(buf, sizeof(buf[0]), nread, stdout) != nread) {
+#else
         if((size_t)write(STDOUT_FILENO, buf, nread) != nread) {
-          fprintf(stderr, "write() failed: errno %d (%s)\n",
+#endif
+          curl_mfprintf(stderr, "write() failed: errno %d (%s)\n",
                   errno, strerror(errno));
           res = TEST_ERR_FAILURE;
           break;

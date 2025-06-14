@@ -80,7 +80,7 @@ announcement.
   Bounty team and the reporter is asked to request the reward from them after
   the issue has been completely handled and published by curl.
 
-- No more than 10 days before release, inform
+- No more than seven days before release, inform
   [distros@openwall](https://oss-security.openwall.org/wiki/mailing-lists/distros)
   to prepare them about the upcoming public security vulnerability
   announcement - attach the advisory draft for information with CVE and
@@ -247,11 +247,11 @@ local system or network, the bar is raised. If a local user wrongfully has
 elevated rights on your system enough to attack curl, they can probably
 already do much worse harm and the problem is not really in curl.
 
-## Experiments
+## Debug & Experiments
 
 Vulnerabilities in features which are off by default (in the build) and
-documented as experimental, are not eligible for a reward and we do not
-consider them security problems.
+documented as experimental, or exist only in debug mode, are not eligible for a
+reward and we do not consider them security problems.
 
 ## URL inconsistencies
 
@@ -337,3 +337,13 @@ A *legacy dependency* is here defined as:
 
 - there are modern versions of equivalent or better functionality offered and
   in common use
+
+## weak algorithms required for functionality
+
+curl supports several algorithms that are considered weak, like DES and MD5.
+These algorithms are still not curl security vulnerabilities or security
+problems as they are only used when the users explicitly ask for their use by
+using the protocols or options that require the use of those algorithms.
+
+When servers upgrade to use secure alternatives, curl users should use those
+options/protocols.

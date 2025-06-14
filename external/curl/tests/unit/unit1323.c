@@ -51,8 +51,8 @@ UNITTEST_START
   };
   size_t i;
 
-  for(i = 0; i < sizeof(tests)/sizeof(tests[0]); i++) {
-    timediff_t result = Curl_timediff(tests[i].first, tests[i].second);
+  for(i = 0; i < CURL_ARRAYSIZE(tests); i++) {
+    timediff_t result = curlx_timediff(tests[i].first, tests[i].second);
     if(result != tests[i].result) {
       printf("%ld.%06u to %ld.%06u got %d, but expected %ld\n",
              (long)tests[i].first.tv_sec,

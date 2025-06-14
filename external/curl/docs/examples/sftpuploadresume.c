@@ -56,10 +56,10 @@ static curl_off_t sftpGetRemoteFileSize(const char *i_remoteFile)
   curl_easy_setopt(curlHandlePtr, CURLOPT_VERBOSE, 1L);
 
   curl_easy_setopt(curlHandlePtr, CURLOPT_URL, i_remoteFile);
-  curl_easy_setopt(curlHandlePtr, CURLOPT_NOPROGRESS, 1);
-  curl_easy_setopt(curlHandlePtr, CURLOPT_NOBODY, 1);
-  curl_easy_setopt(curlHandlePtr, CURLOPT_HEADER, 1);
-  curl_easy_setopt(curlHandlePtr, CURLOPT_FILETIME, 1);
+  curl_easy_setopt(curlHandlePtr, CURLOPT_NOPROGRESS, 1L);
+  curl_easy_setopt(curlHandlePtr, CURLOPT_NOBODY, 1L);
+  curl_easy_setopt(curlHandlePtr, CURLOPT_HEADER, 1L);
+  curl_easy_setopt(curlHandlePtr, CURLOPT_FILETIME, 1L);
 
   result = curl_easy_perform(curlHandlePtr);
   if(CURLE_OK == result) {
@@ -90,7 +90,9 @@ static int sftpResumeUpload(CURL *curlhandle, const char *remotepath,
 
   f = fopen(localpath, "rb");
   if(!f) {
+#ifndef UNDER_CE
     perror(NULL);
+#endif
     return 0;
   }
 
@@ -99,7 +101,7 @@ static int sftpResumeUpload(CURL *curlhandle, const char *remotepath,
   curl_easy_setopt(curlhandle, CURLOPT_READFUNCTION, readfunc);
   curl_easy_setopt(curlhandle, CURLOPT_READDATA, f);
 
-#ifdef _WIN32
+#if defined(_WIN32) && !defined(UNDER_CE)
   _fseeki64(f, remoteFileSizeByte, SEEK_SET);
 #else
   fseek(f, (long)remoteFileSizeByte, SEEK_SET);
