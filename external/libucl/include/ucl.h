@@ -860,7 +860,7 @@ UCL_EXTERN ucl_object_iter_t ucl_object_iterate_new (const ucl_object_t *obj)
  * (such as ucl_object_iterate_safe()) to see if operation has encountered
  * fatal exception while performing that operation (e.g. ENOMEM).
  * @param iter opaque iterator
- * @return true if exception has occured, false otherwise
+ * @return true if exception has occurred, false otherwise
  */
 UCL_EXTERN bool ucl_object_iter_chk_excpn(ucl_object_iter_t *it);
 
