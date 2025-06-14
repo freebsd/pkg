@@ -1222,7 +1222,7 @@ int main(int argc, char *argv[])
 
 	return 0;
 err:
-	printf("Error: critical error occured! Leaving ...\n");
+	printf("Error: critical error occurred! Leaving ...\n");
 	if(fd != 0){
 		close(fd);
 	}

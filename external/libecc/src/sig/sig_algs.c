@@ -1030,7 +1030,7 @@ ATTRIBUTE_WARN_UNUSED_RET static int _bubble_sort(verify_batch_scratch_pad *elem
 				swapped = 1;
                         }
                 }
-		/* If no swap occured in the inner loop, get out */
+		/* If no swap occurred in the inner loop, get out */
 		if(!swapped){
 			break;
 		}
