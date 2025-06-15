@@ -8,6 +8,7 @@ TESTS=	\
 	pkg_add_dir_to_del \
 	pkg_printf \
 	pkg_validation \
+	pkg_osvf \
 	pkg \
 	plist \
 	lua \
@@ -120,6 +121,7 @@ hash_OBJS=	lib/hash.o
 shlibs_OBJS=	lib/shlibs.o
 kv_OBJS=	lib/kv.o
 pkg_OBJS=	lib/pkg.o
+pkg_osvf_OBJS=	lib/pkg_osvf.o
 
 SRCS=	\
 	$(packing_OBJS:.o=.c) \
@@ -131,6 +133,7 @@ SRCS=	\
 	$(deps_formula_OBJS:.o=.c) \
 	$(pkg_add_dir_to_del_OBJS:.o=.c) \
 	$(pkg_validation_OBJS:.o=.c) \
+	$(pkg_osvf_OBJS:.o=.c) \
 	$(ssh_OBJS:.o=.c) \
 	$(utils_OBJS:.o=.c) \
 	$(metalog_OBJS:.o=.c) \
@@ -155,7 +158,8 @@ LOCAL_CFLAGS=	-I$(top_srcdir)/compat \
 		-I$(top_builddir)/ \
 		-I$(top_builddir)/libpkg \
 		@PKG_ATF_C_CFLAGS@ \
-		-DTESTING
+		-DTESTING \
+		-DTESTING_TOP_DIR="\"@abs_top_srcdir@/tests\""
 
 LIBS=	\
 	-L$(top_builddir)/libpkg -lpkg_flat \
