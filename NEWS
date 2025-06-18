@@ -1,3 +1,10 @@
+Changes from 2.1.99.5 to 2.2.0
+- fix some sqlite statement leak
+- improve wording in manpages
+- update libcurl to 3.14.1
+- update sqlite to 3.50.1
+- update mum_hash to latest version
+
 Changes from 2.1.99.4 to 2.1.99.5
 - really use the cache file
 - improve error message when failing at parsing manifest printing the path of
