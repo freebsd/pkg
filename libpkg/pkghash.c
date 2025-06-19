@@ -163,9 +163,8 @@ pkghash_count(pkghash *table)
 pkghash_it
 pkghash_iterator(pkghash *table)
 {
-	pkghash_it it;
+	pkghash_it it = { 0 };
 	it._table = table;
-	it._index = 0;
 	return (it);
 }
 
