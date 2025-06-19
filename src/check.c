@@ -358,6 +358,7 @@ exec_check(int argc, char **argv)
 		if (nbactions == 0 && match != MATCH_ALL) {
 			warnx("No packages matching: %s", argv[i]);
 			rc = EXIT_FAILURE;
+			pkgdb_it_free(it);
 			goto cleanup;
 		}
 
