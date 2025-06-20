@@ -352,7 +352,7 @@ exec_check(int argc, char **argv)
 		 * in multiple matches and only run this top-loop once. */
 		if ((it = pkgdb_query(db, argv[i], match)) == NULL) {
 			rc = EXIT_FAILURE;
-			goto cleanup;
+			break;
 		}
 		nbactions = pkgdb_it_count(it);
 		if (nbactions == 0 && match != MATCH_ALL) {
@@ -360,7 +360,7 @@ exec_check(int argc, char **argv)
 			rc = EXIT_FAILURE;
 			pkgdb_it_free(it);
 			it = NULL;
-			goto cleanup;
+			break;
 		}
 
 		if (msg == NULL)
@@ -444,20 +444,19 @@ exec_check(int argc, char **argv)
 					rc = EXIT_FAILURE;
 				}
 				if (rc == EXIT_FAILURE)
-					goto cleanup;
+					break;
 				pkgdb_downgrade_lock(db, PKGDB_LOCK_EXCLUSIVE,
 				    PKGDB_LOCK_ADVISORY);
 			}
 			else {
 				rc = EXIT_FAILURE;
-				goto cleanup;
+				break;
 			}
 		}
 		i++;
 	} while (i < argc);
 	assert(it == NULL);
 
-cleanup:
 	if (!verbose)
 		progressbar_stop();
 	xstring_free(msg);
