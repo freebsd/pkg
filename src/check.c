@@ -359,6 +359,7 @@ exec_check(int argc, char **argv)
 			warnx("No packages matching: %s", argv[i]);
 			rc = EXIT_FAILURE;
 			pkgdb_it_free(it);
+			it = NULL;
 			goto cleanup;
 		}
 
@@ -417,6 +418,9 @@ exec_check(int argc, char **argv)
 					printf(" done\n");
 			}
 		}
+		pkgdb_it_free(it);
+		it = NULL;
+
 		if (!quiet && !verbose)
 			progressbar_tick(processed, total);
 		fflush(out->fp);
@@ -449,9 +453,9 @@ exec_check(int argc, char **argv)
 				goto cleanup;
 			}
 		}
-		pkgdb_it_free(it);
 		i++;
 	} while (i < argc);
+	assert(it == NULL);
 
 cleanup:
 	if (!verbose)
