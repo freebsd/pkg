@@ -361,10 +361,12 @@ Installed packages to be UPGRADED:
 	test2: 1 -> 1.1 [local2]
 
 Number of packages to be upgraded: 2
-${JAILED}[1/2] Upgrading test2 from 1 to 1.1...
-${JAILED}[1/2] Extracting test2-1.1:  done
-${JAILED}[2/2] Upgrading test from 1 to 1.1...
-${JAILED}[2/2] Extracting test-1.1:  done
+${JAILED}[1/3] Deinstalling test2-1...
+${JAILED}[1/3] Deleting files for test2-1:  done
+${JAILED}[2/3] Upgrading test from 1 to 1.1...
+${JAILED}[2/3] Extracting test-1.1:  done
+${JAILED}[3/3] Installing test2-1.1...
+${JAILED}[3/3] Extracting test2-1.1:  done
 "
 	atf_check \
 		-o inline:"${OUTPUT}" \
