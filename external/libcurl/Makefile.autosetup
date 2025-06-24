@@ -4,7 +4,7 @@ LIB=	curl
 .PATH:	$(top_srcdir)/external/curl/lib
 VPATH=	$(top_srcdir)/external/curl/lib
 .PATH:	$(top_srcdir)/external/curl/lib/curlx
-VPATH=	$(top_srcdir)/external/curl/lib/curlx
+VPATH+=	$(top_srcdir)/external/curl/lib/curlx
 .PATH:	$(top_srcdir)/external/curl/lib/vtls
 VPATH+=	$(top_srcdir)/external/curl/lib/vtls
 .PATH:	$(top_srcdir)/external/curl/lib/vauth
