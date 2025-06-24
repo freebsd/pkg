@@ -110,6 +110,13 @@ if {[string match *-freebsd* [get-define host]]} {
 			define-feature libmd
 		}
 	}
+	cc-with { -libs { -lprocstat }} {
+		if {![cc-check-functions procstat_open_sysctl]} {
+			user-error "Unable to find libprocstat"
+		} else {
+			define-feature libprocstat
+		}
+	}
 }
 
 cc-with { -libs { -larchive }} {
