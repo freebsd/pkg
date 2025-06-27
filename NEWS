@@ -1,3 +1,9 @@
+Changes from 2.2.0 to 2.2.1
+- revert the scheduler "fixes" trying to reduce the
+  number of "split upgrades", it causes ordering issues
+- plug some leaks
+- fix build with gmake
+
 Changes from 2.1.99.5 to 2.2.0
 - fix some sqlite statement leak
 - improve wording in manpages
