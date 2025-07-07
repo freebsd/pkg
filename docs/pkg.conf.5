@@ -135,8 +135,8 @@ Location where the libraries are backed up.
 Default:
 .Pa /usr/local/lib/compat/pkg .
 .It Cm COMPRESSION_FORMAT: string
-Set the default compression format: tzst, txz (default), tbz, tar.
-Default: per pkg developers.
+Set the default compression format: tzst, txz, tbz, tar.
+Default: tzst.
 .It Cm COMPRESSION_LEVEL: integer
 Set the default compression level, special values are:
 .Bl -tag
@@ -189,7 +189,7 @@ Default: 3.
 .It Cm FETCH_TIMEOUT: integer
 Maximum number of seconds to wait for any one file to download from the
 network, either by SSH or any of the protocols supported by
-.Xr fetch 3
+.Xr libcurl 3
 functions.
 Default: 30.
 .It Cm HANDLE_RC_SCRIPTS: boolean
