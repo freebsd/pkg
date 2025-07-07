@@ -352,14 +352,15 @@ exec_check(int argc, char **argv)
 		 * in multiple matches and only run this top-loop once. */
 		if ((it = pkgdb_query(db, argv[i], match)) == NULL) {
 			rc = EXIT_FAILURE;
-			goto cleanup;
+			break;
 		}
 		nbactions = pkgdb_it_count(it);
 		if (nbactions == 0 && match != MATCH_ALL) {
 			warnx("No packages matching: %s", argv[i]);
 			rc = EXIT_FAILURE;
 			pkgdb_it_free(it);
-			goto cleanup;
+			it = NULL;
+			break;
 		}
 
 		if (msg == NULL)
@@ -417,6 +418,9 @@ exec_check(int argc, char **argv)
 					printf(" done\n");
 			}
 		}
+		pkgdb_it_free(it);
+		it = NULL;
+
 		if (!quiet && !verbose)
 			progressbar_tick(processed, total);
 		fflush(out->fp);
@@ -440,20 +444,19 @@ exec_check(int argc, char **argv)
 					rc = EXIT_FAILURE;
 				}
 				if (rc == EXIT_FAILURE)
-					goto cleanup;
+					break;
 				pkgdb_downgrade_lock(db, PKGDB_LOCK_EXCLUSIVE,
 				    PKGDB_LOCK_ADVISORY);
 			}
 			else {
 				rc = EXIT_FAILURE;
-				goto cleanup;
+				break;
 			}
 		}
-		pkgdb_it_free(it);
 		i++;
 	} while (i < argc);
+	assert(it == NULL);
 
-cleanup:
 	if (!verbose)
 		progressbar_stop();
 	xstring_free(msg);
