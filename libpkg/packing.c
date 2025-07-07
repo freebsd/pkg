@@ -233,10 +233,24 @@ packing_append_file_attr(struct packing *pack, const char *filepath,
 	if (uname != NULL && uname[0] != '\0') {
 		archive_entry_set_uname(entry, uname);
 	}
+#ifdef __FreeBSD__
+	/*
+	 * Set this so that libarchive does not embed the current user's ID,
+	 * breaking reproducibility.
+	 */
+	archive_entry_set_uid(entry, 65534 /* nobody */);
+#endif
 
 	if (gname != NULL && gname[0] != '\0') {
 		archive_entry_set_gname(entry, gname);
 	}
+#ifdef __FreeBSD__
+	/*
+	 * Set this so that libarchive does not embed the current user's ID,
+	 * breaking reproducibility.
+	 */
+	archive_entry_set_gid(entry, 65534 /* nobody */);
+#endif
 
 	if (fflags > 0)
 		archive_entry_set_fflags(entry, fflags, 0);
