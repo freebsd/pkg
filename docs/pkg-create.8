@@ -134,6 +134,28 @@ command.
 The following options are supported by
 .Nm :
 .Bl -tag -width ".Fl m Ar metadatadir"
+.It Fl M Ar manifest , Cm --manifest Ar manifest
+Read all of the package metadata from the
+.Ar manifest
+file.
+This is exactly the same format as
+.Pa +MANIFEST
+mentioned above, but any file name can be used, and no
+other file will be used to read package metadata from.
+If specified, only a single package will be created.
+This option is incompatible with the
+.Fl m , a , g
+or
+.Fl x
+options.
+.It Fl T Ar threads
+.Ar threads
+represent the number of threads to use during the compression of the archive.
+Set it to
+.Qq 0
+or
+.Qq auto
+to let detect the number of CPU and use it.
 .It Fl a , Cm --all
 Create package tarballs from all packages installed on your system.
 This option is incompatible with the
@@ -143,28 +165,6 @@ or
 options.
 .It Fl e , Cm --expand-manifest
 The manifest contained in pkg will be expanded to readable UCL format.
-.It Fl g , Cm --glob
-Interpret
-.Ar pkg-name
-as a shell glob pattern and create package only for installed binaries whose
-name match this pattern.
-This option is incompatible with the
-.Fl a , x
-or
-.Fl m Ar metadatadir
-options.
-.It Fl x , Cm --regex
-Like
-.Fl g ,
-but interpret
-.Ar pkg-name
-as a regular expression using the "modern" or "extended" syntax described in
-.Xr re_format 7 .
-This option is incompatible with the
-.Fl a , g
-or
-.Fl m Ar metadatadir
-options.
 .It Fl f Ar format , Cm --format Ar format
 Set
 .Ar format
@@ -181,6 +181,16 @@ is assumed.
 .Pa .pkg
 extension is used for all compression types.
 .Pc
+.It Fl g , Cm --glob
+Interpret
+.Ar pkg-name
+as a shell glob pattern and create package only for installed binaries whose
+name match this pattern.
+This option is incompatible with the
+.Fl a , x
+or
+.Fl m Ar metadatadir
+options.
 .It Fl l Ar level , Cm --level Ar level
 Set the compression
 .Ar level
@@ -219,22 +229,6 @@ This option is incompatible with the
 or
 .Fl x
 options.
-.It Fl M Ar manifest , Cm --manifest Ar manifest
-Read all of the package metadata from the
-.Ar manifest
-file.
-This is exactly the same format as
-.Pa +MANIFEST
-mentioned above, but any file name can be used, and no
-other file will be used to read package metadata from.
-If specified, only a single package will be created.
-This option is incompatible with the
-.Fl m , a , g
-or
-.Fl x
-options.
-.It Fl t Ar timestamp , Cm --timestamp
-Set the timestamp of the files within the archive.
 .It Fl n , Cm --no-clobber
 Do not overwrite already existing packages.
 .It Fl o Ar outdir , Cm --out-dir Ar outdir
@@ -267,9 +261,6 @@ is set to
 .Ar yes
 in
 .Pa pkg.conf .
-.It Fl v , Cm --verbose
-Force verbose output, the opposite of
-.Cm --quiet .
 .It Fl r Ar rootdir , Cm --root-dir Ar rootdir
 .Ar rootdir
 specifies the top-level directory to be treated as the root of the
@@ -282,14 +273,23 @@ disturbing similar content already on the system.
 If unspecified, the default is effectively
 .Pa / ,
 the actual root directory.
-.It Fl T Ar threads
-.Ar threads
-represent the number of threads to use during the compression of the archive.
-Set it to
-.Qq 0
+.It Fl t Ar timestamp , Cm --timestamp
+Set the timestamp of the files within the archive.
+.It Fl v , Cm --verbose
+Force verbose output, the opposite of
+.Cm --quiet .
+.It Fl x , Cm --regex
+Like
+.Fl g ,
+but interpret
+.Ar pkg-name
+as a regular expression using the "modern" or "extended" syntax described in
+.Xr re_format 7 .
+This option is incompatible with the
+.Fl a , g
 or
-.Qq auto
-to let detect the number of CPU and use it.
+.Fl m Ar metadatadir
+options.
 .El
 .\" ---------------------------------------------------------------------------
 .Sh MANIFEST FILE DETAILS
