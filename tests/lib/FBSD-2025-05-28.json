@@ -1,0 +1,130 @@
+{
+  "schema_version": "1.7.0",
+  "id": "FBSD-2025-05-28",
+  "modified": "2025-05-26T12:30:00Z",
+  "published": "2025-09-28T16:00:00Z",
+  "summary": "OSVF test",
+  "details": "This is test of OSVF format parsing",
+  "references": [
+    {
+      "type": "ADVISORY",
+      "url": "https://www.freebsd.org/"
+    },
+    {
+      "type": "ARTICLE",
+      "url": "https://www.freebsd.org/"
+    },
+    {
+      "type": "DETECTION",
+      "url": "https://www.freebsd.org/"
+    },
+    {
+      "type": "DISCUSSION",
+      "url": "https://www.freebsd.org/"
+    },
+    {
+      "type": "REPORT",
+      "url": "https://www.freebsd.org/"
+    },
+    {
+      "type": "FIX",
+      "url": "https://www.freebsd.org/"
+    },
+    {
+      "type": "INTRODUCED",
+      "url": "https://www.freebsd.org/"
+    },
+    {
+      "type": "PACKAGE",
+      "url": "https://www.freebsd.org/"
+    },
+    {
+      "type": "EVIDENCE",
+      "url": "https://www.freebsd.org/"
+    },
+    {
+      "type": "WEB",
+      "url": "https://www.freebsd.org/"
+    }
+  ],
+  "affected": [
+    {
+      "package": {
+        "ecosystem": "FreeBSD:ports",
+        "name": "osvf-test-package10"
+      },
+      "ranges": [
+        {
+          "type": "SEMVER",
+          "events": [
+            {
+              "fixed": "1.0.0"
+            },
+            {
+              "introduced": "0.0.1"
+            },
+            {
+              "last_affected": "0.9.0"
+            },
+            {
+              "limit": "0.9.1"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "package": {
+        "ecosystem": "FreeBSD:ports",
+        "name": "osvf-test-package11"
+      },
+      "ranges": [
+        {
+          "type": "ECOSYSTEM",
+          "events": [
+            {
+              "fixed": "1.1.0_1"
+            },
+            {
+              "introduced": "1.0.9_1"
+            },
+            {
+              "last_affected": "1.0.9_2"
+            },
+            {
+              "limit": "1.1.0_1"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "package": {
+        "ecosystem": "FreeBSD:ports",
+        "name": "osvf-test-package12"
+      },
+      "ranges": [
+        {
+          "type": "GIT",
+          "events": [
+            {
+              "fixed": "c14e07db4"
+            },
+            {
+              "introduced": "ae637a3ad"
+            },
+            {
+              "last_affected": "0a5b32490"
+            },
+            {
+              "limit": "c802d96a5"
+            }
+          ]
+        }
+      ]
+    }
+  ],
+  "database_specific": {
+    "discovery": "2025-05-20T09:10:00Z"
+  }
+}
