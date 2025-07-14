@@ -129,6 +129,7 @@ struct pkg_ctx {
 	uint64_t debug_flags;
 	bool developer_mode;
 	const char *pkg_rootdir;
+	const char *metalog;
 	const char *dbdir;
 	const char *cachedir;
 	const char *compression_format;

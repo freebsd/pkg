@@ -11,7 +11,7 @@
 .\"    notice, this list of conditions and the following disclaimer in the
 .\"    documentation and/or other materials provided with the distribution.
 .\"
-.Dd July 27, 2022
+.Dd July 14, 2025
 .Dt PKG-LUA-SCRIPT 5
 .Os
 .Sh NAME
@@ -88,6 +88,13 @@ by the
 .Fl r
 arguments passed to
 .Xr pkg 8 .
+.It Va pkg_metalog
+String containing the path to a
+.Xr mtree 5
+METALOG file in which package file metadata (e.g., ownership, mode) should be
+recorded.
+This is typically used when installing packages as a non-root user.
+If no METALOG is configured, this variable is unset and is equal to nil.
 .It Va pkg_upgrade
 Boolean to inform the scripts that it is running or not in the context of an upgrade
 .El

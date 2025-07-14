@@ -77,6 +77,7 @@ struct pkg_ctx ctx = {
 	.debug_level = 0,
 	.developer_mode = false,
 	.pkg_rootdir = NULL,
+	.metalog = NULL,
 	.dbdir = NULL,
 	.cachedir = NULL,
 	.rootfd = -1,
@@ -1559,6 +1560,7 @@ pkg_ini(const char *path, const char *reposdir, pkg_init_flags flags)
 	if (err != EPKG_OK)
 		goto out;
 	ctx.developer_mode = pkg_object_bool(pkg_config_get("DEVELOPER_MODE"));
+	ctx.metalog = pkg_object_string(pkg_config_get("METALOG"));
 	ctx.dbdir = pkg_object_string(pkg_config_get("PKG_DBDIR"));
 	ctx.cachedir = pkg_object_string(pkg_config_get("PKG_CACHEDIR"));
 	ctx.backup_libraries = pkg_object_bool(pkg_config_get("BACKUP_LIBRARIES"));
@@ -1630,19 +1632,15 @@ pkg_ini(const char *path, const char *reposdir, pkg_init_flags flags)
 			pkg_emit_error("Unable to set nameserver, ignoring");
 
 	/* Open metalog */
-	metalog = pkg_object_string(pkg_config_get("METALOG"));
-	if (metalog != NULL) {
-		if(metalog_open(metalog) != EPKG_OK) {
-			err = EPKG_FATAL;
-			goto out;
-		}
+	if (ctx.metalog != NULL && metalog_open(ctx.metalog) != EPKG_OK) {
+		err = EPKG_FATAL;
+		goto out;
 	}
 
 out:
 	config_parser_vars_free(parser_vars);
 
 	return err;
-
 }
 
 static struct pkg_repo_ops*
