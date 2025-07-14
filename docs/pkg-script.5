@@ -11,7 +11,7 @@
 .\"    notice, this list of conditions and the following disclaimer in the
 .\"    documentation and/or other materials provided with the distribution.
 .\"
-.Dd March 26, 2021
+.Dd July 24, 2025
 .Dt PKG-SCRIPT 5
 .Os
 .Sh NAME
@@ -59,6 +59,12 @@ by the
 .Fl r
 arguments passed to
 .Xr pkg 8 .
+.It Ev PKG_METALOG
+When set, provides the path to a
+.Xr mtree 5
+METALOG file in which package file metadata (e.g., ownership, mode) should be
+recorded.
+This is typically used when installing packages as a non-root user.
 .It Ev PKG_MSGFD
 Number of a file descriptor to be used to be able to send messages to the user
 that will be shown at the end of the
