@@ -89,6 +89,10 @@ pkg_lua_script_run(struct pkg * const pkg, pkg_lua_script type, bool upgrade)
 				ctx.pkg_rootdir = "/";
 			lua_pushstring(L, ctx.pkg_rootdir);
 			lua_setglobal(L, "pkg_rootdir");
+			if (ctx.metalog != NULL) {
+				lua_pushstring(L, ctx.metalog);
+				lua_setglobal(L, "pkg_metalog");
+			}
 			lua_pushboolean(L, (upgrade));
 			lua_setglobal(L, "pkg_upgrade");
 			luaL_newlib(L, pkg_lib);
