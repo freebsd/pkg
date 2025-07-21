@@ -1,4 +1,6 @@
 .\"
+.\" SPDX-License-Identifier: BSD-2-Clause
+.\"
 .\" FreeBSD pkg - a next generation package for the installation and maintenance
 .\" of non-core utilities.
 .\"
@@ -11,15 +13,26 @@
 .\"    notice, this list of conditions and the following disclaimer in the
 .\"    documentation and/or other materials provided with the distribution.
 .\"
+.\" THIS SOFTWARE IS PROVIDED BY THE AUTHOR AND CONTRIBUTORS ``AS IS'' AND
+.\" ANY EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT LIMITED TO, THE
+.\" IMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS FOR A PARTICULAR PURPOSE
+.\" ARE DISCLAIMED.  IN NO EVENT SHALL THE AUTHOR OR CONTRIBUTORS BE LIABLE
+.\" FOR ANY DIRECT, INDIRECT, INCIDENTAL, SPECIAL, EXEMPLARY, OR CONSEQUENTIAL
+.\" DAMAGES (INCLUDING, BUT NOT LIMITED TO, PROCUREMENT OF SUBSTITUTE GOODS
+.\" OR SERVICES; LOSS OF USE, DATA, OR PROFITS; OR BUSINESS INTERRUPTION)
+.\" HOWEVER CAUSED AND ON ANY THEORY OF LIABILITY, WHETHER IN CONTRACT, STRICT
+.\" LIABILITY, OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY
+.\" OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
+.\" SUCH DAMAGE.
 .\"
 .\"     @(#)pkg.8
 .\"
-.Dd March 6, 2025
+.Dd July 21, 2025
 .Dt PKG-REPOSITORIES 8
 .Os
 .Sh NAME
 .Nm "pkg repositories"
-.Nd display configured repositories
+.Nd display configured package repositories
 .Sh SYNOPSIS
 .Nm
 .Op Fl d
@@ -27,37 +40,52 @@
 .Op Fl l
 .Op Ar repositories
 .Pp
-.Nm "pkg repositories"
+.Nm
 .Op Fl -disabled
 .Op Fl -enabled
 .Op Fl -list
 .Op Ar repositories
 .Sh DESCRIPTION
 .Nm
-displays configured repositorieses.
+displays configured software repositories for the package manager,
+.Xr pkg 8 .
 .Pp
-If given the name of an existing repository as an argument, only print its
-configuration.
-Without arguments all repositorieses are printed.
+If given the name of an existing repository as an argument,
+only print its configuration.
+Without arguments all repositories are printed.
 .Sh OPTIONS
 The following options are supported by
 .Nm :
 .Bl -tag -width quiet
-.It Fl d, Fl -disabled
+.It Fl d , Fl -disabled
 Print disabled repositories only.
-.It Fl d, Fl -enabled
+.It Fl e , Fl -enabled
 Print enabled repositories only.
 .It Fl l , Fl -list
 Print the list of repository names.
 .El
 .Sh FILES
-.Xr pkg.conf 5
-.Xr pkg-repository 5
+.Bl -tag -width "/usr/local/etc/pkg/pkg.conf.sample"
+.It Pa /etc/pkg/FreeBSD.conf
+default system repository
+.It Pa /usr/local/etc/pkg/pkg.conf
+.Xr pkg 8
+configuration, including system repository
+.It Pa /usr/local/etc/pkg/pkg.conf.sample
+example
+.Xr pkg 8
+monolithic configuration, including default repository
+.It Pa /usr/local/etc/pkg/repos/
+location for site specific repositories
+.El
 .Sh EXAMPLES
 Display all repositories:
-.Dl % pkg repositories -l
+.Pp
+.Dl pkg repositories -l
+.Pp
 Display all repositories configurations:
-.Dl % pkg repositories
+.Pp
+.Dl pkg repositories
 .Sh SEE ALSO
 .Xr pkg_create 3 ,
 .Xr pkg_printf 3 ,
