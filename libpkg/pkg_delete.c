@@ -89,7 +89,7 @@ pkg_delete(struct pkg *pkg, struct pkg *rpkg, struct pkgdb *db, int flags,
 	if (handle_rc)
 		pkg_start_stop_rc_scripts(pkg, PKG_RC_STOP);
 
-	if ((flags & (PKG_DELETE_NOSCRIPT | PKG_DELETE_UPGRADE)) == 0) {
+	if ((flags & PKG_DELETE_NOSCRIPT) == 0) {
 		bool noexec = ((flags & PKG_DELETE_NOEXEC) == PKG_DELETE_NOEXEC);
 		pkg_open_root_fd(pkg);
 		ret = pkg_lua_script_run(pkg, PKG_LUA_PRE_DEINSTALL, false);
@@ -106,7 +106,7 @@ pkg_delete(struct pkg *pkg, struct pkg *rpkg, struct pkgdb *db, int flags,
 	else if (ret != EPKG_OK)
 		return (ret);
 
-	if ((flags & (PKG_DELETE_NOSCRIPT | PKG_DELETE_UPGRADE)) == 0) {
+	if ((flags & PKG_DELETE_NOSCRIPT) == 0) {
 		bool noexec = ((flags & PKG_DELETE_NOEXEC) == PKG_DELETE_NOEXEC);
 		pkg_lua_script_run(pkg, PKG_LUA_POST_DEINSTALL, false);
 		ret = pkg_script_run(pkg, PKG_SCRIPT_POST_DEINSTALL, false, noexec);
@@ -118,23 +118,21 @@ pkg_delete(struct pkg *pkg, struct pkg *rpkg, struct pkgdb *db, int flags,
 	if (ret != EPKG_OK)
 		return (ret);
 
-	if ((flags & PKG_DELETE_UPGRADE) == 0) {
-		pkg_emit_deinstall_finished(pkg);
-		vec_foreach(pkg->message, i) {
-			if (pkg->message.d[i]->type == PKG_MESSAGE_REMOVE) {
-				if (message == NULL) {
-					message = xstring_new();
-					pkg_fprintf(message->fp, "Message from "
-					    "%n-%v:\n", pkg, pkg);
-				}
-				fprintf(message->fp, "%s\n", pkg->message.d[i]->str);
+	pkg_emit_deinstall_finished(pkg);
+	vec_foreach(pkg->message, i) {
+		if (pkg->message.d[i]->type == PKG_MESSAGE_REMOVE) {
+			if (message == NULL) {
+				message = xstring_new();
+				pkg_fprintf(message->fp, "Message from "
+				    "%n-%v:\n", pkg, pkg);
 			}
+			fprintf(message->fp, "%s\n", pkg->message.d[i]->str);
 		}
-		if (pkg_has_message(pkg) && message != NULL) {
-			fflush(message->fp);
-			pkg_emit_message(message->buf);
-			xstring_free(message);
-		}
+	}
+	if (pkg_has_message(pkg) && message != NULL) {
+		fflush(message->fp);
+		pkg_emit_message(message->buf);
+		xstring_free(message);
 	}
 
 	ret = pkgdb_unregister_pkg(db, pkg->id);
