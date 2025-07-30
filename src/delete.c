@@ -237,7 +237,8 @@ exec_delete(int argc, char **argv)
 			goto cleanup;
 		}
 		rc = query_yesno(false,
-		            "\nProceed with deinstalling packages? ");
+		            "\nProceed? Note that if base (FreeBSD-) packages are deleted, "
+			    "FreeBSD itself will be affected. ");
 	}
 	else
 		rc = yes;
