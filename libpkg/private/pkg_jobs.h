@@ -94,7 +94,7 @@ struct pkg_solved {
 	struct pkg_solved *xlink;	/* link split jobs together */
 	pkg_solved_t type;
 	enum pkg_solved_cycle_mark mark;/* scheduling cycle detection */
-	struct pkg_solved *path_next;	/* scheduling cycle detection */
+	struct pkg_solved *path_prev;	/* scheduling cycle detection */
 };
 typedef vec_t(struct pkg_solved *) pkg_solved_list;
 
