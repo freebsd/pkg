@@ -73,8 +73,13 @@ static bool pkg_jobs_schedule_direct_depends(struct pkg *a, struct pkg *b)
 	return (false);
 }
 
-/* Enable debug logging in pkg_jobs_schedule_graph_edge() */
-static bool debug_edges = false;
+enum pkg_jobs_schedule_graph_edge_type {
+	PKG_SCHEDULE_EDGE_NONE,
+	PKG_SCHEDULE_EDGE_NEW_DEP_NEW,
+	PKG_SCHEDULE_EDGE_OLD_DEP_OLD,
+	PKG_SCHEDULE_EDGE_OLD_CONFLICT_NEW,
+	PKG_SCHEDULE_EDGE_SPLIT_UPGRADE,
+};
 
 /*
  * Jobs are nodes in a directed graph. Edges represent job scheduling order
@@ -90,11 +95,11 @@ static bool debug_edges = false;
  * 4. A and B are the two halves of a split upgrade job
  *    and A is the delete half.
  */
-static bool
+static enum pkg_jobs_schedule_graph_edge_type
 pkg_jobs_schedule_graph_edge(struct pkg_solved *a, struct pkg_solved *b)
 {
 	if (a == b) {
-		return (false);
+		return (PKG_SCHEDULE_EDGE_NONE);
 	}
 
 	if (a->xlink == b || b->xlink == a) {
@@ -104,14 +109,10 @@ pkg_jobs_schedule_graph_edge(struct pkg_solved *a, struct pkg_solved *b)
 		assert(b->type == PKG_SOLVED_UPGRADE_INSTALL ||
 		       b->type == PKG_SOLVED_UPGRADE_REMOVE);
 		assert(a->type != b->type);
-
-		bool edge = a->type == PKG_SOLVED_UPGRADE_REMOVE;
-		if (edge && debug_edges) {
-			dbg(4, "  edge to %s %s, split upgrade",
-			    pkg_jobs_schedule_job_type_string(b),
-			    b->items[0]->pkg->uid);
+		if (a->type == PKG_SOLVED_UPGRADE_REMOVE) {
+			return (PKG_SCHEDULE_EDGE_SPLIT_UPGRADE);
 		}
-		return (edge);
+		return (PKG_SCHEDULE_EDGE_NONE);
 	}
 
 	/* TODO: These switches would be unnecessary if delete jobs used
@@ -157,35 +158,20 @@ pkg_jobs_schedule_graph_edge(struct pkg_solved *a, struct pkg_solved *b)
 
 	if (a_new != NULL && b_new != NULL &&
 	    pkg_jobs_schedule_direct_depends(b_new, a_new)) {
-		if (debug_edges) {
-			dbg(4, "  edge to %s %s, new depends on new",
-			    pkg_jobs_schedule_job_type_string(b),
-			    b->items[0]->pkg->uid);
-		}
-		return (true);
+		return (PKG_SCHEDULE_EDGE_NEW_DEP_NEW);
 	} else if (a_old != NULL && b_old != NULL &&
 		   pkg_jobs_schedule_direct_depends(a_old, b_old)) {
-		if (debug_edges) {
-			dbg(4, "  edge to %s %s, old depends on old",
-			    pkg_jobs_schedule_job_type_string(b),
-			    b->items[0]->pkg->uid);
-		}
-		return (true);
+		return (PKG_SCHEDULE_EDGE_OLD_DEP_OLD);
 	} else if (a_old != NULL && b_new != NULL) {
 		struct pkg_conflict *conflict = NULL;
 		while (pkg_conflicts(a_old, &conflict) == EPKG_OK) {
 			if (STREQ(b_new->uid, conflict->uid)) {
-				if (debug_edges) {
-					dbg(4, "  edge to %s %s, old conflicts with new",
-					    pkg_jobs_schedule_job_type_string(b),
-					    b->items[0]->pkg->uid);
-				}
-				return (true);
+				return (PKG_SCHEDULE_EDGE_OLD_CONFLICT_NEW);
 			}
 		}
 	}
 
-	return (false);
+	return (PKG_SCHEDULE_EDGE_NONE);
 }
 
 static void
@@ -198,13 +184,37 @@ pkg_jobs_schedule_dbg_job(pkg_solved_list *jobs, struct pkg_solved *job)
 	dbg(4, "job: %s %s", pkg_jobs_schedule_job_type_string(job),
 	    job->items[0]->pkg->uid);
 
-	debug_edges = true;
 	vec_foreach(*jobs, i) {
+		struct pkg_solved *other = jobs->d[i];
 		if (jobs->d[i] == NULL)
 			continue;
-		pkg_jobs_schedule_graph_edge(job, jobs->d[i]);
+		switch (pkg_jobs_schedule_graph_edge(job, other)) {
+		case PKG_SCHEDULE_EDGE_NONE:
+			break;
+		case PKG_SCHEDULE_EDGE_NEW_DEP_NEW:
+			dbg(4, "  edge to %s %s, new depends on new",
+			    pkg_jobs_schedule_job_type_string(other),
+			    other->items[0]->pkg->uid);
+			break;
+		case PKG_SCHEDULE_EDGE_OLD_DEP_OLD:
+			dbg(4, "  edge to %s %s, old depends on old",
+			    pkg_jobs_schedule_job_type_string(other),
+			    other->items[0]->pkg->uid);
+			break;
+		case PKG_SCHEDULE_EDGE_OLD_CONFLICT_NEW:
+			dbg(4, "  edge to %s %s, old conflicts with new",
+			    pkg_jobs_schedule_job_type_string(other),
+			    other->items[0]->pkg->uid);
+			break;
+		case PKG_SCHEDULE_EDGE_SPLIT_UPGRADE:
+			dbg(4, "  edge to %s %s, split upgrade",
+			    pkg_jobs_schedule_job_type_string(other),
+			    other->items[0]->pkg->uid);
+			break;
+		default:
+			assert(false);
+		}
 	}
-	debug_edges = false;
 }
 
 static bool
@@ -214,7 +224,7 @@ pkg_jobs_schedule_has_incoming_edge(pkg_solved_list *nodes,
 	vec_foreach(*nodes, i) {
 		if (nodes->d[i] == NULL)
 			continue;
-		if (pkg_jobs_schedule_graph_edge(nodes->d[i], node)) {
+		if (pkg_jobs_schedule_graph_edge(nodes->d[i], node) != PKG_SCHEDULE_EDGE_NONE) {
 			return (true);
 		}
 	}
@@ -287,7 +297,7 @@ pkg_jobs_schedule_topological_sort(pkg_solved_list *jobs)
 		vec_foreach(*jobs, i) {
 			if (jobs->d[i] == NULL)
 				continue;
-			if (pkg_jobs_schedule_graph_edge(node, jobs->d[i])) {
+			if (pkg_jobs_schedule_graph_edge(node, jobs->d[i]) != PKG_SCHEDULE_EDGE_NONE) {
 				if (!pkg_jobs_schedule_has_incoming_edge(jobs, jobs->d[i]) &&
 				    !pkg_jobs_schedule_has_incoming_edge(&available, jobs->d[i])) {
 					vec_push(&available, jobs->d[i]);
@@ -325,7 +335,7 @@ pkg_jobs_schedule_find_cycle(pkg_solved_list *jobs,
 	*path = node;
 
 	vec_foreach(*jobs, i) {
-		if (pkg_jobs_schedule_graph_edge(node, jobs->d[i])) {
+		if (pkg_jobs_schedule_graph_edge(node, jobs->d[i]) != PKG_SCHEDULE_EDGE_NONE) {
 			switch (jobs->d[i]->mark){
 			case PKG_SOLVED_CYCLE_MARK_NONE:;
 				struct pkg_solved *cycle =
