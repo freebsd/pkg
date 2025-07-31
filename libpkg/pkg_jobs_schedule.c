@@ -330,8 +330,8 @@ pkg_jobs_schedule_find_cycle(pkg_solved_list *jobs,
 	/* Push node to path */
 	assert(node->mark == PKG_SOLVED_CYCLE_MARK_NONE);
 	node->mark = PKG_SOLVED_CYCLE_MARK_PATH;
-	assert(node->path_next == NULL);
-	node->path_next = *path;
+	assert(node->path_prev == NULL);
+	node->path_prev = *path;
 	*path = node;
 
 	vec_foreach(*jobs, i) {
@@ -357,8 +357,8 @@ pkg_jobs_schedule_find_cycle(pkg_solved_list *jobs,
 	/* Pop node from path */
 	assert(node->mark == PKG_SOLVED_CYCLE_MARK_PATH);
 	node->mark = PKG_SOLVED_CYCLE_MARK_DONE;
-	*path = node->path_next;
-	node->path_next = NULL;
+	*path = node->path_prev;
+	node->path_prev = NULL;
 
 	return (NULL);
 }
@@ -370,7 +370,7 @@ int pkg_jobs_schedule(struct pkg_jobs *j)
 
 		vec_foreach(j->jobs, i) {
 			j->jobs.d[i]->mark = PKG_SOLVED_CYCLE_MARK_NONE;
-			j->jobs.d[i]->path_next = NULL;
+			j->jobs.d[i]->path_prev = NULL;
 
 			pkg_jobs_schedule_dbg_job(&j->jobs, j->jobs.d[i]);
 		}
@@ -418,7 +418,7 @@ int pkg_jobs_schedule(struct pkg_jobs *j)
 				pkg_emit_error("found job scheduling cycle without upgrade job");
 			 	return (EPKG_FATAL);
 			}
-			path = path->path_next;
+			path = path->path_prev;
 			assert(path != NULL);
 		}
 
