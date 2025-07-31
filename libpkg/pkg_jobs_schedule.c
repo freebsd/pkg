@@ -403,23 +403,52 @@ int pkg_jobs_schedule(struct pkg_jobs *j)
 
 		dbg(3, "job scheduling graph cycle found");
 		assert(path != NULL);
+		assert(path->path_prev != NULL);
 		assert(path != cycle);
 
-		/* Choose an arbitrary upgrade job in the cycle to split in order
-		 * to break the cycle.
+		/* Close the path into a cycle to eliminate some edge cases in the loop. */
+		cycle->path_prev = path;
+
+		/* Not all upgrade jobs would break the cycle if split.
+		 * It is helpful to think of each upgrade job as two separate
+		 * nodes, the remove half and the install half. If a cycle only
+		 * involved one half of the upgrade job, splitting the upgrade
+		 * job would not break the cycle or even change its length.
 		 *
-		 * TODO: Does it truly not matter which upgrade job in the cycle we
-		 * choose to split? I'm relatively confident that splitting any upgrade job
-		 * will break the given cycle but is it possible that one of the choices
-		 * would break additional cycles as well?
+		 * Furthermore, since there is an edge from the remove half of
+		 * an upgrade job to the install half, the install half must
+		 * come *before* the remove half in the cycle. Otherwise
+		 * splitting the upgrade job will only make the cycle one node
+		 * longer.
 		 */
-		while (path->type != PKG_SOLVED_UPGRADE) {
+		enum pkg_jobs_schedule_graph_edge_type out =
+		    pkg_jobs_schedule_graph_edge(path, cycle);
+		assert(out != PKG_SCHEDULE_EDGE_NONE);
+		enum pkg_jobs_schedule_graph_edge_type in =
+		    pkg_jobs_schedule_graph_edge(path->path_prev, path);
+		assert(in != PKG_SCHEDULE_EDGE_NONE);
+		while (true) {
+			if (path->type == PKG_SOLVED_UPGRADE) {
+				assert(out != PKG_SCHEDULE_EDGE_SPLIT_UPGRADE);
+				assert(in != PKG_SCHEDULE_EDGE_SPLIT_UPGRADE);
+				if ((out == PKG_SCHEDULE_EDGE_OLD_DEP_OLD ||
+				     out == PKG_SCHEDULE_EDGE_OLD_CONFLICT_NEW) &&
+				    (in == PKG_SCHEDULE_EDGE_NEW_DEP_NEW ||
+				     in == PKG_SCHEDULE_EDGE_OLD_CONFLICT_NEW)) {
+					/* Found an upgrade job that would break
+					 * the cycle if split. */
+					break;
+				}
+			}
 			if (path == cycle) {
-				pkg_emit_error("found job scheduling cycle without upgrade job");
+				pkg_emit_error("failed to break job scheduling cycle");
 			 	return (EPKG_FATAL);
 			}
 			path = path->path_prev;
 			assert(path != NULL);
+			out = in;
+			in = pkg_jobs_schedule_graph_edge(path->path_prev, path);
+			assert(in != PKG_SCHEDULE_EDGE_NONE);
 		}
 
 		/* path is now the upgrade job chosen to be split */
