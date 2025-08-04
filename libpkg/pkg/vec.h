@@ -83,6 +83,20 @@
 		(v)->len--;                                     \
 	} while (0)
 
+/*
+ * Remove the element at the given index and replace it with the last
+ * element in the vec. Does not preserve order, but is O(1).
+ */
+#define vec_swap_remove(v, index)                    \
+	do {                                         \
+		assert((index) < (v)->len);          \
+		assert((v)->len > 0);                \
+		if ((index) < (v)->len - 1) {        \
+			(v)->d[index] = vec_last(v); \
+		}                                    \
+		(v)->len--;                          \
+	} while (0)
+
 #define vec_len(v) \
 	(v)->len
 
