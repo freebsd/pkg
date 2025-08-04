@@ -250,11 +250,8 @@ pkg_jobs_schedule_priority(struct pkg_solved *node)
 
 /* This comparison function is used as a tiebreaker in the topological sort. */
 static int
-pkg_jobs_schedule_cmp_available(const void *va, const void *vb)
+pkg_jobs_schedule_cmp_available(struct pkg_solved *a, struct pkg_solved *b)
 {
-	struct pkg_solved *a = *(struct pkg_solved **)va;
-	struct pkg_solved *b = *(struct pkg_solved **)vb;
-
 	int ret = pkg_jobs_schedule_priority(a) - pkg_jobs_schedule_priority(b);
 	if (ret == 0) {
 		/* Falling back to lexicographical ordering ensures that job execution
@@ -299,9 +296,15 @@ pkg_jobs_schedule_topological_sort(pkg_solved_list *jobs)
 	while (available.len > 0) {
 		/* Add the highest priority job from the set of available jobs
 		 * to the sorted list */
-		qsort(available.d, available.len, sizeof(available.d[0]), pkg_jobs_schedule_cmp_available);
-		struct pkg_solved *node = vec_pop(&available);
+		size_t max = 0;
+		for (size_t i = 1; i < available.len; i++) {
+			if (pkg_jobs_schedule_cmp_available(available.d[i], available.d[max]) > 0) {
+				max = i;
+			}
+		}
+		struct pkg_solved *node = available.d[max];
 		vec_push(jobs, node);
+		vec_swap_remove(&available, max);
 
 		/* Again, place all job nodes with no incoming edges in the set
 		 * of available jobs, ignoring any incoming edges from job nodes
