@@ -28,6 +28,7 @@
 #include <assert.h>
 
 #include "pkg.h"
+#include "pkg/vec.h"
 #include "private/event.h"
 #include "private/pkg.h"
 #include "private/pkg_jobs.h"
@@ -222,8 +223,6 @@ pkg_jobs_schedule_has_incoming_edge(pkg_solved_list *nodes,
     struct pkg_solved *node)
 {
 	vec_foreach(*nodes, i) {
-		if (nodes->d[i] == NULL)
-			continue;
 		if (pkg_jobs_schedule_graph_edge(nodes->d[i], node) != PKG_SCHEDULE_EDGE_NONE) {
 			return (true);
 		}
@@ -266,56 +265,57 @@ pkg_jobs_schedule_cmp_available(const void *va, const void *vb)
 	}
 }
 
+/*
+ * Move job nodes with no incoming edges from unavailable to available.
+ * If changed is non-NULL, only check jobs with an incoming edge from changed. */
+static void
+pkg_jobs_schedule_update_available(pkg_solved_list *unavailable,
+    pkg_solved_list *available, struct pkg_solved *changed)
+{
+	for (size_t i = 0; i < unavailable->len;) {
+		struct pkg_solved *job = unavailable->d[i];
+		if ((changed == NULL ||
+		    pkg_jobs_schedule_graph_edge(changed, job) != PKG_SCHEDULE_EDGE_NONE) &&
+		    !pkg_jobs_schedule_has_incoming_edge(unavailable, job) &&
+		    !pkg_jobs_schedule_has_incoming_edge(available, job)) {
+			vec_push(available, job);
+			vec_swap_remove(unavailable, i);
+		} else {
+			i++;
+		}
+	}
+}
+
 /* Topological sort based on Kahn's algorithm with a tiebreaker */
 static void
 pkg_jobs_schedule_topological_sort(pkg_solved_list *jobs)
 {
-	pkg_solved_list sorted = vec_init();
+	pkg_solved_list unavailable = *jobs;
 	pkg_solved_list available = vec_init();
-	size_t left = jobs->len;
+	*jobs = (pkg_solved_list)vec_init();
 
-	/* Place all job nodes with no incoming edges in available */
-	vec_foreach(*jobs, i) {
-		if (!pkg_jobs_schedule_has_incoming_edge(jobs, jobs->d[i]) &&
-		    !pkg_jobs_schedule_has_incoming_edge(&available, jobs->d[i])) {
-			vec_push(&available, jobs->d[i]);
-			jobs->d[i] = NULL;
-			left--;
-		}
-	}
+	pkg_jobs_schedule_update_available(&unavailable, &available, NULL);
 
 	while (available.len > 0) {
 		/* Add the highest priority job from the set of available jobs
 		 * to the sorted list */
 		qsort(available.d, available.len, sizeof(available.d[0]), pkg_jobs_schedule_cmp_available);
 		struct pkg_solved *node = vec_pop(&available);
-		vec_push(&sorted, node);
+		vec_push(jobs, node);
 
 		/* Again, place all job nodes with no incoming edges in the set
 		 * of available jobs, ignoring any incoming edges from job nodes
 		 * already added to the sorted list */
-		vec_foreach(*jobs, i) {
-			if (jobs->d[i] == NULL)
-				continue;
-			if (pkg_jobs_schedule_graph_edge(node, jobs->d[i]) != PKG_SCHEDULE_EDGE_NONE) {
-				if (!pkg_jobs_schedule_has_incoming_edge(jobs, jobs->d[i]) &&
-				    !pkg_jobs_schedule_has_incoming_edge(&available, jobs->d[i])) {
-					vec_push(&available, jobs->d[i]);
-					jobs->d[i] = NULL;
-					left--;
-				}
-			}
-		}
+		pkg_jobs_schedule_update_available(&unavailable, &available, node);
 	}
 
-	/* The jobs list will only be non-empty at this point if there is a
+	/* The unavailable set will only be non-empty at this point if there is a
 	 * cycle in the graph and all cycles must be eliminated by splitting
 	 * upgrade jobs before calling this function. */
-	assert(left == 0);
+	assert(unavailable.len == 0);
 
+	vec_free(&unavailable);
 	vec_free(&available);
-	free(jobs->d);
-	jobs->d = sorted.d;
 }
 
 /*
