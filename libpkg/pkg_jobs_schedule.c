@@ -255,7 +255,7 @@ pkg_jobs_schedule_cmp_available(const void *va, const void *vb)
 	struct pkg_solved *a = *(struct pkg_solved **)va;
 	struct pkg_solved *b = *(struct pkg_solved **)vb;
 
-	int ret = pkg_jobs_schedule_priority(b) - pkg_jobs_schedule_priority(a);
+	int ret = pkg_jobs_schedule_priority(a) - pkg_jobs_schedule_priority(b);
 	if (ret == 0) {
 		/* Falling back to lexicographical ordering ensures that job execution
 		 * order is always consistent and makes testing easier. */
