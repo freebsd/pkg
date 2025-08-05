@@ -1,3 +1,8 @@
+Changes from 2.2.1 to 2.2.2
+- Set numeric uid/gid when adding archive entries
+- Provide the METALOG path to pkg scripts
+- Run script even for split upgrade
+
 Changes from 2.2.0 to 2.2.1
 - revert the scheduler "fixes" trying to reduce the
   number of "split upgrades", it causes ordering issues
