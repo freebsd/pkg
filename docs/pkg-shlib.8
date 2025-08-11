@@ -14,18 +14,12 @@
 .\"
 .\"     @(#)pkg.8
 .\"
-.Dd April 9, 2015
+.Dd August 11, 2025
 .Dt PKG-SHLIB 8
 .Os
 .Sh NAME
 .Nm "pkg shlib"
-.Nd display which installed package provides a specfic shared library,
-and the installed packages which require it
-.Pp
-.Ar library
-is the filename of the library without any leading path, but
-including the ABI version number.
-Only exact matches are handled.
+.Nd display which installed package provides or requires a shared library
 .Sh SYNOPSIS
 .Nm
 .Op Fl q
@@ -43,6 +37,14 @@ is used for displaying the packages that provide
 or that require
 .Ar library
 by containing binaries that link to it.
+.Pp
+.Ar library
+should be of the form
+.Li libname.so.0
+or
+.Li /path/to/libname.so.0 .
+In the latter case, everything up to and including the last path
+separator is ignored.
 .Sh OPTIONS
 The following mutually exclusive options are supported by
 .Nm :

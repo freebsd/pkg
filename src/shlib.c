@@ -1,7 +1,7 @@
 /*-
  * Copyright (c) 2012-2014 Matthew Seaman <matthew@FreeBSD.org>
  * All rights reserved.
- * 
+ *
  * Redistribution and use in source and binary forms, with or without
  * modification, are permitted provided that the following conditions
  * are met:
@@ -11,7 +11,7 @@
  * 2. Redistributions in binary form must reproduce the above copyright
  *    notice, this list of conditions and the following disclaimer in the
  *    documentation and/or other materials provided with the distribution.
- * 
+ *
  * THIS SOFTWARE IS PROVIDED BY THE AUTHOR(S) ``AS IS'' AND ANY EXPRESS OR
  * IMPLIED WARRANTIES, INCLUDING, BUT NOT LIMITED TO, THE IMPLIED WARRANTIES
  * OF MERCHANTABILITY AND FITNESS FOR A PARTICULAR PURPOSE ARE DISCLAIMED.
@@ -42,31 +42,34 @@ void
 usage_shlib(void)
 {
 	fprintf(stderr, "Usage: pkg shlib [-q] [-P|R] <library>\n\n");
-	fprintf(stderr, "<library> should be a filename without leading path.\n");
 	fprintf(stderr, "For more information see 'pkg help shlib'.\n");
 }
 
-char*
-sanitize(char *target, const char *source, size_t size)
+char *
+sanitize(char *buf, const char *src, size_t size)
 {
-	size_t i;
-	int s;
-	char *rc = target;
+	const char *sep;
+	char *dst = buf;
 
-	for (i = 0; i < size - 1; i++) {
-		s = source[i];
-		if (s == '\0')
-			break;
-		if (isascii(s) && (isspace(s) || s == '/')) {
-			rc = NULL;
-			break;
-		} else {
-			target[i] = s;
+	/* skip path */
+	if ((sep = strrchr(src, '/')) != NULL)
+		src = sep + 1;
+	/* copy src to dst */
+	while (size > 1) {
+		if (isspace((unsigned char)*src)) {
+			/* whitespace is not allowed */
+			return (NULL);
 		}
+		*dst++ = *src++;
+		size--;
 	}
-	target[i] = '\0';
+	if (*src != '\0') {
+		/* src is longer than buf */
+		return (NULL);
+	}
+	*dst = '\0';
 
-	return (rc);
+	return (buf);
 }
 
 static int
@@ -142,7 +145,7 @@ exec_shlib(int argc, char **argv)
 	int		 ch;
 	bool		 provides_only = false;
 	bool		 requires_only = false;
-	
+
 	struct option longopts[] = {
 		{ "provides",	no_argument,	NULL,	'P' },
 		{ "requires",	no_argument,	NULL,	'R' },
@@ -202,7 +205,7 @@ exec_shlib(int argc, char **argv)
 
 	if (retcode != EPKG_OK)
 		retcode = (EXIT_FAILURE);
-		
+
 	pkgdb_release_lock(db, PKGDB_LOCK_READONLY);
 	pkgdb_close(db);
 	return (retcode);
