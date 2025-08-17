@@ -35,6 +35,8 @@
 #include "private/event.h"
 #include "private/fetch.h"
 
+#define	curl_response_is_ok(res) ((res) == 200 || (res) == 206)
+
 /*
  * The choice of 2KB/s is arbitrary; at some point this should be configurable.
  */
@@ -49,6 +51,7 @@ struct curl_userdata {
 	int fd;
 	CURL *cl;
 	FILE *fh;
+	off_t offset;
 	size_t size;
 	size_t totalsize;
 	size_t content_length;
@@ -148,7 +151,8 @@ curl_do_fetch(struct curl_userdata *data, CURL *cl, struct curl_repodata *cr)
 
 	curl_easy_setopt(cl, CURLOPT_FOLLOWLOCATION, 1L);
 	curl_easy_setopt(cl, CURLOPT_PRIVATE, &data);
-
+	if (data->offset > 0)
+		curl_easy_setopt(cl, CURLOPT_RESUME_FROM_LARGE, data->offset);
 	if (ctx.debug_flags & PKG_DBG_FETCH && ctx.debug_level >= 1)
 		curl_easy_setopt(cl, CURLOPT_VERBOSE, 1L);
 	if (ctx.debug_flags & PKG_DBG_FETCH && ctx.debug_level >= 1)
@@ -199,6 +203,7 @@ curl_write_cb(char *data, size_t size, size_t nmemb, void *userdata)
 
 	written = fwrite(data, size, nmemb, d->fh);
 	d->size += written;
+	d->offset += written;
 
 	return (written);
 }
@@ -263,7 +268,7 @@ curl_parseheader_cb(void *ptr __unused, size_t size, size_t nmemb, void *userdat
 	curl_easy_getinfo(d->cl, CURLINFO_RESPONSE_CODE, &d->response);
 	if (d->response == 404)
 		return (CURLE_WRITE_ERROR);
-	if (d->response == 200 && !d->started) {
+	if (curl_response_is_ok(d->response) && !d->started) {
 		pkg_emit_fetch_begin(d->url);
 		pkg_emit_progress_start(NULL);
 		d->started = true;
@@ -277,7 +282,7 @@ curl_progress_cb(void *userdata, curl_off_t dltotal, curl_off_t dlnow, curl_off_
 {
 	struct curl_userdata *d = (struct curl_userdata *)userdata;
 
-	if (d->response != 200)
+	if (!curl_response_is_ok(d->response))
 		return (0);
 
 	return pkg_emit_progress_tick(dlnow, dltotal);
@@ -378,6 +383,7 @@ curl_fetch(struct pkg_repo *repo, int dest, struct fetch_item *fi)
 		return (EPKG_FATAL);
 	data.totalsize = fi->size;
 	data.url = fi->url;
+	data.offset = fi->offset > 0 ? fi->offset : 0;
 
 	pkg_dbg(PKG_DBG_FETCH, 2, "curl> fetching %s\n", fi->url);
 	retry = pkg_object_int(pkg_config_get("FETCH_RETRY"));
@@ -502,7 +508,7 @@ do_retry:
 		retcode = EPKG_UPTODATE;
 	} else if (rc == -1) {
 		retcode = EPKG_CANCEL;
-	} else if (rc != 200) {
+	} else if (!curl_response_is_ok(rc)) {
 		--retry;
 		if (retry <= 0) {
 			if (rc == 404) {
