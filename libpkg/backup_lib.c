@@ -90,7 +90,7 @@ register_backup(struct pkgdb *db, int fd, const char *path)
 	return (retcode);
 }
 
-void
+static void
 backup_library(struct pkgdb *db, struct pkg *p, const char *path)
 {
 	const char *libname;
@@ -101,12 +101,11 @@ backup_library(struct pkgdb *db, struct pkg *p, const char *path)
 
 	if ((libname = strrchr(path, '/')) == NULL)
 		return;
+	/* skip the initial / */
+	libname++;
 
 	pkg_open_root_fd(p);
 	to = -1;
-
-	/* skip the initial / */
-	libname++;
 
 	from = openat(p->rootfd, RELATIVE_PATH(path), O_RDONLY);
 	if (from == -1) {
@@ -176,4 +175,23 @@ out:
 		close(from);
 	if (to >= 0)
 		close(to);
+}
+
+/*
+ * We're about to remove an installed file as part of an upgrade.  See if it's a
+ * library and whether the user asked us to back up libraries, and if so, back
+ * it up.
+ */
+void
+pkg_maybe_backup_library(struct pkgdb *db, struct pkg *pkg, const char *path)
+{
+	const char *libname;
+
+	if (!ctx.backup_libraries)
+		return;
+
+	libname = strrchr(path, '/');
+	if (libname != NULL &&
+	    charv_search(&pkg->shlibs_provided, libname + 1) != NULL)
+		backup_library(db, pkg, path);
 }

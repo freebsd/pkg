@@ -1459,15 +1459,7 @@ pkg_add_cleanup_old(struct pkgdb *db, struct pkg *old, struct pkg *new, struct t
 			    pkg_config_get("FILES_IGNORE_GLOB"),
 			    pkg_config_get("FILES_IGNORE_REGEX"))) {
 				pkg_debug(2, "File %s is not in the new package", f->path);
-				if (ctx.backup_libraries) {
-					const char *libname;
-					libname = strrchr(f->path, '/');
-					if (libname != NULL &&
-					    charv_search(&old->shlibs_provided, libname+1) != NULL) {
-						backup_library(db, old, f->path);
-					}
-				}
-
+				pkg_maybe_backup_library(db, old, f->path);
 				trigger_is_it_a_cleanup(t, f->path);
 				pkg_delete_file(old, f);
 			}

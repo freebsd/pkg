@@ -100,7 +100,7 @@ pkg_delete(struct pkg *pkg, struct pkg *rpkg, struct pkgdb *db, int flags,
 			return (ret);
 	}
 
-	ret = pkg_delete_files(pkg, rpkg, flags, t);
+	ret = pkg_delete_files(db, pkg, rpkg, flags, t);
 	if (ret == EPKG_CANCEL)
 		cancel = 1;
 	else if (ret != EPKG_OK)
@@ -353,11 +353,10 @@ pkg_delete_skip_config(struct pkg *pkg, struct pkg *rpkg, struct pkg_file *file,
 }
 
 int
-pkg_delete_files(struct pkg *pkg, struct pkg *rpkg, int flags,
+pkg_delete_files(struct pkgdb *db, struct pkg *pkg, struct pkg *rpkg, int flags,
     struct triggers *t)
 {
 	struct pkg_file	*file = NULL;
-
 	int		nfiles, cur_file = 0;
 	int		retcode = EPKG_OK;
 
@@ -371,6 +370,8 @@ pkg_delete_files(struct pkg *pkg, struct pkg *rpkg, int flags,
 	while (pkg_files(pkg, &file) == EPKG_OK) {
 		if (pkg_delete_skip_config(pkg, rpkg, file, flags))
 			continue;
+		if ((flags & PKG_DELETE_UPGRADE) != 0)
+			pkg_maybe_backup_library(db, pkg, file->path);
 		append_touched_file(file->path);
 		if (pkg_emit_progress_tick(cur_file++, nfiles))
 			retcode = EPKG_CANCEL;
