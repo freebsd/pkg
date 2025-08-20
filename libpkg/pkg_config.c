@@ -1215,7 +1215,6 @@ pkg_ini(const char *path, const char *reposdir, pkg_init_flags flags)
 	const char *buf, *walk, *value, *key, *k;
 	const char *evkey = NULL;
 	const char *nsname = NULL;
-	const char *metalog = NULL;
 	const char *useragent = NULL;
 	const char *evpipe = NULL;
 	const char *url;
