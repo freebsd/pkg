@@ -707,8 +707,8 @@ pkg_formats packing_format_from_string(const char *str);
 const char* packing_format_to_string(pkg_formats format);
 bool packing_is_valid_format(const char *str);
 
-int pkg_delete_files(struct pkg *pkg, struct pkg *rpkg, int flags,
-    struct triggers *t);
+int pkg_delete_files(struct pkgdb *db, struct pkg *pkg, struct pkg *rpkg,
+    int flags, struct triggers *t);
 int pkg_delete_dirs(struct pkgdb *db, struct pkg *pkg, struct pkg *p);
 
 /* pkgdb commands */
@@ -855,7 +855,8 @@ int pkg_add_fromdir(struct pkg *, const char *, struct pkgdb *db);
 struct pkg_dep* pkg_adddep_chain(struct pkg_dep *chain,
 		struct pkg *pkg, const char *name, const char *origin, const
 		char *version, bool locked);
-void backup_library(struct pkgdb *, struct pkg *, const char *);
+void pkg_maybe_backup_library(struct pkgdb *db, struct pkg *pkg,
+    const char *path);
 int suggest_arch(struct pkg *, bool);
 int set_attrsat(int fd, const char *path, mode_t perm, uid_t uid, gid_t gid, const struct timespec *ats, const struct timespec *mts);
 
