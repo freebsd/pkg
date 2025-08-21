@@ -302,9 +302,7 @@ curl_open(struct pkg_repo *repo, struct fetch_item *fi __unused)
 	cr->cm = curl_multi_init();
 	curl_multi_setopt(cr->cm, CURLMOPT_PIPELINING, CURLPIPE_MULTIPLEX);
 	curl_multi_setopt(cr->cm, CURLMOPT_MAX_HOST_CONNECTIONS, 1);
-	/* TODO: Later for parallel fetching */
 	/*curl_multi_setopt(cm, CURLMOPT_MAX_HOST_TOTAL_CONNECTIONS, 4);*/
-	repo->fetch_priv = cr;
 	if (repo->mirror_type == SRV && repo->srv == NULL) {
 		int urloff = 0;
 		cr->url = curl_url();
@@ -350,6 +348,8 @@ curl_open(struct pkg_repo *repo, struct fetch_item *fi __unused)
 			repo->mirror_type = NOMIRROR;
 		}
 	}
+	/* TODO: Later for parallel fetching */
+	repo->fetch_priv = cr;
 
 	return (EPKG_OK);
 }
