@@ -2,7 +2,7 @@
  * Copyright (c) 2011-2012 Marin Atanasov Nikolov <dnaeon@gmail.com>
  * Copyright (c) 2014 Matthew Seaman <matthew@FreeBSD.org>
  * All rights reserved.
- * 
+ *
  * Redistribution and use in source and binary forms, with or without
  * modification, are permitted provided that the following conditions
  * are met:
@@ -12,7 +12,7 @@
  * 2. Redistributions in binary form must reproduce the above copyright
  *    notice, this list of conditions and the following disclaimer in the
  *    documentation and/or other materials provided with the distribution.
- * 
+ *
  * THIS SOFTWARE IS PROVIDED BY THE AUTHOR(S) ``AS IS'' AND ANY EXPRESS OR
  * IMPLIED WARRANTIES, INCLUDING, BUT NOT LIMITED TO, THE IMPLIED WARRANTIES
  * OF MERCHANTABILITY AND FITNESS FOR A PARTICULAR PURPOSE ARE DISCLAIMED.
@@ -68,7 +68,7 @@ exec_stats(int argc, char **argv)
 		{ "remote",	no_argument,	NULL,	'r' },
 		{ NULL,		0,		NULL,	0   },
 	};
-	
+
 	while ((ch = getopt_long(argc, argv, "+blqr", longopts, NULL)) != -1) {
                 switch (ch) {
 		case 'b':
@@ -89,12 +89,16 @@ exec_stats(int argc, char **argv)
 		}
 	}
 	//argv += optind;
+	pkgdb_t dbtype = PKGDB_DEFAULT;
 
 	/* default is to show everything we have */
 	if (opt == 0)
 		opt |= (STATS_LOCAL | STATS_REMOTE);
 
-	if (pkgdb_open(&db, PKGDB_REMOTE) != EPKG_OK) {
+	if ((opt & STATS_REMOTE) && pkg_repos_activated_count() > 0)
+		dbtype = PKGDB_REMOTE;
+
+	if (pkgdb_open(&db, dbtype) != EPKG_OK) {
 		return (EXIT_FAILURE);
 	}
 
@@ -119,7 +123,7 @@ exec_stats(int argc, char **argv)
 		}
 	}
 
-	if ((opt & STATS_REMOTE) && pkg_repos_total_count() > 0) {
+	if ((opt & STATS_REMOTE) && pkg_repos_activated_count() > 0) {
 		printf("Remote package database(s):\n");
 		printf("\tNumber of repositories: %" PRId64 "\n", pkgdb_stats(db, PKG_STATS_REMOTE_REPOS));
 		printf("\tPackages available: %" PRId64 "\n", pkgdb_stats(db, PKG_STATS_REMOTE_COUNT));
