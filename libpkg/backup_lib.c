@@ -94,10 +94,7 @@ static void
 backup_library(struct pkgdb *db, struct pkg *p, const char *path)
 {
 	const char *libname;
-	char buf[BUFSIZ];
-	char *outbuf;
 	int from, to, backupdir;
-	ssize_t nread, nwritten;
 
 	if ((libname = strrchr(path, '/')) == NULL)
 		return;
@@ -141,21 +138,7 @@ backup_library(struct pkgdb *db, struct pkg *p, const char *path)
 		goto out;
 	}
 
-	memset(buf, '\0', sizeof(buf));
-	while ((nread = read(from, buf, sizeof(buf))) > 0) {
-		outbuf = buf;
-		do {
-			nwritten = write(to, outbuf, nread);
-			if (nwritten >= 0) {
-				nread -= nwritten;
-				outbuf += nwritten;
-			} else if (errno != EINTR) {
-				goto out;
-			}
-		} while (nread > 0);
-	}
-
-	if (nread == 0) {
+	if (pkg_copy_file(from, to)) {
 		if (close(to) < 0) {
 			to = -1;
 			goto out;
@@ -165,7 +148,6 @@ backup_library(struct pkgdb *db, struct pkg *p, const char *path)
 		close(backupdir);
 		return;
 	}
-
 
 out:
 	pkg_emit_errno("Fail to backup the library", libname);
