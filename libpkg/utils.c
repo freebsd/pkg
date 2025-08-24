@@ -920,13 +920,14 @@ rtrimspace(char *buf)
 	return (buf);
 }
 
-static int
+static ssize_t
 _copy_file(int from, int to)
 {
 	char buf[BUFSIZ];
 	ssize_t r, wresid, w = 0;
 	char *bufp;
-	r = read(from, buf, BUFSIZ);
+
+	r = read(from, buf, sizeof(buf));
 	if (r < 0)
 		return (r);
 	for (bufp = buf, wresid = r; ; bufp += w, wresid -= w) {
@@ -945,13 +946,12 @@ pkg_copy_file(int from, int to)
 #ifdef HAVE_COPY_FILE_RANGE
 	bool cfr = true;
 #endif
-	int r;
+	ssize_t r;
 
 	do {
 #ifdef HAVE_COPY_FILE_RANGE
 		if (cfr) {
-			r = copy_file_range(from, NULL, to, NULL, SSIZE_MAX,
-			    0);
+			r = copy_file_range(from, NULL, to, NULL, SSIZE_MAX, 0);
 			if (r < 0 && (errno == EINVAL || errno == EXDEV)) {
 				/* probably a non seekable FD */
 				cfr = false;
