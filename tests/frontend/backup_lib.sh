@@ -4,7 +4,8 @@
 
 tests_init \
 	basic \
-	split_upgrade
+	split_upgrade \
+	depends
 
 basic_body() {
 	atf_skip_on Darwin The macOS linker uses different flags
@@ -160,4 +161,84 @@ EOF
 	atf_check test -f ${TMPDIR}/target/back/libbar.so.1
 	atf_check -o inline:"libbar.so.1\nlibfoo.so.1\n" \
 	    pkg -r ${TMPDIR}/target query "%b" compat-libraries
+}
+
+# If a package foo provides libfoo.so.1 and a different package bar
+# depends on it, and libfoo.so is upgraded to version 2, and
+# BACKUP_LIBRARIES is configured, then upgrading should not result in
+# removal of bar.
+#
+# XXX-MJ check the case where bar is not upgraded
+# XXX-MJ check the case where foo and bar come from different repositories
+depends_body()
+{
+	atf_skip_on Darwin The macOS linker uses different flags
+
+	atf_check touch empty.c
+	atf_check cc -shared -Wl,-soname=libfoo.so.1 empty.c -o libfoo.so.1
+	atf_check ln -s libfoo.so.1 libfoo.so
+	atf_check cc -shared -Wl,-soname=libbar.so.1 empty.c -o libbar.so.1 -lfoo -L.
+	atf_check cc -shared -Wl,-soname=libbar.so.2 empty.c -o libbar.so.2 -lfoo -L.
+	atf_check cc -shared -Wl,-soname=libfoo.so.2 empty.c -o libfoo.so.2
+
+	atf_check sh ${RESOURCEDIR}/test_subr.sh new_pkg "foo" "foo" "1"
+	cat << EOF >> foo.ucl
+files: {
+	${TMPDIR}/libfoo.so.1: "",
+}
+EOF
+	atf_check pkg create -M foo.ucl
+
+	atf_check sh ${RESOURCEDIR}/test_subr.sh new_pkg "foo" "foo" "2"
+	cat << EOF >> foo.ucl
+files: {
+	${TMPDIR}/libfoo.so.2: "",
+}
+EOF
+	atf_check pkg create -M foo.ucl
+
+	atf_check sh ${RESOURCEDIR}/test_subr.sh new_pkg "bar" "bar" "1"
+	cat << EOF >> bar.ucl
+files: {
+	${TMPDIR}/libbar.so.1: "",
+}
+EOF
+	atf_check pkg create -M bar.ucl
+
+	atf_check sh ${RESOURCEDIR}/test_subr.sh new_pkg "bar" "bar" "2"
+	cat << EOF >> bar.ucl
+files: {
+	${TMPDIR}/libbar.so.2: "",
+}
+EOF
+	atf_check pkg create -M bar.ucl
+
+	atf_check mkdir ${TMPDIR}/target ${TMPDIR}/reposconf
+	atf_check -o ignore pkg repo .
+	cat <<EOF > ${TMPDIR}/reposconf/repo.conf
+local: {
+	url: file://${TMPDIR},
+	enabled: true
+}
+EOF
+
+	# Install the base version packages, foo-1 and bar-1.
+	atf_check \
+	    pkg -o REPOS_DIR=/dev/null -r ${TMPDIR}/target \
+	        install -qfy ${TMPDIR}/foo-1.pkg
+	atf_check \
+	    pkg -o REPOS_DIR=/dev/null -r ${TMPDIR}/target \
+	        install -qfy ${TMPDIR}/bar-1.pkg
+
+	# Upgrade foo to version 2.  This will remove libfoo.so.1, but
+	# we shouldn't remove the bar package because libfoo.so.1 is
+	# still available via the backup libraries mechanism.
+	atf_check -o ignore \
+	    pkg \
+	        -o REPOS_DIR=${TMPDIR}/reposconf -r ${TMPDIR}/target \
+		-o BACKUP_LIBRARIES=yes \
+	        upgrade -y foo bar
+
+	atf_check test -f ${TMPDIR}/target/${TMPDIR}/libfoo.so.2
+	atf_check test -f ${TMPDIR}/target/${TMPDIR}/libbar.so.2
 }
