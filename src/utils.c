@@ -1209,7 +1209,7 @@ print_repository(struct pkg_repo *repo, bool pad)
 	}
 
 	printf("%s%s: { \n    %-16s: \"%s\",\n    %-16s: %s,\n"
-			"    %-16s: %u",
+			"    %-16s: %d",
 			pad ? "  " : "",
 			pkg_repo_name(repo),
 			"url", pkg_repo_url(repo),

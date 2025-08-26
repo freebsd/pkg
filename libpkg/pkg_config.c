@@ -1823,7 +1823,7 @@ pkg_repo_mirror_type(struct pkg_repo *r)
 	return (r->mirror_type);
 }
 
-unsigned int
+int
 pkg_repo_priority(struct pkg_repo *r)
 {
 	return (r->priority);

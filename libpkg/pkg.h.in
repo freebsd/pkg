@@ -1550,7 +1550,7 @@ const char *pkg_repo_fingerprints(struct pkg_repo *r);
 signature_t pkg_repo_signature_type(struct pkg_repo *r);
 bool pkg_repo_enabled(struct pkg_repo *r);
 mirror_t pkg_repo_mirror_type(struct pkg_repo *r);
-unsigned pkg_repo_priority(struct pkg_repo *r);
+int pkg_repo_priority(struct pkg_repo *r);
 unsigned pkg_repo_ip_version(struct pkg_repo *r);
 struct pkg_repo *pkg_repo_find(const char *name);
 int pkg_repo_fetch_remote_tmp(struct pkg_repo *repo,
