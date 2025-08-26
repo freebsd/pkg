@@ -379,7 +379,7 @@ Number of packages to be upgraded: 1
 [2/2] Extracting myplop-2:  done
 "
 	ERROR=""
-	atf_check -o inline:"${OUTPUT}" -e inline:"${ERROR}" -s exit:0 pkg -o REPOS_DIR="$TMPDIR/repoconf" -r ${TMPDIR}/target -o PKG_CACHEDIR="$TMPDIR" upgrade -fy myplop-2
+	atf_check -o inline:"${OUTPUT}" -e inline:"${ERROR}" -s exit:0 pkg -o REPOS_DIR="$TMPDIR/repoconf" -r ${TMPDIR}/target -o PKG_CACHEDIR="$TMPDIR" upgrade -fy myplop
 }
 
 vital_force_cant_remove_body() {
@@ -419,5 +419,5 @@ Checking integrity... done (0 conflicting)
 Your packages are up to date.
 "
 	ERROR=""
-	atf_check -o inline:"${OUTPUT}" -e inline:"${ERROR}" -s exit:0 pkg -o REPOS_DIR="$TMPDIR/repoconf" -r ${TMPDIR}/target -o PKG_CACHEDIR="$TMPDIR" -o FORCE_CAN_REMOVE_VITAL=NO upgrade -fy myplop-2
+	atf_check -o inline:"${OUTPUT}" -e inline:"${ERROR}" -s exit:0 pkg -o REPOS_DIR="$TMPDIR/repoconf" -r ${TMPDIR}/target -o PKG_CACHEDIR="$TMPDIR" -o FORCE_CAN_REMOVE_VITAL=NO upgrade -fy myplop
 }
