@@ -1008,7 +1008,7 @@ pkg_jobs_find_remote_pattern(struct pkg_jobs *j, struct job_pattern *jp)
 	struct pkg_job_request *req;
 
 	if (!(jp->flags & PKG_PATTERN_FLAG_FILE)) {
-		if (j->type == PKG_JOBS_UPGRADE && jp->match == MATCH_INTERNAL) {
+		if (j->type == PKG_JOBS_UPGRADE && (jp->match == MATCH_INTERNAL || jp->match == MATCH_EXACT)) {
 			/*
 			 * For upgrade patterns we must ensure that a local package is
 			 * installed as well.  This only works if we're operating on an
