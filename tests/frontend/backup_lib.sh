@@ -3,7 +3,8 @@
 . $(atf_get_srcdir)/test_environment.sh
 
 tests_init \
-	basic
+	basic \
+	split_upgrade
 
 basic_body() {
 	atf_skip_on Darwin The macOS linker uses different flags
@@ -81,4 +82,82 @@ EOF
 	version2=$(pkg -r ${TMPDIR}/target query "%v" compat-libraries)
 	[ ${version2} -ge ${version1} ] || \
 	    atf_fail "the version hasn't been bumped ${version2} >= ${version1}"
+}
+
+# Make sure that we back up libraries properly when a package upgrade is
+# split into separate deletion and installation steps.
+split_upgrade_body()
+{
+	atf_skip_on Darwin The macOS linker uses different flags
+
+	atf_check touch a b empty.c
+	atf_check cc -shared -Wl,-soname=libfoo.so.1 empty.c -o libfoo.so.1
+	atf_check cc -shared -Wl,-soname=libfoo.so.2 empty.c -o libfoo.so.2
+	atf_check cc -shared -Wl,-soname=libbar.so.1 empty.c -o libbar.so.1
+	atf_check cc -shared -Wl,-soname=libbar.so.2 empty.c -o libbar.so.2
+
+	atf_check sh ${RESOURCEDIR}/test_subr.sh new_pkg "foo" "foo" "1"
+	cat << EOF >> foo.ucl
+files: {
+	${TMPDIR}/a: "",
+	${TMPDIR}/libfoo.so.1: "",
+}
+EOF
+	atf_check pkg create -M foo.ucl
+
+	atf_check sh ${RESOURCEDIR}/test_subr.sh new_pkg "foo" "foo" "2"
+	cat << EOF >> foo.ucl
+files: {
+	${TMPDIR}/b: "",
+	${TMPDIR}/libfoo.so.2: "",
+}
+EOF
+	atf_check pkg create -M foo.ucl
+
+	atf_check sh ${RESOURCEDIR}/test_subr.sh new_pkg "bar" "bar" "1"
+	cat << EOF >> bar.ucl
+files: {
+	${TMPDIR}/b: "",
+	${TMPDIR}/libbar.so.1: "",
+}
+EOF
+	atf_check pkg create -M bar.ucl
+
+	atf_check sh ${RESOURCEDIR}/test_subr.sh new_pkg "bar" "bar" "2"
+	cat << EOF >> bar.ucl
+files: {
+	${TMPDIR}/a: "",
+	${TMPDIR}/libbar.so.2: "",
+}
+EOF
+	atf_check pkg create -M bar.ucl
+
+	atf_check mkdir ${TMPDIR}/target ${TMPDIR}/reposconf
+	atf_check -o ignore pkg repo .
+	cat <<EOF > ${TMPDIR}/reposconf/repo.conf
+local: {
+	url: file://${TMPDIR},
+	enabled: true
+}
+EOF
+
+	# Install the base version packages, foo-1 and bar-1.
+	atf_check \
+	    pkg -o REPOS_DIR=/dev/null -r ${TMPDIR}/target \
+	        install -qfy ${TMPDIR}/foo-1.pkg
+	atf_check \
+	    pkg -o REPOS_DIR=/dev/null -r ${TMPDIR}/target \
+	        install -qfy ${TMPDIR}/bar-1.pkg
+
+	# Now upgrade foo and bar to version 2.  Since the files a and b
+	# move between the two packages, a split upgrade is necessary.
+	atf_check -o ignore \
+	    pkg -o BACKUP_LIBRARY_PATH=/back/ -o BACKUP_LIBRARIES=true \
+	        -o REPOS_DIR=${TMPDIR}/reposconf -r ${TMPDIR}/target \
+	        upgrade -y
+
+	atf_check test -f ${TMPDIR}/target/back/libfoo.so.1
+	atf_check test -f ${TMPDIR}/target/back/libbar.so.1
+	atf_check -o inline:"libbar.so.1\nlibfoo.so.1\n" \
+	    pkg -r ${TMPDIR}/target query "%b" compat-libraries
 }
