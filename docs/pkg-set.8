@@ -14,7 +14,7 @@
 .\"
 .\"     @(#)pkg.8
 .\"
-.Dd November 18, 2016
+.Dd August 27, 2025
 .Dt PKG-SET 8
 .Os
 .Sh NAME
@@ -26,6 +26,7 @@
 .Op Fl A Ar 0|1
 .Op Fl n Ar oldname:newname
 .Op Fl o Ar oldorigin:neworigin
+.Op Fl p
 .Op Fl v Ar 0|1
 .Op Fl y
 .Op Fl Cgix
@@ -36,6 +37,7 @@
 .Op Cm --automatic Ar 0|1
 .Op Cm --change-name Ar oldname:newname
 .Op Cm --change-origin Ar oldorigin:neworigin
+.Op Cm --partial
 .Op Cm --yes
 .Op Fl v Ar 0|1
 .Op Cm --{case-sensitive,glob,case-insensitive,regex}
@@ -94,6 +96,13 @@ Also see
 .Xr pkg-updating 8
 and
 .Sx EXAMPLES .
+.It Fl p , Cm --partial
+Turn the
+.Fl o
+or
+.Fl -n
+options from exact match renames into substring search in replace in all
+installed packages.
 .It Fl x , Cm --regex
 Match
 .Ar pkg-name
@@ -132,6 +141,10 @@ Change a package from non-automatic to automatic, which will make
 .Ic autoremove
 allow it be removed once nothing depends on it:
 .Dl % pkg set -A 1 perl-5.14
+.Pp
+Rename all the php83- packages into php84- packages in order to prepare
+for an upgrade
+.Dl % pkg set -p -n php83:php84
 .Sh ENVIRONMENT
 The following environment variables affect the execution of
 .Nm .
