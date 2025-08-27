@@ -729,6 +729,7 @@ int pkg_config_files(const struct pkg *pkg, struct pkg_config_file **cf);
 
 int pkg_analyse_files(struct pkgdb *, struct pkg *, const char *);
 
+int pkgdb_replace(struct pkgdb *db, unsigned int field, const char *pattern, const char *replace);
 int pkgdb_set2(struct pkgdb *db, struct pkg *pkg, ...);
 #define pkgdb_set(db, pkg, ...) pkgdb_set2(db, pkg, __VA_ARGS__, -1)
 

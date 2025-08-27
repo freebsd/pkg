@@ -108,6 +108,7 @@ exec_set(int argc, char **argv)
 	unsigned int	 sets = 0;
 	unsigned int	 field = 0, depfield = 0;
 	int		 retcode;
+	bool partial = false;
 
 	struct option longopts[] = {
 		{ "automatic",		required_argument,	NULL,	'A' },
@@ -116,6 +117,7 @@ exec_set(int argc, char **argv)
 		{ "glob",		no_argument,		NULL,	'g' },
 		{ "case-insensitive",	no_argument,		NULL,	'i' },
 		{ "change-origin",	required_argument,	NULL,	'o' },
+		{ "partial",		no_argument,		NULL,	'p' },
 		{ "change-name",	required_argument,	NULL,	'n' },
 		{ "regex",		no_argument,		NULL,	'x' },
 		{ "vital",		required_argument,	NULL,	'v' },
@@ -123,7 +125,7 @@ exec_set(int argc, char **argv)
 		{ NULL,			0,			NULL,	0   },
 	};
 
-	while ((ch = getopt_long(argc, argv, "+A:aCgio:xyn:v:", longopts, NULL)) != -1) {
+	while ((ch = getopt_long(argc, argv, "+A:aCgio:pxyn:v:", longopts, NULL)) != -1) {
 		switch (ch) {
 		case 'A':
 			sets |= AUTOMATIC;
@@ -181,6 +183,9 @@ exec_set(int argc, char **argv)
 		case 'y':
 			yes = true;
 			break;
+		case 'p':
+			partial = true;
+			break;
 		default:
 			free(oldvalue);
 			free(newvalue);
@@ -207,6 +212,11 @@ exec_set(int argc, char **argv)
 	else if (sets & ORIGIN) {
 		field = PKG_SET_ORIGIN;
 		depfield = PKG_SET_DEPORIGIN;
+	}
+	if (partial && ((sets & (NAME|ORIGIN)) == 0)) {
+		warnx("-p requires either -o or -n option)");
+		usage_set();
+		return (EXIT_FAILURE);
 	}
 
 	retcode = pkgdb_access(PKGDB_MODE_READ|PKGDB_MODE_WRITE,
@@ -247,6 +257,36 @@ exec_set(int argc, char **argv)
 		return (EXIT_FAILURE);
 	}
 
+	if (partial) {
+		int cnt, cntdep;
+		rc = yes;
+		if (!yes)
+			rc = query_yesno(false, "Do you want to batch replace '%S' in package %S with '%S'?",
+			    oldvalue, changed, newvalue);
+		if (!rc) {
+			retcode = EXIT_SUCCESS;
+			goto cleanup;
+		}
+		cnt = pkgdb_replace(db, field, oldvalue, newvalue);
+		if (cnt < 0) {
+			retcode = EXIT_FAILURE;
+			goto cleanup;
+		} else if (cnt == 0) {
+			if (!quiet)
+				warnx("No packages renamed.");
+			retcode = EXIT_FAILURE;
+			goto cleanup;
+		}
+		cntdep = pkgdb_replace(db, depfield, oldvalue, newvalue);
+		if (cntdep < 0) {
+			retcode = EXIT_FAILURE;
+			goto cleanup;
+		}
+		if (!quiet)
+			printf("%d packages have been renamed.\n", cnt);
+		retcode = EXIT_SUCCESS;
+		goto cleanup;
+	}
 
 	if (oldvalue != NULL) {
 		match = MATCH_ALL;

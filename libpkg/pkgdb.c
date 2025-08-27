@@ -2503,6 +2503,50 @@ pkgdb_set2(struct pkgdb *db, struct pkg *pkg, ...)
 	return (ret);
 }
 
+/*
+ * return the number of row changed or -1 in case of sql failure, -2 in case of invalid field
+ */
+int
+pkgdb_replace(struct pkgdb *db, unsigned int field, const char *pattern, const char *replace)
+{
+	sqlite3_stmt *stmt;
+	char *globmatch = NULL;
+
+	const char *sql[PKG_SET_MAX] = {
+		[PKG_SET_NAME] = "update packages set name = replace(name, ?1, ?2) where name glob ?3",
+		[PKG_SET_ORIGIN] = "update packages set origin = replace(origin, ?1, ?2) where origin glob ?3",
+		[PKG_SET_DEPNAME] = "update deps set name = replace(name, ?1, ?2) where name glob '?3'",
+		[PKG_SET_DEPORIGIN] = "update deps set origin = replace(origin, ?1, ?2) where origin glob ?3",
+	};
+
+	if (pattern == NULL)
+		return (-3);
+	if (replace == NULL)
+		return (-4);
+	if (field != PKG_SET_NAME && field != PKG_SET_ORIGIN &&
+	    field != PKG_SET_DEPNAME && field != PKG_SET_DEPORIGIN) {
+		return (-2);
+	}
+
+	stmt = prepare_sql(db->sqlite, sql[field]);
+	if (stmt == NULL)
+		return (EPKG_FATAL);
+	sqlite3_bind_text(stmt, 1, pattern, -1, SQLITE_STATIC);
+	sqlite3_bind_text(stmt, 2, replace, -1, SQLITE_STATIC);
+	xasprintf(&globmatch, "*%s*", pattern);
+	sqlite3_bind_text(stmt, 2, globmatch, -1, SQLITE_STATIC);
+	pkgdb_debug(4, stmt);
+	if (sqlite3_step(stmt) != SQLITE_DONE) {
+		free(globmatch);
+		ERROR_STMT_SQLITE(db->sqlite, stmt);
+		sqlite3_finalize(stmt);
+		return (-1);
+	}
+	free(globmatch);
+	sqlite3_finalize(stmt);
+	return (sqlite3_changes(db->sqlite));
+}
+
 int
 pkgdb_file_set_cksum(struct pkgdb *db, struct pkg_file *file,
      const char *sum)
