@@ -2534,7 +2534,7 @@ pkgdb_replace(struct pkgdb *db, unsigned int field, const char *pattern, const c
 	sqlite3_bind_text(stmt, 1, pattern, -1, SQLITE_STATIC);
 	sqlite3_bind_text(stmt, 2, replace, -1, SQLITE_STATIC);
 	xasprintf(&globmatch, "*%s*", pattern);
-	sqlite3_bind_text(stmt, 2, globmatch, -1, SQLITE_STATIC);
+	sqlite3_bind_text(stmt, 3, globmatch, -1, SQLITE_STATIC);
 	pkgdb_debug(4, stmt);
 	if (sqlite3_step(stmt) != SQLITE_DONE) {
 		free(globmatch);

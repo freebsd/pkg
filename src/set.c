@@ -152,7 +152,7 @@ exec_set(int argc, char **argv)
 			loads |= PKG_LOAD_DEPS;
 			match = MATCH_ALL;
 			changed = "origin";
-			if (!check_change_values(optarg, &oldvalue, &newvalue, '/')) {
+			if (!check_change_values(optarg, &oldvalue, &newvalue, '\0')) {
 				 errx(EXIT_FAILURE, "Wrong format for -o. "
 					 "Expecting oldorigin:neworigin, got: %s",
 					 optarg);
