@@ -361,8 +361,10 @@ export_arg_option (char *arg)
 		*eqp = '\0';
 
 		if ((opt = getenv (arg)) != NULL) {
-			warnx("option %s is defined in the environment to '%s' but command line "
-					"option redefines it", arg, opt);
+			if (!STREQ(opt, "PKG_RESTARTED")) {
+				warnx("option %s is defined in the environment to '%s' but command line "
+				    "option redefines it", arg, opt);
+			}
 			setenv(arg, eqp + 1, 1);
 		}
 		else {
@@ -392,8 +394,10 @@ start_process_worker(char *const *save_argv)
 
 		if (child_pid == 0) {
 			/* Load the new Pkg image */
-			if (ret == EX_NEEDRESTART)
+			if (ret == EX_NEEDRESTART) {
+				setenv("PKG_RESTARTED", "1", 0);
 				execvp(getprogname(), save_argv);
+			}
 			return;
 		} else {
 			if (child_pid == -1)
