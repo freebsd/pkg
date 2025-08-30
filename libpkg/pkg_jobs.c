@@ -90,14 +90,7 @@ pkg_jobs_new(struct pkg_jobs **j, pkg_jobs_t t, struct pkgdb *db)
 	assert(db != NULL);
 
 	*j = xcalloc(1, sizeof(struct pkg_jobs));
-
 	(*j)->universe = pkg_jobs_universe_new(*j);
-
-	if ((*j)->universe == NULL) {
-		free(*j);
-		return (EPKG_FATAL);
-	}
-
 	(*j)->db = db;
 	(*j)->type = t;
 	(*j)->solved = false;
