@@ -1219,9 +1219,7 @@ pkgdb_it_new_repo(struct pkgdb *db)
 	struct pkgdb_it	*it;
 
 	it = xcalloc(1, sizeof(struct pkgdb_it));
-
 	it->db = db;
-
 	return (it);
 }
 
