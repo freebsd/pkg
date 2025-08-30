@@ -385,8 +385,6 @@ pkgdb_repo_query_cond2(struct pkgdb *db, const char *cond, const char *pattern, 
 	struct pkg_repo_it *rit;
 
 	it = pkgdb_it_new_repo(db);
-	if (it == NULL)
-		return (NULL);
 
 	vec_foreach(db->repos, i) {
 		if (consider_this_repo(repos, db->repos.d[i]->name)) {
@@ -421,8 +419,6 @@ pkgdb_repo_shlib_require(struct pkgdb *db, const char *require, c_charv_t *repos
 	struct pkg_repo_it *rit;
 
 	it = pkgdb_it_new_repo(db);
-	if (it == NULL)
-		return (NULL);
 
 	vec_foreach(db->repos, i) {
 		if (consider_this_repo(repos, db->repos.d[i]->name)) {
@@ -444,8 +440,6 @@ pkgdb_repo_shlib_provide(struct pkgdb *db, const char *require, c_charv_t *repos
 	struct pkg_repo_it *rit;
 
 	it = pkgdb_it_new_repo(db);
-	if (it == NULL)
-		return (NULL);
 
 	vec_foreach(db->repos, i) {
 		if (consider_this_repo(repos, db->repos.d[i]->name)) {
@@ -467,8 +461,6 @@ pkgdb_repo_require(struct pkgdb *db, const char *require, c_charv_t *repo)
 	struct pkg_repo_it *rit;
 
 	it = pkgdb_it_new_repo(db);
-	if (it == NULL)
-		return (NULL);
 
 	vec_foreach(db->repos, i) {
 		if (consider_this_repo(repo, db->repos.d[i]->name)) {
@@ -490,8 +482,6 @@ pkgdb_repo_provide(struct pkgdb *db, const char *require, c_charv_t *repo)
 	struct pkg_repo_it *rit;
 
 	it = pkgdb_it_new_repo(db);
-	if (it == NULL)
-		return (NULL);
 
 	vec_foreach(db->repos, i) {
 		if (consider_this_repo(repo, db->repos.d[i]->name)) {
@@ -530,8 +520,6 @@ pkgdb_repo_search2(struct pkgdb *db, const char *pattern, match_t match,
 	struct pkg_repo_it *rit;
 
 	it = pkgdb_it_new_repo(db);
-	if (it == NULL)
-		return (NULL);
 
 	vec_foreach(db->repos, i) {
 		if (consider_this_repo(repos, db->repos.d[i]->name)) {
