@@ -979,7 +979,7 @@ populate_pkg(sqlite3_stmt *stmt, struct pkg *pkg) {
 	pkg->altabi = xstrdup(legacyarch);
 }
 
-static struct load_on_flag {
+static const struct load_on_flag {
 	int	flag;
 	int	(*load)(sqlite3 *sqlite, struct pkg *p);
 } load_on_flag[] = {
