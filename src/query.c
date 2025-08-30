@@ -41,7 +41,7 @@
 #include <pkg.h>
 #include "pkgcli.h"
 
-static struct query_flags accepted_query_flags[] = {
+static const struct query_flags accepted_query_flags[] = {
 	{ 'd', "nov",		1, PKG_LOAD_DEPS },
 	{ 'r', "nov",		1, PKG_LOAD_RDEPS },
 	{ 'C', "",		1, PKG_LOAD_CATEGORIES },

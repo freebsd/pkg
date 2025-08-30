@@ -85,7 +85,7 @@ scan_dir_for_shlibs(charv_t *shlib_list, const char *dir,
 	return (EPKG_OK);
 }
 
-static struct {
+static const struct {
 	const char *dir;
 	enum pkg_shlib_flags flags;
 } system_shlib_table[] = {
