@@ -61,13 +61,13 @@ static int pkg_repo_binary_group_it_next(struct pkg_repo_it *it, struct pkg **pk
 static void pkg_repo_binary_group_it_free(struct pkg_repo_it *it);
 static void pkg_repo_binary_group_it_reset(struct pkg_repo_it *it);
 
-static struct pkg_repo_it_ops pkg_repo_binary_it_ops = {
+static const struct pkg_repo_it_ops pkg_repo_binary_it_ops = {
 	.next = pkg_repo_binary_it_next,
 	.free = pkg_repo_binary_it_free,
 	.reset = pkg_repo_binary_it_reset
 };
 
-static struct pkg_repo_it_ops pkg_repo_binary_group_it_ops = {
+static const struct pkg_repo_it_ops pkg_repo_binary_group_it_ops = {
 	.next = pkg_repo_binary_group_it_next,
 	.free = pkg_repo_binary_group_it_free,
 	.reset = pkg_repo_binary_group_it_reset

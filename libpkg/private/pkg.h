@@ -468,7 +468,7 @@ struct pkg_repo_it_ops {
 
 struct pkg_repo_it {
 	struct pkg_repo *repo;
-	struct pkg_repo_it_ops *ops;
+	const struct pkg_repo_it_ops *ops;
 	int flags;
 	void *data;
 };
@@ -520,7 +520,7 @@ struct pkg_key {
 };
 
 struct pkg_repo {
-	struct pkg_repo_ops *ops;
+	const struct pkg_repo_ops *ops;
 
 	char *name;
 	struct fetcher *fetcher;
