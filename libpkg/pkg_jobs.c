@@ -1467,30 +1467,21 @@ is_upgrade_candidate(struct pkg_jobs *j, struct pkg *pkg)
 	if (pkg->digest == NULL)
 		return (true);
 
+	/* Does a remote repo have a different version of this package? */
 	it = pkgdb_repo_query2(j->db, pkg->uid, MATCH_INTERNAL, j->reponames);
 	if (it != NULL) {
-		/*
-		 * If we have the same package in a remote repo, it is not an
-		 * installation candidate
-		 */
-		int npkg = 0;
-
 		while (pkgdb_it_next(it, &p, PKG_LOAD_BASIC) == EPKG_OK) {
-			/*
-			 * Check package with the same uid and explore whether digest
-			 * has been changed
-			 */
-			if (!STREQ(p->digest, pkg->digest))
-				npkg ++;
-
+			if (!STREQ(p->digest, pkg->digest)) {
+				/* Found an upgrade candidate. */
+				pkg_free(p);
+				pkgdb_it_free(it);
+				return (true);
+			}
 			pkg_free(p);
 			p = NULL;
 		}
-
 		pkgdb_it_free(it);
-
-		if (npkg == 0)
-			return (false);
+		return (false);
 	}
 
 	return (true);
