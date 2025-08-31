@@ -597,6 +597,7 @@ pkg_repo_binary_groupsearch(struct pkg_repo *repo, const char *pattern, match_t 
 				flag = FNM_CASEFOLD;
 			if (fnmatch(cmp, pattern, flag) == FNM_NOMATCH)
 				continue;
+			break;
 		case MATCH_REGEX:
 			if (re == NULL) {
 				char *newpattern = NULL;
@@ -621,6 +622,7 @@ pkg_repo_binary_groupsearch(struct pkg_repo *repo, const char *pattern, match_t 
 			}
 			if (regexec(re, cmp, 0, NULL, 0) == REG_NOMATCH)
 				continue;
+			break;
 		}
 		if (ar == NULL)
 			ar = ucl_object_typed_new(UCL_ARRAY);
