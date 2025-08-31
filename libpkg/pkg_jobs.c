@@ -1819,7 +1819,6 @@ static int
 pkg_jobs_run_solver(struct pkg_jobs *j)
 {
 	int ret;
-	const char *cudf_solver;
 
 	pkgdb_begin_solver(j->db);
 
@@ -1842,9 +1841,10 @@ pkg_jobs_run_solver(struct pkg_jobs *j)
 		return (EPKG_FATAL);
 	}
 
-	cudf_solver = pkg_object_string(pkg_config_get("CUDF_SOLVER"));
-
 	if (ret == EPKG_OK) {
+		const char *cudf_solver;
+
+		cudf_solver = pkg_object_string(pkg_config_get("CUDF_SOLVER"));
 		if (cudf_solver != NULL) {
 			ret = solve_with_external_cudf_solver(j, cudf_solver);
 		} else {
