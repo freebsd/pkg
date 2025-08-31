@@ -1095,24 +1095,26 @@ pkgdb_sqlite_it_next(struct pkgdb_sqlite_it *it,
 int
 pkgdb_it_next(struct pkgdb_it *it, struct pkg **pkg_p, unsigned flags)
 {
-	struct pkg_repo_it *rit;
-	int ret = EPKG_END;
-
 	assert(it != NULL);
 
 	if (it->local != NULL && !it->local->finished) {
-		int r = pkgdb_sqlite_it_next(it->local, pkg_p, flags);
-		if ( r != EPKG_END)
-			return (r);
+		int ret;
+
+		ret = pkgdb_sqlite_it_next(it->local, pkg_p, flags);
+		if (ret != EPKG_END)
+			return (ret);
 	}
 
 	if (vec_len(&it->remote) != 0) {
+		struct pkg_repo_it *rit;
+		int ret;
+
 		if (it->remote_pos >= it->remote.len)
 			it->remote_pos = 0;
-		struct pkg_repo_it *rit = it->remote.d[it->remote_pos];
+		rit = it->remote.d[it->remote_pos];
 		ret = rit->ops->next(rit, pkg_p, flags);
 		if (ret != EPKG_OK) {
-			if (it->remote_pos == it->remote.len -1 )
+			if (it->remote_pos == it->remote.len - 1)
 				return (EPKG_END);
 			it->remote_pos++;
 			return (pkgdb_it_next(it, pkg_p, flags));
@@ -1124,7 +1126,7 @@ pkgdb_it_next(struct pkgdb_it *it, struct pkg **pkg_p, unsigned flags)
 		return (EPKG_OK);
 	}
 
-	return ret;
+	return (EPKG_END);
 }
 
 // TODO: Why doesn't this function handle remote?
