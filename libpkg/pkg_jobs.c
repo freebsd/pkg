@@ -70,7 +70,8 @@
 
 extern struct pkg_ctx ctx;
 
-static int pkg_jobs_installed_local_pkg(struct pkg_jobs *j, struct pkg *pkg);
+static int _pkg_is_installed(struct pkg_jobs *j, const char *pattern,
+    match_t match);
 static int pkg_jobs_find_upgrade(struct pkg_jobs *j, const char *pattern, match_t m);
 static int pkg_jobs_fetch(struct pkg_jobs *j);
 static bool new_pkg_version(struct pkg_jobs *j);
@@ -911,7 +912,8 @@ pkg_jobs_find_upgrade(struct pkg_jobs *j, const char *pattern, match_t m)
 	 */
 	checklocal = j->type == PKG_JOBS_UPGRADE && m != MATCH_EXACT && m != MATCH_ALL;
 	while (it != NULL && pkgdb_it_next(it, &p, flags) == EPKG_OK) {
-		if (checklocal && pkg_jobs_installed_local_pkg(j, p) != EPKG_OK)
+		if (checklocal &&
+		    _pkg_is_installed(j, p->name, MATCH_INTERNAL) != EPKG_OK)
 			continue;
 		if (pattern != NULL && *pattern != '@') {
 			with_version = strcmp(p->name, pattern);
@@ -960,37 +962,30 @@ pkg_jobs_find_upgrade(struct pkg_jobs *j, const char *pattern, match_t m)
 	return (rc);
 }
 
+/*
+ * Return EPKG_OK if a package with a name matching the pattern is installed
+ * locally.
+ */
 static int
-pkg_jobs_check_local_pkg(struct pkg_jobs *j, struct job_pattern *jp)
+_pkg_is_installed(struct pkg_jobs *j, const char *pattern, match_t match)
 {
 	struct pkgdb_it *it;
 	struct pkg *pkg = NULL;
-	int rc = EPKG_OK;
+	int ret;
 
-	it = pkgdb_query(j->db, jp->pattern, jp->match);
+	it = pkgdb_query(j->db, pattern, match);
 	if (it != NULL) {
-		if (pkgdb_it_next(it, &pkg, PKG_LOAD_BASIC|PKG_LOAD_ANNOTATIONS) != EPKG_OK)
-			rc = EPKG_FATAL;
-		else
+		ret = pkgdb_it_next(it, &pkg,
+		    PKG_LOAD_BASIC | PKG_LOAD_ANNOTATIONS);
+		if (ret == EPKG_OK)
 			pkg_free(pkg);
-
+		else if (ret == EPKG_END)
+			ret = EPKG_NOTINSTALLED;
 		pkgdb_it_free(it);
+	} else {
+		ret = EPKG_FATAL;
 	}
-	else {
-		rc = EPKG_FATAL;
-	}
-
-	return (rc);
-}
-
-static int
-pkg_jobs_installed_local_pkg(struct pkg_jobs *j, struct pkg *pkg)
-{
-	struct job_pattern jfp;
-
-	jfp.match = MATCH_INTERNAL;
-	jfp.pattern = pkg->name;
-	return (pkg_jobs_check_local_pkg(j, &jfp));
+	return (ret);
 }
 
 static int
@@ -1009,11 +1004,12 @@ pkg_jobs_find_remote_pattern(struct pkg_jobs *j, struct job_pattern *jp)
 			 * exact match, as we otherwise don't know exactly what packages
 			 * are in store for us.
 			 */
-			if (pkg_jobs_check_local_pkg(j, jp) != EPKG_OK) {
+			rc = _pkg_is_installed(j, jp->pattern, jp->match);
+			if (rc != EPKG_OK) {
 				pkg_emit_error(
 				    "%s is not installed, therefore upgrade is impossible",
 				    jp->pattern);
-				return (EPKG_NOTINSTALLED);
+				return (rc);
 			}
 		}
 		rc = pkg_jobs_find_upgrade(j, jp->pattern, jp->match);
@@ -1021,7 +1017,7 @@ pkg_jobs_find_remote_pattern(struct pkg_jobs *j, struct job_pattern *jp)
 		rc = EPKG_FATAL;
 	} else if (pkg_validate(pkg, j->db) == EPKG_OK) {
 		if (j->type == PKG_JOBS_UPGRADE &&
-		    pkg_jobs_installed_local_pkg(j, pkg) != EPKG_OK) {
+		    _pkg_is_installed(j, pkg->name, MATCH_INTERNAL) != EPKG_OK) {
 			pkg_emit_error(
 			    "%s is not installed, therefore upgrade is impossible",
 			    pkg->name);
