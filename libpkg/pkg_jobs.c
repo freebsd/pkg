@@ -1001,7 +1001,8 @@ pkg_jobs_find_remote_pattern(struct pkg_jobs *j, struct job_pattern *jp)
 	struct pkg_job_request *req;
 
 	if (!(jp->flags & PKG_PATTERN_FLAG_FILE)) {
-		if (j->type == PKG_JOBS_UPGRADE && (jp->match == MATCH_INTERNAL || jp->match == MATCH_EXACT)) {
+		if (j->type == PKG_JOBS_UPGRADE &&
+		    (jp->match == MATCH_INTERNAL || jp->match == MATCH_EXACT)) {
 			/*
 			 * For upgrade patterns we must ensure that a local package is
 			 * installed as well.  This only works if we're operating on an
@@ -1009,34 +1010,32 @@ pkg_jobs_find_remote_pattern(struct pkg_jobs *j, struct job_pattern *jp)
 			 * are in store for us.
 			 */
 			if (pkg_jobs_check_local_pkg(j, jp) != EPKG_OK) {
-				pkg_emit_error("%s is not installed, therefore upgrade is impossible",
-						jp->pattern);
+				pkg_emit_error(
+				    "%s is not installed, therefore upgrade is impossible",
+				    jp->pattern);
 				return (EPKG_NOTINSTALLED);
 			}
 		}
 		rc = pkg_jobs_find_upgrade(j, jp->pattern, jp->match);
-	}
-	else {
-		if (pkg_open(&pkg, jp->path, PKG_OPEN_MANIFEST_ONLY) != EPKG_OK) {
-			rc = EPKG_FATAL;
-		} else if (pkg_validate(pkg, j->db) == EPKG_OK) {
-			if (j->type == PKG_JOBS_UPGRADE && pkg_jobs_installed_local_pkg(j, pkg) != EPKG_OK) {
-				pkg_emit_error("%s is not installed, therefore upgrade is impossible",
-							pkg->name);
-				return (EPKG_NOTINSTALLED);
-			}
-			pkg->type = PKG_FILE;
-			pkg_jobs_add_req(j, pkg);
+	} else if (pkg_open(&pkg, jp->path, PKG_OPEN_MANIFEST_ONLY) != EPKG_OK) {
+		rc = EPKG_FATAL;
+	} else if (pkg_validate(pkg, j->db) == EPKG_OK) {
+		if (j->type == PKG_JOBS_UPGRADE &&
+		    pkg_jobs_installed_local_pkg(j, pkg) != EPKG_OK) {
+			pkg_emit_error(
+			    "%s is not installed, therefore upgrade is impossible",
+			    pkg->name);
+			return (EPKG_NOTINSTALLED);
+		}
+		pkg->type = PKG_FILE;
+		pkg_jobs_add_req(j, pkg);
 
-			req = pkghash_get_value(j->request_add, pkg->uid);
-			if (req != NULL)
-				req->item->jp = jp;
-		}
-		else {
-			pkg_emit_error("cannot load %s: invalid format",
-					jp->pattern);
-			rc = EPKG_FATAL;
-		}
+		req = pkghash_get_value(j->request_add, pkg->uid);
+		if (req != NULL)
+			req->item->jp = jp;
+	} else {
+		pkg_emit_error("cannot load %s: invalid format", jp->pattern);
+		rc = EPKG_FATAL;
 	}
 
 	return (rc);
