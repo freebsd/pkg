@@ -377,7 +377,7 @@ pkg_jobs_universe_process_deps(struct pkg_jobs_universe *universe,
 
 static int
 pkg_jobs_universe_handle_provide(struct pkg_jobs_universe *universe,
-    struct pkgdb_it *it, const char *name, bool is_shlib, struct pkg *parent __unused)
+    struct pkgdb_it *it, const char *name, bool is_shlib)
 {
 	struct pkg_job_universe_item *unit;
 	struct pkg_job_provide *pr, *prhead;
@@ -481,8 +481,8 @@ pkg_jobs_universe_process_shlibs(struct pkg_jobs_universe *universe,
 		/* Check for local provides */
 		it = pkgdb_query_shlib_provide(universe->j->db, s);
 		if (it != NULL) {
-			rc = pkg_jobs_universe_handle_provide(universe, it,
-			    s, true, pkg);
+			rc = pkg_jobs_universe_handle_provide(universe, it, s,
+			    true);
 			pkgdb_it_free(it);
 
 			if (rc != EPKG_OK) {
@@ -496,7 +496,8 @@ pkg_jobs_universe_process_shlibs(struct pkg_jobs_universe *universe,
 			s, universe->j->reponames);
 
 		if (it != NULL) {
-			rc = pkg_jobs_universe_handle_provide(universe, it, s, true, pkg);
+			rc = pkg_jobs_universe_handle_provide(universe, it, s,
+			    true);
 			pkgdb_it_free(it);
 
 			if (rc != EPKG_OK) {
@@ -525,7 +526,8 @@ pkg_jobs_universe_process_provides_requires(struct pkg_jobs_universe *universe,
 		/* Check for local provides */
 		it = pkgdb_query_provide(universe->j->db, r);
 		if (it != NULL) {
-			rc = pkg_jobs_universe_handle_provide(universe, it, r, false, pkg);
+			rc = pkg_jobs_universe_handle_provide(universe, it, r,
+			    false);
 			pkgdb_it_free(it);
 
 			if (rc != EPKG_OK) {
@@ -540,7 +542,8 @@ pkg_jobs_universe_process_provides_requires(struct pkg_jobs_universe *universe,
 			r, universe->j->reponames);
 
 		if (it != NULL) {
-			rc = pkg_jobs_universe_handle_provide(universe, it, r, false, pkg);
+			rc = pkg_jobs_universe_handle_provide(universe, it, r,
+			    false);
 			pkgdb_it_free(it);
 
 			if (rc != EPKG_OK) {
