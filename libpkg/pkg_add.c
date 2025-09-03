@@ -40,17 +40,6 @@
 #define NOCHANGESFLAGS	(UF_IMMUTABLE | UF_APPEND | SF_IMMUTABLE | SF_APPEND)
 #endif
 
-struct pkg_add_db {
-	struct pkgdb *db;
-	pkgs_t localpkgs;
-	charv_t system_shlibs;
-	bool local_scanned;
-	bool ignore_compat32;
-	bool pkgbase;
-};
-
-static int pkg_add_common(struct pkg_add_db *db, const char *path, unsigned flags, const char *reloc, struct pkg *remote, struct pkg *local, struct triggers *t);
-
 struct external_merge_tmp_file {
 	int fd;
 	const char *template;
@@ -1081,6 +1070,47 @@ pkg_extract_finalize(struct pkg *pkg, tempdirs_t *tempdirs)
 	return (EPKG_OK);
 }
 
+static char *
+pkg_globmatch(char *pattern, const char *name)
+{
+	glob_t g;
+	int i;
+	char *buf, *buf2;
+	char *path = NULL;
+
+	if (glob(pattern, 0, NULL, &g) == GLOB_NOMATCH) {
+		globfree(&g);
+
+		return (NULL);
+	}
+
+	for (i = 0; i < g.gl_pathc; i++) {
+		/* the version starts here */
+		buf = strrchr(g.gl_pathv[i], '-');
+		if (buf == NULL)
+			continue;
+		buf2 = strrchr(g.gl_pathv[i], '/');
+		if (buf2 == NULL)
+			buf2 = g.gl_pathv[i];
+		else
+			buf2++;
+		/* ensure we have match the proper name */
+		if (strncmp(buf2, name, buf - buf2) != 0)
+			continue;
+		if (path == NULL) {
+			path = g.gl_pathv[i];
+			continue;
+		}
+		if (pkg_version_cmp(g.gl_pathv[i], path) == 1)
+			path = g.gl_pathv[i];
+	}
+	if (path)
+		path = xstrdup(path);
+	globfree(&g);
+
+	return (path);
+}
+
 bool
 append_pkg_if_newer(pkgs_t *localpkgs, struct pkg *p)
 {
@@ -1097,145 +1127,18 @@ append_pkg_if_newer(pkgs_t *localpkgs, struct pkg *p)
 	return (true);
 }
 
-struct localhashes {
-	kvlist_t shlibs_provides;
-	kvlist_t provides;
-};
-
-static FILE *
-open_cache_read(void)
-{
-	FILE *fp;
-	int cfd, fd;
-
-	cfd = pkg_get_cachedirfd();
-	if (cfd == -1)
-		return (NULL);
-	if ((fd = openat(cfd, "pkg_add_cache", O_RDONLY)) == -1)
-		return (NULL);
-	if ((fp = fdopen(fd, "r")) == NULL)
-		close(fd);
-	return (fp);
-}
-
-static FILE *
-open_cache_write(void)
-{
-	FILE *fp;
-	int cfd, fd;
-
-	cfd = pkg_get_cachedirfd();
-	if (cfd == -1) {
-		if (errno == ENOENT) {
-			if (pkg_mkdirs(ctx.cachedir) != EPKG_OK)
-				return (NULL);
-		} else {
-			return (NULL);
-		}
-		cfd = pkg_get_cachedirfd();
-		if (cfd == -1)
-			return (NULL);
-	}
-	if ((fd = openat(cfd, "pkg_add_cache", O_WRONLY|O_TRUNC)) == -1)
-		return (NULL);
-	if ((fp = fdopen(fd, "w")) == NULL)
-		close(fd);
-	return (fp);
-}
-
-static void
-scan_local_pkgs(struct pkg_add_db *db, bool fromstdin, struct localhashes *l, const char *bd, const char *ext)
-{
-	if (!fromstdin) {
-		if (!db->local_scanned) {
-			bool package_building = (getenv("PACKAGE_BUILDING") != NULL);
-			bool cache_exist = false;
-			if (package_building) {
-				FILE * fp;
-				if ((fp = open_cache_read()) != NULL) {
-					cache_exist = true;
-					char *line = NULL;
-					size_t linecap = 0;
-					ssize_t linelen;
-					while ((linelen = getline(&line, &linecap, fp)) > 0) {
-						struct pkg * p = NULL;
-						pkg_new(&p, PKG_FILE);
-						pkg_parse_manifest(p, line, linelen);
-						vec_push(&db->localpkgs, p);
-					}
-					free(line);
-				}
-			}
-			if (db->localpkgs.len == 0) {
-				glob_t g;
-				char *pattern;
-				xasprintf(&pattern, "%s/*%s" , bd, ext);
-				db->local_scanned = true;
-				if (glob(pattern, 0, NULL, &g) == 0) {
-					for (int i = 0; i <g.gl_pathc; i++) {
-						struct pkg *p = NULL;
-						if (pkg_open(&p, g.gl_pathv[i],
-									PKG_OPEN_MANIFEST_COMPACT) == EPKG_OK) {
-							if (append_pkg_if_newer(&db->localpkgs, p)) {
-								p->repopath = xstrdup(g.gl_pathv[i]);
-							}
-						}
-					}
-				}
-				globfree(&g);
-				free(pattern);
-			}
-			if (package_building && !cache_exist) {
-				FILE *fp = open_cache_write();
-				if (fp != NULL) {
-					vec_foreach(db->localpkgs, i) {
-						pkg_emit_manifest_file(db->localpkgs.d[i], fp, PKG_MANIFEST_EMIT_COMPACT);
-						fputs("\n", fp);
-					}
-					fclose(fp);
-				}
-			}
-		}
-		vec_foreach(db->localpkgs, i) {
-			struct pkg *p = db->localpkgs.d[i];
-			vec_foreach(p->shlibs_provided, j) {
-				struct pkg_kv *kv = pkg_kv_new(p->shlibs_provided.d[j], p->repopath);
-				if (pkg_kv_insert_sorted(&l->shlibs_provides, kv) != NULL)
-					pkg_kv_free(kv);
-			}
-			vec_foreach(p->provides, j) {
-				struct pkg_kv *kv = pkg_kv_new(p->provides.d[j], p->repopath);
-				if (pkg_kv_insert_sorted(&l->provides, kv) != NULL)
-					pkg_kv_free(kv);
-			}
-		}
-	}
-}
-
-static const char *
-_localpkgs_get(pkgs_t *pkgs, const char *name)
-{
-	struct pkg **lp = pkgs_search(pkgs, name);
-	if (lp != NULL)
-		return ((*lp)->repopath);
-	return (NULL);
-}
-
 static int
-pkg_add_check_pkg_archive(struct pkg_add_db *db, struct pkg *pkg,
+pkg_add_check_pkg_archive(struct pkgdb *db, struct pkg *pkg,
 	const char *path, int flags, const char *location)
 {
 	const char	*arch;
 	int	ret, retcode;
 	struct pkg_dep	*dep = NULL;
 	char	bd[MAXPATHLEN];
+	char	dpath[MAXPATHLEN], *ppath;
 	const char	*ext = NULL;
 	struct pkg	*pkg_inst = NULL;
 	bool	fromstdin;
-	struct localhashes l;
-	bool scanned = false;
-
-	memset(&l, 0, sizeof(l));
 
 	arch = pkg->abi != NULL ? pkg->abi : pkg->altabi;
 
@@ -1248,7 +1151,7 @@ pkg_add_check_pkg_archive(struct pkg_add_db *db, struct pkg *pkg,
 	}
 
 	/* XX check */
-	ret = pkg_try_installed(db->db, pkg->name, &pkg_inst, PKG_LOAD_BASIC);
+	ret = pkg_try_installed(db, pkg->name, &pkg_inst, PKG_LOAD_BASIC);
 	if (ret == EPKG_OK) {
 		if ((flags & PKG_ADD_FORCE) == 0) {
 			pkg_emit_already_installed(pkg_inst);
@@ -1297,9 +1200,9 @@ pkg_add_check_pkg_archive(struct pkg_add_db *db, struct pkg *pkg,
 	pkg_emit_add_deps_begin(pkg);
 
 	while (pkg_deps(pkg, &dep) == EPKG_OK) {
-		const char *founddep = NULL;
+		dpath[0] = '\0';
 
-		if (pkg_is_installed(db->db, dep->name) == EPKG_OK)
+		if (pkg_is_installed(db, dep->name) == EPKG_OK)
 			continue;
 
 		if (fromstdin) {
@@ -1309,102 +1212,28 @@ pkg_add_check_pkg_archive(struct pkg_add_db *db, struct pkg *pkg,
 			continue;
 		}
 
-		if (!scanned) {
-			scan_local_pkgs(db, fromstdin, &l, bd, ext);
-			scanned = true;
+		if (dep->version != NULL && dep->version[0] != '\0') {
+			snprintf(dpath, sizeof(dpath), "%s/%s-%s%s", bd,
+				dep->name, dep->version, ext);
 		}
-		if ((founddep = _localpkgs_get(&db->localpkgs, dep->name)) == NULL) {
-			pkg_emit_missing_dep(pkg, dep);
-			if ((flags & PKG_ADD_FORCE_MISSING) == 0)
-				goto cleanup;
-			continue;
+
+		if (strlen(dpath) == 0 || access(dpath, F_OK) != 0) {
+			snprintf(dpath, sizeof(dpath), "%s/%s-*%s", bd,
+			    dep->name, ext);
+			ppath = pkg_globmatch(dpath, dep->name);
+			if (ppath == NULL) {
+				pkg_emit_missing_dep(pkg, dep);
+				if ((flags & PKG_ADD_FORCE_MISSING) == 0)
+					goto cleanup;
+				continue;
+			}
+			strlcpy(dpath, ppath, sizeof(dpath));
+			free(ppath);
 		}
 
 		if ((flags & PKG_ADD_UPGRADE) == 0 &&
-				access(founddep, F_OK) == 0) {
-			pkg_debug(2, "Installing %s because of direct dependency: %s", founddep, dep->name);
-			ret = pkg_add_common(db, founddep, PKG_ADD_AUTOMATIC, location, NULL, NULL, NULL);
-
-			if (ret != EPKG_OK)
-				goto cleanup;
-		} else {
-			pkg_emit_missing_dep(pkg, dep);
-			if ((flags & PKG_ADD_FORCE_MISSING) == 0)
-				goto cleanup;
-		}
-	}
-
-	vec_foreach(pkg->shlibs_required, i) {
-		char *s = pkg->shlibs_required.d[i];
-		pkg_debug(2, "%s requires %s", pkg->name, s);
-		if (!db->pkgbase && db->system_shlibs.len == 0) {
-			int ret;
-			ret = scan_system_shlibs(&db->system_shlibs, ctx.pkg_rootdir);
-			if (ret == EPKG_NOCOMPAT32)
-				db->ignore_compat32 = true;
-		}
-		if (charv_search(&db->system_shlibs, s) != NULL)
-			continue;
-		const struct pkg_kv *founddep = NULL;
-		if (pkgdb_is_shlib_provided(db->db, s))
-			continue;
-
-		if (fromstdin) {
-			pkg_emit_error("Missing shlib dependency: %s", s);
-			if ((flags & PKG_ADD_FORCE_MISSING) == 0)
-				goto cleanup;
-			continue;
-		}
-		if (!scanned) {
-			scan_local_pkgs(db, fromstdin, &l, bd, ext);
-			scanned = true;
-		}
-		if ((founddep = pkg_kv_search(&l.shlibs_provides, s)) == NULL) {
-			pkg_emit_error("Missing shlib dependency: %s", s);
-			if ((flags & PKG_ADD_FORCE_MISSING) == 0)
-				goto cleanup;
-			continue;
-		}
-		if ((flags & PKG_ADD_UPGRADE) == 0 &&
-				access(founddep->value, F_OK) == 0) {
-			pkg_debug(2, "Installing %s because of shlibs_required: %s", founddep->value, s);
-			ret = pkg_add_common(db, founddep->value, PKG_ADD_AUTOMATIC, location, NULL, NULL, NULL);
-
-			if (ret != EPKG_OK)
-				goto cleanup;
-		} else {
-			pkg_emit_missing_dep(pkg, dep);
-			if ((flags & PKG_ADD_FORCE_MISSING) == 0)
-				goto cleanup;
-		}
-	}
-
-	vec_foreach(pkg->requires, i) {
-		char *s = pkg->requires.d[i];
-		const struct pkg_kv *founddep = NULL;
-		if (pkgdb_is_provided(db->db, s))
-			continue;
-
-		if (fromstdin) {
-			pkg_emit_error("Missing require dependency: %s", s);
-			if ((flags & PKG_ADD_FORCE_MISSING) == 0)
-				goto cleanup;
-			continue;
-		}
-		if (!scanned) {
-			scan_local_pkgs(db, fromstdin, &l, bd, ext);
-			scanned = true;
-		}
-		if ((founddep = pkg_kv_search(&l.provides, s)) == NULL) {
-			pkg_emit_error("Missing require dependency: %s", s);
-			if ((flags & PKG_ADD_FORCE_MISSING) == 0)
-				goto cleanup;
-			continue;
-		}
-		if ((flags & PKG_ADD_UPGRADE) == 0 &&
-				access(founddep->value, F_OK) == 0) {
-			pkg_debug(2, "Installing %s because of requires: %s", founddep->value, s);
-			ret = pkg_add_common(db, founddep->value, PKG_ADD_AUTOMATIC, location, NULL, NULL, NULL);
+				access(dpath, F_OK) == 0) {
+			ret = pkg_add(db, dpath, PKG_ADD_AUTOMATIC, location);
 
 			if (ret != EPKG_OK)
 				goto cleanup;
@@ -1417,8 +1246,6 @@ pkg_add_check_pkg_archive(struct pkg_add_db *db, struct pkg *pkg,
 
 	retcode = EPKG_OK;
 cleanup:
-	vec_free_and_free(&l.shlibs_provides, pkg_kv_free);
-	vec_free_and_free(&l.provides, pkg_kv_free);
 	pkg_emit_add_deps_finished(pkg);
 
 	return (retcode);
@@ -1500,7 +1327,7 @@ pkg_add_triggers(void)
 }
 
 static int
-pkg_add_common(struct pkg_add_db *db, const char *path, unsigned flags,
+pkg_add_common(struct pkgdb *db, const char *path, unsigned flags,
     const char *reloc, struct pkg *remote,
     struct pkg *local, struct triggers *t)
 {
@@ -1590,7 +1417,7 @@ pkg_add_common(struct pkg_add_db *db, const char *path, unsigned flags,
 		}
 		if (faccessat(pkg->rootfd, RELATIVE_PATH(f->path), F_OK, 0) == 0) {
 			f->previous = PKG_FILE_EXIST;
-			if (!pkgdb_file_exists(db->db, f->path)) {
+			if (!pkgdb_file_exists(db, f->path)) {
 				f->previous = PKG_FILE_SAVE;
 			}
 		}
@@ -1600,7 +1427,7 @@ pkg_add_common(struct pkg_add_db *db, const char *path, unsigned flags,
 	 * Register the package before installing it in case there are problems
 	 * that could be caught here.
 	 */
-	retcode = pkgdb_register_pkg(db->db, pkg, flags & PKG_ADD_FORCE, NULL);
+	retcode = pkgdb_register_pkg(db, pkg, flags & PKG_ADD_FORCE, NULL);
 	if (retcode != EPKG_OK)
 		goto cleanup;
 	openxact = true;
@@ -1630,7 +1457,7 @@ pkg_add_common(struct pkg_add_db *db, const char *path, unsigned flags,
 		if (retcode != EPKG_OK) {
 			/* If the add failed, clean up (silently) */
 			pkg_rollback_pkg(pkg);
-			pkg_delete_dirs(db->db, pkg, NULL);
+			pkg_delete_dirs(db, pkg, NULL);
 			goto cleanup;
 		}
 	}
@@ -1642,7 +1469,7 @@ pkg_add_common(struct pkg_add_db *db, const char *path, unsigned flags,
 	if (local != NULL && (flags & PKG_ADD_SPLITTED_UPGRADE) == 0) {
 		pkg_open_root_fd(local);
 		pkg_debug(1, "Cleaning up old version");
-		if (pkg_add_cleanup_old(db->db, local, pkg, t, flags) != EPKG_OK) {
+		if (pkg_add_cleanup_old(db, local, pkg, t, flags) != EPKG_OK) {
 			retcode = EPKG_FATAL;
 			goto cleanup;
 		}
@@ -1650,11 +1477,11 @@ pkg_add_common(struct pkg_add_db *db, const char *path, unsigned flags,
 
 
 	/* Update configuration file content with db with newer versions */
-	pkgdb_update_config_file_content(pkg, db->db->sqlite);
+	pkgdb_update_config_file_content(pkg, db->sqlite);
 
 	retcode = pkg_extract_finalize(pkg, &tempdirs);
 
-	pkgdb_register_finale(db->db, retcode, NULL);
+	pkgdb_register_finale(db, retcode, NULL);
 	openxact = false;
 
 	/*
@@ -1729,7 +1556,7 @@ pkg_add_common(struct pkg_add_db *db, const char *path, unsigned flags,
 
 cleanup:
 	if (openxact)
-		pkgdb_register_finale(db->db, retcode, NULL);
+		pkgdb_register_finale(db, retcode, NULL);
 	if (a != NULL) {
 		archive_read_close(a);
 		archive_read_free(a);
@@ -1744,33 +1571,14 @@ int
 pkg_add(struct pkgdb *db, const char *path, unsigned flags,
     const char *location)
 {
-	struct pkg_add_db padb;
-	int ret;
-
-	memset(&padb, 0, sizeof(padb));
-	padb.db = db;
-	padb.local_scanned = false;
-	padb.ignore_compat32 = false;
-	padb.pkgbase = pkgdb_file_exists(db, "/usr/bin/uname");
-
-	ret = pkg_add_common(&padb, path, flags, location, NULL, NULL, NULL);
-	vec_free_and_free(&padb.localpkgs, pkg_free);
-	vec_free_and_free(&padb.system_shlibs, free);
-	return (ret);
+	return pkg_add_common(db, path, flags, location, NULL, NULL, NULL);
 }
 
 int
 pkg_add_from_remote(struct pkgdb *db, const char *path, unsigned flags,
     const char *location, struct pkg *rp, struct triggers *t)
 {
-	struct pkg_add_db padb;
-
-	memset(&padb, 0, sizeof(padb));
-	padb.db = db;
-	padb.ignore_compat32 = false;
-	padb.pkgbase = pkgdb_file_exists(db, "/usr/bin/uname");
-
-	return pkg_add_common(&padb, path, flags, location, rp, NULL, t);
+	return pkg_add_common(db, path, flags, location, rp, NULL, t);
 }
 
 int
@@ -1778,18 +1586,11 @@ pkg_add_upgrade(struct pkgdb *db, const char *path, unsigned flags,
     const char *location,
     struct pkg *rp, struct pkg *lp, struct triggers *t)
 {
-	struct pkg_add_db padb;
-
-	memset(&padb, 0, sizeof(padb));
-	padb.db = db;
-	padb.ignore_compat32 = false;
-	padb.pkgbase = pkgdb_file_exists(db, "/usr/bin/uname");
-
 	if (pkgdb_ensure_loaded(db, lp,
 	    PKG_LOAD_FILES|PKG_LOAD_SCRIPTS|PKG_LOAD_DIRS|PKG_LOAD_LUA_SCRIPTS) != EPKG_OK)
 		return (EPKG_FATAL);
 
-	return pkg_add_common(&padb, path, flags, location, rp, lp, t);
+	return pkg_add_common(db, path, flags, location, rp, lp, t);
 }
 
 static int

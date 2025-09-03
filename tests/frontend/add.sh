@@ -14,8 +14,8 @@ tests_init	\
 		add_no_version \
 		add_no_version_multi \
 		add_deps_multi \
-		add_require \
 		add_wrong_version
+		#add_require
 
 initialize_pkg() {
 	touch a
@@ -271,7 +271,7 @@ EOF
 	atf_check -o ignore -s exit:0 pkg create -M final.ucl
 	atf_check -s exit:0 sh ${RESOURCEDIR}/test_subr.sh new_pkg test test 1
 	atf_check -o ignore -s exit:0 pkg create -M test.ucl
-	atf_check -o "match:.*test-2.*" -e ignore -s exit:0 \
+	atf_check -o "match:.*test-2.*" -e empty -s exit:0 \
 		pkg add final-1.pkg
 }
 
