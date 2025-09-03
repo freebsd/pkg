@@ -1,3 +1,21 @@
+Changes from 2.2.99.0 to 2.2.99.1
+- archive improve reproducible build support
+- many improvements in manpages
+- scripts now support a new METALOG variable
+- fix some sqlite iterator leakage
+- run pkg delete script even during split upgrades
+- fetch: fix resuming
+- rework the scheduler to minimze the number of split upgrade
+- shlib: accept full path as a valid input
+- stats: only show local db, if no repo are active
+- backup libraries during split upgrades if needed
+- fetch: fix crash on invalid url
+- upgrade: only upgrade installed things on partial upgrades
+- repositories: allow negative priorities
+- upgrade: when pkg self restart do not warn about the env vars.
+- set: allow to bulk "partial replacement"
+- add: backout support for provides/requires
+
 Changes from 2.1.99.5 to 2.2.99.0
 - fix some sqlite statement leak
 - improve wording in manpages
