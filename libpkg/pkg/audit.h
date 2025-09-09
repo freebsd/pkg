@@ -106,6 +106,22 @@ struct pkg_audit_issues {
 	struct pkg_audit_issue *issues;
 };
 
+struct pkg_audit_cpe {
+	unsigned int version_major;
+	unsigned int version_minor;
+	char part;
+	char *vendor;
+	char *product;
+	char *version;
+	char *update;
+	char *edition;
+	char *language;
+	char *sw_edition;
+	char *target_sw;
+	char *target_hw;
+	char *other;
+};
+
 /**
  * Creates new pkg_audit structure
  */

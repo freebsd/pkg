@@ -6,6 +6,7 @@ TESTS=	\
 	merge \
 	packing \
 	pkg_add_dir_to_del \
+	pkg_cpe \
 	pkg_printf \
 	pkg_validation \
 	pkg_osvf \
@@ -110,6 +111,7 @@ pkg_printf_OBJS=	lib/pkg_printf_test.o \
 			lib/pkg_printf.o
 deps_formula_OBJS=	lib/deps_formula.o
 pkg_add_dir_to_del_OBJS=	lib/pkg_add_dir_to_del.o
+pkg_cpe_OBJS=	lib/pkg_cpe.o
 pkg_validation_OBJS=	lib/pkg_validation.o
 packing_OBJS=	lib/packing.o
 ssh_OBJS=	lib/ssh.o
@@ -132,6 +134,7 @@ SRCS=	\
 	$(pkg_printf_OBJS:.o=.c) \
 	$(deps_formula_OBJS:.o=.c) \
 	$(pkg_add_dir_to_del_OBJS:.o=.c) \
+	$(pkg_cpe_OBJS:.o=.c) \
 	$(pkg_validation_OBJS:.o=.c) \
 	$(pkg_osvf_OBJS:.o=.c) \
 	$(ssh_OBJS:.o=.c) \
