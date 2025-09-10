@@ -37,6 +37,6 @@ SRCS=	lapi.c \
 	loadlib.c \
 	linit.c
 
-LOCAL_CFLAGS=	-I$(top_srcdir)/external/lua/src
+LOCAL_CFLAGS=	-I$(top_srcdir)/external/lua/src -DLUA_USE_POSIX
 
 include $(MK)/static-lib.mk
