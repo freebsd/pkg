@@ -8027,13 +8027,14 @@ SQLITE_EXTENSION_INIT1
 #  include <dirent.h>
 #  include <utime.h>
 #  include <sys/time.h>
+#  define STRUCT_STAT struct stat
 #else
 #  include "windows.h"
 #  include <io.h>
 #  include <direct.h>
 /* #  include "test_windirent.h" */
 #  define dirent DIRENT
-#  define stat _stat
+#  define STRUCT_STAT struct _stat
 #  define chmod(path,mode) fileio_chmod(path,mode)
 #  define mkdir(path,mode) fileio_mkdir(path)
 #endif
@@ -8224,7 +8225,7 @@ LPWSTR utf8_to_utf16(const char *z){
 */
 static void statTimesToUtc(
   const char *zPath,
-  struct stat *pStatBuf
+  STRUCT_STAT *pStatBuf
 ){
   HANDLE hFindFile;
   WIN32_FIND_DATAW fd;
@@ -8252,7 +8253,7 @@ static void statTimesToUtc(
 */
 static int fileStat(
   const char *zPath,
-  struct stat *pStatBuf
+  STRUCT_STAT *pStatBuf
 ){
 #if defined(_WIN32)
   sqlite3_int64 sz = strlen(zPath);
@@ -8276,7 +8277,7 @@ static int fileStat(
 */
 static int fileLinkStat(
   const char *zPath,
-  struct stat *pStatBuf
+  STRUCT_STAT *pStatBuf
 ){
 #if defined(_WIN32)
   return fileStat(zPath, pStatBuf);
@@ -8309,7 +8310,7 @@ static int makeDirectory(
     int i = 1;
 
     while( rc==SQLITE_OK ){
-      struct stat sStat;
+      STRUCT_STAT sStat;
       int rc2;
 
       for(; zCopy[i]!='/' && i<nCopy; i++);
@@ -8359,7 +8360,7 @@ static int writeFile(
         ** be an error though - if there is already a directory at the same
         ** path and either the permissions already match or can be changed
         ** to do so using chmod(), it is not an error.  */
-        struct stat sStat;
+        STRUCT_STAT sStat;
         if( errno!=EEXIST
          || 0!=fileStat(zFile, &sStat)
          || !S_ISDIR(sStat.st_mode)
@@ -8561,7 +8562,7 @@ struct fsdir_cursor {
   const char *zBase;
   int nBase;
 
-  struct stat sStat;         /* Current lstat() results */
+  STRUCT_STAT sStat;         /* Current lstat() results */
   char *zPath;               /* Path to current entry */
   sqlite3_int64 iRowid;      /* Current rowid */
 };
@@ -15035,7 +15036,7 @@ void sqlite3_expert_destroy(sqlite3expert *p){
 **   }
 **   rc = sqlite3_intck_error(p, &zErr);
 **   if( rc!=SQLITE_OK ){
-**     printf("error occurred (rc=%d), (errmsg=%s)\n", rc, zErr);
+**     printf("error occured (rc=%d), (errmsg=%s)\n", rc, zErr);
 **   }
 **   sqlite3_intck_close(p);
 **
