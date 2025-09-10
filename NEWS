@@ -1,8 +1,10 @@
+Changes from 2.3.0 to 2.3.1
+- micro optimize upgrade candidate checking
+- internal code cleanup
+
 Changes from 2.2.99.2 to 2.3.0
 - update sqlite to 3.50.4
 - update curl to 3.16.0
-- internal code cleanup
-- micro optimize upgrade candidate checking
 
 Changes from 2.2.99.1 to 2.2.99.2
 - archive improve reproducible build support
