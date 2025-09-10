@@ -19,6 +19,10 @@ ATF_TC_WITHOUT_HEAD(osvfdetect);
 ATF_TC_WITHOUT_HEAD(osvfopen);
 ATF_TC_WITHOUT_HEAD(osvfparse);
 
+#if undef(ATF_CHECK_INTEQ)
+#define ATF_CHECK_INTEQ ATF_CHECK_EQ
+#endif
+
 ATF_TC_BODY(osvfdetect, tc)
 {
 	struct pkg_audit_ecosystem test_rtn_ecosystem_struct[] =
