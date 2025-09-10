@@ -19,7 +19,7 @@ ATF_TC_WITHOUT_HEAD(osvfdetect);
 ATF_TC_WITHOUT_HEAD(osvfopen);
 ATF_TC_WITHOUT_HEAD(osvfparse);
 
-#ifndef(ATF_CHECK_INTEQ)
+#ifndef ATF_CHECK_INTEQ
 #define ATF_CHECK_INTEQ ATF_CHECK_EQ
 #endif
 
