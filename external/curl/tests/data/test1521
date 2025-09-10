@@ -8,9 +8,6 @@ curl_easy_setopt
 #
 # Client-side
 <client>
-<server>
-none
-</server>
 <tool>
 lib%TESTNUMBER
 </tool>
@@ -18,9 +15,6 @@ lib%TESTNUMBER
 <name>
 Test all curl_easy_setopt and curl_easy_getinfo options
 </name>
-<command>
-unused
-</command>
 </client>
 
 #

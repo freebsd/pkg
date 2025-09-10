@@ -22,16 +22,12 @@
 #
 ###########################################################################
 
-EXTRA_DIST = coverage.sh completion.pl firefox-db2pem.sh checksrc.pl checksrc-all.sh \
+EXTRA_DIST = coverage.sh completion.pl firefox-db2pem.sh checksrc.pl checksrc-all.pl \
   mk-ca-bundle.pl mk-unity.pl schemetable.c cd2nroff nroff2cd cdall cd2cd managen    \
   dmaketgz maketgz release-tools.sh verify-release cmakelint.sh mdlinkcheck          \
-  CMakeLists.txt pythonlint.sh randdisable wcurl top-complexity
+  CMakeLists.txt pythonlint.sh randdisable wcurl top-complexity extract-unit-protos
 
 dist_bin_SCRIPTS = wcurl
-
-ZSH_FUNCTIONS_DIR = @ZSH_FUNCTIONS_DIR@
-FISH_FUNCTIONS_DIR = @FISH_FUNCTIONS_DIR@
-PERL = @PERL@
 
 if USE_ZSH_COMPLETION
 ZSH_COMPLETION_FUNCTION_FILENAME = _curl
@@ -46,28 +42,22 @@ all-local: $(ZSH_COMPLETION_FUNCTION_FILENAME) $(FISH_COMPLETION_FUNCTION_FILENA
 
 if USE_ZSH_COMPLETION
 $(ZSH_COMPLETION_FUNCTION_FILENAME): completion.pl
-	if test -z "$(PERL)"; then echo 'No perl: cannot generate completion script'; else \
-	$(PERL) $(srcdir)/completion.pl --opts-dir $(top_srcdir)/docs/cmdline-opts --shell zsh > $@; fi
+	@PERL@ $(srcdir)/completion.pl --opts-dir $(top_srcdir)/docs/cmdline-opts --shell zsh > $@
 endif
 
 if USE_FISH_COMPLETION
 $(FISH_COMPLETION_FUNCTION_FILENAME): completion.pl
-	if test -z "$(PERL)"; then echo 'No perl: cannot generate completion script'; else \
-	$(PERL) $(srcdir)/completion.pl --opts-dir $(top_srcdir)/docs/cmdline-opts --shell fish > $@; fi
+	@PERL@ $(srcdir)/completion.pl --opts-dir $(top_srcdir)/docs/cmdline-opts --shell fish > $@
 endif
 
 install-data-local:
 if USE_ZSH_COMPLETION
-	if test -n "$(PERL)"; then \
-	  $(MKDIR_P) $(DESTDIR)$(ZSH_FUNCTIONS_DIR); \
-	  $(INSTALL_DATA) $(ZSH_COMPLETION_FUNCTION_FILENAME) $(DESTDIR)$(ZSH_FUNCTIONS_DIR)/$(ZSH_COMPLETION_FUNCTION_FILENAME); \
-	fi
+	$(MKDIR_P) $(DESTDIR)@ZSH_FUNCTIONS_DIR@
+	$(INSTALL_DATA) $(ZSH_COMPLETION_FUNCTION_FILENAME) $(DESTDIR)@ZSH_FUNCTIONS_DIR@/$(ZSH_COMPLETION_FUNCTION_FILENAME)
 endif
 if USE_FISH_COMPLETION
-	if test -n "$(PERL)"; then \
-	  $(MKDIR_P) $(DESTDIR)$(FISH_FUNCTIONS_DIR); \
-	  $(INSTALL_DATA) $(FISH_COMPLETION_FUNCTION_FILENAME) $(DESTDIR)$(FISH_FUNCTIONS_DIR)/$(FISH_COMPLETION_FUNCTION_FILENAME); \
-	fi
+	$(MKDIR_P) $(DESTDIR)@FISH_FUNCTIONS_DIR@
+	$(INSTALL_DATA) $(FISH_COMPLETION_FUNCTION_FILENAME) $(DESTDIR)@FISH_FUNCTIONS_DIR@/$(FISH_COMPLETION_FUNCTION_FILENAME)
 endif
 
 distclean:

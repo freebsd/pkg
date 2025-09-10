@@ -1,5 +1,5 @@
 ---
-c: Copyright (C) Daniel Stenberg, <daniel.se>, et al.
+c: Copyright (C) Daniel Stenberg, <daniel@haxx.se>, et al.
 SPDX-License-Identifier: curl
 Title: runtests.pl
 Section: 1
@@ -95,6 +95,10 @@ Provide a path to a curl binary to talk to APIs (currently only CI test APIs).
 ## `-am`
 
 Display test results in automake style output (`PASS/FAIL: [number] [name]`).
+
+## `--buildinfo`
+
+Dump `buildinfo.txt`.
 
 ## `-c \<curl\>`
 

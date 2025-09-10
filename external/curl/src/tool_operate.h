@@ -42,7 +42,7 @@ struct per_transfer {
   struct curltime start; /* start of this transfer */
   struct curltime retrystart;
   char *url;
-  unsigned int urlnum; /* the index of the given URL */
+  curl_off_t urlnum; /* the index of the given URL */
   char *outfile;
   int infd;
   struct ProgressData progressbar;
@@ -66,8 +66,7 @@ struct per_transfer {
 
   /* NULL or malloced */
   char *uploadfile;
-  char *errorbuffer; /* allocated and assigned while this is used for a
-                        transfer */
+  char errorbuffer[CURL_ERROR_SIZE];
   BIT(infdopen); /* TRUE if infd needs closing */
   BIT(noprogress);
   BIT(was_last_header_empty);
@@ -79,8 +78,8 @@ struct per_transfer {
   BIT(skip);  /* considered already done */
 };
 
-CURLcode operate(struct GlobalConfig *config, int argc, argv_item_t argv[]);
-void single_transfer_cleanup(struct OperationConfig *config);
+CURLcode operate(int argc, argv_item_t argv[]);
+void single_transfer_cleanup(void);
 
 extern struct per_transfer *transfers; /* first node */
 

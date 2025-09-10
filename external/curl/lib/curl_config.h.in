@@ -5,7 +5,7 @@
 /* Location of default ca bundle */
 #undef CURL_CA_BUNDLE
 
-/* define "1" to use built-in CA store of SSL library */
+/* define "1" to use OpenSSL's built-in CA store */
 #undef CURL_CA_FALLBACK
 
 /* Location of default ca path */
@@ -166,9 +166,6 @@
 
 /* Define to 1 if you have the `accept4' function. */
 #undef HAVE_ACCEPT4
-
-/* Define to 1 if symbol `ADDRESS_FAMILY' exists */
-#undef HAVE_ADDRESS_FAMILY
 
 /* Define to 1 if you have the alarm function. */
 #undef HAVE_ALARM
@@ -436,9 +433,6 @@
 /* Define to 1 if you have the MSG_NOSIGNAL flag. */
 #undef HAVE_MSG_NOSIGNAL
 
-/* Define to 1 if you have the <msh3.h> header file. */
-#undef HAVE_MSH3_H
-
 /* Define to 1 if you have the <netdb.h> header file. */
 #undef HAVE_NETDB_H
 
@@ -667,17 +661,11 @@
 /* Define to 1 if you have the <sys/select.h> header file. */
 #undef HAVE_SYS_SELECT_H
 
-/* Define to 1 if you have the <sys/socket.h> header file. */
-#undef HAVE_SYS_SOCKET_H
-
 /* Define to 1 if you have the <sys/sockio.h> header file. */
 #undef HAVE_SYS_SOCKIO_H
 
 /* Define to 1 if you have the <sys/stat.h> header file. */
 #undef HAVE_SYS_STAT_H
-
-/* Define to 1 if you have the <sys/time.h> header file. */
-#undef HAVE_SYS_TIME_H
 
 /* Define to 1 if you have the <sys/types.h> header file. */
 #undef HAVE_SYS_TYPES_H
@@ -829,9 +817,6 @@
 /* Define to enable c-ares support */
 #undef USE_ARES
 
-/* if BearSSL is enabled */
-#undef USE_BEARSSL
-
 /* if ECH support is available */
 #undef USE_ECH
 
@@ -865,9 +850,6 @@
 /* if mbedTLS is enabled */
 #undef USE_MBEDTLS
 
-/* if msh3 is in use */
-#undef USE_MSH3
-
 /* if nghttp2 is in use */
 #undef USE_NGHTTP2
 
@@ -894,9 +876,6 @@
 
 /* to enable Windows native SSL/TLS support */
 #undef USE_SCHANNEL
-
-/* enable Secure Transport */
-#undef USE_SECTRANSP
 
 /* if SSL session export support is available */
 #undef USE_SSLS_EXPORT

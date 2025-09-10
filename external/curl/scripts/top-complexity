@@ -32,7 +32,7 @@ use warnings;
 sub checkcmd {
     my ($cmd)=@_;
     my @paths;
-    if ($^O eq 'MSWin32' || $^O eq 'dos' || $^O eq 'os2') {
+    if($^O eq 'MSWin32' || $^O eq 'dos' || $^O eq 'os2') {
         # PATH separator is different
         @paths=(split(';', $ENV{'PATH'}));
     }
@@ -41,7 +41,7 @@ sub checkcmd {
                 "/sbin", "/usr/bin", "/usr/local/bin");
     }
     for(@paths) {
-        if( -x "$_/$cmd" && ! -d "$_/$cmd" ) {
+        if(-x "$_/$cmd" && ! -d "$_/$cmd") {
             # executable bit but not a directory!
             return "$_/$cmd";
         }
@@ -79,20 +79,22 @@ my %whitelist = (
     );
 
 # functions with complexity above this level causes the function to return error
-my $cutoff = 100;
+my $cutoff = 70;
 
 # functions above this complexity level are shown
-my $show = 70;
+my $show = 57;
 
 my $error = 0;
 my %where;
 my %perm;
+my $allscore = 0;
+my $alllines = 0;
 # each line starts with the complexity score
 # 142     417     809     1677    1305    src/tool_getparam.c(1677): getparameter
 for my $l (@output) {
     chomp $l;
-    if($l =~/^(\d+)\t\d+\t\d+\t\d+\t\d+\t([^\(]+).*: ([^ ]*)/) {
-        my ($score, $path, $func)=($1, $2, $3);
+    if($l =~/^(\d+)\t\d+\t\d+\t\d+\t(\d+)\t([^\(]+).*: ([^ ]*)/) {
+        my ($score, $len, $path, $func)=($1, $2, $3, $4);
 
         if($score > $show) {
             my $allow = 0;
@@ -106,6 +108,8 @@ for my $l (@output) {
                 $error++;
             }
         }
+        $alllines += $len;
+        $allscore += ($len * $score);
     }
 
 }
@@ -120,5 +124,7 @@ for my $e (sort {$where{$b} <=> $where{$a}} keys %where) {
     printf "%-5d %s%s\n", $where{$e}, $e,
         $perm{$e} ? " [ALLOWED]": "";
 }
+
+printf "\nAverage complexity: %.2f\n", $allscore / $alllines;
 
 exit $error;

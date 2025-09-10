@@ -43,7 +43,7 @@ Clojure: [clj-curl](https://github.com/lsevero/clj-curl) by Lucas Severo
 
 [Euphoria](https://web.archive.org/web/20050204080544/rays-web.com/eulibcurl.htm) Written by Ray Smith
 
-[Falcon](http://www.falconpl.org/project_docs/curl/)
+[Falcon](https://web.archive.org/web/20240130001835/www.falconpl.org/project_docs/curl/)
 
 [Ferite](https://web.archive.org/web/20150102192018/ferite.org/) Written by Paul Querna
 
@@ -70,6 +70,8 @@ Go: [go-curl](https://github.com/andelf/go-curl) by ShuYu Wang
 [Kapito](https://github.com/puzza007/katipo) is an Erlang HTTP library around libcurl.
 
 [Lisp](https://common-lisp.net/project/cl-curl/) Written by Liam Healy
+
+[LibQurl](https://github.com/Qriist/LibQurl) a feature rich AutoHotKey v2 (AHKv2) wrapper around libcurl.
 
 Lua: [luacurl](https://web.archive.org/web/20201205052437/luacurl.luaforge.net/) by Alexander Marinov, [Lua-cURL](https://github.com/Lua-cURL) by Jürgen Hötzel
 

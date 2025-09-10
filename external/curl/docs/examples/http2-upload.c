@@ -55,7 +55,7 @@
 /* This little trick makes sure that we do not enable pipelining for libcurls
    old enough to not have this symbol. It is _not_ defined to zero in a recent
    libcurl header. */
-#define CURLPIPE_MULTIPLEX 0
+#define CURLPIPE_MULTIPLEX 0L
 #endif
 
 #define NUM_HANDLES 1000
@@ -150,7 +150,7 @@ int my_trace(CURL *handle, curl_infotype type,
   struct timeval tv;
   time_t secs;
   struct tm *now;
-  (void)handle; /* prevent compiler warning */
+  (void)handle;
 
   gettimeofday(&tv, NULL);
   if(!known_offset) {
@@ -158,6 +158,7 @@ int my_trace(CURL *handle, curl_infotype type,
     known_offset = 1;
   }
   secs = epoch_offset + tv.tv_sec;
+  /* !checksrc! disable BANNEDFUNC 1 */
   now = localtime(&secs);  /* not thread safe but we do not care */
   curl_msnprintf(timebuf, sizeof(timebuf), "%02d:%02d:%02d.%06ld",
                  now->tm_hour, now->tm_min, now->tm_sec, (long)tv.tv_usec);

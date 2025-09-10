@@ -1,3 +1,7 @@
+Changes from 2.2.99.2 to 2.3.0
+- internal code cleanup
+- micro optimize upgrade candidate checking
+
 Changes from 2.2.99.1 to 2.2.99.2
 - archive improve reproducible build support
 - many improvements in manpages

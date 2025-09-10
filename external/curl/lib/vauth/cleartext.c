@@ -74,8 +74,8 @@ CURLcode Curl_auth_create_plain_message(const char *authzid,
   plen = strlen(passwd);
 
   /* Compute binary message length. Check for overflows. */
-  if((zlen > SIZE_T_MAX/4) || (clen > SIZE_T_MAX/4) ||
-     (plen > (SIZE_T_MAX/2 - 2)))
+  if((zlen > SIZE_MAX/4) || (clen > SIZE_MAX/4) ||
+     (plen > (SIZE_MAX/2 - 2)))
     return CURLE_OUT_OF_MEMORY;
   plainlen = zlen + clen + plen + 2;
 
@@ -127,7 +127,7 @@ void Curl_auth_create_login_message(const char *valuep, struct bufref *out)
  * Returns void.
  */
 void Curl_auth_create_external_message(const char *user,
-                                           struct bufref *out)
+                                       struct bufref *out)
 {
   /* This is the same formatting as the login message */
   Curl_auth_create_login_message(user, out);

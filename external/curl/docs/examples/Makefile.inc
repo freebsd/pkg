@@ -21,6 +21,7 @@
 # SPDX-License-Identifier: curl
 #
 ###########################################################################
+# Shared between CMakeLists.txt and Makefile.am
 
 # These are all libcurl example programs to be test compiled
 check_PROGRAMS = \
@@ -37,6 +38,7 @@ check_PROGRAMS = \
   default-scheme \
   externalsocket \
   fileupload \
+  ftp-delete \
   ftp-wildcard \
   ftpget \
   ftpgetinfo \
@@ -134,7 +136,8 @@ check_PROGRAMS = \
   url2file \
   urlapi \
   websocket \
-  websocket-cb
+  websocket-cb \
+  websocket-updown
 
 # These examples require external dependencies that may not be commonly
 # available on POSIX systems, so do not bother attempting to compile them here.
@@ -145,7 +148,6 @@ COMPLICATED_EXAMPLES = \
   evhiperfifo.c \
   ghiper.c \
   hiperfifo.c \
-  href_extractor.c \
   htmltidy.c \
   htmltitle.cpp \
   multi-event.c \

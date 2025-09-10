@@ -8,7 +8,7 @@ FTP
 # Server-side
 <reply>
 <servercmd>
-REPLY EPSV 229 Entering Passiv Mode (|||1000000|)
+REPLY EPSV 229 Entering Passive Mode (|||1000000|)
 </servercmd>
 </reply>
 
@@ -27,9 +27,6 @@ ftp://%HOSTIP:%FTPPORT/%TESTNUMBER
 
 # Verify data after the test has been "shot"
 <verify>
-<strip>
-QUIT
-</strip>
 # 13 = CURLE_FTP_WEIRD_PASV_REPLY
 <errorcode>
 13

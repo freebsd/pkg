@@ -305,7 +305,7 @@ if(PICKY_COMPILER)
         list(APPEND _picky "-Wno-conversion")  # Avoid false positives
       endif()
     endif()
-  elseif(MSVC AND MSVC_VERSION LESS_EQUAL 1943)  # Skip for untested/unreleased newer versions
+  elseif(MSVC AND MSVC_VERSION LESS_EQUAL 1944)  # Skip for untested/unreleased newer versions
     list(APPEND _picky "-Wall")
     list(APPEND _picky "-wd4061")  # enumerator 'A' in switch of enum 'B' is not explicitly handled by a case label
     list(APPEND _picky "-wd4191")  # 'type cast': unsafe conversion from 'FARPROC' to 'void (__cdecl *)(void)'
@@ -316,8 +316,9 @@ if(PICKY_COMPILER)
     list(APPEND _picky "-wd4668")  # 'M' is not defined as a preprocessor macro, replacing with '0' for '#if/#elif' (in winbase.h)
     list(APPEND _picky "-wd4710")  # 'snprintf': function not inlined
     list(APPEND _picky "-wd4711")  # function 'A' selected for automatic inline expansion
-    list(APPEND _picky "-wd4746")  # volatile access of '<expression>' is subject to /volatile:<iso|ms> setting;
-                                   #   consider using __iso_volatile_load/store intrinsic functions (ARM64)
+    # volatile access of '<expression>' is subject to /volatile:<iso|ms> setting;
+    #   consider using __iso_volatile_load/store intrinsic functions (ARM64)
+    list(APPEND _picky "-wd4746")
     list(APPEND _picky "-wd4774")  # 'snprintf': format string expected in argument 3 is not a string literal
     list(APPEND _picky "-wd4820")  # 'A': 'N' bytes padding added after data member 'B'
     if(MSVC_VERSION GREATER_EQUAL 1900)
@@ -340,7 +341,7 @@ if(CMAKE_C_COMPILER_ID STREQUAL "Clang" AND MSVC)
         list(APPEND _picky_tmp "-clang:${_ccopt}")
       endif()
     endforeach()
-    set("${_wlist}" ${_picky_tmp})
+    set("${_wlist}" ${_picky_tmp})  # cmake-lint: disable=C0103
   endforeach()
 endif()
 

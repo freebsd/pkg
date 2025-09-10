@@ -61,8 +61,7 @@
 # SPDX-License-Identifier: curl
 #
 ###########################################################################
-
-# Shared between Makefile.am and CMakeLists.txt
+# Shared between CMakeLists.txt and Makefile.am
 
 VPATH = @srcdir@
 am__is_gnu_make = { \
@@ -141,7 +140,6 @@ host_triplet = @host@
 subdir = docs/libcurl
 ACLOCAL_M4 = $(top_srcdir)/aclocal.m4
 am__aclocal_m4_deps = $(top_srcdir)/m4/curl-amissl.m4 \
-	$(top_srcdir)/m4/curl-bearssl.m4 \
 	$(top_srcdir)/m4/curl-compilers.m4 \
 	$(top_srcdir)/m4/curl-confopts.m4 \
 	$(top_srcdir)/m4/curl-functions.m4 \
@@ -152,7 +150,6 @@ am__aclocal_m4_deps = $(top_srcdir)/m4/curl-amissl.m4 \
 	$(top_srcdir)/m4/curl-reentrant.m4 \
 	$(top_srcdir)/m4/curl-rustls.m4 \
 	$(top_srcdir)/m4/curl-schannel.m4 \
-	$(top_srcdir)/m4/curl-sectransp.m4 \
 	$(top_srcdir)/m4/curl-sysconfig.m4 \
 	$(top_srcdir)/m4/curl-wolfssl.m4 $(top_srcdir)/m4/libtool.m4 \
 	$(top_srcdir)/m4/ltoptions.m4 $(top_srcdir)/m4/ltsugar.m4 \
@@ -318,6 +315,7 @@ CURL_LIBCURL_VERSIONED_SYMBOLS_PREFIX = @CURL_LIBCURL_VERSIONED_SYMBOLS_PREFIX@
 CURL_LIBCURL_VERSIONED_SYMBOLS_SONAME = @CURL_LIBCURL_VERSIONED_SYMBOLS_SONAME@
 CURL_NETWORK_AND_TIME_LIBS = @CURL_NETWORK_AND_TIME_LIBS@
 CYGPATH_W = @CYGPATH_W@
+DANTED = @DANTED@
 DEFS = @DEFS@
 DEPDIR = @DEPDIR@
 DLLTOOL = @DLLTOOL@
@@ -504,6 +502,7 @@ SUBDIRS = opts
 @BUILD_DOCS_TRUE@ curl_multi_cleanup.3 \
 @BUILD_DOCS_TRUE@ curl_multi_fdset.3 \
 @BUILD_DOCS_TRUE@ curl_multi_get_handles.3 \
+@BUILD_DOCS_TRUE@ curl_multi_get_offt.3 \
 @BUILD_DOCS_TRUE@ curl_multi_info_read.3 \
 @BUILD_DOCS_TRUE@ curl_multi_init.3 \
 @BUILD_DOCS_TRUE@ curl_multi_perform.3 \
@@ -540,6 +539,7 @@ SUBDIRS = opts
 @BUILD_DOCS_TRUE@ curl_ws_meta.3 \
 @BUILD_DOCS_TRUE@ curl_ws_recv.3 \
 @BUILD_DOCS_TRUE@ curl_ws_send.3 \
+@BUILD_DOCS_TRUE@ curl_ws_start_frame.3 \
 @BUILD_DOCS_TRUE@ libcurl-easy.3 \
 @BUILD_DOCS_TRUE@ libcurl-env-dbg.3 \
 @BUILD_DOCS_TRUE@ libcurl-env.3 \
@@ -554,6 +554,8 @@ SUBDIRS = opts
 @BUILD_DOCS_TRUE@ libcurl-ws.3 \
 @BUILD_DOCS_TRUE@ libcurl.3
 
+
+# Get man_MANS variable
 @BUILD_DOCS_TRUE@CURLPAGES = $(man_MANS:.3=.md)
 m4macrodir = $(datadir)/aclocal
 dist_m4macro_DATA = libcurl.m4

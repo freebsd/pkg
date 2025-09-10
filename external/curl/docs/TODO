@@ -24,7 +24,6 @@
  1.5 get rid of PATH_MAX
  1.6 thread-safe sharing
  1.8 CURLOPT_RESOLVE for any port number
- 1.9 Cache negative name resolves
  1.10 auto-detect proxy
  1.11 minimize dependencies with dynamically loaded modules
  1.12 updated DNS server while running
@@ -62,7 +61,6 @@
 
  4. FTP
  4.1 HOST
- 4.4 Support CURLOPT_PREQUOTE for directories listings
  4.6 GSSAPI via Windows SSPI
  4.7 STAT for LIST without data connection
  4.8 Passive transfer could try other IP addresses
@@ -113,7 +111,6 @@
  13.2 TLS channel binding
  13.3 Defeat TLS fingerprinting
  13.4 Consider OCSP stapling by default
- 13.5 Export session ids
  13.6 Provide callback for cert verification
  13.7 Less memory massaging with Schannel
  13.8 Support DANE
@@ -161,7 +158,6 @@
  18.15 --retry should resume
  18.17 consider filename from the redirected URL with -O ?
  18.18 retry on network is unreachable
- 18.19 expand ~/ in config files
  18.20 hostname sections in config files
  18.21 retry on the redirected-to URL
  18.23 Set the modification date on an uploaded file
@@ -263,11 +259,6 @@
  for the hostname on all port numbers.
 
  See https://github.com/curl/curl/issues/1264
-
-1.9 Cache negative name resolves
-
- A name resolve that has failed is likely to fail when made again within a
- short period of time. Currently we only cache positive responses.
 
 1.10 auto-detect proxy
 
@@ -555,13 +546,6 @@
 
  https://datatracker.ietf.org/doc/html/rfc7151
 
-4.4 Support CURLOPT_PREQUOTE for directions listings
-
- The lack of support is mostly an oversight and requires the FTP state machine
- to get updated to get fixed.
-
- https://github.com/curl/curl/issues/8602
-
 4.6 GSSAPI via Windows SSPI
 
  In addition to currently supporting the SASL GSSAPI mechanism (Kerberos V5)
@@ -819,14 +803,6 @@
  drops the OCSP support, the benefit of this might however be limited.
 
  https://github.com/curl/curl/issues/15483
-
-13.5 Export session ids
-
- Add an interface to libcurl that enables "session IDs" to get
- exported/imported. Cris Bailiff said: "OpenSSL has functions which can
- serialise the current SSL state to a buffer of your choice, and recover/reset
- the state from such a buffer at a later date - this is used by mod_ssl for
- apache to implement and SSL session ID cache".
 
 13.6 Provide callback for cert verification
 
@@ -1156,12 +1132,6 @@
  want to retry for?
 
  https://github.com/curl/curl/issues/1603
-
-18.19 expand ~/ in config files
-
- For example .curlrc could benefit from being able to do this.
-
- See https://github.com/curl/curl/issues/2317
 
 18.20 hostname sections in config files
 

@@ -32,9 +32,6 @@ ftp://%HOSTIP:%FTPPORT/fully_simulated/UNIX/*
 </client>
 # Verify data after the test has been "shot"
 <verify>
-<strip>
-QUIT
-</strip>
 <errorcode>
 0
 </errorcode>
@@ -60,9 +57,6 @@ EPSV
 RETR file.txt
 EPSV
 RETR someothertext.txt
-CWD /
-CWD fully_simulated
-CWD UNIX
 EPSV
 TYPE A
 LIST
@@ -120,5 +114,8 @@ This file should have permissions 777
 This is content of file "file.txt"
 Some junk ;-) This file does not really exist.
 </stdout>
+<limits>
+Allocations: 1500
+</limits>
 </verify>
 </testcase>

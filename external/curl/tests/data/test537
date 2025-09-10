@@ -40,7 +40,7 @@ lib%TESTNUMBER
 # precheck is a command line to run before the test, to see if we can execute
 # the test or not
 <precheck>
-./libtest/lib%TESTNUMBER check
+%LIBTESTS lib%TESTNUMBER check
 </precheck>
 
 <name>
@@ -60,5 +60,8 @@ Host: %HOSTIP:%HTTPPORT
 Accept: */*
 
 </protocol>
+<limits>
+Maximum allocated: 3200000
+</limits>
 </verify>
 </testcase>

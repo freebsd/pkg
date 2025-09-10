@@ -66,6 +66,33 @@ DEF_CONFIG = init_config_from(CONFIG_PATH)
 CURL = os.path.join(TOP_PATH, 'src', 'curl')
 
 
+class NghttpxUtil:
+
+    CMD = None
+    VERSION_FULL = None
+
+    @classmethod
+    def version(cls, cmd):
+        if cmd is None:
+            return None
+        if cls.VERSION_FULL is None or cmd != cls.CMD:
+            p = subprocess.run(args=[cmd, '--version'],
+                               capture_output=True, text=True)
+            if p.returncode != 0:
+                raise RuntimeError(f'{cmd} --version failed with exit code: {p.returncode}')
+            cls.CMD = cmd
+            for line in p.stdout.splitlines(keepends=False):
+                if line.startswith('nghttpx '):
+                    cls.VERSION_FULL = line
+            if cls.VERSION_FULL is None:
+                raise RuntimeError(f'{cmd}: unable to determine version')
+        return cls.VERSION_FULL
+
+    @staticmethod
+    def version_with_h3(version):
+        return re.match(r'.* ngtcp2/\d+\.\d+\.\d+.*', version) is not None
+
+
 class EnvConfig:
 
     def __init__(self, pytestconfig: Optional[pytest.Config] = None,
@@ -169,15 +196,13 @@ class EnvConfig:
         self._nghttpx_version = None
         self.nghttpx_with_h3 = False
         if self.nghttpx is not None:
-            p = subprocess.run(args=[self.nghttpx, '-v'],
-                               capture_output=True, text=True)
-            if p.returncode != 0:
+            try:
+                self._nghttpx_version = NghttpxUtil.version(self.nghttpx)
+                self.nghttpx_with_h3 = NghttpxUtil.version_with_h3(self._nghttpx_version)
+            except RuntimeError:
                 # not a working nghttpx
+                log.exception('checking nghttpx version')
                 self.nghttpx = None
-            else:
-                self._nghttpx_version = re.sub(r'^nghttpx\s*', '', p.stdout.strip())
-                self.nghttpx_with_h3 = re.match(r'.* nghttp3/.*', p.stdout.strip()) is not None
-                log.debug(f'nghttpx -v: {p.stdout}')
 
         self.caddy = self.config['caddy']['caddy']
         self._caddy_version = None
@@ -200,6 +225,8 @@ class EnvConfig:
                 self.caddy = None
 
         self.vsftpd = self.config['vsftpd']['vsftpd']
+        if self.vsftpd == '':
+            self.vsftpd = None
         self._vsftpd_version = None
         if self.vsftpd is not None:
             try:
@@ -228,6 +255,29 @@ class EnvConfig:
                     raise Exception(f'Unable to determine VsFTPD version from: {p.stderr}')
             except Exception:
                 self.vsftpd = None
+
+        self.danted = self.config['danted']['danted']
+        if self.danted == '':
+            self.danted = None
+        self._danted_version = None
+        if self.danted is not None:
+            try:
+                p = subprocess.run(args=[self.danted, '-v'],
+                                   capture_output=True, text=True)
+                assert p.returncode == 0
+                if p.returncode != 0:
+                    # not a working vsftpd
+                    self.danted = None
+                m = re.match(r'^Dante v(\d+\.\d+\.\d+).*', p.stdout)
+                if not m:
+                    m = re.match(r'^Dante v(\d+\.\d+\.\d+).*', p.stderr)
+                if m:
+                    self._danted_version = m.group(1)
+                else:
+                    self.danted = None
+                    raise Exception(f'Unable to determine danted version from: {p.stderr}')
+            except Exception:
+                self.danted = None
 
         self._tcpdump = shutil.which('tcpdump')
 
@@ -387,6 +437,16 @@ class Env:
         return False
 
     @staticmethod
+    def curl_lib_version_before(libname: str, lib_version) -> bool:
+        lversion = Env.curl_lib_version(libname)
+        if lversion != 'unknown':
+            if m := re.match(r'(\d+\.\d+\.\d+).*', lversion):
+                lversion = m.group(1)
+            return Env.CONFIG.versiontuple(lib_version) > \
+                Env.CONFIG.versiontuple(lversion)
+        return False
+
+    @staticmethod
     def curl_os() -> str:
         return Env.CONFIG.curl_props['os']
 
@@ -404,7 +464,9 @@ class Env:
 
     @staticmethod
     def curl_can_early_data() -> bool:
-        return Env.curl_uses_any_libs(['gnutls', 'wolfssl', 'quictls', 'openssl'])
+        if Env.curl_uses_lib('gnutls'):
+            return Env.curl_lib_version_at_least('gnutls', '3.6.13')
+        return Env.curl_uses_any_libs(['wolfssl', 'quictls', 'openssl'])
 
     @staticmethod
     def curl_can_h3_early_data() -> bool:
@@ -446,6 +508,10 @@ class Env:
     @staticmethod
     def vsftpd_version() -> str:
         return Env.CONFIG.vsftpd_version
+
+    @staticmethod
+    def has_danted() -> bool:
+        return Env.CONFIG.danted is not None
 
     @staticmethod
     def tcpdump() -> Optional[str]:
@@ -607,6 +673,10 @@ class Env:
     @property
     def caddy_http_port(self) -> int:
         return self.CONFIG.ports['caddy']
+
+    @property
+    def danted(self) -> str:
+        return self.CONFIG.danted
 
     @property
     def vsftpd(self) -> str:

@@ -41,12 +41,12 @@ BEGIN {
         $CURLVERSION
         $CURLVERNUM
         $DATE
-        $has_shared
         $LIBDIR
         $UNITDIR
         $TUNITDIR
         $SRVDIR
         $listonly
+        $buildinfo
         $LOCKDIR
         $LOGDIR
         $memanalyze
@@ -61,6 +61,7 @@ BEGIN {
         $run_duphandle
         $run_event_based
         $SERVERCMD
+        $DNSCMD
         $SERVERIN
         $srcdir
         $TESTDIR
@@ -71,18 +72,17 @@ BEGIN {
         %feature
         %keywords
         @protocols
-        $bundle
         $dev_null
     );
 }
 use pathhelp qw(
     exe_ext
     dirsepadd
-);
+    );
 use Cwd qw(getcwd);
 use testutil qw(
     shell_quote
-);
+    );
 use File::Spec;
 
 
@@ -95,6 +95,7 @@ our $verbose;         # 1 to show verbose test output
 our $torture;         # 1 to enable torture testing
 our $proxy_address;   # external HTTP proxy address
 our $listonly;        # only list the tests
+our $buildinfo;       # dump buildinfo.txt
 our $run_duphandle;   # run curl with --test-duphandle to verify handle duplication
 our $run_event_based; # run curl with --test-event to test the event API
 our $automakestyle;   # use automake-like test status output format
@@ -135,12 +136,11 @@ our $SERVERIN="server.input";   # what curl sent the server
 our $PROXYIN="proxy.input";     # what curl sent the proxy
 our $MEMDUMP="memdump";         # file that the memory debugging creates
 our $SERVERCMD="server.cmd";    # copy server instructions here
+our $DNSCMD="dnsd.cmd";         # write DNS instructions here
 
 # other config variables
 our @protocols;   # array of lowercase supported protocol servers
 our %feature;     # hash of enabled features
 our %keywords;    # hash of keywords from the test spec
-our $has_shared;  # built as a shared library
-our $bundle = 0;  # use bundled server, libtest, unit binaries
 
 1;

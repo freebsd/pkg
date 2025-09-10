@@ -115,7 +115,6 @@ host_triplet = @host@
 subdir = tests
 ACLOCAL_M4 = $(top_srcdir)/aclocal.m4
 am__aclocal_m4_deps = $(top_srcdir)/m4/curl-amissl.m4 \
-	$(top_srcdir)/m4/curl-bearssl.m4 \
 	$(top_srcdir)/m4/curl-compilers.m4 \
 	$(top_srcdir)/m4/curl-confopts.m4 \
 	$(top_srcdir)/m4/curl-functions.m4 \
@@ -126,7 +125,6 @@ am__aclocal_m4_deps = $(top_srcdir)/m4/curl-amissl.m4 \
 	$(top_srcdir)/m4/curl-reentrant.m4 \
 	$(top_srcdir)/m4/curl-rustls.m4 \
 	$(top_srcdir)/m4/curl-schannel.m4 \
-	$(top_srcdir)/m4/curl-sectransp.m4 \
 	$(top_srcdir)/m4/curl-sysconfig.m4 \
 	$(top_srcdir)/m4/curl-wolfssl.m4 $(top_srcdir)/m4/libtool.m4 \
 	$(top_srcdir)/m4/ltoptions.m4 $(top_srcdir)/m4/ltsugar.m4 \
@@ -257,6 +255,7 @@ CURL_LIBCURL_VERSIONED_SYMBOLS_PREFIX = @CURL_LIBCURL_VERSIONED_SYMBOLS_PREFIX@
 CURL_LIBCURL_VERSIONED_SYMBOLS_SONAME = @CURL_LIBCURL_VERSIONED_SYMBOLS_SONAME@
 CURL_NETWORK_AND_TIME_LIBS = @CURL_NETWORK_AND_TIME_LIBS@
 CYGPATH_W = @CYGPATH_W@
+DANTED = @DANTED@
 DEFS = @DEFS@
 DEPDIR = @DEPDIR@
 DLLTOOL = @DLLTOOL@
@@ -430,8 +429,6 @@ EXTRA_DIST = \
  http2-server.pl    \
  http3-server.pl    \
  memanalyze.pl      \
- mk-bundle-hints.sh \
- mk-bundle.pl       \
  negtelnetserver.py \
  nghttpx.conf       \
  pathhelp.pm        \
@@ -467,7 +464,7 @@ DIST_SUBDIRS = $(SUBDIRS) $(DIST_UNIT)
 PERLFLAGS = -I$(srcdir)
 CLEANFILES = .http.pid .https.pid .ftp.pid .ftps.pid
 TEST_COMMON = $(am__append_1)
-@CROSSCOMPILING_FALSE@TEST = srcdir=$(srcdir) $(PERL) $(PERLFLAGS) $(srcdir)/runtests.pl $(TEST_COMMON)
+@CROSSCOMPILING_FALSE@TEST = srcdir=$(srcdir) @PERL@ $(PERLFLAGS) $(srcdir)/runtests.pl $(TEST_COMMON)
 @CROSSCOMPILING_TRUE@TEST = @echo "NOTICE: we can't run the tests when cross-compiling!"
 @CROSSCOMPILING_FALSE@PYTEST = pytest
 @CROSSCOMPILING_TRUE@PYTEST = $(TEST)
@@ -482,7 +479,7 @@ TEST_COMMON = $(am__append_1)
 @CROSSCOMPILING_FALSE@TEST_NF = -a -p ~flaky ~timing-dependent
 
 # special CI target derived from nonflaky with CI-specific flags
-@CROSSCOMPILING_FALSE@TEST_CI = $(TEST_NF) -r --retry=5 -j20
+@CROSSCOMPILING_FALSE@TEST_CI = $(TEST_NF) -r --retry=5 -j20 --buildinfo
 all: all-recursive
 
 .SUFFIXES:
@@ -805,10 +802,13 @@ curl:
 
 # make sure that PERL is pointing to an executable
 perlcheck:
-	@if ! test -x "$(PERL)"; then echo "No perl!"; exit 2; fi
+	@if ! test -x "@PERL@"; then echo "No perl!"; exit 2; fi
 
-build-certs:
+build-certs: perlcheck
 	(cd certs && $(MAKE))
+
+# alias for 'test' to match CMake, where 'test' is a reserved target
+tests: test
 
 test: perlcheck all
 	$(TEST) $(TFLAGS)
@@ -844,6 +844,7 @@ checksrc:
 	(cd unit && $(MAKE) checksrc)
 	(cd tunit && $(MAKE) checksrc)
 	(cd server && $(MAKE) checksrc)
+	(cd client && $(MAKE) checksrc)
 	(cd http && $(MAKE) checksrc)
 
 all-local: $(MANFILES) build-certs
