@@ -89,6 +89,7 @@ SRCS=	\
 	cf-h1-proxy.c \
 	cf-h2-proxy.c \
 	cf-haproxy.c \
+	cf-ip-happy.c \
 	dynhds.c \
 	http1.c \
 	http_digest.c \
@@ -110,7 +111,8 @@ SRCS=	\
 	cshutdn.c \
 	multi_ev.c \
 	cw-pause.c \
-	strequal.c
+	strequal.c \
+	wait.c
 
 LOCAL_CFLAGS=	-DHAVE_CONFIG_H \
 		-DBUILDING_LIBCURL \

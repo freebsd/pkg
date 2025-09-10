@@ -62,12 +62,14 @@ enum {
   FTP_QUOTE, /* waiting for a response to a command sent in a quote list */
   FTP_RETR_PREQUOTE,
   FTP_STOR_PREQUOTE,
+  FTP_LIST_PREQUOTE,
   FTP_POSTQUOTE,
   FTP_CWD,  /* change dir */
   FTP_MKD,  /* if the dir did not exist */
   FTP_MDTM, /* to figure out the datestamp */
   FTP_TYPE, /* to set type when doing a head-like request */
   FTP_LIST_TYPE, /* set type when about to do a dir list */
+  FTP_RETR_LIST_TYPE,
   FTP_RETR_TYPE, /* set type when about to RETR a file */
   FTP_STOR_TYPE, /* set type when about to STOR a file */
   FTP_SIZE, /* get the remote file's size for head-like request */
@@ -118,6 +120,11 @@ struct FTP {
   curl_off_t downloadsize;
 };
 
+/* one struct entry for each path component (of 'rawpath') */
+struct pathcomp {
+  int start; /* start column */
+  int len;   /* length in bytes */
+};
 
 /* ftp_conn is used for struct connection-oriented data in the connectdata
    struct */
@@ -126,8 +133,9 @@ struct ftp_conn {
   char *account;
   char *alternative_to_user;
   char *entrypath; /* the PWD reply when we logged on */
-  char *file;    /* url-decoded filename (or path) */
-  char **dirs;   /* realloc()ed array for path components */
+  const char *file; /* url-decoded filename (or path), points into rawpath */
+  char *rawpath; /* URL decoded, allocated, version of the path */
+  struct pathcomp *dirs; /* allocated array for path components */
   char *newhost; /* the (allocated) IP addr or hostname to connect the data
                     connection to */
   char *prevpath;   /* url-decoded conn->path from the previous transfer */

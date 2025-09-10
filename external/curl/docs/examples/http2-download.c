@@ -42,7 +42,7 @@
 /* This little trick makes sure that we do not enable pipelining for libcurls
    old enough to not have this symbol. It is _not_ defined to zero in a recent
    libcurl header. */
-#define CURLPIPE_MULTIPLEX 0
+#define CURLPIPE_MULTIPLEX 0L
 #endif
 
 struct transfer {
@@ -110,7 +110,7 @@ int my_trace(CURL *handle, curl_infotype type,
   const char *text;
   struct transfer *t = (struct transfer *)userp;
   unsigned int num = t->num;
-  (void)handle; /* prevent compiler warning */
+  (void)handle;
 
   switch(type) {
   case CURLINFO_TEXT:

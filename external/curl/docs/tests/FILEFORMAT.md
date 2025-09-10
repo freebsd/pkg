@@ -383,6 +383,14 @@ issue.
 `writedelay: [secs]` delay this amount between reply packets (each packet
   being 512 bytes payload)
 
+### `<dns>`
+
+Commands for the test DNS server.
+
+- `A: [dotted ipv4 address]` - set IPv4 address to return
+- `AAAA: [numerical IPv6 address]` - set IPv6 address to return, with or
+  without `[]`
+
 ## `<client>`
 
 ### `<server>`
@@ -408,7 +416,6 @@ What server(s) this test case requires/uses. Available servers:
 - `http-unix`
 - `imap`
 - `mqtt`
-- `none`
 - `pop3`
 - `rtsp`
 - `rtsp-ipv6`
@@ -441,14 +448,15 @@ Features testable here are:
 - `aws` - built with **aws-sigv4** support
 - `AppleIDN`
 - `asyn-rr` - c-ares is used for additional records only
-- `bearssl`
 - `brotli`
 - `c-ares` - c-ares is used for (all) name resolves
 - `CharConv`
 - `codeset-utf8`. If the running codeset is UTF-8 capable.
 - `cookies`
 - `crypto`
+- `cygwin`
 - `Debug`
+- `digest`
 - `DoH`
 - `getrlimit`
 - `GnuTLS`
@@ -467,7 +475,6 @@ Features testable here are:
 - `Largefile`
 - `large-time` (time_t is larger than 32-bit)
 - `large-size` (size_t is larger than 32-bit)
-- `ld_preload`
 - `libssh2`
 - `libssh`
 - `oldlibssh` (versions before 0.9.4)
@@ -488,7 +495,6 @@ Features testable here are:
 - `PSL`
 - `rustls`
 - `Schannel`
-- `sectransp`
 - `shuffle-dns`
 - `socks`
 - `SPNEGO`
@@ -693,6 +699,14 @@ test.
 
 `loadfile="filename"` makes loading the data from an external file.
 
+### `<limit>`
+
+When this test runs and curl was built with debug enabled, runtests make sure
+that the set limits are not exceeded. Supported limits:
+
+    Allocations: [number of allocation calls]
+    Maximum allocated: [maximum concurrent memory allocated]
+
 ### `<file name="%LOGDIR/filename" [mode="text"]>`
 The file's contents must be identical to this after the test is complete. Use
 the mode="text" attribute if the output is in text mode on platforms that have
@@ -733,3 +747,13 @@ should be cut off from the upload data before comparing it.
 
 ### `<valgrind>`
 disable - disables the valgrind log check for this test
+
+### `<dns [host="name"]>`
+
+This specify the input the DNS server is expected to get from curl. Because of
+differences in implementations, this section is sorted automatically before
+compared.
+
+Because of local configurations in machines running tests, there may be
+additional requests sent to `[host].[custom suffix]`. To prevent such requests
+to mess up comparisons, we can set the hostname to check in the `<dns>` tag.

@@ -72,7 +72,7 @@ int main(int argc, char **argv)
 {
   pthread_t tid[NUMT];
   int i;
-  (void)argc; /* we do not use any arguments in this example */
+  (void)argc;
   (void)argv;
 
   /* Must initialize libcurl before any threads are started */
@@ -83,7 +83,7 @@ int main(int argc, char **argv)
                                NULL, /* default attributes please */
                                pull_one_url,
                                (void *)urls[i]);
-    if(0 != error)
+    if(error)
       fprintf(stderr, "Couldn't run thread number %d, errno %d\n", i, error);
     else
       fprintf(stderr, "Thread %d, gets %s\n", i, urls[i]);

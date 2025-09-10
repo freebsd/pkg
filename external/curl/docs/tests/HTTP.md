@@ -52,6 +52,7 @@ Via curl's `configure` script you may specify:
   * `--with-test-httpd=<httpd-install-path>` if you have an Apache httpd installed somewhere else. On Debian/Ubuntu it will otherwise look into `/usr/bin` and `/usr/sbin` to find those.
   * `--with-test-caddy=<caddy-install-path>` if you have a Caddy web server installed somewhere else.
   * `--with-test-vsftpd=<vsftpd-install-path>` if you have a vsftpd ftp  server installed somewhere else.
+  * `--with-test-danted=<danted-path>` if you have `dante-server` installed
 
 ## Usage Tips
 
@@ -141,10 +142,10 @@ The module adds 2 "handlers" to the Apache server (right now). Handler are piece
   * `s`: seconds (the default)
   * `ms`: milliseconds
 
-As you can see, `mod_curltest`'s tweak handler allow to simulate many kinds of
-responses. An example of its use is `test_03_01` where responses are delayed
-using `chunk_delay`. This gives the response a defined duration and the test
-uses that to reload `httpd` in the middle of the first request. A graceful
+As you can see, `mod_curltest`'s tweak handler allows Apache to simulate many
+kinds of responses. An example of its use is `test_03_01` where responses are
+delayed using `chunk_delay`. This gives the response a defined duration and the
+test uses that to reload `httpd` in the middle of the first request. A graceful
 reload in httpd lets ongoing requests finish, but closes the connection
-afterwards and tears down the serving process. The following request then
-needs to open a new connection. This is verified by the test case.
+afterwards and tears down the serving process. The following request then needs
+to open a new connection. This is verified by the test case.

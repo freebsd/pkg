@@ -54,7 +54,7 @@ lib%TESTNUMBER
 GLOBAL CACHE test over two easy performs
 </name>
 <command>
-http://%HOSTIP:%HTTPPORT/path/%TESTNUMBER %HOSTIP %HTTPPORT
+- %HOSTIP %HTTPPORT
 </command>
 </client>
 
@@ -74,7 +74,7 @@ Accept: */*
 ^Host:.*
 </strip>
 <stripfile>
-$_ = '' if (($_ !~ /left intact/) && ($_ !~ /Closing connection/))
+$_ = '' if(($_ !~ /left intact/) && ($_ !~ /Closing connection/))
 </stripfile>
 </verify>
 </testcase>

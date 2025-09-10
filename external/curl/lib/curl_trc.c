@@ -31,7 +31,6 @@
 #include "easyif.h"
 #include "cfilters.h"
 #include "multiif.h"
-#include "strcase.h"
 
 #include "cf-socket.h"
 #include "connect.h"
@@ -42,6 +41,7 @@
 #include "cf-h2-proxy.h"
 #include "cf-haproxy.h"
 #include "cf-https-connect.h"
+#include "cf-ip-happy.h"
 #include "socks.h"
 #include "curlx/strparse.h"
 #include "vtls/vtls.h"
@@ -162,10 +162,12 @@ void Curl_debug(struct Curl_easy *data, curl_infotype type,
       case CURLINFO_TEXT:
       case CURLINFO_HEADER_OUT:
       case CURLINFO_HEADER_IN:
+#ifndef CURL_DISABLE_VERBOSE_STRINGS
         if(CURL_TRC_IDS(data)) {
           len = trc_print_ids(data, buf, TRC_LINE_MAX);
           fwrite(buf, len, 1, data->set.err);
         }
+#endif
         fwrite(s_infotype[type], 2, 1, data->set.err);
         fwrite(ptr, size, 1, data->set.err);
         break;
@@ -200,13 +202,12 @@ void Curl_failf(struct Curl_easy *data, const char *fmt, ...)
   }
 }
 
-#if !defined(CURL_DISABLE_VERBOSE_STRINGS)
-
+#ifndef CURL_DISABLE_VERBOSE_STRINGS
 
 static void trc_infof(struct Curl_easy *data,
                       struct curl_trc_feat *feat,
                       const char *opt_id, int opt_id_idx,
-                      const char * const fmt, va_list ap)  CURL_PRINTF(5, 0);
+                      const char * const fmt, va_list ap) CURL_PRINTF(5, 0);
 
 static void trc_infof(struct Curl_easy *data,
                       struct curl_trc_feat *feat,
@@ -272,6 +273,45 @@ struct curl_trc_feat Curl_trc_feat_dns = {
   CURL_LOG_LVL_NONE,
 };
 
+static const char * const Curl_trc_timer_names[]={
+  "100_TIMEOUT",
+  "ASYNC_NAME",
+  "CONNECTTIMEOUT",
+  "DNS_PER_NAME",
+  "DNS_PER_NAME2",
+  "HAPPY_EYEBALLS_DNS",
+  "HAPPY_EYEBALLS",
+  "MULTI_PENDING",
+  "SPEEDCHECK",
+  "TIMEOUT",
+  "TOOFAST",
+  "QUIC",
+  "FTP_ACCEPT",
+  "ALPN_EYEBALLS",
+  "SHUTDOWN",
+};
+
+const char *Curl_trc_timer_name(int tid)
+{
+  if((tid >= 0) && ((size_t)tid < CURL_ARRAYSIZE(Curl_trc_timer_names)))
+    return Curl_trc_timer_names[(size_t)tid];
+  return "UNKNOWN?";
+}
+
+void Curl_trc_multi_timeouts(struct Curl_easy *data)
+{
+  struct Curl_llist_node *e = Curl_llist_head(&data->state.timeoutlist);
+  if(e) {
+    struct curltime now = curlx_now();
+    while(e) {
+      struct time_node *n = Curl_node_elem(e);
+      e = Curl_node_next(e);
+      CURL_TRC_M(data, "[TIMEOUT] %s expires in %" FMT_TIMEDIFF_T "ns",
+                 CURL_TIMER_NAME(n->eid),
+                 curlx_timediff_us(n->time, now));
+    }
+  }
+}
 
 static const char * const Curl_trc_mstate_names[]={
   "INIT",
@@ -462,9 +502,9 @@ static struct trc_cft_def trc_cfts[] = {
   { &Curl_cft_udp,            TRC_CT_NETWORK },
   { &Curl_cft_unix,           TRC_CT_NETWORK },
   { &Curl_cft_tcp_accept,     TRC_CT_NETWORK },
-  { &Curl_cft_happy_eyeballs, TRC_CT_NETWORK },
+  { &Curl_cft_ip_happy,       TRC_CT_NETWORK },
   { &Curl_cft_setup,          TRC_CT_PROTOCOL },
-#ifdef USE_NGHTTP2
+#if !defined(CURL_DISABLE_HTTP) && defined(USE_NGHTTP2)
   { &Curl_cft_nghttp2,        TRC_CT_PROTOCOL },
 #endif
 #ifdef USE_SSL
@@ -473,8 +513,8 @@ static struct trc_cft_def trc_cfts[] = {
   { &Curl_cft_ssl_proxy,      TRC_CT_PROXY },
 #endif
 #endif
-#if !defined(CURL_DISABLE_PROXY)
-#if !defined(CURL_DISABLE_HTTP)
+#ifndef CURL_DISABLE_PROXY
+#ifndef CURL_DISABLE_HTTP
   { &Curl_cft_h1_proxy,       TRC_CT_PROXY },
 #ifdef USE_NGHTTP2
   { &Curl_cft_h2_proxy,       TRC_CT_PROXY },
@@ -484,10 +524,10 @@ static struct trc_cft_def trc_cfts[] = {
   { &Curl_cft_haproxy,        TRC_CT_PROXY },
   { &Curl_cft_socks_proxy,    TRC_CT_PROXY },
 #endif /* !CURL_DISABLE_PROXY */
-#ifdef USE_HTTP3
+#if !defined(CURL_DISABLE_HTTP) && defined(USE_HTTP3)
   { &Curl_cft_http3,          TRC_CT_PROTOCOL },
 #endif
-#if !defined(CURL_DISABLE_HTTP)
+#ifndef CURL_DISABLE_HTTP
   { &Curl_cft_http_connect,   TRC_CT_PROTOCOL },
 #endif
 };
@@ -582,7 +622,7 @@ CURLcode Curl_trc_init(void)
 #endif
 }
 
-#else /* defined(CURL_DISABLE_VERBOSE_STRINGS) */
+#else /* CURL_DISABLE_VERBOSE_STRINGS */
 
 CURLcode Curl_trc_init(void)
 {
@@ -634,17 +674,18 @@ void Curl_trc_smtp(struct Curl_easy *data, const char *fmt, ...)
   (void)data; (void)fmt;
 }
 #endif
-#if !defined(CURL_DISABLE_WEBSOCKETS) || !defined(CURL_DISABLE_HTTP)
+#if !defined(CURL_DISABLE_WEBSOCKETS) && !defined(CURL_DISABLE_HTTP)
 void Curl_trc_ws(struct Curl_easy *data, const char *fmt, ...)
 {
   (void)data; (void)fmt;
 }
 #endif
-
+#ifdef USE_SSL
 void Curl_trc_ssls(struct Curl_easy *data, const char *fmt, ...)
 {
   (void)data;
   (void)fmt;
 }
+#endif
 
-#endif /* !defined(CURL_DISABLE_VERBOSE_STRINGS) */
+#endif /* !CURL_DISABLE_VERBOSE_STRINGS */

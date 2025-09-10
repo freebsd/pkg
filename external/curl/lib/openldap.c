@@ -126,10 +126,10 @@ const struct Curl_handler Curl_handler_ldap = {
   oldap_connect,                        /* connect_it */
   oldap_connecting,                     /* connecting */
   ZERO_NULL,                            /* doing */
-  ZERO_NULL,                            /* proto_getsock */
-  ZERO_NULL,                            /* doing_getsock */
-  ZERO_NULL,                            /* domore_getsock */
-  ZERO_NULL,                            /* perform_getsock */
+  ZERO_NULL,                            /* proto_pollset */
+  ZERO_NULL,                            /* doing_pollset */
+  ZERO_NULL,                            /* domore_pollset */
+  ZERO_NULL,                            /* perform_pollset */
   oldap_disconnect,                     /* disconnect */
   ZERO_NULL,                            /* write_resp */
   ZERO_NULL,                            /* write_resp_hd */
@@ -156,10 +156,10 @@ const struct Curl_handler Curl_handler_ldaps = {
   oldap_connect,                        /* connect_it */
   oldap_connecting,                     /* connecting */
   ZERO_NULL,                            /* doing */
-  ZERO_NULL,                            /* proto_getsock */
-  ZERO_NULL,                            /* doing_getsock */
-  ZERO_NULL,                            /* domore_getsock */
-  ZERO_NULL,                            /* perform_getsock */
+  ZERO_NULL,                            /* proto_pollset */
+  ZERO_NULL,                            /* doing_pollset */
+  ZERO_NULL,                            /* domore_pollset */
+  ZERO_NULL,                            /* perform_pollset */
   oldap_disconnect,                     /* disconnect */
   ZERO_NULL,                            /* write_resp */
   ZERO_NULL,                            /* write_resp_hd */
@@ -496,7 +496,24 @@ static CURLcode oldap_perform_sasl(struct Curl_easy *data)
 }
 
 #ifdef USE_SSL
-static Sockbuf_IO ldapsb_tls;
+static int ldapsb_tls_setup(Sockbuf_IO_Desc *sbiod, void *arg);
+static int ldapsb_tls_remove(Sockbuf_IO_Desc *sbiod);
+static int ldapsb_tls_ctrl(Sockbuf_IO_Desc *sbiod, int opt, void *arg);
+static ber_slen_t ldapsb_tls_read(Sockbuf_IO_Desc *sbiod, void *buf,
+                                  ber_len_t len);
+static ber_slen_t ldapsb_tls_write(Sockbuf_IO_Desc *sbiod, void *buf,
+                                   ber_len_t len);
+static int ldapsb_tls_close(Sockbuf_IO_Desc *sbiod);
+
+static Sockbuf_IO ldapsb_tls =
+{
+  ldapsb_tls_setup,
+  ldapsb_tls_remove,
+  ldapsb_tls_ctrl,
+  ldapsb_tls_read,
+  ldapsb_tls_write,
+  ldapsb_tls_close
+};
 
 static bool ssl_installed(struct connectdata *conn)
 {
@@ -924,7 +941,7 @@ static CURLcode oldap_disconnect(struct Curl_easy *data,
                                  bool dead_connection)
 {
   struct ldapconninfo *li = Curl_conn_meta_get(conn, CURL_META_LDAP_CONN);
-  (void) dead_connection;
+  (void)dead_connection;
 #ifndef USE_SSL
   (void)data;
 #endif
@@ -941,7 +958,6 @@ static CURLcode oldap_disconnect(struct Curl_easy *data,
       ldap_unbind_ext(li->ld, NULL, NULL);
       li->ld = NULL;
     }
-    Curl_sasl_cleanup(conn, li->sasl.authused);
   }
   return CURLE_OK;
 }
@@ -994,7 +1010,7 @@ static CURLcode oldap_do(struct Curl_easy *data, bool *done)
   }
 
   lr->msgid = msgid;
-  Curl_xfer_setup1(data, CURL_XFER_RECV, -1, FALSE);
+  Curl_xfer_setup_recv(data, FIRSTSOCKET, -1);
   *done = TRUE;
 
 out:
@@ -1048,8 +1064,8 @@ static CURLcode client_write(struct Curl_easy *data,
   return result;
 }
 
-static ssize_t oldap_recv(struct Curl_easy *data, int sockindex, char *buf,
-                          size_t len, CURLcode *err)
+static CURLcode oldap_recv(struct Curl_easy *data, int sockindex, char *buf,
+                           size_t len, size_t *pnread)
 {
   struct connectdata *conn = data->conn;
   struct ldapconninfo *li = Curl_conn_meta_get(conn, CURL_META_LDAP_CONN);
@@ -1067,10 +1083,9 @@ static ssize_t oldap_recv(struct Curl_easy *data, int sockindex, char *buf,
   (void)len;
   (void)buf;
   (void)sockindex;
-  if(!li || !lr) {
-    *err = CURLE_FAILED_INIT;
-    return -1;
-  }
+  *pnread = 0;
+  if(!li || !lr)
+    return CURLE_FAILED_INIT;
 
   rc = ldap_result(li->ld, lr->msgid, LDAP_MSG_ONE, &tv, &msg);
   if(rc < 0) {
@@ -1078,11 +1093,9 @@ static ssize_t oldap_recv(struct Curl_easy *data, int sockindex, char *buf,
     result = CURLE_RECV_ERROR;
   }
 
-  *err = result;
-
   /* error or timed out */
   if(!msg)
-    return -1;
+    return result;
 
   result = CURLE_OK;
 
@@ -1210,8 +1223,7 @@ static ssize_t oldap_recv(struct Curl_easy *data, int sockindex, char *buf,
   }
 
   ldap_msgfree(msg);
-  *err = result;
-  return result ? -1 : 0;
+  return result;
 }
 
 #ifdef USE_SSL
@@ -1258,15 +1270,17 @@ ldapsb_tls_read(Sockbuf_IO_Desc *sbiod, void *buf, ber_len_t len)
     if(conn) {
       struct ldapconninfo *li = Curl_conn_meta_get(conn, CURL_META_LDAP_CONN);
       CURLcode err = CURLE_RECV_ERROR;
+      size_t nread;
 
       if(!li) {
         SET_SOCKERRNO(SOCKEINVAL);
         return -1;
       }
-      ret = (li->recv)(data, FIRSTSOCKET, buf, len, &err);
-      if(ret < 0 && err == CURLE_AGAIN) {
+      err = (li->recv)(data, FIRSTSOCKET, buf, len, &nread);
+      if(err == CURLE_AGAIN) {
         SET_SOCKERRNO(SOCKEWOULDBLOCK);
       }
+      ret = err ? -1 : (ber_slen_t)nread;
     }
   }
   return ret;
@@ -1281,29 +1295,21 @@ ldapsb_tls_write(Sockbuf_IO_Desc *sbiod, void *buf, ber_len_t len)
     if(conn) {
       struct ldapconninfo *li = Curl_conn_meta_get(conn, CURL_META_LDAP_CONN);
       CURLcode err = CURLE_SEND_ERROR;
+      size_t nwritten;
 
       if(!li) {
         SET_SOCKERRNO(SOCKEINVAL);
         return -1;
       }
-      ret = (li->send)(data, FIRSTSOCKET, buf, len, FALSE, &err);
-      if(ret < 0 && err == CURLE_AGAIN) {
+      err = (li->send)(data, FIRSTSOCKET, buf, len, FALSE, &nwritten);
+      if(err == CURLE_AGAIN) {
         SET_SOCKERRNO(SOCKEWOULDBLOCK);
       }
+      ret = err ? -1 : (ber_slen_t)nwritten;
     }
   }
   return ret;
 }
-
-static Sockbuf_IO ldapsb_tls =
-{
-  ldapsb_tls_setup,
-  ldapsb_tls_remove,
-  ldapsb_tls_ctrl,
-  ldapsb_tls_read,
-  ldapsb_tls_write,
-  ldapsb_tls_close
-};
 #endif /* USE_SSL */
 
 #endif /* !CURL_DISABLE_LDAP && USE_OPENLDAP */

@@ -70,7 +70,7 @@ class TestWebsockets:
 
     @pytest.fixture(autouse=True, scope='class')
     def ws_echo(self, env):
-        self.run_dir = os.path.join(env.gen_dir, 'ws-echo-server')
+        self.run_dir = os.path.join(env.gen_dir, 'ws_echo_server')
         err_file = os.path.join(self.run_dir, 'stderr')
         self._rmrf(self.run_dir)
         self._mkpath(self.run_dir)
@@ -109,7 +109,7 @@ class TestWebsockets:
 
     def test_20_02_pingpong_small(self, env: Env, ws_echo):
         payload = 125 * "x"
-        client = LocalClient(env=env, name='ws-pingpong')
+        client = LocalClient(env=env, name='cli_ws_pingpong')
         if not client.exists():
             pytest.skip(f'example client not built: {client.name}')
         url = f'ws://localhost:{env.ws_port}/'
@@ -119,57 +119,91 @@ class TestWebsockets:
     # the python websocket server does not like 'large' control frames
     def test_20_03_pingpong_too_large(self, env: Env, ws_echo):
         payload = 127 * "x"
-        client = LocalClient(env=env, name='ws-pingpong')
+        client = LocalClient(env=env, name='cli_ws_pingpong')
         if not client.exists():
             pytest.skip(f'example client not built: {client.name}')
         url = f'ws://localhost:{env.ws_port}/'
         r = client.run(args=[url, payload])
         r.check_exit_code(100)  # CURLE_TOO_LARGE
 
-    def test_20_04_data_small(self, env: Env, ws_echo):
-        client = LocalClient(env=env, name='ws-data')
+    @pytest.mark.parametrize("model", [
+        pytest.param(1, id='multi_perform'),
+        pytest.param(2, id='curl_ws_send+recv'),
+    ])
+    def test_20_04_data_small(self, env: Env, ws_echo, model):
+        client = LocalClient(env=env, name='cli_ws_data')
         if not client.exists():
             pytest.skip(f'example client not built: {client.name}')
         url = f'ws://localhost:{env.ws_port}/'
-        r = client.run(args=['-m', str(0), '-M', str(10), url])
+        r = client.run(args=[f'-{model}', '-m', str(1), '-M', str(10), url])
         r.check_exit_code(0)
 
-    def test_20_05_data_med(self, env: Env, ws_echo):
-        client = LocalClient(env=env, name='ws-data')
+    @pytest.mark.parametrize("model", [
+        pytest.param(1, id='multi_perform'),
+        pytest.param(2, id='curl_ws_send+recv'),
+    ])
+    def test_20_05_data_med(self, env: Env, ws_echo, model):
+        client = LocalClient(env=env, name='cli_ws_data')
         if not client.exists():
             pytest.skip(f'example client not built: {client.name}')
         url = f'ws://localhost:{env.ws_port}/'
-        r = client.run(args=['-m', str(120), '-M', str(130), url])
+        r = client.run(args=[f'-{model}', '-m', str(120), '-M', str(130), url])
         r.check_exit_code(0)
 
-    def test_20_06_data_large(self, env: Env, ws_echo):
-        client = LocalClient(env=env, name='ws-data')
+    @pytest.mark.parametrize("model", [
+        pytest.param(1, id='multi_perform'),
+        pytest.param(2, id='curl_ws_send+recv'),
+    ])
+    def test_20_06_data_large(self, env: Env, ws_echo, model):
+        client = LocalClient(env=env, name='cli_ws_data')
         if not client.exists():
             pytest.skip(f'example client not built: {client.name}')
         url = f'ws://localhost:{env.ws_port}/'
-        r = client.run(args=['-m', str(65535 - 5), '-M', str(65535 + 5), url])
+        r = client.run(args=[f'-{model}', '-m', str(65535 - 5), '-M', str(65535 + 5), url])
         r.check_exit_code(0)
 
-    def test_20_07_data_large_small_recv(self, env: Env, ws_echo):
+    @pytest.mark.parametrize("model", [
+        pytest.param(1, id='multi_perform'),
+        pytest.param(2, id='curl_ws_send+recv'),
+    ])
+    def test_20_07_data_large_small_recv(self, env: Env, ws_echo, model):
         run_env = os.environ.copy()
         run_env['CURL_WS_CHUNK_SIZE'] = '1024'
-        client = LocalClient(env=env, name='ws-data', run_env=run_env)
+        client = LocalClient(env=env, name='cli_ws_data', run_env=run_env)
         if not client.exists():
             pytest.skip(f'example client not built: {client.name}')
         url = f'ws://localhost:{env.ws_port}/'
-        r = client.run(args=['-m', str(65535 - 5), '-M', str(65535 + 5), url])
+        r = client.run(args=[f'-{model}', '-m', str(65535 - 5), '-M', str(65535 + 5), url])
         r.check_exit_code(0)
 
     # Send large frames and simulate send blocking on 8192 bytes chunks
     # Simlates error reported in #15865
-    def test_20_08_data_very_large(self, env: Env, ws_echo):
+    @pytest.mark.parametrize("model", [
+        pytest.param(1, id='multi_perform'),
+        pytest.param(2, id='curl_ws_send+recv'),
+    ])
+    def test_20_08_data_very_large(self, env: Env, ws_echo, model):
         run_env = os.environ.copy()
         run_env['CURL_WS_CHUNK_EAGAIN'] = '8192'
-        client = LocalClient(env=env, name='ws-data', run_env=run_env)
+        client = LocalClient(env=env, name='cli_ws_data', run_env=run_env)
         if not client.exists():
             pytest.skip(f'example client not built: {client.name}')
         url = f'ws://localhost:{env.ws_port}/'
         count = 10
         large = 20000
-        r = client.run(args=['-c', str(count), '-m', str(large), url])
+        r = client.run(args=[f'-{model}', '-c', str(count), '-m', str(large), url])
+        r.check_exit_code(0)
+
+    @pytest.mark.parametrize("model", [
+        pytest.param(1, id='multi_perform'),
+        pytest.param(2, id='curl_ws_send+recv'),
+    ])
+    def test_20_09_data_empty(self, env: Env, ws_echo, model):
+        client = LocalClient(env=env, name='cli_ws_data')
+        if not client.exists():
+            pytest.skip(f'example client not built: {client.name}')
+        url = f'ws://localhost:{env.ws_port}/'
+        count = 10
+        large = 0
+        r = client.run(args=[f'-{model}', '-c', str(count), '-m', str(large), url])
         r.check_exit_code(0)

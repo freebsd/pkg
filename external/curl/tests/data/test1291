@@ -15,9 +15,6 @@ HTTP PUT
 
 # Client-side
 <client>
-<server>
-none
-</server>
 <name>
 Attempt to upload 1000 files but fail immediately
 </name>
@@ -38,5 +35,8 @@ XXXXXXXx
 <errorcode>
 1
 </errorcode>
+<limits>
+Allocations: 3100
+</limits>
 </verify>
 </testcase>

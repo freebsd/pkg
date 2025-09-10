@@ -22,10 +22,10 @@ CURLOPT_ALTSVC_CTRL - control alt-svc behavior
 ~~~c
 #include <curl/curl.h>
 
-#define CURLALTSVC_READONLYFILE (1<<2)
-#define CURLALTSVC_H1           (1<<3)
-#define CURLALTSVC_H2           (1<<4)
-#define CURLALTSVC_H3           (1<<5)
+#define CURLALTSVC_READONLYFILE (1L<<2)
+#define CURLALTSVC_H1           (1L<<3)
+#define CURLALTSVC_H2           (1L<<4)
+#define CURLALTSVC_H3           (1L<<5)
 
 CURLcode curl_easy_setopt(CURL *handle, CURLOPT_ALTSVC_CTRL, long bitmask);
 ~~~
@@ -35,10 +35,10 @@ CURLcode curl_easy_setopt(CURL *handle, CURLOPT_ALTSVC_CTRL, long bitmask);
 Populate the long *bitmask* with the correct set of features to instruct
 libcurl how to handle Alt-Svc for the transfers using this handle.
 
-libcurl only accepts Alt-Svc headers over a Secure Transport, meaning
-HTTPS. It also only completes a request to an alternative origin if that
-origin is properly hosted over HTTPS. These requirements are there to make
-sure both the source and the destination are legitimate.
+libcurl only accepts Alt-Svc headers over HTTPS. It also only completes a
+request to an alternative origin if that origin is properly hosted over HTTPS.
+These requirements are there to make sure both the source and the destination
+are legitimate.
 
 Alternative services are only used when setting up new connections. If there
 exists an existing connection to the host in the connection pool, then that is
@@ -84,12 +84,17 @@ int main(void)
 {
   CURL *curl = curl_easy_init();
   if(curl) {
-    curl_easy_setopt(curl, CURLOPT_ALTSVC_CTRL, (long)CURLALTSVC_H1);
+    curl_easy_setopt(curl, CURLOPT_ALTSVC_CTRL, CURLALTSVC_H1);
     curl_easy_setopt(curl, CURLOPT_ALTSVC, "altsvc-cache.txt");
     curl_easy_perform(curl);
   }
 }
 ~~~
+
+# HISTORY
+
+**CURLALTSVC_*** macros became `long` types in 8.16.0, prior to this version
+a `long` cast was necessary when passed to curl_easy_setopt(3).
 
 # %AVAILABILITY%
 

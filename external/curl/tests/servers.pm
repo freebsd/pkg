@@ -157,7 +157,7 @@ our $stunnel;        # path to stunnel command
 sub checkcmd {
     my ($cmd, @extrapaths)=@_;
     my @paths;
-    if ($^O eq 'MSWin32' || $^O eq 'dos' || $^O eq 'os2') {
+    if($^O eq 'MSWin32' || $^O eq 'dos' || $^O eq 'os2') {
         # PATH separator is different
         @paths=(split(';', $ENV{'PATH'}), @extrapaths);
     }
@@ -166,7 +166,7 @@ sub checkcmd {
                 "/sbin", "/usr/bin", "/usr/local/bin", @extrapaths);
     }
     for(@paths) {
-        if( -x "$_/$cmd" . exe_ext('SYS') && ! -d "$_/$cmd" . exe_ext('SYS')) {
+        if(-x "$_/$cmd" . exe_ext('SYS') && ! -d "$_/$cmd" . exe_ext('SYS')) {
             # executable bit but not a directory!
             return "$_/$cmd";
         }
@@ -207,11 +207,19 @@ sub initserverconfig {
 
     # get the name of the current user
     $USER = $ENV{USER};          # Linux
-    if (!$USER) {
+    if(!$USER) {
         $USER = $ENV{USERNAME};     # Windows
-        if (!$USER) {
-            $USER = $ENV{LOGNAME};  # Some Unix (I think)
-        }
+    }
+    if(!$USER) {
+        $USER = $ENV{LOGNAME};  # Some Unix (I think)
+    }
+    if(!$USER) {
+        $USER = `whoami`;
+        chomp $USER;
+    }
+    if(!$USER) {
+        $USER = `id -un`;
+        chomp $USER;
     }
     init_serverpidfile_hash();
 }
@@ -337,7 +345,7 @@ sub serverfortest {
 sub startnew {
     my ($cmd, $pidfile, $timeout, $fakepidfile)=@_;
 
-    logmsg "startnew: $cmd\n" if ($verbose);
+    logmsg "startnew: $cmd\n" if($verbose);
 
     my $child = fork();
 
@@ -362,7 +370,7 @@ sub startnew {
     }
 
     # Ugly hack but ssh client and gnutls-serv don't support pid files
-    if ($fakepidfile) {
+    if($fakepidfile) {
         if(open(my $out, ">", "$pidfile")) {
             print $out $child . "\n";
             close($out) || die "Failure writing pidfile";
@@ -372,8 +380,8 @@ sub startnew {
             logmsg "startnew: failed to write fake $pidfile with pid=$child\n";
         }
         # could/should do a while connect fails sleep a bit and loop
-        portable_sleep($timeout);
-        if (checkdied($child)) {
+        Time::HiRes::sleep($timeout);
+        if(checkdied($child)) {
             logmsg "startnew: child process has failed to start\n" if($verbose);
             return (-1,-1);
         }
@@ -389,7 +397,7 @@ sub startnew {
             # similar!
             last;
         }
-        if (checkdied($child)) {
+        if(checkdied($child)) {
             logmsg "startnew: child process has died, server might start up\n"
                 if($verbose);
             # We can't just abort waiting for the server with a
@@ -496,7 +504,7 @@ sub stopserver {
         foreach my $lockfile (@lockfiles) {
             if(-f $lockfile) {
                 unlink($lockfile);
-                logmsg "RUN: kill $server, cleaned up $lockfile\n" if ($verbose);
+                logmsg "RUN: kill $server, cleaned up $lockfile\n" if($verbose);
             }
         }
     }
@@ -1103,7 +1111,7 @@ sub runhttpserver {
     my $pidfile = $serverpidfile{$server};
 
     # don't retry if the server doesn't work
-    if ($doesntrun{$pidfile}) {
+    if($doesntrun{$pidfile}) {
         return (2, 0, 0, 0);
     }
 
@@ -1182,7 +1190,7 @@ sub runhttp2server {
     my $pidfile = $serverpidfile{$server};
 
     # don't retry if the server doesn't work
-    if ($doesntrun{$pidfile}) {
+    if($doesntrun{$pidfile}) {
         return (2, 0, 0, 0, 0);
     }
 
@@ -1243,7 +1251,7 @@ sub runhttp3server {
     my $pidfile = $serverpidfile{$server};
 
     # don't retry if the server doesn't work
-    if ($doesntrun{$pidfile}) {
+    if($doesntrun{$pidfile}) {
         return (2, 0, 0, 0);
     }
 
@@ -1309,7 +1317,7 @@ sub runhttpsserver {
     my $pidfile = $serverpidfile{$server};
 
     # don't retry if the server doesn't work
-    if ($doesntrun{$pidfile}) {
+    if($doesntrun{$pidfile}) {
         return (2, 0, 0, 0);
     }
 
@@ -1390,7 +1398,7 @@ sub runhttptlsserver {
     my $pidfile = $serverpidfile{$server};
 
     # don't retry if the server doesn't work
-    if ($doesntrun{$pidfile}) {
+    if($doesntrun{$pidfile}) {
         return (2, 0, 0, 0);
     }
 
@@ -1453,7 +1461,7 @@ sub runpingpongserver {
     my $portfile = $serverportfile{$server};
 
     # don't retry if the server doesn't work
-    if ($doesntrun{$pidfile}) {
+    if($doesntrun{$pidfile}) {
         return (2, 0, 0);
     }
 
@@ -1524,7 +1532,7 @@ sub runsecureserver {
     my $pidfile = $serverpidfile{$server};
 
     # don't retry if the server doesn't work
-    if ($doesntrun{$pidfile}) {
+    if($doesntrun{$pidfile}) {
         return (2, 0, 0, 0);
     }
 
@@ -1595,7 +1603,7 @@ sub runtftpserver {
     my $pidfile = $serverpidfile{$server};
 
     # don't retry if the server doesn't work
-    if ($doesntrun{$pidfile}) {
+    if($doesntrun{$pidfile}) {
         return (2, 0, 0, 0);
     }
 
@@ -1666,7 +1674,7 @@ sub rundnsserver {
     my $pidfile = $serverpidfile{$server};
 
     # don't retry if the server doesn't work
-    if ($doesntrun{$pidfile}) {
+    if($doesntrun{$pidfile}) {
         return (2, 0, 0, 0);
     }
 
@@ -1739,7 +1747,7 @@ sub runrtspserver {
     my $portfile = $serverportfile{$server};
 
     # don't retry if the server doesn't work
-    if ($doesntrun{$pidfile}) {
+    if($doesntrun{$pidfile}) {
         return (2, 0, 0, 0);
     }
 
@@ -1809,7 +1817,7 @@ sub runsshserver {
     my $pidfile = $serverpidfile{$server};
 
     # don't retry if the server doesn't work
-    if ($doesntrun{$pidfile}) {
+    if($doesntrun{$pidfile}) {
         return (2, 0, 0, 0);
     }
 
@@ -1927,7 +1935,7 @@ sub runmqttserver {
     my $portfile = $serverportfile{$server};
 
     # don't retry if the server doesn't work
-    if ($doesntrun{$pidfile}) {
+    if($doesntrun{$pidfile}) {
         return (2, 0, 0);
     }
 
@@ -1989,7 +1997,7 @@ sub runsocksserver {
     my $pidfile = $serverpidfile{$server};
 
     # don't retry if the server doesn't work
-    if ($doesntrun{$pidfile}) {
+    if($doesntrun{$pidfile}) {
         return (2, 0, 0, 0);
     }
 
@@ -2072,7 +2080,7 @@ sub rundictserver {
     my $pidfile = $serverpidfile{$server};
 
     # don't retry if the server doesn't work
-    if ($doesntrun{$pidfile}) {
+    if($doesntrun{$pidfile}) {
         return (2, 0, 0, 0);
     }
 
@@ -2133,7 +2141,7 @@ sub runsmbserver {
     my $pidfile = $serverpidfile{$server};
 
     # don't retry if the server doesn't work
-    if ($doesntrun{$pidfile}) {
+    if($doesntrun{$pidfile}) {
         return (2, 0, 0, 0);
     }
 
@@ -2194,7 +2202,7 @@ sub runnegtelnetserver {
     my $pidfile = $serverpidfile{$server};
 
     # don't retry if the server doesn't work
-    if ($doesntrun{$pidfile}) {
+    if($doesntrun{$pidfile}) {
         return (2, 0, 0, 0);
     }
 
@@ -2234,8 +2242,6 @@ sub runnegtelnetserver {
 
     return (0+!$ntelpid, $ntelpid, $pid2, $port);
 }
-
-
 
 
 #######################################################################
@@ -2379,7 +2385,7 @@ sub responsive_httptls_server {
     my $ip = "$HOSTIP";
     my $idnum = 1;
 
-    if ($ipvnum == 6) {
+    if($ipvnum == 6) {
         $port = protoport("httptls6");
         $ip = "$HOST6IP";
     }
@@ -3020,9 +3026,6 @@ sub startservers {
                 $run{'telnet'}="$pid $pid2";
             }
         }
-        elsif($what eq "none") {
-            logmsg "* starts no server\n" if ($verbose);
-        }
         else {
             warn "we don't support a server for $what";
             return ("no server for $what", 4);
@@ -3165,7 +3168,7 @@ sub subvariables {
     # this only works after the SSH server has been started
     # TODO: call sshversioninfo early and store $sshdid so this substitution
     # always works
-    if ($sshdid && $sshdid =~ /OpenSSH-Windows/) {
+    if($sshdid && $sshdid =~ /OpenSSH-Windows/) {
         $ssh_pwd = $file_pwd;
     }
 
@@ -3176,6 +3179,8 @@ sub subvariables {
     $$thing =~ s/${prefix}CERTDIR/./g;
     $$thing =~ s/${prefix}USER/$USER/g;
     $$thing =~ s/${prefix}DEV_NULL/$dev_null/g;
+    my $libtests = $LIBDIR . 'libtests' . exe_ext('TOOL');
+    $$thing =~ s/${prefix}LIBTESTS/$libtests/g;
 
     $$thing =~ s/${prefix}SSHSRVMD5/$SSHSRVMD5/g;
     $$thing =~ s/${prefix}SSHSRVSHA256/$SSHSRVSHA256/g;

@@ -84,7 +84,7 @@ announcement.
   [distros@openwall](https://oss-security.openwall.org/wiki/mailing-lists/distros)
   to prepare them about the upcoming public security vulnerability
   announcement - attach the advisory draft for information with CVE and
-  current patch. 'distros' does not accept an embargo longer than 14 days and
+  current patch. 'distros' does not accept an embargo longer than 7 days and
   they do not care for Windows-specific flaws.
 
 - No more than 48 hours before the release, the private branch is merged into
@@ -134,12 +134,15 @@ somewhat over time and a list somewhere only risks getting outdated.
 6. On security advisory release day, push the changes on the curl-www
    repository's remote master branch.
 
-## HackerOne
+## Disclose the report
 
 Request the issue to be disclosed. If there are sensitive details present in
 the report and discussion, those should be redacted from the disclosure. The
 default policy is to disclose as much as possible as soon as the vulnerability
 has been published.
+
+*All* reports submitted to the project, valid or not, should be disclosed and
+made public.
 
 ## Bug Bounty
 
@@ -165,7 +168,7 @@ severity levels is hard enough for us.
 When deciding severity level on a particular issue, we take all the factors
 into account: attack vector, attack complexity, required privileges, necessary
 build configuration, protocols involved, platform specifics and also what
-effects a possible exploit or trigger of the issue can lead do, including
+effects a possible exploit or trigger of the issue can lead to, including
 confidentiality, integrity or availability problems.
 
 ## Low
@@ -178,16 +181,16 @@ example](https://curl.se/docs/CVE-2022-43552.html)
 ## Medium
 
 This is a security problem that is less hard than **Low** to exploit or
-trigger. Less strict timing, wider platforms availability or involving more
+trigger. Less strict timing, wider platform availability or involving more
 widely used options or protocols. A problem that usually needs something else
 to also happen to become serious. [Past
 example](https://curl.se/docs/CVE-2022-32206.html)
 
 ## High
 
-This issue in itself a serious problem with real world impact. Flaws that can
-easily compromise the confidentiality, integrity or availability of resources.
-Exploiting or triggering this problem is not hard. [Past
+This issue is in itself a serious problem with real world impact. Flaws that
+can easily compromise the confidentiality, integrity or availability of
+resources. Exploiting or triggering this problem is not hard. [Past
 example](https://curl.se/docs/CVE-2019-3822.html)
 
 ## Critical
@@ -206,7 +209,7 @@ This is an incomplete list of issues that are not considered vulnerabilities.
 
 We do not consider a small memory leak a security problem; even if the amount
 of allocated memory grows by a small amount every now and then. Long-living
-applications and services already need to have counter-measures and deal with
+applications and services already need to have countermeasures and deal with
 growing memory usage, be it leaks or just increased use. A small memory or
 resource leak is then expected to *not* cause a security problem.
 
@@ -253,6 +256,9 @@ Vulnerabilities in features which are off by default (in the build) and
 documented as experimental, or exist only in debug mode, are not eligible for a
 reward and we do not consider them security problems.
 
+The same applies to scripts and software which are not installed by default
+through the make install rule.
+
 ## URL inconsistencies
 
 URL parser inconsistencies between browsers and curl are expected and are not
@@ -266,7 +272,7 @@ Obvious parser bugs can still be vulnerabilities of course.
 
 The curl command blanks the contents of a number of command line arguments to
 prevent them from appearing in process listings. It does not blank all
-arguments even if some of them that are not blanked might contain sensitive
+arguments, even though some that are not blanked might contain sensitive
 data. We consider this functionality a best-effort and omissions are not
 security vulnerabilities.
 
@@ -347,3 +353,90 @@ using the protocols or options that require the use of those algorithms.
 
 When servers upgrade to use secure alternatives, curl users should use those
 options/protocols.
+
+# curl major incident response
+
+Vulnerability disclosure manages the full life cycle of a vulnerability
+affecting curl - where the **curl-security** team privately engages with
+reporters coordinating on embargo and eventual release of security fixes.
+
+For most vulnerabilities (even critical vulnerabilities) this is the
+normal _'mode'_ of incident response.
+
+A **major incident** is defined as something that has much larger scope and
+impact on users and developers of curl.
+
+A major incident usually encompasses one or more of the following:
+* broad and deep impact on developers, distros and users
+* high visibility
+* remote code execution
+* exploit readily available
+* critical curl infrastructure compromised
+* time sensitive
+* premature disclosure (e.g. embargo broken)
+
+A major incident is declared only when it is deemed that the normal
+vulnerability disclosure process is not sufficient.
+
+The curl **major incident** process is as follows:
+
+## Major incident begins
+
+Only a member of the **curl-security** team can declare a **major incident**
+via any or all of the following communication channels:
+
+* **irc**: channel #curl on the network [Libera.Chat](https://libera.chat/)
+* **mailing-lists**:
+  * curl-announce
+  * curl-users
+  * curl-distros
+* **website**: [curl.se](https://curl.se/)
+
+This declaration may also be transmitted via other channels, though the
+above are considered official channels.
+
+The veracity of such a communication can be verified by consulting two
+or more **curl-security** team members.
+
+This announcement nominates, from **curl-security** team, the following
+roles:
+
+* **incident lead** - Coordinates technical efforts
+* **communication lead** - Single point of public contact
+
+It is likely that our [BDFL](https://en.wikipedia.org/wiki/Benevolent_dictator_for_life) occupies
+one of these roles, though this plan does not depend on it.
+
+A declaration may also contain more detailed information but as we honor embargoes
+and vulnerability disclosure throughout this process, it may also just contain
+brief notification that a **major incident** is occurring.
+
+## Major incident ongoing
+
+During the incident - all press, media, legal or commercial entities should contact
+communication leader (security@curl.se).
+
+Existing **curl-security** team internal communication channels are used
+for all internal communication.
+
+Existing vulnerability disclosure process are followed for any embargoes
+and fixes.
+
+Where possible, public communication are provided:
+* regular communication from communication leader (for example daily update)
+* asynchronous communication from incident leader
+
+* Delivered to the aforementioned curl communication channels.
+
+A log is kept of all external and internal communication.
+
+Once fixes have been released we may provide a more detailed postmortem and
+overall timeline of events.
+
+## Major incident ends
+
+Both the incident and communication leads declare when a **major incident**
+has finished.
+
+Any notices are removed and a return to normal vulnerability disclosure
+process.

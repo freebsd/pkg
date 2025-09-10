@@ -54,14 +54,14 @@ use servers qw(
     protoport
     serverfortest
     stopservers
-);
+    );
 use runner qw(
     readtestkeywords
     singletest_preprocess
-);
+    );
 use testutil qw(
     setlogfunc
-);
+    );
 use getpart;
 
 
@@ -75,7 +75,7 @@ my $is_wsl = $uname_release =~ /Microsoft$/;
 sub logmsg {
     for(@_) {
         my $line = $_;
-        if ($is_wsl) {
+        if($is_wsl) {
             # use \r\n for WSL shell
             $line =~ s/\r?\n$/\r\n/g;
         }

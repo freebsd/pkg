@@ -23,8 +23,6 @@
  ***************************************************************************/
 #include "tool_setup.h"
 
-#include <curlx.h>
-
 #include "tool_help.h"
 #include "tool_libinfo.h"
 #include "tool_util.h"
@@ -35,7 +33,7 @@
 #include "tool_cfgable.h"
 #include "terminal.h"
 
-#include <memdebug.h> /* keep this as LAST include */
+#include "memdebug.h" /* keep this as LAST include */
 
 struct category_descriptors {
   const char *opt;
@@ -56,7 +54,7 @@ static const struct category_descriptors categories[] = {
   {"http", "HTTP and HTTPS protocol", CURLHELP_HTTP},
   {"imap", "IMAP protocol", CURLHELP_IMAP},
   {"ldap", "LDAP protocol", CURLHELP_LDAP},
-  {"output", "Filesystem output", CURLHELP_OUTPUT},
+  {"output", "File system output", CURLHELP_OUTPUT},
   {"pop3", "POP3 protocol", CURLHELP_POP3},
   {"post", "HTTP POST specific", CURLHELP_POST},
   {"proxy", "Options for proxies", CURLHELP_PROXY},

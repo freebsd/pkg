@@ -21,10 +21,12 @@
 # SPDX-License-Identifier: curl
 #
 ###########################################################################
+# Shared between CMakeLists.txt and Makefile.am
 
 LIB_CURLX_CFILES = \
   curlx/base64.c   \
   curlx/dynbuf.c   \
+  curlx/inet_ntop.c \
   curlx/inet_pton.c \
   curlx/multibyte.c \
   curlx/nonblock.c \
@@ -32,13 +34,16 @@ LIB_CURLX_CFILES = \
   curlx/timediff.c \
   curlx/timeval.c  \
   curlx/version_win32.c \
+  curlx/wait.c     \
   curlx/warnless.c \
   curlx/winapi.c
 
 LIB_CURLX_HFILES = \
+  curlx/binmode.h  \
   curlx/base64.h   \
   curlx/curlx.h    \
   curlx/dynbuf.h   \
+  curlx/inet_ntop.h \
   curlx/inet_pton.h \
   curlx/multibyte.h \
   curlx/nonblock.h \
@@ -46,6 +51,7 @@ LIB_CURLX_HFILES = \
   curlx/timediff.h \
   curlx/timeval.h  \
   curlx/version_win32.h \
+  curlx/wait.h     \
   curlx/warnless.h \
   curlx/winapi.h
 
@@ -69,7 +75,6 @@ LIB_VAUTH_HFILES =      \
   vauth/vauth.h
 
 LIB_VTLS_CFILES =           \
-  vtls/bearssl.c            \
   vtls/cipher_suite.c       \
   vtls/gtls.c               \
   vtls/hostcheck.c          \
@@ -80,7 +85,6 @@ LIB_VTLS_CFILES =           \
   vtls/rustls.c             \
   vtls/schannel.c           \
   vtls/schannel_verify.c    \
-  vtls/sectransp.c          \
   vtls/vtls.c               \
   vtls/vtls_scache.c        \
   vtls/vtls_spack.c         \
@@ -88,7 +92,6 @@ LIB_VTLS_CFILES =           \
   vtls/x509asn1.c
 
 LIB_VTLS_HFILES =           \
-  vtls/bearssl.h            \
   vtls/cipher_suite.h       \
   vtls/gtls.h               \
   vtls/hostcheck.h          \
@@ -99,7 +102,6 @@ LIB_VTLS_HFILES =           \
   vtls/rustls.h             \
   vtls/schannel.h           \
   vtls/schannel_int.h       \
-  vtls/sectransp.h          \
   vtls/vtls.h               \
   vtls/vtls_int.h           \
   vtls/vtls_scache.h        \
@@ -108,7 +110,6 @@ LIB_VTLS_HFILES =           \
   vtls/x509asn1.h
 
 LIB_VQUIC_CFILES = \
-  vquic/curl_msh3.c   \
   vquic/curl_ngtcp2.c   \
   vquic/curl_osslq.c   \
   vquic/curl_quiche.c   \
@@ -116,7 +117,6 @@ LIB_VQUIC_CFILES = \
   vquic/vquic-tls.c
 
 LIB_VQUIC_HFILES = \
-  vquic/curl_msh3.h   \
   vquic/curl_ngtcp2.h   \
   vquic/curl_osslq.h   \
   vquic/curl_quiche.h   \
@@ -146,6 +146,7 @@ LIB_CFILES =         \
   cf-h2-proxy.c      \
   cf-haproxy.c       \
   cf-https-connect.c \
+  cf-ip-happy.c      \
   cf-socket.c        \
   cfilters.c         \
   conncache.c        \
@@ -208,7 +209,6 @@ LIB_CFILES =         \
   idn.c              \
   if2ip.c            \
   imap.c             \
-  inet_ntop.c        \
   krb5.c             \
   ldap.c             \
   llist.c            \
@@ -275,6 +275,7 @@ LIB_HFILES =         \
   cf-h2-proxy.h      \
   cf-haproxy.h       \
   cf-https-connect.h \
+  cf-ip-happy.h      \
   cf-socket.h        \
   cfilters.h         \
   conncache.h        \
@@ -295,6 +296,7 @@ LIB_HFILES =         \
   curl_ldap.h        \
   curl_md4.h         \
   curl_md5.h         \
+  curl_mem_undef.h   \
   curl_memory.h      \
   curl_memrchr.h     \
   curl_ntlm_core.h   \
@@ -345,7 +347,6 @@ LIB_HFILES =         \
   idn.h              \
   if2ip.h            \
   imap.h             \
-  inet_ntop.h        \
   llist.h            \
   macos.h            \
   memdebug.h         \

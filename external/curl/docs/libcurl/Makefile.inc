@@ -21,8 +21,7 @@
 # SPDX-License-Identifier: curl
 #
 ###########################################################################
-
-# Shared between Makefile.am and CMakeLists.txt
+# Shared between CMakeLists.txt and Makefile.am
 
 man_MANS = \
  curl_easy_cleanup.3 \
@@ -76,6 +75,7 @@ man_MANS = \
  curl_multi_cleanup.3 \
  curl_multi_fdset.3 \
  curl_multi_get_handles.3 \
+ curl_multi_get_offt.3 \
  curl_multi_info_read.3 \
  curl_multi_init.3 \
  curl_multi_perform.3 \
@@ -112,6 +112,7 @@ man_MANS = \
  curl_ws_meta.3 \
  curl_ws_recv.3 \
  curl_ws_send.3 \
+ curl_ws_start_frame.3 \
  libcurl-easy.3 \
  libcurl-env-dbg.3 \
  libcurl-env.3 \

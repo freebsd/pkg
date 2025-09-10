@@ -68,7 +68,7 @@ CURLcode vquic_send_blocked_pkts(struct Curl_cfilter *cf,
                                  struct cf_quic_ctx *qctx);
 
 CURLcode vquic_send(struct Curl_cfilter *cf, struct Curl_easy *data,
-                        struct cf_quic_ctx *qctx, size_t gsolen);
+                    struct cf_quic_ctx *qctx, size_t gsolen);
 
 CURLcode vquic_send_tail_split(struct Curl_cfilter *cf, struct Curl_easy *data,
                                struct cf_quic_ctx *qctx, size_t gsolen,
@@ -90,5 +90,14 @@ CURLcode vquic_recv_packets(struct Curl_cfilter *cf,
                             vquic_recv_pkt_cb *recv_cb, void *userp);
 
 #endif /* !USE_HTTP3 */
+
+#ifdef USE_NGTCP2
+struct ngtcp2_mem;
+struct ngtcp2_mem *Curl_ngtcp2_mem(void);
+#endif
+#ifdef USE_NGHTTP3
+struct nghttp3_mem;
+struct nghttp3_mem *Curl_nghttp3_mem(void);
+#endif
 
 #endif /* HEADER_CURL_VQUIC_QUIC_INT_H */

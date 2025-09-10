@@ -62,8 +62,6 @@ EXTRA_DIST =        \
  http2-server.pl    \
  http3-server.pl    \
  memanalyze.pl      \
- mk-bundle-hints.sh \
- mk-bundle.pl       \
  negtelnetserver.py \
  nghttpx.conf       \
  pathhelp.pm        \
@@ -119,7 +117,7 @@ else
 TEST_COMMON += !documentation
 endif
 
-TEST = srcdir=$(srcdir) $(PERL) $(PERLFLAGS) $(srcdir)/runtests.pl $(TEST_COMMON)
+TEST = srcdir=$(srcdir) @PERL@ $(PERLFLAGS) $(srcdir)/runtests.pl $(TEST_COMMON)
 TEST_Q = -a -s
 TEST_AM = -a -am
 TEST_F = -a -p -r
@@ -131,17 +129,20 @@ TEST_E = -a -e
 TEST_NF = -a -p ~flaky ~timing-dependent
 
 # special CI target derived from nonflaky with CI-specific flags
-TEST_CI = $(TEST_NF) -r --retry=5 -j20
+TEST_CI = $(TEST_NF) -r --retry=5 -j20 --buildinfo
 
 PYTEST = pytest
 endif
 
 # make sure that PERL is pointing to an executable
 perlcheck:
-	@if ! test -x "$(PERL)"; then echo "No perl!"; exit 2; fi
+	@if ! test -x "@PERL@"; then echo "No perl!"; exit 2; fi
 
-build-certs:
+build-certs: perlcheck
 	(cd certs && $(MAKE))
+
+# alias for 'test' to match CMake, where 'test' is a reserved target
+tests: test
 
 test: perlcheck all
 	$(TEST) $(TFLAGS)
@@ -177,6 +178,7 @@ checksrc:
 	(cd unit && $(MAKE) checksrc)
 	(cd tunit && $(MAKE) checksrc)
 	(cd server && $(MAKE) checksrc)
+	(cd client && $(MAKE) checksrc)
 	(cd http && $(MAKE) checksrc)
 
 all-local: $(MANFILES) build-certs

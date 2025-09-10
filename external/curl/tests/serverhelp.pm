@@ -29,6 +29,8 @@ package serverhelp;
 use strict;
 use warnings;
 
+use Time::HiRes;
+
 BEGIN {
     use base qw(Exporter);
 
@@ -52,13 +54,6 @@ BEGIN {
         datasockf_pidfilename
         datasockf_logfilename
     );
-
-    # sub second timestamping needs Time::HiRes
-    eval {
-        no warnings "all";
-        require Time::HiRes;
-        import  Time::HiRes qw( gettimeofday );
-    }
 }
 
 use globalconfig;
@@ -81,20 +76,10 @@ our $logfile;  # server log file name, for logmsg
 # logmsg is general message logging subroutine for our test servers.
 #
 sub logmsg {
-    my $now;
-    # sub second timestamping needs Time::HiRes
-    if($Time::HiRes::VERSION) {
-        my ($seconds, $usec) = gettimeofday();
-        my ($sec,$min,$hour,$mday,$mon,$year,$wday,$yday,$isdst) =
-            localtime($seconds);
-        $now = sprintf("%02d:%02d:%02d.%06d ", $hour, $min, $sec, $usec);
-    }
-    else {
-        my $seconds = time();
-        my ($sec,$min,$hour,$mday,$mon,$year,$wday,$yday,$isdst) =
-            localtime($seconds);
-        $now = sprintf("%02d:%02d:%02d ", $hour, $min, $sec);
-    }
+    my ($seconds, $usec) = Time::HiRes::gettimeofday();
+    my ($sec,$min,$hour,$mday,$mon,$year,$wday,$yday,$isdst) =
+        localtime($seconds);
+    my $now = sprintf("%02d:%02d:%02d.%06d ", $hour, $min, $sec, $usec);
     # we see warnings on Windows run that $logfile is used uninitialized
     # TODO: not found yet where this comes from
     $logfile = "serverhelp_uninitialized.log" if(!$logfile);
@@ -247,14 +232,7 @@ sub server_exe {
     if(!defined $ext) {
         $ext = 'SRV';
     }
-    my $cmd;
-    if($ENV{'CURL_TEST_BUNDLES'}) {
-        $cmd = $SRVDIR . "servers" . exe_ext($ext) . " $name";
-    }
-    else {
-        $cmd = $SRVDIR . $name . exe_ext($ext);
-    }
-    return exerunner() . "$cmd";
+    return exerunner() . $SRVDIR . "servers" . exe_ext($ext) . " $name";
 }
 
 
@@ -266,13 +244,7 @@ sub server_exe_args {
     if(!defined $ext) {
         $ext = 'SRV';
     }
-    my @cmd;
-    if($ENV{'CURL_TEST_BUNDLES'}) {
-        @cmd = ($SRVDIR . "servers" . exe_ext($ext), $name);
-    }
-    else {
-        @cmd = ($SRVDIR . $name . exe_ext($ext));
-    }
+    my @cmd = ($SRVDIR . "servers" . exe_ext($ext), $name);
     if($ENV{'CURL_TEST_EXE_RUNNER'}) {
         unshift @cmd, $ENV{'CURL_TEST_EXE_RUNNER'};
     }

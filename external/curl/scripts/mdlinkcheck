@@ -23,6 +23,9 @@
 #
 ###########################################################################
 
+use strict;
+use warnings;
+
 my %whitelist = (
     'https://curl.se/' => 1,
     'https://curl.se/changes.html' => 1,
@@ -70,6 +73,9 @@ my %whitelist = (
 
     );
 
+my %url;
+my %flink;
+
 # list all .md files in the repo
 my @files=`git ls-files '**.md'`;
 
@@ -93,8 +99,14 @@ sub storelink {
     my $dir = $f;
     $dir =~ s:([^/]*\z)::;
 
-    while($link =~ s:^\.\.\/::) {
-        $dir =~ s:([^/]*)\/\z::;
+    if($link =~ s/(^\/)//) {
+        # link starts with a slash, now removed
+        $dir = "";
+    }
+    else {
+        while($link =~ s:^\.\.\/::) {
+            $dir =~ s:([^/]*)\/\z::;
+        }
     }
 
     $flink{"./$dir$link"} .= "$f:$line ";
@@ -127,6 +139,7 @@ sub checkurl {
 
     print "check $url\n";
     my $curlcmd="curl -ILfsm10 --retry 2 --retry-delay 5 -A \"Mozilla/curl.se link-probe\"";
+    $url =~ s/\+/%2B/g;
     my @content = `$curlcmd \"$url\"`;
     if(!$content[0]) {
         print STDERR "FAIL\n";
@@ -146,7 +159,7 @@ for my $u (sort keys %url) {
     my $r = checkurl($u);
 
     if($r) {
-        for my $f (split(/ /, $url{$l})) {
+        for my $f (split(/ /, $url{$u})) {
             printf "%s ERROR links to missing URL %s\n", $f, $u;
             $error++;
         }
@@ -162,4 +175,4 @@ for my $l (sort keys %flink) {
     }
 }
 
-exit 1 if ($error);
+exit 1 if($error);

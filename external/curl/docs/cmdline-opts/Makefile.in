@@ -61,7 +61,7 @@
 # SPDX-License-Identifier: curl
 #
 ###########################################################################
-# Shared between Makefile.am and CMakeLists.txt
+# Shared between CMakeLists.txt and Makefile.am
 VPATH = @srcdir@
 am__is_gnu_make = { \
   if test -z '$(MAKELEVEL)'; then \
@@ -139,7 +139,6 @@ host_triplet = @host@
 subdir = docs/cmdline-opts
 ACLOCAL_M4 = $(top_srcdir)/aclocal.m4
 am__aclocal_m4_deps = $(top_srcdir)/m4/curl-amissl.m4 \
-	$(top_srcdir)/m4/curl-bearssl.m4 \
 	$(top_srcdir)/m4/curl-compilers.m4 \
 	$(top_srcdir)/m4/curl-confopts.m4 \
 	$(top_srcdir)/m4/curl-functions.m4 \
@@ -150,7 +149,6 @@ am__aclocal_m4_deps = $(top_srcdir)/m4/curl-amissl.m4 \
 	$(top_srcdir)/m4/curl-reentrant.m4 \
 	$(top_srcdir)/m4/curl-rustls.m4 \
 	$(top_srcdir)/m4/curl-schannel.m4 \
-	$(top_srcdir)/m4/curl-sectransp.m4 \
 	$(top_srcdir)/m4/curl-sysconfig.m4 \
 	$(top_srcdir)/m4/curl-wolfssl.m4 $(top_srcdir)/m4/libtool.m4 \
 	$(top_srcdir)/m4/ltoptions.m4 $(top_srcdir)/m4/ltsugar.m4 \
@@ -256,6 +254,7 @@ CURL_LIBCURL_VERSIONED_SYMBOLS_PREFIX = @CURL_LIBCURL_VERSIONED_SYMBOLS_PREFIX@
 CURL_LIBCURL_VERSIONED_SYMBOLS_SONAME = @CURL_LIBCURL_VERSIONED_SYMBOLS_SONAME@
 CURL_NETWORK_AND_TIME_LIBS = @CURL_NETWORK_AND_TIME_LIBS@
 CYGPATH_W = @CYGPATH_W@
+DANTED = @DANTED@
 DEFS = @DEFS@
 DEPDIR = @DEPDIR@
 DLLTOOL = @DLLTOOL@
@@ -469,6 +468,7 @@ DPAGES = \
   fail-with-body.md \
   fail.md \
   false-start.md \
+  follow.md \
   form-escape.md \
   form-string.md \
   form.md \
@@ -549,8 +549,10 @@ DPAGES = \
   ntlm.md \
   oauth2-bearer.md \
   output-dir.md \
+  out-null.md \
   output.md \
   parallel-immediate.md \
+  parallel-max-host.md \
   parallel-max.md \
   parallel.md \
   pass.md \
@@ -683,6 +685,8 @@ DPAGES = \
   write-out.md \
   xattr.md
 
+
+# Get SUPPORT, DPAGES variables
 EXTRA_DIST = $(DPAGES) MANPAGE.md $(SUPPORT) CMakeLists.txt mainpage.idx
 GEN = $(GN_$(V))
 GN_0 = @echo "  GENERATE" $@;

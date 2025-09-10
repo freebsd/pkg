@@ -21,25 +21,23 @@
  * SPDX-License-Identifier: curl
  *
  ***************************************************************************/
-#include "test.h"
+#include "first.h"
 
 #include "memdebug.h"
 
-static char testdata[]="this is what we post to the silly web server\n";
-
-struct WriteThis {
-  char *readptr;
+struct t1517_WriteThis {
+  const char *readptr;
   size_t sizeleft;
 };
 
-static size_t read_callback(char *ptr, size_t size, size_t nmemb, void *userp)
+static size_t t1517_read_cb(char *ptr, size_t size, size_t nmemb, void *userp)
 {
-  struct WriteThis *pooh = (struct WriteThis *)userp;
+  struct t1517_WriteThis *pooh = (struct t1517_WriteThis *)userp;
   size_t tocopy = size * nmemb;
 
   /* Wait one second before return POST data          *
    * so libcurl will wait before sending request body */
-  wait_ms(1000);
+  curlx_wait_ms(1000);
 
   if(tocopy < 1 || !pooh->sizeleft)
     return 0;
@@ -53,23 +51,15 @@ static size_t read_callback(char *ptr, size_t size, size_t nmemb, void *userp)
   return tocopy;
 }
 
-CURLcode test(char *URL)
+static CURLcode test_lib1517(const char *URL)
 {
+  static const char testdata[] =
+    "this is what we post to the silly web server\n";
+
   CURL *curl;
   CURLcode res = CURLE_OK;
 
-  struct WriteThis pooh;
-
-  if(!strcmp(URL, "check")) {
-#if (defined(_WIN32) || defined(__CYGWIN__))
-    curl_mprintf("Windows TCP does not deliver response data but reports "
-                 "CONNABORTED\n");
-    return TEST_ERR_FAILURE; /* skip since it fails on Windows without
-                                workaround */
-#else
-    return CURLE_OK; /* sure, run this! */
-#endif
-  }
+  struct t1517_WriteThis pooh;
 
   pooh.readptr = testdata;
   pooh.sizeleft = strlen(testdata);
@@ -96,7 +86,7 @@ CURLcode test(char *URL)
   test_setopt(curl, CURLOPT_POSTFIELDSIZE, (long)pooh.sizeleft);
 
   /* we want to use our own read function */
-  test_setopt(curl, CURLOPT_READFUNCTION, read_callback);
+  test_setopt(curl, CURLOPT_READFUNCTION, t1517_read_cb);
 
   /* pointer to pass to our read function */
   test_setopt(curl, CURLOPT_READDATA, &pooh);

@@ -37,8 +37,7 @@
 # SPDX-License-Identifier: curl
 #
 ###########################################################################
-
-# these files are used in every single unit test program
+# Shared between CMakeLists.txt and Makefile.am
 
 VPATH = @srcdir@
 am__is_gnu_make = { \
@@ -116,14 +115,10 @@ build_triplet = @build@
 host_triplet = @host@
 @DEBUGBUILD_TRUE@am__append_1 = -DDEBUGBUILD
 @CURLDEBUG_TRUE@am__append_2 = -DCURLDEBUG
-@BUILD_UNITTESTS_TRUE@@USE_TEST_BUNDLES_FALSE@noinst_PROGRAMS =  \
-@BUILD_UNITTESTS_TRUE@@USE_TEST_BUNDLES_FALSE@	$(am__EXEEXT_1)
-@BUILD_UNITTESTS_TRUE@@USE_TEST_BUNDLES_TRUE@noinst_PROGRAMS =  \
-@BUILD_UNITTESTS_TRUE@@USE_TEST_BUNDLES_TRUE@	$(am__EXEEXT_2)
+@BUILD_UNITTESTS_TRUE@noinst_PROGRAMS = $(am__EXEEXT_1)
 subdir = tests/tunit
 ACLOCAL_M4 = $(top_srcdir)/aclocal.m4
 am__aclocal_m4_deps = $(top_srcdir)/m4/curl-amissl.m4 \
-	$(top_srcdir)/m4/curl-bearssl.m4 \
 	$(top_srcdir)/m4/curl-compilers.m4 \
 	$(top_srcdir)/m4/curl-confopts.m4 \
 	$(top_srcdir)/m4/curl-functions.m4 \
@@ -134,7 +129,6 @@ am__aclocal_m4_deps = $(top_srcdir)/m4/curl-amissl.m4 \
 	$(top_srcdir)/m4/curl-reentrant.m4 \
 	$(top_srcdir)/m4/curl-rustls.m4 \
 	$(top_srcdir)/m4/curl-schannel.m4 \
-	$(top_srcdir)/m4/curl-sectransp.m4 \
 	$(top_srcdir)/m4/curl-sysconfig.m4 \
 	$(top_srcdir)/m4/curl-wolfssl.m4 $(top_srcdir)/m4/libtool.m4 \
 	$(top_srcdir)/m4/ltoptions.m4 $(top_srcdir)/m4/ltsugar.m4 \
@@ -154,44 +148,18 @@ mkinstalldirs = $(install_sh) -d
 CONFIG_HEADER = $(top_builddir)/lib/curl_config.h
 CONFIG_CLEAN_FILES =
 CONFIG_CLEAN_VPATH_FILES =
-@BUILD_UNITTESTS_TRUE@@USE_TEST_BUNDLES_FALSE@am__EXEEXT_1 = tool1394$(EXEEXT) \
-@BUILD_UNITTESTS_TRUE@@USE_TEST_BUNDLES_FALSE@	tool1604$(EXEEXT) \
-@BUILD_UNITTESTS_TRUE@@USE_TEST_BUNDLES_FALSE@	tool1621$(EXEEXT)
-am__EXEEXT_2 = tunits$(EXEEXT)
+am__EXEEXT_1 = tunits$(EXEEXT)
 PROGRAMS = $(noinst_PROGRAMS)
-am__tool1394_SOURCES_DIST = tool1394.c ../libtest/first.c
-am__dirstamp = $(am__leading_dot)dirstamp
-@BUILD_UNITTESTS_TRUE@@USE_TEST_BUNDLES_FALSE@am__objects_1 = ../libtest/first.$(OBJEXT)
-@BUILD_UNITTESTS_TRUE@@USE_TEST_BUNDLES_FALSE@am__objects_2 = $(am__objects_1)
-@BUILD_UNITTESTS_TRUE@@USE_TEST_BUNDLES_FALSE@am_tool1394_OBJECTS = tool1394.$(OBJEXT) \
-@BUILD_UNITTESTS_TRUE@@USE_TEST_BUNDLES_FALSE@	$(am__objects_2)
-tool1394_OBJECTS = $(am_tool1394_OBJECTS)
-tool1394_LDADD = $(LDADD)
-tool1394_DEPENDENCIES = $(top_builddir)/src/libcurltool.la \
-	$(top_builddir)/lib/libcurl.la
+tunits_SOURCES = tunits.c
+tunits_OBJECTS = tunits.$(OBJEXT)
+tunits_LDADD = $(LDADD)
+@BUILD_UNITTESTS_TRUE@tunits_DEPENDENCIES =  \
+@BUILD_UNITTESTS_TRUE@	$(top_builddir)/src/libcurltool.la \
+@BUILD_UNITTESTS_TRUE@	$(top_builddir)/lib/libcurl.la
 AM_V_lt = $(am__v_lt_@AM_V@)
 am__v_lt_ = $(am__v_lt_@AM_DEFAULT_V@)
 am__v_lt_0 = --silent
 am__v_lt_1 = 
-am__tool1604_SOURCES_DIST = tool1604.c ../libtest/first.c
-@BUILD_UNITTESTS_TRUE@@USE_TEST_BUNDLES_FALSE@am_tool1604_OBJECTS = tool1604.$(OBJEXT) \
-@BUILD_UNITTESTS_TRUE@@USE_TEST_BUNDLES_FALSE@	$(am__objects_2)
-tool1604_OBJECTS = $(am_tool1604_OBJECTS)
-tool1604_LDADD = $(LDADD)
-tool1604_DEPENDENCIES = $(top_builddir)/src/libcurltool.la \
-	$(top_builddir)/lib/libcurl.la
-am__tool1621_SOURCES_DIST = tool1621.c ../libtest/first.c
-@BUILD_UNITTESTS_TRUE@@USE_TEST_BUNDLES_FALSE@am_tool1621_OBJECTS = tool1621.$(OBJEXT) \
-@BUILD_UNITTESTS_TRUE@@USE_TEST_BUNDLES_FALSE@	$(am__objects_2)
-tool1621_OBJECTS = $(am_tool1621_OBJECTS)
-tool1621_LDADD = $(LDADD)
-tool1621_DEPENDENCIES = $(top_builddir)/src/libcurltool.la \
-	$(top_builddir)/lib/libcurl.la
-@BUILD_UNITTESTS_TRUE@@USE_TEST_BUNDLES_TRUE@nodist_tunits_OBJECTS = tool_bundle.$(OBJEXT)
-tunits_OBJECTS = $(nodist_tunits_OBJECTS)
-tunits_LDADD = $(LDADD)
-tunits_DEPENDENCIES = $(top_builddir)/src/libcurltool.la \
-	$(top_builddir)/lib/libcurl.la
 AM_V_P = $(am__v_P_@AM_V@)
 am__v_P_ = $(am__v_P_@AM_DEFAULT_V@)
 am__v_P_0 = false
@@ -207,9 +175,7 @@ am__v_at_1 =
 DEFAULT_INCLUDES = 
 depcomp = $(SHELL) $(top_srcdir)/depcomp
 am__maybe_remake_depfiles = depfiles
-am__depfiles_remade = ../libtest/$(DEPDIR)/first.Po \
-	./$(DEPDIR)/tool1394.Po ./$(DEPDIR)/tool1604.Po \
-	./$(DEPDIR)/tool1621.Po ./$(DEPDIR)/tool_bundle.Po
+am__depfiles_remade = ./$(DEPDIR)/tunits.Po
 am__mv = mv -f
 COMPILE = $(CC) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(AM_CPPFLAGS) \
 	$(CPPFLAGS) $(AM_CFLAGS) $(CFLAGS)
@@ -229,10 +195,8 @@ AM_V_CCLD = $(am__v_CCLD_@AM_V@)
 am__v_CCLD_ = $(am__v_CCLD_@AM_DEFAULT_V@)
 am__v_CCLD_0 = @echo "  CCLD    " $@;
 am__v_CCLD_1 = 
-SOURCES = $(tool1394_SOURCES) $(tool1604_SOURCES) $(tool1621_SOURCES) \
-	$(nodist_tunits_SOURCES)
-DIST_SOURCES = $(am__tool1394_SOURCES_DIST) \
-	$(am__tool1604_SOURCES_DIST) $(am__tool1621_SOURCES_DIST)
+SOURCES = tunits.c
+DIST_SOURCES = tunits.c
 am__can_run_installinfo = \
   case $$AM_UPDATE_INFO_DIR in \
     n|no|NO) false;; \
@@ -289,6 +253,7 @@ CURL_LIBCURL_VERSIONED_SYMBOLS_PREFIX = @CURL_LIBCURL_VERSIONED_SYMBOLS_PREFIX@
 CURL_LIBCURL_VERSIONED_SYMBOLS_SONAME = @CURL_LIBCURL_VERSIONED_SYMBOLS_SONAME@
 CURL_NETWORK_AND_TIME_LIBS = @CURL_NETWORK_AND_TIME_LIBS@
 CYGPATH_W = @CYGPATH_W@
+DANTED = @DANTED@
 DEFS = @DEFS@
 DEPDIR = @DEPDIR@
 DLLTOOL = @DLLTOOL@
@@ -457,27 +422,27 @@ AUTOMAKE_OPTIONS = foreign nostdinc
 # $(top_srcdir)/include is for libcurl's external include files
 # $(top_builddir)/lib is for libcurl's generated lib/curl_config.h file
 # $(top_srcdir)/lib for libcurl's lib/curl_setup.h and other "borrowed" files
+# $(srcdir) for the generated bundle source to find included test sources
 AM_CPPFLAGS = -I$(top_srcdir)/include -I$(top_builddir)/lib \
-	-I$(top_srcdir)/lib -I$(top_srcdir)/lib/curlx \
-	-I$(top_srcdir)/src -I$(top_srcdir)/tests/libtest \
-	-I$(top_srcdir)/tests/unit -I$(top_srcdir)/tests/tunit \
-	-DCURL_STATICLIB -DUNITTESTS $(am__append_1) $(am__append_2)
-EXTRA_DIST = CMakeLists.txt README.md
-LDADD = $(top_builddir)/src/libcurltool.la   \
-        $(top_builddir)/lib/libcurl.la      \
-        @LIBCURL_PC_LDFLAGS_PRIVATE@ @LIBCURL_PC_LIBS_PRIVATE@
-
+	-I$(top_srcdir)/lib -I$(top_srcdir)/src \
+	-I$(top_srcdir)/tests/libtest -I$(srcdir) -DCURL_STATICLIB \
+	-DUNITTESTS $(am__append_1) $(am__append_2)
 BUNDLE = tunits
-@BUILD_UNITTESTS_TRUE@@USE_TEST_BUNDLES_TRUE@nodist_tunits_SOURCES = tool_bundle.c
-@BUILD_UNITTESTS_TRUE@@USE_TEST_BUNDLES_TRUE@CLEANFILES = tool_bundle.c
-@BUILD_UNITTESTS_TRUE@@USE_TEST_BUNDLES_FALSE@FIRSTFILES = ../libtest/first.c
-@BUILD_UNITTESTS_TRUE@@USE_TEST_BUNDLES_FALSE@TOOLFILES = $(FIRSTFILES)
 
-# These are all tool unit test programs
-@BUILD_UNITTESTS_TRUE@@USE_TEST_BUNDLES_FALSE@TOOLPROGS = tool1394 tool1604 tool1621
-@BUILD_UNITTESTS_TRUE@@USE_TEST_BUNDLES_FALSE@tool1394_SOURCES = tool1394.c $(TOOLFILES)
-@BUILD_UNITTESTS_TRUE@@USE_TEST_BUNDLES_FALSE@tool1604_SOURCES = tool1604.c $(TOOLFILES)
-@BUILD_UNITTESTS_TRUE@@USE_TEST_BUNDLES_FALSE@tool1621_SOURCES = tool1621.c $(TOOLFILES)
+# Files referenced from the bundle source
+FIRST_C = ../libtest/first.c
+
+# All tool unit test programs
+TESTS_C = \
+  tool1394.c \
+  tool1604.c \
+  tool1621.c
+
+
+# Get BUNDLE, FIRST_C, TESTS_C variables
+EXTRA_DIST = CMakeLists.txt README.md $(TESTS_C)
+@BUILD_UNITTESTS_TRUE@LDADD = $(top_builddir)/src/libcurltool.la $(top_builddir)/lib/libcurl.la
+@BUILD_UNITTESTS_TRUE@CLEANFILES = $(BUNDLE).c
 CHECKSRC = $(CS_$(V))
 CS_0 = @echo "  RUN     " $@;
 CS_1 = 
@@ -525,26 +490,6 @@ clean-noinstPROGRAMS:
 	list=`for p in $$list; do echo "$$p"; done | sed 's/$(EXEEXT)$$//'`; \
 	echo " rm -f" $$list; \
 	rm -f $$list
-../libtest/$(am__dirstamp):
-	@$(MKDIR_P) ../libtest
-	@: > ../libtest/$(am__dirstamp)
-../libtest/$(DEPDIR)/$(am__dirstamp):
-	@$(MKDIR_P) ../libtest/$(DEPDIR)
-	@: > ../libtest/$(DEPDIR)/$(am__dirstamp)
-../libtest/first.$(OBJEXT): ../libtest/$(am__dirstamp) \
-	../libtest/$(DEPDIR)/$(am__dirstamp)
-
-tool1394$(EXEEXT): $(tool1394_OBJECTS) $(tool1394_DEPENDENCIES) $(EXTRA_tool1394_DEPENDENCIES) 
-	@rm -f tool1394$(EXEEXT)
-	$(AM_V_CCLD)$(LINK) $(tool1394_OBJECTS) $(tool1394_LDADD) $(LIBS)
-
-tool1604$(EXEEXT): $(tool1604_OBJECTS) $(tool1604_DEPENDENCIES) $(EXTRA_tool1604_DEPENDENCIES) 
-	@rm -f tool1604$(EXEEXT)
-	$(AM_V_CCLD)$(LINK) $(tool1604_OBJECTS) $(tool1604_LDADD) $(LIBS)
-
-tool1621$(EXEEXT): $(tool1621_OBJECTS) $(tool1621_DEPENDENCIES) $(EXTRA_tool1621_DEPENDENCIES) 
-	@rm -f tool1621$(EXEEXT)
-	$(AM_V_CCLD)$(LINK) $(tool1621_OBJECTS) $(tool1621_LDADD) $(LIBS)
 
 tunits$(EXEEXT): $(tunits_OBJECTS) $(tunits_DEPENDENCIES) $(EXTRA_tunits_DEPENDENCIES) 
 	@rm -f tunits$(EXEEXT)
@@ -552,16 +497,11 @@ tunits$(EXEEXT): $(tunits_OBJECTS) $(tunits_DEPENDENCIES) $(EXTRA_tunits_DEPENDE
 
 mostlyclean-compile:
 	-rm -f *.$(OBJEXT)
-	-rm -f ../libtest/*.$(OBJEXT)
 
 distclean-compile:
 	-rm -f *.tab.c
 
-@AMDEP_TRUE@@am__include@ @am__quote@../libtest/$(DEPDIR)/first.Po@am__quote@ # am--include-marker
-@AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/tool1394.Po@am__quote@ # am--include-marker
-@AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/tool1604.Po@am__quote@ # am--include-marker
-@AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/tool1621.Po@am__quote@ # am--include-marker
-@AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/tool_bundle.Po@am__quote@ # am--include-marker
+@AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/tunits.Po@am__quote@ # am--include-marker
 
 $(am__depfiles_remade):
 	@$(MKDIR_P) $(@D)
@@ -715,8 +655,6 @@ clean-generic:
 distclean-generic:
 	-test -z "$(CONFIG_CLEAN_FILES)" || rm -f $(CONFIG_CLEAN_FILES)
 	-test . = "$(srcdir)" || test -z "$(CONFIG_CLEAN_VPATH_FILES)" || rm -f $(CONFIG_CLEAN_VPATH_FILES)
-	-rm -f ../libtest/$(DEPDIR)/$(am__dirstamp)
-	-rm -f ../libtest/$(am__dirstamp)
 
 maintainer-clean-generic:
 	@echo "This command is intended for maintainers to use"
@@ -727,11 +665,7 @@ clean-am: clean-generic clean-libtool clean-local clean-noinstPROGRAMS \
 	mostlyclean-am
 
 distclean: distclean-am
-		-rm -f ../libtest/$(DEPDIR)/first.Po
-	-rm -f ./$(DEPDIR)/tool1394.Po
-	-rm -f ./$(DEPDIR)/tool1604.Po
-	-rm -f ./$(DEPDIR)/tool1621.Po
-	-rm -f ./$(DEPDIR)/tool_bundle.Po
+		-rm -f ./$(DEPDIR)/tunits.Po
 	-rm -f Makefile
 distclean-am: clean-am distclean-compile distclean-generic \
 	distclean-tags
@@ -777,11 +711,7 @@ install-ps-am:
 installcheck-am:
 
 maintainer-clean: maintainer-clean-am
-		-rm -f ../libtest/$(DEPDIR)/first.Po
-	-rm -f ./$(DEPDIR)/tool1394.Po
-	-rm -f ./$(DEPDIR)/tool1604.Po
-	-rm -f ./$(DEPDIR)/tool1621.Po
-	-rm -f ./$(DEPDIR)/tool_bundle.Po
+		-rm -f ./$(DEPDIR)/tunits.Po
 	-rm -f Makefile
 maintainer-clean-am: distclean-am maintainer-clean-generic
 
@@ -819,13 +749,13 @@ uninstall-am:
 .PRECIOUS: Makefile
 
 
-@BUILD_UNITTESTS_TRUE@@USE_TEST_BUNDLES_TRUE@tool_bundle.c: $(top_srcdir)/tests/mk-bundle.pl Makefile.inc
-@BUILD_UNITTESTS_TRUE@@USE_TEST_BUNDLES_TRUE@	@PERL@ $(top_srcdir)/tests/mk-bundle.pl $(srcdir) > tool_bundle.c
+@BUILD_UNITTESTS_TRUE@$(BUNDLE).c: $(top_srcdir)/scripts/mk-unity.pl Makefile.inc $(FIRST_C) $(TESTS_C)
+@BUILD_UNITTESTS_TRUE@	@PERL@ $(top_srcdir)/scripts/mk-unity.pl --test $(TESTS_C) > $(BUNDLE).c
 
 # ignore generated C files since they play by slightly different rules!
 checksrc:
 	$(CHECKSRC)(@PERL@ $(top_srcdir)/scripts/checksrc.pl -D$(srcdir) \
-	  -W$(srcdir)/tool_bundle.c \
+	  -W$(srcdir)/$(BUNDLE).c \
 	  $(srcdir)/*.[ch])
 
 @NOT_CURL_CI_TRUE@all-local: checksrc
