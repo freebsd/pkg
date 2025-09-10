@@ -61,6 +61,8 @@ sanitize(char *buf, const char *src, size_t size)
 			return (NULL);
 		}
 		*dst++ = *src++;
+		if (*src == '\0')
+			break;
 		size--;
 	}
 	if (*src != '\0') {
