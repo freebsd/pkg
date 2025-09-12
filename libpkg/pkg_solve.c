@@ -117,14 +117,6 @@ struct pkg_solve_impl_graph {
 };
 
 /*
- * Use XOR here to implement the following logic:
- * atom is true if it is installed and not inverted or
- * if it is not installed but inverted
- */
-#define PKG_SOLVE_CHECK_ITEM(item)				\
-	((item)->var->to_install ^ (item)->inverse)
-
-/*
  * Utilities to convert jobs to SAT rule
  */
 
