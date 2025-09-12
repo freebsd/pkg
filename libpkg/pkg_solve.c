@@ -166,7 +166,6 @@ pkg_solve_rule_free(struct pkg_solve_rule *rule)
 	free(rule);
 }
 
-
 void
 pkg_solve_problem_free(struct pkg_solve_problem *problem)
 {
@@ -176,7 +175,6 @@ pkg_solve_problem_free(struct pkg_solve_problem *problem)
 	free(problem->variables);
 	free(problem);
 }
-
 
 static void
 pkg_print_rule_buf(struct pkg_solve_rule *rule, xstring *sb)
@@ -271,10 +269,10 @@ pkg_debug_print_rule(struct pkg_solve_rule *rule)
 	xstring_free(sb);
 }
 
-static int
-pkg_solve_handle_provide (struct pkg_solve_problem *problem,
-		struct pkg_job_provide *pr, struct pkg_solve_rule *rule,
-		struct pkg *orig, const char *reponame, int *cnt)
+static void
+pkg_solve_handle_provide(struct pkg_solve_problem *problem,
+    struct pkg_job_provide *pr, struct pkg_solve_rule *rule, struct pkg *orig,
+    const char *reponame, int *cnt)
 {
 	struct pkg_solve_variable *var, *curvar;
 	struct pkg_job_universe_item *un;
@@ -330,15 +328,11 @@ pkg_solve_handle_provide (struct pkg_solve_problem *problem,
 		pkg_solve_item_new(rule, curvar, 1);
 		(*cnt)++;
 	}
-
-	return (EPKG_OK);
 }
 
-static int
+static void
 pkg_solve_add_depend_rule(struct pkg_solve_problem *problem,
-		struct pkg_solve_variable *var,
-		struct pkg_dep *dep,
-		const char *reponame)
+    struct pkg_solve_variable *var, struct pkg_dep *dep, const char *reponame)
 {
 	const char *uid;
 	struct pkg_solve_variable *depvar, *curvar;
@@ -376,20 +370,15 @@ pkg_solve_add_depend_rule(struct pkg_solve_problem *problem,
 	if (cnt == 0) {
 		dbg(2, "cannot find any suitable dependency for %s", var->uid);
 		pkg_solve_rule_free(rule);
-
-		return (EPKG_FATAL);
+	} else {
+		vec_push(&problem->rules, rule);
 	}
-
-	vec_push(&problem->rules, rule);
-
-	return (EPKG_OK);
 }
 
-static int
+static void
 pkg_solve_add_conflict_rule(struct pkg_solve_problem *problem,
-		struct pkg *pkg,
-		struct pkg_solve_variable *var,
-		struct pkg_conflict *conflict)
+    struct pkg *pkg, struct pkg_solve_variable *var,
+    struct pkg_conflict *conflict)
 {
 	const char *uid;
 	struct pkg_solve_variable *confvar, *curvar;
@@ -400,7 +389,7 @@ pkg_solve_add_conflict_rule(struct pkg_solve_problem *problem,
 	confvar = pkghash_get_value(problem->variables_by_uid, uid);
 	if (confvar == NULL) {
 		dbg(2, "cannot find conflict %s", uid);
-		return (EPKG_END);
+		return;
 	}
 
 	/* Add conflict rule from each of the alternative */
@@ -442,15 +431,12 @@ pkg_solve_add_conflict_rule(struct pkg_solve_problem *problem,
 
 		vec_push(&problem->rules, rule);
 	}
-
-	return (EPKG_OK);
 }
 
-static int
+static void
 pkg_solve_add_require_rule(struct pkg_solve_problem *problem,
-		struct pkg_solve_variable *var,
-		const char *requirement,
-		const char *reponame)
+    struct pkg_solve_variable *var, const char *requirement,
+    const char *reponame)
 {
 	struct pkg_solve_rule *rule;
 	struct pkg_job_provide *pr, *prhead;
@@ -471,22 +457,17 @@ pkg_solve_add_require_rule(struct pkg_solve_problem *problem,
 		/* P1 | P2 | ... */
 		cnt = 1;
 		LL_FOREACH(prhead, pr) {
-			if (pkg_solve_handle_provide(problem, pr, rule, pkg, reponame, &cnt)
-					!= EPKG_OK) {
-				free(rule);
-				return (EPKG_FATAL);
-			}
+			pkg_solve_handle_provide(problem, pr, rule, pkg,
+			    reponame, &cnt);
 		}
 
 		if (cnt > 1) {
 			vec_push(&problem->rules, rule);
-		}
-		else {
+		} else {
 			/* Missing dependencies... */
 			free(rule);
 		}
-	}
-	else {
+	} else {
 		/*
 		 * XXX:
 		 * This is terribly broken now so ignore till provides/requires
@@ -495,13 +476,11 @@ pkg_solve_add_require_rule(struct pkg_solve_problem *problem,
 		dbg(1, "for package: %s cannot find provide for requirement: %s",
 		    pkg->name, requirement);
 	}
-
-	return (EPKG_OK);
 }
 
-static int
+static void
 pkg_solve_add_vital_rule(struct pkg_solve_problem *problem,
-		struct pkg_solve_variable *var)
+    struct pkg_solve_variable *var)
 {
 	struct pkg_solve_variable *cur_var, *local_var = NULL, *remote_var = NULL;
 	struct pkg_solve_rule *rule = NULL;
@@ -535,8 +514,6 @@ pkg_solve_add_vital_rule(struct pkg_solve_problem *problem,
 
 	if (rule)
 		vec_push(&problem->rules, rule);
-
-	return (EPKG_OK);
 }
 
 static struct pkg_solve_variable *
@@ -633,9 +610,9 @@ pkg_solve_add_request_rule(struct pkg_solve_problem *problem,
 	return (EPKG_OK);
 }
 
-static int
+static void
 pkg_solve_add_chain_rule(struct pkg_solve_problem *problem,
-	struct pkg_solve_variable *var)
+    struct pkg_solve_variable *var)
 {
 	struct pkg_solve_variable *curvar, *confvar;
 	struct pkg_solve_rule *rule;
@@ -661,13 +638,11 @@ pkg_solve_add_chain_rule(struct pkg_solve_problem *problem,
 			vec_push(&problem->rules, rule);
 		}
 	}
-
-	return (EPKG_OK);
 }
 
-static int
+static void
 pkg_solve_process_universe_variable(struct pkg_solve_problem *problem,
-		struct pkg_solve_variable *var)
+    struct pkg_solve_variable *var)
 {
 	struct pkg_dep *dep;
 	struct pkg_conflict *conflict;
@@ -678,6 +653,7 @@ pkg_solve_process_universe_variable(struct pkg_solve_problem *problem,
 	bool chain_added = false;
 	bool force = j->flags & PKG_FLAG_FORCE;
 	bool force_overrides_vital = pkg_object_bool(pkg_config_get("FORCE_CAN_REMOVE_VITAL"));
+	bool add_vital = force_overrides_vital ? !force : true;
 
 	LL_FOREACH(var, cur_var) {
 		pkg = cur_var->unit->pkg;
@@ -698,17 +674,14 @@ pkg_solve_process_universe_variable(struct pkg_solve_problem *problem,
 
 		/* Depends */
 		LL_FOREACH(pkg->depends, dep) {
-			if (pkg_solve_add_depend_rule(problem, cur_var, dep,
-					cur_var->assumed_reponame) != EPKG_OK) {
-				continue;
-			}
+			pkg_solve_add_depend_rule(problem, cur_var, dep,
+			    cur_var->assumed_reponame);
 		}
 
 		/* Conflicts */
 		LL_FOREACH(pkg->conflicts, conflict) {
-			if (pkg_solve_add_conflict_rule(problem, pkg, cur_var, conflict) !=
-							EPKG_OK)
-				continue;
+			pkg_solve_add_conflict_rule(problem, pkg, cur_var,
+			    conflict);
 		}
 
 		/* Shlibs */
@@ -721,25 +694,17 @@ pkg_solve_process_universe_variable(struct pkg_solve_problem *problem,
 				/* The shlib is provided by the system */
 				continue;
 			}
-			if (pkg_solve_add_require_rule(problem, cur_var,
-			    s, cur_var->assumed_reponame) != EPKG_OK) {
-				continue;
-			}
+			pkg_solve_add_require_rule(problem, cur_var, s,
+			    cur_var->assumed_reponame);
 		}
 		vec_foreach(pkg->requires, i) {
-			if (pkg_solve_add_require_rule(problem, cur_var,
-			    pkg->requires.d[i], cur_var->assumed_reponame) != EPKG_OK) {
-				continue;
-			}
+			pkg_solve_add_require_rule(problem, cur_var,
+			    pkg->requires.d[i], cur_var->assumed_reponame);
 		}
 
 		/* Vital flag */
-		bool add_vital = force_overrides_vital ? !force : true;
-		if (pkg->vital && add_vital) {
-			if (pkg_solve_add_vital_rule(problem, cur_var) != EPKG_OK) {
-				continue;
-			}
-		}
+		if (pkg->vital && add_vital)
+			pkg_solve_add_vital_rule(problem, cur_var);
 
 		/*
 		 * If this var chain contains mutually conflicting vars
@@ -747,19 +712,15 @@ pkg_solve_process_universe_variable(struct pkg_solve_problem *problem,
 		 * vars
 		 */
 		if (!chain_added && (cur_var->next != NULL || cur_var->prev != var)) {
-			if (pkg_solve_add_chain_rule(problem, cur_var) != EPKG_OK)
-				continue;
-
+			pkg_solve_add_chain_rule(problem, cur_var);
 			chain_added = true;
 		}
 	}
-
-	return (EPKG_OK);
 }
 
-static int
+static void
 pkg_solve_add_variable(struct pkg_job_universe_item *un,
-		struct pkg_solve_problem *problem, size_t *n)
+    struct pkg_solve_problem *problem, size_t *n)
 {
 	struct pkg_job_universe_item *ucur;
 	struct pkg_solve_variable *var = NULL, *tvar = NULL;
@@ -783,8 +744,6 @@ pkg_solve_add_variable(struct pkg_job_universe_item *un,
 		(*n) ++;
 		var->order = *n;
 	}
-
-	return (EPKG_OK);
 }
 
 struct pkg_solve_problem *
@@ -814,8 +773,7 @@ pkg_solve_jobs_to_sat(struct pkg_jobs *j)
 	while (pkghash_next(&it)) {
 		un = (struct pkg_job_universe_item *)it.value;
 		/* Add corresponding variables */
-		if (pkg_solve_add_variable(un, problem, &i) == EPKG_FATAL)
-			return (NULL);
+		pkg_solve_add_variable(un, problem, &i);
 	}
 
 	/* Add rules for all conflict chains */
@@ -830,8 +788,7 @@ pkg_solve_jobs_to_sat(struct pkg_jobs *j)
 			    un->pkg->uid);
 			return (NULL);
 		}
-		if (pkg_solve_process_universe_variable(problem, var) != EPKG_OK)
-		        return (NULL);
+		pkg_solve_process_universe_variable(problem, var);
 	}
 
 	if (problem->rules.len == 0)
