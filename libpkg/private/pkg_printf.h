@@ -85,15 +85,18 @@ typedef enum _fmt_code_t {
 	PP_PKG_SHLIBS_REQUIRED,
 	PP_PKG_CATEGORY_NAME,
 	PP_PKG_CATEGORIES,
+	PP_PKG_DIRECTORY_FFLAGS,
 	PP_PKG_DIRECTORY_GROUP,
 	PP_PKG_DIRECTORY_PATH,
 	PP_PKG_DIRECTORY_PERMS,
 	PP_PKG_DIRECTORY_USER,
 	PP_PKG_DIRECTORIES,
+	PP_PKG_FILE_FFLAGS,
 	PP_PKG_FILE_GROUP,
 	PP_PKG_FILE_PATH,
 	PP_PKG_FILE_PERMS,
 	PP_PKG_FILE_SHA256,
+	PP_PKG_FILE_SYMLINK_TARGET,
 	PP_PKG_FILE_USER,
 	PP_PKG_FILES,
 	PP_PKG_GROUP_NAME,
@@ -176,6 +179,7 @@ _static xstring *format_shlib_name(xstring *, const void *, struct percent_esc *
 _static xstring *format_categories(xstring *, const void *, struct percent_esc *);
 _static xstring *format_category_name(xstring *, const void *, struct percent_esc *);
 _static xstring *format_directories(xstring *, const void *, struct percent_esc *);
+_static xstring *format_directory_fflags(xstring *, const void *, struct percent_esc *);
 _static xstring *format_directory_group(xstring *, const void *, struct percent_esc *);
 _static xstring *format_directory_path(xstring *, const void *, struct percent_esc *);
 _static xstring *format_directory_perms(xstring *, const void *, struct percent_esc *);
@@ -186,6 +190,8 @@ _static xstring *format_file_path(xstring *, const void *, struct percent_esc *)
 _static xstring *format_file_perms(xstring *, const void *, struct percent_esc *);
 _static xstring *format_file_sha256(xstring *, const void *, struct percent_esc *);
 _static xstring *format_file_user(xstring *, const void *, struct percent_esc *);
+_static xstring *format_file_fflags(xstring *, const void *, struct percent_esc *);
+_static xstring *format_file_symlink_target(xstring *, const void *, struct percent_esc *);
 _static xstring *format_groups(xstring *, const void *, struct percent_esc *);
 _static xstring *format_group_name(xstring *, const void *, struct percent_esc *);
 _static xstring *format_row_counter(xstring *, const void *, struct percent_esc *);

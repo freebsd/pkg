@@ -25,7 +25,14 @@ genmanifest() {
         cp -a ${file1} ${TMPDIR}/${file1_base}
 
         PKG_FILES="${PKG_FILES}/${file1_base}: {perm: 0644}${NL}"
-        PKG_SHA256="${PKG_SHA256}${NL}    /${file1_base} = \"1\$${file1_sha}\";"
+	PKG_SHA256="${PKG_SHA256}
+    /${file1_base} {
+        sum = \"1\$${file1_sha}\";
+        uname = \"root\";
+        gname = \"wheel\";
+        perm = \"0644\";
+        fflags = 0;
+    }"
 
         PKG_FLATSIZE=$((${PKG_FLATSIZE}+${file1_size}))
         shift

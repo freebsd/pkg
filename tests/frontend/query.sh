@@ -8,15 +8,43 @@ tests_init \
 query_body() {
 	touch plop
 	touch bla
+	ln -s sym-target sym
+	mkdir test-dir
 	atf_check -s exit:0 sh ${RESOURCEDIR}/test_subr.sh new_pkg test test 1
 	cat >> test.ucl << EOF
 options: {
 	"OPT1": "on"
 	"OPT2": "off"
 }
+directories: {
+      "${TMPDIR}/test-dir": {
+		"uname": "uroot"
+		"gname": "groot"
+		"perm": "660"
+		"fflags": "nodump,arch"
+      }
+}
 files: {
-	"${TMPDIR}/plop": ""
-	"${TMPDIR}/bla": ""
+	"${TMPDIR}/plop": {
+		"sum": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+		"uname": "uroot"
+		"gname": "groot"
+		"perm": "777"
+		"fflags": "schg,nodump"
+	}
+	"${TMPDIR}/bla": {
+		"sum": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+		"uname": "utoor"
+		"gname": "gtoor"
+		"perm": "1765"
+	}
+	"${TMPDIR}/sym": {
+		"sum": ""
+		"uname": "sym-root"
+		"gname": "sym-gtoor"
+		"perm": "0644"
+		"symlink_target": "sym-target"
+	}
 }
 EOF
 	atf_check -s exit:0 sh ${RESOURCEDIR}/test_subr.sh new_pkg test2 test 2
@@ -28,6 +56,7 @@ options: {
 files: {
 	"${TMPDIR}/plop": ""
 	"${TMPDIR}/bla": ""
+	"${TMPDIR}/sym": ""
 }
 EOF
 	atf_check -s exit:0 sh ${RESOURCEDIR}/test_subr.sh new_pkg plop plop 1
@@ -121,10 +150,33 @@ EOF
 		pkg query -e "%#d>0 && %#r>0" "%n"
 
 	atf_check \
-		-o empty \
+		-o inline:"test\n" \
 		-e empty \
 		-s exit:0 \
 		pkg query -e "%#O > 0 && %#D > 0" "%n"
+
+
+	atf_check \
+	    -o inline:"${TMPDIR}/test-dir\n" \
+	    -e empty \
+	    -s exit:0 \
+	    pkg query "%D" test
+
+	if [ "${OS}" = "FreeBSD" ]; then
+	    atf_check \
+		-o match:"^${TMPDIR}/bla utoor gtoor 1765 - $" \
+		-o match:"^${TMPDIR}/plop uroot groot 777 schg,nodump $" \
+		-o match:"^${TMPDIR}/sym sym-root sym-gtoor 644 - sym-target$" \
+		-e empty \
+		-s exit:0 \
+		pkg query "%Fp %Fu %Fg %Fm %Ff %Ft" test
+
+	    atf_check \
+		-o inline:"${TMPDIR}/test-dir uroot groot 660 arch,nodump\n" \
+		-e empty \
+		-s exit:0 \
+		pkg query "%Sp %Su %Sg %Sm %Sf" test
+	fi
 
 	atf_check \
 		-o ignore \
@@ -179,7 +231,7 @@ EOF
 		pkg create -M plop.ucl
 
 	atf_check \
-		-o inline:"${TMPDIR}/plop\n${TMPDIR}/bla\n" \
+		-o inline:"${TMPDIR}/plop\n${TMPDIR}/bla\n${TMPDIR}/sym\n" \
 		-e empty \
 		-s exit:0 \
 		pkg query -F ./test-1.pkg '%Fp'
@@ -191,7 +243,7 @@ EOF
 		pkg query -F ./test-1.pkg '%?F'
 
 	atf_check \
-		-o inline:"2\n" \
+		-o inline:"3\n" \
 		-e empty \
 		-s exit:0 \
 		pkg query -F ./test-1.pkg '%#F'

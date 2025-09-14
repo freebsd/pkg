@@ -324,6 +324,8 @@ meta_file(struct plist *p, char *line, struct file_attr *a, bool is_config)
 {
 	size_t len;
 	char path[MAXPATHLEN];
+	ssize_t linklen = 0;
+	char symlink_target[MAXPATHLEN];
 	struct stat st;
 	char *buf = NULL;
 	bool regular = false;
@@ -361,8 +363,16 @@ meta_file(struct plist *p, char *line, struct file_attr *a, bool is_config)
 			regular = !check_for_hardlink(&p->hardlinks, &st);
 		else
 			regular = true;
-	} else if (S_ISLNK(st.st_mode))
+	} else if (S_ISLNK(st.st_mode)) {
 		regular = false;
+		linklen = readlinkat(p->stagefd, RELATIVE_PATH(path),
+				     symlink_target, sizeof(symlink_target) - 1);
+		if (linklen == -1) {
+			pkg_emit_errno("meta_file", "readlink failed");
+			return (EPKG_FATAL);
+		}
+		symlink_target[linklen] = '\0';
+	}
 
 	buf = pkg_checksum_generate_fileat(p->stagefd, RELATIVE_PATH(path),
 	    PKG_HASH_TYPE_SHA256_HEX);
@@ -394,13 +404,17 @@ meta_file(struct plist *p, char *line, struct file_attr *a, bool is_config)
 
 	if (a != NULL) {
 		ret = pkg_addfile_attr(p->pkg, path, buf,
-		    a->owner ? a->owner : p->uname,
-		    a->group ? a->group : p->gname,
-		    a->mode ? a->mode : p->perm,
-		    a->fflags, true);
+				       a->owner ? a->owner : p->uname,
+				       a->group ? a->group : p->gname,
+				       a->mode ? a->mode : p->perm,
+				       a->fflags,
+				       linklen > 0 ? symlink_target : NULL,
+				       true);
 	} else {
 		ret = pkg_addfile_attr(p->pkg, path, buf, p->uname,
-		    p->gname, p->perm, 0, true);
+				       p->gname, p->perm, 0,
+				       linklen > 0 ? symlink_target : NULL,
+				       true);
 	}
 
 	free(buf);

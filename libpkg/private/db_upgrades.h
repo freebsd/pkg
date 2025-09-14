@@ -728,6 +728,16 @@ static struct db_upgrades {
 	"DROP VIEW IF EXISTS lua_scripts; "
 	"DROP VIEW IF EXISTS options; "
 	"DROP VIEW IF EXISTS scripts; "
+	}, { 37,
+	"ALTER TABLE files ADD COLUMN uname TEXT; "
+	"ALTER TABLE files ADD COLUMN gname TEXT; "
+	"ALTER TABLE files ADD COLUMN perm INTEGER; "
+	"ALTER TABLE files ADD COLUMN fflags INTEGER; "
+	"ALTER TABLE files ADD COLUMN symlink_target TEXT; "
+	"ALTER TABLE directories ADD COLUMN uname TEXT; "
+	"ALTER TABLE directories ADD COLUMN gname TEXT; "
+	"ALTER TABLE directories ADD COLUMN perm INTEGER; "
+	"ALTER TABLE directories ADD COLUMN fflags INTEGER; "
 	},
 	/* Mark the end of the array */
 	{ -1, NULL }
