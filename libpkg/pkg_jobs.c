@@ -925,9 +925,6 @@ pkg_jobs_find_upgrade(struct pkg_jobs *j, const char *pattern, match_t m)
 			break;
 		} else if (rc == EPKG_OK)
 			found = true;
-
-		pkg_free(p);
-		p = NULL;
 	}
 
 	pkgdb_it_free(it);
@@ -1465,8 +1462,6 @@ is_upgrade_candidate(struct pkg_jobs *j, struct pkg *pkg)
 				pkgdb_it_free(it);
 				return (true);
 			}
-			pkg_free(p);
-			p = NULL;
 		}
 		pkgdb_it_free(it);
 		return (false);
@@ -1489,8 +1484,6 @@ pkg_jobs_find_upgrade_candidates(struct pkg_jobs *j)
 	while (pkgdb_it_next(it, &pkg, PKG_LOAD_BASIC) == EPKG_OK) {
 		if (is_upgrade_candidate(j, pkg))
 			vec_push(candidates, pkg->id);
-		pkg_free(pkg);
-		pkg = NULL;
 	}
 	pkgdb_it_free(it);
 
