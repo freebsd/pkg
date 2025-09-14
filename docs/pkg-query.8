@@ -223,14 +223,38 @@ for the package origin, and
 for the package version.
 .It Cm \&%C
 Expands to the list of categories the matched package belongs to.
-.It Cm \&%F Ns Op ps
+.It Cm \&%F Ns Op psugmft
 Expands to the list of files of the matched package, where
 .Cm p
-stands for path, and
+stands for path,
 .Cm s
-for sum.
+for checksum,
+.Cm u
+for owner,
+.Cm g
+for group,
+.Cm m
+for mode (permissions),
+.Cm f
+for file flags, and
+.Cm t
+for the symlink target (or empty string if no symlink).
 .It Cm \&%D
 Expands to the list of directories of the matched package.
+.It Cm \&%S Ns Op pugmf
+Expands to the list of (sub-)directories of the matched package, where
+.Cm p
+stands for path,
+.Cm u
+for owner,
+.Cm g
+for group,
+.Cm m
+for mode (permissions), and
+.Cm f
+for file flags. Same as
+.Cm \&%D
+but allows specifying suboptions.
 .It Cm \&%O Ns Op kvdD
 Expands to the list of options of the matched package, where
 .Cm k

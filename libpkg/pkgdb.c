@@ -74,7 +74,7 @@ extern struct pkg_ctx ctx;
 */
 
 #define DB_SCHEMA_MAJOR	0
-#define DB_SCHEMA_MINOR	36
+#define DB_SCHEMA_MINOR	37
 
 #define DBVERSION (DB_SCHEMA_MAJOR * 1000 + DB_SCHEMA_MINOR)
 
@@ -416,12 +416,21 @@ pkgdb_init(sqlite3 *sdb)
 	"CREATE TABLE files ("
 		"path TEXT PRIMARY KEY,"
 		"sha256 TEXT,"
+		"uname TEXT,"
+		"gname TEXT,"
+		"perm INTEGER,"
+		"fflags INTEGER,"
+		"symlink_target TEXT,"
 		"package_id INTEGER REFERENCES packages(id) ON DELETE CASCADE"
 			" ON UPDATE CASCADE"
 	");"
 	"CREATE TABLE directories ("
 		"id INTEGER PRIMARY KEY,"
-		"path TEXT NOT NULL UNIQUE"
+		"path TEXT NOT NULL UNIQUE,"
+		"uname TEXT,"
+		"gname TEXT,"
+		"perm INTEGER,"
+		"fflags INTEGER"
 	");"
 	"CREATE TABLE pkg_directories ("
 		"package_id INTEGER REFERENCES packages(id) ON DELETE CASCADE"
@@ -1356,20 +1365,23 @@ static sql_prstmt sql_prepared_statements[PRSTMT_LAST] = {
 	},
 	[FILES] = {
 		NULL,
-		"INSERT INTO files (path, sha256, package_id) "
-		"VALUES (?1, ?2, ?3)",
-		"TTI",
+		"INSERT INTO files (path, sha256, uname, gname, "
+		"perm, fflags, symlink_target, package_id) "
+		"VALUES (?1, ?2, ?3, ?4, ?5, ?6, ?7, ?8)",
+		"TTTTIITI",
 	},
 	[FILES_REPLACE] = {
 		NULL,
-		"INSERT OR REPLACE INTO files (path, sha256, package_id) "
-		"VALUES (?1, ?2, ?3)",
-		"TTI",
+		"INSERT OR REPLACE INTO files (path, sha256, uname, gname, "
+		"perm, fflags, symlink_target, package_id) "
+		"VALUES (?1, ?2, ?3, ?4, ?5, ?6, ?7, ?8)",
+		"TTTTIITI",
 	},
 	[DIRS1] = {
 		NULL,
-		"INSERT OR IGNORE INTO directories(path) VALUES(?1)",
-		"T",
+		"INSERT OR IGNORE INTO directories(path, uname, gname, perm, fflags) "
+		"VALUES(?1,?2,?3,?4,?5)",
+		"TTTII",
 	},
 	[DIRS2] = {
 		NULL,
@@ -1652,6 +1664,12 @@ prstmt_finalize(struct pkgdb *db)
 	return;
 }
 
+static const char *
+_pkgdb_empty_str_null(const char *str)
+{
+	return (str[0] == '\0' ? NULL : str);
+}
+
 /*
  * Register a package in the database.  If successful, the caller is required to
  * call pkgdb_register_finale() in order to either commit or roll back the
@@ -1747,7 +1765,12 @@ pkgdb_register_pkg(struct pkgdb *db, struct pkg *pkg, int forced,
 			printf("matched\n");
 		}
 
-		ret = run_prstmt(FILES, file->path, file->sum, package_id);
+		ret = run_prstmt(FILES, file->path, file->sum,
+				 _pkgdb_empty_str_null(file->uname),
+				 _pkgdb_empty_str_null(file->gname),
+				 file->perm, file->fflags,
+				 _pkgdb_empty_str_null(file->symlink_target),
+				 package_id);
 		if (ret == SQLITE_DONE)
 			continue;
 		if (ret != SQLITE_CONSTRAINT) {
@@ -1765,6 +1788,10 @@ pkgdb_register_pkg(struct pkgdb *db, struct pkg *pkg, int forced,
 			/* Stray entry in the files table not related to
 			   any known package: overwrite this */
 			ret = run_prstmt(FILES_REPLACE, file->path, file->sum,
+					 _pkgdb_empty_str_null(file->uname),
+					 _pkgdb_empty_str_null(file->gname),
+					 file->perm, file->fflags,
+					 _pkgdb_empty_str_null(file->symlink_target),
 					 package_id);
 			pkgdb_it_free(it);
 			if (ret == SQLITE_DONE)
@@ -1822,7 +1849,9 @@ pkgdb_register_pkg(struct pkgdb *db, struct pkg *pkg, int forced,
 	 */
 
 	while (pkg_dirs(pkg, &dir) == EPKG_OK) {
-		if (run_prstmt(DIRS1, dir->path) != SQLITE_DONE) {
+		if (run_prstmt(DIRS1, dir->path, _pkgdb_empty_str_null(dir->uname),
+			       _pkgdb_empty_str_null(dir->gname),
+			       dir->perm, dir->fflags) != SQLITE_DONE) {
 			ERROR_STMT_SQLITE(s, STMT(DIRS1));
 			goto cleanup;
 		}

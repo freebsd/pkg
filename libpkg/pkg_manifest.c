@@ -575,7 +575,9 @@ pkg_set_files_from_object(struct pkg *pkg, const ucl_object_t *obj)
 	const char *sum = NULL;
 	const char *uname = NULL;
 	const char *gname = NULL;
+	const char *symlink_target = NULL;
 	mode_t perm = 0;
+	u_long fflags = 0;
 	char *fname = NULL;
 	const char *key, *okey;
 
@@ -591,8 +593,7 @@ pkg_set_files_from_object(struct pkg *pkg, const ucl_object_t *obj)
 			uname = ucl_object_tostring(cur);
 		else if (STRIEQ(key, "gname") && cur->type == UCL_STRING)
 			gname = ucl_object_tostring(cur);
-		else if (STRIEQ(key, "sum") && cur->type == UCL_STRING &&
-			 strlen(ucl_object_tostring(cur)) == 64)
+		else if (STRIEQ(key, "sum") && cur->type == UCL_STRING)
 			sum = ucl_object_tostring(cur);
 		else if (STRIEQ(key, "perm") &&
 			 (cur->type == UCL_STRING || cur->type == UCL_INT)) {
@@ -603,14 +604,28 @@ pkg_set_files_from_object(struct pkg *pkg, const ucl_object_t *obj)
 			else
 				perm = getmode(set, 0);
 			free(set);
+#ifdef HAVE_STRTOFFLAGS
+		} else if (STRIEQ(key, "fflags") && cur->type == UCL_STRING) {
+			char *str_flags = (char *)ucl_object_tostring(cur);
+			u_long clearp;
+
+			if (strtofflags(&str_flags, &fflags, &clearp) != 0 ||
+			    clearp != 0) {
+				fflags = 0;
+				pkg_emit_error("Not valid file flags: %s", str_flags);
+				continue;
+			}
+#endif
+		} else if (STRIEQ(key, "symlink_target") && cur->type == UCL_STRING) {
+			symlink_target = ucl_object_tostring(cur);
 		} else {
 			dbg(1, "Skipping unknown key for file(%s): %s",
 			    fname, key);
 		}
 	}
 
-	pkg_addfile_attr(pkg, fname, sum, uname, gname, perm, 0,
-	    false);
+	pkg_addfile_attr(pkg, fname, sum, uname, gname, perm, fflags,
+			 symlink_target, false);
 	free(fname);
 
 	return (EPKG_OK);
@@ -624,6 +639,7 @@ pkg_set_dirs_from_object(struct pkg *pkg, const ucl_object_t *obj)
 	const char *uname = NULL;
 	const char *gname = NULL;
 	mode_t perm = 0;
+	u_long fflags = 0;
 	char *dirname = NULL;
 	const char *key, *okey;
 
@@ -648,6 +664,18 @@ pkg_set_dirs_from_object(struct pkg *pkg, const ucl_object_t *obj)
 			else
 				perm = getmode(set, 0);
 			free(set);
+#ifdef HAVE_STRTOFFLAGS
+		} else if (STRIEQ(key, "fflags") && cur->type == UCL_STRING) {
+			char *str_flags = (char *)ucl_object_tostring(cur);
+			u_long clearp;
+
+			if (strtofflags(&str_flags, &fflags, &clearp) != 0 ||
+			    clearp != 0) {
+				fflags = 0;
+				pkg_emit_error("Not valid file flags: %s", str_flags);
+				continue;
+			}
+#endif
 		} else if (STRIEQ(key, "try") && cur->type == UCL_BOOLEAN) {
 			/* ignore on purpose : compatibility*/
 		} else {
@@ -656,7 +684,7 @@ pkg_set_dirs_from_object(struct pkg *pkg, const ucl_object_t *obj)
 		}
 	}
 
-	pkg_adddir_attr(pkg, dirname, uname, gname, perm, 0, false);
+	pkg_adddir_attr(pkg, dirname, uname, gname, perm, fflags, false);
 	free(dirname);
 
 	return (EPKG_OK);
@@ -911,6 +939,7 @@ pkg_emit_object(struct pkg *pkg, short flags)
 	int i;
 	const char *script_types = NULL;
 	char legacyarch[BUFSIZ];
+	char perm_str[sizeof("00000")];
 	ucl_object_t *map, *seq, *submap;
 	ucl_object_t *top = ucl_object_typed_new(UCL_OBJECT);
 
@@ -1112,6 +1141,7 @@ pkg_emit_object(struct pkg *pkg, short flags)
 			while (pkg_files(pkg, &file) == EPKG_OK) {
 				char dpath[MAXPATHLEN];
 				const char *dp = file->path;
+				ucl_object_t *file_attrs;
 
 				if (pkg->oprefix != NULL) {
 					size_t l = strlen(pkg->prefix);
@@ -1125,12 +1155,34 @@ pkg_emit_object(struct pkg *pkg, short flags)
 				if (file->sum == NULL)
 					file->sum = xstrdup("-");
 
+				file_attrs = ucl_object_typed_new(UCL_OBJECT);
+				ucl_object_insert_key(file_attrs,
+						      ucl_object_fromstring(file->sum),
+						      "sum", 0, false);
+				ucl_object_insert_key(file_attrs,
+						      ucl_object_fromstring(file->uname[0] != '\0' ? file->uname : "root"),
+						      "uname", 0, false);
+				ucl_object_insert_key(file_attrs,
+						      ucl_object_fromstring(file->gname[0] != '\0' ? file->gname : "wheel"),
+						      "gname", 0, false);
+				snprintf(perm_str, sizeof(perm_str), "%#4.4o", file->perm);
+				ucl_object_insert_key(file_attrs,
+						      ucl_object_fromstring(perm_str),
+						      "perm", 0, false);
+				ucl_object_insert_key(file_attrs,
+						      ucl_object_fromint(file->fflags),
+						      "fflags", 0, false);
+				if (file->symlink_target[0] != '\0') {
+					ucl_object_insert_key(file_attrs,
+							      ucl_object_fromstring(file->symlink_target),
+							      "symlink_target", 0, false);
+				}
+
 				urlencode(dp, &tmpsbuf);
 				if (map == NULL)
 					map = ucl_object_typed_new(UCL_OBJECT);
-				ucl_object_insert_key(map,
-				    ucl_object_fromstring(file->sum),
-				    tmpsbuf->buf, strlen(tmpsbuf->buf), true);
+				ucl_object_insert_key(map, file_attrs,
+						      tmpsbuf->buf, 0, true);
 			}
 			if (map)
 				ucl_object_insert_key(top, map, "files", 5, false);
@@ -1149,12 +1201,28 @@ pkg_emit_object(struct pkg *pkg, short flags)
 			dbg(4, "Emitting directories");
 			map = NULL;
 			while (pkg_dirs(pkg, &dir) == EPKG_OK) {
+				ucl_object_t *dir_attrs;
+
+				dir_attrs = ucl_object_typed_new(UCL_OBJECT);
+				ucl_object_insert_key(dir_attrs,
+						      ucl_object_fromstring(dir->uname),
+						      "uname", 0, false);
+				ucl_object_insert_key(dir_attrs,
+						      ucl_object_fromstring(dir->gname),
+						      "gname", 0, false);
+				snprintf(perm_str, sizeof(perm_str), "%#4.4o", dir->perm);
+				ucl_object_insert_key(dir_attrs,
+						      ucl_object_fromstring(perm_str),
+						      "perm", 0, false);
+				ucl_object_insert_key(dir_attrs,
+						      ucl_object_fromint(dir->fflags),
+						      "fflags", 0, false);
+
 				urlencode(dir->path, &tmpsbuf);
 				if (map == NULL)
 					map = ucl_object_typed_new(UCL_OBJECT);
-				ucl_object_insert_key(map,
-				    ucl_object_fromstring("y"),
-				    tmpsbuf->buf, strlen(tmpsbuf->buf), true);
+				ucl_object_insert_key(map, dir_attrs,
+						      tmpsbuf->buf, strlen(tmpsbuf->buf), true);
 			}
 			if (map)
 				ucl_object_insert_key(top, map, "directories", 11, false);

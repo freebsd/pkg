@@ -56,7 +56,8 @@ extern struct pkg_ctx ctx;
 
 static int
 pkg_create_from_dir(struct pkg *pkg, const char *root,
-    struct pkg_create *pc, struct packing *pkg_archive)
+		    struct pkg_create *pc, struct packing *pkg_archive,
+		    bool trust_filesystem)
 {
 	char		 fpath[MAXPATHLEN];
 	struct pkg_file	*file = NULL;
@@ -69,6 +70,7 @@ pkg_create_from_dir(struct pkg *pkg, const char *root,
 	char		*manifest;
 	ucl_object_t	*obj;
 	hardlinks_t	 hardlinks = vec_init();
+	ssize_t		 linklen;
 
 	if (pkg_is_valid(pkg) != EPKG_OK) {
 		pkg_emit_error("the package is not valid");
@@ -112,12 +114,24 @@ pkg_create_from_dir(struct pkg *pkg, const char *root,
 			flatsize += file->size;
 		}
 
-		free(file->sum);
-		file->sum = pkg_checksum_generate_file(fpath,
-		    PKG_HASH_TYPE_SHA256_HEX);
-		if (file->sum == NULL) {
-			vec_free_and_free(&hardlinks, free);
-			return (EPKG_FATAL);
+		if (trust_filesystem) {
+			free(file->sum);
+			file->sum = pkg_checksum_generate_file(fpath,
+							       PKG_HASH_TYPE_SHA256_HEX);
+			if (file->sum == NULL) {
+				vec_free_and_free(&hardlinks, free);
+				return (EPKG_FATAL);
+			}
+
+			if (S_ISLNK(st.st_mode)) {
+				linklen = readlink(fpath, file->symlink_target, sizeof(file->symlink_target) - 1);
+				if (linklen == -1) {
+					vec_free_and_free(&hardlinks, free);
+					pkg_emit_errno("pkg_create_from_dir", "readlink failed");
+					return (EPKG_FATAL);
+				}
+				file->symlink_target[linklen] = '\0';
+			}
 		}
 
 		counter_count();
@@ -380,7 +394,7 @@ pkg_create_i(struct pkg_create *pc, struct pkg *pkg, bool hash)
 		return (EPKG_FATAL);
 	}
 
-	if ((ret = pkg_create_from_dir(pkg, NULL, pc, pkg_archive)) != EPKG_OK) {
+	if ((ret = pkg_create_from_dir(pkg, NULL, pc, pkg_archive, false)) != EPKG_OK) {
 		pkg_emit_error("package creation failed");
 	}
 	packing_finish(pkg_archive);
@@ -422,7 +436,7 @@ pkg_create(struct pkg_create *pc, const char *metadata, const char *plist,
 		return (EPKG_FATAL);
 	}
 
-	if ((ret = pkg_create_from_dir(pkg, pc->rootdir, pc, pkg_archive)) != EPKG_OK)
+	if ((ret = pkg_create_from_dir(pkg, pc->rootdir, pc, pkg_archive, true)) != EPKG_OK)
 		pkg_emit_error("package creation failed");
 
 	packing_finish(pkg_archive);

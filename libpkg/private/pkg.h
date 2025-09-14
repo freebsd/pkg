@@ -377,6 +377,7 @@ struct pkg_file {
 	gid_t		 gid;
 	char		 temppath[MAXPATHLEN];
 	u_long		 fflags;
+	char		 symlink_target[MAXPATHLEN];
 	struct pkg_config_file *config;
 	struct timespec	 time[2];
 	struct pkg_file	*next, *prev;
@@ -791,7 +792,7 @@ int pkg_addfile(struct pkg *pkg, const char *path, const char *sha256,
     bool check_duplicates);
 int pkg_addfile_attr(struct pkg *pkg, const char *path, const char *sha256,
     const char *uname, const char *gname, mode_t perm, u_long fflags,
-    bool check_duplicates);
+    const char *symlink_target, bool check_duplicates);
 
 int pkg_adddir(struct pkg *pkg, const char *path, bool check_duplicates);
 int pkg_adddir_attr(struct pkg *pkg, const char *path, const char *uname,

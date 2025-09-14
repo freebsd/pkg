@@ -451,10 +451,21 @@ categories [
     "test",
 ]
 files {
-    /A = "1\$e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855";
+    /A {
+        sum = "1\$e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855";
+        uname = "root";
+        gname = "wheel";
+        perm = "0000";
+        fflags = 0;
+    }
 }
 directories {
-    /B = "y";
+    /B {
+        uname = "root";
+        gname = "wheel";
+        perm = "0000";
+        fflags = 0;
+    }
 }
 scripts {
     post-install = "# args: A B\necho A B";
@@ -494,7 +505,13 @@ categories [
     "test",
 ]
 files {
-    /testfile = "1\$e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855";
+    /testfile {
+        sum = "1\$e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855";
+        uname = "root";
+        gname = "wheel";
+        perm = "0000";
+        fflags = 0;
+    }
 }
 EOF
 
@@ -510,9 +527,11 @@ create_from_manifest_body() {
 	cat <<EOF >> +MANIFEST
 files: {
      /testfile: {perm: 0644}
+     /sym-file: {perm: 0644}
 }
 EOF
 	touch testfile
+	ln -s sym-target sym-file
 	atf_check \
 		-o empty \
 		-e empty \
@@ -529,13 +548,27 @@ www = "http://test";
 abi = "*";
 arch = "*";
 prefix = "/";
-flatsize = 0;
+flatsize = 10;
 desc = "Yet another test";
 categories [
     "test",
 ]
 files {
-    /testfile = "1\$e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855";
+    /testfile {
+        sum = "1\$e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855";
+        uname = "root";
+        gname = "wheel";
+        perm = "0644";
+        fflags = 0;
+    }
+    /sym-file {
+        sum = "1\$a83552cc4e1e92707178239c630b7f05d51124ff2afa7c5595ff4e76cb96cfa4";
+        uname = "root";
+        gname = "wheel";
+        perm = "0644";
+        fflags = 0;
+        symlink_target = "sym-target";
+    }
 }
 EOF
 

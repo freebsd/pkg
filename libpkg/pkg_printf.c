@@ -62,6 +62,7 @@
  * Cn pkg_category Category name
  *
  * D  pkg          List of directories
+ * Df pkg_dir      File flags of directory
  * Dg pkg_dir      Group owner of directory
  * Dk pkg_dir      Keep flag
  * Dn pkg_dir      Directory path name
@@ -72,11 +73,13 @@
  * E
  *
  * F  pkg          List of files
+ * Ff pkg_file     File flags of file
  * Fg pkg_file     Group owner of file
  * Fk pkg_file     Keep flag
  * Fn pkg_file     File path name
  * Fp pkg_file     File permissions
  * Fs pkg_file     File SHA256 checksum
+ * Ft pkg_file     File symlink target
  * Fu pkg_file     User owner of file
  *
  * G  pkg          List of groups
@@ -246,6 +249,14 @@ static const struct pkg_printf_fmt	fmt[] = {
 		PP_PKG,
 		&format_categories,
 	},
+	[PP_PKG_DIRECTORY_FFLAGS] = {
+		'D',
+		'f',
+		false,
+		false,
+		PP_PKG|PP_D,
+		&format_directory_fflags,
+	},
         [PP_PKG_DIRECTORY_GROUP] =
 	{
 		'D',
@@ -291,6 +302,15 @@ static const struct pkg_printf_fmt	fmt[] = {
 		PP_PKG,
 		&format_directories,
 	},
+	[PP_PKG_FILE_FFLAGS] =
+	{
+		'F',
+		'f',
+		false,
+		false,
+		PP_PKG|PP_F,
+		&format_file_fflags,
+	},
 	[PP_PKG_FILE_GROUP] =
 	{
 		'F',
@@ -326,6 +346,15 @@ static const struct pkg_printf_fmt	fmt[] = {
 		false,
 		PP_PKG|PP_F,
 		&format_file_sha256,
+	},
+	[PP_PKG_FILE_SYMLINK_TARGET] =
+	{
+		'F',
+		't',
+		false,
+		false,
+		PP_PKG|PP_F,
+		&format_file_symlink_target,
 	},
 	[PP_PKG_FILE_USER] =
 	{
@@ -837,6 +866,25 @@ static const struct pkg_printf_fmt	fmt[] = {
 	},
 };
 
+static xstring *
+format_fflags(xstring *buf, u_long fflags, struct percent_esc *p)
+{
+	xstring *ret;
+
+	if (fflags == 0) {
+		ret = string_val(buf, "-", p);
+	} else {
+#ifdef HAVE_FFLAGSTOSTR
+		char *fflags_str = fflagstostr(fflags);
+		ret = string_val(buf, fflags_str, p);
+		free(fflags_str);
+#else
+		ret = string_val(buf, "-", p);
+#endif
+	}
+	return (ret);
+}
+
 /*
  * Note: List values -- special behaviour with ? and # modifiers.
  * Affects %A %B %C %D %F %G %L %O %U %b %d %r
@@ -1027,6 +1075,17 @@ format_directories(xstring *buf, const void *data, struct percent_esc *p)
 }
 
 /*
+ * %Df -- Directory flags.
+ */
+xstring *
+format_directory_fflags(xstring *buf, const void *data, struct percent_esc *p)
+{
+	const struct pkg_dir *dir = data;
+	return (format_fflags(buf, dir->fflags, p));
+}
+
+
+/*
  * %Dg -- Directory group. TODO: numeric gid
  */
 xstring *
@@ -1153,6 +1212,16 @@ format_file_sha256(xstring *buf, const void *data, struct percent_esc *p)
 }
 
 /*
+ * %Ft -- File symlink target.
+ */
+xstring *
+format_file_symlink_target(xstring *buf, const void *data, struct percent_esc *p)
+{
+	const struct pkg_file *file = data;
+	return (string_val(buf, file->symlink_target, p));
+}
+
+/*
  * %Fu -- File user.
  */
 xstring *
@@ -1161,6 +1230,16 @@ format_file_user(xstring *buf, const void *data, struct percent_esc *p)
 	const struct pkg_file	*file = data;
 
 	return (string_val(buf, file->uname, p));
+}
+
+/*
+ * %Ff -- File fflags.
+ */
+xstring *
+format_file_fflags(xstring *buf, const void *data, struct percent_esc *p)
+{
+	const struct pkg_file *file = data;
+	return (format_fflags(buf, file->fflags, p));
 }
 
 /*

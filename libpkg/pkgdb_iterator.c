@@ -388,7 +388,7 @@ pkgdb_load_files(sqlite3 *sqlite, struct pkg *pkg)
 	sqlite3_stmt	*stmt = NULL;
 	int		 ret;
 	const char	 sql[] = ""
-		"SELECT path, sha256"
+		"SELECT path, sha256, uname, gname, perm, fflags, symlink_target "
 		"  FROM files"
 		"  WHERE package_id = ?1"
 		"  ORDER BY PATH ASC";
@@ -412,8 +412,15 @@ pkgdb_load_files(sqlite3 *sqlite, struct pkg *pkg)
 	pkgdb_debug(4, stmt);
 
 	while (sqlite3_step(stmt) == SQLITE_ROW) {
-		pkg_addfile(pkg, sqlite3_column_text(stmt, 0),
-		    sqlite3_column_text(stmt, 1), false);
+		const char *path = sqlite3_column_text(stmt, 0);
+		const char *sum = sqlite3_column_text(stmt, 1);
+		const char *uname = sqlite3_column_text(stmt, 2);
+		const char *gname = sqlite3_column_text(stmt, 3);
+		mode_t perm = sqlite3_column_int64(stmt, 4);
+		u_long fflags = sqlite3_column_int64(stmt, 5);
+		const char *symlink_target = sqlite3_column_text(stmt, 6);
+		pkg_addfile_attr(pkg, path, sum, uname, gname, perm, fflags,
+				 symlink_target, false);
 	}
 	sqlite3_finalize(stmt);
 
@@ -445,7 +452,7 @@ static int
 pkgdb_load_dirs(sqlite3 *sqlite, struct pkg *pkg)
 {
 	const char	 sql[] = ""
-		"SELECT path, try"
+		"SELECT path, uname, gname, perm, fflags, try"
 		"  FROM pkg_directories, directories"
 		"  WHERE package_id = ?1"
 		"    AND directory_id = directories.id"
@@ -467,7 +474,12 @@ pkgdb_load_dirs(sqlite3 *sqlite, struct pkg *pkg)
 	pkgdb_debug(4, stmt);
 
 	while ((ret = sqlite3_step(stmt)) == SQLITE_ROW) {
-		pkg_adddir(pkg, sqlite3_column_text(stmt, 0), false);
+		const char *path = sqlite3_column_text(stmt, 0);
+		const char *uname = sqlite3_column_text(stmt, 1);
+		const char *gname = sqlite3_column_text(stmt, 2);
+		mode_t perm = sqlite3_column_int64(stmt, 3);
+		u_long fflags = sqlite3_column_int64(stmt, 4);
+		pkg_adddir_attr(pkg, path, uname, gname, perm, fflags, false);
 	}
 
 	if (ret != SQLITE_DONE) {

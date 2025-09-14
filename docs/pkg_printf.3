@@ -485,6 +485,9 @@ Directories [array]
 .Pp
 Default row format:
 .Cm "%D%{%Dn\en%|%}"
+.It Cm %Df
+Directory file flags [string]
+.Vt struct pkg_dir *
 .It Cm %Dg
 Directory ownership: group name [string]
 .Vt struct pkg_dir *
@@ -503,6 +506,9 @@ Files [array]
 .Pp
 Default row format:
 .Cm "%F%{%Fn\en%|%}"
+.It Cm %Ff
+File flags [string]
+.Vt struct pkg_file *
 .It Cm %Fg
 File ownership: group name [string]
 .Vt struct pkg_file *
@@ -514,6 +520,9 @@ File permissions [mode]
 .Vt struct pkg_file *
 .It Cm %Fs
 File SHA256 checksum [string]
+.Vt struct pkg_file *
+.It Cm %Ft
+File Symlink target [string]
 .Vt struct pkg_file *
 .It Cm %Fu
 File ownership: user name [string]

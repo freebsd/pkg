@@ -493,13 +493,13 @@ pkg_addrdep(struct pkg *pkg, const char *name, const char *origin, const char *v
 int
 pkg_addfile(struct pkg *pkg, const char *path, const char *sum, bool check_duplicates)
 {
-	return (pkg_addfile_attr(pkg, path, sum, NULL, NULL, 0, 0, check_duplicates));
+	return (pkg_addfile_attr(pkg, path, sum, NULL, NULL, 0, 0, NULL, check_duplicates));
 }
 
 int
 pkg_addfile_attr(struct pkg *pkg, const char *path, const char *sum,
-    const char *uname, const char *gname, mode_t perm, u_long fflags,
-    bool check_duplicates)
+		 const char *uname, const char *gname, mode_t perm, u_long fflags,
+		 const char *symlink_target, bool check_duplicates)
 {
 	struct pkg_file *f = NULL;
 	char abspath[MAXPATHLEN];
@@ -537,6 +537,9 @@ pkg_addfile_attr(struct pkg *pkg, const char *path, const char *sum,
 
 	if (fflags != 0)
 		f->fflags = fflags;
+
+	if (symlink_target != NULL)
+		strlcpy(f->symlink_target, symlink_target, sizeof(f->symlink_target));
 
 	pkghash_safe_add(pkg->filehash, f->path, f, NULL);
 	DL_APPEND(pkg->files, f);

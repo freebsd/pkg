@@ -45,9 +45,10 @@ static const struct query_flags accepted_query_flags[] = {
 	{ 'd', "nov",		1, PKG_LOAD_DEPS },
 	{ 'r', "nov",		1, PKG_LOAD_RDEPS },
 	{ 'C', "",		1, PKG_LOAD_CATEGORIES },
-	{ 'F', "ps",		1, PKG_LOAD_FILES },
+	{ 'F', "psugmft",	1, PKG_LOAD_FILES },
 	{ 'O', "kvdD",		1, PKG_LOAD_OPTIONS },
 	{ 'D', "",		1, PKG_LOAD_DIRS },
+	{ 'S', "pugmf",		1, PKG_LOAD_DIRS }, /* sub directories - directory with options */
 	{ 'L', "",		1, PKG_LOAD_LICENSES },
 	{ 'U', "",		1, PKG_LOAD_USERS },
 	{ 'G', "",		1, PKG_LOAD_GROUPS },
@@ -154,6 +155,7 @@ format_str(struct pkg *pkg, xstring *dest, const char *qstr, const void *data)
 					pkg_fprintf(dest->fp, "%?O", pkg);
 					break;
 				case 'D':
+				case 'S':
 					pkg_fprintf(dest->fp, "%?D", pkg);
 					break;
 				case 'L':
@@ -253,6 +255,16 @@ format_str(struct pkg *pkg, xstring *dest, const char *qstr, const void *data)
 					pkg_fprintf(dest->fp, "%Fn", data);
 				else if (qstr[0] == 's')
 					pkg_fprintf(dest->fp, "%Fs", data);
+				else if (qstr[0] == 'u')
+					pkg_fprintf(dest->fp, "%Fu", data);
+				else if (qstr[0] == 'g')
+					pkg_fprintf(dest->fp, "%Fg", data);
+				else if (qstr[0] == 'm')
+					pkg_fprintf(dest->fp, "%Fp", data);
+				else if (qstr[0] == 'f')
+					pkg_fprintf(dest->fp, "%Ff", data);
+				else if (qstr[0] == 't')
+					pkg_fprintf(dest->fp, "%Ft", data);
 				break;
 			case 'O':
 				qstr++;
@@ -267,6 +279,19 @@ format_str(struct pkg *pkg, xstring *dest, const char *qstr, const void *data)
 				break;
 			case 'D':
 				pkg_fprintf(dest->fp, "%Dn", data);
+				break;
+			case 'S':
+				qstr++;
+				if (qstr[0] == 'p')
+					pkg_fprintf(dest->fp, "%Dn", data);
+				else if (qstr[0] == 'u')
+					pkg_fprintf(dest->fp, "%Du", data);
+				else if (qstr[0] == 'g')
+					pkg_fprintf(dest->fp, "%Dg", data);
+				else if (qstr[0] == 'm')
+					pkg_fprintf(dest->fp, "%Dp", data);
+				else if (qstr[0] == 'f')
+					pkg_fprintf(dest->fp, "%Df", data);
 				break;
 			case 'L':
 				pkg_fprintf(dest->fp, "%Ln", data);
@@ -391,6 +416,7 @@ print_query(struct pkg *pkg, char *qstr, char multiline)
 		}
 		break;
 	case 'D':
+	case 'S':
 		while (pkg_dirs(pkg, &dir) == EPKG_OK) {
 			format_str(pkg, output, qstr, dir);
 			printf("%s\n", output->buf);
@@ -580,6 +606,7 @@ format_sql_condition(const char *str, xstring *sqlcond, bool for_remote)
 							fprintf(sqlcond->fp, "(SELECT %s FROM pkg_option AS d WHERE d.package_id=p.id)", sqlop);
 							break;
 						case 'D':
+						case 'S':
 							if (for_remote)
 								goto bad_option;
 							fprintf(sqlcond->fp, "(SELECT %s FROM pkg_directories AS d WHERE d.package_id=p.id)", sqlop);
