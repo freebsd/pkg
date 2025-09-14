@@ -413,6 +413,8 @@ print_query(struct pkg *pkg, char *qstr, char multiline)
 			format_str(pkg, output, qstr, str);
 			printf("%s\n", output->buf);
 		}
+		free(slit);
+		free(sl);
 		break;
 	case 'G':
 		pkg_get(pkg, PKG_ATTR_GROUPS, &sl);
@@ -421,6 +423,8 @@ print_query(struct pkg *pkg, char *qstr, char multiline)
 			format_str(pkg, output, qstr, str);
 			printf("%s\n", output->buf);
 		}
+		free(slit);
+		free(sl);
 		break;
 	case 'B':
 		pkg_get(pkg, PKG_ATTR_SHLIBS_REQUIRED, &sl);
@@ -429,6 +433,8 @@ print_query(struct pkg *pkg, char *qstr, char multiline)
 			format_str(pkg, output, qstr, str);
 			printf("%s\n", output->buf);
 		}
+		free(slit);
+		free(sl);
 		break;
 	case 'b':
 		pkg_get(pkg, PKG_ATTR_SHLIBS_PROVIDED, &sl);
@@ -437,6 +443,8 @@ print_query(struct pkg *pkg, char *qstr, char multiline)
 			format_str(pkg, output, qstr, str);
 			printf("%s\n", output->buf);
 		}
+		free(slit);
+		free(sl);
 		break;
 	case 'A':
 		pkg_get(pkg, PKG_ATTR_ANNOTATIONS, &kl);
