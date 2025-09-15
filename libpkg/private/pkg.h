@@ -145,7 +145,6 @@ struct pkg_ctx {
 	bool backup_libraries;
 	const char *backup_library_path;
 	bool triggers;
-	const char *triggers_path;
 	pkghash *touched_dir_hash;
 	bool defer_triggers;
 	bool repo_accept_legacy_pkg;
