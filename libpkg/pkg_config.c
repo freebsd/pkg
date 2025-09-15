@@ -385,9 +385,9 @@ static struct config_entry c[] = {
 		PREFIX "/lib/compat/pkg",
 	},
 	{
-		PKG_STRING,
+		PKG_ARRAY,
 		"PKG_TRIGGERS_DIR",
-		PREFIX "/share/pkg/triggers",
+		"/usr/share/pkg/triggers/,"PREFIX"/share/pkg/triggers",
 	},
 	{
 		PKG_BOOL,
@@ -1565,7 +1565,6 @@ pkg_ini(const char *path, const char *reposdir, pkg_init_flags flags)
 	ctx.backup_libraries = pkg_object_bool(pkg_config_get("BACKUP_LIBRARIES"));
 	ctx.backup_library_path = pkg_object_string(pkg_config_get("BACKUP_LIBRARY_PATH"));
 	ctx.triggers = pkg_object_bool(pkg_config_get("PKG_TRIGGERS_ENABLE"));
-	ctx.triggers_path = pkg_object_string(pkg_config_get("PKG_TRIGGERS_DIR"));
 	ctx.compression_format = pkg_object_string(pkg_config_get("COMPRESSION_FORMAT"));
 	ctx.compression_level = pkg_object_int(pkg_config_get("COMPRESSION_LEVEL"));
 	ctx.compression_threads = pkg_object_int(pkg_config_get("COMPRESSION_THREADS"));

@@ -27,7 +27,7 @@
 .\"
 .\"     @(#)pkg.1
 .\"
-.Dd March 17, 2025
+.Dd September 17, 2025
 .Dt PKG.CONF 5
 .Os
 .Sh NAME
@@ -300,8 +300,9 @@ Default:
 Enable or disable execution of triggers at the end of the transactions.
 Default: YES.
 .It Cm PKG_TRIGGERS_DIR
-Directory where the triggers are stored
+List of directories where triggers are stored.
 Default:
+.Pa /usr/share/pkg/triggers ,
 .Pa /usr/local/share/pkg/triggers .
 .It Cm PKG_SSH_ARGS: string
 Extra arguments to pass to

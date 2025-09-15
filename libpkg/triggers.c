@@ -254,18 +254,36 @@ err:
 void
 trigger_is_it_a_cleanup(struct triggers *t, const char *path)
 {
-	const char *trigger_name;
+	const char *trigger_name, *dir;
+	const pkg_object *dirs, *cur;
 	struct trigger *trig;
+	pkg_iter it;
 
 	if (t->schema == NULL)
 		t->schema = trigger_open_schema();
-	if (strncmp(path, ctx.triggers_path, strlen(ctx.triggers_path)) != 0)
+
+	/* Check if the file was installed in a trigger directory. */
+	it = NULL;
+	trigger_name = NULL;
+	dirs = pkg_config_get("PKG_TRIGGERS_DIR");
+	while ((cur = pkg_object_iterate(dirs, &it))) {
+		size_t len;
+
+		dir = pkg_object_string(cur);
+		len = strlen(dir);
+
+		if (strncmp(path, dir, len) == 0) {
+			trigger_name = path + strlen(dir);
+			break;
+		}
+	}
+
+	if (trigger_name == NULL)
 		return;
 
-	trigger_name = path + strlen(ctx.triggers_path);
-
 	if (t->dfd == -1)
-		t->dfd = openat(ctx.rootfd, RELATIVE_PATH(ctx.triggers_path), O_DIRECTORY);
+		t->dfd = openat(ctx.rootfd, RELATIVE_PATH(dir), O_DIRECTORY);
+
 	trig = trigger_load(t->dfd, RELATIVE_PATH(trigger_name), true, t->schema);
 	if (trig != NULL) {
 		if (t->cleanup == NULL)
@@ -275,28 +293,33 @@ trigger_is_it_a_cleanup(struct triggers *t, const char *path)
 	}
 }
 
-trigger_t *
-triggers_load(bool cleanup_only)
+/*
+ * Load triggers from a specific directory and add them to a vec.
+ */
+void
+triggers_load_from(trigger_t *triggers, bool cleanup_only, const char *dir)
 {
 	int dfd;
 	DIR *d;
 	struct dirent *e;
 	struct trigger *t;
-	trigger_t *triggers = xcalloc(1, sizeof(*triggers));
 	ucl_object_t *schema;
 	struct stat st;
 
-	dfd = openat(ctx.rootfd, RELATIVE_PATH(ctx.triggers_path), O_DIRECTORY);
+	dfd = openat(ctx.rootfd, dir, O_DIRECTORY);
 	if (dfd == -1) {
 		if (errno != ENOENT)
-			pkg_emit_error("Unable to open the trigger directory");
-		return (triggers);
+			pkg_emit_error("Unable to open the trigger directory %s: %s",
+			    dir, strerror(errno));
+		return;
 	}
+
 	d = fdopendir(dfd);
 	if (d == NULL) {
-		pkg_emit_error("Unable to open the trigger directory");
+		pkg_emit_error("Unable to open the trigger directory %s: %s",
+		    dir, strerror(errno));
 		close(dfd);
-		return (triggers);
+		return;
 	}
 
 	schema = trigger_open_schema();
@@ -315,7 +338,7 @@ triggers_load(bool cleanup_only)
 		/* only regular files are considered */
 		if (fstatat(dfd, e->d_name, &st, AT_SYMLINK_NOFOLLOW) != 0) {
 			pkg_emit_errno("fstatat", e->d_name);
-			return (triggers);
+			continue;
 		}
 		if (!S_ISREG(st.st_mode))
 			continue;
@@ -326,7 +349,29 @@ triggers_load(bool cleanup_only)
 
 	closedir(d);
 	ucl_object_unref(schema);
-	return (triggers);
+}
+
+/*
+ * Load triggers from PKG_TRIGGERS_DIR.
+ */
+trigger_t *
+triggers_load(bool cleanup_only)
+{
+	trigger_t *ret;
+	const pkg_object *dirs, *cur;
+	pkg_iter it = NULL;
+
+	ret = xcalloc(1, sizeof(*ret));
+
+	dirs = pkg_config_get("PKG_TRIGGERS_DIR");
+	while ((cur = pkg_object_iterate(dirs, &it))) {
+		const char *dir;
+
+		dir = RELATIVE_PATH(pkg_object_string(cur));
+		triggers_load_from(ret, cleanup_only, dir);
+	}
+
+	return (ret);
 }
 
 void
