@@ -122,8 +122,8 @@ expansion_body() {
 	atf_skip_on Darwin "N/A"
 	atf_skip_on Linux "N/A"
 	OSNAME=$(uname)
-	MAJOR_VERSION=$(uname -r | cut -d . -f 1)
-	MINOR_VERSION=$(uname -r | cut -d . -f 2 | cut -d - -f 1)
+	MAJOR_VERSION=$(freebsd-version -u | cut -d . -f 1)
+	MINOR_VERSION=$(freebsd-version -u | cut -d . -f 2 | cut -d - -f 1)
 	ARCH=$(uname -p)
 
 	atf_check \

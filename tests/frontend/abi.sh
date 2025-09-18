@@ -25,7 +25,7 @@ native_body() {
 			version=$(uname -r | cut -d. -f1)
 			;;
 		FreeBSD)
-			version=$(uname -r | cut -d. -f1)
+			version=$(freebsd-version -u | cut -d. -f1)
 			thisarch=$(echo "${thisarch}" | sed s/x86_64/amd64/)
 			thisabi=$(echo "${thisarch}" | sed s/amd64/x86:64/)
 			;;
