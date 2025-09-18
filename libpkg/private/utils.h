@@ -19,7 +19,7 @@
 #include <xstring.h>
 
 #define STARTS_WITH(string, needle) (strncasecmp(string, needle, strlen(needle)) == 0)
-#define RELATIVE_PATH(p) (p + (*p == '/' ? 1 : 0))
+#define RELATIVE_PATH(p) (&p[strspn(p, "/")])
 
 #define ERROR_SQLITE(db, query) do { \
 	pkg_emit_error("sqlite error while executing %s in file %s:%d: %s", query, \
