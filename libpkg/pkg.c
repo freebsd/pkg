@@ -1362,7 +1362,8 @@ pkg_test_filesum(struct pkg *pkg)
 		if (f->sum != NULL &&
 		    /* skip config files as they can be modified */
 		    pkghash_get_value(pkg->config_files_hash, f->path) == NULL) {
-			ret = pkg_checksum_validate_file(f->path, f->sum);
+			ret = pkg_checksum_validate_fileat(ctx.rootfd,
+			    RELATIVE_PATH(f->path), f->sum);
 			if (ret != 0) {
 				if (ret == ENOENT)
 					pkg_emit_file_missing(pkg, f);
