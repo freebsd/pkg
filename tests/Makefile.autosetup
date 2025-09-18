@@ -29,6 +29,7 @@ TESTS_SH= \
 	frontend/annotate.sh \
 	frontend/autoremove.sh \
 	frontend/autoupgrade.sh \
+	frontend/check.sh \
 	frontend/config.sh \
 	frontend/configmerge.sh \
 	frontend/conflicts.sh \
