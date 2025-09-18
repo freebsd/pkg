@@ -74,6 +74,7 @@ scripts/sbin/pkg2ng
 /external/libelf/libelf_fsize.c
 /external/libelf/libelf_msize.c
 /external/libcurl/curl_cfg.h
+/Leak.suppress
 /libpkg/Makefile
 /libpkg/repo/Makefile
 /libpkg/repo/binary/Makefile
@@ -106,7 +107,9 @@ scripts/sbin/pkg2ng
 /tests/packing
 /tests/pkg
 /tests/pkg_add_dir_to_del
+/tests/pkg_cpe
 /tests/pkg_elf
+/tests/pkg_osvf
 /tests/pkg_printf
 /tests/pkg_validation
 /tests/plist
@@ -114,3 +117,4 @@ scripts/sbin/pkg2ng
 /tests/ssh
 /tests/utils
 /tests/vec
+/UndefinedBehaviour.suppress
