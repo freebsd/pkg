@@ -186,6 +186,7 @@ pkg_checksum_entry_cmp(struct kv *e1,
  * - origin
  * - version
  * - arch
+ * - vital flag
  * - options
  * - required_shlibs
  * - provided_shlibs
@@ -221,6 +222,8 @@ pkg_checksum_generate(struct pkg *pkg, char *dest, size_t destlen,
 		LL_APPEND(entries, kv_new("version", pkg->version));
 	if (!is_group)
 		LL_APPEND(entries, kv_new("arch", pkg->altabi));
+
+	LL_APPEND(entries, kv_new("vital", pkg->vital ? "1" : "0"));
 
 	while (pkg_options(pkg, &option) == EPKG_OK) {
 		LL_APPEND(entries, kv_new(option->key, option->value));
