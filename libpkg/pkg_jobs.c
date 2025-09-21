@@ -395,7 +395,7 @@ pkg_jobs_add_req(struct pkg_jobs *j, struct pkg *pkg)
 
 	dbg(4, "add package %s-%s to the request", pkg->name,
 			pkg->version);
-	rc = pkg_jobs_universe_add_pkg(j->universe, pkg, false, &un);
+	rc = pkg_jobs_universe_add_pkg(j->universe, pkg, &un);
 
 	if (rc == EPKG_END) {
 		/*
@@ -950,7 +950,7 @@ pkg_jobs_find_upgrade(struct pkg_jobs *j, const char *pattern, match_t m)
 
 		dbg(2, "non-automatic package with pattern %s has not been found in "
 				"remote repo", pattern);
-		rc = pkg_jobs_universe_add_pkg(j->universe, p, false, &unit);
+		rc = pkg_jobs_universe_add_pkg(j->universe, p, &unit);
 		if (rc == EPKG_OK) {
 			rc = pkg_jobs_guess_upgrade_candidate(j, pattern);
 		}

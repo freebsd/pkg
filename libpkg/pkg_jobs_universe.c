@@ -151,7 +151,7 @@ pkg_jobs_universe_get_remote(struct pkg_jobs_universe *universe,
  */
 int
 pkg_jobs_universe_add_pkg(struct pkg_jobs_universe *universe, struct pkg *pkg,
-		bool force __unused, struct pkg_job_universe_item **found)
+    struct pkg_job_universe_item **found)
 {
 	struct pkg_job_universe_item *item, *seen, *tmp = NULL;
 
@@ -575,7 +575,7 @@ pkg_jobs_universe_process_item(struct pkg_jobs_universe *universe, struct pkg *p
 	 * Add pkg itself. If package is already seen then we check the `processed`
 	 * flag that means that we have already tried to check our universe
 	 */
-	rc = pkg_jobs_universe_add_pkg(universe, pkg, false, &found);
+	rc = pkg_jobs_universe_add_pkg(universe, pkg, &found);
 	if (rc == EPKG_CONFLICT)
 		return (rc);
 
@@ -1036,12 +1036,13 @@ pkg_jobs_universe_get_upgrade_candidates(struct pkg_jobs_universe *universe,
 
 	if (lp != NULL) {
 		/* Add local package to the universe as well */
-		pkg_jobs_universe_add_pkg(universe, lp, false, NULL);
+		pkg_jobs_universe_add_pkg(universe, lp, NULL);
 	}
 	if (selected != lp) {
 		/* We need to add the whole chain of upgrade candidates */
 		vec_rforeach(candidates, i) {
-			pkg_jobs_universe_add_pkg(universe, candidates.d[i], force, NULL);
+			pkg_jobs_universe_add_pkg(universe, candidates.d[i],
+			    NULL);
 		}
 	}
 	else {
