@@ -296,9 +296,40 @@ pkg_solve_handle_provide(struct pkg_solve_problem *problem,
 		if (pr->is_shlib) {
 			struct pkg_abi oabi, pabi;
 
+			/*
+			 * If this remote package doesn't provide the shared
+			 * library in question, then skip it... unless
+			 * BACKUP_LIBRARIES is configured, in which case we know
+			 * that upgrading to this remote package will not remove
+			 * the installed package's shared libraries.
+			 */
 			if (charv_search(&pkg->shlibs_provided, pr->provide) ==
-			    NULL)
-				continue;
+			    NULL) {
+				struct pkg_solve_variable *tmp;
+
+				if (!ctx.backup_libraries ||
+				    pkg->type == PKG_INSTALLED ||
+				    (problem->j->type != PKG_JOBS_UPGRADE &&
+				     problem->j->type != PKG_JOBS_INSTALL))
+					continue;
+				LL_FOREACH(var, tmp) {
+					struct pkg *tpkg;
+
+					/*
+					 * Does the installed version provide
+					 * the library in question?  If so, we
+					 * can safely upgrade away from it in
+					 * the backup_libraries case.
+					 */
+					tpkg = tmp->unit->pkg;
+					if (tpkg->type == PKG_INSTALLED &&
+					    charv_search(&tpkg->shlibs_provided,
+					    pr->provide) != NULL)
+						break;
+				}
+				if (tmp == NULL)
+					continue;
+			}
 
 			/*
 			 * Make sure the package ABI matches.  If the OS or
