@@ -206,7 +206,7 @@ struct pkg_job_universe_item* pkg_jobs_universe_find(struct pkg_jobs_universe
  * Add a single package to the universe
  */
 int pkg_jobs_universe_add_pkg(struct pkg_jobs_universe *universe,
-	struct pkg *pkg, bool force, struct pkg_job_universe_item **found);
+	struct pkg *pkg, struct pkg_job_universe_item **found);
 
 /*
  * Find local package in db or universe
