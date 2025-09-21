@@ -5,7 +5,8 @@ tests_init \
 	elfparse \
 	machoparse \
 	native \
-	override
+	override \
+	shlib
 
 native_body() {
 	OS=$(uname -s)
@@ -167,4 +168,102 @@ machoparse_body() {
 		-o inline:"${_expected}" \
 		-e match:"picking first" \
 		pkg -d -o IGNORE_OSMAJOR=1 -o ABI_FILE=$(atf_get_srcdir)/macosfat.bin config altabi
+}
+
+# Helper for the test below.  Create a package with the specified name, version
+# and ABI, containing a single shared library of the same name.
+make_onelib_pkg()
+{
+	local name version abi
+
+	name=$1
+	version=$2
+	abi=$3
+	atf_check sh ${RESOURCEDIR}/test_subr.sh new_pkg $name $name $version / $abi
+	cat <<__EOF__ >> ${name}.ucl
+files: {
+	${TMPDIR}/lib${name}.so.1: "",
+}
+__EOF__
+	atf_check pkg create -M ${name}.ucl
+}
+
+# Try to verify ABI mixing in shared library dependencies.  It's ok for a shlib
+# to depend on a shlib from a newer ABI, at least on FreeBSD.  In this case,
+# bar-* can be satisfied by foo-*, but baz-2 cannot be satisfied by foo-1.  We
+# check that the solver enforces this.
+shlib_body()
+{
+	atf_skip_on Darwin Not sure how to test this there
+	atf_skip_on Linux Not sure how to test this there
+
+	atf_check touch empty.c
+	atf_check cc -shared -Wl,-soname=libfoo.so.1 empty.c -o libfoo.so.1
+	atf_check ln -s libfoo.so.1 libfoo.so
+	atf_check cc -shared -Wl,-soname=libbar.so.1 empty.c -o libbar.so.1 -lfoo -L.
+	atf_check ln -s libbar.so.1 libbar.so
+	atf_check cc -shared -Wl,-soname=libbaz.so.1 empty.c -o libbaz.so.1 -lbar -L.
+
+	make_onelib_pkg foo 1 FreeBSD:15:amd64
+	make_onelib_pkg bar 1 FreeBSD:15:amd64
+	make_onelib_pkg baz 1 FreeBSD:15:amd64
+
+	make_onelib_pkg foo 2 FreeBSD:16:amd64
+	make_onelib_pkg bar 2 FreeBSD:15:amd64
+	make_onelib_pkg baz 2 FreeBSD:16:amd64
+
+	atf_check mkdir target reposconf
+
+	# Install the base version packages, foo-1, bar-1, baz-1.
+	for pkg in foo bar baz; do
+		atf_check \
+		    pkg -o REPOS_DIR=/dev/null -r ${TMPDIR}/target \
+			install -qfy ${TMPDIR}/${pkg}-1.pkg
+	done
+
+	# Set up our repos.  foo and baz go in one, bar in another.
+	atf_check mkdir repo1 repo2
+	atf_check cp ${TMPDIR}/foo-2.pkg ${TMPDIR}/repo1
+	atf_check cp ${TMPDIR}/baz-2.pkg ${TMPDIR}/repo1
+	atf_check cp ${TMPDIR}/bar-2.pkg ${TMPDIR}/repo2
+
+	for repo in repo1 repo2; do
+		atf_check -o ignore pkg repo ${repo}
+		cat <<__EOF__ > ${TMPDIR}/reposconf/${repo}.conf
+${repo}: {
+	url: file://${TMPDIR}/${repo},
+	enabled: true
+}
+__EOF__
+
+	done
+
+	# Override the ABI for each repo update, otherwise pkg
+	# refuses to proceed.
+	atf_check -o ignore -e ignore \
+	    pkg -o REPOS_DIR=${TMPDIR}/reposconf \
+		-r ${TMPDIR}/target -o ABI=FreeBSD:16:amd64 update -r repo1
+	atf_check -o ignore -e ignore \
+	    pkg -o REPOS_DIR=${TMPDIR}/reposconf \
+		-r ${TMPDIR}/target -o ABI=FreeBSD:15:amd64 update -r repo2
+
+	atf_check -o ignore -e empty \
+	    pkg -o REPOS_DIR=${TMPDIR}/reposconf -r ${TMPDIR}/target \
+		-o IGNORE_OSMAJOR=yes \
+		-o OSVERSION=1600000 \
+		-o ABI=FreeBSD:16:amd64 upgrade -y -r repo1
+
+	# We should end up with foo-2, bar-1 and baz-2 installed.  This
+	# is not quite right since baz-2 depends on libbar.so.1, which
+	# has an older OS version.  But this is a pre-existing behaviour
+	# of the solver: pkg_solve_add_require_rule() will ignore the
+	# dependency if it cannot be satisfied.  If that behaviour
+	# changes, this test will need an update.
+	#
+	# However, we shouldn't uninstall bar-1 since foo-2's
+	# libfoo.so.1 should still be compatible even though its OS
+	# version is newer.
+	atf_check test -f ${TMPDIR}/target/${TMPDIR}/libfoo.so.1
+	atf_check test -f ${TMPDIR}/target/${TMPDIR}/libbar.so.1
+	atf_check test -f ${TMPDIR}/target/${TMPDIR}/libbaz.so.1
 }

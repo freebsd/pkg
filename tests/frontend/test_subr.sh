@@ -1,5 +1,3 @@
-
-
 new_pkg() {
 	cat << EOF > $1.ucl
 name: $2
@@ -10,7 +8,7 @@ categories: [test]
 comment: a test
 www: http://test
 prefix: ${4}
-abi: "*"
+abi: "${5:-*}"
 desc: <<EOD
 This is a test
 EOD
@@ -27,7 +25,7 @@ categories: [test]
 comment: a test
 www: http://test
 prefix: ${5}
-abi: "*"
+abi: "${6:-*}"
 desc: <<EOD
 This is a test
 EOD
