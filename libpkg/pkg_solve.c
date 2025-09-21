@@ -277,7 +277,6 @@ pkg_solve_handle_provide(struct pkg_solve_problem *problem,
 	struct pkg_solve_variable *var, *curvar;
 	struct pkg_job_universe_item *un;
 	struct pkg *pkg;
-	bool libfound, providefound;
 
 	/* Find the first package in the universe list */
 	un = pr->un;
@@ -293,37 +292,60 @@ pkg_solve_handle_provide(struct pkg_solve_problem *problem,
 		 * For each provide we need to check whether this package
 		 * actually provides this require
 		 */
-		libfound = providefound = false;
 		pkg = curvar->unit->pkg;
-
 		if (pr->is_shlib) {
-			libfound = (charv_search(&pkg->shlibs_provided, pr->provide) != NULL);
-			/* Skip incompatible ABI as well */
-			if (libfound && !STREQ(pkg->abi, orig->abi)) {
-				dbg(2, "require %s: package %s-%s(%c) provides wrong ABI %s, "
-					"wanted %s", pr->provide, pkg->name, pkg->version,
-					pkg->type == PKG_INSTALLED ? 'l' : 'r', pkg->abi, orig->abi);
+			struct pkg_abi oabi, pabi;
+
+			if (charv_search(&pkg->shlibs_provided, pr->provide) ==
+			    NULL)
+				continue;
+
+			/*
+			 * Make sure the package ABI matches.  If the OS or
+			 * architecture don't match, we're done.  Otherwise, on
+			 * FreeBSD, the provider's ABI version should be at
+			 * least that of the required ABI.  For example, it
+			 * should be ok for FreeBSD:15:amd64 packages to depend
+			 * on libc.so.7 from a FreeBSD:16:amd64 pkgbase package.
+			 * In general we assume that shared libraries provide
+			 * backward compatibility.
+			 *
+			 * This might be reasonable behaviour on other OSes as
+			 * well.
+			 */
+			if (!pkg_abi_from_string(&oabi, orig->abi) ||
+			    !pkg_abi_from_string(&pabi, pkg->abi))
+				continue;
+			if (oabi.os != pabi.os || oabi.arch != pabi.arch ||
+			    oabi.os != PKG_OS_FREEBSD) {
+				dbg(2,
+		"require %s: package %s-%s(%c) provides ABI %s, want %s",
+				    pr->provide, pkg->name, pkg->version,
+				    pkg->type == PKG_INSTALLED ? 'l' : 'r',
+				    pkg->abi, orig->abi);
 				continue;
 			}
-		}
-		else {
-			providefound = (charv_search(&pkg->provides, pr->provide) != NULL);
-		}
-
-		if (!providefound && !libfound) {
-			dbg(4, "%s provide is not satisfied by %s-%s(%c)", pr->provide,
-					pkg->name, pkg->version, pkg->type == PKG_INSTALLED ?
-							'l' : 'r');
+			if (pabi.major < oabi.major ||
+			    (pabi.major == oabi.major &&
+			     pabi.minor < oabi.minor) ||
+			    (pabi.major == oabi.major &&
+			     pabi.minor == oabi.minor &&
+			     pabi.patch < oabi.patch)) {
+				continue;
+			}
+		} else if (charv_search(&pkg->provides, pr->provide) == NULL) {
+			dbg(4, "%s provide is not satisfied by %s-%s(%c)",
+			    pr->provide, pkg->name, pkg->version,
+			    pkg->type == PKG_INSTALLED ? 'l' : 'r');
 			continue;
 		}
 
-		if (curvar->assumed_reponame == NULL) {
+		if (curvar->assumed_reponame == NULL)
 			curvar->assumed_reponame = reponame;
-		}
 
-		dbg(4, "%s provide is satisfied by %s-%s(%c)", pr->provide,
-				pkg->name, pkg->version, pkg->type == PKG_INSTALLED ?
-				'l' : 'r');
+		dbg(4, "%s provide is satisfied by %s-%s(%c)",
+		    pr->provide, pkg->name, pkg->version,
+		    pkg->type == PKG_INSTALLED ? 'l' : 'r');
 
 		pkg_solve_item_new(rule, curvar, 1);
 		(*cnt)++;
