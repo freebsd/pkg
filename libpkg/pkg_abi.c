@@ -33,7 +33,7 @@ struct arch_trans {
 	const char *archid;
 };
 
-static struct arch_trans machine_arch_translation[] = { { "x86:32", "i386" },
+static const struct arch_trans machine_arch_translation[] = { { "x86:32", "i386" },
 	{ "x86:64", "amd64" }, { "powerpc:32:eb", "powerpc" },
 	{ "powerpc:64:eb", "powerpc64" }, { "powerpc:64:el", "powerpc64le" },
 	{ "sparc64:64", "sparc64" }, { "ia64:64", "ia64" },
@@ -50,7 +50,7 @@ static struct arch_trans machine_arch_translation[] = { { "x86:32", "i386" },
 
 	{ NULL, NULL } };
 
-static struct {
+static const struct {
 	enum pkg_os os;
 	const char *string;
 } os_string_table[] = {
@@ -65,7 +65,7 @@ static struct {
 
 /* This table does not include PKG_ARCH_AMD64 as the string translation of
    that arch is os-dependent. */
-static struct {
+static const struct {
 	enum pkg_arch arch;
 	const char *string;
 } arch_string_table[] = {
@@ -403,7 +403,7 @@ int
 pkg_arch_to_legacy(const char *arch, char *dest, size_t sz)
 {
 	int i = 0;
-	struct arch_trans *arch_trans;
+	const struct arch_trans *arch_trans;
 
 	memset(dest, '\0', sz);
 	/* Lower case the OS */
