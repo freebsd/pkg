@@ -30,7 +30,9 @@ all: Kyuafile Makefile
 check: UndefinedBehaviour.suppress Leak.suppress
 	export UBSAN_OPTIONS=print_stacktrace=1:halt_on_error=1:suppressions=$(top_builddir)/UndefinedBehaviour.suppress; \
 	export LSAN_OPTIONS=print_suppressions=0:suppressions=$(top_builddir)/Leak.suppress; \
-	export ASAN_OPTIONS=detect_leaks=1; \
+	if [ "$$(uname)" != "FreeBSD" ]; then \
+		export ASAN_OPTIONS=detect_leaks=1 ; \
+	fi ; \
 	export LLVM_PROFILE_FILE=/tmp/pkg.%p.profraw; \
 	if [ "$(HTML)" != "" ]; then \
 		args="-r $(top_builddir)/res.db" ; \
