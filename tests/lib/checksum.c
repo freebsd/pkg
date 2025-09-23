@@ -168,19 +168,19 @@ ATF_TC_BODY(check_pkg, tc)
 	ATF_REQUIRE_EQ(pkg_checksum_generate(p, sum, pkg_checksum_type_size(PKG_HASH_TYPE_SHA256_HEX) * 2, 42, false, false, false), EPKG_FATAL);
 	ATF_REQUIRE_EQ(pkg_checksum_generate(p, sum, 2, PKG_HASH_TYPE_SHA256_HEX, false, false, false), EPKG_FATAL);
 	ATF_CHECK(pkg_checksum_generate(p, sum, pkg_checksum_type_size(PKG_HASH_TYPE_SHA256_HEX) * 2, PKG_HASH_TYPE_SHA256_HEX, false, false, false) == EPKG_OK);
-	ATF_REQUIRE_STREQ(sum, "2$1$22c6baf7d22b7035be18ffe04f43717f907f4848b3d5d72bfc44bb8435053ea4");
+	ATF_REQUIRE_STREQ(sum, "2$1$c92e2953e828678424ea69eec32ee18b233fcbe3007c35fc7f742710f12b2d86");
 	ATF_REQUIRE_EQ(pkg_checksum_get_type(sum, -1), PKG_HASH_TYPE_SHA256_HEX);
 	free(sum);
 
 	sum = xcalloc(pkg_checksum_type_size(PKG_HASH_TYPE_BLAKE2_BASE32) * 2, sizeof(char));
 	ATF_CHECK(pkg_checksum_generate(p, sum, pkg_checksum_type_size(PKG_HASH_TYPE_BLAKE2_BASE32) * 2, PKG_HASH_TYPE_BLAKE2_BASE32, false, false, false) == EPKG_OK);
-	ATF_REQUIRE_STREQ(sum, "2$2$iskiim4jgor5sie8tkthjksomnpyuynaqfxbmgt3x7rn9atyebiwk5njiiyxpyqm5eimq6g44bd9tnuwf3mfesqp6r8tim8un7jfday");
+	ATF_REQUIRE_STREQ(sum, "2$2$cpshbd67gsbe1ds1rr17wya3onw5k75fpqeh1dj6ftpgizsiozd7tqkok3zhinzk3sp7dqk1unko7hzghx65m1o7nwhkgom6rbzno8y");
 	ATF_REQUIRE_EQ(pkg_checksum_get_type(sum, -1), PKG_HASH_TYPE_BLAKE2_BASE32);
 	free(sum);
 
 	sum = xcalloc(pkg_checksum_type_size(PKG_HASH_TYPE_BLAKE2S_BASE32) * 2, sizeof(char));
 	ATF_CHECK(pkg_checksum_generate(p, sum, pkg_checksum_type_size(PKG_HASH_TYPE_BLAKE2S_BASE32) * 2, PKG_HASH_TYPE_BLAKE2S_BASE32, false, false, false) == EPKG_OK);
-	ATF_REQUIRE_STREQ(sum, "2$5$9819ezi7ytn58y3mwhcxaqbkiaik7ui9o3obewhqmuyx99kmb95y");
+	ATF_REQUIRE_STREQ(sum, "2$5$ea9pqrut8o9q7oin9ddd5gxcx4j5a99negxmfxxrx1swih4n7gzb");
 	ATF_REQUIRE_EQ(pkg_checksum_get_type(sum, -1), PKG_HASH_TYPE_BLAKE2S_BASE32);
 	free(sum);
 
