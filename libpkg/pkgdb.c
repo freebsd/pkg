@@ -1269,7 +1269,7 @@ pkgdb_transaction_rollback(struct pkgdb *db, const char *savepoint)
  * CASE_SENSITIVE_MATCH in pkg.conf and then possbily reset again in
  * pkg search et al according to command line flags */
 
-static bool _case_sensitive_flag = false;
+static bool _case_sensitive_flag = true;
 
 void
 pkgdb_set_case_sensitivity(bool case_sensitive)
