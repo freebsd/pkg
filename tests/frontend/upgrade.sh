@@ -313,13 +313,14 @@ local: {
 }
 EOF
 
+	rm ${TMPDIR}/mymeta-1.pkg
 	atf_check -o ignore pkg repo .
 	atf_check -o ignore pkg -o REPOS_DIR="$TMPDIR/repoconf" -r ${TMPDIR}/target -o PKG_CACHEDIR="$TMPDIR" update
 	OUTPUT="Updating local repository catalogue...
 local repository is up to date.
 All repositories are up to date.
-Checking for upgrades (2 candidates):  done
-Processing candidates (2 candidates):  done
+Checking for upgrades (1 candidates):  done
+Processing candidates (1 candidates):  done
 Checking integrity... done (1 conflicting)
   - myplop-2 conflicts with mymeta-1 on ${TMPDIR}/file-pkg-1/file
 Cannot solve problem using SAT solver, trying another plan
