@@ -223,7 +223,7 @@ for the package origin, and
 for the package version.
 .It Cm \&%C
 Expands to the list of categories the matched package belongs to.
-.It Cm \&%F Ns Op psugmft
+.It Cm \&%F Ns Op psugmftl
 Expands to the list of files of the matched package, where
 .Cm p
 stands for path,
@@ -236,7 +236,9 @@ for group,
 .Cm m
 for mode (permissions),
 .Cm f
-for file flags, and
+for file flags,
+.Cm l
+for last modification time, and
 .Cm t
 for the symlink target (or empty string if no symlink).
 .It Cm \&%D

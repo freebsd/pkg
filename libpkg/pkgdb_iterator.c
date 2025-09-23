@@ -388,7 +388,7 @@ pkgdb_load_files(sqlite3 *sqlite, struct pkg *pkg)
 	sqlite3_stmt	*stmt = NULL;
 	int		 ret;
 	const char	 sql[] = ""
-		"SELECT path, sha256, uname, gname, perm, fflags, symlink_target "
+		"SELECT path, sha256, uname, gname, perm, fflags, mtime, symlink_target "
 		"  FROM files"
 		"  WHERE package_id = ?1"
 		"  ORDER BY PATH ASC";
@@ -418,9 +418,10 @@ pkgdb_load_files(sqlite3 *sqlite, struct pkg *pkg)
 		const char *gname = sqlite3_column_text(stmt, 3);
 		mode_t perm = sqlite3_column_int64(stmt, 4);
 		u_long fflags = sqlite3_column_int64(stmt, 5);
-		const char *symlink_target = sqlite3_column_text(stmt, 6);
+		time_t mtime = sqlite3_column_int64(stmt, 6);
+		const char *symlink_target = sqlite3_column_text(stmt, 7);
 		pkg_addfile_attr(pkg, path, sum, uname, gname, perm, fflags,
-				 symlink_target, false);
+				 mtime, symlink_target, false);
 	}
 	sqlite3_finalize(stmt);
 

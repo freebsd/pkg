@@ -45,7 +45,7 @@ static const struct query_flags accepted_query_flags[] = {
 	{ 'd', "nov",		1, PKG_LOAD_DEPS },
 	{ 'r', "nov",		1, PKG_LOAD_RDEPS },
 	{ 'C', "",		1, PKG_LOAD_CATEGORIES },
-	{ 'F', "psugmft",	1, PKG_LOAD_FILES },
+	{ 'F', "psugmftl",	1, PKG_LOAD_FILES },
 	{ 'O', "kvdD",		1, PKG_LOAD_OPTIONS },
 	{ 'D', "",		1, PKG_LOAD_DIRS },
 	{ 'S', "pugmf",		1, PKG_LOAD_DIRS }, /* sub directories - directory with options */
@@ -265,6 +265,8 @@ format_str(struct pkg *pkg, xstring *dest, const char *qstr, const void *data)
 					pkg_fprintf(dest->fp, "%Ff", data);
 				else if (qstr[0] == 't')
 					pkg_fprintf(dest->fp, "%Ft", data);
+				else if (qstr[0] == 'l')
+					pkg_fprintf(dest->fp, "%Fl", data);
 				break;
 			case 'O':
 				qstr++;

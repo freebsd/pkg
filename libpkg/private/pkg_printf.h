@@ -93,6 +93,7 @@ typedef enum _fmt_code_t {
 	PP_PKG_DIRECTORIES,
 	PP_PKG_FILE_FFLAGS,
 	PP_PKG_FILE_GROUP,
+	PP_PKG_FILE_MTIME,
 	PP_PKG_FILE_PATH,
 	PP_PKG_FILE_PERMS,
 	PP_PKG_FILE_SHA256,
@@ -185,6 +186,7 @@ _static xstring *format_directory_path(xstring *, const void *, struct percent_e
 _static xstring *format_directory_perms(xstring *, const void *, struct percent_esc *);
 _static xstring *format_directory_user(xstring *, const void *, struct percent_esc *);
 _static xstring *format_files(xstring *, const void *, struct percent_esc *);
+_static xstring *format_file_mtime(xstring *, const void *, struct percent_esc *);
 _static xstring *format_file_group(xstring *, const void *, struct percent_esc *);
 _static xstring *format_file_path(xstring *, const void *, struct percent_esc *);
 _static xstring *format_file_perms(xstring *, const void *, struct percent_esc *);

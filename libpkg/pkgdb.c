@@ -420,6 +420,7 @@ pkgdb_init(sqlite3 *sdb)
 		"gname TEXT,"
 		"perm INTEGER,"
 		"fflags INTEGER,"
+		"mtime INTEGER,"
 		"symlink_target TEXT,"
 		"package_id INTEGER REFERENCES packages(id) ON DELETE CASCADE"
 			" ON UPDATE CASCADE"
@@ -1366,22 +1367,22 @@ static sql_prstmt sql_prepared_statements[PRSTMT_LAST] = {
 	[FILES] = {
 		NULL,
 		"INSERT INTO files (path, sha256, uname, gname, "
-		"perm, fflags, symlink_target, package_id) "
-		"VALUES (?1, ?2, ?3, ?4, ?5, ?6, ?7, ?8)",
-		"TTTTIITI",
+		"perm, fflags, symlink_target, mtime, package_id) "
+		"VALUES (?1, ?2, ?3, ?4, ?5, ?6, ?7, ?8, ?9)",
+		"TTTTIITII",
 	},
 	[FILES_REPLACE] = {
 		NULL,
 		"INSERT OR REPLACE INTO files (path, sha256, uname, gname, "
-		"perm, fflags, symlink_target, package_id) "
-		"VALUES (?1, ?2, ?3, ?4, ?5, ?6, ?7, ?8)",
-		"TTTTIITI",
+		"perm, fflags, symlink_target, mtime, package_id) "
+		"VALUES (?1, ?2, ?3, ?4, ?5, ?6, ?7, ?8, ?9)",
+		"TTTTIITII",
 	},
 	[DIRS1] = {
 		NULL,
 		"INSERT OR IGNORE INTO directories(path, uname, gname, perm, fflags) "
 		"VALUES(?1,?2,?3,?4,?5)",
-		"TTTII",
+		"TTTIII",
 	},
 	[DIRS2] = {
 		NULL,
@@ -1770,6 +1771,7 @@ pkgdb_register_pkg(struct pkgdb *db, struct pkg *pkg, int forced,
 				 _pkgdb_empty_str_null(file->gname),
 				 file->perm, file->fflags,
 				 _pkgdb_empty_str_null(file->symlink_target),
+				 file->time[1].tv_sec,
 				 package_id);
 		if (ret == SQLITE_DONE)
 			continue;
@@ -1792,6 +1794,7 @@ pkgdb_register_pkg(struct pkgdb *db, struct pkg *pkg, int forced,
 					 _pkgdb_empty_str_null(file->gname),
 					 file->perm, file->fflags,
 					 _pkgdb_empty_str_null(file->symlink_target),
+					 file->time[1].tv_sec,
 					 package_id);
 			pkgdb_it_free(it);
 			if (ret == SQLITE_DONE)
@@ -1851,7 +1854,8 @@ pkgdb_register_pkg(struct pkgdb *db, struct pkg *pkg, int forced,
 	while (pkg_dirs(pkg, &dir) == EPKG_OK) {
 		if (run_prstmt(DIRS1, dir->path, _pkgdb_empty_str_null(dir->uname),
 			       _pkgdb_empty_str_null(dir->gname),
-			       dir->perm, dir->fflags) != SQLITE_DONE) {
+			       dir->perm, dir->fflags,
+			       dir->time[1].tv_sec) != SQLITE_DONE) {
 			ERROR_STMT_SQLITE(s, STMT(DIRS1));
 			goto cleanup;
 		}

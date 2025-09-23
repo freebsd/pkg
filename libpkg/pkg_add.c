@@ -374,15 +374,15 @@ fill_timespec_buf(const struct stat *aest, struct timespec tspec[2])
 {
 #ifdef HAVE_STRUCT_STAT_ST_MTIM
 	tspec[0].tv_sec = aest->st_atim.tv_sec;
-	tspec[0].tv_nsec = aest->st_atim.tv_nsec;
+	tspec[0].tv_nsec = 0;
 	tspec[1].tv_sec = aest->st_mtim.tv_sec;
-	tspec[1].tv_nsec = aest->st_mtim.tv_nsec;
+	tspec[1].tv_nsec = 0;
 #else
 # if defined(_DARWIN_C_SOURCE) || defined(__APPLE__)
 	tspec[0].tv_sec = aest->st_atimespec.tv_sec;
-	tspec[0].tv_nsec = aest->st_atimespec.tv_nsec;
+	tspec[0].tv_nsec = 0;
 	tspec[1].tv_sec = aest->st_mtimespec.tv_sec;
-	tspec[1].tv_nsec = aest->st_mtimespec.tv_nsec;
+	tspec[1].tv_nsec = 0;
 # else
 	/* Portable unix version */
 	tspec[0].tv_sec = aest->st_atime;

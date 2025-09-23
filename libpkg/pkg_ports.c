@@ -407,12 +407,12 @@ meta_file(struct plist *p, char *line, struct file_attr *a, bool is_config)
 				       a->owner ? a->owner : p->uname,
 				       a->group ? a->group : p->gname,
 				       a->mode ? a->mode : p->perm,
-				       a->fflags,
+				       a->fflags, st.st_mtim.tv_sec,
 				       linklen > 0 ? symlink_target : NULL,
 				       true);
 	} else {
 		ret = pkg_addfile_attr(p->pkg, path, buf, p->uname,
-				       p->gname, p->perm, 0,
+				       p->gname, p->perm, 0, st.st_mtim.tv_sec,
 				       linklen > 0 ? symlink_target : NULL,
 				       true);
 	}

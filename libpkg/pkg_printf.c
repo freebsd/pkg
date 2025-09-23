@@ -76,6 +76,7 @@
  * Ff pkg_file     File flags of file
  * Fg pkg_file     Group owner of file
  * Fk pkg_file     Keep flag
+ * Fl pkg_file     File modification time
  * Fn pkg_file     File path name
  * Fp pkg_file     File permissions
  * Fs pkg_file     File SHA256 checksum
@@ -319,6 +320,15 @@ static const struct pkg_printf_fmt	fmt[] = {
 		false,
 		PP_PKG|PP_F,
 		&format_file_group,
+	},
+	[PP_PKG_FILE_MTIME] =
+	{
+		'F',
+		'l',
+		false,
+		false,
+		PP_PKG|PP_F,
+		&format_file_mtime,
 	},
 	[PP_PKG_FILE_PATH] =
 	{
@@ -885,6 +895,24 @@ format_fflags(xstring *buf, u_long fflags, struct percent_esc *p)
 	return (ret);
 }
 
+static xstring *
+format_time_t(xstring *buf, time_t timestamp, struct percent_esc *p)
+{
+	fflush(p->item_fmt->fp);
+	if (strlen(p->item_fmt->buf) == 0)
+		return (int_val(buf, timestamp, p));
+	else {
+		char	 buffer[1024];
+		time_t	 tsv;
+
+		tsv = timestamp;
+		strftime(buffer, sizeof(buffer), p->item_fmt->buf,
+			 localtime(&tsv));
+		fprintf(buf->fp, "%s", buffer);
+	}
+	return (buf);
+}
+
 /*
  * Note: List values -- special behaviour with ? and # modifiers.
  * Affects %A %B %C %D %F %G %L %O %U %b %d %r
@@ -1165,6 +1193,17 @@ format_files(xstring *buf, const void *data, struct percent_esc *p)
 		}
 	}
 	return (buf);
+}
+
+/*
+ * %Fm -- File modification time.
+ */
+xstring *
+format_file_mtime(xstring *buf, const void *data, struct percent_esc *p)
+{
+	const struct pkg_file *file = data;
+
+	return (format_time_t(buf, file->time[1].tv_sec, p));
 }
 
 /*
@@ -1930,19 +1969,7 @@ format_install_tstamp(xstring *buf, const void *data, struct percent_esc *p)
 {
 	const struct pkg	*pkg = data;
 
-	fflush(p->item_fmt->fp);
-	if (strlen(p->item_fmt->buf) == 0)
-		return (int_val(buf, pkg->timestamp, p));
-	else {
-		char	 buffer[1024];
-		time_t	 tsv;
-
-		tsv = (time_t)pkg->timestamp;
-		strftime(buffer, sizeof(buffer), p->item_fmt->buf,
-			 localtime(&tsv));
-		fprintf(buf->fp, "%s", buffer);
-	}
-	return (buf);
+	return (format_time_t(buf, pkg->timestamp, p));
 }
 
 /*
