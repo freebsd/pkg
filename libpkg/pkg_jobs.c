@@ -1075,6 +1075,13 @@ pkg_jobs_need_upgrade(charv_t *system_shlibs, struct pkg *rp, struct pkg *lp)
 		return (true);
 	}
 
+	if (lp->vital != rp->vital) {
+		free(rp->reason);
+		xasprintf(&rp->reason, "Vital flag changed: '%s' -> '%s'",
+		    lp->vital ? "true" : "false", rp->vital ? "true" : "false");
+		return (true);
+	}
+
 	/* compare options */
 	for (;;) {
 		if (!pkg_object_bool(pkg_config_get("PKG_REINSTALL_ON_OPTIONS_CHANGE")))
