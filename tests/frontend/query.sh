@@ -31,12 +31,14 @@ files: {
 		"gname": "groot"
 		"perm": "777"
 		"fflags": "schg,nodump"
+		"mtime": 2342
 	}
 	"${TMPDIR}/bla": {
 		"sum": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
 		"uname": "utoor"
 		"gname": "gtoor"
 		"perm": "1765"
+		"mtime": 4223
 	}
 	"${TMPDIR}/sym": {
 		"sum": ""
@@ -44,6 +46,7 @@ files: {
 		"gname": "sym-gtoor"
 		"perm": "0644"
 		"symlink_target": "sym-target"
+		"mtime": 123432
 	}
 }
 EOF
@@ -164,12 +167,12 @@ EOF
 
 	if [ "${OS}" = "FreeBSD" ]; then
 	    atf_check \
-		-o match:"^${TMPDIR}/bla utoor gtoor 1765 - $" \
-		-o match:"^${TMPDIR}/plop uroot groot 777 schg,nodump $" \
-		-o match:"^${TMPDIR}/sym sym-root sym-gtoor 644 - sym-target$" \
+		-o match:"^${TMPDIR}/bla utoor gtoor 1765 - 4223 $" \
+		-o match:"^${TMPDIR}/plop uroot groot 777 schg,nodump 2342 $" \
+		-o match:"^${TMPDIR}/sym sym-root sym-gtoor 644 - 123432 sym-target$" \
 		-e empty \
 		-s exit:0 \
-		pkg query "%Fp %Fu %Fg %Fm %Ff %Ft" test
+		pkg query "%Fp %Fu %Fg %Fm %Ff %Fl %Ft" test
 
 	    atf_check \
 		-o inline:"${TMPDIR}/test-dir uroot groot 660 arch,nodump\n" \

@@ -580,6 +580,7 @@ pkg_set_files_from_object(struct pkg *pkg, const ucl_object_t *obj)
 	u_long fflags = 0;
 	char *fname = NULL;
 	const char *key, *okey;
+	time_t mtime = 0;
 
 	okey = ucl_object_key(obj);
 	if (okey == NULL)
@@ -618,6 +619,15 @@ pkg_set_files_from_object(struct pkg *pkg, const ucl_object_t *obj)
 #endif
 		} else if (STRIEQ(key, "symlink_target") && cur->type == UCL_STRING) {
 			symlink_target = ucl_object_tostring(cur);
+		} else if (STRIEQ(key, "mtime") &&
+			   (cur->type == UCL_STRING || cur->type == UCL_INT)) {
+			errno = 0;
+			mtime = strtoll(ucl_object_tostring_forced(cur), NULL, 10);
+			if (mtime == 0 && errno != 0) {
+				pkg_emit_errno("strtoll: invalid epoch value",
+					       ucl_object_tostring_forced(cur));
+				continue;
+			}
 		} else {
 			dbg(1, "Skipping unknown key for file(%s): %s",
 			    fname, key);
@@ -625,7 +635,7 @@ pkg_set_files_from_object(struct pkg *pkg, const ucl_object_t *obj)
 	}
 
 	pkg_addfile_attr(pkg, fname, sum, uname, gname, perm, fflags,
-			 symlink_target, false);
+			 mtime, symlink_target, false);
 	free(fname);
 
 	return (EPKG_OK);
@@ -1176,6 +1186,11 @@ pkg_emit_object(struct pkg *pkg, short flags)
 					ucl_object_insert_key(file_attrs,
 							      ucl_object_fromstring(file->symlink_target),
 							      "symlink_target", 0, false);
+				}
+				if (file->time[1].tv_sec > 0) {
+					ucl_object_insert_key(file_attrs,
+							      ucl_object_fromint(file->time[1].tv_sec),
+							      "mtime", 0, false);
 				}
 
 				urlencode(dp, &tmpsbuf);

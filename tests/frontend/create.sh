@@ -422,6 +422,7 @@ post-install:
 EOF
 	touch A
 	mkdir B
+	A_mtime=$(q_mtime A)
 
 	atf_check \
 		-o empty \
@@ -457,6 +458,7 @@ files {
         gname = "wheel";
         perm = "0000";
         fflags = 0;
+        mtime = ${A_mtime};
     }
 }
 directories {
@@ -482,6 +484,7 @@ EOF
 create_from_manifest_and_plist_body() {
 	genmanifest
 	touch testfile
+	testfile_mtime=$(q_mtime testfile)
 	genplist "testfile"
 	atf_check \
 		-o empty \
@@ -511,6 +514,7 @@ files {
         gname = "wheel";
         perm = "0000";
         fflags = 0;
+        mtime = ${testfile_mtime};
     }
 }
 EOF
@@ -532,6 +536,8 @@ files: {
 EOF
 	touch testfile
 	ln -s sym-target sym-file
+	test_file_mtime=$(q_mtime testfile)
+	sym_file_mtime=$(q_mtime sym-file)
 	atf_check \
 		-o empty \
 		-e empty \
@@ -560,6 +566,7 @@ files {
         gname = "wheel";
         perm = "0644";
         fflags = 0;
+        mtime = ${test_file_mtime};
     }
     /sym-file {
         sum = "1\$a83552cc4e1e92707178239c630b7f05d51124ff2afa7c5595ff4e76cb96cfa4";
@@ -568,6 +575,7 @@ files {
         perm = "0644";
         fflags = 0;
         symlink_target = "sym-target";
+        mtime = ${sym_file_mtime};
     }
 }
 EOF

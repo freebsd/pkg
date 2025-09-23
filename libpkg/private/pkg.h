@@ -792,7 +792,7 @@ int pkg_addfile(struct pkg *pkg, const char *path, const char *sha256,
     bool check_duplicates);
 int pkg_addfile_attr(struct pkg *pkg, const char *path, const char *sha256,
     const char *uname, const char *gname, mode_t perm, u_long fflags,
-    const char *symlink_target, bool check_duplicates);
+    time_t mtime, const char *symlink_target, bool check_duplicates);
 
 int pkg_adddir(struct pkg *pkg, const char *path, bool check_duplicates);
 int pkg_adddir_attr(struct pkg *pkg, const char *path, const char *uname,

@@ -733,6 +733,7 @@ static struct db_upgrades {
 	"ALTER TABLE files ADD COLUMN gname TEXT; "
 	"ALTER TABLE files ADD COLUMN perm INTEGER; "
 	"ALTER TABLE files ADD COLUMN fflags INTEGER; "
+	"ALTER TABLE files ADD COLUMN mtime INTEGER; "
 	"ALTER TABLE files ADD COLUMN symlink_target TEXT; "
 	"ALTER TABLE directories ADD COLUMN uname TEXT; "
 	"ALTER TABLE directories ADD COLUMN gname TEXT; "

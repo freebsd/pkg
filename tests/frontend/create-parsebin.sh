@@ -23,6 +23,7 @@ genmanifest() {
         local file1_size=$(wc -c < ${file1})
         local file1_sha=$(openssl dgst -sha256 -hex ${file1} | sed -nE 's/.*=[[:space:]]*([[:xdigit:]]+)/\1/p')
         cp -a ${file1} ${TMPDIR}/${file1_base}
+	file1_mtime=$(q_mtime ${TMPDIR}/${file1_base})
 
         PKG_FILES="${PKG_FILES}/${file1_base}: {perm: 0644}${NL}"
 	PKG_SHA256="${PKG_SHA256}
@@ -32,6 +33,7 @@ genmanifest() {
         gname = \"wheel\";
         perm = \"0644\";
         fflags = 0;
+        mtime = ${file1_mtime};
     }"
 
         PKG_FLATSIZE=$((${PKG_FLATSIZE}+${file1_size}))

@@ -132,6 +132,9 @@ pkg_create_from_dir(struct pkg *pkg, const char *root,
 				}
 				file->symlink_target[linklen] = '\0';
 			}
+
+			file->time[0] = st.st_atim;
+			file->time[1] = st.st_mtim;
 		}
 
 		counter_count();
