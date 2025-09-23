@@ -1072,7 +1072,6 @@ pkg_jobs_need_upgrade(charv_t *system_shlibs, struct pkg *rp, struct pkg *lp)
 		free(rp->reason);
 		xasprintf(&rp->reason, "ABI changed: '%s' -> '%s'",
 		    lp->abi, rp->abi);
-		assert(rp->reason != NULL);
 		return (true);
 	}
 
