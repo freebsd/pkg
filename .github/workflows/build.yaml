@@ -1,5 +1,5 @@
 ##
-# Copyright (c) 2024 Keve Müller <kevemueller@users.github.com>
+# Copyright (c) 2024, 2025 Keve Müller <kevemueller@users.github.com>
 #
 # SPDX-License-Identifier: BSD-2-Clause
 #
@@ -31,19 +31,19 @@ jobs:
       matrix:
         build-os:
           - ubuntu-24.04
-          # - macos-15
+          - macos-15
         sanitize:
           - []
           - ["asan", "lsan"]
           - ["ubsan", "tsan"]
         include:
-          # - build-os: macos-15
-          #   compiler: clang-19
-          #   pkgs:
-          #     # - pkgconf comes preinstalled on the GitHub runner
-          #     - libarchive
-          #     - llvm@19
-          #   llvm-bindir: /opt/homebrew/opt/llvm@19/bin
+          - build-os: macos-15
+            compiler: clang-19
+            pkgs:
+              # - pkgconf comes preinstalled on the GitHub runner
+              - libarchive
+              - llvm@19
+            llvm-bindir: /opt/homebrew/opt/llvm@19/bin
           - build-os: ubuntu-24.04
             compiler: clang-18
             pkgs:
@@ -79,8 +79,10 @@ jobs:
           #   * libarchive from brew (system provided libarchive has no header files for development)
           #   * openssl from brew
           #   * libcurl from system
-          #
+          #   * atf from brew re-compiling from --HEAD
+          #   * kyua from kevemueller/ksysroot until it gets re-merged into brew mainline
 
+          export HOMEBREW_NO_INSTALLED_DEPENDENTS_CHECK=1
           brew update --quiet || true
 
           # temporarily use unstable atf to benefit from fix for std::vector
@@ -89,10 +91,8 @@ jobs:
           brew install ${{ join(matrix.pkgs, ' ') }}
 
           # kyua was kicked out of brew due to lack of activity
-          # we patch away the disabled line and install the last built binary version
-          curl https://raw.githubusercontent.com/Homebrew/homebrew-core/master/Formula/k/kyua.rb |
-            sed 's/^[[:space:]]*disable.*$//'  > kyua.rb
-          brew install --formula ./kyua.rb
+          # we install it from kevemueller/ksysroot 
+          brew install --formula kevemueller/ksysroot/kyua
 
           # We make sure pkg-config picks up brew's libarchive instead of pointing to system libarchive
           echo PKG_CONFIG_PATH=$(brew --prefix libarchive)/lib/pkgconfig >> "${GITHUB_ENV}"
