@@ -6,7 +6,7 @@ tests_init \
 	metalog \
 	reinstall \
 	pre_script_fail \
-	post_script_ignored \
+	post_script_fail \
 	install_missing_dep
 
 test_setup()
@@ -150,7 +150,7 @@ EOF
 		pkg -o REPOS_DIR="/dev/null" install -y ${TMPDIR}/test-1.pkg
 }
 
-post_script_ignored_body()
+post_script_fail_body()
 {
 	atf_check -s exit:0 sh ${RESOURCEDIR}/test_subr.sh new_pkg test test 1
 	cat << EOF >> test.ucl
@@ -167,7 +167,7 @@ EOF
 
 	atf_check -o ignore \
 		-e inline:"${PROGNAME}: POST-INSTALL script failed\n" \
-		-s exit:0 \
+		-s exit:3 \
 		pkg -o REPOS_DIR="/dev/null" install -y ${TMPDIR}/test-1.pkg
 }
 

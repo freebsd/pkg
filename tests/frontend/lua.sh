@@ -221,7 +221,7 @@ pkg: lua script failed\n"
 	mkdir -p ${TMPDIR}/target
 	atf_check \
 		-e inline:"${ERR}" \
-		-s exit:0 \
+		-s exit:3 \
 		pkg -o REPOS_DIR=/dev/null -r ${TMPDIR}/target install -qfy ${TMPDIR}/test-1.pkg
 }
 
