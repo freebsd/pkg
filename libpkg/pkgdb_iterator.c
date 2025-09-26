@@ -211,9 +211,9 @@ pkgdb_load_deps(sqlite3 *sqlite, struct pkg *pkg)
 		"SELECT DISTINCT d.name, d.origin, p.version, 0"
 		"  FROM deps AS d"
 		"    LEFT JOIN packages AS p ON"
-		"    (p.origin = d.origin AND p.name = d.name)"
+		"    (p.name = d.name)"
 		"  WHERE d.package_id = ?1"
-		"  ORDER BY d.origin DESC";
+		"  ORDER BY d.name DESC";
 	const char formula_preamble[] = ""
 		"SELECT id,name,origin,version,locked FROM packages WHERE ";
 	const char options_sql[] = ""
