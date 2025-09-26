@@ -1186,3 +1186,19 @@ get_gid_from_gname(const char *gname)
 out:
 	return (grent.gr_gid);
 }
+
+const char *
+pkg_meta_attribute_tostring(enum pkg_meta_attribute attrib)
+{
+	switch (attrib) {
+	case PKG_META_ATTR_TYPE: return "type";
+	case PKG_META_ATTR_UNAME: return "uname";
+	case PKG_META_ATTR_GNAME: return "gname";
+	case PKG_META_ATTR_PERM: return "perm";
+	case PKG_META_ATTR_FFLAGS: return "fflags";
+	case PKG_META_ATTR_MTIME: return "mtime";
+	case PKG_META_ATTR_SYMLINK: return "symlink";
+	}
+
+	return "???";
+}

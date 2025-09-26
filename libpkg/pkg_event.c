@@ -830,6 +830,76 @@ pkg_emit_file_missing(struct pkg *pkg, struct pkg_file *f)
 }
 
 void
+pkg_emit_dir_missing(struct pkg *pkg, struct pkg_dir *d)
+{
+	struct pkg_event ev;
+	ev.type = PKG_EVENT_DIR_MISSING;
+
+	ev.e_dir_missing.pkg = pkg;
+	ev.e_dir_missing.dir = d;
+
+	pkg_emit_event(&ev);
+}
+
+void
+pkg_emit_file_meta_mismatch(struct pkg *pkg, struct pkg_file *file,
+			    enum pkg_meta_attribute attrib,
+			    const char *db_val, const char *fs_val)
+{
+	struct pkg_event ev;
+	ev.type = PKG_EVENT_FILE_META_MISMATCH;
+
+	ev.e_file_meta_mismatch.pkg = pkg;
+	ev.e_file_meta_mismatch.file = file;
+	ev.e_file_meta_mismatch.attrib = attrib;
+	ev.e_file_meta_mismatch.db_val = db_val;
+	ev.e_file_meta_mismatch.fs_val = fs_val;
+
+	pkg_emit_event(&ev);
+}
+
+void
+pkg_emit_dir_meta_mismatch(struct pkg *pkg, struct pkg_dir *dir,
+			   enum pkg_meta_attribute attrib,
+			   const char *db_val, const char *fs_val)
+{
+	struct pkg_event ev;
+	ev.type = PKG_EVENT_DIR_META_MISMATCH;
+
+	ev.e_dir_meta_mismatch.pkg = pkg;
+	ev.e_dir_meta_mismatch.dir = dir;
+	ev.e_dir_meta_mismatch.attrib = attrib;
+	ev.e_dir_meta_mismatch.db_val = db_val;
+	ev.e_dir_meta_mismatch.fs_val = fs_val;
+
+	pkg_emit_event(&ev);
+}
+
+void
+pkg_emit_file_meta_ok(struct pkg *pkg, struct pkg_file *file)
+{
+	struct pkg_event ev;
+	ev.type = PKG_EVENT_FILE_META_OK;
+
+	ev.e_file_ok.pkg = pkg;
+	ev.e_file_ok.file = file;
+
+	pkg_emit_event(&ev);
+}
+
+void
+pkg_emit_dir_meta_ok(struct pkg *pkg, struct pkg_dir *dir)
+{
+	struct pkg_event ev;
+	ev.type = PKG_EVENT_DIR_META_OK;
+
+	ev.e_dir_ok.pkg = pkg;
+	ev.e_dir_ok.dir = dir;
+
+	pkg_emit_event(&ev);
+}
+
+void
 pkg_plugin_errno(struct pkg_plugin *p, const char *func, const char *arg)
 {
 	struct pkg_event ev;
