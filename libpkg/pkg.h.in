@@ -1308,6 +1308,8 @@ typedef enum {
 	PKG_EVENT_PROGRESS_TICK,
 	PKG_EVENT_BACKUP,
 	PKG_EVENT_RESTORE,
+	PKG_EVENT_FILE_META_OK, // TODO: do we need same event for sum ok?
+	PKG_EVENT_DIR_META_OK,
 	/* errors */
 	PKG_EVENT_ERROR,
 	PKG_EVENT_ERRNO,
@@ -1328,15 +1330,28 @@ typedef enum {
 	PKG_EVENT_NOT_FOUND,
 	PKG_EVENT_NEW_ACTION,
 	PKG_EVENT_MESSAGE,
-	PKG_EVENT_FILE_MISSING,
+	PKG_EVENT_DIR_MISSING,
+	PKG_EVENT_FILE_MISSING, // TODO: add formatter to pipeevent
 	PKG_EVENT_CLEANUP_CALLBACK_REGISTER,
 	PKG_EVENT_CLEANUP_CALLBACK_UNREGISTER,
 	PKG_EVENT_CONFLICTS,
 	PKG_EVENT_TRIGGERS_BEGIN,
 	PKG_EVENT_TRIGGER,
 	PKG_EVENT_TRIGGERS_FINISHED,
-	PKG_EVENT_PKG_ERRNO
+	PKG_EVENT_PKG_ERRNO,
+	PKG_EVENT_FILE_META_MISMATCH,
+	PKG_EVENT_DIR_META_MISMATCH,
 } pkg_event_t;
+
+enum pkg_meta_attribute {
+	PKG_META_ATTR_TYPE,
+	PKG_META_ATTR_UNAME,
+	PKG_META_ATTR_GNAME,
+	PKG_META_ATTR_PERM,
+	PKG_META_ATTR_FFLAGS,
+	PKG_META_ATTR_MTIME,
+	PKG_META_ATTR_SYMLINK,
+};
 
 struct pkg_event {
 	pkg_event_t type;
@@ -1490,6 +1505,10 @@ struct pkg_event {
 		} e_pkg_message;
 		struct {
 			struct pkg *pkg;
+			struct pkg_dir *dir;
+		} e_dir_missing;
+		struct {
+			struct pkg *pkg;
 			struct pkg_file *file;
 		} e_file_missing;
 		struct {
@@ -1509,6 +1528,28 @@ struct pkg_event {
 			size_t total;
 			size_t current;
 		} e_action;
+		struct {
+			struct pkg *pkg;
+			struct pkg_file *file;
+			enum pkg_meta_attribute attrib;
+			const char *db_val;
+			const char *fs_val;
+		} e_file_meta_mismatch;
+		struct {
+			struct pkg *pkg;
+			struct pkg_dir *dir;
+			enum pkg_meta_attribute attrib;
+			const char *db_val;
+			const char *fs_val;
+		} e_dir_meta_mismatch;
+		struct {
+			struct pkg *pkg;
+			struct pkg_file *file;
+		} e_file_ok;
+		struct {
+			struct pkg *pkg;
+			struct pkg_dir *dir;
+		} e_dir_ok;
 	};
 };
 
@@ -1519,6 +1560,7 @@ struct pkg_event {
 typedef int(*pkg_event_cb)(void *, struct pkg_event *);
 
 void pkg_event_register(pkg_event_cb cb, void *data);
+const char *pkg_meta_attribute_tostring(enum pkg_meta_attribute);
 
 bool pkg_compiled_for_same_os_major(void);
 int pkg_ini(const char *, const char *, pkg_init_flags);
@@ -1527,6 +1569,7 @@ const char *pkg_libversion(void);
 int pkg_initialized(void);
 void pkg_shutdown(void);
 
+int pkg_check_files(struct pkg *, bool checksums, bool metadata);
 int pkg_test_filesum(struct pkg *);
 
 void pkgdb_cmd(int argc, char **argv);
