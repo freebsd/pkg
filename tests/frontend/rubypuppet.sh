@@ -275,8 +275,8 @@ Installed packages to be UPGRADED:
 
 Installed packages to be REINSTALLED:
 	puppet-1.0 (direct dependency changed: ruby)
-	rubygem-hiera-1.0 (direct dependency changed: ruby)
-	rubygem-ruby-augeas-1.0 (direct dependency changed: ruby)
+	rubygem-hiera-1.0 (direct dependency changed: ruby21-gems)
+	rubygem-ruby-augeas-1.0 (direct dependency changed: ruby21-gems)
 
 Installed packages to be REMOVED:
 	ruby20-gems: 1.0
