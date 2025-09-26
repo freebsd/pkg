@@ -456,7 +456,7 @@ files {
         sum = "1\$e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855";
         uname = "root";
         gname = "wheel";
-        perm = "0000";
+        perm = "0644";
         fflags = 0;
         mtime = ${A_mtime};
     }
@@ -465,7 +465,7 @@ directories {
     /B {
         uname = "root";
         gname = "wheel";
-        perm = "0000";
+        perm = "0755";
         fflags = 0;
     }
 }
@@ -512,7 +512,7 @@ files {
         sum = "1\$e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855";
         uname = "root";
         gname = "wheel";
-        perm = "0000";
+        perm = "0644";
         fflags = 0;
         mtime = ${testfile_mtime};
     }
