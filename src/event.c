@@ -367,10 +367,20 @@ draw_progressbar(int64_t current, int64_t total)
 		progressbar_stop();
 }
 
+static const char *
+str_or_unknown(const char *str)
+{
+	if (str == NULL || str[0] == '\0')
+		return "???";
+	return str;
+}
+
 int
 event_callback(void *data, struct pkg_event *ev)
 {
 	struct pkg *pkg = NULL, *pkg_new, *pkg_old;
+	struct pkg_file *file;
+	struct pkg_dir *dir;
 	struct cleanup *evtmp;
 	int *debug = data;
 	struct pkg_event_conflict *cur_conflict;
@@ -612,6 +622,22 @@ event_callback(void *data, struct pkg_event *ev)
 		pkg = ev->e_file_missing.pkg;
 		pkg_fprintf(stderr, "%n-%v: missing file %Fn\n", pkg, pkg,
 		    ev->e_file_missing.file);
+		break;
+	case PKG_EVENT_DIR_META_MISMATCH:
+		pkg = ev->e_file_meta_mismatch.pkg;
+		dir = ev->e_dir_meta_mismatch.dir;
+		pkg_fprintf(stderr, "%n-%v: %Dn [%S] %S -> %S\n", pkg, pkg, dir,
+			    pkg_meta_attribute_tostring(ev->e_dir_meta_mismatch.attrib),
+			    str_or_unknown(ev->e_dir_meta_mismatch.db_val),
+			    str_or_unknown(ev->e_dir_meta_mismatch.fs_val));
+		break;
+	case PKG_EVENT_FILE_META_MISMATCH:
+		pkg = ev->e_file_meta_mismatch.pkg;
+		file = ev->e_file_meta_mismatch.file;
+		pkg_fprintf(stderr, "%n-%v: %Fn [%S] %S -> %S\n", pkg, pkg, file,
+			    pkg_meta_attribute_tostring(ev->e_file_meta_mismatch.attrib),
+			    str_or_unknown(ev->e_file_meta_mismatch.db_val),
+			    str_or_unknown(ev->e_file_meta_mismatch.fs_val));
 		break;
 	case PKG_EVENT_PLUGIN_ERRNO:
 		warnx("%s: %s(%s): %s",

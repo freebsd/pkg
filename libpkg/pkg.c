@@ -16,6 +16,8 @@
 #include <errno.h>
 #include <fcntl.h>
 #include <string.h>
+#include <pwd.h>
+#include <grp.h>
 
 #include "pkg.h"
 #include "private/event.h"
@@ -1356,32 +1358,325 @@ pkg_validate(struct pkg *pkg, struct pkgdb *db)
 	return (EPKG_OK);
 }
 
-int
-pkg_test_filesum(struct pkg *pkg)
+enum {
+	FILE_OK = 0,
+
+	FILE_MISSING = 1 << 0,
+	FILE_SUM_MISMATCH = 1 << 1,
+
+	FILE_META_MISMATCH_TYPE = 1 << 2,
+	FILE_META_MISMATCH_UNAME = 1 << 3,
+	FILE_META_MISMATCH_GNAME = 1 << 4,
+	FILE_META_MISMATCH_MODE = 1 << 5,
+	FILE_META_MISMATCH_FFLAGS = 1 << 6,
+	FILE_META_MISMATCH_MTIME = 1 << 7,
+	FILE_META_MISMATCH_SYMLINK = 1 << 8,
+};
+
+static int
+pkg_stat(const char *path, struct stat *st, char *symlink_target,
+	 size_t symlink_target_size, unsigned *file_status)
 {
-	struct pkg_file *f = NULL;
+	ssize_t linklen;
+
+	if (fstatat(ctx.rootfd, RELATIVE_PATH(path), st,
+		    AT_SYMLINK_NOFOLLOW) == -1) {
+
+		if (errno == ENOENT)
+			*file_status |= FILE_MISSING;
+		else
+			pkg_emit_errno("fstatat", RELATIVE_PATH(path));
+		return (EPKG_FATAL);
+	}
+
+	symlink_target[0] = '\0';
+	if (S_ISLNK(st->st_mode)) {
+		linklen = readlinkat(ctx.rootfd, RELATIVE_PATH(path),
+				     symlink_target, symlink_target_size - 1);
+		if (linklen == -1) {
+			symlink_target[0] = '\0';
+			pkg_emit_errno("readlinkat", RELATIVE_PATH(path));
+			return (EPKG_FATAL);
+		} else {
+			symlink_target[linklen] = '\0';
+		}
+	}
+
+	return (EPKG_OK);
+}
+
+static unsigned
+pkg_check_meta(struct stat *st, const char *uname, const char *gname,
+	       mode_t perm, u_long fflags, time_t mtime_sec,
+	       char *db_symlink_target, char *fs_symlink_target)
+{
+	unsigned file_status = FILE_OK;
+	uid_t fs_uid;
+	gid_t fs_gid;
+
+	fs_uid = get_uid_from_uname(uname);
+	if (fs_uid != st->st_uid)
+		file_status |= FILE_META_MISMATCH_UNAME;
+	fs_gid = get_gid_from_gname(gname);
+	if (fs_gid != st->st_gid)
+		file_status |= FILE_META_MISMATCH_GNAME;
+	if (perm != (st->st_mode & ~S_IFMT))
+		file_status |= FILE_META_MISMATCH_MODE;
+#if defined(HAVE_STRUCT_STAT_ST_FLAGS) && defined(HAVE_FFLAGSTOSTR)
+	if (fflags != st->st_flags)
+		file_status |= FILE_META_MISMATCH_FFLAGS;
+#endif
+	/* we don't check mtime for directories */
+	if (!S_ISDIR(st->st_mode)) {
+		if (mtime_sec != st->st_mtim.tv_sec)
+			file_status |= FILE_META_MISMATCH_MTIME;
+	}
+
+	if (S_ISLNK(st->st_mode) != (fs_symlink_target[0] != '\0'))
+		file_status |= FILE_META_MISMATCH_SYMLINK;
+	else if (S_ISLNK(st->st_mode) && strcmp(db_symlink_target, fs_symlink_target) != 0)
+		file_status |= FILE_META_MISMATCH_SYMLINK;
+
+	return file_status;
+}
+
+static const char *
+stat_type_tostring(mode_t mode) {
+	/* adapted from freebsd-src/usr.bin/stat.c */
+	switch (mode & S_IFMT) {
+	case S_IFIFO: return "Fifo file";
+	case S_IFCHR: return "Character Device";
+	case S_IFDIR: return "Directory";
+	case S_IFBLK: return "Block Device";
+	case S_IFREG: return "Regular File";
+	case S_IFLNK: return "Symbolic Link";
+	case S_IFSOCK: return "Socket";
+#ifdef S_IFWHT
+	case S_IFWHT: return "Whiteout File";
+#endif
+	default: return "???";
+	}
+}
+
+static int
+pkg_check_file(struct pkg *pkg, struct pkg_file *f, bool metadata, unsigned file_status)
+{
 	int rc = EPKG_OK;
 	int ret;
+	struct stat st;
+	char symlink_target[MAXPATHLEN];
+	struct passwd *pwd;
+	struct group *grp;
+	char db_str[1024], fs_str[1024];
+	char *db_fflags, *fs_fflags;
+	time_t tmp_time;
+	struct tm *tm;
+
+	ret = pkg_stat(f->path, &st, symlink_target, sizeof(symlink_target), &file_status);
+	if (ret != EPKG_OK) {
+		rc = EPKG_FATAL;
+		goto emit_status;
+	}
+
+	if (metadata) {
+		file_status |= pkg_check_meta(&st, f->uname, f->gname, f->perm, f->fflags,
+					      f->time[1].tv_sec, f->symlink_target,
+					      symlink_target);
+
+		if (!S_ISREG(st.st_mode) && !S_ISLNK(st.st_mode))
+			file_status |= FILE_META_MISMATCH_TYPE;
+		if (S_ISREG(st.st_mode) && (symlink_target[0] != '\0'))
+			file_status |= FILE_META_MISMATCH_TYPE;
+		if (S_ISLNK(st.st_mode) && (symlink_target[0] == '\0'))
+			file_status |= FILE_META_MISMATCH_TYPE;
+	}
+
+
+emit_status:
+	if (file_status & FILE_MISSING)
+		pkg_emit_file_missing(pkg, f);
+	if (file_status & FILE_SUM_MISMATCH)
+		pkg_emit_file_mismatch(pkg, f, f->sum);
+
+	if (file_status & FILE_META_MISMATCH_TYPE) {
+		pkg_emit_file_meta_mismatch(pkg, f, PKG_META_ATTR_TYPE,
+					    f->symlink_target[0] == '\0' ? "Regular File" : "Symbolic Link",
+					    stat_type_tostring(st.st_mode));
+	}
+
+	if (file_status & FILE_META_MISMATCH_UNAME) {
+		pwd = getpwuid(st.st_uid);
+		pkg_emit_file_meta_mismatch(pkg, f, PKG_META_ATTR_UNAME,
+					    f->uname, pwd != NULL ? pwd->pw_name : NULL);
+	}
+	if (file_status & FILE_META_MISMATCH_GNAME) {
+		grp = getgrgid(st.st_gid);
+		pkg_emit_file_meta_mismatch(pkg, f, PKG_META_ATTR_GNAME,
+					    f->gname, grp != NULL ? grp->gr_name : NULL);
+	}
+	if (file_status & FILE_META_MISMATCH_MODE) {
+		strmode(f->perm, db_str);
+		strmode(st.st_mode, fs_str);
+		db_str[10] = '\0'; /* trim last space character */
+		fs_str[10] = '\0';
+		pkg_emit_file_meta_mismatch(pkg, f, PKG_META_ATTR_PERM,
+					    db_str + 1, fs_str + 1);
+	}
+
+#if defined(HAVE_STRUCT_STAT_ST_FLAGS) && defined(HAVE_FFLAGSTOSTR)
+	if (file_status & FILE_META_MISMATCH_FFLAGS) {
+		db_fflags = fflagstostr(f->fflags);
+		fs_fflags = fflagstostr(st.st_flags);
+		pkg_emit_file_meta_mismatch(pkg, f, PKG_META_ATTR_FFLAGS,
+					    db_fflags, fs_fflags);
+		free(db_fflags);
+		free(fs_fflags);
+	}
+#endif
+	if (file_status & FILE_META_MISMATCH_MTIME) {
+		tmp_time = f->time[1].tv_sec;
+		tm = localtime(&tmp_time);
+		strftime(db_str, sizeof(db_str), "%c", tm);
+		tmp_time = st.st_mtim.tv_sec;
+		tm = localtime(&tmp_time);
+		strftime(fs_str, sizeof(fs_str), "%c", tm);
+		pkg_emit_file_meta_mismatch(pkg, f, PKG_META_ATTR_MTIME,
+					    db_str, fs_str);
+	}
+	if (file_status & FILE_META_MISMATCH_SYMLINK) {
+		pkg_emit_file_meta_mismatch(pkg, f, PKG_META_ATTR_SYMLINK,
+					    f->symlink_target, symlink_target);
+	}
+
+	if (file_status == FILE_OK)
+		pkg_emit_file_meta_ok(pkg, f);
+	else
+		rc = EPKG_FATAL;
+
+	return rc;
+}
+
+
+static int
+pkg_check_dir(struct pkg *pkg, struct pkg_dir *d, unsigned file_status)
+{
+	int rc = EPKG_OK;
+	int err;
+	struct stat st;
+	char *db_symlink_target = "";
+	char symlink_target[MAXPATHLEN];
+	char db_str[1024], fs_str[1024];
+	char *db_fflags, *fs_fflags;
+	struct passwd *pwd;
+	struct group *grp;
+
+	err = pkg_stat(d->path, &st, symlink_target, sizeof(symlink_target), &file_status);
+	if (err != EPKG_OK) {
+		rc = EPKG_FATAL;
+		goto emit_status;
+	}
+
+	file_status |= pkg_check_meta(&st, d->uname, d->gname, d->perm, d->fflags,
+				      d->time[1].tv_sec, db_symlink_target,
+				      symlink_target);
+
+	if (!S_ISDIR(st.st_mode))
+		file_status |= FILE_META_MISMATCH_TYPE;
+
+emit_status:
+	if (file_status & FILE_MISSING)
+		pkg_emit_dir_missing(pkg, d);
+
+	if (file_status & FILE_META_MISMATCH_TYPE) {
+		pkg_emit_dir_meta_mismatch(pkg, d, PKG_META_ATTR_TYPE,
+					   "Directory", stat_type_tostring(st.st_mode));
+	}
+
+	if (file_status & FILE_META_MISMATCH_UNAME) {
+		pwd = getpwuid(st.st_uid);
+		pkg_emit_dir_meta_mismatch(pkg, d, PKG_META_ATTR_UNAME,
+					   d->uname, pwd != NULL ? pwd->pw_name : NULL);
+	}
+	if (file_status & FILE_META_MISMATCH_GNAME) {
+		grp = getgrgid(st.st_gid);
+		pkg_emit_dir_meta_mismatch(pkg, d, PKG_META_ATTR_GNAME,
+					   d->gname, grp != NULL ? grp->gr_name : NULL);
+	}
+	if (file_status & FILE_META_MISMATCH_MODE) {
+		strmode(d->perm, db_str);
+		strmode(st.st_mode, fs_str);
+		db_str[10] = '\0'; /* trim last space character */
+		db_str[10] = '\0';
+		pkg_emit_dir_meta_mismatch(pkg, d, PKG_META_ATTR_PERM,
+					    db_str + 1, fs_str + 1);
+	}
+#if defined(HAVE_STRUCT_STAT_ST_FLAGS) && defined(HAVE_FFLAGSTOSTR)
+	if (file_status & FILE_META_MISMATCH_FFLAGS) {
+		db_fflags = fflagstostr(d->fflags);
+		fs_fflags = fflagstostr(st.st_flags);
+		pkg_emit_dir_meta_mismatch(pkg, d, PKG_META_ATTR_FFLAGS,
+					    db_fflags, fs_fflags);
+		free(db_fflags);
+		free(fs_fflags);
+	}
+#endif
+	if (file_status == FILE_OK)
+		pkg_emit_dir_meta_ok(pkg, d);
+	else
+		rc = EPKG_FATAL;
+
+	return (rc);
+}
+
+int
+pkg_check_files(struct pkg *pkg, bool checksum, bool metadata)
+{
+	struct pkg_file *f = NULL;
+	struct pkg_dir *d = NULL;
+	int rc = EPKG_OK;
+	int ret;
+	unsigned file_status;
 
 	assert(pkg != NULL);
 
 	while (pkg_files(pkg, &f) == EPKG_OK) {
-		if (f->sum != NULL &&
+		file_status = FILE_OK;
+
+		if (checksum && f->sum != NULL &&
 		    /* skip config files as they can be modified */
 		    pkghash_get_value(pkg->config_files_hash, f->path) == NULL) {
 			ret = pkg_checksum_validate_fileat(ctx.rootfd,
 			    RELATIVE_PATH(f->path), f->sum);
 			if (ret != 0) {
 				if (ret == ENOENT)
-					pkg_emit_file_missing(pkg, f);
+					file_status |= FILE_MISSING;
 				else
-					pkg_emit_file_mismatch(pkg, f, f->sum);
+					file_status |= FILE_SUM_MISMATCH;
 				rc = EPKG_FATAL;
 			}
+		}
+
+		ret = pkg_check_file(pkg, f, metadata, file_status);
+		if (ret != EPKG_OK)
+			rc = EPKG_FATAL;
+	}
+
+	if (metadata) {
+		while (pkg_dirs(pkg, &d) == EPKG_OK) {
+			file_status = FILE_OK;
+			ret = pkg_check_dir(pkg, d, file_status);
+			if (ret != EPKG_OK)
+				rc = EPKG_FATAL;
 		}
 	}
 
 	return (rc);
+}
+
+int
+pkg_test_filesum(struct pkg *pkg)
+{
+	return pkg_check_files(pkg, true, false);
 }
 
 int

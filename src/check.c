@@ -239,6 +239,7 @@ exec_check(int argc, char **argv)
 	int ch;
 	bool dcheck = false;
 	bool checksums = false;
+	bool metadata = false;
 	bool noinstall = false;
 	int nbpkgs = 0;
 	int i, processed, total = 0;
@@ -253,6 +254,7 @@ exec_check(int argc, char **argv)
 		{ "dependencies",	no_argument,	NULL,	'd' },
 		{ "glob",		no_argument,	NULL,	'g' },
 		{ "case-insensitive",	no_argument,	NULL,	'i' },
+		{ "metadata",		no_argument,	NULL,	'm' },
 		{ "dry-run",		no_argument,	NULL,	'n' },
 		{ "recompute",		no_argument,	NULL,	'r' },
 		{ "checksums",		no_argument,	NULL,	's' },
@@ -265,7 +267,7 @@ exec_check(int argc, char **argv)
 
 	processed = 0;
 
-	while ((ch = getopt_long(argc, argv, "+aBCdginqrsvxy", longopts, NULL)) != -1) {
+	while ((ch = getopt_long(argc, argv, "+aBCdgimnqrsvxy", longopts, NULL)) != -1) {
 		switch (ch) {
 		case 'a':
 			match = MATCH_ALL;
@@ -285,6 +287,10 @@ exec_check(int argc, char **argv)
 			break;
 		case 'i':
 			pkgdb_set_case_sensitivity(false);
+			break;
+		case 'm':
+			metadata = true;
+			flags |= PKG_LOAD_FILES|PKG_LOAD_DIRS;
 			break;
 		case 'n':
 			noinstall = true;
@@ -316,14 +322,14 @@ exec_check(int argc, char **argv)
 	argc -= optind;
 	argv += optind;
 
-	if (!(dcheck || checksums)) {
+	if (!(dcheck || checksums || metadata)) {
 		checksums = true;
 		flags |= PKG_LOAD_FILES;
 	}
 	/* Default to all packages if no pkg provided */
-	if (argc == 0 && (dcheck || checksums)) {
+	if (argc == 0 && (dcheck || checksums || metadata)) {
 		match = MATCH_ALL;
-	} else if ((argc == 0 && match != MATCH_ALL) || !(dcheck || checksums)) {
+	} else if ((argc == 0 && match != MATCH_ALL) || !(dcheck || checksums || metadata)) {
 		usage_check();
 		return (EXIT_FAILURE);
 	}
@@ -403,10 +409,11 @@ exec_check(int argc, char **argv)
 					rc = EXIT_FAILURE;
 				}
 			}
-			if (checksums) {
+			if (checksums || metadata) {
 				if (!quiet && verbose)
-					printf(" checksums...");
-				if (pkg_test_filesum(pkg) != EPKG_OK) {
+					printf("%s%s", checksums ? " checksums..." : "",
+					       metadata ? " metadata...": "");
+				if (pkg_check_files(pkg, checksums, metadata) != EPKG_OK) {
 					rc = EXIT_FAILURE;
 				}
 			}
