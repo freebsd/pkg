@@ -136,6 +136,7 @@ void pkg_emit_delete_files_begin(struct pkg *p);
 void pkg_emit_delete_files_finished(struct pkg *p);
 void pkg_emit_new_action(size_t current, size_t total);
 void pkg_emit_message(const char *msg);
+void pkg_emit_dir_missing(struct pkg *p, struct pkg_dir *d);
 void pkg_emit_file_missing(struct pkg *p, struct pkg_file *f);
 void pkg_register_cleanup_callback(void (*cleanup_cb)(void *data), void *data);
 void pkg_unregister_cleanup_callback(void (*cleanup_cb)(void *data), void *data);
@@ -143,5 +144,14 @@ void pkg_emit_conflicts(struct pkg *p1, struct pkg *p2, const char *path);
 void pkg_emit_triggers_begin(void);
 void pkg_emit_trigger(const char *name, bool cleanup);
 void pkg_emit_triggers_finished(void);
+void pkg_emit_file_meta_mismatch(struct pkg *pkg, struct pkg_file *file,
+				 enum pkg_meta_attribute attrib,
+				 const char *db_val, const char *fs_val);
+void pkg_emit_dir_meta_mismatch(struct pkg *pkg, struct pkg_dir *dir,
+				enum pkg_meta_attribute attrib,
+				const char *db_val, const char *fs_val);
+
+void pkg_emit_file_meta_ok(struct pkg *pkg, struct pkg_file *file);
+void pkg_emit_dir_meta_ok(struct pkg *pkg, struct pkg_dir *file);
 
 #endif

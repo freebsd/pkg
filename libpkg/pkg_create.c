@@ -114,6 +114,10 @@ pkg_create_from_dir(struct pkg *pkg, const char *root,
 			flatsize += file->size;
 		}
 
+		if (file->perm == 0) {
+			file->perm = st.st_mode & ~S_IFMT;
+		}
+
 		if (trust_filesystem) {
 			free(file->sum);
 			file->sum = pkg_checksum_generate_file(fpath,
@@ -140,6 +144,25 @@ pkg_create_from_dir(struct pkg *pkg, const char *root,
 		counter_count();
 	}
 	vec_free_and_free(&hardlinks, free);
+
+	while (pkg_dirs(pkg, &dir) == EPKG_OK) {
+		snprintf(fpath, sizeof(fpath), "%s%s%s", root ? root : "",
+			 relocation, dir->path);
+
+		if (lstat(fpath, &st) == -1) {
+			pkg_emit_error("dir '%s' is missing", fpath);
+			return (EPKG_FATAL);
+		}
+
+		if (!S_ISDIR(st.st_mode)) {
+			pkg_emit_error("dir '%s' is not a directory", fpath);
+			return (EPKG_FATAL);
+		}
+
+		if (dir->perm == 0) {
+			dir->perm = st.st_mode & ~S_IFMT;
+		}
+	}
 
 	counter_end();
 
