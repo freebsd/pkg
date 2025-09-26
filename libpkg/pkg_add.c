@@ -246,56 +246,6 @@ ret:
 	free(localconf);
 }
 
-static uid_t
-get_uid_from_archive(struct archive_entry *ae)
-{
-	static char user_buffer[1024];
-	const char *user;
-	static struct passwd pwent;
-	struct passwd *result;
-	int err;
-
-	user = archive_entry_uname(ae);
-	if (pwent.pw_name != NULL && STREQ(user, pwent.pw_name))
-		goto out;
-	pwent.pw_name = NULL;
-	err = getpwnam_r(user, &pwent, user_buffer, sizeof(user_buffer),
-	    &result);
-	if (err != 0) {
-		pkg_emit_errno("getpwnam_r", user );
-		return (0);
-	}
-	if (result == NULL)
-		return (0);
-out:
-	return (pwent.pw_uid);
-}
-
-static gid_t
-get_gid_from_archive(struct archive_entry *ae)
-{
-	static char group_buffer[1024];
-	static struct group grent;
-	struct group *result;
-	const char *group;
-	int err;
-
-	group = archive_entry_gname(ae);
-	if (grent.gr_name != NULL && STREQ(group, grent.gr_name))
-		goto out;
-	grent.gr_name = NULL;
-	err = getgrnam_r(group, &grent, group_buffer, sizeof(group_buffer),
-	    &result);
-	if (err != 0) {
-		pkg_emit_errno("getgrnam_r", group );
-		return (0);
-	}
-	if (result == NULL)
-		return (0);
-out:
-	return (grent.gr_gid);
-}
-
 static int
 set_chflags(int fd, const char *path, u_long fflags)
 {
@@ -511,8 +461,8 @@ do_extract_dir(struct pkg_add_context* context, struct archive *a __unused, stru
 	}
 	aest = archive_entry_stat(ae);
 	d->perm = aest->st_mode;
-	d->uid = get_uid_from_archive(ae);
-	d->gid = get_gid_from_archive(ae);
+	d->uid = get_uid_from_uname(archive_entry_uname(ae));
+	d->gid = get_gid_from_gname(archive_entry_gname(ae));
 	fill_timespec_buf(aest, d->time);
 	archive_entry_fflags(ae, &d->fflags, &clear);
 
@@ -602,8 +552,8 @@ do_extract_symlink(struct pkg_add_context *context, struct archive *a __unused, 
 
 	aest = archive_entry_stat(ae);
 	archive_entry_fflags(ae, &f->fflags, &clear);
-	f->uid = get_uid_from_archive(ae);
-	f->gid = get_gid_from_archive(ae);
+	f->uid = get_uid_from_uname(archive_entry_uname(ae));
+	f->gid = get_gid_from_gname(archive_entry_gname(ae));
 	f->perm = aest->st_mode;
 	fill_timespec_buf(aest, f->time);
 	archive_entry_fflags(ae, &f->fflags, &clear);
@@ -848,8 +798,8 @@ do_extract_regfile(struct pkg_add_context *context, struct archive *a, struct ar
 	aest = archive_entry_stat(ae);
 	archive_entry_fflags(ae, &f->fflags, &clear);
 	f->perm = aest->st_mode;
-	f->uid = get_uid_from_archive(ae);
-	f->gid = get_gid_from_archive(ae);
+	f->uid = get_uid_from_uname(archive_entry_uname(ae));
+	f->gid = get_gid_from_gname(archive_entry_gname(ae));
 	fill_timespec_buf(aest, f->time);
 	archive_entry_fflags(ae, &f->fflags, &clear);
 

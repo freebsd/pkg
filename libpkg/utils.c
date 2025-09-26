@@ -49,6 +49,8 @@
 #include <float.h>
 #include <math.h>
 #include <regex.h>
+#include <pwd.h>
+#include <grp.h>
 
 #include <bsd_compat.h>
 
@@ -1135,4 +1137,50 @@ charv_search(charv_t *v, const char *el)
 	if (res == NULL)
 		return (NULL);
 	return *res;
+}
+
+uid_t
+get_uid_from_uname(const char *uname)
+{
+	static char user_buffer[1024];
+	static struct passwd pwent;
+	struct passwd *result;
+	int err;
+
+	if (pwent.pw_name != NULL && STREQ(uname, pwent.pw_name))
+		goto out;
+	pwent.pw_name = NULL;
+	err = getpwnam_r(uname, &pwent, user_buffer, sizeof(user_buffer),
+	    &result);
+	if (err != 0) {
+		pkg_emit_errno("getpwnam_r", uname);
+		return (0);
+	}
+	if (result == NULL)
+		return (0);
+out:
+	return (pwent.pw_uid);
+}
+
+gid_t
+get_gid_from_gname(const char *gname)
+{
+	static char group_buffer[1024];
+	static struct group grent;
+	struct group *result;
+	int err;
+
+	if (grent.gr_name != NULL && STREQ(gname, grent.gr_name))
+		goto out;
+	grent.gr_name = NULL;
+	err = getgrnam_r(gname, &grent, group_buffer, sizeof(group_buffer),
+	    &result);
+	if (err != 0) {
+		pkg_emit_errno("getgrnam_r",gname);
+		return (0);
+	}
+	if (result == NULL)
+		return (0);
+out:
+	return (grent.gr_gid);
 }
