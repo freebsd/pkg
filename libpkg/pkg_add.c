@@ -432,12 +432,13 @@ close_tempdir(struct tempdir *t)
 }
 
 static int
-create_dir(struct pkg_add_context *context, struct pkg_dir *d, tempdirs_t *tempdirs)
+create_dir(struct pkg_add_context *context, struct pkg_dir *d,
+    tempdirs_t *tempdirs)
 {
 	struct stat st;
-	struct tempdir *tmpdir = NULL;
-	int fd;
+	struct tempdir *tmpdir;
 	const char *path;
+	int error, fd;
 
 	tmpdir = get_tempdir(context, d->path, tempdirs);
 	if (tmpdir == NULL) {
@@ -448,25 +449,39 @@ create_dir(struct pkg_add_context *context, struct pkg_dir *d, tempdirs_t *tempd
 		path = d->path + tmpdir->len;
 	}
 
-	if (mkdirat(fd, RELATIVE_PATH(path), 0755) == -1)
+	if (mkdirat(fd, RELATIVE_PATH(path), 0755) == -1) {
 		if (!mkdirat_p(fd, RELATIVE_PATH(path))) {
 			close_tempdir(tmpdir);
 			return (EPKG_FATAL);
 		}
+	}
+
 	if (fstatat(fd, RELATIVE_PATH(path), &st, 0) == -1) {
 		if (errno != ENOENT) {
 			close_tempdir(tmpdir);
-			pkg_fatal_errno("Fail to stat directory %s", path);
+			pkg_fatal_errno("Fail to stat directory %s", d->path);
 		}
-		if (fstatat(fd, RELATIVE_PATH(path), &st, AT_SYMLINK_NOFOLLOW) == 0) {
-			unlinkat(fd, RELATIVE_PATH(path), 0);
+		/* path is a dangling symlink. */
+		error = unlinkat(fd, RELATIVE_PATH(path), 0);
+		if (error != 0) {
+			close_tempdir(tmpdir);
+			pkg_fatal_errno("Fail to unlink dangling symlink %s",
+			    d->path);
 		}
 		if (mkdirat(fd, RELATIVE_PATH(path), 0755) == -1) {
 			if (tmpdir != NULL) {
 				close_tempdir(tmpdir);
-				pkg_fatal_errno("Fail to create directory '%s/%s'", tmpdir->temp, path);
+				pkg_fatal_errno(
+				    "Fail to create directory %s/%s",
+				    tmpdir->temp, path);
+			} else {
+				pkg_fatal_errno("Fail to create directory %s",
+				    path);
 			}
-			pkg_fatal_errno("Fail to create directory %s", path);
+		}
+		if (fstatat(fd, RELATIVE_PATH(path), &st, 0) == -1) {
+			close_tempdir(tmpdir);
+			pkg_fatal_errno("Fail to stat directory %s", d->path);
 		}
 	}
 
