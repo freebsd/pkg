@@ -138,7 +138,6 @@ CONFLICTS=	-Dsha256_init=_libecc_sha256_init \
 LOCAL_CFLAGS=	-I$(top_srcdir)/external/libecc/include \
 		-I$(top_srcdir)/compat \
 		-I$(top_builddir)/ \
-		-ffreestanding \
 		-fno-builtin \
 		-fstack-protector-strong \
 		-DUSE_WARN_UNUSED_RET \
