@@ -35,7 +35,7 @@ metalog_body()
 {
         atf_skip_on Linux Test fails on Linux
 
-	atf_check -s exit:0 sh ${RESOURCEDIR}/test_subr.sh new_pkg test test 1 / || atf_fail "Failed to create the ucl file"
+	atf_check sh ${RESOURCEDIR}/test_subr.sh new_pkg test test 1 / || atf_fail "Failed to create the ucl file"
 	touch ${TMPDIR}/testfile1 || atf_fail "Failed to create the temp file"
 	echo "@(root,wheel,640,) testfile1" > test.plist
 	echo "test123" > ${TMPDIR}/testfile2 || atf_fail "Failed to create the temp file"
@@ -52,14 +52,10 @@ metalog_body()
 
 	atf_check \
 		-o ignore \
-		-e empty \
-		-s exit:0 \
 		pkg create -r ${TMPDIR} -M test.ucl -p test.plist
 
 	atf_check \
 		-o ignore \
-		-e empty \
-		-s exit:0 \
 		pkg repo .
 
 	mkdir reposconf
@@ -72,13 +68,10 @@ EOF
 
 	atf_check \
 		-o ignore \
-		-e empty \
-		-s exit:0 \
 		mkdir ${TMPDIR}/root
 
 	atf_check \
 		-o ignore \
-		-s exit:0 \
 		pkg -o REPOS_DIR="${TMPDIR}/reposconf" -o METALOG=${TMPDIR}/METALOG -r ${TMPDIR}/root install -y test
 
 	atf_check \
@@ -88,31 +81,23 @@ EOF
 		-o match:"./testhlink2 type=file uname=root gname=wheel mode=644" \
 		-o match:"./testdir1 type=dir uname=root gname=wheel mode=755" \
 		-o match:"./testdir2 type=dir uname=daemon gname=wheel mode=750" \
-		-e empty \
-		-s exit:0 \
 		cat ${TMPDIR}/METALOG
 }
 
 reinstall_body()
 {
-	atf_check -s exit:0 sh ${RESOURCEDIR}/test_subr.sh new_pkg test test 1 /usr/local
+	atf_check sh ${RESOURCEDIR}/test_subr.sh new_pkg test test 1 /usr/local
 
 	atf_check \
 		-o ignore \
-		-e empty \
-		-s exit:0 \
 		pkg register -M test.ucl
 
 	atf_check \
 		-o ignore \
-		-e empty \
-		-s exit:0 \
 		pkg create -M test.ucl
 
 	atf_check \
 		-o ignore \
-		-e empty \
-		-s exit:0 \
 		pkg repo .
 
 	mkdir reposconf
@@ -125,13 +110,12 @@ EOF
 
 	atf_check \
 		-o ignore \
-		-s exit:0 \
 		pkg -o REPOS_DIR="${TMPDIR}/reposconf" install -y test
 }
 
 pre_script_fail_body()
 {
-	atf_check -s exit:0 sh ${RESOURCEDIR}/test_subr.sh new_pkg test test 1
+	atf_check sh ${RESOURCEDIR}/test_subr.sh new_pkg test test 1
 	cat << EOF >> test.ucl
 scripts: {
    pre-install: "exit 1"
@@ -140,8 +124,6 @@ EOF
 
 	atf_check \
 		-o ignore \
-		-e empty \
-		-s exit:0 \
 		pkg create -M test.ucl
 
 	atf_check -o ignore \
@@ -152,7 +134,7 @@ EOF
 
 post_script_ignored_body()
 {
-	atf_check -s exit:0 sh ${RESOURCEDIR}/test_subr.sh new_pkg test test 1
+	atf_check sh ${RESOURCEDIR}/test_subr.sh new_pkg test test 1
 	cat << EOF >> test.ucl
 scripts: {
    post-install: "exit 1"
@@ -161,13 +143,10 @@ EOF
 
 	atf_check \
 		-o ignore \
-		-e empty \
-		-s exit:0 \
 		pkg create -M test.ucl
 
 	atf_check -o ignore \
 		-e inline:"${PROGNAME}: POST-INSTALL script failed\n" \
-		-s exit:0 \
 		pkg -o REPOS_DIR="/dev/null" install -y ${TMPDIR}/test-1.pkg
 }
 
@@ -176,7 +155,7 @@ install_missing_dep_body()
 	test_setup
 
 	# Create one package so we at least have a repo.
-	atf_check -s exit:0 sh ${RESOURCEDIR}/test_subr.sh new_pkg ${TMPDIR}/test test 1 /usr/local
+	atf_check sh ${RESOURCEDIR}/test_subr.sh new_pkg ${TMPDIR}/test test 1 /usr/local
 	cat << EOF >> ${TMPDIR}/test.ucl
 deps: {
 	b: {
@@ -187,14 +166,10 @@ deps: {
 EOF
 	atf_check \
 		-o ignore \
-		-e empty \
-		-s exit:0 \
 		pkg -C "${TMPDIR}/pkg.conf" create -o ${TMPDIR} -M ${TMPDIR}/test.ucl
 
 	atf_check \
 		-o ignore \
-		-e empty \
-		-s exit:0 \
 		pkg  -C "${TMPDIR}/pkg.conf" repo ${TMPDIR}
 
 	mkdir -p ${TMPDIR}/reposconf
