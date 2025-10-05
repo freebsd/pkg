@@ -1881,10 +1881,15 @@ struct tempdir *
 open_tempdir(struct pkg_add_context *context, const char *path)
 {
 	struct stat st;
+	struct pkg *localpkg;
 	char walk[MAXPATHLEN];
 	char *dir;
 	size_t cnt = 0, len;
 	struct tempdir *t;
+	int rootfd;
+
+	rootfd = context->rootfd;
+	localpkg = context->localpkg;
 
 	strlcpy(walk, path, sizeof(walk));
 	while ((dir = strrchr(walk, '/')) != NULL) {
@@ -1895,15 +1900,29 @@ open_tempdir(struct pkg_add_context *context, const char *path)
 		if (len == 0 && cnt == 1)
 			break;
 		if (len > 0) {
-			int flag = AT_SYMLINK_NOFOLLOW;
-			if (context->localpkg == NULL)
-				flag = 0;
-			if (fstatat(context->rootfd, RELATIVE_PATH(walk), &st, flag) == -1)
+			int flag;
+
+			flag = localpkg == NULL ? 0 : AT_SYMLINK_NOFOLLOW;
+			if (fstatat(rootfd, RELATIVE_PATH(walk), &st,
+			    flag) == -1) {
+				/*
+				 * A hack to ensure that intermediate
+				 * directories not registered with a package are
+				 * still logged in the metalog.  This is not
+				 * really the right place, but to implement this
+				 * properly we need to clean up uses of
+				 * try_mkdir().
+				 */
+				metalog_add(PKG_METALOG_DIR,
+				    RELATIVE_PATH(walk),
+				    "root", "wheel", 0755, 0, NULL);
 				continue;
-			if (S_ISLNK(st.st_mode) && context->localpkg != NULL && pkghash_get(context->localpkg->filehash, walk) == NULL) {
-				if (fstatat(context->rootfd, RELATIVE_PATH(walk), &st, 0) == -1)
-					continue;
 			}
+			if (S_ISLNK(st.st_mode) &&
+			    localpkg != NULL &&
+			    pkghash_get(localpkg->filehash, walk) == NULL &&
+			    fstatat(rootfd, RELATIVE_PATH(walk), &st, 0) == -1)
+				continue;
 			if (S_ISDIR(st.st_mode) && cnt == 1)
 				break;
 			if (!S_ISDIR(st.st_mode))
@@ -1912,7 +1931,7 @@ open_tempdir(struct pkg_add_context *context, const char *path)
 		*dir = '/';
 		t = xcalloc(1, sizeof(*t));
 		hidden_tempfile(t->temp, sizeof(t->temp), walk);
-		if (mkdirat(context->rootfd, RELATIVE_PATH(t->temp), 0755) == -1) {
+		if (mkdirat(rootfd, RELATIVE_PATH(t->temp), 0755) == -1) {
 			pkg_errno("Fail to create temporary directory: %s", t->temp);
 			free(t);
 			return (NULL);
@@ -1920,7 +1939,7 @@ open_tempdir(struct pkg_add_context *context, const char *path)
 
 		strlcpy(t->name, walk, sizeof(t->name));
 		t->len = strlen(t->name);
-		t->fd = openat(context->rootfd, RELATIVE_PATH(t->temp), O_DIRECTORY);
+		t->fd = openat(rootfd, RELATIVE_PATH(t->temp), O_DIRECTORY);
 		if (t->fd == -1) {
 			pkg_errno("Fail to open directory %s", t->temp);
 			free(t);
