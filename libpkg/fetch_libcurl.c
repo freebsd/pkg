@@ -512,9 +512,12 @@ do_retry:
 		--retry;
 		if (retry <= 0) {
 			if (rc == 404) {
+				pkg_emit_error("Failed to fetch %s: Not found",
+				    fi->url);
 				retcode = EPKG_ENOENT;
 			} else {
-				pkg_emit_error("An error occurred while fetching package: %s", curl_easy_strerror(rc));
+				pkg_emit_error("Failed to fetch %s: %s",
+				    fi->url, curl_easy_strerror(rc));
 				retcode = EPKG_FATAL;
 			}
 		} else
