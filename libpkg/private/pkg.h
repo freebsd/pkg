@@ -523,7 +523,7 @@ struct pkg_repo {
 	const struct pkg_repo_ops *ops;
 
 	char *name;
-	struct fetcher *fetcher;
+	const struct fetcher *fetcher;
 	char *url;
 	char *pubkey;
 	mirror_t mirror_type;
