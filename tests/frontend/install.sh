@@ -35,19 +35,21 @@ metalog_body()
 {
         atf_skip_on Linux Test fails on Linux
 
-	atf_check sh ${RESOURCEDIR}/test_subr.sh new_pkg test test 1 / || atf_fail "Failed to create the ucl file"
-	touch ${TMPDIR}/testfile1 || atf_fail "Failed to create the temp file"
+	atf_check sh ${RESOURCEDIR}/test_subr.sh new_pkg test test 1 /
+	atf_check touch ${TMPDIR}/testfile1
 	echo "@(root,wheel,640,) testfile1" > test.plist
-	echo "test123" > ${TMPDIR}/testfile2 || atf_fail "Failed to create the temp file"
+	echo "test123" > ${TMPDIR}/testfile2
 	echo "@(daemon,nobody,644,) testfile2" >> test.plist
-	ln -s ${TMPDIR}/testfile1 ${TMPDIR}/testlink1
+	atf_check ln -s ${TMPDIR}/testfile1 ${TMPDIR}/testlink1
 	echo "@ testlink1" >> test.plist
 	ln ${TMPDIR}/testfile2 ${TMPDIR}/testhlink2
 	echo "@ testhlink2" >> test.plist
-	mkdir ${TMPDIR}/testdir1  || atf_fail "Failed to create the temp dir"
-	echo "@dir testdir1" >> test.plist
-	mkdir ${TMPDIR}/testdir2  || atf_fail "Failed to create the temp dir"
-	chmod 750 ${TMPDIR}/testdir2 || atf_fail "Failed to chmod the temp dir"
+	atf_check mkdir -p ${TMPDIR}/testdir1/foo/bar/baz
+	atf_check mkdir -p ${TMPDIR}/testdir1/foo/bar/baz2
+	echo "@dir testdir1/foo/bar/baz" >> test.plist
+	echo "@dir testdir1/foo/bar/baz2" >> test.plist
+	atf_check mkdir ${TMPDIR}/testdir2
+	atf_check chmod 750 ${TMPDIR}/testdir2
 	echo "@dir(daemon) testdir2" >> test.plist
 
 	atf_check \
@@ -80,6 +82,9 @@ EOF
 		-o match:"./testlink1 type=link uname=root gname=wheel mode=755 link=${TMPDIR}/testfile1" \
 		-o match:"./testhlink2 type=file uname=root gname=wheel mode=644" \
 		-o match:"./testdir1 type=dir uname=root gname=wheel mode=755" \
+		-o match:"./testdir1/foo type=dir uname=root gname=wheel mode=755" \
+		-o match:"./testdir1/foo/bar type=dir uname=root gname=wheel mode=755" \
+		-o match:"./testdir1/foo/bar/baz type=dir uname=root gname=wheel mode=755" \
 		-o match:"./testdir2 type=dir uname=daemon gname=wheel mode=750" \
 		cat ${TMPDIR}/METALOG
 }
