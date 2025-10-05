@@ -47,62 +47,55 @@
 #include "private/utils.h"
 #include "private/fetch.h"
 
-static struct fetcher fetchers [] = {
+static struct fetcher fetchers[] = {
 	{
-		"tcp",
-		0,
-		tcp_open,
-		NULL,
-		fh_close,
-		stdio_fetch,
+		.scheme = "tcp",
+		.open = tcp_open,
+		.close = NULL,
+		.cleanup = fh_close,
+		.fetch = stdio_fetch,
 	},
 	{
-		"ssh",
-		0,
-		ssh_open,
-		NULL,
-		fh_close,
-		stdio_fetch,
+		.scheme = "ssh",
+		.open = ssh_open,
+		.close = NULL,
+		.cleanup = fh_close,
+		.fetch = stdio_fetch,
 	},
 	{
-		"pkg+https",
-		0,
-		curl_open,
-		NULL,
-		curl_cleanup,
-		curl_fetch,
+		.scheme = "pkg+https",
+		.open = curl_open,
+		.close = NULL,
+		.cleanup = curl_cleanup,
+		.fetch = curl_fetch,
 	},
 	{
-		"pkg+http",
-		0,
-		curl_open,
-		NULL,
-		curl_cleanup,
-		curl_fetch,
+		.scheme = "pkg+http",
+		.open = curl_open,
+		.close = NULL,
+		.cleanup = curl_cleanup,
+		.fetch = curl_fetch,
 	},
 	{
-		"https",
-		0,
-		curl_open,
-		NULL,
-		curl_cleanup,
-		curl_fetch,
+		.scheme = "https",
+		.open = curl_open,
+		.close = NULL,
+		.cleanup = curl_cleanup,
+		.fetch = curl_fetch,
 	},
 	{
-		"http",
-		0,
-		curl_open,
-		NULL,
-		curl_cleanup,
-		curl_fetch,
+		.scheme = "http",
+		.open = curl_open,
+		.close = NULL,
+		.cleanup = curl_cleanup,
+		.fetch = curl_fetch,
 	},
 	{
-		"file",
-		0,
-		file_open,
-		fh_close,
-		NULL,
-		stdio_fetch,
+		.scheme = "file",
+		.open = file_open,
+		.close = fh_close,
+		.cleanup = NULL,
+		.fetch = stdio_fetch,
 	},
 };
 
@@ -203,7 +196,7 @@ pkg_fetch_file(struct pkg_repo *repo, const char *url, char *dest, time_t t,
 
 #define URL_SCHEME_PREFIX	"pkg+"
 
-static struct fetcher *
+static const struct fetcher *
 select_fetcher(const char *url)
 {
 	struct fetcher *f;
