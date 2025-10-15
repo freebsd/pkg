@@ -1671,6 +1671,25 @@ _pkgdb_empty_str_null(const char *str)
 	return (str[0] == '\0' ? NULL : str);
 }
 
+static int
+run_pkg_prstmt(struct pkg *pkg)
+{
+	const char *arch;
+	char *msg;
+	int ret;
+
+	/* Prefer new ABI over old one */
+	arch = pkg->abi != NULL ? pkg->abi : pkg->altabi;
+	msg = pkg_message_to_str(pkg);
+	ret = run_prstmt(PKG, pkg->origin, pkg->name, pkg->version,
+	    pkg->comment, pkg->desc, msg, arch, pkg->maintainer,
+	    pkg->www, pkg->prefix, pkg->flatsize, (int64_t)pkg->automatic,
+	    (int64_t)pkg->licenselogic, pkg->digest, pkg->dep_formula,
+	    (int64_t)pkg->vital);
+	free(msg);
+	return (ret);
+}
+
 /*
  * Register a package in the database.  If successful, the caller is required to
  * call pkgdb_register_finale() in order to either commit or roll back the
@@ -1688,17 +1707,9 @@ pkgdb_register_pkg(struct pkgdb *db, struct pkg *pkg, int forced,
 	struct pkg_conflict	*conflict = NULL;
 	struct pkg_config_file	*cf = NULL;
 	struct pkgdb_it		*it = NULL;
-	char			*msg = NULL;
-
 	sqlite3			*s;
-
 	int			 ret;
-	int			 retcode = EPKG_FATAL;
 	int64_t			 package_id;
-
-	const char		*arch;
-
-	assert(db != NULL);
 
 	if (pkg_is_valid(pkg) != EPKG_OK) {
 		pkg_emit_error("the package is not valid");
@@ -1710,17 +1721,10 @@ pkgdb_register_pkg(struct pkgdb *db, struct pkg *pkg, int forced,
 	if (pkgdb_transaction_begin_sqlite(s, savepoint) != EPKG_OK)
 		return (EPKG_FATAL);
 
-	/* Prefer new ABI over old one */
-	arch = pkg->abi != NULL ? pkg->abi : pkg->altabi;
-
 	/*
 	 * Insert package record
 	 */
-	msg = pkg_message_to_str(pkg);
-	ret = run_prstmt(PKG, pkg->origin, pkg->name, pkg->version,
-	    pkg->comment, pkg->desc, msg, arch, pkg->maintainer,
-	    pkg->www, pkg->prefix, pkg->flatsize, (int64_t)pkg->automatic,
-	    (int64_t)pkg->licenselogic, pkg->digest, pkg->dep_formula, (int64_t)pkg->vital);
+	ret = run_pkg_prstmt(pkg);
 	if (ret != SQLITE_DONE) {
 		ERROR_STMT_SQLITE(s, STMT(PKG));
 		goto cleanup;
@@ -1990,14 +1994,12 @@ pkgdb_register_pkg(struct pkgdb *db, struct pkg *pkg, int forced,
 	if (pkgdb_update_requires(pkg, package_id, s) != EPKG_OK)
 		goto cleanup;
 
-	retcode = EPKG_OK;
+	return (EPKG_OK);
 
 cleanup:
-	if (retcode != EPKG_OK)
-		(void)pkgdb_transaction_rollback_sqlite(s, savepoint);
-	free(msg);
+	(void)pkgdb_transaction_rollback_sqlite(s, savepoint);
 
-	return (retcode);
+	return (EPKG_FATAL);
 }
 
 static int
