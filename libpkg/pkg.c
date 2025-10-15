@@ -1423,7 +1423,13 @@ pkg_check_meta(struct stat *st, const char *uname, const char *gname,
 	if (perm != (st->st_mode & ~S_IFMT))
 		file_status |= FILE_META_MISMATCH_MODE;
 #if defined(HAVE_STRUCT_STAT_ST_FLAGS) && defined(HAVE_FFLAGSTOSTR)
-	if (fflags != st->st_flags)
+#ifdef __FreeBSD__
+/* ZFS sets UF_ARCHIVE implicitly, so we can't check for it. */
+#define	IGNORE_FLAGS	UF_ARCHIVE
+#else
+#define	IGNORE_FLAGS	0
+#endif
+	if ((fflags & ~IGNORE_FLAGS) != (st->st_flags & ~IGNORE_FLAGS))
 		file_status |= FILE_META_MISMATCH_FFLAGS;
 #endif
 	/* we don't check mtime for directories */
