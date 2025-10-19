@@ -86,7 +86,7 @@ register_backup(struct pkgdb *db, int fd, const char *path)
 		if (fstatat(pkg->rootfd, RELATIVE_PATH(f->path), &st, AT_SYMLINK_NOFOLLOW) != -1)
 			pkg->flatsize += st.st_size;
 	}
-	retcode = pkgdb_register_pkg(db, pkg, 0, "backuplib");
+	retcode = pkgdb_register_pkg(db, pkg, 1, "backuplib");
 	if (retcode == EPKG_OK)
 		pkgdb_register_finale(db, EPKG_OK, "backuplib");
 	return (retcode);
