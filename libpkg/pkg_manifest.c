@@ -69,7 +69,7 @@ static int pkg_set_dirs_from_object(struct pkg *, const ucl_object_t *);
 #define STRING_FLAG_URLDECODE (1U << 30)
 #define STRING_FLAG_MASK ~(STRING_FLAG_LICENSE|STRING_FLAG_URLDECODE)
 
-static struct pkg_manifest_key {
+static const struct pkg_manifest_key {
 	const char *key;
 	uint32_t type;
 	uint16_t valid_type;
@@ -745,7 +745,7 @@ pkg_set_deps_from_object(struct pkg *pkg, const ucl_object_t *obj)
 	return (EPKG_OK);
 }
 
-static struct pkg_manifest_key *
+static const struct pkg_manifest_key *
 select_manifest_key(const char *key)
 {
 	for (int i = 0; i < NELEM(manifest_keys); i++)
@@ -758,7 +758,7 @@ parse_manifest(struct pkg *pkg, ucl_object_t *obj)
 {
 	const ucl_object_t *cur;
 	ucl_object_iter_t it = NULL;
-	struct pkg_manifest_key *selected_key = NULL;
+	const struct pkg_manifest_key *sk;
 	const char *key;
 	int ret = EPKG_OK;
 
@@ -767,12 +767,12 @@ parse_manifest(struct pkg *pkg, ucl_object_t *obj)
 		if (key == NULL)
 			continue;
 		dbg(3, "found key: '%s'", key);
-		if ((selected_key = select_manifest_key(key)) == NULL) {
+		if ((sk = select_manifest_key(key)) == NULL) {
 			dbg(1, "Skipping unknown key '%s'", key);
 			continue;
 		}
-		if (TYPE_SHIFT(ucl_object_type(cur)) & selected_key->valid_type) {
-			ret = selected_key->parse_data(pkg, cur, selected_key->type);
+		if (TYPE_SHIFT(ucl_object_type(cur)) & sk->valid_type) {
+			ret = sk->parse_data(pkg, cur, sk->type);
 			if (ret != EPKG_OK)
 				return (ret);
 		} else {
@@ -788,7 +788,7 @@ pkg_parse_manifest_ucl(struct pkg *pkg, ucl_object_t *obj)
 {
 	const ucl_object_t *cur;
 	ucl_object_iter_t it = NULL;
-	struct pkg_manifest_key *sk = NULL;
+	const struct pkg_manifest_key *sk;
 	const char *key;
 
 	/* do a minimal validation */
