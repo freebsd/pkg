@@ -58,8 +58,10 @@ register_backup(struct pkgdb *db, int fd, const char *path)
 		}
 		pkg->name = xstrdup("compat-libraries");
 		pkg->origin = xstrdup("compat/libraries");
-		pkg->comment = xstrdup("Compatibility libraries saved during local packages upgrade\n");
-		pkg->desc = xstrdup("Compatibility libraries saved during local packages upgrade\n");
+		pkg->comment = xstrdup(
+		    "Compatibility libraries saved during package upgrade");
+		pkg->desc = xstrdup(
+		    "Compatibility libraries saved during package upgrade\n");
 		pkg->maintainer = xstrdup("root@localhost");
 		pkg->www = xstrdup("N/A");
 		pkg->prefix = xstrdup("/");
