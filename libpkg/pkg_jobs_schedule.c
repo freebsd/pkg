@@ -218,6 +218,61 @@ pkg_jobs_schedule_dbg_job(pkg_solved_list *jobs, struct pkg_solved *job)
 	}
 }
 
+static void
+pkg_job_schedule_fprint_node_id(FILE *file, struct pkg_solved *node)
+{
+	fprintf(file, "\"%s %s\"", pkg_jobs_schedule_job_type_string(node),
+		node->items[0]->pkg->uid);
+}
+
+static void
+pkg_jobs_schedule_debug_dot_file(pkg_solved_list *nodes)
+{
+	const char *path = pkg_object_string(pkg_config_get("DEBUG_SCHEDULER_DOT_FILE"));
+	if (path == NULL) {
+		return;
+	}
+	FILE *file = fopen(path, "we");
+	if (file == NULL) {
+		pkg_emit_errno("fopen", path);
+		return;
+	}
+	fprintf(file, "digraph {\n");
+	for (size_t i = 0; i < vec_len(nodes); i++) {
+		for (size_t j = 0; j < vec_len(nodes); j++) {
+			enum pkg_jobs_schedule_graph_edge_type edge =
+				pkg_jobs_schedule_graph_edge(nodes->d[i], nodes->d[j]);
+			if (edge == PKG_SCHEDULE_EDGE_NONE) {
+				continue;
+			}
+			pkg_job_schedule_fprint_node_id(file, nodes->d[i]);
+			fprintf(file, " -> ");
+			pkg_job_schedule_fprint_node_id(file, nodes->d[j]);
+			fprintf(file, "\n");
+			switch (edge) {
+			case PKG_SCHEDULE_EDGE_NEW_DEP_NEW:
+				fprintf(file, " [label=\"new dep new\"]\n");
+				break;
+			case PKG_SCHEDULE_EDGE_OLD_DEP_OLD:
+				fprintf(file, " [label=\"old dep old\"]\n");
+				break;
+			case PKG_SCHEDULE_EDGE_OLD_CONFLICT_NEW:
+				fprintf(file, " [label=\"old conflict new\"]\n");
+				break;
+			case PKG_SCHEDULE_EDGE_SPLIT_UPGRADE:
+				fprintf(file, " [label=\"split upgrade\"]\n");
+				break;
+			case PKG_SCHEDULE_EDGE_NONE:
+			default:
+				assert(false);
+			}
+		}
+	}
+	fprintf(file, "}\n");
+	fclose(file);
+}
+
+
 static bool
 pkg_jobs_schedule_has_incoming_edge(pkg_solved_list *nodes,
     struct pkg_solved *node)
@@ -368,6 +423,8 @@ pkg_jobs_schedule_find_cycle(pkg_solved_list *jobs,
 
 int pkg_jobs_schedule(struct pkg_jobs *j)
 {
+	pkg_jobs_schedule_debug_dot_file(&j->jobs);
+
 	while (true) {
 		dbg(3, "checking job scheduling graph for cycles...");
 
