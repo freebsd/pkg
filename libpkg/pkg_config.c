@@ -350,6 +350,11 @@ static struct config_entry c[] = {
 		NULL,
 	},
 	{
+		PKG_STRING,
+		"DEBUG_SCHEDULER_DOT_FILE",
+		NULL,
+	},
+	{
 		PKG_OBJECT,
 		"REPOSITORIES",
 		NULL,
