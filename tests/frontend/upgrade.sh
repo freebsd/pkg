@@ -12,7 +12,8 @@ tests_init \
 	dir_is_symlink_to_a_dir \
 	vital \
 	vital_force \
-	vital_force_cant_remove
+	vital_force_cant_remove \
+	upgrade_with_dependency
 
 issue1881_body() {
 	atf_check -s exit:0 sh ${RESOURCEDIR}/test_subr.sh new_pkg pkg1 pkg_a 1
@@ -421,4 +422,90 @@ Your packages are up to date.
 "
 	ERROR=""
 	atf_check -o inline:"${OUTPUT}" -e inline:"${ERROR}" -s exit:0 pkg -o REPOS_DIR="$TMPDIR/repoconf" -r ${TMPDIR}/target -o PKG_CACHEDIR="$TMPDIR" -o FORCE_CAN_REMOVE_VITAL=NO upgrade -fy myplop
+}
+
+upgrade_with_dependency_body() {
+	atf_check -s exit:0 sh ${RESOURCEDIR}/test_subr.sh new_pkg "testa" "testa" "1.0"
+	atf_check pkg create -M testa.ucl -o ./repo
+
+	atf_check -s exit:0 sh ${RESOURCEDIR}/test_subr.sh new_pkg "testb" "testb" "1.0"
+	cat << EOF >> testb.ucl
+deps: {
+	testa: {
+		origin: "testa",
+	}
+}
+EOF
+	atf_check pkg create -M testb.ucl -o ./repo
+
+	cat << EOF > pkg.conf
+PKG_DBDIR=${TMPDIR}
+REPOS_DIR=[]
+repositories: {
+	local: { url : file://${TMPDIR}/repo }
+}
+EOF
+	atf_check \
+		-o inline:"Creating repository in ./repo:  done\nPacking files for repository:  done\n" \
+		-e empty \
+		-s exit:0 \
+		pkg -C ./pkg.conf repo ./repo
+
+	atf_check \
+		-o ignore \
+		-s exit:0 \
+		pkg -C ./pkg.conf update -f
+
+	atf_check \
+		pkg -C ./pkg.conf install -qy testb
+
+	rm -r ./repo
+
+	atf_check -s exit:0 sh ${RESOURCEDIR}/test_subr.sh new_pkg "testa" "testa" "2.0"
+	atf_check pkg create -M testa.ucl -o ./repo
+
+	atf_check -s exit:0 sh ${RESOURCEDIR}/test_subr.sh new_pkg "testb" "testb" "2.0"
+	cat << EOF >> testb.ucl
+deps: {
+	testa: {
+		origin: "testa",
+	}
+}
+EOF
+	atf_check pkg create -M testb.ucl -o ./repo
+
+	atf_check \
+		-o inline:"Creating repository in ./repo:  done\nPacking files for repository:  done\n" \
+		-e empty \
+		-s exit:0 \
+		pkg -C ./pkg.conf repo ./repo
+
+	atf_check \
+		-o ignore \
+		-e empty \
+		-s exit:0 \
+		pkg -C ./pkg.conf update -f
+
+OUTPUT="Updating local repository catalogue...
+local repository is up to date.
+All repositories are up to date.
+Checking for upgrades (2 candidates):  done
+Processing candidates (2 candidates):  done
+Checking integrity... done (0 conflicting)
+The following 2 package(s) will be affected (of 0 checked):
+
+Installed packages to be UPGRADED:
+	testa: 1.0 -> 2.0
+	testb: 1.0 -> 2.0
+
+Number of packages to be upgraded: 2
+${JAILED}[1/2] Upgrading testa from 1.0 to 2.0...
+${JAILED}[2/2] Upgrading testb from 1.0 to 2.0...
+"
+
+	atf_check \
+		-o inline:"${OUTPUT}" \
+		-e empty \
+		-s exit:0 \
+		pkg -C ./pkg.conf upgrade -y
 }

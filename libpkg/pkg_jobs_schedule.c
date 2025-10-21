@@ -95,6 +95,11 @@ enum pkg_jobs_schedule_graph_edge_type {
  * 3. A's old package conflicts with B's new package
  * 4. A and B are the two halves of a split upgrade job
  *    and A is the delete half.
+ *
+ * There is one exception made to rule 2 in order to avoid splitting in
+ * the common case of upgrading packages X and Y where Xold depends on Yold
+ * and Xnew depends on Ynew. In this case, rule 2 is ignored and there is no
+ * edge from X to Y.
  */
 static enum pkg_jobs_schedule_graph_edge_type
 pkg_jobs_schedule_graph_edge(struct pkg_solved *a, struct pkg_solved *b)
@@ -160,15 +165,20 @@ pkg_jobs_schedule_graph_edge(struct pkg_solved *a, struct pkg_solved *b)
 	if (a_new != NULL && b_new != NULL &&
 	    pkg_jobs_schedule_direct_depends(b_new, a_new)) {
 		return (PKG_SCHEDULE_EDGE_NEW_DEP_NEW);
-	} else if (a_old != NULL && b_old != NULL &&
-		   pkg_jobs_schedule_direct_depends(a_old, b_old)) {
-		return (PKG_SCHEDULE_EDGE_OLD_DEP_OLD);
-	} else if (a_old != NULL && b_new != NULL) {
+	}
+	if (a_old != NULL && b_new != NULL) {
 		struct pkg_conflict *conflict = NULL;
 		while (pkg_conflicts(a_old, &conflict) == EPKG_OK) {
 			if (STREQ(b_new->uid, conflict->uid)) {
 				return (PKG_SCHEDULE_EDGE_OLD_CONFLICT_NEW);
 			}
+		}
+	}
+	if (a_old != NULL && b_old != NULL &&
+	    pkg_jobs_schedule_direct_depends(a_old, b_old)) {
+		if (!(a_new != NULL && b_new != NULL &&
+		    pkg_jobs_schedule_direct_depends(a_new, b_new))) {
+			return (PKG_SCHEDULE_EDGE_OLD_DEP_OLD);
 		}
 	}
 
