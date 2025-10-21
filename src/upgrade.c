@@ -424,7 +424,7 @@ exec_upgrade(int argc, char **argv)
 	if (done == 0 && rc && !quiet)
 		printf("Your packages are up to date.\n");
 
-	if (rc)
+	if (rc || dry_run)
 		retcode = EXIT_SUCCESS;
 	else
 		retcode = EXIT_FAILURE;

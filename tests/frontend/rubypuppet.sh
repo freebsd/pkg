@@ -289,6 +289,6 @@ Number of packages to be reinstalled: 3
 
 	atf_check \
 	    -o inline:"${OUTPUT}" \
-	    -s exit:1 \
+	    -s exit:0 \
 	    pkg -o REPOS_DIR="${TMPDIR}/reposconf" -o PKG_CACHEDIR="${TMPDIR}" upgrade -yn
 }
