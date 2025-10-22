@@ -81,6 +81,7 @@ ALIAS {
     rdesc = "rquery -i \"%e\"";
     required-depends = "info -qr";
     roptions = "rquery -i \"%n - %Ok: %Ov\"";
+    sets = "info -d -C -x '^FreeBSD-set-'";
     shared-depends = "info -qB";
     show = "info -f -k";
     size = "info -sq";
