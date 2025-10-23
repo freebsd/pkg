@@ -27,6 +27,7 @@ enum pkg_os {
 	PKG_OS_DRAGONFLY,
 	PKG_OS_LINUX,
 	PKG_OS_DARWIN,
+	PKG_OS_ANY,
 };
 
 /*
@@ -53,6 +54,7 @@ enum pkg_arch {
 	PKG_ARCH_POWERPC64LE,
 	PKG_ARCH_RISCV32,
 	PKG_ARCH_RISCV64,
+	PKG_ARCH_ANY,
 };
 
 /*

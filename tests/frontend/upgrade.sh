@@ -13,7 +13,10 @@ tests_init \
 	vital \
 	vital_force \
 	vital_force_cant_remove \
-	upgrade_with_dependency
+	upgrade_with_dependency \
+	upgrade_glob_abi_os \
+	upgrade_glob_abi_version \
+	upgrade_glob_abi_arch \
 
 issue1881_body() {
 	atf_check -s exit:0 sh ${RESOURCEDIR}/test_subr.sh new_pkg pkg1 pkg_a 1
@@ -508,4 +511,133 @@ ${JAILED}[2/2] Upgrading testb from 1.0 to 2.0...
 		-e empty \
 		-s exit:0 \
 		pkg -C ./pkg.conf upgrade -y
+}
+
+upgrade_glob_abi_os_body() {
+	atf_skip_on Darwin Irrelevant on OSX
+
+	atf_check -s exit:0 sh ${RESOURCEDIR}/test_subr.sh new_pkg "testa" "testa" "1.0" "/"
+	cc -shared -Wl,-soname=libtesta.so.2 -o libtesta.so.2
+	ln -s libtesta.so.2 libtesta.so
+	cc -shared -Wl,-rpath=${TMPDIR} -L. -ltesta -o dep.so
+
+	cat << EOF >> testa.ucl
+shlibs_provided: [ "libtesta.so.2" ]
+files: {
+${TMPDIR}/libtesta.so.2: ""
+}
+EOF
+	atf_check pkg create -M testa.ucl -o ./repo
+	cat << EOF > pkg.conf
+PKG_DBDIR=${TMPDIR}
+REPOS_DIR=[]
+repositories: {
+	local: { url : file://${TMPDIR}/repo }
+}
+EOF
+	atf_check -s exit:0 sh ${RESOURCEDIR}/test_subr.sh new_pkg "testb" "testb" "2.0"
+	cat << EOF >> testb.ucl
+shlibs_required: [ "libtesta.so.2" ]
+files: {
+	${TMPDIR}/dep.so: ""
+}
+EOF
+	atf_check pkg create -M testb.ucl -o ./repo
+
+	atf_check \
+		-o inline:"Creating repository in ./repo:  done\nPacking files for repository:  done\n" \
+		pkg -C ./pkg.conf repo ./repo
+
+	atf_check \
+		-o ignore \
+		pkg -C ./pkg.conf update -f
+
+	atf_check \
+		pkg -C ./pkg.conf install -qy testb
+}
+
+upgrade_glob_abi_version_body() {
+	atf_skip_on Darwin Irrelevant on OSX
+
+	atf_check -s exit:0 sh ${RESOURCEDIR}/test_subr.sh new_pkg "testa" "testa" "1.0" "/" "${OS}:*"
+	cc -shared -Wl,-soname=libtesta.so.2 -o libtesta.so.2
+	ln -s libtesta.so.2 libtesta.so
+	cc -shared -Wl,-rpath=${TMPDIR} -L. -ltesta -o dep.so
+
+	cat << EOF >> testa.ucl
+shlibs_provided: [ "libtesta.so.2" ]
+files: {
+${TMPDIR}/libtesta.so.2: ""
+}
+EOF
+	atf_check pkg create -M testa.ucl -o ./repo
+	cat << EOF > pkg.conf
+PKG_DBDIR=${TMPDIR}
+REPOS_DIR=[]
+repositories: {
+	local: { url : file://${TMPDIR}/repo }
+}
+EOF
+	atf_check -s exit:0 sh ${RESOURCEDIR}/test_subr.sh new_pkg "testb" "testb" "2.0"
+	cat << EOF >> testb.ucl
+shlibs_required: [ "libtesta.so.2" ]
+files: {
+	${TMPDIR}/dep.so: ""
+}
+EOF
+	atf_check pkg create -M testb.ucl -o ./repo
+
+	atf_check \
+		-o inline:"Creating repository in ./repo:  done\nPacking files for repository:  done\n" \
+		pkg -C ./pkg.conf repo ./repo
+
+	atf_check \
+		-o ignore \
+		pkg -C ./pkg.conf update -f
+
+	atf_check \
+		pkg -C ./pkg.conf install -qy testb
+}
+
+upgrade_glob_abi_arch_body() {
+	atf_skip_on Darwin Irrelevant on OSX
+
+	atf_check -s exit:0 sh ${RESOURCEDIR}/test_subr.sh new_pkg "testa" "testa" "1.0" "/" "${OS}:16:*"
+	cc -shared -Wl,-soname=libtesta.so.2 -o libtesta.so.2
+	ln -s libtesta.so.2 libtesta.so
+	cc -shared -Wl,-rpath=${TMPDIR} -L. -ltesta -o dep.so
+
+	cat << EOF >> testa.ucl
+shlibs_provided: [ "libtesta.so.2" ]
+files: {
+${TMPDIR}/libtesta.so.2: ""
+}
+EOF
+	atf_check pkg create -M testa.ucl -o ./repo
+	cat << EOF > pkg.conf
+PKG_DBDIR=${TMPDIR}
+REPOS_DIR=[]
+repositories: {
+	local: { url : file://${TMPDIR}/repo }
+}
+EOF
+	atf_check -s exit:0 sh ${RESOURCEDIR}/test_subr.sh new_pkg "testb" "testb" "2.0"
+	cat << EOF >> testb.ucl
+shlibs_required: [ "libtesta.so.2" ]
+files: {
+	${TMPDIR}/dep.so: ""
+}
+EOF
+	atf_check pkg create -M testb.ucl -o ./repo
+
+	atf_check \
+		-o inline:"Creating repository in ./repo:  done\nPacking files for repository:  done\n" \
+		pkg -C ./pkg.conf repo ./repo
+
+	atf_check \
+		-o ignore \
+		pkg -C ./pkg.conf update -f
+
+	atf_check \
+		pkg -o ABI=${OS}:16:amd64 -o OSVERSION=1600000 -C ./pkg.conf install -qy testb
 }

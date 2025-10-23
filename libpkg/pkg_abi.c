@@ -60,6 +60,7 @@ static const struct {
 	{ PKG_OS_DRAGONFLY, "dragonfly" },
 	{ PKG_OS_LINUX, "Linux" },
 	{ PKG_OS_DARWIN, "Darwin" },
+	{ PKG_OS_ANY, "*" },
 	{ -1, NULL },
 };
 
@@ -79,6 +80,7 @@ static const struct {
 	{ PKG_ARCH_POWERPC64LE, "powerpc64le"},
 	{ PKG_ARCH_RISCV32, "riscv32"},
 	{ PKG_ARCH_RISCV64, "riscv64"},
+	{ PKG_ARCH_ANY,	"*"},
 	{ -1, NULL },
 };
 
@@ -222,6 +224,13 @@ pkg_abi_from_string(struct pkg_abi *abi, const char *string)
 
 	char *version = strsep(&iter, ":");
 	if (version == NULL) {
+		if (abi->os == PKG_OS_ANY) {
+			abi->major = 0;
+			abi->minor = 0;
+			abi->arch = PKG_ARCH_ANY;
+			ret = true;
+			goto out;
+		}
 		pkg_emit_error("Invalid ABI string '%s', "
 		    "missing version and architecture", string);
 		goto out;
@@ -247,6 +256,13 @@ pkg_abi_from_string(struct pkg_abi *abi, const char *string)
 		}
 	}
 	if (errstr != NULL) {
+		if (STREQ(version, "*")) {
+			abi->major = 0;
+			abi->minor = 0;
+			abi->arch = PKG_ARCH_ANY;
+			ret = true;
+			goto out;
+		}
 		pkg_emit_error("Invalid version in ABI string '%s'", string);
 		goto out;
 	}

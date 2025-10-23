@@ -344,11 +344,14 @@ pkg_solve_handle_provide(struct pkg_solve_problem *problem,
 			 * This might be reasonable behaviour on other OSes as
 			 * well.
 			 */
+			dbg(2, "origin %s: %s", orig->name, orig->abi);
+			dbg(2, "tgt %s: %s", pkg->name, pkg->abi);
 			if (!pkg_abi_from_string(&oabi, orig->abi) ||
 			    !pkg_abi_from_string(&pabi, pkg->abi))
 				continue;
-			if (oabi.os != pabi.os || oabi.arch != pabi.arch ||
-			    oabi.os != PKG_OS_FREEBSD) {
+			if (oabi.os != pabi.os ||
+			    (oabi.arch != pabi.arch && oabi.arch != PKG_ARCH_ANY && pabi.arch != PKG_ARCH_ANY)  ||
+			    (oabi.os != PKG_OS_FREEBSD && oabi.os != PKG_OS_ANY)) {
 				dbg(2,
 		"require %s: package %s-%s(%c) provides ABI %s, want %s",
 				    pr->provide, pkg->name, pkg->version,
