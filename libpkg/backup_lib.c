@@ -65,7 +65,7 @@ register_backup(struct pkgdb *db, int fd, const char *path)
 		pkg->maintainer = xstrdup("root@localhost");
 		pkg->www = xstrdup("N/A");
 		pkg->prefix = xstrdup("/");
-		pkg->abi = "*";
+		pkg->abi = pkg_abi_to_string(&ctx.abi);
 	}
 	free(pkg->version);
 	t = time(NULL);
