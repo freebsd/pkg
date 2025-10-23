@@ -1,3 +1,24 @@
+Changes form 2.3.0 to 2.4.0
+- New OSVF Parser
+- New CPE Parser/Emitter
+- Lots of code cleanup and simplification
+- Add support for system triggers (triggers in /usr/share/pkg/triggers)
+- pkg check now respects -r (rootdir)
+- relax ABI checking
+- Lots of improvements and bugs fixes regaring BACKUP_LIBRARIES features
+- Integrate BACKUP_LIBRARIES in the solver
+- Add vital flag to the list of flag which we need to consider for package reinstallation
+- tack uname, gname, mtime, permissions and fflags in the db and in the manifest
+  instead of relying on the tar informations. which gives us pkg check -m to check for
+  for metadata changes.
+- METALOG: add entries for intermediate directories
+- better 404 reporting
+- fix return code for pkg upgrade -n
+- new pkg sets alias example in default pkg.conf
+- new DEBUG_SCHEDULER_DOT_FILE option to generate a graphviz DOT format for the job graph
+- loosen ordering for upgrade jobs (reduces a lot the number of split upgrades and speed up
+  the scheduler on setup with large number of packages.)
+
 Changes from 2.2.99.2 to 2.3.0
 - internal code cleanup
 - micro optimize upgrade candidate checking
