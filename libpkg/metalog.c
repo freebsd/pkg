@@ -24,14 +24,13 @@
  * THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  */
 
-
-
 #include <errno.h>
+
 #include "pkg.h"
 #include "private/pkg.h"
 #include "private/event.h"
 
-FILE *metalogfp = NULL;
+static FILE *metalogfp = NULL;
 
 int
 metalog_open(const char *metalog)
