@@ -601,6 +601,7 @@ EOF
 
 upgrade_glob_abi_arch_body() {
 	atf_skip_on Darwin Irrelevant on OSX
+	atf_skip_on Linux the versioning does not work for linux
 
 	atf_check -s exit:0 sh ${RESOURCEDIR}/test_subr.sh new_pkg "testa" "testa" "1.0" "/" "${OS}:16:*"
 	cc -shared -Wl,-soname=libtesta.so.2 -o libtesta.so.2
