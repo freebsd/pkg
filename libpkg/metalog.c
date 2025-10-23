@@ -37,11 +37,11 @@ int
 metalog_open(const char *metalog)
 {
 	metalogfp = fopen(metalog, "ae");
-	if (metalogfp == NULL) {
+	if (metalogfp == NULL)
 		pkg_fatal_errno("Unable to open metalog '%s'", metalog);
-	} 
-
-	return EPKG_OK;
+	/* Package install scripts may add entries, so avoid interleaving. */
+	setvbuf(metalogfp, NULL, _IOLBF, 0);
+	return (EPKG_OK);
 }
 
 int
