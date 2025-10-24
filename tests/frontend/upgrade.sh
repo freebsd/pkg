@@ -637,8 +637,8 @@ EOF
 
 	atf_check \
 		-o ignore \
-		pkg -o ABI=${OS}:16:amd64 -o OSVERSION=1600000 -C ./pkg.conf update -f
+		pkg -o IGNORE_OSVERSION=yes -o ABI=${OS}:16:amd64 -o OSVERSION=1600000 -C ./pkg.conf update -f
 
 	atf_check \
-		pkg -o ABI=${OS}:16:amd64 -o OSVERSION=1600000 -C ./pkg.conf install -qy testb
+		pkg -o IGNORE_OSVERSION=yes -o ABI=${OS}:16:amd64 -o OSVERSION=1600000 -C ./pkg.conf install -qy testb
 }
