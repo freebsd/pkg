@@ -32,32 +32,37 @@
 #include "private/pkg.h"
 
 static int
-register_backup(struct pkgdb *db, int fd, const char *path)
+register_backup(struct pkgdb *db, struct pkg *orig, int fd, const char *path)
 {
 	struct pkgdb_it *it;
 	struct pkg *pkg = NULL;
 	time_t t;
 	char buf[BUFSIZ];
-	char *sum;
+	char *lpath, *name, *sum;
 	struct pkg_file *f;
-	char *lpath;
 	struct stat st;
 	pkghash_entry *e;
 	int retcode;
 
-	sum = pkg_checksum_generate_fileat(fd, RELATIVE_PATH(path), PKG_HASH_TYPE_SHA256_HEX);
+	sum = pkg_checksum_generate_fileat(fd, RELATIVE_PATH(path),
+	    PKG_HASH_TYPE_SHA256_HEX);
 
-	it = pkgdb_query(db, "compat-libraries", MATCH_EXACT);
+	(void)xasprintf(&name, "%s-backup-libraries", orig->name);
+
+	it = pkgdb_query(db, name, MATCH_EXACT);
 	if (it != NULL) {
 		pkgdb_it_next(it, &pkg, PKG_LOAD_BASIC|PKG_LOAD_FILES);
 		pkgdb_it_free(it);
 	}
 	if (pkg == NULL) {
+		char *origin;
+
 		if (pkg_new(&pkg, PKG_FILE) != EPKG_OK) {
 			return (EPKG_FATAL);
 		}
-		pkg->name = xstrdup("compat-libraries");
-		pkg->origin = xstrdup("compat/libraries");
+		pkg->name = name;
+		(void)xasprintf(&origin, "%s-backup", orig->origin);
+		pkg->origin = origin;
 		pkg->comment = xstrdup(
 		    "Compatibility libraries saved during package upgrade");
 		pkg->desc = xstrdup(
@@ -65,11 +70,11 @@ register_backup(struct pkgdb *db, int fd, const char *path)
 		pkg->maintainer = xstrdup("root@localhost");
 		pkg->www = xstrdup("N/A");
 		pkg->prefix = xstrdup("/");
-		pkg->abi = pkg_abi_to_string(&ctx.abi);
+		pkg->abi = xstrdup(orig->abi);
+	} else {
+		free(name);
+		name = NULL;
 	}
-	free(pkg->version);
-	t = time(NULL);
-	strftime(buf, sizeof(buf), "%Y%m%d%H%M%S", localtime(&t));
 	if ((e = pkghash_get(pkg->filehash, path)) != NULL) {
 		DL_DELETE(pkg->files, (struct pkg_file *)e->value);
 		pkg_file_free(e->value);
@@ -78,17 +83,23 @@ register_backup(struct pkgdb *db, int fd, const char *path)
 	xasprintf(&lpath, "%s/%s", ctx.backup_library_path, path);
 	pkg_addfile(pkg, lpath, sum, false);
 	free(lpath);
+
+	t = time(NULL);
+	strftime(buf, sizeof(buf), "%Y%m%d%H%M%S", localtime(&t));
+	free(pkg->version);
 	pkg->version = xstrdup(buf);
+
 	pkg_analyse_files(NULL, pkg, ctx.pkg_rootdir);
 	pkg_open_root_fd(pkg);
 	f = NULL;
 	while (pkg_files(pkg, &f) == EPKG_OK) {
-		if (fstatat(pkg->rootfd, RELATIVE_PATH(f->path), &st, AT_SYMLINK_NOFOLLOW) != -1)
+		if (fstatat(pkg->rootfd, RELATIVE_PATH(f->path), &st,
+		    AT_SYMLINK_NOFOLLOW) != -1)
 			pkg->flatsize += st.st_size;
 	}
 	retcode = pkgdb_register_pkg(db, pkg, 1, "backuplib");
 	if (retcode == EPKG_OK)
-		pkgdb_register_finale(db, EPKG_OK, "backuplib");
+		retcode = pkgdb_register_finale(db, EPKG_OK, "backuplib");
 	return (retcode);
 }
 
@@ -146,7 +157,7 @@ backup_library(struct pkgdb *db, struct pkg *p, const char *path)
 			goto out;
 		}
 		close(from);
-		register_backup(db, backupdir, libname);
+		register_backup(db, p, backupdir, libname);
 		close(backupdir);
 		return;
 	}
