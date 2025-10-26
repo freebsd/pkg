@@ -65,7 +65,7 @@ EOF
 	atf_check -o ignore \
 	    ls target/back/libempty.so.1
 	atf_check -o inline:"/back/libempty.so.1\n" \
-	    pkg -r ${TMPDIR}/target query "%Fp" compat-libraries
+	    pkg -r ${TMPDIR}/target query "%Fp" test-backup-libraries
 	rm foo-1.pkg
 	atf_check sh ${RESOURCEDIR}/test_subr.sh new_pkg "foo" "foo" "2"
 	atf_check pkg create -M foo.ucl
@@ -74,14 +74,17 @@ EOF
 	    pkg -o BACKUP_LIBRARY_PATH=/back/ -o BACKUP_LIBRARIES=true \
 	        -o REPOS_DIR=${TMPDIR}/reposconf -r ${TMPDIR}/target \
 	        update -f
-	version1=$(pkg -r ${TMPDIR}/target query "%v" compat-libraries)
+
+	version1=$(pkg -r ${TMPDIR}/target query "%v" test-backup-libraries)
 	atf_check -o ignore \
 	    pkg -o BACKUP_LIBRARY_PATH=/back/ -o BACKUP_LIBRARIES=true \
 	        -o REPOS_DIR=${TMPDIR}/reposconf -r ${TMPDIR}/target \
 	        upgrade -y
-	atf_check -o inline:"/back/libempty.so.1\n/back/libfoo.so.1\n" \
-	    pkg -r ${TMPDIR}/target query "%Fp" compat-libraries
-	version2=$(pkg -r ${TMPDIR}/target query "%v" compat-libraries)
+	atf_check -o inline:"/back/libempty.so.1\n" \
+	    pkg -r ${TMPDIR}/target query "%Fp" test-backup-libraries
+	atf_check -o inline:"/back/libfoo.so.1\n" \
+	    pkg -r ${TMPDIR}/target query "%Fp" foo-backup-libraries
+	version2=$(pkg -r ${TMPDIR}/target query "%v" test-backup-libraries)
 	[ ${version2} -ge ${version1} ] || \
 	    atf_fail "the version hasn't been bumped ${version2} >= ${version1}"
 }
@@ -160,8 +163,10 @@ EOF
 
 	atf_check test -f ${TMPDIR}/target/back/libfoo.so.1
 	atf_check test -f ${TMPDIR}/target/back/libbar.so.1
-	atf_check -o inline:"libbar.so.1\nlibfoo.so.1\n" \
-	    pkg -r ${TMPDIR}/target query "%b" compat-libraries
+	atf_check -o inline:"libbar.so.1\n" \
+	    pkg -r ${TMPDIR}/target query "%b" bar-backup-libraries
+	atf_check -o inline:"libfoo.so.1\n" \
+	    pkg -r ${TMPDIR}/target query "%b" foo-backup-libraries
 }
 
 # If a package foo provides libfoo.so.1 and a different package bar
@@ -236,7 +241,7 @@ EOF
 	# still available via the backup libraries mechanism.
 	atf_check -o ignore \
 	    pkg \
-	        -o REPOS_DIR=${TMPDIR}/reposconf -r ${TMPDIR}/target \
+		-o REPOS_DIR=${TMPDIR}/reposconf -r ${TMPDIR}/target \
 		-o BACKUP_LIBRARIES=yes \
 	        upgrade -y foo bar
 
@@ -246,7 +251,7 @@ EOF
 
 # A regression test for a scenario where the same shlib version is backed up
 # multiple times.  This would result in a registration failure of the
-# compat-libraries, which in turn could result in a sqlite error if this
+# backup package, which in turn could result in a sqlite error if this
 # happened during a pkg uninstall during a split upgrade.
 multiple_upgrade_body()
 {
@@ -382,7 +387,8 @@ EOF
 	# bar-2->bar-3 upgrade.  baz-3 depends on foo-3 to try and provoke the
 	# split, otherwise pkg would first upgrade baz-1->baz-3 and then there
 	# would be no need to split the bar upgrade.
-	atf_check -o ignore -e match:"compat-libraries-.* conflicts with compat-libraries-.*" \
+	atf_check -o ignore \
+	    -e match:"bar-backup-libraries-.* conflicts with foo-backup-libraries-.*" \
 	    pkg \
 	        -o REPOS_DIR=${TMPDIR}/reposconf -r ${TMPDIR}/target \
 		-o BACKUP_LIBRARIES=yes \
