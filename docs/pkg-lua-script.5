@@ -11,7 +11,7 @@
 .\"    notice, this list of conditions and the following disclaimer in the
 .\"    documentation and/or other materials provided with the distribution.
 .\"
-.Dd July 14, 2025
+.Dd October 28, 2025
 .Dt PKG-LUA-SCRIPT 5
 .Os
 .Sh NAME
@@ -120,6 +120,15 @@ if the files are identical,
 if the files are different and
 .Va >1
 if an error occurred
+.If Fn pkg.metalog_copy "source" "destination"
+Will create an entry in the
+.Qq metalog
+if one has been defined which will clone the
+metadata from the
+.Va source
+and use it for a new entry for
+.Va destination
+path.
 .It Fn pkg.copy "source" "destination"
 Copy a file preserving its attributes. return
 .Va -1
