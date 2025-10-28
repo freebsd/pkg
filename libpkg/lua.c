@@ -1,5 +1,5 @@
 /*-
- * Copyright (c) 2019-2022 Baptiste Daroussin <bapt@FreeBSD.org>
+ * Copyright (c) 2019-2025 Baptiste Daroussin <bapt@FreeBSD.org>
  * Copyright (c) 2023 Serenity Cyber Security, LLC
  *                    Author: Gleb Popov <arrowd@FreeBSD.org>
  * All rights reserved.
@@ -568,4 +568,26 @@ lua_readdir(lua_State *L)
 		lua_settable(L, -3);
 	}
 	return 1;
+}
+
+int
+lua_metalog_copy(lua_State *L)
+{
+	int n = lua_gettop(L);
+	luaL_argcheck(L, n == 2, n > 2 ? 3 : n,
+	    "pkg.metalog_copy takes exactly two arguments");
+	const char *src = luaL_checkstring(L, 1);
+	const char *dst = luaL_checkstring(L, 2);
+	lua_getglobal(L, "package");
+	struct pkg *p = lua_touserdata(L, -1);
+	struct pkg_file *f = pkg_get_file(p, src);
+	if (f == NULL) {
+		lua_pushnil(L);
+		lua_pushstring(L, "Unknown source file");
+		return (2);
+	}
+	/* TODO: what about symlinks ? */
+	metalog_add(PKG_METALOG_FILE, RELATIVE_PATH(dst),
+	    f->uname, f->gname, f->perm & ~S_IFREG, f->fflags, f->symlink_target);
+	return (1);
 }

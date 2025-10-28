@@ -19,7 +19,8 @@ tests_init \
 	script_sample_not_exists_two_files \
 	script_sample_exists \
 	script_stat \
-	script_arguments
+	script_arguments \
+	script_metalog_add
 
 script_arguments_body() {
 	atf_check -s exit:0 sh ${RESOURCEDIR}/test_subr.sh new_pkg "test" "test" "1" "/"
@@ -749,4 +750,33 @@ EOF
 		-e empty \
 		-s exit:0 \
 		pkg -o REPOS_DIR=/dev/null -r ${TMPDIR}/target install -qfy ${TMPDIR}/test-1.pkg
+}
+
+script_metalog_add_body()
+{
+	atf_check -s exit:0 sh ${RESOURCEDIR}/test_subr.sh new_pkg "test" "test" "1" "/"
+	touch plop
+	echo "@(root,wheel,440) /plop" > test.plist
+	cat << EOF >> test.ucl
+lua_scripts: {
+	post-install: [ <<EOS
+	assert(pkg.metalog_copy("/plop", "/meh"))
+EOS
+, ]
+}
+EOF
+
+OUTPUT="./plop type=file uname=root gname=wheel mode=440
+./meh type=file uname=root gname=wheel mode=440
+"
+	atf_check -o ignore pkg create -M test.ucl -p test.plist -r .
+	mkdir ${TMPDIR}/target
+	atf_check -s exit:0 \
+		pkg \
+			-o REPOS_DIR=/dev/null \
+			-o METALOG=${TMPDIR}/METALOG \
+			-r ${TMPDIR}/target \
+			install \
+			-qfy ${TMPDIR}/test-1.pkg
+	atf_check -o inline:"${OUTPUT}" cat METALOG
 }
