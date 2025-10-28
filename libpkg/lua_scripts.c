@@ -69,6 +69,7 @@ pkg_lua_script_run(struct pkg * const pkg, pkg_lua_script type, bool upgrade)
 				{ "readdir", lua_readdir },
 				{ "exec", lua_exec },
 				{ "symlink", lua_pkg_symlink },
+				{ "metalog_copy", lua_metalog_copy },
 				{ NULL, NULL },
 			};
 			close(cur_pipe[0]);

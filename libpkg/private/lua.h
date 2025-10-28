@@ -1,7 +1,7 @@
 /*-
- * Copyright (c) 2019-2022 Baptiste Daroussin <bapt@FreeBSD.org>
+ * Copyright (c) 2019-2025 Baptiste Daroussin <bapt@FreeBSD.org>
  * All rights reserved.
- * 
+ *
  * Redistribution and use in source and binary forms, with or without
  * modification, are permitted provided that the following conditions
  * are met:
@@ -11,7 +11,7 @@
  * 2. Redistributions in binary form must reproduce the above copyright
  *    notice, this list of conditions and the following disclaimer in the
  *    documentation and/or other materials provided with the distribution.
- * 
+ *
  * THIS SOFTWARE IS PROVIDED BY THE AUTHOR(S) ``AS IS'' AND ANY EXPRESS OR
  * IMPLIED WARRANTIES, INCLUDING, BUT NOT LIMITED TO, THE IMPLIED WARRANTIES
  * OF MERCHANTABILITY AND FITNESS FOR A PARTICULAR PURPOSE ARE DISCLAIMED.
@@ -33,6 +33,7 @@ int lua_pkg_copy(lua_State *L);
 int lua_pkg_filecmp(lua_State *L);
 int lua_pkg_symlink(lua_State *L);
 int lua_prefix_path(lua_State *L);
+int lua_metalog_copy(lua_State *L);
 int lua_exec(lua_State *L);
 void lua_override_ios(lua_State *L, bool);
 int lua_stat(lua_State *L);
