@@ -417,7 +417,7 @@ pkg_delete_dirs(__unused struct pkgdb *db, struct pkg *pkg, struct pkg *new)
 	struct pkg_dir	*dir = NULL;
 
 	while (pkg_dirs(pkg, &dir) == EPKG_OK) {
-		if (new != NULL && !pkg_has_dir(new, dir->path))
+		if (new != NULL && pkg_has_dir(new, dir->path))
 			continue;
 		pkg_delete_dir(pkg, dir);
 	}
