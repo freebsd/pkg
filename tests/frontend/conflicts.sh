@@ -7,7 +7,8 @@ tests_init \
 	complex_conflicts \
 	fileexists_notinpkg \
 	find_conflicts \
-	split_upgrades
+	split_upgrades \
+	split_upgrades_dir \
 
 # install foo
 # foo depends on bar-1.0
@@ -602,4 +603,126 @@ ${JAILED}[4/4] Extracting testb-2:  done
 	atf_check \
 		-o inline:"${OUTPUT}" \
 		pkg -C /dev/null -o REPOS_DIR="${TMPDIR}/reposconf" -o PKG_CACHEDIR="${TMPDIR}" -r ${TMPDIR}/target upgrade -y
+}
+
+split_upgrades_dir_body() {
+	atf_check -s exit:0 sh ${RESOURCEDIR}/test_subr.sh new_pkg "testa" "testa" "2.0"
+	echo "entry" > a
+	echo "entry" > c
+	echo "${TMPDIR}/a" > plist
+	echo "${TMPDIR}/c" >> plist
+	mkdir -p plop
+	echo "@dir ${TMPDIR}/plop" >> plist
+	atf_check \
+		pkg create -M testa.ucl -p plist
+	atf_check -s exit:0 sh ${RESOURCEDIR}/test_subr.sh new_pkg "testb" "testb" "2"
+	echo "entry" > b
+	echo "${TMPDIR}/b" > plist
+	cat << EOF >> testb.ucl
+deps: {
+	testa: {
+		origin: "testa",
+		version: "1"
+	}
+}
+EOF
+	atf_check \
+		pkg create -M testb.ucl -p plist
+	pkg repo .
+	mkdir target
+	mkdir reposconf
+	cat << EOF >> reposconf/repo.conf
+local: {
+	url: file:///${TMPDIR},
+	enabled: true
+}
+EOF
+
+	atf_check \
+		pkg -C /dev/null -o REPOS_DIR="${TMPDIR}/reposconf" -o PKG_CACHEDIR="${TMPDIR}" -r ${TMPDIR}/target install -qy testb
+	atf_check test -d target/${TMPDIR}/plop
+	inode=$(ls -ia target/${TMPDIR}/plop)
+	atf_check -s exit:0 sh ${RESOURCEDIR}/test_subr.sh new_pkg "testa-lib" "testa-lib" "2.0"
+	echo "entry" > a
+	echo "${TMPDIR}/a" > plist
+	atf_check \
+		pkg create -M testa-lib.ucl -p plist
+	atf_check -s exit:0 sh ${RESOURCEDIR}/test_subr.sh new_pkg "testa" "testa" "2.1"
+	echo "entry" > c
+	echo "${TMPDIR}/c" > plist
+	echo "@dir ${TMPDIR}/plop" >> plist
+	atf_check \
+		pkg create -M testa.ucl -p plist
+	cat << EOF >> testa.ucl
+deps: {
+	testa-lib: {
+		origin: "testa-lib",
+		version: "1"
+	}
+}
+EOF
+
+	atf_check -s exit:0 sh ${RESOURCEDIR}/test_subr.sh new_pkg "testb" "testb" "2"
+	echo "entry" > b
+	echo "${TMPDIR}/b" > plist
+	echo "@dir ${TMPDIR}/plop" > plist
+	cat << EOF >> testb.ucl
+deps: {
+	testa-lib: {
+		origin: "testa-lib",
+		version: "1"
+	}
+}
+EOF
+	atf_check \
+		pkg create -M testb.ucl -p plist
+	pkg repo .
+
+OUTPUT="Updating local repository catalogue...
+${JAILED}Fetching meta.conf:  done
+${JAILED}Fetching data.pkg:  done
+Processing entries:  done
+local repository update completed. 4 packages processed.
+All repositories are up to date.
+"
+	atf_check \
+		-o inline:"${OUTPUT}" \
+		pkg -C /dev/null -o REPOS_DIR="${TMPDIR}/reposconf" -o PKG_CACHEDIR="${TMPDIR}" -r ${TMPDIR}/target update -f
+
+OUTPUT="Updating local repository catalogue...
+local repository is up to date.
+All repositories are up to date.
+Checking for upgrades (2 candidates):  done
+Processing candidates (2 candidates):  done
+Checking integrity... done (2 conflicting)
+  - testa-lib-2.0 conflicts with testa-2.0 on ${TMPDIR}/a
+  - testa-lib-2.0 conflicts with testa-2.0 on ${TMPDIR}/a
+Checking integrity... done (0 conflicting)
+The following 3 package(s) will be affected (of 0 checked):
+
+New packages to be INSTALLED:
+	testa-lib: 2.0
+
+Installed packages to be UPGRADED:
+	testa: 2.0 -> 2.1
+
+Installed packages to be REINSTALLED:
+	testb-2 (direct dependency changed: testa-lib)
+
+Number of packages to be installed: 1
+Number of packages to be upgraded: 1
+Number of packages to be reinstalled: 1
+${JAILED}[1/4] Deinstalling testb-2...
+${JAILED}[1/4] Deleting files for testb-2:  done
+${JAILED}[2/4] Upgrading testa from 2.0 to 2.1...
+${JAILED}[2/4] Extracting testa-2.1:  done
+${JAILED}[3/4] Installing testa-lib-2.0...
+${JAILED}[3/4] Extracting testa-lib-2.0:  done
+${JAILED}[4/4] Installing testb-2...
+${JAILED}[4/4] Extracting testb-2:  done
+"
+	atf_check \
+		-o inline:"${OUTPUT}" \
+		pkg -C /dev/null -o REPOS_DIR="${TMPDIR}/reposconf" -o PKG_CACHEDIR="${TMPDIR}" -r ${TMPDIR}/target upgrade -y
+	atf_check -o inline:"${inode}\n" ls -ia target/${TMPDIR}/plop
 }
