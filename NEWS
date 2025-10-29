@@ -1,4 +1,9 @@
 Changes form 2.3.0 to 2.4.0
+- Use line buffering for the metalog file handle
+- Fix bug making pkg delete too many directories in case of split upgrades
+- BACKUP_LIBRARIES now create one backup package per source package
+- new metalog_copy lua function to create entries in the metalog cloning metadata
+  from another file
 - New OSVF Parser
 - New CPE Parser/Emitter
 - Lots of code cleanup and simplification
