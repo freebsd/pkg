@@ -622,7 +622,7 @@ repositories: {
 	local: { url : file://${TMPDIR}/repo }
 }
 EOF
-	atf_check -s exit:0 sh ${RESOURCEDIR}/test_subr.sh new_pkg "testb" "testb" "2.0"
+	atf_check -s exit:0 sh ${RESOURCEDIR}/test_subr.sh new_pkg "testb" "testb" "2.0" "/" "${OS}:16:*"
 	cat << EOF >> testb.ucl
 shlibs_required: [ "libtesta.so.2" ]
 files: {
@@ -637,8 +637,10 @@ EOF
 
 	atf_check \
 		-o ignore \
+		-e ignore \
 		pkg -o IGNORE_OSVERSION=yes -o ABI=${OS}:16:amd64 -o OSVERSION=1600000 -C ./pkg.conf update -f
 
 	atf_check \
+		-e ignore \
 		pkg -o IGNORE_OSVERSION=yes -o ABI=${OS}:16:amd64 -o OSVERSION=1600000 -C ./pkg.conf install -qy testb
 }
