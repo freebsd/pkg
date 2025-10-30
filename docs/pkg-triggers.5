@@ -8,68 +8,73 @@
 .\"    notice, this list of conditions and the following disclaimer in the
 .\"    documentation and/or other materials provided with the distribution.
 .\"
-.Dd September 9, 2021
+.Dd October 30, 2025
 .Dt PKG-TRIGGERS 5
 .Os
 .Sh NAME
 .Nm triggers
 .Nd trigger file format
 .Sh DESCRIPTION
-.Nm
-are executed at the end of the transactions: installation, deinstallation or upgrade.
+Package triggers define commands to be executed at the end of a
+.Xr pkg 8
+transaction when particular files are installed, modified, or removed.
+Triggers can be used, for example, to update a database or index of files based
+on files installed by other packages.
+Triggers are always executed at the end of the transaction, after all changes
+to files have been committed to disk.
 They are only executed once even if they have been triggered multiple times.
 .Pp
-.Nm are triggered by pattern matching during the transaction.
-.Nm
-are files located in
-.Pa /usr/local/share/pkg/triggers
-Those files are in UCL format and should use a
+Triggers are searched for in the list of directories configured by the
+.Ev PKG_TRIGGERS_DIR
+configuration option.
+By default, this includes
+.Pa /usr/share/pkg/triggers
+and
+.Pa <localbase>/share/pkg/triggers .
+Triggers are in UCL format and should have a
 .Va .ucl
 extension.
 .Pp
 The format is the following:
 .Bl -tag -width xxxxxxxxxxx
 .It Cm path
-exact path to match: each time a package installs a file or directory
-exactly matching the
-.Cm path
-the trigger will be executed at the end of the transation .
+An array of strings containing exact paths.
+Each time a package installs a file or directory whose name is equal to one of
+the strings, the trigger will be executed at the end of the transaction.
 .It Cm path_glob
-glob path to match: each time a package installs a file or directory which
-matches the glob pattern
-.Cm pattern
-the trigger will be executed at the end of the transation .
+An array of strings containing shell-style glob patterns.
+Each time a package installs a file or directory whose name matches one of the
+patterns, the trigger will be executed at the end of the transaction.
 .It Cm path_regexp
-regexp path to match: each time a package installs a file or directory which
-matches the regexp pattern
-.Cm pattern
-the trigger will be executed at the end of the transation .
-
+An array of strings containing regular expressions.
+Each time a package installs a file or directory whose name matches one of the
+regular expressions, the trigger will be executed at the end of the
+transaction.
 .It Cm cleanup
-Object which represent the script to execute in case the transaction results in
-removal of the trigger from the installation.
+An object which represent the script to execute in case the transaction results
+in removal of the trigger from the installation.
 The object requires the following fields:
 .Bl -tag -width xxxxxx
 .It Cm type
-The type of the script to be executed, currently only lua script is supported
-.Po
-See
-.Xr pkg-lua-script 5
-.Pc .
+The type of the script to be executed.
+The only supported type is Lua, indicated by the value
+.Dq lua
+(see
+.Xr pkg-lua-script 5 ) .
 .It Cm script
 The script itself.
 .El
 .It Cm trigger
-Object which represent the script to execute at the end of the transaction if a
-pattern has been matched.
+An object which represents the script to execute at the end of the transaction
+if a pattern has been matched.
 This object requires the following fields:
 .Bl -tag -width xxxxxx
 .It Cm type
-The type of the script to be executed, currently only lua script is supported
-.Po
-See
-.Xr pkg-lua-script 5
-.Pc .
+The type of the script to be executed.
+The only supported type is Lua, indicated by the value
+.Dq lua
+(see
+.Xr pkg-lua-script 5 ) .
 .It Cm script
 The script itself.
 It will receive as arguments the list of paths that matched the patterns during
