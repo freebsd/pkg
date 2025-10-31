@@ -605,11 +605,43 @@ struct action {
 typedef struct _sql_prstmt {
 	sqlite3_stmt	*stmt;
 	const char	*sql;
-	const char	*argtypes;
 } sql_prstmt;
 
 #define STMT(x) (sql_prepared_statements[(x)].stmt)
 #define SQL(x)  (sql_prepared_statements[(x)].sql)
+
+typedef enum {
+    ARG_TEXT,
+    ARG_INT64,
+} arg_type_t;
+
+typedef struct {
+    arg_type_t type;
+    union {
+        const char *text;
+        int64_t     i64;
+    } v;
+} sql_arg_t;
+
+static inline sql_arg_t make_text_arg(const char *s) {
+    sql_arg_t a = { .type = ARG_TEXT, .v.text = s };
+    return (a);
+}
+static inline sql_arg_t make_int64_arg(int64_t i) {
+    sql_arg_t a = { .type = ARG_INT64, .v.i64 = i };
+    return (a);
+}
+
+#define SQL_ARG(x) _Generic((x), \
+        const char *: make_text_arg, \
+        char *:       make_text_arg, \
+        int64_t:      make_int64_arg, \
+        u_long:       (sql_arg_t(*)(int64_t))make_int64_arg, \
+        int:          (sql_arg_t(*)(int64_t))make_int64_arg, \
+        bool:         (sql_arg_t(*)(int64_t))make_int64_arg, \
+        u_int:        (sql_arg_t(*)(int64_t))make_int64_arg, \
+        u_short:      (sql_arg_t(*)(int64_t))make_int64_arg \
+    )(x)
 
 /**
  * rc script actions

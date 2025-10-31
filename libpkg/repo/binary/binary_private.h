@@ -222,7 +222,7 @@ typedef enum _sql_prstmt_index {
 } sql_prstmt_index;
 
 int pkg_repo_binary_init_prstatements(sqlite3 *sqlite);
-int pkg_repo_binary_run_prstatement(sql_prstmt_index s, ...);
+int pkg_repo_binary_run_prstatement(sql_prstmt_index s, const sql_arg_t *args, size_t nargs);
 const char * pkg_repo_binary_sql_prstatement(sql_prstmt_index s);
 sqlite3_stmt* pkg_repo_binary_stmt_prstatement(sql_prstmt_index s);
 void pkg_repo_binary_finalize_prstatements(void);

@@ -73,14 +73,13 @@ extern struct pkg_ctx ctx;
    of the Golden Apples of the Hesperides
 */
 
-#define DB_SCHEMA_MAJOR	0
+#define DB_SCHEMA_MAJOR        0
 #define DB_SCHEMA_MINOR	37
 
 #define DBVERSION (DB_SCHEMA_MAJOR * 1000 + DB_SCHEMA_MINOR)
 
 static int pkgdb_upgrade(struct pkgdb *);
 static int prstmt_initialize(struct pkgdb *db);
-/* static int run_prstmt(sql_prstmt_index s, ...); */
 static void prstmt_finalize(struct pkgdb *db);
 static int pkgdb_insert_scripts(struct pkg *pkg, int64_t package_id, sqlite3 *s);
 static int pkgdb_insert_lua_scripts(struct pkg *pkg, int64_t package_id, sqlite3 *s);
@@ -1341,7 +1340,6 @@ static sql_prstmt sql_prepared_statements[PRSTMT_LAST] = {
 	[MTREE] = {
 		NULL,
 		NULL,
-		"T",
 	},
 	[PKG] = {
 		NULL,
@@ -1351,107 +1349,89 @@ static sql_prstmt sql_prepared_statements[PRSTMT_LAST] = {
 			"licenselogic, time, manifestdigest, dep_formula, vital)"
 		"VALUES( ?1, ?2, ?3, ?4, ?5, ?6, ?7, ?8, ?9, ?10, ?11, ?12, "
 		"?13, NOW(), ?14, ?15, ?16 )",
-		"TTTTTTTTTTIIITTI",
 	},
 	[DEPS_UPDATE] = {
 		NULL,
 		"UPDATE deps SET origin=?1, version=?2 WHERE name=?3;",
-		"TTT",
 	},
 	[DEPS] = {
 		NULL,
 		"INSERT INTO deps (origin, name, version, package_id) "
 		"VALUES (?1, ?2, ?3, ?4)",
-		"TTTI",
 	},
 	[FILES] = {
 		NULL,
 		"INSERT INTO files (path, sha256, uname, gname, "
 		"perm, fflags, symlink_target, mtime, package_id) "
 		"VALUES (?1, ?2, ?3, ?4, ?5, ?6, ?7, ?8, ?9)",
-		"TTTTIITII",
 	},
 	[FILES_REPLACE] = {
 		NULL,
 		"INSERT OR REPLACE INTO files (path, sha256, uname, gname, "
 		"perm, fflags, symlink_target, mtime, package_id) "
 		"VALUES (?1, ?2, ?3, ?4, ?5, ?6, ?7, ?8, ?9)",
-		"TTTTIITII",
 	},
 	[DIRS1] = {
 		NULL,
 		"INSERT OR IGNORE INTO directories(path, uname, gname, perm, fflags) "
 		"VALUES(?1,?2,?3,?4,?5)",
-		"TTTIII",
 	},
 	[DIRS2] = {
 		NULL,
 		"INSERT INTO pkg_directories(package_id, directory_id, try) "
 		"VALUES (?1, "
 		"(SELECT id FROM directories WHERE path = ?2), ?3)",
-		"ITI",
 	},
 	[CATEGORY1] = {
 		NULL,
 		"INSERT OR IGNORE INTO categories(name) VALUES(?1)",
-		"T",
 	},
 	[CATEGORY2] = {
 		NULL,
 		"INSERT INTO pkg_categories(package_id, category_id) "
 		"VALUES (?1, (SELECT id FROM categories WHERE name = ?2))",
-		"IT",
 	},
 	[LICENSES1] = {
 		NULL,
 		"INSERT OR IGNORE INTO licenses(name) VALUES(?1)",
-		"T",
 	},
 	[LICENSES2] = {
 		NULL,
 		"INSERT INTO pkg_licenses(package_id, license_id) "
 		"VALUES (?1, (SELECT id FROM licenses WHERE name = ?2))",
-		"IT",
 	},
 	[USERS1] = {
 		NULL,
 		"INSERT OR IGNORE INTO users(name) VALUES(?1)",
-		"T",
 	},
 	[USERS2] = {
 		NULL,
 		"INSERT INTO pkg_users(package_id, user_id) "
 		"VALUES (?1, (SELECT id FROM users WHERE name = ?2))",
-		"IT",
 	},
 	[GROUPS1] = {
 		NULL,
 		"INSERT OR IGNORE INTO groups(name) VALUES(?1)",
-		"T",
 	},
 	[GROUPS2] = {
 		NULL,
 		"INSERT INTO pkg_groups(package_id, group_id) "
 		"VALUES (?1, (SELECT id FROM groups WHERE name = ?2))",
-		"IT",
 	},
 	[SCRIPT1] = {
 		NULL,
 		"INSERT OR IGNORE INTO script(script) VALUES (?1)",
-		"T",
 	},
 	[SCRIPT2] = {
 		NULL,
 		"INSERT INTO pkg_script(script_id, package_id, type) "
 		"VALUES ((SELECT script_id FROM script WHERE script = ?1), "
 		"?2, ?3)",
-		"TII",
 	},
 	[OPTION1] = {
 		NULL,
 		"INSERT OR IGNORE INTO option (option) "
 		"VALUES (?1)",
-		"T",
 	},
 	[OPTION2] = {
 		NULL,
@@ -1459,30 +1439,25 @@ static sql_prstmt sql_prepared_statements[PRSTMT_LAST] = {
 		"VALUES (?1, "
 			"(SELECT option_id FROM option WHERE option = ?2),"
 			"?3)",
-		"ITT",
 	},
 	[SHLIBS1] = {
 		NULL,
 		"INSERT OR IGNORE INTO shlibs(name) VALUES(?1)",
-		"T",
 	},
 	[SHLIBS_REQD] = {
 		NULL,
 		"INSERT OR IGNORE INTO pkg_shlibs_required(package_id, shlib_id) "
 		"VALUES (?1, (SELECT id FROM shlibs WHERE name = ?2))",
-		"IT",
 	},
 	[SHLIBS_PROV] = {
 		NULL,
 		"INSERT OR IGNORE INTO pkg_shlibs_provided(package_id, shlib_id) "
 		"VALUES (?1, (SELECT id FROM shlibs WHERE name = ?2))",
-		"IT",
 	},
 	[ANNOTATE1] = {
 		NULL,
 		"INSERT OR IGNORE INTO annotation(annotation) "
 		"VALUES (?1)",
-		"T",
 	},
 	[ANNOTATE2] = {
 		NULL,
@@ -1490,7 +1465,6 @@ static sql_prstmt sql_prepared_statements[PRSTMT_LAST] = {
 		"VALUES (?1,"
 		" (SELECT annotation_id FROM annotation WHERE annotation = ?2),"
 		" (SELECT annotation_id FROM annotation WHERE annotation = ?3))",
-		"ITT",
 	},
 	[ANNOTATE_ADD1] = {
 		NULL,
@@ -1499,7 +1473,6 @@ static sql_prstmt sql_prepared_statements[PRSTMT_LAST] = {
 		" (SELECT id FROM packages WHERE name = ?1 ),"
 		" (SELECT annotation_id FROM annotation WHERE annotation = ?2),"
 		" (SELECT annotation_id FROM annotation WHERE annotation = ?3))",
-		"TTTT", // "TTT"???
 	},
 	[ANNOTATE_MOD1] = {
 		NULL,
@@ -1508,7 +1481,6 @@ static sql_prstmt sql_prepared_statements[PRSTMT_LAST] = {
 		" (SELECT id FROM packages WHERE name = ?1 ),"
 		" (SELECT annotation_id FROM annotation WHERE annotation = ?2),"
 		" (SELECT annotation_id FROM annotation WHERE annotation = ?3))",
-		"TTTT", // "TTT"???
 	},
 	[ANNOTATE_DEL1] = {
 		NULL,
@@ -1517,70 +1489,58 @@ static sql_prstmt sql_prepared_statements[PRSTMT_LAST] = {
                 " (SELECT id FROM packages WHERE name = ?1) "
 		"AND tag_id IN"
 		" (SELECT annotation_id FROM annotation WHERE annotation = ?2)",
-		"TTT", // "TT"???
 	},
 	[ANNOTATE_DEL2] = {
 		NULL,
 		"DELETE FROM annotation WHERE"
 		" annotation_id NOT IN (SELECT tag_id FROM pkg_annotation) AND"
 		" annotation_id NOT IN (SELECT value_id FROM pkg_annotation)",
-		"",
 	},
 	[CONFLICT] = {
 		NULL,
 		"INSERT INTO pkg_conflicts(package_id, conflict_id) "
 		"VALUES (?1, (SELECT id FROM packages WHERE name = ?2))",
-		"IT",
 	},
 	[PKG_PROVIDE] = {
 		NULL,
 		"INSERT INTO pkg_provides(package_id, provide_id) "
 		"VALUES (?1, (SELECT id FROM provides WHERE provide = ?2))",
-		"IT",
 	},
 	[PROVIDE] = {
 		NULL,
 		"INSERT OR IGNORE INTO provides(provide) VALUES(?1)",
-		"T",
 	},
 	[UPDATE_DIGEST] = {
 		NULL,
 		"UPDATE packages SET manifestdigest=?1 WHERE id=?2;",
-		"TI"
 	},
 	[CONFIG_FILES] = {
 		NULL,
 		"INSERT INTO config_files(path, content, package_id) "
 		"VALUES (?1, ?2, ?3);",
-		"TTI"
 	},
 	[UPDATE_CONFIG_FILE] = {
 		NULL,
 		"UPDATE config_files SET content=?1 WHERE path=?2;",
-		"TT"
 	},
 	[PKG_REQUIRE] = {
 		NULL,
 		"INSERT INTO pkg_requires(package_id, require_id) "
 		"VALUES (?1, (SELECT id FROM requires WHERE require = ?2))",
-		"IT",
 	},
 	[REQUIRE] = {
 		NULL,
 		"INSERT OR IGNORE INTO requires(require) VALUES(?1)",
-		"T"
 	},
 	[LUASCRIPT1] = {
 		NULL,
 		"INSERT OR IGNORE INTO lua_script(lua_script) VALUES (?1)",
-		"T",
 	},
 	[LUASCRIPT2] = {
 		NULL,
 		"INSERT INTO pkg_lua_script(lua_script_id, package_id, type) "
 		"VALUES ((SELECT lua_script_id FROM lua_script WHERE "
 		"lua_script = ?1), ?2, ?3)",
-		"TII",
 	},
 	/* PRSTMT_LAST */
 };
@@ -1610,42 +1570,34 @@ prstmt_initialize(struct pkgdb *db)
 }
 
 static int
-run_prstmt(sql_prstmt_index s, ...)
+run_prstmt(sql_prstmt_index s, const sql_arg_t *args, size_t nargs)
 {
-	int		 retcode;	/* Returns SQLITE error code */
-	va_list		 ap;
-	sqlite3_stmt	*stmt;
-	int		 i;
-	const char	*argtypes;
+	int retcode;
+	sqlite3_stmt *stmt;
+	size_t i;
 
 	stmt = STMT(s);
-	argtypes = sql_prepared_statements[s].argtypes;
-
 	sqlite3_reset(stmt);
 
-	va_start(ap, s);
-
-	for (i = 0; argtypes[i] != '\0'; i++)
-	{
-		switch (argtypes[i]) {
-		case 'T':
-			sqlite3_bind_text(stmt, i + 1, va_arg(ap, const char*),
-					  -1, SQLITE_STATIC);
+	for (i = 0; i < nargs; ++i) {
+		int bind_index = (int)i + 1;
+		switch (args[i].type) {
+		case ARG_TEXT:
+			sqlite3_bind_text(stmt, bind_index, args[i].v.text, -1, SQLITE_STATIC);
 			break;
-		case 'I':
-			sqlite3_bind_int64(stmt, i + 1, va_arg(ap, int64_t));
+		case ARG_INT64:
+			sqlite3_bind_int64(stmt, bind_index, args[i].v.i64);
 			break;
+		default:
+			return (SQLITE_MISUSE);
 		}
 	}
-
-	va_end(ap);
 
 	char *debug_sql = sqlite3_expanded_sql(stmt);
 	dbg(4, "running '%s'", debug_sql);
 	sqlite3_free(debug_sql);
 
 	retcode = sqlite3_step(stmt);
-
 	return (retcode);
 }
 
@@ -1665,12 +1617,6 @@ prstmt_finalize(struct pkgdb *db)
 	return;
 }
 
-static const char *
-_pkgdb_empty_str_null(const char *str)
-{
-	return (str[0] == '\0' ? NULL : str);
-}
-
 static int
 run_pkg_prstmt(struct pkg *pkg)
 {
@@ -1681,13 +1627,33 @@ run_pkg_prstmt(struct pkg *pkg)
 	/* Prefer new ABI over old one */
 	arch = pkg->abi != NULL ? pkg->abi : pkg->altabi;
 	msg = pkg_message_to_str(pkg);
-	ret = run_prstmt(PKG, pkg->origin, pkg->name, pkg->version,
-	    pkg->comment, pkg->desc, msg, arch, pkg->maintainer,
-	    pkg->www, pkg->prefix, pkg->flatsize, (int64_t)pkg->automatic,
-	    (int64_t)pkg->licenselogic, pkg->digest, pkg->dep_formula,
-	    (int64_t)pkg->vital);
+	sql_arg_t arg [] = {
+		SQL_ARG(pkg->origin),
+		SQL_ARG(pkg->name),
+		SQL_ARG(pkg->version),
+		SQL_ARG(pkg->comment),
+		SQL_ARG(pkg->desc),
+		SQL_ARG(msg),
+		SQL_ARG(arch),
+		SQL_ARG(pkg->maintainer),
+		SQL_ARG(pkg->www),
+		SQL_ARG(pkg->prefix),
+		SQL_ARG(pkg->flatsize),
+		SQL_ARG(pkg->automatic),
+		SQL_ARG(pkg->licenselogic),
+		SQL_ARG(pkg->digest),
+		SQL_ARG(pkg->dep_formula),
+		SQL_ARG(pkg->vital),
+	};
+	ret = run_prstmt(PKG, arg, NELEM(arg));
 	free(msg);
 	return (ret);
+}
+
+static const char *
+_pkgdb_empty_str_null(const char *str)
+{
+	return (str[0] == '\0' ? NULL : str);
 }
 
 /*
@@ -1737,8 +1703,13 @@ pkgdb_register_pkg(struct pkgdb *db, struct pkg *pkg, int forced,
 	 * package
 	 */
 
-	if (run_prstmt(DEPS_UPDATE, pkg->origin,
-	    pkg->version ? pkg->version : "", pkg->name)
+	sql_arg_t dep_arg[] = {
+		SQL_ARG(pkg->origin),
+		SQL_ARG(pkg->version),
+		SQL_ARG(pkg->version ? pkg->version : ""),
+		SQL_ARG(pkg->name),
+	};
+	if (run_prstmt(DEPS_UPDATE, dep_arg, NELEM(dep_arg))
 	    != SQLITE_DONE) {
 		ERROR_STMT_SQLITE(s, STMT(DEPS_UPDATE));
 		goto cleanup;
@@ -1749,9 +1720,14 @@ pkgdb_register_pkg(struct pkgdb *db, struct pkg *pkg, int forced,
 	 */
 
 	while (pkg_deps(pkg, &dep) == EPKG_OK) {
-		if (run_prstmt(DEPS, dep->origin, dep->name,
-		    dep->version ? dep->version : "",
-		    package_id) != SQLITE_DONE) {
+		sql_arg_t arg[] = {
+			SQL_ARG(dep->origin),
+			SQL_ARG(dep->name),
+			SQL_ARG(dep->version ? dep->version : ""),
+			SQL_ARG(package_id),
+		};
+		if (run_prstmt(DEPS, arg, NELEM(arg))
+		    != SQLITE_DONE) {
 			ERROR_STMT_SQLITE(s, STMT(DEPS));
 			goto cleanup;
 		}
@@ -1770,13 +1746,18 @@ pkgdb_register_pkg(struct pkgdb *db, struct pkg *pkg, int forced,
 			printf("matched\n");
 		}
 
-		ret = run_prstmt(FILES, file->path, file->sum,
-				 _pkgdb_empty_str_null(file->uname),
-				 _pkgdb_empty_str_null(file->gname),
-				 (int64_t)file->perm, (int64_t)file->fflags,
-				 _pkgdb_empty_str_null(file->symlink_target),
-				 (int64_t)file->time[1].tv_sec,
-				 package_id);
+		sql_arg_t args[] = {
+			SQL_ARG(file->path),
+			SQL_ARG(file->sum),
+			SQL_ARG(_pkgdb_empty_str_null(file->uname)),
+			SQL_ARG(_pkgdb_empty_str_null(file->gname)),
+			SQL_ARG(file->perm),
+			SQL_ARG(file->fflags),
+			SQL_ARG(_pkgdb_empty_str_null(file->symlink_target)),
+			SQL_ARG(file->time[1].tv_sec),
+			SQL_ARG(package_id),
+		};
+		ret = run_prstmt(FILES, args, NELEM(args));
 		if (ret == SQLITE_DONE)
 			continue;
 		if (ret != SQLITE_CONSTRAINT) {
@@ -1793,13 +1774,7 @@ pkgdb_register_pkg(struct pkgdb *db, struct pkg *pkg, int forced,
 		if (ret == EPKG_END) {
 			/* Stray entry in the files table not related to
 			   any known package: overwrite this */
-			ret = run_prstmt(FILES_REPLACE, file->path, file->sum,
-					 _pkgdb_empty_str_null(file->uname),
-					 _pkgdb_empty_str_null(file->gname),
-					 (int64_t)file->perm, (int64_t)file->fflags,
-					 _pkgdb_empty_str_null(file->symlink_target),
-					 (int64_t)file->time[1].tv_sec,
-					 package_id);
+			ret = run_prstmt(FILES_REPLACE, args, NELEM(args));
 			pkgdb_it_free(it);
 			if (ret == SQLITE_DONE)
 				continue;
@@ -1840,8 +1815,13 @@ pkgdb_register_pkg(struct pkgdb *db, struct pkg *pkg, int forced,
 	 * Insert config files
 	 */
 	while (pkg_config_files(pkg, &cf) == EPKG_OK) {
-		if ((ret = run_prstmt(CONFIG_FILES, cf->path, cf->content, package_id)
-		    != SQLITE_DONE)) {
+		sql_arg_t args[] = {
+			SQL_ARG(cf->path),
+			SQL_ARG(cf->content),
+			SQL_ARG(package_id),
+		};
+		if ((ret = run_prstmt(CONFIG_FILES, args, NELEM(args)))
+		    != SQLITE_DONE) {
 			if (ret == SQLITE_CONSTRAINT) {
 				pkg_emit_error("Another package already owns :%s",
 				    cf->path);
@@ -1856,15 +1836,24 @@ pkgdb_register_pkg(struct pkgdb *db, struct pkg *pkg, int forced,
 	 */
 
 	while (pkg_dirs(pkg, &dir) == EPKG_OK) {
-		if (run_prstmt(DIRS1, dir->path, _pkgdb_empty_str_null(dir->uname),
-			       _pkgdb_empty_str_null(dir->gname),
-			       (int64_t)dir->perm, (int64_t)dir->fflags,
-			       dir->time[1].tv_sec) != SQLITE_DONE) {
+		sql_arg_t args[] = {
+			SQL_ARG(dir->path),
+			SQL_ARG(_pkgdb_empty_str_null(dir->uname)),
+			SQL_ARG(_pkgdb_empty_str_null(dir->gname)),
+			SQL_ARG(dir->perm),
+			SQL_ARG(dir->fflags),
+			SQL_ARG(dir->time[1].tv_sec),
+		};
+		if (run_prstmt(DIRS1, args, NELEM(args)) != SQLITE_DONE) {
 			ERROR_STMT_SQLITE(s, STMT(DIRS1));
 			goto cleanup;
 		}
-		if ((ret = run_prstmt(DIRS2, package_id, dir->path,
-		    (int64_t)true)) != SQLITE_DONE) {
+		sql_arg_t args2[] = {
+			SQL_ARG(package_id),
+			SQL_ARG(dir->path),
+			SQL_ARG(true),
+		};
+		if ((ret = run_prstmt(DIRS2, args2, NELEM(args2))) != SQLITE_DONE) {
 			if (ret == SQLITE_CONSTRAINT) {
 				pkg_emit_error("Another package is already "
 				    "providing directory: %s",
@@ -1880,9 +1869,11 @@ pkgdb_register_pkg(struct pkgdb *db, struct pkg *pkg, int forced,
 	 */
 
 	vec_foreach(pkg->categories, i) {
-		ret = run_prstmt(CATEGORY1, pkg->categories.d[i]);
+		sql_arg_t arg1 [] = { SQL_ARG(pkg->categories.d[i]) };
+		sql_arg_t arg2 [] = { SQL_ARG(package_id), SQL_ARG(pkg->categories.d[i]) };
+		ret = run_prstmt(CATEGORY1, arg1, NELEM(arg1));
 		if (ret == SQLITE_DONE)
-			ret = run_prstmt(CATEGORY2, package_id, pkg->categories.d[i]);
+			ret = run_prstmt(CATEGORY2, arg2, NELEM(arg2));
 		if (ret != SQLITE_DONE) {
 			ERROR_STMT_SQLITE(s, STMT(CATEGORY2));
 			goto cleanup;
@@ -1894,11 +1885,12 @@ pkgdb_register_pkg(struct pkgdb *db, struct pkg *pkg, int forced,
 	 */
 
 	vec_foreach(pkg->licenses, i) {
-		if (run_prstmt(LICENSES1, pkg->licenses.d[i])
-		    != SQLITE_DONE
-		    ||
-		    run_prstmt(LICENSES2, package_id, pkg->licenses.d[i])
-		    != SQLITE_DONE) {
+		sql_arg_t arg1 [] = { SQL_ARG(pkg->licenses.d[i]) };
+		sql_arg_t arg2 [] = { SQL_ARG(package_id), SQL_ARG(pkg->licenses.d[i]) };
+		ret = run_prstmt(LICENSES1, arg1, NELEM(arg1));
+		if (ret == SQLITE_DONE)
+		    ret = run_prstmt(LICENSES2, arg2, NELEM(arg2));
+		if (ret != SQLITE_DONE) {
 			ERROR_STMT_SQLITE(s, STMT(LICENSES2));
 			goto cleanup;
 		}
@@ -1909,11 +1901,12 @@ pkgdb_register_pkg(struct pkgdb *db, struct pkg *pkg, int forced,
 	 */
 
 	vec_foreach(pkg->users, i) {
-		if (run_prstmt(USERS1, pkg->users.d[i])
-		    != SQLITE_DONE
-		    ||
-		    run_prstmt(USERS2, package_id, pkg->users.d[i])
-		    != SQLITE_DONE) {
+		sql_arg_t arg1 [] = { SQL_ARG(pkg->users.d[i]) };
+		sql_arg_t arg2 [] = { SQL_ARG(package_id), SQL_ARG(pkg->users.d[i]) };
+		ret = run_prstmt(USERS1, arg1, NELEM(arg1));
+		if (ret == SQLITE_DONE)
+		    ret = run_prstmt(USERS2, arg2, NELEM(arg2));
+		if (ret != SQLITE_DONE) {
 			ERROR_STMT_SQLITE(s, STMT(USERS2));
 			goto cleanup;
 		}
@@ -1924,11 +1917,12 @@ pkgdb_register_pkg(struct pkgdb *db, struct pkg *pkg, int forced,
 	 */
 
 	vec_foreach(pkg->groups, i) {
-		if (run_prstmt(GROUPS1, pkg->groups.d[i])
-		    != SQLITE_DONE
-		    ||
-		    run_prstmt(GROUPS2, package_id, pkg->groups.d[i])
-		    != SQLITE_DONE) {
+		sql_arg_t arg1 [] = { SQL_ARG(pkg->groups.d[i]) };
+		sql_arg_t arg2 [] = { SQL_ARG(package_id), SQL_ARG(pkg->groups.d[i]) };
+		ret = run_prstmt(GROUPS1, arg1, NELEM(arg1));
+		if (ret == SQLITE_DONE)
+		    ret = run_prstmt(GROUPS2, arg2, NELEM(arg2));
+		if (ret != SQLITE_DONE) {
 			ERROR_STMT_SQLITE(s, STMT(GROUPS2));
 			goto cleanup;
 		}
@@ -1952,10 +1946,16 @@ pkgdb_register_pkg(struct pkgdb *db, struct pkg *pkg, int forced,
 	 */
 
 	while (pkg_options(pkg, &option) == EPKG_OK) {
-		if (run_prstmt(OPTION1, option->key) != SQLITE_DONE
-		    ||
-		    run_prstmt(OPTION2, package_id, option->key, option->value)
-			       != SQLITE_DONE) {
+		sql_arg_t arg1 [] = { SQL_ARG(option->key) };
+		sql_arg_t arg2 [] = {
+			SQL_ARG(package_id),
+			SQL_ARG(option->key),
+			SQL_ARG(option->value)
+		};
+		ret = run_prstmt(OPTION1, arg1, NELEM(arg1));
+		if (ret == SQLITE_DONE)
+			ret = run_prstmt(OPTION2, arg2, NELEM(arg2));
+		if (ret != SQLITE_DONE) {
 			ERROR_STMT_SQLITE(s, STMT(OPTION2));
 			goto cleanup;
 		}
@@ -1979,7 +1979,8 @@ pkgdb_register_pkg(struct pkgdb *db, struct pkg *pkg, int forced,
 	 * Insert conflicts
 	 */
 	while (pkg_conflicts(pkg, &conflict) == EPKG_OK) {
-		if (run_prstmt(CONFLICT, package_id, conflict->uid)
+		sql_arg_t args[] = { SQL_ARG(package_id), SQL_ARG(conflict->uid) };
+		if (run_prstmt(CONFLICT, args, NELEM(args))
 				!= SQLITE_DONE) {
 			ERROR_STMT_SQLITE(s, STMT(CONFLICT));
 			goto cleanup;
@@ -2013,9 +2014,15 @@ pkgdb_insert_scripts(struct pkg *pkg, int64_t package_id, sqlite3 *s)
 
 		if (script == NULL)
 			continue;
-		if (run_prstmt(SCRIPT1, script) != SQLITE_DONE
+		sql_arg_t arg1[] = { SQL_ARG(script) };
+		sql_arg_t arg2[] = {
+			SQL_ARG(script),
+			SQL_ARG(package_id),
+			SQL_ARG(i)
+		};
+		if (run_prstmt(SCRIPT1, arg1, NELEM(arg1)) != SQLITE_DONE
 		    ||
-		    run_prstmt(SCRIPT2, script, package_id, i) != SQLITE_DONE) {
+		    run_prstmt(SCRIPT2, arg2, NELEM(arg2)) != SQLITE_DONE) {
 			ERROR_STMT_SQLITE(s, STMT(SCRIPT2));
 			return (EPKG_FATAL);
 		}
@@ -2031,9 +2038,15 @@ pkgdb_insert_lua_scripts(struct pkg *pkg, int64_t package_id, sqlite3 *s)
 
 	for (i = 0; i < PKG_NUM_LUA_SCRIPTS; i++) {
 		vec_foreach(pkg->lua_scripts[i], j) {
-			if (run_prstmt(LUASCRIPT1, pkg->lua_scripts[i].d[j]) != SQLITE_DONE
+			sql_arg_t arg1[] = { SQL_ARG(pkg->lua_scripts[i].d[j]) };
+			sql_arg_t arg2[] = {
+				SQL_ARG(pkg->lua_scripts[i].d[j]),
+				SQL_ARG(package_id),
+				SQL_ARG(i),
+			};
+			if (run_prstmt(LUASCRIPT1, arg1, NELEM(arg1)) != SQLITE_DONE
 			    ||
-			    run_prstmt(LUASCRIPT2, pkg->lua_scripts[i].d[j], package_id, i) != SQLITE_DONE) {
+			    run_prstmt(LUASCRIPT2, arg2, NELEM(arg2)) != SQLITE_DONE) {
 				ERROR_STMT_SQLITE(s, STMT(LUASCRIPT2));
 				return (EPKG_FATAL);
 			}
@@ -2046,10 +2059,15 @@ int
 pkgdb_update_shlibs_required(struct pkg *pkg, int64_t package_id, sqlite3 *s)
 {
 	vec_foreach(pkg->shlibs_required, i) {
-		if (run_prstmt(SHLIBS1, pkg->shlibs_required.d[i])
+		sql_arg_t arg1[] = { SQL_ARG(pkg->shlibs_required.d[i]) };
+		sql_arg_t arg2[] = {
+			SQL_ARG(package_id),
+			SQL_ARG(pkg->shlibs_required.d[i])
+		};
+		if (run_prstmt(SHLIBS1, arg1, NELEM(arg1))
 		    != SQLITE_DONE
 		    ||
-		    run_prstmt(SHLIBS_REQD, package_id, pkg->shlibs_required.d[i])
+		    run_prstmt(SHLIBS_REQD, arg2, NELEM(arg2))
 		    != SQLITE_DONE) {
 			ERROR_STMT_SQLITE(s, STMT(SHLIBS_REQD));
 			return (EPKG_FATAL);
@@ -2065,7 +2083,11 @@ pkgdb_update_config_file_content(struct pkg *p, sqlite3 *s)
 	struct pkg_config_file	*cf = NULL;
 
 	while (pkg_config_files(p, &cf) == EPKG_OK) {
-		if (run_prstmt(UPDATE_CONFIG_FILE, cf->content, cf->path)
+		sql_arg_t arg[] = {
+			SQL_ARG(cf->content),
+			SQL_ARG(cf->path),
+		};
+		if (run_prstmt(UPDATE_CONFIG_FILE, arg, NELEM(arg))
 		    != SQLITE_DONE) {
 			ERROR_STMT_SQLITE(s, STMT(SHLIBS_REQD));
 			return (EPKG_FATAL);
@@ -2079,10 +2101,15 @@ int
 pkgdb_update_shlibs_provided(struct pkg *pkg, int64_t package_id, sqlite3 *s)
 {
 	vec_foreach(pkg->shlibs_provided, i) {
-		if (run_prstmt(SHLIBS1, pkg->shlibs_provided.d[i])
+		sql_arg_t arg1[] = { SQL_ARG(pkg->shlibs_provided.d[i]) };
+		sql_arg_t arg2[] = {
+			SQL_ARG(package_id),
+			SQL_ARG(pkg->shlibs_provided.d[i]),
+		};
+		if (run_prstmt(SHLIBS1, arg1, NELEM(arg1))
 		    != SQLITE_DONE
 		    ||
-		    run_prstmt(SHLIBS_PROV, package_id, pkg->shlibs_provided.d[i])
+		    run_prstmt(SHLIBS_PROV, arg2, NELEM(arg2))
 		    != SQLITE_DONE) {
 			ERROR_STMT_SQLITE(s, STMT(SHLIBS_PROV));
 			return (EPKG_FATAL);
@@ -2096,10 +2123,15 @@ int
 pkgdb_update_requires(struct pkg *pkg, int64_t package_id, sqlite3 *s)
 {
 	vec_foreach(pkg->requires, i) {
-		if (run_prstmt(REQUIRE, pkg->requires.d[i])
+		sql_arg_t arg1[] = { SQL_ARG(pkg->requires.d[i]) };
+		sql_arg_t arg2[] = {
+			SQL_ARG(package_id),
+			SQL_ARG(pkg->requires.d[i]),
+		};
+		if (run_prstmt(REQUIRE, arg1, NELEM(arg1))
 		    != SQLITE_DONE
 		    ||
-		    run_prstmt(PKG_REQUIRE, package_id, pkg->requires.d[i])
+		    run_prstmt(PKG_REQUIRE, arg2, NELEM(arg2))
 		    != SQLITE_DONE) {
 			ERROR_STMT_SQLITE(s, STMT(PKG_REQUIRE));
 			return (EPKG_FATAL);
@@ -2113,10 +2145,15 @@ int
 pkgdb_update_provides(struct pkg *pkg, int64_t package_id, sqlite3 *s)
 {
 	vec_foreach(pkg->provides, i) {
-		if (run_prstmt(PROVIDE, pkg->provides.d[i])
+		sql_arg_t arg1[] = { SQL_ARG(pkg->provides.d[i]) };
+		sql_arg_t arg2[] = {
+			SQL_ARG(package_id),
+			SQL_ARG(pkg->provides.d[i]),
+		};
+		if (run_prstmt(PROVIDE, arg1, NELEM(arg1))
 		    != SQLITE_DONE
 		    ||
-		    run_prstmt(PKG_PROVIDE, package_id, pkg->provides.d[i])
+		    run_prstmt(PKG_PROVIDE, arg2, NELEM(arg2))
 		    != SQLITE_DONE) {
 			ERROR_STMT_SQLITE(s, STMT(PKG_PROVIDE));
 			return (EPKG_FATAL);
@@ -2133,14 +2170,20 @@ pkgdb_insert_annotations(struct pkg *pkg, int64_t package_id, sqlite3 *s)
 
 	vec_foreach(pkg->annotations, i) {
 		kv = pkg->annotations.d[i];
-		if (run_prstmt(ANNOTATE1, kv->key)
+		sql_arg_t arg1[] = { SQL_ARG(kv->key) };
+		sql_arg_t arg2[] = { SQL_ARG(kv->value) };
+		sql_arg_t arg3[] = {
+			SQL_ARG(package_id),
+			SQL_ARG(kv->key),
+			SQL_ARG(kv->value),
+		};
+		if (run_prstmt(ANNOTATE1, arg1, NELEM(arg1))
 		    != SQLITE_DONE
 		    ||
-		    run_prstmt(ANNOTATE1,kv->value)
+		    run_prstmt(ANNOTATE1, arg2, NELEM(arg2))
 		    != SQLITE_DONE
 		    ||
-		    run_prstmt(ANNOTATE2, package_id,
-			kv->key, kv->value)
+		    run_prstmt(ANNOTATE2, arg3, NELEM(arg3))
 		    != SQLITE_DONE) {
 			ERROR_STMT_SQLITE(s, STMT(ANNOTATE2));
 			return (EPKG_FATAL);
@@ -2159,11 +2202,19 @@ pkgdb_add_annotation(struct pkgdb *db, struct pkg *pkg, const char *tag,
 	assert(tag != NULL);
 	assert(value != NULL);
 
-	if (run_prstmt(ANNOTATE1, tag) != SQLITE_DONE
+	sql_arg_t arg1[] = { SQL_ARG(tag) };
+	sql_arg_t arg2[] = { SQL_ARG(value) };
+	sql_arg_t arg3[] = {
+		SQL_ARG(pkg->uid),
+		SQL_ARG(tag),
+		SQL_ARG(value),
+	};
+
+	if (run_prstmt(ANNOTATE1, arg1, NELEM(arg1)) != SQLITE_DONE
 	    ||
-	    run_prstmt(ANNOTATE1, value) != SQLITE_DONE
+	    run_prstmt(ANNOTATE1, arg2, NELEM(arg1)) != SQLITE_DONE
 	    ||
-	    run_prstmt(ANNOTATE_ADD1, pkg->uid, tag, value)
+	    run_prstmt(ANNOTATE_ADD1, arg3, NELEM(arg3))
 	    != SQLITE_DONE) {
 		ERROR_STMT_SQLITE(db->sqlite, STMT(ANNOTATE_ADD1));
 		pkgdb_transaction_rollback_sqlite(db->sqlite, NULL);
@@ -2185,7 +2236,11 @@ pkgdb_set_pkg_digest(struct pkgdb *db, struct pkg *pkg)
 	assert(pkg != NULL);
 	assert(db != NULL);
 
-	if (run_prstmt(UPDATE_DIGEST, pkg->digest, pkg->id) != SQLITE_DONE) {
+	sql_arg_t arg[] = {
+		SQL_ARG(pkg->digest),
+		SQL_ARG(pkg->id),
+	};
+	if (run_prstmt(UPDATE_DIGEST, arg, NELEM(arg)) != SQLITE_DONE) {
 		ERROR_STMT_SQLITE(db->sqlite, STMT(UPDATE_DIGEST));
 		return (EPKG_FATAL);
 	}
@@ -2203,14 +2258,22 @@ pkgdb_modify_annotation(struct pkgdb *db, struct pkg *pkg, const char *tag,
 	assert(tag != NULL);
 	assert(value != NULL);
 
+	sql_arg_t arg1[] = { SQL_ARG(tag) };
+	sql_arg_t arg2[] = { SQL_ARG(value) };
+	sql_arg_t arg3[] = {
+		SQL_ARG(pkg->uid),
+		SQL_ARG(tag),
+		SQL_ARG(value),
+	};
+
 	if (pkgdb_transaction_begin_sqlite(db->sqlite, NULL) != EPKG_OK)
 		return (EPKG_FATAL);
 
-	if (run_prstmt(ANNOTATE1, tag) != SQLITE_DONE
+	if (run_prstmt(ANNOTATE1, arg1, NELEM(arg1)) != SQLITE_DONE
 	    ||
-	    run_prstmt(ANNOTATE1, value) != SQLITE_DONE
+	    run_prstmt(ANNOTATE1, arg2, NELEM(arg2)) != SQLITE_DONE
 	    ||
-	    run_prstmt(ANNOTATE_MOD1, pkg->uid, tag, value) !=
+	    run_prstmt(ANNOTATE_MOD1, arg3, NELEM(arg3)) !=
 	        SQLITE_DONE) {
 		ERROR_STMT_SQLITE(db->sqlite, STMT(ANNOTATE_MOD1));
 		pkgdb_transaction_rollback_sqlite(db->sqlite, NULL);
@@ -2219,7 +2282,7 @@ pkgdb_modify_annotation(struct pkgdb *db, struct pkg *pkg, const char *tag,
 	}
 	rows_changed = sqlite3_changes(db->sqlite);
 
-	if (run_prstmt(ANNOTATE_DEL2) != SQLITE_DONE) {
+	if (run_prstmt(ANNOTATE_DEL2, NULL, 0) != SQLITE_DONE) {
 		ERROR_STMT_SQLITE(db->sqlite, STMT(ANNOTATE_DEL2));
 		pkgdb_transaction_rollback_sqlite(db->sqlite, NULL);
 
@@ -2245,14 +2308,15 @@ pkgdb_delete_annotation(struct pkgdb *db, struct pkg *pkg, const char *tag)
 	if (pkgdb_transaction_begin_sqlite(db->sqlite, NULL) != EPKG_OK)
 		return (EPKG_FATAL);
 
-	result = (run_prstmt(ANNOTATE_DEL1, pkg->uid, tag)
+	sql_arg_t arg[] = { SQL_ARG(pkg->uid), SQL_ARG(tag) };
+	result = (run_prstmt(ANNOTATE_DEL1, arg, NELEM(arg))
 		  == SQLITE_DONE);
 
 	rows_changed = sqlite3_changes(db->sqlite);
 
 	if (!result
 	    ||
-	    run_prstmt(ANNOTATE_DEL2) != SQLITE_DONE) {
+	    run_prstmt(ANNOTATE_DEL2, NULL, 0) != SQLITE_DONE) {
 		ERROR_STMT_SQLITE(db->sqlite, STMT(ANNOTATE_DEL2));
 		pkgdb_transaction_rollback_sqlite(db->sqlite, NULL);
 		return (EPKG_FATAL);
@@ -3038,7 +3102,8 @@ pkgdb_begin_solver(struct pkgdb *db)
 				vec_foreach(pkglist, i) {
 					p = pkglist.d[i];
 					pkg_emit_progress_tick(cur++, cnt);
-					rc = run_prstmt(UPDATE_DIGEST, p->digest, p->id);
+					sql_arg_t arg[] = { SQL_ARG(p->digest), SQL_ARG(p->id) };
+					rc = run_prstmt(UPDATE_DIGEST, arg, NELEM(arg));
 					if (rc != SQLITE_DONE) {
 						assert(0);
 						ERROR_STMT_SQLITE(db->sqlite, STMT(UPDATE_DIGEST));
