@@ -92,7 +92,9 @@ pkg_repo_binary_delete_conflicting(const char *origin, const char *version,
 	int ret = EPKG_FATAL;
 	const unsigned char *oversion;
 
-	if (pkg_repo_binary_run_prstatement(REPO_VERSION, origin) != SQLITE_ROW) {
+	sql_arg_t arg[] = { SQL_ARG(origin) };
+	sql_arg_t args[] = { SQL_ARG(origin), SQL_ARG(origin) };
+	if (pkg_repo_binary_run_prstatement(REPO_VERSION, arg, NELEM(arg)) != SQLITE_ROW) {
 		ret = EPKG_FATAL;
 		goto cleanup;
 	}
@@ -104,7 +106,7 @@ pkg_repo_binary_delete_conflicting(const char *origin, const char *version,
 					"version %s in repo with package %s",
 					oversion, origin);
 
-			if (pkg_repo_binary_run_prstatement(DELETE, origin, origin) !=
+			if (pkg_repo_binary_run_prstatement(DELETE, args, NELEM(args)) !=
 							SQLITE_DONE)
 				ret = EPKG_FATAL;
 			else
@@ -122,7 +124,7 @@ pkg_repo_binary_delete_conflicting(const char *origin, const char *version,
 	}
 	else {
 		ret = EPKG_OK;
-		if (pkg_repo_binary_run_prstatement(DELETE, origin, origin) != SQLITE_DONE)
+		if (pkg_repo_binary_run_prstatement(DELETE, args, NELEM(args)) != SQLITE_DONE)
 			ret = EPKG_FATAL;
 	}
 
@@ -144,12 +146,27 @@ pkg_repo_binary_add_pkg(struct pkg *pkg, sqlite3 *sqlite, bool forced)
 
 	arch = pkg->abi != NULL ? pkg->abi : pkg->altabi;
 
+	sql_arg_t args[] = {
+		SQL_ARG(pkg->origin),
+		SQL_ARG(pkg->name),
+		SQL_ARG(pkg->version),
+		SQL_ARG(pkg->comment),
+		SQL_ARG(pkg->desc),
+		SQL_ARG(arch),
+		SQL_ARG(pkg->maintainer),
+		SQL_ARG(pkg->www),
+		SQL_ARG(pkg->prefix),
+		SQL_ARG(pkg->pkgsize),
+		SQL_ARG(pkg->flatsize),
+		SQL_ARG(pkg->licenselogic),
+		SQL_ARG(pkg->sum),
+		SQL_ARG(pkg->repopath),
+		SQL_ARG(pkg->digest),
+		SQL_ARG(pkg->old_digest),
+		SQL_ARG(pkg->vital),
+	};
 try_again:
-	if ((ret = pkg_repo_binary_run_prstatement(PKG,
-	    pkg->origin, pkg->name, pkg->version, pkg->comment, pkg->desc,
-	    arch, pkg->maintainer, pkg->www, pkg->prefix, pkg->pkgsize,
-	    pkg->flatsize, (int64_t)pkg->licenselogic, pkg->sum, pkg->repopath,
-	    pkg->digest, pkg->old_digest, (int64_t)pkg->vital)) != SQLITE_DONE) {
+	if ((ret = pkg_repo_binary_run_prstatement(PKG, args, NELEM(args))) != SQLITE_DONE) {
 		if (ret == SQLITE_CONSTRAINT) {
 			ERROR_SQLITE(sqlite, "grmbl");
 			switch(pkg_repo_binary_delete_conflicting(pkg->origin,
@@ -174,18 +191,24 @@ try_again:
 
 	dep = NULL;
 	while (pkg_deps(pkg, &dep) == EPKG_OK) {
-		if (pkg_repo_binary_run_prstatement(DEPS, dep->origin,
-		    dep->name, dep->version, package_id) != SQLITE_DONE) {
+		sql_arg_t dep_arg[] = {
+			SQL_ARG(dep->origin),
+			SQL_ARG(dep->name),
+			SQL_ARG(dep->version),
+			SQL_ARG(package_id),
+		};
+		if (pkg_repo_binary_run_prstatement(DEPS, dep_arg, NELEM(dep_arg)) != SQLITE_DONE) {
 			ERROR_SQLITE(sqlite, pkg_repo_binary_sql_prstatement(DEPS));
 			return (EPKG_FATAL);
 		}
 	}
 
 	vec_foreach(pkg->categories, i) {
-		const char *s = pkg->categories.d[i];
-		ret = pkg_repo_binary_run_prstatement(CAT1, s);
+		sql_arg_t cat_arg1[] = { SQL_ARG(pkg->categories.d[i]) };
+		sql_arg_t cat_arg2[] = { SQL_ARG(package_id), SQL_ARG(pkg->categories.d[i])};
+		ret = pkg_repo_binary_run_prstatement(CAT1, cat_arg1, NELEM(cat_arg1));
 		if (ret == SQLITE_DONE)
-			ret = pkg_repo_binary_run_prstatement(CAT2, package_id, s);
+			ret = pkg_repo_binary_run_prstatement(CAT2, cat_arg2, NELEM(cat_arg2));
 		if (ret != SQLITE_DONE) {
 			ERROR_SQLITE(sqlite, pkg_repo_binary_sql_prstatement(CAT2));
 			return (EPKG_FATAL);
@@ -193,10 +216,11 @@ try_again:
 	}
 
 	vec_foreach(pkg->licenses, i) {
-		const char *s = pkg->licenses.d[i];
-		ret = pkg_repo_binary_run_prstatement(LIC1, s);
+		sql_arg_t lic_arg1[] = { SQL_ARG(pkg->licenses.d[i]) };
+		sql_arg_t lic_arg2[] = { SQL_ARG(package_id), SQL_ARG(pkg->licenses.d[i])};
+		ret = pkg_repo_binary_run_prstatement(LIC1, lic_arg1, NELEM(lic_arg1));
 		if (ret == SQLITE_DONE)
-			ret = pkg_repo_binary_run_prstatement(LIC2, package_id, s);
+			ret = pkg_repo_binary_run_prstatement(LIC2, lic_arg2, NELEM(lic_arg2));
 		if (ret != SQLITE_DONE) {
 			ERROR_SQLITE(sqlite, pkg_repo_binary_sql_prstatement(LIC2));
 			return (EPKG_FATAL);
@@ -205,10 +229,15 @@ try_again:
 
 	option = NULL;
 	while (pkg_options(pkg, &option) == EPKG_OK) {
-		ret = pkg_repo_binary_run_prstatement(OPT1, option->key);
+		sql_arg_t lic_arg1[] = { SQL_ARG(option->key) };
+		sql_arg_t lic_arg2[] = {
+			SQL_ARG(option->key),
+			SQL_ARG(option->value),
+			SQL_ARG(package_id),
+		};
+		ret = pkg_repo_binary_run_prstatement(OPT1, lic_arg1, NELEM(lic_arg1));
 		if (ret == SQLITE_DONE)
-		    ret = pkg_repo_binary_run_prstatement(OPT2, option->key,
-				option->value, package_id);
+		    ret = pkg_repo_binary_run_prstatement(OPT2, lic_arg2, NELEM(lic_arg2));
 		if(ret != SQLITE_DONE) {
 			ERROR_SQLITE(sqlite, pkg_repo_binary_sql_prstatement(OPT2));
 			return (EPKG_FATAL);
@@ -216,10 +245,14 @@ try_again:
 	}
 
 	vec_foreach(pkg->shlibs_required, i) {
-		const char *s = pkg->shlibs_required.d[i];
-		ret = pkg_repo_binary_run_prstatement(SHLIB1, s);
+		sql_arg_t arg1[] = { SQL_ARG(pkg->shlibs_required.d[i]) };
+		sql_arg_t arg2[] = {
+			SQL_ARG(package_id),
+			SQL_ARG(pkg->shlibs_required.d[i]),
+		};
+		ret = pkg_repo_binary_run_prstatement(SHLIB1, arg1, NELEM(arg1));
 		if (ret == SQLITE_DONE)
-			ret = pkg_repo_binary_run_prstatement(SHLIB_REQD, package_id, s);
+			ret = pkg_repo_binary_run_prstatement(SHLIB_REQD, arg2, NELEM(arg2));
 		if (ret != SQLITE_DONE) {
 			ERROR_SQLITE(sqlite, pkg_repo_binary_sql_prstatement(SHLIB_REQD));
 			return (EPKG_FATAL);
@@ -227,10 +260,14 @@ try_again:
 	}
 
 	vec_foreach(pkg->shlibs_provided, i) {
-		const char *s = pkg->shlibs_provided.d[i];
-		ret = pkg_repo_binary_run_prstatement(SHLIB1, s);
+		sql_arg_t arg1[] = { SQL_ARG(pkg->shlibs_provided.d[i]) };
+		sql_arg_t arg2[] = {
+			SQL_ARG(package_id),
+			SQL_ARG(pkg->shlibs_provided.d[i]),
+		};
+		ret = pkg_repo_binary_run_prstatement(SHLIB1, arg1, NELEM(arg1));
 		if (ret == SQLITE_DONE)
-			ret = pkg_repo_binary_run_prstatement(SHLIB_PROV, package_id, s);
+			ret = pkg_repo_binary_run_prstatement(SHLIB_PROV, arg2, NELEM(arg2));
 		if (ret != SQLITE_DONE) {
 			ERROR_SQLITE(sqlite, pkg_repo_binary_sql_prstatement(SHLIB_PROV));
 			return (EPKG_FATAL);
@@ -238,10 +275,14 @@ try_again:
 	}
 
 	vec_foreach(pkg->provides, i) {
-		const char *s = pkg->provides.d[i];
-		ret = pkg_repo_binary_run_prstatement(PROVIDE, s);
+		sql_arg_t arg1[] = { SQL_ARG(pkg->provides.d[i]) };
+		sql_arg_t arg2[] = {
+			SQL_ARG(package_id),
+			SQL_ARG(pkg->provides.d[i]),
+		};
+		ret = pkg_repo_binary_run_prstatement(PROVIDE, arg1, NELEM(arg1));
 		if (ret == SQLITE_DONE)
-			ret = pkg_repo_binary_run_prstatement(PROVIDES, package_id, s);
+			ret = pkg_repo_binary_run_prstatement(PROVIDES, arg2, NELEM(arg2));
 		if (ret != SQLITE_DONE) {
 			ERROR_SQLITE(sqlite, pkg_repo_binary_sql_prstatement(PROVIDES));
 			return (EPKG_FATAL);
@@ -249,10 +290,14 @@ try_again:
 	}
 
 	vec_foreach(pkg->requires, i) {
-		const char *s = pkg->requires.d[i];
-		ret = pkg_repo_binary_run_prstatement(REQUIRE, s);
+		sql_arg_t arg1[] = { SQL_ARG(pkg->requires.d[i]) };
+		sql_arg_t arg2[] = {
+			SQL_ARG(package_id),
+			SQL_ARG(pkg->requires.d[i]),
+		};
+		ret = pkg_repo_binary_run_prstatement(REQUIRE, arg1, NELEM(arg1));
 		if (ret == SQLITE_DONE)
-			ret = pkg_repo_binary_run_prstatement(REQUIRES, package_id, s);
+			ret = pkg_repo_binary_run_prstatement(REQUIRES, arg2, NELEM(arg2));
 		if (ret != SQLITE_DONE) {
 			ERROR_SQLITE(sqlite, pkg_repo_binary_sql_prstatement(REQUIRES));
 			return (EPKG_FATAL);
@@ -261,12 +306,18 @@ try_again:
 
 	vec_foreach(pkg->annotations, i) {
 		kv = pkg->annotations.d[i];
-		ret = pkg_repo_binary_run_prstatement(ANNOTATE1, kv->key);
+		sql_arg_t arg1[] = { SQL_ARG(kv->key) };
+		sql_arg_t arg2[] = { SQL_ARG(kv->value) };
+		sql_arg_t arg3[] = {
+			SQL_ARG(package_id),
+			SQL_ARG(kv->key),
+			SQL_ARG(kv->value),
+		};
+		ret = pkg_repo_binary_run_prstatement(ANNOTATE1, arg1, NELEM(arg1));
 		if (ret == SQLITE_DONE)
-			ret = pkg_repo_binary_run_prstatement(ANNOTATE1, kv->value);
+			ret = pkg_repo_binary_run_prstatement(ANNOTATE1, arg2, NELEM(arg2));
 		if (ret == SQLITE_DONE)
-			ret = pkg_repo_binary_run_prstatement(ANNOTATE2, package_id,
-				  kv->key, kv->value);
+			ret = pkg_repo_binary_run_prstatement(ANNOTATE2, arg3, NELEM(arg3));
 		if (ret != SQLITE_DONE) {
 			ERROR_SQLITE(sqlite, pkg_repo_binary_sql_prstatement(ANNOTATE2));
 			return (EPKG_FATAL);
