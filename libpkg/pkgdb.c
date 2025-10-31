@@ -1773,9 +1773,9 @@ pkgdb_register_pkg(struct pkgdb *db, struct pkg *pkg, int forced,
 		ret = run_prstmt(FILES, file->path, file->sum,
 				 _pkgdb_empty_str_null(file->uname),
 				 _pkgdb_empty_str_null(file->gname),
-				 file->perm, file->fflags,
+				 (int64_t)file->perm, (int64_t)file->fflags,
 				 _pkgdb_empty_str_null(file->symlink_target),
-				 file->time[1].tv_sec,
+				 (int64_t)file->time[1].tv_sec,
 				 package_id);
 		if (ret == SQLITE_DONE)
 			continue;
@@ -1796,9 +1796,9 @@ pkgdb_register_pkg(struct pkgdb *db, struct pkg *pkg, int forced,
 			ret = run_prstmt(FILES_REPLACE, file->path, file->sum,
 					 _pkgdb_empty_str_null(file->uname),
 					 _pkgdb_empty_str_null(file->gname),
-					 file->perm, file->fflags,
+					 (int64_t)file->perm, (int64_t)file->fflags,
 					 _pkgdb_empty_str_null(file->symlink_target),
-					 file->time[1].tv_sec,
+					 (int64_t)file->time[1].tv_sec,
 					 package_id);
 			pkgdb_it_free(it);
 			if (ret == SQLITE_DONE)
@@ -1858,7 +1858,7 @@ pkgdb_register_pkg(struct pkgdb *db, struct pkg *pkg, int forced,
 	while (pkg_dirs(pkg, &dir) == EPKG_OK) {
 		if (run_prstmt(DIRS1, dir->path, _pkgdb_empty_str_null(dir->uname),
 			       _pkgdb_empty_str_null(dir->gname),
-			       dir->perm, dir->fflags,
+			       (int64_t)dir->perm, (int64_t)dir->fflags,
 			       dir->time[1].tv_sec) != SQLITE_DONE) {
 			ERROR_STMT_SQLITE(s, STMT(DIRS1));
 			goto cleanup;
