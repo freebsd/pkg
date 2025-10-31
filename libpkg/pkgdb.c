@@ -3100,14 +3100,9 @@ pkgdb_begin_solver(struct pkgdb *db)
 			else {
 				pkg_emit_progress_start("Updating database digests format");
 				vec_foreach(pkglist, i) {
-					p = pkglist.d[i];
 					pkg_emit_progress_tick(cur++, cnt);
-					sql_arg_t arg[] = { SQL_ARG(p->digest), SQL_ARG(p->id) };
-					rc = run_prstmt(UPDATE_DIGEST, arg, NELEM(arg));
-					if (rc != SQLITE_DONE) {
-						assert(0);
-						ERROR_STMT_SQLITE(db->sqlite, STMT(UPDATE_DIGEST));
-					}
+					if (pkgdb_set_pkg_digest(db, pkglist.d[i]) == EPKG_OK)
+						rc = SQLITE_DONE;
 				}
 
 				pkg_emit_progress_tick(cnt, cnt);
