@@ -1,5 +1,5 @@
 /*-
- * Copyright (c) 2011-2021 Baptiste Daroussin <bapt@FreeBSD.org>
+ * Copyright (c) 2011-2025 Baptiste Daroussin <bapt@FreeBSD.org>
  * Copyright (c) 2011 Will Andrews <will@FreeBSD.org>
  * All rights reserved.
  *
@@ -47,10 +47,9 @@
 
 int
 packing_init(struct packing **pack, const char *path, pkg_formats format, int clevel,
-	int threads, time_t timestamp, bool overwrite, bool compat_symlink)
+	int threads, time_t timestamp, bool overwrite)
 {
 	char archive_path[MAXPATHLEN];
-	char archive_symlink[MAXPATHLEN];
 	char *archive_name;
 	const char *ext;
 	const char *source_date_epoch;
@@ -95,8 +94,6 @@ packing_init(struct packing **pack, const char *path, pkg_formats format, int cl
 		archive_name = archive_path;
 	else
 		archive_name++;
-	snprintf(archive_symlink, sizeof(archive_path), "%s.%s", path,
-	    ext);
 
 	if (!overwrite && access(archive_path, F_OK) == 0) {
 		archive_read_close((*pack)->aread);
@@ -119,13 +116,6 @@ packing_init(struct packing **pack, const char *path, pkg_formats format, int cl
 		archive_write_free((*pack)->awrite);
 		*pack = NULL;
 		return EPKG_FATAL;
-	}
-
-	if (compat_symlink || ctx.archive_symlink) {
-		unlink(archive_symlink);
-		if (symlink(archive_name, archive_symlink) != 0) {
-			pkg_emit_errno("symlink", archive_symlink);
-		}
 	}
 
 	(*pack)->resolver = archive_entry_linkresolver_new();

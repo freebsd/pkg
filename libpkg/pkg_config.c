@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2011-2024 Baptiste Daroussin <bapt@FreeBSD.org>
+ * Copyright (c) 2011-2025 Baptiste Daroussin <bapt@FreeBSD.org>
  * Copyright (c) 2011-2012 Julien Laffaye <jlaffaye@FreeBSD.org>
  * Copyright (c) 2014 Matthew Seaman <matthew@FreeBSD.org>
  * Copyright (c) 2016 Vsevolod Stakhov <vsevolod@FreeBSD.org>
@@ -418,11 +418,6 @@ static struct config_entry c[] = {
 		PKG_INT,
 		"COMPRESSION_LEVEL",
 		"-1",
-	},
-	{
-		PKG_BOOL,
-		"ARCHIVE_SYMLINK",
-		"FALSE",
 	},
 	{
 		PKG_BOOL,
@@ -1573,7 +1568,6 @@ pkg_ini(const char *path, const char *reposdir, pkg_init_flags flags)
 	ctx.compression_format = pkg_object_string(pkg_config_get("COMPRESSION_FORMAT"));
 	ctx.compression_level = pkg_object_int(pkg_config_get("COMPRESSION_LEVEL"));
 	ctx.compression_threads = pkg_object_int(pkg_config_get("COMPRESSION_THREADS"));
-	ctx.archive_symlink = pkg_object_bool(pkg_config_get("ARCHIVE_SYMLINK"));
 	ctx.repo_accept_legacy_pkg = pkg_object_bool(pkg_config_get("REPO_ACCEPT_LEGACY_PKG"));
 	ctx.no_version_for_deps = (getenv("PKG_NO_VERSION_FOR_DEPS") != NULL);
 	ctx.track_linux_compat_shlibs = pkg_object_bool(pkg_config_get("TRACK_LINUX_COMPAT_SHLIBS"));

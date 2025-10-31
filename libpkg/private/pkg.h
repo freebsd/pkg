@@ -141,7 +141,6 @@ struct pkg_ctx {
 	int dbdirfd;
 	int pkg_dbdirfd;
 	int pkg_reposdirfd;
-	bool archive_symlink;
 	bool backup_libraries;
 	const char *backup_library_path;
 	bool triggers;
@@ -693,7 +692,7 @@ void pkg_config_file_free(struct pkg_config_file *);
 struct iovec;
 struct packing;
 
-int packing_init(struct packing **pack, const char *path, pkg_formats format, int clevel, int threads, time_t timestamp, bool overwrite, bool archive_symlink);
+int packing_init(struct packing **pack, const char *path, pkg_formats format, int clevel, int threads, time_t timestamp, bool overwrite);
 int packing_append_file_attr(struct packing *pack, const char *filepath,
      const char *newpath, const char *uname, const char *gname, mode_t perm,
      u_long fflags);
