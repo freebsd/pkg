@@ -212,11 +212,13 @@ attempt_to_merge(int rootfd, struct pkg_config_file *rcf, struct pkg *local,
 		pkg_debug(2, "Ancient vanilla and deployed conf are the same size testing checksum");
 		localsum = pkg_checksum_data(localconf, sz,
 		    PKG_HASH_TYPE_SHA256_HEX);
-		if (localsum && STREQ(localsum, lf->sum)) {
+		if (localsum != NULL && lf->sum != NULL && STREQ(localsum, lf->sum)) {
 			pkg_debug(2, "Checksum are the same %jd", (intmax_t)strlen(localconf));
 			free(localsum);
 			goto ret;
 		}
+		if (lf->sum == NULL)
+			pkg_emit_error("3way merge: no checksum for the original local file");
 		free(localsum);
 		pkg_debug(2, "Checksum are different %jd", (intmax_t)strlen(localconf));
 	}
