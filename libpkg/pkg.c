@@ -1554,11 +1554,12 @@ emit_status:
 					    f->symlink_target, symlink_target);
 	}
 
-	if (file_status == FILE_OK)
+	if (file_status == FILE_OK) {
 		if (metadata)
 			pkg_emit_file_meta_ok(pkg, f);
-	else
+	} else {
 		rc = EPKG_FATAL;
+	}
 
 	return rc;
 }
