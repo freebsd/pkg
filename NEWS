@@ -1,3 +1,6 @@
+Changes from 2.4.1 to 2.4.2
+- fix regression in pkg check -s output
+
 Changes from 2.4.0 to 2.4.1
 - Fix 32bit regression
 - cleanup trigger(5) manpage
