@@ -1555,7 +1555,8 @@ emit_status:
 	}
 
 	if (file_status == FILE_OK)
-		pkg_emit_file_meta_ok(pkg, f);
+		if (metadata)
+			pkg_emit_file_meta_ok(pkg, f);
 	else
 		rc = EPKG_FATAL;
 
