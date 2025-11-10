@@ -15,7 +15,7 @@ Changes form 2.3.0 to 2.3.99.1
 - Lots of improvements and bugs fixes regaring BACKUP_LIBRARIES features
 - Integrate BACKUP_LIBRARIES in the solver
 - Add vital flag to the list of flag which we need to consider for package reinstallation
-- tack uname, gname, mtime, permissions and fflags in the db and in the manifest
+- track uname, gname, mtime, permissions and fflags in the db and in the manifest
   instead of relying on the tar informations. which gives us pkg check -m to check for
   for metadata changes.
 - METALOG: add entries for intermediate directories
