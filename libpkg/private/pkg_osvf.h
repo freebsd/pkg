@@ -92,6 +92,7 @@ struct pkg_osvf_entry {
 	struct pkg_audit_entry audit;
 	struct pkg_osvf_reference *references;
 };
+typedef vec_t(struct pkg_osvf_entry *) osvf_entryv_t;
 
 ucl_object_t *
 pkg_osvf_open(const char *location);
