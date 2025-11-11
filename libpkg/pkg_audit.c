@@ -37,6 +37,7 @@
 #include <string.h>
 #include <utlist.h>
 #include <xstring.h>
+#include <ucl.h>
 
 #include <yxml.h>
 
@@ -49,6 +50,7 @@
 #include "pkg.h"
 #include "pkg/audit.h"
 #include "private/pkg.h"
+#include <private/pkg_osvf.h>
 #include "private/event.h"
 
 /*
@@ -86,6 +88,7 @@ struct pkg_audit_item {
 };
 
 struct pkg_audit {
+	struct ucl_parser *parser;
 	struct pkg_audit_entry *entries;
 	struct pkg_audit_item *items;
 	bool parsed;
@@ -110,38 +113,6 @@ struct pkg_audit {
 static size_t audit_entry_first_byte_idx[256];
 
 static void
-pkg_audit_free_entry(struct pkg_audit_entry *e)
-{
-	struct pkg_audit_package *ppkg, *ppkg_tmp;
-	struct pkg_audit_versions_range *vers, *vers_tmp;
-	struct pkg_audit_cve *cve, *cve_tmp;
-	struct pkg_audit_pkgname *pname, *pname_tmp;
-
-	if (!e->ref) {
-		LL_FOREACH_SAFE(e->packages, ppkg, ppkg_tmp) {
-			LL_FOREACH_SAFE(ppkg->versions, vers, vers_tmp) {
-				free(vers->v1.version);
-				free(vers->v2.version);
-				free(vers);
-			}
-
-			LL_FOREACH_SAFE(ppkg->names, pname, pname_tmp) {
-				free(pname->pkgname);
-				free(pname);
-			}
-		}
-		LL_FOREACH_SAFE(e->cve, cve, cve_tmp) {
-			free(cve->cvename);
-			free(cve);
-		}
-			free(e->url);
-			free(e->desc);
-			free(e->id);
-	}
-	free(e);
-}
-
-static void
 pkg_audit_free_list(struct pkg_audit_entry *h)
 {
 	struct pkg_audit_entry *e;
@@ -149,7 +120,11 @@ pkg_audit_free_list(struct pkg_audit_entry *h)
 	while (h) {
 		e = h;
 		h = h->next;
-		pkg_audit_free_entry(e);
+		if(!e->pkgname) {
+			pkg_osvf_free_entry(e);
+		} else {
+			free(e);
+		}
 	}
 }
 
@@ -216,8 +191,14 @@ pkg_audit_fetch(const char *src, const char *dest)
 		}
 	};
 
+	if(!pkg_config_get("OSVF_SITE"))
+	{
+		pkg_emit_notice("There is not OSVF_SITE config key available. Can't continue");
+		return retcode;
+	}
+
 	if (src == NULL) {
-		src = pkg_object_string(pkg_config_get("VULNXML_SITE"));
+		src = pkg_object_string(pkg_config_get("OSVF_SITE"));
 	}
 
 	tmpdir = getenv("TMPDIR");
@@ -225,14 +206,14 @@ pkg_audit_fetch(const char *src, const char *dest)
 		tmpdir = "/tmp";
 
 	strlcpy(tmp, tmpdir, sizeof(tmp));
-	strlcat(tmp, "/vuln.xml.XXXXXXXXXX", sizeof(tmp));
+	strlcat(tmp, "/freebsd-osv.json.XXXXXXXXXX", sizeof(tmp));
 
 	if (dest != NULL) {
 		if (stat(dest, &st) != -1)
 			t = st.st_mtime;
 	} else {
 		dfd = pkg_get_dbdirfd();
-		if (fstatat(dfd, "vuln.xml", &st, 0) != -1)
+		if (fstatat(dfd, "freebsd-osv.json", &st, 0) != -1)
 			t = st.st_mtime;
 	}
 
@@ -240,11 +221,11 @@ pkg_audit_fetch(const char *src, const char *dest)
 	case EPKG_OK:
 		break;
 	case EPKG_UPTODATE:
-		pkg_emit_notice("vulnxml file up-to-date");
+		pkg_emit_notice("OSVF database file up-to-date");
 		retcode = EPKG_OK;
 		goto cleanup;
 	default:
-		pkg_emit_error("cannot fetch vulnxml file");
+		pkg_emit_error("cannot fetch OSVF database file");
 		goto cleanup;
 	}
 
@@ -257,7 +238,7 @@ pkg_audit_fetch(const char *src, const char *dest)
 		outfd = open(dest, O_RDWR|O_CREAT|O_TRUNC,
 		    S_IRUSR|S_IRGRP|S_IROTH);
 	} else {
-		outfd = openat(dfd, "vuln.xml", O_RDWR|O_CREAT|O_TRUNC,
+		outfd = openat(dfd, "freebsd-osv.json", O_RDWR|O_CREAT|O_TRUNC,
 		    S_IRUSR|S_IRGRP|S_IROTH);
 	}
 	if (outfd == -1) {
@@ -299,7 +280,7 @@ pkg_audit_expand_entry(struct pkg_audit_entry *entry, struct pkg_audit_entry **h
 
 	/* Set the name of the current entry */
 	if (entry->packages == NULL || entry->packages->names == NULL) {
-		pkg_audit_free_entry(entry);
+		pkg_osvf_free_entry(entry);
 		return;
 	}
 
@@ -318,278 +299,6 @@ pkg_audit_expand_entry(struct pkg_audit_entry *entry, struct pkg_audit_entry **h
 		}
 	}
 	LL_PREPEND(*head, entry);
-}
-
-enum vulnxml_parse_state {
-	VULNXML_PARSE_INIT = 0,
-	VULNXML_PARSE_VULN,
-	VULNXML_PARSE_TOPIC,
-	VULNXML_PARSE_PACKAGE,
-	VULNXML_PARSE_PACKAGE_NAME,
-	VULNXML_PARSE_RANGE,
-	VULNXML_PARSE_RANGE_GT,
-	VULNXML_PARSE_RANGE_GE,
-	VULNXML_PARSE_RANGE_LT,
-	VULNXML_PARSE_RANGE_LE,
-	VULNXML_PARSE_RANGE_EQ,
-	VULNXML_PARSE_CVE
-};
-
-enum vulnxml_parse_attribute_state {
-	VULNXML_ATTR_NONE = 0,
-	VULNXML_ATTR_VID,
-};
-
-struct vulnxml_userdata {
-	struct pkg_audit_entry *cur_entry;
-	struct pkg_audit *audit;
-	enum vulnxml_parse_state state;
-	xstring *content;
-	int range_num;
-	enum vulnxml_parse_attribute_state attr;
-};
-
-static void
-vulnxml_start_element(struct vulnxml_userdata *ud, yxml_t *xml)
-{
-	struct pkg_audit_versions_range *vers;
-	struct pkg_audit_pkgname *name_entry;
-	struct pkg_audit_package *pkg_entry;
-
-	if (ud->state == VULNXML_PARSE_INIT && STRIEQ(xml->elem, "vuln")) {
-		ud->cur_entry = xcalloc(1, sizeof(struct pkg_audit_entry));
-		ud->cur_entry->next = ud->audit->entries;
-		ud->state = VULNXML_PARSE_VULN;
-	}
-	else if (ud->state == VULNXML_PARSE_VULN && STRIEQ(xml->elem, "topic")) {
-		ud->state = VULNXML_PARSE_TOPIC;
-	}
-	else if (ud->state == VULNXML_PARSE_VULN && STRIEQ(xml->elem, "package")) {
-		pkg_entry = xcalloc(1, sizeof(struct pkg_audit_package));
-		LL_PREPEND(ud->cur_entry->packages, pkg_entry);
-		ud->state = VULNXML_PARSE_PACKAGE;
-	}
-	else if (ud->state == VULNXML_PARSE_VULN && STRIEQ(xml->elem, "cvename")) {
-		ud->state = VULNXML_PARSE_CVE;
-	}
-	else if (ud->state == VULNXML_PARSE_PACKAGE && STRIEQ(xml->elem, "name")) {
-		ud->state = VULNXML_PARSE_PACKAGE_NAME;
-		name_entry = xcalloc(1, sizeof(struct pkg_audit_pkgname));
-		LL_PREPEND(ud->cur_entry->packages->names, name_entry);
-	}
-	else if (ud->state == VULNXML_PARSE_PACKAGE && STRIEQ(xml->elem, "range")) {
-		ud->state = VULNXML_PARSE_RANGE;
-		vers = xcalloc(1, sizeof(struct pkg_audit_versions_range));
-		LL_PREPEND(ud->cur_entry->packages->versions, vers);
-		ud->range_num = 0;
-	}
-	else if (ud->state == VULNXML_PARSE_RANGE && STRIEQ(xml->elem, "gt")) {
-		ud->range_num ++;
-		ud->state = VULNXML_PARSE_RANGE_GT;
-	}
-	else if (ud->state == VULNXML_PARSE_RANGE && STRIEQ(xml->elem, "ge")) {
-		ud->range_num ++;
-		ud->state = VULNXML_PARSE_RANGE_GE;
-	}
-	else if (ud->state == VULNXML_PARSE_RANGE && STRIEQ(xml->elem, "lt")) {
-		ud->range_num ++;
-		ud->state = VULNXML_PARSE_RANGE_LT;
-	}
-	else if (ud->state == VULNXML_PARSE_RANGE && STRIEQ(xml->elem, "le")) {
-		ud->range_num ++;
-		ud->state = VULNXML_PARSE_RANGE_LE;
-	}
-	else if (ud->state == VULNXML_PARSE_RANGE && STRIEQ(xml->elem, "eq")) {
-		ud->range_num ++;
-		ud->state = VULNXML_PARSE_RANGE_EQ;
-	}
-}
-
-static void
-vulnxml_end_element(struct vulnxml_userdata *ud, yxml_t *xml)
-{
-	struct pkg_audit_cve *cve;
-	struct pkg_audit_entry *entry;
-	struct pkg_audit_versions_range *vers;
-	int range_type = -1;
-
-	fflush(ud->content->fp);
-	if (ud->state == VULNXML_PARSE_VULN && STRIEQ(xml->elem, "vuxml")) {
-		pkg_audit_expand_entry(ud->cur_entry, &ud->audit->entries);
-		ud->state = VULNXML_PARSE_INIT;
-	}
-	else if (ud->state == VULNXML_PARSE_TOPIC && STRIEQ(xml->elem, "vuln")) {
-		ud->cur_entry->desc = xstrdup(ud->content->buf);
-		ud->state = VULNXML_PARSE_VULN;
-	}
-	else if (ud->state == VULNXML_PARSE_CVE && STRIEQ(xml->elem, "references")) {
-		entry = ud->cur_entry;
-		cve = xmalloc(sizeof(struct pkg_audit_cve));
-		cve->cvename = xstrdup(ud->content->buf);
-		LL_PREPEND(entry->cve, cve);
-		ud->state = VULNXML_PARSE_VULN;
-	}
-	else if (ud->state == VULNXML_PARSE_PACKAGE && STRIEQ(xml->elem, "affects")) {
-		ud->state = VULNXML_PARSE_VULN;
-	}
-	else if (ud->state == VULNXML_PARSE_PACKAGE_NAME && STRIEQ(xml->elem, "package")) {
-		ud->cur_entry->packages->names->pkgname = xstrdup(ud->content->buf);
-		ud->state = VULNXML_PARSE_PACKAGE;
-	}
-	else if (ud->state == VULNXML_PARSE_RANGE && STRIEQ(xml->elem, "package")) {
-		ud->state = VULNXML_PARSE_PACKAGE;
-	}
-	else if (ud->state == VULNXML_PARSE_RANGE_GT && STRIEQ(xml->elem, "range")) {
-		range_type = GT;
-		ud->state = VULNXML_PARSE_RANGE;
-	}
-	else if (ud->state == VULNXML_PARSE_RANGE_GE && STRIEQ(xml->elem, "range")) {
-		range_type = GTE;
-		ud->state = VULNXML_PARSE_RANGE;
-	}
-	else if (ud->state == VULNXML_PARSE_RANGE_LT && STRIEQ(xml->elem, "range")) {
-		range_type = LT;
-		ud->state = VULNXML_PARSE_RANGE;
-	}
-	else if (ud->state == VULNXML_PARSE_RANGE_LE && STRIEQ(xml->elem, "range")) {
-		range_type = LTE;
-		ud->state = VULNXML_PARSE_RANGE;
-	}
-	else if (ud->state == VULNXML_PARSE_RANGE_EQ && STRIEQ(xml->elem, "range")) {
-		range_type = EQ;
-		ud->state = VULNXML_PARSE_RANGE;
-	}
-
-	if (range_type > 0) {
-		vers = ud->cur_entry->packages->versions;
-		if (ud->range_num == 1) {
-			vers->v1.version = xstrdup(ud->content->buf);
-			vers->v1.type = range_type;
-		}
-		else if (ud->range_num == 2) {
-			vers->v2.version = xstrdup(ud->content->buf);
-			vers->v2.type = range_type;
-		}
-	}
-	xstring_reset(ud->content);
-}
-
-static void
-vulnxml_start_attribute(struct vulnxml_userdata *ud, yxml_t *xml)
-{
-	if (ud->state != VULNXML_PARSE_VULN)
-		return;
-
-	if (STRIEQ(xml->attr, "vid"))
-		ud->attr = VULNXML_ATTR_VID;
-}
-
-static void
-vulnxml_end_attribute(struct vulnxml_userdata *ud, yxml_t *xml __unused)
-{
-	fflush(ud->content->fp);
-	if (ud->state == VULNXML_PARSE_VULN && ud->attr == VULNXML_ATTR_VID) {
-		ud->cur_entry->id = xstrdup(ud->content->buf);
-		ud->attr = VULNXML_ATTR_NONE;
-	}
-	xstring_reset(ud->content);
-}
-
-static void
-vulnxml_val_attribute(struct vulnxml_userdata *ud, yxml_t *xml)
-{
-	if (ud->state == VULNXML_PARSE_VULN && ud->attr == VULNXML_ATTR_VID) {
-		fputs(xml->data, ud->content->fp);
-	}
-}
-
-static void
-vulnxml_handle_data(struct vulnxml_userdata *ud, yxml_t *xml)
-{
-
-	switch(ud->state) {
-	case VULNXML_PARSE_INIT:
-	case VULNXML_PARSE_VULN:
-	case VULNXML_PARSE_PACKAGE:
-	case VULNXML_PARSE_RANGE:
-		/* On these states we do not need any data */
-		break;
-	case VULNXML_PARSE_TOPIC:
-	case VULNXML_PARSE_PACKAGE_NAME:
-	case VULNXML_PARSE_CVE:
-	case VULNXML_PARSE_RANGE_GT:
-	case VULNXML_PARSE_RANGE_GE:
-	case VULNXML_PARSE_RANGE_LT:
-	case VULNXML_PARSE_RANGE_LE:
-	case VULNXML_PARSE_RANGE_EQ:
-		fputs(xml->data, ud->content->fp);
-		break;
-	}
-}
-
-static int
-pkg_audit_parse_vulnxml(struct pkg_audit *audit)
-{
-	int ret = EPKG_FATAL;
-	yxml_t x;
-	yxml_ret_t r;
-	char buf[BUFSIZ];
-	char *walk, *end;
-	struct vulnxml_userdata ud;
-
-	yxml_init(&x, buf, BUFSIZ);
-	ud.cur_entry = NULL;
-	ud.audit = audit;
-	ud.range_num = 0;
-	ud.state = VULNXML_PARSE_INIT;
-	ud.content = xstring_new();
-
-	walk = audit->map;
-	end = walk + audit->len;
-	while (walk < end) {
-		r = yxml_parse(&x, *walk++);
-		switch (r) {
-		case YXML_EREF:
-		case YXML_ESTACK:
-			pkg_emit_error("Unexpected EOF while parsing vulnxml");
-			goto out;
-		case YXML_ESYN:
-			pkg_emit_error("Syntax error while parsing vulnxml");
-			goto out;
-		case YXML_ECLOSE:
-			pkg_emit_error("Close tag does not match open tag line %d", x.line);
-			goto out;
-		case YXML_ELEMSTART:
-			vulnxml_start_element(&ud, &x);
-				break;
-		case YXML_ELEMEND:
-			vulnxml_end_element(&ud, &x);
-			break;
-		case YXML_CONTENT:
-			vulnxml_handle_data(&ud, &x);
-			break;
-		case YXML_ATTRVAL:
-			vulnxml_val_attribute(&ud, &x);
-			break;
-		case YXML_ATTRSTART:
-			vulnxml_start_attribute(&ud, &x);
-			break;
-			/* ignore */
-		case YXML_ATTREND:
-			vulnxml_end_attribute(&ud, &x);
-			/* ignore */
-			break;
-		}
-	}
-
-	if (yxml_eof(&x) == YXML_OK)
-		ret = EPKG_OK;
-	else
-		pkg_emit_error("Invalid end of XML");
-out:
-	xstring_free(ud.content);
-
-	return (ret);
 }
 
 /*
@@ -796,7 +505,6 @@ pkg_audit_is_vulnerable(struct pkg_audit *audit, struct pkg *pkg,
 				LL_FOREACH(e->versions, vers) {
 					res1 = pkg_audit_version_match(pkg->version, &vers->v1);
 					res2 = pkg_audit_version_match(pkg->version, &vers->v2);
-
 					if (res1 && res2) {
 						res = true;
 						pkg_audit_add_entry(e, ai);
@@ -820,6 +528,13 @@ pkg_audit_new(void)
 
 	audit = xcalloc(1, sizeof(struct pkg_audit));
 
+	if(!audit)
+	{
+		return NULL;
+	}
+
+	audit->parser = ucl_parser_new(0);
+
 	return (audit);
 }
 
@@ -827,7 +542,6 @@ int
 pkg_audit_load(struct pkg_audit *audit, const char *fname)
 {
 	int dfd, fd;
-	void *mem;
 	struct stat st;
 
 	if (fname != NULL) {
@@ -835,7 +549,7 @@ pkg_audit_load(struct pkg_audit *audit, const char *fname)
 			return (EPKG_FATAL);
 	} else {
 		dfd = pkg_get_dbdirfd();
-		if ((fd = openat(dfd, "vuln.xml", O_RDONLY)) == -1)
+		if ((fd = openat(dfd, "freebsd-osv.json", O_RDONLY)) == -1)
 			return (EPKG_FATAL);
 	}
 
@@ -844,14 +558,19 @@ pkg_audit_load(struct pkg_audit *audit, const char *fname)
 		return (EPKG_FATAL);
 	}
 
-	if ((mem = mmap(NULL, st.st_size, PROT_READ, MAP_PRIVATE, fd, 0)) == MAP_FAILED) {
+	/*
+	 * Parse JSON which should be an array containing single
+	 * OSV compatible vulnerability as an object
+	 */
+	if (!ucl_parser_add_fd(audit->parser, fd))
+	{
+		pkg_emit_error("Error parsing UCL file '%s': %s'",
+		               fname, ucl_parser_get_error(audit->parser));
 		close(fd);
 		return (EPKG_FATAL);
 	}
 	close(fd);
 
-	audit->map = mem;
-	audit->len = st.st_size;
 	audit->loaded = true;
 
 	return (EPKG_OK);
@@ -861,17 +580,54 @@ pkg_audit_load(struct pkg_audit *audit, const char *fname)
 int
 pkg_audit_process(struct pkg_audit *audit)
 {
+	ucl_object_t *root_obj = NULL;
+	ucl_object_iter_t it = NULL;
+	const ucl_object_t *cur = NULL;
+	struct pkg_audit_entry *cur_entry = NULL;
+	struct ucl_schema_error err;
+
 	if (geteuid() == 0)
 		return (EPKG_FATAL);
 
 	if (!audit->loaded)
 		return (EPKG_FATAL);
 
-	if (pkg_audit_parse_vulnxml(audit) == EPKG_FATAL)
+	root_obj = ucl_parser_get_object(audit->parser);
+	ucl_parser_free(audit->parser);
+	audit->parser = NULL;
+
+	if (root_obj == NULL)
+	{
+		pkg_emit_error("JSON cannot be parsed: %s", err.msg);
 		return (EPKG_FATAL);
+	}
+
+	if(root_obj && ucl_object_type(root_obj) == UCL_ARRAY)
+	{
+		while ((cur = ucl_iterate_object(root_obj, &it, true)))
+		{
+			if(cur && ucl_object_type(cur) == UCL_OBJECT)
+			{
+				cur_entry = pkg_osvf_create_entry((ucl_object_t *)cur);
+
+				if(!cur_entry)
+				{
+					return (EPKG_FATAL);
+				}
+
+				pkg_audit_expand_entry(cur_entry, &audit->entries);
+				cur_entry->pkgname = NULL;
+			}
+		}
+	}
+	else
+	{
+		return (EPKG_FATAL);
+	}
 
 	audit->items = pkg_audit_preprocess(audit->entries);
 	audit->parsed = true;
+	ucl_object_unref(root_obj);
 
 	return (EPKG_OK);
 }
@@ -880,13 +636,9 @@ void
 pkg_audit_free (struct pkg_audit *audit)
 {
 	if (audit != NULL) {
-		if (audit->parsed) {
-			pkg_audit_free_list(audit->entries);
-			free(audit->items);
-		}
-		if (audit->loaded) {
-			munmap(audit->map, audit->len);
-		}
+		ucl_parser_free(audit->parser);
+		free(audit->items);
+		pkg_audit_free_list(audit->entries);
 		free(audit);
 	}
 }

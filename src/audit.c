@@ -268,11 +268,11 @@ exec_audit(int argc, char **argv)
 
 	if (pkg_audit_load(audit, audit_file) != EPKG_OK) {
 		if (errno == ENOENT)
-			warnx("vulnxml file %s does not exist. "
+			warnx("FreeBSD OSV file %s does not exist. "
 					"Try running 'pkg audit -F' first",
-			    audit_file == NULL ? "vuln.xml" : audit_file);
+			    audit_file == NULL ? "freebsd-osv.json" : audit_file);
 		else
-			warn("unable to open vulnxml file %s",
+			warn("unable to open OSV JSON file %s",
 					audit_file);
 
 		pkg_audit_free(audit);
