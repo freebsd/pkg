@@ -533,6 +533,7 @@ static const char osvf_schema_str[] = "{"
                                       "  \"additionalProperties\": false"
                                       "}";
 
+
 struct pkg_osvf_hash
 {
 	unsigned int value;
