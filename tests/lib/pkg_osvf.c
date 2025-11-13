@@ -12,7 +12,6 @@
 #include <private/pkg_osvf.h>
 #include <stdlib.h>
 
-
 char *osvf_json_path = TESTING_TOP_DIR "/lib/FBSD-2025-05-28.json";
 
 ATF_TC_WITHOUT_HEAD(osvfdetect);
@@ -167,10 +166,15 @@ ATF_TC_BODY(osvfparse, tc)
 	char buf[1024];
 	char *version_strs[] =
 	{
+		"0.9.0",
+		"0.0.1",
+		"1.0.9_2",
+		"1.0.9_1",
+		"0a5b32490",
+		"ae637a3ad",
 		"1.0.0",
 		"0.0.1",
 		"1.1.0_1",
-		"1.0.9_1",
 		"c14e07db4",
 		"ae637a3ad"
 	};
@@ -239,9 +243,11 @@ ATF_TC_BODY(osvfparse, tc)
 	{
 		ATF_CHECK_INTEQ(versions->type, version_types[otherpos++]);
 		ATF_CHECK_STREQ(versions->v2.version, version_strs[pos++]);
-		ATF_CHECK_INTEQ(versions->v2.type, OSVF_EVENT_FIXED);
+		ATF_CHECK_INTEQ(versions->v2.osv_type, OSVF_EVENT_LAST_AFFECTED);
+		ATF_CHECK_INTEQ(versions->v2.type, LTE);
 		ATF_CHECK_STREQ(versions->v1.version, version_strs[pos++]);
-		ATF_CHECK_INTEQ(versions->v1.type, OSVF_EVENT_INTRODUCED);
+		ATF_CHECK_INTEQ(versions->v1.osv_type, OSVF_EVENT_INTRODUCED);
+		ATF_CHECK_INTEQ(versions->v1.type, GTE);
 		versions = versions->next;
 	}
 
@@ -268,9 +274,11 @@ ATF_TC_BODY(osvfparse, tc)
 		{
 			ATF_CHECK_INTEQ(versions->type, version_types[otherpos++]);
 			ATF_CHECK_STREQ(versions->v2.version, version_strs[subpos++]);
-			ATF_CHECK_INTEQ(versions->v2.type, OSVF_EVENT_FIXED);
+			ATF_CHECK_INTEQ(versions->v2.osv_type, OSVF_EVENT_LAST_AFFECTED);
+			ATF_CHECK_INTEQ(versions->v2.type, LTE);
 			ATF_CHECK_STREQ(versions->v1.version, version_strs[subpos++]);
-			ATF_CHECK_INTEQ(versions->v1.type, OSVF_EVENT_INTRODUCED);
+			ATF_CHECK_INTEQ(versions->v1.type, GTE);
+			ATF_CHECK_INTEQ(versions->v1.type, GTE);
 			versions = versions->next;
 		}
 
