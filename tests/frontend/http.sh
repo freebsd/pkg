@@ -106,23 +106,107 @@ simple_audit_body()
 {
 	atf_require python3 "Requires python3 to run this test"
 
-	mkdir rootdir
-	cat > ${TMPDIR}/rootdir/meh <<EOF
-<?xml version="1.0" encoding="utf-8"?>
-<vuxml xmlns="http://www.vuxml.org/apps/vuxml-1">
-</vuxml>
+	mkdir -p ${TMPDIR}/rootdir
+	cat > ${TMPDIR}/rootdir/meh.json <<EOF
+[
+    {
+        "affected": [
+            {
+                "package": {
+                    "ecosystem": "FreeBSD:ports",
+                    "name": "bar"
+                },
+                "ranges": [
+                    {
+                        "events": [
+                            {
+                                "fixed": "1.0"
+                            },
+                            {
+                                "introduced": "0"
+                            }
+                        ],
+                        "type": "ECOSYSTEM"
+                    }
+                ]
+            }
+        ],
+        "database_specific": {
+            "discovery": "2025-11-10T00:00:00Z",
+            "references": {
+                "bid": [
+                    "BBBBBBBB"
+                ],
+                "certsa": [
+                    "CA-XXXX-YY"
+                ],
+                "certvu": [
+                    "CCCCCCCC"
+                ],
+                "cvename": [
+                    "CVE-WWWW-WWWW"
+                ],
+                "freebsdpr": [
+                    "ports/SSSSSSSS"
+                ],
+                "freebsdsa": [
+                    "SA-XX:YY.bar"
+                ]
+            },
+            "vid": "11111111-2222-3333-4444-555555555555"
+        },
+        "details": "Bar reports:\n\n> Lorem ipsum dolor sit amet,\n>\n> consectetur adipiscing elit,\n>\n> sed do eiusmod tempor incididunt ut labore et dolore magna aliqua.",
+        "id": "FreeBSD-2025-0001",
+        "modified": "2025-11-12T00:00:00Z",
+        "published": "2025-11-11T00:00:00Z",
+        "references": [
+            {
+                "type": "ADVISORY",
+                "url": "https://www.securityfocus.com/bid/BBBBBBBB/info"
+            },
+            {
+                "type": "ADVISORY",
+                "url": "https://www.cert.org/advisories/CA-XXXX-YY.html"
+            },
+            {
+                "type": "ADVISORY",
+                "url": "https://www.kb.cert.org/vuls/id/CCCCCCCC"
+            },
+            {
+                "type": "REPORT",
+                "url": "https://bugs.freebsd.org/bugzilla/show_bug.cgi?id=SSSSSSSS"
+            },
+            {
+                "type": "ADVISORY",
+                "url": "https://www.freebsd.org/security/advisories/FreeBSD-SA-XX:YY.bar.asc"
+            },
+            {
+                "type": "ADVISORY",
+                "url": "https://api.osv.dev/v1/vulns/CVE-WWWW-WWWW"
+            },
+            {
+                "type": "DISCUSSION",
+                "url": "https://www.freebsd.org/community/mailinglists/"
+            },
+            {
+                "type": "WEB",
+                "url": "https://www.freebsd.org/about/"
+            }
+        ],
+        "schema_version": "1.7.0",
+        "summary": "bar -- some vulnerabilities"
+    }
+]
 EOF
-	bzip2 ${TMPDIR}/rootdir/meh
-
 	httpd_startup ${TMPDIR}/rootdir
 
 	cat > pkg.conf << EOF
 PKG_DBDIR=${TMPDIR}
-VULNXML_SITE = "${url}/meh.bz2"
+OSVF_SITE = "${url}/meh.json"
 EOF
 
 	atf_check -o ignore pkg -C ./pkg.conf audit -F
-
+	atf_check -o ignore pkg -C ./pkg.conf audit -F bar-1.1
 }
 simple_audit_cleanup()
 {
