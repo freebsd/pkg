@@ -393,7 +393,7 @@ foreach dir [list external/blake2 external/picosat \
 	external/linenoise external/sqlite \
 	external compat libpkg libpkg/repo libpkg/repo/binary src \
 	external/libucl external/libelf tests docs \
-	external/liblua external/yxml scripts external/libcurl external/libder \
+	external/liblua scripts external/libcurl external/libder \
 	external/libecc] {
 	make-template $dir/Makefile.autosetup $dir/Makefile
 	define-append CONF_GEN_FILES $dir/Makefile.autosetup
