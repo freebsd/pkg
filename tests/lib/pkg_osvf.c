@@ -12,7 +12,6 @@
 #include <private/pkg_osvf.h>
 #include <stdlib.h>
 
-
 char *osvf_json_path = TESTING_TOP_DIR "/lib/FBSD-2025-05-28.json";
 
 ATF_TC_WITHOUT_HEAD(osvfdetect);
@@ -205,6 +204,19 @@ ATF_TC_BODY(osvfparse, tc)
 		"osvf-test-package12",
 		"osvf-test-package13"
 	};
+	char *refrence_str[] =
+	{
+		"https://www.freebsd.org/",
+		"https://www.freebsd.org/about/",
+		"https://docs.freebsd.org/en/",
+		"https://docs.freebsd.org/en/books/handbook/basics/",
+		"https://wiki.freebsd.org/",
+		"https://lists.freebsd.org/",
+		"https://wiki.freebsd.org/IRC/Channels",
+		"https://docs.freebsd.org/en/books/",
+		"hhttps://www.freebsd.org/releases/",
+		"https://www.freebsd.org/releng/"
+	};
 	int reference_types[] =
 	{
 		OSVF_REFERENCE_ADVISORY,
@@ -240,11 +252,16 @@ ATF_TC_BODY(osvfparse, tc)
 
 	references = oentry->references;
 
+	pos = 0;
+	otherpos = 0;
+
 	while(references)
 	{
-		ATF_CHECK_STREQ(references->url, "https://www.freebsd.org/");
-		ATF_CHECK_INTEQ(references->type, reference_types[pos++]);
+		ATF_CHECK_STREQ(references->url, refrence_str[otherpos]);
+		ATF_CHECK_INTEQ(references->type, reference_types[pos]);
 		references = references->next;
+		otherpos++;
+		pos ++;
 	}
 
 	/* Check all versions across all packages (flat iteration) */
