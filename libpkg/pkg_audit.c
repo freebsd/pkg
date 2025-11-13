@@ -42,8 +42,6 @@
 #include <xstring.h>
 #include <ucl.h>
 
-#include <yxml.h>
-
 #ifdef __linux__
 # ifdef __GLIBC__
 #  include <sys/time.h>
