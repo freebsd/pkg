@@ -906,26 +906,54 @@ local: {
 }
 EOF
 
-	# vuln.xml: test >=1.0 <2.0 is vulnerable
-	cat > vuln.xml << 'VULN'
-<?xml version="1.0" encoding="utf-8"?>
-<vuxml xmlns="http://www.vuxml.org/apps/vuxml-1">
-  <vuln vid="test-vuln-001">
-    <topic>Test vulnerability</topic>
-    <affects>
-      <package>
-        <name>test</name>
-        <range>
-          <ge>1.0</ge>
-          <lt>2.0</lt>
-        </range>
-      </package>
-    </affects>
-    <references>
-      <cvename>CVE-2024-00001</cvename>
-    </references>
-  </vuln>
-</vuxml>
+	# vuln.json: test >=1.0 <2.0 is vulnerable
+	cat > freebsd-osv.json << 'VULN'
+[
+    {
+    "affected": [
+        {
+        "package": {
+            "ecosystem": "FreeBSD:ports",
+            "name": "test"
+        },
+        "ranges": [
+            {
+            "events": [
+                {
+                "introduced": "1.0"
+                },
+                {
+                "fixed": "2.0"
+                }
+            ],
+            "type": "ECOSYSTEM"
+            }
+        ]
+        }
+    ],
+    "database_specific": {
+        "discovery": "2024-01-01T00:00:00Z",
+        "references": {
+        "cvename": [
+            "CVE-2024-00001"
+        ]
+        },
+        "vid": "test-vuln-001"
+    },
+    "details": "Example description\n",
+    "id": "FreeBSD-2024-0001",
+    "modified": "2024-01-01T00:00:00Z",
+    "published": "2024-01-01T00:00:00Z",
+    "references": [
+        {
+        "type": "ADVISORY",
+        "url": "https://cveawg.mitre.org/api/cve/CVE-2024-00001"
+        }
+    ],
+    "schema_version": "1.7.0",
+    "summary": "Test vulnerability in test package"
+    }
+]
 VULN
 
 	atf_check -o ignore \
