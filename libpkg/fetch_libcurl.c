@@ -141,8 +141,10 @@ int my_trace(CURL *handle, curl_infotype type,
   return 0;
 }
 
+/* Returns the HTTP response code on success.
+ * Returns -1 and sets the `error` out parameter on failure. */
 static long
-curl_do_fetch(struct curl_userdata *data, CURL *cl, struct curl_repodata *cr)
+curl_do_fetch(struct curl_userdata *data, CURL *cl, struct curl_repodata *cr, CURLcode *error)
 {
 	char *tmp;
 	int still_running = 1;
@@ -180,16 +182,21 @@ curl_do_fetch(struct curl_userdata *data, CURL *cl, struct curl_repodata *cr)
 
 	while ((msg = curl_multi_info_read(cr->cm, &msg_left))) {
 		if (msg->msg == CURLMSG_DONE) {
-			if (msg->data.result == CURLE_ABORTED_BY_CALLBACK)
-				return (-1); // FIXME: more clear return code?
 			if (msg->data.result == CURLE_COULDNT_CONNECT
 				|| msg->data.result == CURLE_COULDNT_RESOLVE_HOST
-				|| msg->data.result == CURLE_COULDNT_RESOLVE_PROXY)
+				|| msg->data.result == CURLE_COULDNT_RESOLVE_PROXY) {
 				pkg_emit_pkg_errno(EPKG_NONETWORK, "curl_do_fetch", NULL);
+			}
+			if (msg->data.result != CURLE_OK) {
+				if (error != NULL) {
+					*error = msg->data.result;
+				}
+				return (-1);
+			}
 			CURL *eh = msg->easy_handle;
-			long rc = 0;
-			curl_easy_getinfo(eh, CURLINFO_RESPONSE_CODE, &rc);
-			return (rc);
+			long response_code = 0;
+			curl_easy_getinfo(eh, CURLINFO_RESPONSE_CODE, &response_code);
+			return (response_code);
 		}
 	}
 	return (0);
@@ -233,7 +240,8 @@ http_getmirrors(struct pkg_repo *r, struct curl_repodata *cr)
 		curl_easy_setopt(cl, CURLOPT_IPRESOLVE, CURL_IPRESOLVE_V4);
 	if (ctx.ip == IPV6)
 		curl_easy_setopt(cl, CURLOPT_IPRESOLVE, CURL_IPRESOLVE_V6);
-	curl_do_fetch(&data, cl, cr);
+	// FIXME: handle fetch error?
+	curl_do_fetch(&data, cl, cr, NULL);
 	fclose(data.fh);
 	walk = buf;
 	while ((line = strsep(&walk, "\n\r")) != NULL) {
@@ -499,34 +507,42 @@ do_retry:
 		curl_easy_setopt(cl, CURLOPT_LOW_SPEED_TIME, repo->fetcher->timeout);
 	}
 
-	long rc = curl_do_fetch(&data, cl, cr);
+	CURLcode fetch_error;
+	long response_code = curl_do_fetch(&data, cl, cr, &fetch_error);
 	curl_off_t t;
 	res = curl_easy_getinfo(cl, CURLINFO_FILETIME_T, &t);
 	curl_multi_remove_handle(cr->cm, cl);
 	curl_easy_cleanup(cl);
-	if (rc == 304) {
+	if (response_code == -1) {
+		if (fetch_error == CURLE_ABORTED_BY_CALLBACK) {
+			retcode = EPKG_CANCEL;
+		} else {
+			pkg_emit_error("Failed to fetch %s: %s",
+			    fi->url, curl_easy_strerror(fetch_error));
+			retcode = EPKG_FATAL;
+		}
+	} else if (response_code == 304) {
 		retcode = EPKG_UPTODATE;
-	} else if (rc == -1) {
-		retcode = EPKG_CANCEL;
-	} else if (!curl_response_is_ok(rc)) {
+	} else if (!curl_response_is_ok(response_code)) {
 		--retry;
 		if (retry <= 0) {
-			if (rc == 404) {
+			if (response_code == 404) {
 				pkg_emit_error("Failed to fetch %s: Not found",
 				    fi->url);
 				retcode = EPKG_ENOENT;
 			} else {
-				pkg_emit_error("Failed to fetch %s: %s",
-				    fi->url, curl_easy_strerror(rc));
+				pkg_emit_error("Failed to fetch %s: response code %ld",
+				    fi->url, response_code);
 				retcode = EPKG_FATAL;
 			}
-		} else
+		} else {
 			goto do_retry;
+		}
 	}
 
 	if (res == CURLE_OK && t >= 0) {
 		fi->mtime = t;
-	} else if (rc != 304 && retcode != EPKG_FATAL &&
+	} else if (response_code != 304 && retcode != EPKG_FATAL &&
 	    retcode != EPKG_CANCEL && retcode != EPKG_ENOENT) {
 		pkg_emit_error("Impossible to get the value from Last-Modified"
 		    " HTTP header");
