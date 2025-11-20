@@ -277,7 +277,7 @@ pkg_checksum_generate(struct pkg *pkg, char *dest, size_t destlen,
 	}
 
 	while (pkg_files(pkg, &f) == EPKG_OK) {
-		LL_APPEND(entries, kv_new(f->path, f->sum));
+		LL_APPEND(entries, kv_new(f->path, f->sum != NULL ? f->sum : "" ));
 	}
 
 	/* Sort before hashing */
