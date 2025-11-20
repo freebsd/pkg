@@ -27,7 +27,8 @@
 /*
   Open Source Vulnerability format: https://ossf.github.io/osv-schema/
   OSVF schema: https://github.com/ossf/osv-schema/blob/main/validation/schema.json
-  OSVF schema version: 1.7.0
+  OSVF schema version: 1.7.4
+  From git version: https://raw.githubusercontent.com/ossf/osv-schema/094e5ca4fdf4b115bbdaaaf519b4c20809661ee2/validation/schema.json
  */
 static const char osvf_schema_str[] = "{"
                                       "  \"$schema\": \"https://json-schema.org/draft/2020-12/schema\","
@@ -361,21 +362,26 @@ static const char osvf_schema_str[] = "{"
                                       "      \"description\": \"These ecosystems are also documented at https://ossf.github.io/osv-schema/#affectedpackage-field\","
                                       "      \"enum\": ["
                                       "        \"AlmaLinux\","
+                                      "        \"Alpaquita\","
                                       "        \"Alpine\","
                                       "        \"Android\","
+                                      "        \"BellSoft Hardened Containers\","
                                       "        \"Bioconductor\","
                                       "        \"Bitnami\","
                                       "        \"Chainguard\","
+                                      "        \"CleanStart\","
                                       "        \"ConanCenter\","
                                       "        \"CRAN\","
                                       "        \"crates.io\","
                                       "        \"Debian\","
+                                      "        \"Echo\","
                                       "        \"FreeBSD\","
                                       "        \"GHC\","
                                       "        \"GitHub Actions\","
                                       "        \"Go\","
                                       "        \"Hackage\","
                                       "        \"Hex\","
+                                      "        \"Julia\","
                                       "        \"Kubernetes\","
                                       "        \"Linux\","
                                       "        \"Mageia\","
@@ -383,6 +389,7 @@ static const char osvf_schema_str[] = "{"
                                       "        \"MinimOS\","
                                       "        \"npm\","
                                       "        \"NuGet\","
+                                      "        \"openEuler\","
                                       "        \"openSUSE\","
                                       "        \"OSS-Fuzz\","
                                       "        \"Packagist\","
@@ -395,6 +402,7 @@ static const char osvf_schema_str[] = "{"
                                       "        \"SUSE\","
                                       "        \"SwiftURL\","
                                       "        \"Ubuntu\","
+                                      "        \"VSCode\","
                                       "        \"Wolfi\""
                                       "      ]"
                                       "    },"
@@ -406,13 +414,13 @@ static const char osvf_schema_str[] = "{"
                                       "      \"type\": \"string\","
                                       "      \"title\": \"Currently supported ecosystems\","
                                       "      \"description\": \"These ecosystems are also documented at https://ossf.github.io/osv-schema/#affectedpackage-field\","
-                                      "      \"pattern\": \"^(AlmaLinux|Alpine|Android|Bioconductor|Bitnami|Chainguard|ConanCenter|CRAN|crates\\.io|Debian|FreeBSD:ports|FreeBSD|GHC|GitHub Actions|Go|Hackage|Hex|Kubernetes|Linux|Mageia|Maven|MinimOS|npm|NuGet|openSUSE|OSS-Fuzz|Packagist|Photon OS|Pub|PyPI|Red Hat|Rocky Linux|RubyGems|SUSE|SwiftURL|Ubuntu|Wolfi|GIT)(:.+)?$\""
+                                      "      \"pattern\": \"^(AlmaLinux|Alpaquita|Alpine|Android|BellSoft Hardened Containers|Bioconductor|Bitnami|Chainguard|CleanStart|ConanCenter|CRAN|crates\\.io|Debian|Echo|FreeBSD|GHC|GitHub Actions|Go|Hackage|Hex|Julia|Kubernetes|Linux|Mageia|Maven|MinimOS|npm|NuGet|openEuler|openSUSE|OSS-Fuzz|Packagist|Photon OS|Pub|PyPI|Red Hat|Rocky Linux|RubyGems|SUSE|SwiftURL|Ubuntu|VSCode|Wolfi|GIT)(:.+)?$\""
                                       "    },"
                                       "    \"prefix\": {"
                                       "      \"type\": \"string\","
                                       "      \"title\": \"Currently supported home database identifier prefixes\","
                                       "      \"description\": \"These home databases are also documented at https://ossf.github.io/osv-schema/#id-modified-fields\","
-                                      "      \"pattern\": \"^(ASB-A|PUB-A|ALSA|ALBA|ALEA|BIT|CGA|CURL|CVE|DSA|DLA|ELA|FBSD|DTSA|GHSA|GO|GSD|HSEC|KUBE|LBSEC|LSN|MAL|MGASA|OSV|openSUSE-SU|PHSA|PSF|PYSEC|RHBA|RHEA|RHSA|RLSA|RXSA|RSEC|RUSTSEC|SUSE-[SRFO]U|UBUNTU|USN|V8)-\""
+                                      "      \"pattern\": \"^(ASB-A|PUB-A|ALPINE|ALSA|ALBA|ALEA|BELL|BIT|CGA|CURL|CVE|DEBIAN|DRUPAL|DSA|DLA|ELA|DTSA|ECHO|EEF|FreeBSD|GHSA|GO|GSD|HSEC|JLSEC|KUBE|LBSEC|LSN|MAL|MINI|MGASA|OESA|OSV|openSUSE-SU|PHSA|PSF|PYSEC|RHBA|RHEA|RHSA|RLSA|RXSA|RSEC|RUSTSEC|SUSE-[SRFO]U|UBUNTU|USN|V8)-\""
                                       "    },"
                                       "    \"severity\": {"
                                       "      \"type\": ["
@@ -521,6 +529,7 @@ static const char osvf_schema_str[] = "{"
                                       "  },"
                                       "  \"additionalProperties\": false"
                                       "}";
+
 
 struct pkg_osvf_hash
 {
@@ -768,6 +777,9 @@ pkg_osvf_free_entry(struct pkg_audit_entry *entry)
 	struct pkg_audit_pkgname *names = NULL;
 	struct pkg_audit_pkgname *next_names = NULL;
 
+	struct pkg_audit_cve *cve = NULL;
+	struct pkg_audit_cve *next_cve = NULL;
+
 	if(!entry)
 	{
 		return;
@@ -775,6 +787,7 @@ pkg_osvf_free_entry(struct pkg_audit_entry *entry)
 
 	versions = entry->versions;
 	names = entry->names;
+	cve = entry->cve;
 
 	if(entry->id)
 	{
@@ -804,7 +817,12 @@ pkg_osvf_free_entry(struct pkg_audit_entry *entry)
 	pkg_osvf_free_package(entry->packages);
 	entry->packages = NULL;
 
-	pkg_osvf_free_cve(entry->cve);
+	while(cve)
+	{
+		next_cve = cve->next;
+		pkg_osvf_free_cve(cve);
+		cve = next_cve;
+	}
 	entry->cve = NULL;
 
 	pkg_osvf_free_reference(entry->references);
@@ -984,7 +1002,7 @@ pkg_osvf_parse_events(struct pkg_audit_versions_range *range, const ucl_object_t
 
 	/* Parses package structure from events:
 	   {
-	     "fixed|introduced": "1.0.0"
+	     "fixed|introduced|last_affected": "1.0.0"
 	   }
 	*/
 
@@ -993,14 +1011,20 @@ pkg_osvf_parse_events(struct pkg_audit_versions_range *range, const ucl_object_t
 		if(ucl_object_find_key(cur, "fixed"))
 		{
 			range->v2.version = xstrdup(pkg_osvf_ucl_string(cur, "fixed"));
-			printf("Fixed: %s\n", range->v2.version);
-			range->v2.type = OSVF_EVENT_FIXED;
+			range->v2.type = LTE;
+			range->v2.osv_type = OSVF_EVENT_FIXED;
 		}
 		else if(ucl_object_find_key(cur, "introduced"))
 		{
 			range->v1.version = xstrdup(pkg_osvf_ucl_string(cur, "introduced"));
-			printf("Intro: %s\n", range->v1.version);
-			range->v1.type = OSVF_EVENT_INTRODUCED;
+			range->v1.type = GTE;
+			range->v1.osv_type = OSVF_EVENT_INTRODUCED;
+		}
+		else if(ucl_object_find_key(cur, "last_affected"))
+		{
+			range->v2.version = xstrdup(pkg_osvf_ucl_string(cur, "last_affected"));
+			range->v2.type = LTE;
+			range->v2.osv_type = OSVF_EVENT_LAST_AFFECTED;
 		}
 	}
 }
@@ -1012,10 +1036,11 @@ pkg_osvf_parse_ranges(struct pkg_audit_versions_range *range, const ucl_object_t
 	ucl_object_iter_t it = NULL;
 	const ucl_object_t *cur = NULL;
 	struct pkg_audit_versions_range *next_range = NULL;
+	struct pkg_audit_versions_range *cur_range = range;
 	const ucl_object_t *sub_obj = NULL;
 	bool is_first = true;
 
-	if(!range_array || ucl_object_type(range_array) != UCL_ARRAY)
+	if(!range || !range_array || ucl_object_type(range_array) != UCL_ARRAY)
 	{
 		return;
 	}
@@ -1039,14 +1064,14 @@ pkg_osvf_parse_ranges(struct pkg_audit_versions_range *range, const ucl_object_t
 		{
 			next_range = xcalloc(1, sizeof(struct pkg_audit_versions_range));
 			range->next = next_range;
-			range = next_range;
+			cur_range = next_range;
 		}
 
 		sub_obj = ucl_object_find_key(cur, "events");
 
 		if(sub_obj && ucl_object_type(sub_obj) == UCL_ARRAY)
 		{
-			pkg_osvf_parse_events(range, ucl_object_find_key(cur, "events"), pkg_osvf_ucl_string(cur, "type"));
+			pkg_osvf_parse_events(cur_range, ucl_object_find_key(cur, "events"), pkg_osvf_ucl_string(cur, "type"));
 		}
 
 		is_first = false;
@@ -1071,6 +1096,53 @@ pkg_osvf_parse_reference(struct pkg_audit_reference *ref, const ucl_object_t *re
 	ref->url = xstrdup(pkg_osvf_ucl_string(ref_obj, "url"));
 	ref->type = pkg_osvf_get_reference(pkg_osvf_ucl_string(ref_obj, "type"));
 }
+
+
+void
+pkg_osvf_parse_cvename(struct pkg_audit_entry *entry, const ucl_object_t *cvename_obj)
+{
+	ucl_object_iter_t it = NULL;
+	const ucl_object_t *cur = NULL;
+	bool is_first = true;
+	struct pkg_audit_cve *cve = entry->cve;
+	struct pkg_audit_cve *next_cve = NULL;
+
+	if(!cvename_obj || ucl_object_type(cvename_obj) != UCL_ARRAY)
+	{
+		return;
+	}
+
+	/*
+	    Parses database_spefic CVE entries to linked list
+	    "references": {
+	        "cvename": [
+	            "CVE-2003-0031",
+	            "CVE-2003-0032"
+	    ]
+	*/
+
+	while ((cur = ucl_iterate_object(cvename_obj, &it, true)))
+	{
+		if(is_first == false)
+		{
+			next_cve = xcalloc(1, sizeof(struct pkg_audit_reference));
+			cve->next = next_cve;
+			cve = next_cve;
+		}
+
+		if(ucl_object_type(cur) == UCL_STRING)
+		{
+			cve->cvename = xstrdup(ucl_object_tostring(cur));
+		}
+		else
+		{
+			cve->cvename = xstrdup("");
+		}
+
+		is_first = false;
+	}
+}
+
 
 void
 pkg_osvf_parse_references(struct pkg_audit_entry *entry, const ucl_object_t *ref_obj)
@@ -1113,7 +1185,6 @@ pkg_osvf_parse_references(struct pkg_audit_entry *entry, const ucl_object_t *ref
 
 		is_first = false;
 	}
-
 }
 
 void
@@ -1189,8 +1260,20 @@ pkg_osvf_append_version_range(struct pkg_audit_versions_range *to, struct pkg_au
 	struct pkg_audit_versions_range *ptr_from = from;
 	struct pkg_audit_versions_range *ptr_to = to;
 
+	if(!to)
+	{
+		return;
+	}
+
+	if(!from)
+	{
+		return;
+	}
+
+	to->v1.osv_type = from->v1.osv_type;
 	to->v1.type = from->v1.type;
 	to->v1.version = from->v1.version;
+	to->v2.osv_type = from->v2.osv_type;
 	to->v2.type = from->v2.type;
 	to->v2.version = from->v2.version;
 	to->type = from->type;
@@ -1198,12 +1281,12 @@ pkg_osvf_append_version_range(struct pkg_audit_versions_range *to, struct pkg_au
 	while(ptr_from->next)
 	{
 		ptr_to->next = xcalloc(1, sizeof(struct pkg_audit_versions_range));
-
 		ptr_to = ptr_to->next;
 		ptr_from = ptr_from->next;
-
+		ptr_to->v1.osv_type = ptr_from->v1.osv_type;
 		ptr_to->v1.type = ptr_from->v1.type;
 		ptr_to->v1.version = ptr_from->v1.version;
+		ptr_to->v2.osv_type = ptr_from->v2.osv_type;
 		ptr_to->v2.type = ptr_from->v2.type;
 		ptr_to->v2.version = ptr_from->v2.version;
 		ptr_to->type = ptr_from->type;
@@ -1244,22 +1327,41 @@ pkg_osvf_print_version(struct pkg_audit_version *version)
 		return;
 	}
 
-	switch(version->type)
+	switch(version->osv_type)
 	{
 	case OSVF_EVENT_UNKNOWN:
-		printf("\t\tUnknown type: ");
+		printf("\t\tUnknown type ");
 		break;
 	case OSVF_EVENT_INTRODUCED:
-		printf("\t\tIntroduced: ");
+		printf("\t\tIntroduced ");
 		break;
 	case OSVF_EVENT_FIXED:
-		printf("\t\tFixed: ");
+		printf("\t\tFixed ");
 		break;
 	case OSVF_EVENT_LAST_AFFECTED:
-		printf("\t\tAffected: ");
+		printf("\t\tAffected ");
 		break;
 	case OSVF_EVENT_LIMIT:
-		printf("\t\tLimit: ");
+		printf("\t\tLimit ");
+		break;
+	}
+
+	switch(version->type)
+	{
+	case EQ:
+		printf("(=): ");
+		break;
+	case LT:
+		printf("(<) ");
+		break;
+	case LTE:
+		printf("(<=): ");
+		break;
+	case GT:
+		printf("(>): ");
+		break;
+	case GTE:
+		printf("(>=): ");
 		break;
 	}
 
@@ -1436,6 +1538,7 @@ pkg_osvf_create_entry(ucl_object_t *osvf_obj)
 	struct pkg_audit_pkgname *names = NULL;
 	struct pkg_audit_versions_range *versions = NULL;
 	const ucl_object_t *sub_obj = NULL;
+	const ucl_object_t *sub_sub_obj = NULL;
 	/* Date format is in RFC3339 */
 	const char *date_time_str = "%Y-%m-%dT%H:%M:%SZ";
 
@@ -1465,6 +1568,7 @@ pkg_osvf_create_entry(ucl_object_t *osvf_obj)
 	}
 	else
 	{
+		pkg_osvf_free_entry(entry);
 		return NULL;
 	}
 
@@ -1474,9 +1578,17 @@ pkg_osvf_create_entry(ucl_object_t *osvf_obj)
 	{
 		pkg_osvf_parse_references(entry, ucl_object_find_key(osvf_obj, "references"));
 	}
-	else
+
+	sub_obj = ucl_object_find_key(osvf_obj, "database_specific");
+
+	if(sub_obj && ucl_object_type(sub_obj) == UCL_OBJECT)
 	{
-		return NULL;
+		sub_sub_obj = ucl_object_find_key(sub_obj, "references");
+		if(sub_sub_obj && ucl_object_type(sub_sub_obj) == UCL_OBJECT)
+		{
+			sub_obj = ucl_object_find_key(sub_sub_obj, "cvename");
+			pkg_osvf_parse_cvename(entry, sub_obj);
+		}
 	}
 
 	entry->url = entry->references->url;
