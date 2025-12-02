@@ -100,11 +100,13 @@ pkg_delete(struct pkg *pkg, struct pkg *rpkg, struct pkgdb *db, int flags,
 			return (ret);
 	}
 
-	ret = pkg_delete_files(db, pkg, rpkg, flags, t);
-	if (ret == EPKG_CANCEL)
-		cancel = 1;
-	else if (ret != EPKG_OK)
-		return (ret);
+	if ((flags & PKG_DELETE_KEEPFILES) == 0) {
+		ret = pkg_delete_files(db, pkg, rpkg, flags, t);
+		if (ret == EPKG_CANCEL)
+			cancel = 1;
+		else if (ret != EPKG_OK)
+			return (ret);
+	}
 
 	if ((flags & PKG_DELETE_NOSCRIPT) == 0) {
 		bool noexec = ((flags & PKG_DELETE_NOEXEC) == PKG_DELETE_NOEXEC);

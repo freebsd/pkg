@@ -415,7 +415,8 @@ typedef enum _pkg_flags {
 	PKG_FLAG_USE_IPV4 = (1U << 11),
 	PKG_FLAG_USE_IPV6 = (1U << 12),
 	PKG_FLAG_UPGRADE_VULNERABLE = (1U << 13),
-	PKG_FLAG_NOEXEC = (1U << 14)
+	PKG_FLAG_NOEXEC = (1U << 14),
+	PKG_FLAG_KEEPFILES = (1U << 15)
 } pkg_flags;
 
 typedef enum _pkg_stats_t {
