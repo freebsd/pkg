@@ -196,6 +196,12 @@ curl_do_fetch(struct curl_userdata *data, CURL *cl, struct curl_repodata *cr, CU
 			CURL *eh = msg->easy_handle;
 			long response_code = 0;
 			curl_easy_getinfo(eh, CURLINFO_RESPONSE_CODE, &response_code);
+
+			char *ip = NULL;
+			if (curl_easy_getinfo(eh, CURLINFO_PRIMARY_IP, &ip) == CURLE_OK && ip != NULL) {
+				pkg_dbg(PKG_DBG_FETCH, 1, "CURL> connected to IP %s", ip);
+		}
+
 			return (response_code);
 		}
 	}
