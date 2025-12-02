@@ -31,6 +31,7 @@ SRCS=	add.c \
 	ssh.c \
 	stats.c \
 	triggers.c \
+	unregister.c \
 	update.c \
 	updating.c \
 	upgrade.c \

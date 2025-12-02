@@ -37,6 +37,7 @@ MAN8=	pkg-add.8 \
 	pkg-ssh.8 \
 	pkg-stats.8 \
 	pkg-triggers.8 \
+	pkg-unregister.8 \
 	pkg-update.8 \
 	pkg-updating.8 \
 	pkg-upgrade.8 \

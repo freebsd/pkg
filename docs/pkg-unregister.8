@@ -1,0 +1,187 @@
+.\"
+.\" FreeBSD pkg - a next generation package for the installation and maintenance
+.\" of non-core utilities.
+.\"
+.\" Redistribution and use in source and binary forms, with or without
+.\" modification, are permitted provided that the following conditions
+.\" are met:
+.\" 1. Redistributions of source code must retain the above copyright
+.\"    notice, this list of conditions and the following disclaimer.
+.\" 2. Redistributions in binary form must reproduce the above copyright
+.\"    notice, this list of conditions and the following disclaimer in the
+.\"    documentation and/or other materials provided with the distribution.
+.\"
+.\"
+.\"     @(#)pkg.8
+.\"
+.Dd December 2, 2025
+.Dt PKG-UNREGISTER 8
+.Os
+.Sh NAME
+.Nm "pkg unregister"
+.Nd deletes packages records from the database
+.Sh SYNOPSIS
+.Nm
+.Op Fl fnqRy
+.Op Fl Cgix
+.Ar pkg-name ...
+.Nm
+.Op Fl Dnqy
+.Fl a
+.Pp
+.Nm
+.Op Cm --{force,dry-run,quiet,recursive,yes}
+.Op Cm --{case-sensitive,glob,case-insensitive,regex}
+.Ar pkg-name ...
+.Nm
+.Op Cm --{dry-run,quiet,yes}
+.Cm --all
+.Sh DESCRIPTION
+.Nm
+is used for deleting installed packages from the database.
+.Nm
+creates a work-list of all the installed packages matching the package
+names on the command line.
+The list is presented to the user.
+If the user confirms that they do want to remove those packages
+from the db, or if the
+.Cm ASSUME_ALWAYS_YES
+configuration option is set,
+.Nm
+proceeds to remove from the db the listed packages.
+.Pp
+If the set of packages to be unregistered would leave installed packages
+with unfulfilled dependencies,
+.Nm
+will add the packages with unfulfilled dependencies to the list of
+packages to be unregistered, unless forced to proceed without unregistering any
+other packages by the
+.Fl f
+option.
+.Pp
+.Nm
+avoids deleting itself unless named specifically on the command line.
+So, for instance,
+.Nm Fl a
+will unregister all packages from the db except for the
+.Xr pkg 8
+package.
+To force all packages to be unregistered from the db without exception, use
+.Nm Fl fa .
+.Sh OPTIONS
+The following options are supported by
+.Nm :
+.Bl -tag -width recursive
+.It Fl a , Cm --all
+Deletes all installed packages from the db except for
+.Xr pkg 8
+from the system and cleans the database of information related to removed
+packages.
+.It Fl C , Cm --case-sensitive
+Make the standard or regular expression
+.Fl ( x )
+matching against
+.Ar pkg-name
+case sensitive.
+.It Fl D , Cm --no-scripts
+If a deinstallation script exists for a given package, do not execute it.
+.It Fl f , Cm --force
+Forces packages to be removed from the db despite leaving unresolved dependencies.
+In combination with the
+.Fl a
+or
+.Fl -all
+flag, causes
+.Xr pkg 8
+to be removed as well as all other packages.
+.It Fl g , Cm --glob
+Treat the package names as shell glob patterns.
+.It Fl i , Cm --case-insensitive
+Make the standard or regular expression
+.Fl ( x )
+matching against
+.Ar pkg-name
+case insensitive.
+This is the default, unless modified by setting
+.Ev CASE_SENSITIVE_MATCH
+to true in
+.Pa pkg.conf .
+.It Fl n , Cm --dry-run
+Dry run mode.
+The list of packages to delete is always printed, but no packages are
+actually deleted.
+.It Fl q , Cm --quiet
+Force quiet output, except where
+.Fl n
+is also used, when
+.Nm
+will show the list of packages to be deleted.
+.It Fl R , Cm --recursive
+Delete all packages that require the listed packages as well.
+.It Fl x , Cm --regex
+Treat the package names as regular expressions according to the
+"modern" or "extended" syntax of
+.Xr re_format 7 .
+.It Fl y , Cm --yes
+Assume yes when asked for confirmation before package deletion.
+.El
+.Sh ENVIRONMENT
+The following environment variables affect the execution of
+.Nm .
+See
+.Xr pkg.conf 5
+for further description.
+.Bl -tag -width ".Ev NO_DESCRIPTIONS"
+.It Ev DEFAULT_ALWAYS_YES
+.It Ev ASSUME_ALWAYS_YES
+.It Ev HANDLE_RC_SCRIPTS
+.It Ev PKG_DBDIR
+.It Ev CASE_SENSITIVE_MATCH
+.El
+.Sh FILES
+See
+.Xr pkg.conf 5 .
+.Sh SEE ALSO
+.Xr pkg_create 3 ,
+.Xr pkg_delete 3 ,
+.Xr pkg_printf 3 ,
+.Xr pkg_repo_create 3 ,
+.Xr pkg_repos 3 ,
+.Xr pkg-keywords 5 ,
+.Xr pkg-lua-script 5 ,
+.Xr pkg-repository 5 ,
+.Xr pkg-script 5 ,
+.Xr pkg-triggers 5 ,
+.Xr pkg.conf 5 ,
+.Xr pkg 8 ,
+.Xr pkg-add 8 ,
+.Xr pkg-alias 8 ,
+.Xr pkg-annotate 8 ,
+.Xr pkg-audit 8 ,
+.Xr pkg-autoremove 8 ,
+.Xr pkg-check 8 ,
+.Xr pkg-clean 8 ,
+.Xr pkg-config 8 ,
+.Xr pkg-create 8 ,
+.Xr pkg-fetch 8 ,
+.Xr pkg-info 8 ,
+.Xr pkg-install 8 ,
+.Xr pkg-key 8 ,
+.Xr pkg-lock 8 ,
+.Xr pkg-query 8 ,
+.Xr pkg-register 8 ,
+.Xr pkg-repo 8 ,
+.Xr pkg-repositories 8 ,
+.Xr pkg-rquery 8 ,
+.Xr pkg-search 8 ,
+.Xr pkg-set 8 ,
+.Xr pkg-shell 8 ,
+.Xr pkg-shlib 8 ,
+.Xr pkg-ssh 8 ,
+.Xr pkg-stats 8 ,
+.Xr pkg-triggers 8 ,
+.Xr pkg-update 8 ,
+.Xr pkg-updating 8 ,
+.Xr pkg-upgrade 8 ,
+.Xr pkg-version 8 ,
+.Xr pkg-which 8

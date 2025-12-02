@@ -59,6 +59,7 @@ TESTS_SH= \
 	frontend/set.sh \
 	frontend/version.sh \
 	frontend/vital.sh \
+	frontend/unregister.sh \
 	frontend/update.sh \
 	frontend/updating.sh \
 	frontend/upgrade.sh \

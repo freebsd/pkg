@@ -89,6 +89,7 @@ static struct commands {
 	{ "stats", "Displays package database statistics", exec_stats, usage_stats},
 	{ "triggers", "Execute deferred triggers", exec_triggers, usage_triggers},
 	{ "unlock", "Unlocks a package, allowing modification or deletion", exec_unlock, usage_lock},
+	{ "unregister", "Deletes only packages entries from the database", exec_unregister, usage_unregister},
 	{ "update", "Updates package repository catalogues", exec_update, usage_update},
 	{ "updating", "Displays UPDATING information for a package", exec_updating, usage_updating},
 	{ "upgrade", "Performs upgrades of packaged software distributions", exec_upgrade, usage_upgrade},

@@ -125,6 +125,10 @@ void usage_stats(void);
 int exec_triggers(int, char **);
 void usage_triggers(void);
 
+/* pkg unregister */
+void usage_unregister(void);
+int exec_unregister(int, char **);
+
 /* pkg update */
 int exec_update(int, char **);
 void usage_update(void);

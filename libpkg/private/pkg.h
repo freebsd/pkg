@@ -663,6 +663,7 @@ int pkg_delete(struct pkg *pkg, struct pkg *rpkg, struct pkgdb *db, int flags,
 #define PKG_DELETE_UPGRADE	(1 << 1)	/* delete as a split upgrade */
 #define PKG_DELETE_NOSCRIPT	(1 << 2)	/* don't run delete scripts */
 #define PKG_DELETE_NOEXEC	(1 << 3)	/* don't run delete scripts which execute things*/
+#define PKG_DELETE_KEEPFILES	(1 << 4)	/* don't delete files */
 
 int pkg_fetch_file_to_fd(struct pkg_repo *repo, int dest, struct fetch_item *,
     bool silent);

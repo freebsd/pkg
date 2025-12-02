@@ -2018,6 +2018,8 @@ pkg_jobs_handle_delete(struct pkg_solved *ps, struct pkg_jobs *j)
 	flags = 0;
 	if ((j->flags & PKG_FLAG_NOSCRIPT) != 0)
 		flags |= PKG_DELETE_NOSCRIPT;
+	if ((j->flags & PKG_FLAG_KEEPFILES) != 0)
+		flags |= PKG_DELETE_KEEPFILES;
 	if (ps->type == PKG_SOLVED_UPGRADE_REMOVE) {
 		flags |= PKG_DELETE_UPGRADE;
 		rpkg = ps->xlink->items[0]->pkg;
