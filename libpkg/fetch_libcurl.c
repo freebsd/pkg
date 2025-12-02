@@ -67,19 +67,19 @@ struct http_mirror {
 
 static
 void dump(const char *text,
-          FILE *stream, unsigned char *ptr, size_t size)
+          unsigned char *ptr, size_t size)
 {
   size_t i;
   size_t c;
 
+  xstring *dumpstr = NULL;
+
   unsigned int width = 0x40;
 
-  fprintf(stream, "%s, %10.10lu bytes (0x%8.8lx)\n",
-          text, (unsigned long)size, (unsigned long)size);
+  pkg_dbg(PKG_DBG_FETCH, 1, "%s, %10.10lu bytes (0x%8.8lx)", text, (unsigned long)size, (unsigned long)size);
 
   for(i = 0; i<size; i += width) {
-
-    fprintf(stream, "%4.4lx: ", (unsigned long)i);
+    xstring_renew(dumpstr);
 
     for(c = 0; (c < width) && (i + c < size); c++) {
       /* check for 0D0A; if found, skip past and start a new line of output */
@@ -88,7 +88,7 @@ void dump(const char *text,
         i += (c + 2 - width);
         break;
       }
-      fprintf(stream, "%c",
+      fprintf(dumpstr->fp, "%c",
               (ptr[i + c] >= 0x20) && (ptr[i + c]<0x80)?ptr[i + c]:'.');
       /* check again for 0D0A, to avoid an extra \n if it's at width */
       if((i + c + 2 < size) && ptr[i + c + 1] == 0x0D &&
@@ -97,9 +97,10 @@ void dump(const char *text,
         break;
       }
     }
-    fputc('\n', stream); /* newline */
+    fflush(dumpstr->fp);
+    pkg_dbg(PKG_DBG_FETCH, 1, "%s" , dumpstr->buf);
   }
-  fflush(stream);
+  xstring_free(dumpstr);
 }
 
 static
@@ -112,19 +113,21 @@ int my_trace(CURL *handle, curl_infotype type,
 
   switch(type) {
   case CURLINFO_TEXT:
-    fprintf(stderr, "== Info: %s", data);
+    pkg_dbg(PKG_DBG_FETCH, 1, "== Info: %s", data);
     /* FALLTHROUGH */
   default: /* in case a new one is introduced to shock us */
     return 0;
 
   case CURLINFO_HEADER_OUT:
     text = "=> Send header";
+
     break;
   case CURLINFO_DATA_OUT:
     text = "=> Send data";
     break;
   case CURLINFO_SSL_DATA_OUT:
     text = "=> Send SSL data";
+    size = 0;
     break;
   case CURLINFO_HEADER_IN:
     text = "<= Recv header";
@@ -134,10 +137,11 @@ int my_trace(CURL *handle, curl_infotype type,
     break;
   case CURLINFO_SSL_DATA_IN:
     text = "<= Recv SSL data";
+    size = 0;
     break;
   }
 
-  dump(text, stderr, (unsigned char *)data, size);
+  dump(text, (unsigned char *)data, size);
   return 0;
 }
 
@@ -155,9 +159,11 @@ curl_do_fetch(struct curl_userdata *data, CURL *cl, struct curl_repodata *cr, CU
 	curl_easy_setopt(cl, CURLOPT_PRIVATE, &data);
 	if (data->offset > 0)
 		curl_easy_setopt(cl, CURLOPT_RESUME_FROM_LARGE, data->offset);
-	if (ctx.debug_flags & PKG_DBG_FETCH && ctx.debug_level >= 1)
+	if (((ctx.debug_flags & (PKG_DBG_FETCH|PKG_DBG_ALL)) != 0) &&
+		ctx.debug_level >= 1)
 		curl_easy_setopt(cl, CURLOPT_VERBOSE, 1L);
-	if (ctx.debug_flags & PKG_DBG_FETCH && ctx.debug_level >= 1)
+	if (((ctx.debug_flags & (PKG_DBG_FETCH|PKG_DBG_ALL)) != 0) &&
+		ctx.debug_level >= 1)
 		curl_easy_setopt(cl, CURLOPT_DEBUGFUNCTION, my_trace);
 
 	/* compat with libfetch */
