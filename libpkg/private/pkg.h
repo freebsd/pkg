@@ -152,6 +152,7 @@ struct pkg_ctx {
 	bool ischrooted;
 	bool no_version_for_deps;
 	bool track_linux_compat_shlibs;
+	bool case_sensitive;
 };
 
 extern struct pkg_ctx ctx;

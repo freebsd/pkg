@@ -1278,19 +1278,17 @@ pkgdb_transaction_rollback(struct pkgdb *db, const char *savepoint)
  * CASE_SENSITIVE_MATCH in pkg.conf and then possbily reset again in
  * pkg search et al according to command line flags */
 
-static bool _case_sensitive_flag = true;
-
 void
 pkgdb_set_case_sensitivity(bool case_sensitive)
 {
-	_case_sensitive_flag = case_sensitive;
+	ctx.case_sensitive = case_sensitive;
 	return;
 }
 
 bool
 pkgdb_case_sensitive(void)
 {
-	return (_case_sensitive_flag);
+	return (ctx.case_sensitive);
 }
 
 typedef enum _sql_prstmt_index {
