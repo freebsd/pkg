@@ -7,7 +7,8 @@ tests_init \
 	reinstall \
 	pre_script_fail \
 	post_script_ignored \
-	install_missing_dep
+	install_missing_dep \
+	install_register_only
 
 test_setup()
 {
@@ -190,4 +191,71 @@ EOF
 		-e not-empty \
 		-s not-exit:0 \
 		pkg -C "${TMPDIR}/pkg.conf" install -y test
+}
+
+install_register_only_body()
+{
+	test_setup
+
+	touch file1
+	mkdir dir
+	touch dir/file2
+
+	atf_check -s exit:0 sh ${RESOURCEDIR}/test_subr.sh new_pkg "test" "test" "1" "${TMPDIR}"
+	cat << EOF >> test.ucl
+files: {
+    ${TMPDIR}/file1: "",
+    ${TMPDIR}/dir/file2: "",
+}
+EOF
+
+	mkdir repoconf
+	cat << EOF > repoconf/repo.conf
+repo: {
+	url: file:///$TMPDIR/repo,
+	enabled: true
+}
+EOF
+
+	mkdir repo
+
+	atf_check \
+		-o empty \
+		-e empty \
+		-s exit:0 \
+		pkg create -M test.ucl -o repo
+
+	rm file1
+	rm dir/file2
+	rmdir dir
+
+	ls
+	atf_check \
+		-o ignore \
+		-e empty \
+		-s exit:0 \
+		pkg repo repo
+
+	export REPOS_DIR="${TMPDIR}/repoconf"
+	atf_check \
+		-o ignore \
+		-s exit:0 \
+		pkg install -r repo -y --register-only test
+
+	atf_check \
+		-o inline:"0\n" \
+		-e empty \
+		pkg query "%a" test
+
+	atf_check \
+		-o ignore \
+		-e ignore \
+		-s exit:1 \
+		test -f file1
+
+	atf_check \
+		-o ignore \
+		-e ignore \
+		-s exit:1 \
+		test -d dir
 }

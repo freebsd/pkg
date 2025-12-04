@@ -88,6 +88,7 @@ exec_install(int argc, char **argv)
 		{ "recursive",		no_argument,		NULL,   'R' },
 		{ "no-repo-update",	no_argument,		NULL,	'U' },
 		{ "regex",		no_argument,		NULL,	'x' },
+		{ "register-only",	no_argument,		NULL,	'X' },
 		{ "yes",		no_argument,		NULL,	'y' },
 		{ NULL,			0,			NULL,	0   },
 	};
@@ -149,6 +150,9 @@ exec_install(int argc, char **argv)
 			break;
 		case 'x':
 			match = MATCH_REGEX;
+			break;
+		case 'X':
+			f |= PKG_FLAG_REGISTER_ONLY | PKG_FLAG_NOSCRIPT;
 			break;
 		case 'y':
 			yes = true;

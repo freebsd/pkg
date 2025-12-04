@@ -22,13 +22,13 @@
 .Nd install packages from remote repositories or local archives
 .Sh SYNOPSIS
 .Nm
-.Op Fl AfIMnFqRUy
+.Op Fl AfIMnFqRXUy
 .Op Fl r Ar reponame
 .Op Fl Cgix
 .Ar <pkg-origin|pkg-name|pkg-name-version> ...
 .Pp
 .Nm
-.Op Cm --{automatic,force,no-scripts,ignore-missing}
+.Op Cm --{automatic,force,no-scripts,ignore-missing,register-only}
 .Op Cm --{dry-run,fetch-only,quiet,recursive,no-repo-update,yes}
 .Op Cm --repository Ar reponame
 .Op Cm --{case-sensitive,glob,case-insensitive,regex}
@@ -133,6 +133,8 @@ If any installation scripts (pre-install or post-install) exist for a given
 package, do not execute them.
 When a package is updated, deinstallation
 scripts (pre-deinstall or post-deinstall) are not run either.
+.It Fl i , Cm --register-only
+Record the packages installation in the database but do not extract any files
 .It Fl i , Cm --case-insensitive
 Make the standard or the regular expression
 .Fl ( x )
