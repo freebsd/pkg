@@ -1571,6 +1571,7 @@ pkg_ini(const char *path, const char *reposdir, pkg_init_flags flags)
 	ctx.repo_accept_legacy_pkg = pkg_object_bool(pkg_config_get("REPO_ACCEPT_LEGACY_PKG"));
 	ctx.no_version_for_deps = (getenv("PKG_NO_VERSION_FOR_DEPS") != NULL);
 	ctx.track_linux_compat_shlibs = pkg_object_bool(pkg_config_get("TRACK_LINUX_COMPAT_SHLIBS"));
+        pkgdb_set_case_sensitivity(pkg_object_bool(pkg_config_get("CASE_SENSITIVE_MATCH")));
 
 	it = NULL;
 	object = ucl_object_find_key(config, "PKG_ENV");

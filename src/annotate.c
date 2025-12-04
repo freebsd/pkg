@@ -221,11 +221,6 @@ exec_annotate(int argc, char **argv)
 		{ NULL,			0,		NULL,	0   },
 	};
 
-        /* Set default case sensitivity for searching */
-        pkgdb_set_case_sensitivity(
-                pkg_object_bool(pkg_config_get("CASE_SENSITIVE_MATCH"))
-                );
-
 	while ((ch = getopt_long(argc, argv, "+aACDgiMqSxy", longopts, NULL))
 	       != -1) {
 		switch (ch) {
