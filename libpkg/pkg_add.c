@@ -1351,6 +1351,9 @@ pkg_add_common(struct pkgdb *db, const char *path, unsigned flags,
 	if (flags & PKG_ADD_AUTOMATIC)
 		pkg->automatic = true;
 
+	if (flags & PKG_ADD_REGISTER_ONLY)
+		extract = false;
+
 	/*
 	 * Additional checks for non-remote package
 	 */
@@ -1453,7 +1456,8 @@ pkg_add_common(struct pkgdb *db, const char *path, unsigned flags,
 	/* Update configuration file content with db with newer versions */
 	pkgdb_update_config_file_content(pkg, db->sqlite);
 
-	retcode = pkg_extract_finalize(pkg, &tempdirs);
+	if (extract)
+		retcode = pkg_extract_finalize(pkg, &tempdirs);
 
 	pkgdb_register_finale(db, retcode, NULL);
 	openxact = false;
