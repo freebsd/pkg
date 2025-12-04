@@ -367,7 +367,7 @@ cleanup:
 	pkg_free(pkg);
 	pkgdb_it_free(it);
 
-	pkgdb_release_lock(db, PKGDB_LOCK_EXCLUSIVE);
+	pkgdb_release_lock(db, lock_type);
 	pkgdb_close(db);
 	free(input);
 
