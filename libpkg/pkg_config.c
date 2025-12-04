@@ -277,7 +277,7 @@ static struct config_entry c[] = {
 	{
 		PKG_BOOL,
 		"CASE_SENSITIVE_MATCH",
-		"NO",
+		"YES",
 	},
 	{
 		PKG_INT,
