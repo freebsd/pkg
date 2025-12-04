@@ -235,7 +235,7 @@ recursive_analysis(int fd, struct pkgdb *db, const char *dir,
 			if (link_len > 0 )
 				link_buf[link_len - 1] = '\0';
 			else
-				link_buf='\0';
+				link_buf[0]='\0';
 			name = link_buf;
 		}
 
