@@ -232,7 +232,10 @@ recursive_analysis(int fd, struct pkgdb *db, const char *dir,
 			if ((link_len = readlinkat(fd, ent->d_name, link_buf,
 			    sizeof(link_buf))) == -1)
 				continue;
-			link_buf[link_len - 1] = '\0';
+			if (link_len > 0 )
+				link_buf[link_len - 1] = '\0';
+			else
+				link_buf='\0';
 			name = link_buf;
 		}
 
