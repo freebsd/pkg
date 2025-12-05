@@ -1,3 +1,16 @@
+Changes from 2.4.99.0 to 2.4.99.1
+- fetch: improve error reporting
+- fetch: properly integrate the curl debug informations in the pkg debug output
+- fetch: display curl IP address we are fetching from in debug mode
+- unregister(8): new command to remove the records from an installed package,
+  keeping the files around
+- install --register-only: records the packages as installed without touching
+  any installed files on the filesystem. Note in case on config files it also
+  the vanilla version of the file in the db so 3way merge is functional for later
+  upgrades
+- case sensitivity: lots of bug fixes, the behaviour is now consistent accross all
+  commands and respect the default setting in pkg.conf.
+
 Changes from 2.3.99.1 to 2.4.99.0
 - Use line buffering for the metalog file handle
 - Fix bug making pkg delete too many directories in case of split upgrades
