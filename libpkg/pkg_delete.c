@@ -116,9 +116,11 @@ pkg_delete(struct pkg *pkg, struct pkg *rpkg, struct pkgdb *db, int flags,
 			return (ret);
 	}
 
-	ret = pkg_delete_dirs(db, pkg, NULL);
-	if (ret != EPKG_OK)
-		return (ret);
+	if ((flags & PKG_DELETE_KEEPFILES) == 0) {
+		ret = pkg_delete_dirs(db, pkg, NULL);
+		if (ret != EPKG_OK)
+			return (ret);
+	}
 
 	pkg_emit_deinstall_finished(pkg);
 	vec_foreach(pkg->message, i) {

@@ -30,14 +30,29 @@ unregister_pkg_body() {
 
 simple_unregister_body() {
 	touch file1
-	mkdir dir
-	touch dir/file2
+	mkdir dir1
+	mkdir dir2
+	touch dir1/file2
 
 	atf_check -s exit:0 sh ${RESOURCEDIR}/test_subr.sh new_pkg "test" "test" "1" "${TMPDIR}"
 	cat << EOF >> test.ucl
 files: {
     ${TMPDIR}/file1: "",
-    ${TMPDIR}/dir/file2: "",
+    ${TMPDIR}/dir1/file2: "",
+}
+directories: {
+    ${TMPDIR}/dir1: {
+        uname: "",
+        gname: "",
+        perm: "0000",
+        fflags: 0
+    }
+    ${TMPDIR}/dir2: {
+        uname: "",
+        gname: "",
+        perm: "0000",
+        fflags: 0
+    }
 }
 EOF
 
@@ -53,10 +68,29 @@ EOF
 		-s exit:0 \
 		pkg unregister -y test
 
-	test -f file1 || atf_fail "'file1' is not present"
-	test -f dir/file2 || atf_fail "'dir/file2' is not present"
-	test -d dir || atf_fail "'dir' is not present"
-	test -d ${TMPDIR} || atf_fail "Prefix have been removed"
+	atf_check \
+		-o ignore \
+		-e ignore \
+		-s exit:0 \
+		test -f file1
+
+	atf_check \
+		-o ignore \
+		-e ignore \
+		-s exit:0 \
+		test -f dir1/file2
+
+	atf_check \
+		-o ignore \
+		-e ignore \
+		-s exit:0 \
+		test -d dir1
+
+	atf_check \
+		-o ignore \
+		-e ignore \
+		-s exit:0 \
+		test -d dir2
 }
 
 simple_unregister_prefix_ending_with_slash_body() {
