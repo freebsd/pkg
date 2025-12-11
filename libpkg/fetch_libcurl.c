@@ -578,5 +578,6 @@ curl_cleanup(struct pkg_repo *repo)
 	curl_multi_cleanup(cr->cm);
 	if (cr->url != NULL)
 		curl_url_cleanup(cr->url);
+	free(repo->fetch_priv);
 	repo->fetch_priv = NULL;
 }
