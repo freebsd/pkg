@@ -305,6 +305,7 @@ dir(struct plist *p, char *line, struct file_attr *a)
 			ret = EPKG_FATAL;
 		}
 	} else {
+		mode_t m = S_IRUSR | S_IWUSR | S_IXUSR | S_IRGRP | S_IXGRP | S_IROTH | S_IXOTH;
 		if (a != NULL)
 			ret = pkg_adddir_attr(p->pkg, path,
 			    a->owner ? a->owner : p->uname,
@@ -313,7 +314,7 @@ dir(struct plist *p, char *line, struct file_attr *a)
 			    a->fflags, true);
 		else
 			ret = pkg_adddir_attr(p->pkg, path, p->uname, p->gname,
-			    p->perm, 0, true);
+			    m, 0, true);
 	}
 
 	return (ret);
