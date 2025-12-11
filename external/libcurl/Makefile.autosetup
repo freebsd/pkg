@@ -26,6 +26,7 @@ SRCS=	\
 	content_encoding.c \
 	cookie.c \
 	curl_addrinfo.c \
+	curl_fopen.c \
 	curl_get_line.c \
 	curl_threads.c \
 	curl_trc.c \
@@ -54,6 +55,7 @@ SRCS=	\
 	mime.c \
 	mprintf.c \
 	multi.c \
+	multi_ntfy.c \
 	netrc.c \
 	nonblock.c \
 	noproxy.c \

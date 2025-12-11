@@ -2,14 +2,15 @@
 
 #include "first.h"
 
-#include "memptr.c"
 #include "getpart.c"
 #include "util.c"
 #include "../../lib/curlx/base64.c"
-#include "../../lib/curlx/inet_pton.c"
+#include "../../lib/curlx/fopen.c"
 #include "../../lib/curlx/inet_ntop.c"
+#include "../../lib/curlx/inet_pton.c"
 #include "../../lib/curlx/multibyte.c"
 #include "../../lib/curlx/nonblock.c"
+#include "../../lib/curlx/strerr.c"
 #include "../../lib/curlx/strparse.c"
 #include "../../lib/curlx/timediff.c"
 #include "../../lib/curlx/timeval.c"

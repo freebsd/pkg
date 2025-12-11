@@ -115,6 +115,7 @@ host_triplet = @host@
 subdir = scripts
 ACLOCAL_M4 = $(top_srcdir)/aclocal.m4
 am__aclocal_m4_deps = $(top_srcdir)/m4/curl-amissl.m4 \
+	$(top_srcdir)/m4/curl-apple-sectrust.m4 \
 	$(top_srcdir)/m4/curl-compilers.m4 \
 	$(top_srcdir)/m4/curl-confopts.m4 \
 	$(top_srcdir)/m4/curl-functions.m4 \
@@ -363,7 +364,8 @@ top_srcdir = @top_srcdir@
 EXTRA_DIST = coverage.sh completion.pl firefox-db2pem.sh checksrc.pl checksrc-all.pl \
   mk-ca-bundle.pl mk-unity.pl schemetable.c cd2nroff nroff2cd cdall cd2cd managen    \
   dmaketgz maketgz release-tools.sh verify-release cmakelint.sh mdlinkcheck          \
-  CMakeLists.txt pythonlint.sh randdisable wcurl top-complexity extract-unit-protos
+  CMakeLists.txt perlcheck.sh pythonlint.sh randdisable wcurl top-complexity         \
+  extract-unit-protos .checksrc
 
 dist_bin_SCRIPTS = wcurl
 @USE_ZSH_COMPLETION_TRUE@ZSH_COMPLETION_FUNCTION_FILENAME = _curl

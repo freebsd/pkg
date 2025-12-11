@@ -114,6 +114,7 @@ host_triplet = @host@
 subdir = docs
 ACLOCAL_M4 = $(top_srcdir)/aclocal.m4
 am__aclocal_m4_deps = $(top_srcdir)/m4/curl-amissl.m4 \
+	$(top_srcdir)/m4/curl-apple-sectrust.m4 \
 	$(top_srcdir)/m4/curl-compilers.m4 \
 	$(top_srcdir)/m4/curl-confopts.m4 \
 	$(top_srcdir)/m4/curl-functions.m4 \
@@ -431,7 +432,6 @@ SUBDIRS = . cmdline-opts libcurl
 DIST_SUBDIRS = $(SUBDIRS) examples
 @BUILD_DOCS_TRUE@CLEANFILES = $(MK_CA_DOCS) $(man_MANS) $(TEST_DOCS)
 TESTDOCS = \
- tests/CI.md                                    \
  tests/FILEFORMAT.md                            \
  tests/HTTP.md                                  \
  tests/TEST-SUITE.md

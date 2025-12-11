@@ -1222,6 +1222,7 @@ AC_SUBST([am__untar])
 ]) # _AM_PROG_TAR
 
 m4_include([m4/curl-amissl.m4])
+m4_include([m4/curl-apple-sectrust.m4])
 m4_include([m4/curl-compilers.m4])
 m4_include([m4/curl-confopts.m4])
 m4_include([m4/curl-functions.m4])

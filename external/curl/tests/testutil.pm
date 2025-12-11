@@ -38,7 +38,6 @@ BEGIN {
         runclientoutput
         setlogfunc
         exerunner
-        shell_quote
         subbase64
         subnewlines
         subsha256base64file
@@ -148,6 +147,9 @@ sub subbase64 {
         $$thing =~ s/%%DAYS%%/%alternatives[$d,$d2]/;
     }
 
+    $$thing =~ s/%spc%/ /g;   # space
+    $$thing =~ s/%tab%/\t/g;  # horizontal tab
+
     # include a file
     $$thing =~ s/%include ([^%]*)%[\n\r]+/includefile($1)/ge;
 }
@@ -162,8 +164,9 @@ sub subnewlines {
         return;
     }
 
-    if(($$thing =~ /^HTTP\/(1.1|1.0|2|3) [1-5][^\x0d]*\z/) ||
-       ($$thing =~ /^(GET|POST|PUT|DELETE) \S+ HTTP\/\d+(\.\d+)?/) ||
+    if(($$thing =~ /^HTTP\/(1.1|1.0|2|3) ([1-5]|9)[^\x0d]*\z/) ||
+       ($$thing =~ /^(GET|HEAD|POST|PUT|DELETE|CONNECT) \S+ HTTP\/\d+(\.\d+)?/) ||
+       ($$thing =~ /^(SETUP|GET_PARAMETER|OPTIONS|ANNOUNCE|DESCRIBE) \S+ RTSP\/\d+(\.\d+)?/) ||
        (($$thing =~ /^[a-z0-9_-]+: [^\x0d]*\z/i) &&
         # skip curl error messages
         ($$thing !~ /^curl: \(\d+\) /))) {
@@ -217,25 +220,6 @@ sub exerunner {
         return $ENV{'CURL_TEST_EXE_RUNNER'} . ' ';
     }
     return '';
-}
-
-#######################################################################
-# Quote an argument for passing safely to a Bourne shell
-# This does the same thing as String::ShellQuote but doesn't need a package.
-#
-sub shell_quote {
-    my ($s)=@_;
-    if($^O eq 'MSWin32') {
-        $s = '"' . $s . '"';
-    }
-    else {
-        if($s !~ m/^[-+=.,_\/:a-zA-Z0-9]+$/) {
-            # string contains a "dangerous" character--quote it
-            $s =~ s/'/'"'"'/g;
-            $s = "'" . $s . "'";
-        }
-    }
-    return $s;
 }
 
 sub get_sha256_base64 {

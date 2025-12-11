@@ -140,6 +140,7 @@ host_triplet = @host@
 subdir = docs/libcurl
 ACLOCAL_M4 = $(top_srcdir)/aclocal.m4
 am__aclocal_m4_deps = $(top_srcdir)/m4/curl-amissl.m4 \
+	$(top_srcdir)/m4/curl-apple-sectrust.m4 \
 	$(top_srcdir)/m4/curl-compilers.m4 \
 	$(top_srcdir)/m4/curl-confopts.m4 \
 	$(top_srcdir)/m4/curl-functions.m4 \
@@ -505,6 +506,8 @@ SUBDIRS = opts
 @BUILD_DOCS_TRUE@ curl_multi_get_offt.3 \
 @BUILD_DOCS_TRUE@ curl_multi_info_read.3 \
 @BUILD_DOCS_TRUE@ curl_multi_init.3 \
+@BUILD_DOCS_TRUE@ curl_multi_notify_disable.3 \
+@BUILD_DOCS_TRUE@ curl_multi_notify_enable.3 \
 @BUILD_DOCS_TRUE@ curl_multi_perform.3 \
 @BUILD_DOCS_TRUE@ curl_multi_poll.3 \
 @BUILD_DOCS_TRUE@ curl_multi_remove_handle.3 \

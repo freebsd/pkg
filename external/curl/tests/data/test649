@@ -23,7 +23,7 @@ smtp
 <name>
 SMTP multipart with 7bit encoder error
 </name>
-<stdin>
+<stdin crlf="yes">
 From: different
 To: another
 
@@ -42,7 +42,7 @@ It contains at least an 8-bit byte value.
 #
 # Verify data after the test has been "shot"
 <verify>
-<protocol>
+<protocol crlf="yes">
 EHLO %TESTNUMBER
 MAIL FROM:<sender@example.com>
 RCPT TO:<recipient@example.com>

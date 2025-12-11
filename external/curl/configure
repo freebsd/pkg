@@ -962,6 +962,8 @@ CURL_WERROR_TRUE
 CURL_CFLAG_EXTRAS
 DOING_NATIVE_WINDOWS_FALSE
 DOING_NATIVE_WINDOWS_TRUE
+LCOV
+GCOV
 LIBCURL_PC_CFLAGS
 LIBCURL_PC_CFLAGS_PRIVATE
 USE_CPPFLAG_CURL_STATICLIB_FALSE
@@ -1048,8 +1050,6 @@ VERSION
 PACKAGE
 CYGPATH_W
 am__isrc
-LCOV
-GCOV
 CPP
 OBJEXT
 EXEEXT
@@ -1134,7 +1134,6 @@ enable_rt
 enable_httpsrr
 enable_ech
 enable_ssls_export
-enable_code_coverage
 enable_dependency_tracking
 with_schannel
 with_amissl
@@ -1144,6 +1143,7 @@ with_gnutls
 with_mbedtls
 with_wolfssl
 with_rustls
+with_apple_sectrust
 with_test_nghttpx
 with_test_caddy
 with_test_vsftpd
@@ -1159,6 +1159,7 @@ with_aix_soname
 with_gnu_ld
 with_sysroot
 enable_libtool_lock
+enable_code_coverage
 enable_unity
 enable_http
 enable_ftp
@@ -1201,7 +1202,6 @@ with_libgsasl
 with_libmetalink
 with_libssh2
 with_libssh
-with_wolfssh
 with_ldap_lib
 with_lber_lib
 with_ldap
@@ -1912,7 +1912,6 @@ Optional Features:
   --disable-ech           Disable ECH support
   --enable-ssls-export    Enable SSL session export support
   --disable-ssls-export   Disable SSL session export support
-  --enable-code-coverage  Provide code coverage
   --enable-dependency-tracking
                           do not reject slow dependency extractors
   --disable-dependency-tracking
@@ -1923,6 +1922,7 @@ Optional Features:
   --enable-fast-install[=PKGS]
                           optimize for fast installation [default=yes]
   --disable-libtool-lock  avoid locking (might break parallel builds)
+  --enable-code-coverage  Provide code coverage
   --enable-unity          Enable unity mode
   --disable-unity         Disable unity (default)
   --enable-http           Enable HTTP support
@@ -2071,6 +2071,7 @@ Optional Packages:
                           installation root (default: system lib default)
   --with-rustls=PATH      where to look for Rustls, PATH points to the
                           installation root
+  --with-apple-sectrust   enable Apple OS native certificate verification
   --with-test-nghttpx=PATH
                           where to find nghttpx for testing
   --with-test-caddy=PATH  where to find caddy for testing
@@ -2126,6 +2127,10 @@ Optional Packages:
                           installation; when possible, set the PKG_CONFIG_PATH
                           environment variable instead of using this option
   --without-libpsl        disable LIBPSL
+  --with-libgsasl=PATH    Where to look for libgsasl, PATH points to the
+                          libgsasl installation; when possible, set the
+                          PKG_CONFIG_PATH environment variable instead of
+                          using this option
   --without-libgsasl      disable libgsasl support for SCRAM
   --with-libssh2=PATH     Where to look for libssh2, PATH points to the
                           libssh2 installation; when possible, set the
@@ -2136,11 +2141,6 @@ Optional Packages:
                           installation; when possible, set the PKG_CONFIG_PATH
                           environment variable instead of using this option
   --with-libssh           enable libssh
-  --with-wolfssh=PATH     Where to look for wolfssh, PATH points to the
-                          wolfSSH installation; when possible, set the
-                          PKG_CONFIG_PATH environment variable instead of
-                          using this option
-  --with-wolfssh          enable wolfssh
   --with-ldap-lib=libname Specify name of ldap lib file
   --with-lber-lib=libname Specify name of lber lib file
   --with-ldap=PATH        Where to look for LDAP, PATH points to the LDAP
@@ -5752,263 +5752,6 @@ fi
 done
 
 
-{ printf "%s\n" "$as_me:${as_lineno-$LINENO}: checking for a sed that does not truncate output" >&5
-printf %s "checking for a sed that does not truncate output... " >&6; }
-if test ${ac_cv_path_SED+y}
-then :
-  printf %s "(cached) " >&6
-else $as_nop
-            ac_script=s/aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa/bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb/
-     for ac_i in 1 2 3 4 5 6 7; do
-       ac_script="$ac_script$as_nl$ac_script"
-     done
-     echo "$ac_script" 2>/dev/null | sed 99q >conftest.sed
-     { ac_script=; unset ac_script;}
-     if test -z "$SED"; then
-  ac_path_SED_found=false
-  # Loop through the user's path and test for each of PROGNAME-LIST
-  as_save_IFS=$IFS; IFS=$PATH_SEPARATOR
-for as_dir in $PATH
-do
-  IFS=$as_save_IFS
-  case $as_dir in #(((
-    '') as_dir=./ ;;
-    */) ;;
-    *) as_dir=$as_dir/ ;;
-  esac
-    for ac_prog in sed gsed
-   do
-    for ac_exec_ext in '' $ac_executable_extensions; do
-      ac_path_SED="$as_dir$ac_prog$ac_exec_ext"
-      as_fn_executable_p "$ac_path_SED" || continue
-# Check for GNU ac_path_SED and select it if it is found.
-  # Check for GNU $ac_path_SED
-case `"$ac_path_SED" --version 2>&1` in
-*GNU*)
-  ac_cv_path_SED="$ac_path_SED" ac_path_SED_found=:;;
-*)
-  ac_count=0
-  printf %s 0123456789 >"conftest.in"
-  while :
-  do
-    cat "conftest.in" "conftest.in" >"conftest.tmp"
-    mv "conftest.tmp" "conftest.in"
-    cp "conftest.in" "conftest.nl"
-    printf "%s\n" '' >> "conftest.nl"
-    "$ac_path_SED" -f conftest.sed < "conftest.nl" >"conftest.out" 2>/dev/null || break
-    diff "conftest.out" "conftest.nl" >/dev/null 2>&1 || break
-    as_fn_arith $ac_count + 1 && ac_count=$as_val
-    if test $ac_count -gt ${ac_path_SED_max-0}; then
-      # Best one so far, save it but keep looking for a better one
-      ac_cv_path_SED="$ac_path_SED"
-      ac_path_SED_max=$ac_count
-    fi
-    # 10*(2^10) chars as input seems more than enough
-    test $ac_count -gt 10 && break
-  done
-  rm -f conftest.in conftest.tmp conftest.nl conftest.out;;
-esac
-
-      $ac_path_SED_found && break 3
-    done
-  done
-  done
-IFS=$as_save_IFS
-  if test -z "$ac_cv_path_SED"; then
-    as_fn_error $? "no acceptable sed could be found in \$PATH" "$LINENO" 5
-  fi
-else
-  ac_cv_path_SED=$SED
-fi
-
-fi
-{ printf "%s\n" "$as_me:${as_lineno-$LINENO}: result: $ac_cv_path_SED" >&5
-printf "%s\n" "$ac_cv_path_SED" >&6; }
- SED="$ac_cv_path_SED"
-  rm -f conftest.sed
-
-
-
-
-  { printf "%s\n" "$as_me:${as_lineno-$LINENO}: checking for code coverage support" >&5
-printf %s "checking for code coverage support... " >&6; }
-  coverage="no"
-  curl_coverage_msg="disabled"
-
-    # Check whether --enable-code-coverage was given.
-if test ${enable_code_coverage+y}
-then :
-  enableval=$enable_code_coverage; coverage="$enableval"
-fi
-
-
-    if  test "$GCC" != "yes"
-then :
-  coverage="no"
-fi
-  { printf "%s\n" "$as_me:${as_lineno-$LINENO}: result: $coverage" >&5
-printf "%s\n" "$coverage" >&6; }
-
-  if test "x$coverage" = "xyes"; then
-    curl_coverage_msg="enabled"
-
-    if test -n "$ac_tool_prefix"; then
-  # Extract the first word of "${ac_tool_prefix}gcov", so it can be a program name with args.
-set dummy ${ac_tool_prefix}gcov; ac_word=$2
-{ printf "%s\n" "$as_me:${as_lineno-$LINENO}: checking for $ac_word" >&5
-printf %s "checking for $ac_word... " >&6; }
-if test ${ac_cv_prog_GCOV+y}
-then :
-  printf %s "(cached) " >&6
-else $as_nop
-  if test -n "$GCOV"; then
-  ac_cv_prog_GCOV="$GCOV" # Let the user override the test.
-else
-as_save_IFS=$IFS; IFS=$PATH_SEPARATOR
-for as_dir in $PATH
-do
-  IFS=$as_save_IFS
-  case $as_dir in #(((
-    '') as_dir=./ ;;
-    */) ;;
-    *) as_dir=$as_dir/ ;;
-  esac
-    for ac_exec_ext in '' $ac_executable_extensions; do
-  if as_fn_executable_p "$as_dir$ac_word$ac_exec_ext"; then
-    ac_cv_prog_GCOV="${ac_tool_prefix}gcov"
-    printf "%s\n" "$as_me:${as_lineno-$LINENO}: found $as_dir$ac_word$ac_exec_ext" >&5
-    break 2
-  fi
-done
-  done
-IFS=$as_save_IFS
-
-fi
-fi
-GCOV=$ac_cv_prog_GCOV
-if test -n "$GCOV"; then
-  { printf "%s\n" "$as_me:${as_lineno-$LINENO}: result: $GCOV" >&5
-printf "%s\n" "$GCOV" >&6; }
-else
-  { printf "%s\n" "$as_me:${as_lineno-$LINENO}: result: no" >&5
-printf "%s\n" "no" >&6; }
-fi
-
-
-fi
-if test -z "$ac_cv_prog_GCOV"; then
-  ac_ct_GCOV=$GCOV
-  # Extract the first word of "gcov", so it can be a program name with args.
-set dummy gcov; ac_word=$2
-{ printf "%s\n" "$as_me:${as_lineno-$LINENO}: checking for $ac_word" >&5
-printf %s "checking for $ac_word... " >&6; }
-if test ${ac_cv_prog_ac_ct_GCOV+y}
-then :
-  printf %s "(cached) " >&6
-else $as_nop
-  if test -n "$ac_ct_GCOV"; then
-  ac_cv_prog_ac_ct_GCOV="$ac_ct_GCOV" # Let the user override the test.
-else
-as_save_IFS=$IFS; IFS=$PATH_SEPARATOR
-for as_dir in $PATH
-do
-  IFS=$as_save_IFS
-  case $as_dir in #(((
-    '') as_dir=./ ;;
-    */) ;;
-    *) as_dir=$as_dir/ ;;
-  esac
-    for ac_exec_ext in '' $ac_executable_extensions; do
-  if as_fn_executable_p "$as_dir$ac_word$ac_exec_ext"; then
-    ac_cv_prog_ac_ct_GCOV="gcov"
-    printf "%s\n" "$as_me:${as_lineno-$LINENO}: found $as_dir$ac_word$ac_exec_ext" >&5
-    break 2
-  fi
-done
-  done
-IFS=$as_save_IFS
-
-fi
-fi
-ac_ct_GCOV=$ac_cv_prog_ac_ct_GCOV
-if test -n "$ac_ct_GCOV"; then
-  { printf "%s\n" "$as_me:${as_lineno-$LINENO}: result: $ac_ct_GCOV" >&5
-printf "%s\n" "$ac_ct_GCOV" >&6; }
-else
-  { printf "%s\n" "$as_me:${as_lineno-$LINENO}: result: no" >&5
-printf "%s\n" "no" >&6; }
-fi
-
-  if test "x$ac_ct_GCOV" = x; then
-    GCOV="gcov"
-  else
-    case $cross_compiling:$ac_tool_warned in
-yes:)
-{ printf "%s\n" "$as_me:${as_lineno-$LINENO}: WARNING: using cross tools not prefixed with host triplet" >&5
-printf "%s\n" "$as_me: WARNING: using cross tools not prefixed with host triplet" >&2;}
-ac_tool_warned=yes ;;
-esac
-    GCOV=$ac_ct_GCOV
-  fi
-else
-  GCOV="$ac_cv_prog_GCOV"
-fi
-
-    if test -z "$GCOV"; then
-      as_fn_error $? "needs gcov for code coverage" "$LINENO" 5
-    fi
-    # Extract the first word of "lcov", so it can be a program name with args.
-set dummy lcov; ac_word=$2
-{ printf "%s\n" "$as_me:${as_lineno-$LINENO}: checking for $ac_word" >&5
-printf %s "checking for $ac_word... " >&6; }
-if test ${ac_cv_prog_LCOV+y}
-then :
-  printf %s "(cached) " >&6
-else $as_nop
-  if test -n "$LCOV"; then
-  ac_cv_prog_LCOV="$LCOV" # Let the user override the test.
-else
-as_save_IFS=$IFS; IFS=$PATH_SEPARATOR
-for as_dir in $PATH
-do
-  IFS=$as_save_IFS
-  case $as_dir in #(((
-    '') as_dir=./ ;;
-    */) ;;
-    *) as_dir=$as_dir/ ;;
-  esac
-    for ac_exec_ext in '' $ac_executable_extensions; do
-  if as_fn_executable_p "$as_dir$ac_word$ac_exec_ext"; then
-    ac_cv_prog_LCOV="lcov"
-    printf "%s\n" "$as_me:${as_lineno-$LINENO}: found $as_dir$ac_word$ac_exec_ext" >&5
-    break 2
-  fi
-done
-  done
-IFS=$as_save_IFS
-
-fi
-fi
-LCOV=$ac_cv_prog_LCOV
-if test -n "$LCOV"; then
-  { printf "%s\n" "$as_me:${as_lineno-$LINENO}: result: $LCOV" >&5
-printf "%s\n" "$LCOV" >&6; }
-else
-  { printf "%s\n" "$as_me:${as_lineno-$LINENO}: result: no" >&5
-printf "%s\n" "no" >&6; }
-fi
-
-
-    if test -z "$LCOV"; then
-      as_fn_error $? "needs lcov for code coverage" "$LINENO" 5
-    fi
-
-    CPPFLAGS="$CPPFLAGS -DNDEBUG"
-    CFLAGS="$CFLAGS -O0 -g -fprofile-arcs -ftest-coverage"
-    LIBS="$LIBS -lgcov"
-  fi
-
-
 am__api_version='1.16'
 
 { printf "%s\n" "$as_me:${as_lineno-$LINENO}: checking whether build environment is sane" >&5
@@ -6749,7 +6492,7 @@ OPT_SCHANNEL=no
 if test ${with_schannel+y}
 then :
   withval=$with_schannel; OPT_SCHANNEL=$withval
-  TLSCHOICE="schannel"
+  TLSCHOICE="Schannel"
 fi
 
 
@@ -6846,9 +6589,20 @@ then :
   withval=$with_rustls;
   OPT_RUSTLS=$withval
   if test X"$withval" != Xno; then
-    TLSCHOICE="${TLSCHOICE:+$TLSCHOICE, }rustls"
-    experimental="$experimental rustls"
+    TLSCHOICE="${TLSCHOICE:+$TLSCHOICE, }Rustls"
+    experimental="$experimental Rustls"
   fi
+
+fi
+
+
+OPT_APPLE_SECTRUST=$curl_cv_apple
+
+# Check whether --with-apple-sectrust was given.
+if test ${with_apple_sectrust+y}
+then :
+  withval=$with_apple_sectrust;
+  OPT_APPLE_SECTRUST=$withval
 
 fi
 
@@ -17903,16 +17657,18 @@ printf %s "checking compiler version... " >&6; }
     compiler_ver="$clangver"
     compiler_num=`(expr $clangvhi "*" 100 + $clangvlo) 2>/dev/null`
     if test "$appleclang" = '1' && test "$oldapple" = '0'; then
-            if   test "$compiler_num" -ge '1300'; then compiler_num='1200'
-      elif test "$compiler_num" -ge '1205'; then compiler_num='1101'
-      elif test "$compiler_num" -ge '1204'; then compiler_num='1000'
-      elif test "$compiler_num" -ge '1107'; then compiler_num='900'
-      elif test "$compiler_num" -ge '1103'; then compiler_num='800'
-      elif test "$compiler_num" -ge '1003'; then compiler_num='700'
-      elif test "$compiler_num" -ge '1001'; then compiler_num='600'
-      elif test "$compiler_num" -ge  '904'; then compiler_num='500'
-      elif test "$compiler_num" -ge  '902'; then compiler_num='400'
-      elif test "$compiler_num" -ge  '803'; then compiler_num='309'
+            if   test "$compiler_num" -ge '1700'; then compiler_num='1901'
+      elif test "$compiler_num" -ge '1600'; then compiler_num='1700'
+      elif test "$compiler_num" -ge '1500'; then compiler_num='1600'
+      elif test "$compiler_num" -ge '1400'; then compiler_num='1400'
+      elif test "$compiler_num" -ge '1301'; then compiler_num='1300'
+      elif test "$compiler_num" -ge '1300'; then compiler_num='1200'
+      elif test "$compiler_num" -ge '1200'; then compiler_num='1000'
+      elif test "$compiler_num" -ge '1100'; then compiler_num='800'
+      elif test "$compiler_num" -ge '1000'; then compiler_num='600'
+      elif test "$compiler_num" -ge  '901'; then compiler_num='500'
+      elif test "$compiler_num" -ge  '900'; then compiler_num='400'
+      elif test "$compiler_num" -ge  '801'; then compiler_num='309'
       elif test "$compiler_num" -ge  '703'; then compiler_num='308'
       else                                       compiler_num='307'
       fi
@@ -18406,6 +18162,193 @@ printf "%s\n" "no" >&6; }
 *** mailing list: https://lists.haxx.selistinfo/curl-library/
 ***
 _EOF
+  fi
+
+
+
+
+  { printf "%s\n" "$as_me:${as_lineno-$LINENO}: checking for code coverage support" >&5
+printf %s "checking for code coverage support... " >&6; }
+  coverage="no"
+  curl_coverage_msg="disabled"
+
+    # Check whether --enable-code-coverage was given.
+if test ${enable_code_coverage+y}
+then :
+  enableval=$enable_code_coverage; coverage="$enableval"
+fi
+
+
+    if test "$compiler_id" != "GNU_C" -a "$compiler_id" != "CLANG" -a "$compiler_id" != "APPLECLANG"
+then :
+  coverage="no"
+fi
+  { printf "%s\n" "$as_me:${as_lineno-$LINENO}: result: $coverage" >&5
+printf "%s\n" "$coverage" >&6; }
+
+  if test "x$coverage" = "xyes"; then
+    curl_coverage_msg="enabled"
+
+    CPPFLAGS="$CPPFLAGS -DNDEBUG"
+    CFLAGS="$CFLAGS -O0 -g"
+
+    if test "$compiler_id" = "GNU_C"; then
+      if test -n "$ac_tool_prefix"; then
+  # Extract the first word of "${ac_tool_prefix}gcov", so it can be a program name with args.
+set dummy ${ac_tool_prefix}gcov; ac_word=$2
+{ printf "%s\n" "$as_me:${as_lineno-$LINENO}: checking for $ac_word" >&5
+printf %s "checking for $ac_word... " >&6; }
+if test ${ac_cv_prog_GCOV+y}
+then :
+  printf %s "(cached) " >&6
+else $as_nop
+  if test -n "$GCOV"; then
+  ac_cv_prog_GCOV="$GCOV" # Let the user override the test.
+else
+as_save_IFS=$IFS; IFS=$PATH_SEPARATOR
+for as_dir in $PATH
+do
+  IFS=$as_save_IFS
+  case $as_dir in #(((
+    '') as_dir=./ ;;
+    */) ;;
+    *) as_dir=$as_dir/ ;;
+  esac
+    for ac_exec_ext in '' $ac_executable_extensions; do
+  if as_fn_executable_p "$as_dir$ac_word$ac_exec_ext"; then
+    ac_cv_prog_GCOV="${ac_tool_prefix}gcov"
+    printf "%s\n" "$as_me:${as_lineno-$LINENO}: found $as_dir$ac_word$ac_exec_ext" >&5
+    break 2
+  fi
+done
+  done
+IFS=$as_save_IFS
+
+fi
+fi
+GCOV=$ac_cv_prog_GCOV
+if test -n "$GCOV"; then
+  { printf "%s\n" "$as_me:${as_lineno-$LINENO}: result: $GCOV" >&5
+printf "%s\n" "$GCOV" >&6; }
+else
+  { printf "%s\n" "$as_me:${as_lineno-$LINENO}: result: no" >&5
+printf "%s\n" "no" >&6; }
+fi
+
+
+fi
+if test -z "$ac_cv_prog_GCOV"; then
+  ac_ct_GCOV=$GCOV
+  # Extract the first word of "gcov", so it can be a program name with args.
+set dummy gcov; ac_word=$2
+{ printf "%s\n" "$as_me:${as_lineno-$LINENO}: checking for $ac_word" >&5
+printf %s "checking for $ac_word... " >&6; }
+if test ${ac_cv_prog_ac_ct_GCOV+y}
+then :
+  printf %s "(cached) " >&6
+else $as_nop
+  if test -n "$ac_ct_GCOV"; then
+  ac_cv_prog_ac_ct_GCOV="$ac_ct_GCOV" # Let the user override the test.
+else
+as_save_IFS=$IFS; IFS=$PATH_SEPARATOR
+for as_dir in $PATH
+do
+  IFS=$as_save_IFS
+  case $as_dir in #(((
+    '') as_dir=./ ;;
+    */) ;;
+    *) as_dir=$as_dir/ ;;
+  esac
+    for ac_exec_ext in '' $ac_executable_extensions; do
+  if as_fn_executable_p "$as_dir$ac_word$ac_exec_ext"; then
+    ac_cv_prog_ac_ct_GCOV="gcov"
+    printf "%s\n" "$as_me:${as_lineno-$LINENO}: found $as_dir$ac_word$ac_exec_ext" >&5
+    break 2
+  fi
+done
+  done
+IFS=$as_save_IFS
+
+fi
+fi
+ac_ct_GCOV=$ac_cv_prog_ac_ct_GCOV
+if test -n "$ac_ct_GCOV"; then
+  { printf "%s\n" "$as_me:${as_lineno-$LINENO}: result: $ac_ct_GCOV" >&5
+printf "%s\n" "$ac_ct_GCOV" >&6; }
+else
+  { printf "%s\n" "$as_me:${as_lineno-$LINENO}: result: no" >&5
+printf "%s\n" "no" >&6; }
+fi
+
+  if test "x$ac_ct_GCOV" = x; then
+    GCOV="gcov"
+  else
+    case $cross_compiling:$ac_tool_warned in
+yes:)
+{ printf "%s\n" "$as_me:${as_lineno-$LINENO}: WARNING: using cross tools not prefixed with host triplet" >&5
+printf "%s\n" "$as_me: WARNING: using cross tools not prefixed with host triplet" >&2;}
+ac_tool_warned=yes ;;
+esac
+    GCOV=$ac_ct_GCOV
+  fi
+else
+  GCOV="$ac_cv_prog_GCOV"
+fi
+
+      if test -z "$GCOV"; then
+        as_fn_error $? "needs gcov for code coverage" "$LINENO" 5
+      fi
+      # Extract the first word of "lcov", so it can be a program name with args.
+set dummy lcov; ac_word=$2
+{ printf "%s\n" "$as_me:${as_lineno-$LINENO}: checking for $ac_word" >&5
+printf %s "checking for $ac_word... " >&6; }
+if test ${ac_cv_prog_LCOV+y}
+then :
+  printf %s "(cached) " >&6
+else $as_nop
+  if test -n "$LCOV"; then
+  ac_cv_prog_LCOV="$LCOV" # Let the user override the test.
+else
+as_save_IFS=$IFS; IFS=$PATH_SEPARATOR
+for as_dir in $PATH
+do
+  IFS=$as_save_IFS
+  case $as_dir in #(((
+    '') as_dir=./ ;;
+    */) ;;
+    *) as_dir=$as_dir/ ;;
+  esac
+    for ac_exec_ext in '' $ac_executable_extensions; do
+  if as_fn_executable_p "$as_dir$ac_word$ac_exec_ext"; then
+    ac_cv_prog_LCOV="lcov"
+    printf "%s\n" "$as_me:${as_lineno-$LINENO}: found $as_dir$ac_word$ac_exec_ext" >&5
+    break 2
+  fi
+done
+  done
+IFS=$as_save_IFS
+
+fi
+fi
+LCOV=$ac_cv_prog_LCOV
+if test -n "$LCOV"; then
+  { printf "%s\n" "$as_me:${as_lineno-$LINENO}: result: $LCOV" >&5
+printf "%s\n" "$LCOV" >&6; }
+else
+  { printf "%s\n" "$as_me:${as_lineno-$LINENO}: result: no" >&5
+printf "%s\n" "no" >&6; }
+fi
+
+
+      if test -z "$LCOV"; then
+        as_fn_error $? "needs lcov for code coverage" "$LINENO" 5
+      fi
+      CFLAGS="$CFLAGS -ftest-coverage -fprofile-arcs"
+      LIBS="$LIBS -lgcov"
+    else
+      CFLAGS="$CFLAGS -fprofile-instr-generate -fcoverage-mapping"
+      LDFLAGS="$LDFLAGS -fprofile-instr-generate -fcoverage-mapping"
+    fi
   fi
 
 
@@ -19544,6 +19487,8 @@ printf "%s\n" "$as_me: WARNING: compiler options rejected: $tmp_options" >&2;}
     tmp_CFLAGS="$tmp_CFLAGS $ac_var_added_warnings"
   squeeze tmp_CFLAGS
 
+            tmp_CFLAGS="$tmp_CFLAGS -Wno-switch-default"
+            tmp_CFLAGS="$tmp_CFLAGS -Wno-switch-enum"                    # Not used because this basically disallows default case
 
     ac_var_added_warnings=""
   for warning in old-style-definition; do
@@ -19584,7 +19529,6 @@ printf "%s\n" "$as_me: WARNING: compiler options rejected: $tmp_options" >&2;}
     tmp_CFLAGS="$tmp_CFLAGS $ac_var_added_warnings"
   squeeze tmp_CFLAGS
 
-          # CURL_ADD_COMPILER_WARNINGS([tmp_CFLAGS], [switch-enum])      # Not used because this basically disallows default case
 
     ac_var_added_warnings=""
   for warning in type-limits; do
@@ -19674,6 +19618,7 @@ printf "%s\n" "$as_me: WARNING: compiler options rejected: $tmp_options" >&2;}
           #
                     if test "$compiler_num" -ge "209"; then
             tmp_CFLAGS="$tmp_CFLAGS -Wno-sign-conversion"
+            tmp_CFLAGS="$tmp_CFLAGS -Wno-padded"                         # Not used because we cannot change public structs
 
     ac_var_added_warnings=""
   for warning in shift-sign-overflow; do
@@ -19694,13 +19639,32 @@ printf "%s\n" "$as_me: WARNING: compiler options rejected: $tmp_options" >&2;}
     tmp_CFLAGS="$tmp_CFLAGS $ac_var_added_warnings"
   squeeze tmp_CFLAGS
 
-          # CURL_ADD_COMPILER_WARNINGS([tmp_CFLAGS], [padded])  # Not used because we cannot change public structs
           fi
           #
                     if test "$compiler_num" -ge "300"; then
 
     ac_var_added_warnings=""
   for warning in cast-qual; do
+
+  ac_var_match_word="no"
+  for word1 in $CFLAGS; do
+    for word2 in -Wno-$warning -W$warning; do
+      if test "$word1" = "$word2"; then
+        ac_var_match_word="yes"
+      fi
+    done
+  done
+
+    if test "$ac_var_match_word" = "no"; then
+      ac_var_added_warnings="$ac_var_added_warnings -W$warning"
+    fi
+  done
+    tmp_CFLAGS="$tmp_CFLAGS $ac_var_added_warnings"
+  squeeze tmp_CFLAGS
+
+
+    ac_var_added_warnings=""
+  for warning in conditional-uninitialized; do
 
   ac_var_match_word="no"
   for word1 in $CFLAGS; do
@@ -19739,6 +19703,31 @@ printf "%s\n" "$as_me: WARNING: compiler options rejected: $tmp_options" >&2;}
   squeeze tmp_CFLAGS
 
             tmp_CFLAGS="$tmp_CFLAGS -Wformat=2"
+            tmp_CFLAGS="$tmp_CFLAGS -Wno-used-but-marked-unused"    # Triggered by typecheck-gcc.h (with clang 14+)
+          fi
+                    if test "$compiler_num" -ge "301"; then
+
+    ac_var_added_warnings=""
+  for warning in format-non-iso; do
+
+  ac_var_match_word="no"
+  for word1 in $CFLAGS; do
+    for word2 in -Wno-$warning -W$warning; do
+      if test "$word1" = "$word2"; then
+        ac_var_match_word="yes"
+      fi
+    done
+  done
+
+    if test "$ac_var_match_word" = "no"; then
+      ac_var_added_warnings="$ac_var_added_warnings -W$warning"
+    fi
+  done
+    tmp_CFLAGS="$tmp_CFLAGS $ac_var_added_warnings"
+  squeeze tmp_CFLAGS
+
+            tmp_CFLAGS="$tmp_CFLAGS -Wno-covered-switch-default"    # Annoying to fix or silence
+            tmp_CFLAGS="$tmp_CFLAGS -Wno-disabled-macro-expansion"  # Triggered by typecheck-gcc.h (with clang 14+)
           fi
           #
                     if test "$compiler_num" -ge "302"; then
@@ -19808,6 +19797,9 @@ printf "%s\n" "$as_me: WARNING: compiler options rejected: $tmp_options" >&2;}
 
                 ;;
             esac
+          fi
+                    if test "$compiler_num" -ge "303"; then
+            tmp_CFLAGS="$tmp_CFLAGS -Wno-documentation-unknown-command"
           fi
           #
                     if test "$compiler_num" -ge "304"; then
@@ -19991,6 +19983,163 @@ printf "%s\n" "$as_me: WARNING: compiler options rejected: $tmp_options" >&2;}
     tmp_CFLAGS="$tmp_CFLAGS $ac_var_added_warnings"
   squeeze tmp_CFLAGS
 
+          fi
+                    if test "$compiler_num" -ge "1300"; then
+
+    ac_var_added_warnings=""
+  for warning in cast-function-type; do
+
+  ac_var_match_word="no"
+  for word1 in $CFLAGS; do
+    for word2 in -Wno-$warning -W$warning; do
+      if test "$word1" = "$word2"; then
+        ac_var_match_word="yes"
+      fi
+    done
+  done
+
+    if test "$ac_var_match_word" = "no"; then
+      ac_var_added_warnings="$ac_var_added_warnings -W$warning"
+    fi
+  done
+    tmp_CFLAGS="$tmp_CFLAGS $ac_var_added_warnings"
+  squeeze tmp_CFLAGS
+
+
+    ac_var_added_warnings=""
+  for warning in reserved-identifier; do
+
+  ac_var_match_word="no"
+  for word1 in $CFLAGS; do
+    for word2 in -Wno-$warning -W$warning; do
+      if test "$word1" = "$word2"; then
+        ac_var_match_word="yes"
+      fi
+    done
+  done
+
+    if test "$ac_var_match_word" = "no"; then
+      ac_var_added_warnings="$ac_var_added_warnings -W$warning"
+    fi
+  done
+    tmp_CFLAGS="$tmp_CFLAGS $ac_var_added_warnings"
+  squeeze tmp_CFLAGS
+ # Keep it before -Wno-reserved-macro-identifier
+            tmp_CFLAGS="$tmp_CFLAGS -Wno-reserved-macro-identifier"  # Sometimes such external macros need to be set
+          fi
+                    if test "$compiler_num" -ge "1600"; then
+            tmp_CFLAGS="$tmp_CFLAGS -Wno-unsafe-buffer-usage"
+          fi
+                    if test "$compiler_num" -ge "1700"; then
+
+    ac_var_added_warnings=""
+  for warning in cast-function-type-strict; do
+
+  ac_var_match_word="no"
+  for word1 in $CFLAGS; do
+    for word2 in -Wno-$warning -W$warning; do
+      if test "$word1" = "$word2"; then
+        ac_var_match_word="yes"
+      fi
+    done
+  done
+
+    if test "$ac_var_match_word" = "no"; then
+      ac_var_added_warnings="$ac_var_added_warnings -W$warning"
+    fi
+  done
+    tmp_CFLAGS="$tmp_CFLAGS $ac_var_added_warnings"
+  squeeze tmp_CFLAGS
+  # with Apple clang it requires 16.0 or above
+          fi
+                    if test "$compiler_num" -ge "2000"; then
+
+    ac_var_added_warnings=""
+  for warning in array-compare; do
+
+  ac_var_match_word="no"
+  for word1 in $CFLAGS; do
+    for word2 in -Wno-$warning -W$warning; do
+      if test "$word1" = "$word2"; then
+        ac_var_match_word="yes"
+      fi
+    done
+  done
+
+    if test "$ac_var_match_word" = "no"; then
+      ac_var_added_warnings="$ac_var_added_warnings -W$warning"
+    fi
+  done
+    tmp_CFLAGS="$tmp_CFLAGS $ac_var_added_warnings"
+  squeeze tmp_CFLAGS
+
+          fi
+                    if test "$compiler_num" -ge "2100"; then
+
+    ac_var_added_warnings=""
+  for warning in c++-hidden-decl; do
+
+  ac_var_match_word="no"
+  for word1 in $CFLAGS; do
+    for word2 in -Wno-$warning -W$warning; do
+      if test "$word1" = "$word2"; then
+        ac_var_match_word="yes"
+      fi
+    done
+  done
+
+    if test "$ac_var_match_word" = "no"; then
+      ac_var_added_warnings="$ac_var_added_warnings -W$warning"
+    fi
+  done
+    tmp_CFLAGS="$tmp_CFLAGS $ac_var_added_warnings"
+  squeeze tmp_CFLAGS
+
+            tmp_CFLAGS="$tmp_CFLAGS -Wno-implicit-void-ptr-cast"
+
+    ac_var_added_warnings=""
+  for warning in tentative-definition-compat; do
+
+  ac_var_match_word="no"
+  for word1 in $CFLAGS; do
+    for word2 in -Wno-$warning -W$warning; do
+      if test "$word1" = "$word2"; then
+        ac_var_match_word="yes"
+      fi
+    done
+  done
+
+    if test "$ac_var_match_word" = "no"; then
+      ac_var_added_warnings="$ac_var_added_warnings -W$warning"
+    fi
+  done
+    tmp_CFLAGS="$tmp_CFLAGS $ac_var_added_warnings"
+  squeeze tmp_CFLAGS
+
+            if test "$curl_cv_native_windows" = "yes"; then
+              tmp_CFLAGS="$tmp_CFLAGS -Wno-c++-keyword"  # `wchar_t` triggers it on Windows
+            else
+
+    ac_var_added_warnings=""
+  for warning in c++-keyword; do
+
+  ac_var_match_word="no"
+  for word1 in $CFLAGS; do
+    for word2 in -Wno-$warning -W$warning; do
+      if test "$word1" = "$word2"; then
+        ac_var_match_word="yes"
+      fi
+    done
+  done
+
+    if test "$ac_var_match_word" = "no"; then
+      ac_var_added_warnings="$ac_var_added_warnings -W$warning"
+    fi
+  done
+    tmp_CFLAGS="$tmp_CFLAGS $ac_var_added_warnings"
+  squeeze tmp_CFLAGS
+
+            fi
           fi
         fi
         ;;
@@ -20438,7 +20587,9 @@ printf "%s\n" "$as_me: WARNING: compiler options rejected: $tmp_options" >&2;}
     tmp_CFLAGS="$tmp_CFLAGS $ac_var_added_warnings"
   squeeze tmp_CFLAGS
 
-          # CURL_ADD_COMPILER_WARNINGS([tmp_CFLAGS], [padded])           # Not used because we cannot change public structs
+            tmp_CFLAGS="$tmp_CFLAGS -Wno-padded"                         # Not used because we cannot change public structs
+            tmp_CFLAGS="$tmp_CFLAGS -Wno-switch-default"
+            tmp_CFLAGS="$tmp_CFLAGS -Wno-switch-enum"                    # Not used because this basically disallows default case
 
     ac_var_added_warnings=""
   for warning in pragmas; do
@@ -20479,7 +20630,6 @@ printf "%s\n" "$as_me: WARNING: compiler options rejected: $tmp_options" >&2;}
     tmp_CFLAGS="$tmp_CFLAGS $ac_var_added_warnings"
   squeeze tmp_CFLAGS
 
-          # CURL_ADD_COMPILER_WARNINGS([tmp_CFLAGS], [switch-enum])      # Not used because this basically disallows default case
           # CURL_ADD_COMPILER_WARNINGS([tmp_CFLAGS], [unused-macros])    # Not practical
           # tmp_CFLAGS="$tmp_CFLAGS -Wno-error=unused-macros"
           fi
@@ -25101,28 +25251,10 @@ printf "%s\n" "#define HAVE_GSSGNU 1" >>confdefs.h
 
 else $as_nop
 
-                   for ac_header in gssapi/gssapi.h
-do :
-  ac_fn_c_check_header_compile "$LINENO" "gssapi/gssapi.h" "ac_cv_header_gssapi_gssapi_h" "$ac_includes_default"
-if test "x$ac_cv_header_gssapi_gssapi_h" = xyes
-then :
-  printf "%s\n" "#define HAVE_GSSAPI_GSSAPI_H 1" >>confdefs.h
-
-else $as_nop
-  not_mit=1
-fi
-
-done
-             for ac_header in gssapi/gssapi_generic.h gssapi/gssapi_krb5.h
+                   for ac_header in gssapi/gssapi.h gssapi/gssapi_generic.h gssapi/gssapi_krb5.h
 do :
   as_ac_Header=`printf "%s\n" "ac_cv_header_$ac_header" | $as_tr_sh`
-ac_fn_c_check_header_compile "$LINENO" "$ac_header" "$as_ac_Header" "
-          $ac_includes_default
-          #ifdef HAVE_GSSAPI_GSSAPI_H
-          #include <gssapi/gssapi.h>
-          #endif
-
-"
+ac_fn_c_check_header_compile "$LINENO" "$ac_header" "$as_ac_Header" "$ac_includes_default"
 if eval test \"x\$"$as_ac_Header"\" = x"yes"
 then :
   cat >>confdefs.h <<_ACEOF
@@ -25135,59 +25267,7 @@ fi
 
 done
       if test "x$not_mit" = "x1"; then
-                ac_fn_c_check_header_compile "$LINENO" "gssapi.h" "ac_cv_header_gssapi_h" "$ac_includes_default"
-if test "x$ac_cv_header_gssapi_h" = xyes
-then :
-
-else $as_nop
-
-                        want_gss=no
-            { printf "%s\n" "$as_me:${as_lineno-$LINENO}: WARNING: disabling GSS-API support since no header files were found" >&5
-printf "%s\n" "$as_me: WARNING: disabling GSS-API support since no header files were found" >&2;}
-
-
-fi
-
-      else
-                        { printf "%s\n" "$as_me:${as_lineno-$LINENO}: checking if GSS-API headers declare GSS_C_NT_HOSTBASED_SERVICE" >&5
-printf %s "checking if GSS-API headers declare GSS_C_NT_HOSTBASED_SERVICE... " >&6; }
-        cat confdefs.h - <<_ACEOF >conftest.$ac_ext
-/* end confdefs.h.  */
-
-
-            #include <gssapi/gssapi.h>
-            #include <gssapi/gssapi_generic.h>
-            #include <gssapi/gssapi_krb5.h>
-
-int main(void)
-{
-
-            gss_import_name(
-                            (OM_uint32 *)0,
-                            (gss_buffer_t)0,
-                            GSS_C_NT_HOSTBASED_SERVICE,
-                            (gss_name_t *)0);
-
-  return 0;
-}
-
-_ACEOF
-if ac_fn_c_try_compile "$LINENO"
-then :
-
-          { printf "%s\n" "$as_me:${as_lineno-$LINENO}: result: yes" >&5
-printf "%s\n" "yes" >&6; }
-
-else $as_nop
-
-          { printf "%s\n" "$as_me:${as_lineno-$LINENO}: result: no" >&5
-printf "%s\n" "no" >&6; }
-
-printf "%s\n" "#define HAVE_OLD_GSSMIT 1" >>confdefs.h
-
-
-fi
-rm -f core conftest.err conftest.$ac_objext conftest.beam conftest.$ac_ext
+                as_fn_error $? "MIT or GNU GSS library required, but not found" "$LINENO" 5
       fi
 
 
@@ -25202,7 +25282,7 @@ if test x"$want_gss" = xyes; then
 printf "%s\n" "#define HAVE_GSSAPI 1" >>confdefs.h
 
   HAVE_GSSAPI=1
-  curl_gss_msg="enabled (MIT Kerberos/Heimdal)"
+  curl_gss_msg="enabled (MIT Kerberos)"
   link_pkgconfig=''
 
   if test -n "$gnu_gss"; then
@@ -25520,6 +25600,21 @@ printf "%s\n" "found" >&6; }
         fi
       fi
     fi
+    gss_version=""
+    if test -n "$host_alias" -a -f "$GSSAPI_ROOT/bin/$host_alias-krb5-config"; then
+      gss_version=`$GSSAPI_ROOT/bin/$host_alias-krb5-config --version | $SED 's/Kerberos 5 release //'`
+    elif test "$PKGCONFIG" != "no"; then
+      gss_version=`$PKGCONFIG --modversion mit-krb5-gssapi`
+    elif test -f "$KRB5CONFIG"; then
+      gss_version=`$KRB5CONFIG --version | $SED 's/Kerberos 5 release //'`
+    fi
+    if test -n "$gss_version"; then
+      { printf "%s\n" "$as_me:${as_lineno-$LINENO}: GSS-API MIT Kerberos version detected: $gss_version" >&5
+printf "%s\n" "$as_me: GSS-API MIT Kerberos version detected: $gss_version" >&6;}
+
+printf "%s\n" "#define CURL_KRB5_VERSION \"$gss_version\"" >>confdefs.h
+
+    fi
   else
     LDFLAGS="$LDFLAGS $GSSAPI_LIB_DIR"
     LDFLAGSPC="$LDFLAGSPC $GSSAPI_LIB_DIR"
@@ -25535,8 +25630,6 @@ printf "%s\n" "found" >&6; }
   if test -n "$link_pkgconfig"; then
     if test -n "$gnu_gss"; then
       LIBCURL_PC_REQUIRES_PRIVATE="$LIBCURL_PC_REQUIRES_PRIVATE gss"
-    elif test "x$not_mit" = "x1"; then
-      LIBCURL_PC_REQUIRES_PRIVATE="$LIBCURL_PC_REQUIRES_PRIVATE heimdal-gssapi"
     else
       LIBCURL_PC_REQUIRES_PRIVATE="$LIBCURL_PC_REQUIRES_PRIVATE mit-krb5-gssapi"
     fi
@@ -26244,64 +26337,7 @@ then :
 fi
 
 
-    if test "$ac_cv_lib_ssl_SSL_connect" != yes; then
-            { printf "%s\n" "$as_me:${as_lineno-$LINENO}: checking for ssl with RSAglue/rsaref libs in use" >&5
-printf %s "checking for ssl with RSAglue/rsaref libs in use... " >&6; };
-      OLIBS=$LIBS
-      LIBS="-lRSAglue -lrsaref $LIBS"
-      { printf "%s\n" "$as_me:${as_lineno-$LINENO}: checking for SSL_connect in -lssl" >&5
-printf %s "checking for SSL_connect in -lssl... " >&6; }
-if test ${ac_cv_lib_ssl_SSL_connect+y}
-then :
-  printf %s "(cached) " >&6
-else $as_nop
-  ac_check_lib_save_LIBS=$LIBS
-LIBS="-lssl  $LIBS"
-cat confdefs.h - <<_ACEOF >conftest.$ac_ext
-/* end confdefs.h.  */
-
-
-#ifdef __cplusplus
-extern "C"
-#endif
-char SSL_connect ();
-int main(void)
-{
-return SSL_connect ();
-  return 0;
-}
-_ACEOF
-if ac_fn_c_try_link "$LINENO"
-then :
-  ac_cv_lib_ssl_SSL_connect=yes
-else $as_nop
-  ac_cv_lib_ssl_SSL_connect=no
-fi
-rm -f core conftest.err conftest.$ac_objext conftest.beam \
-    conftest$ac_exeext conftest.$ac_ext
-LIBS=$ac_check_lib_save_LIBS
-fi
-{ printf "%s\n" "$as_me:${as_lineno-$LINENO}: result: $ac_cv_lib_ssl_SSL_connect" >&5
-printf "%s\n" "$ac_cv_lib_ssl_SSL_connect" >&6; }
-if test "x$ac_cv_lib_ssl_SSL_connect" = xyes
-then :
-  printf "%s\n" "#define HAVE_LIBSSL 1" >>confdefs.h
-
-  LIBS="-lssl $LIBS"
-
-fi
-
-      if test "$ac_cv_lib_ssl_SSL_connect" != yes; then
-                { printf "%s\n" "$as_me:${as_lineno-$LINENO}: result: no" >&5
-printf "%s\n" "no" >&6; }
-        LIBS=$OLIBS
-      else
-        { printf "%s\n" "$as_me:${as_lineno-$LINENO}: result: yes" >&5
-printf "%s\n" "yes" >&6; }
-      fi
-
-    else
-
+    if test "$ac_cv_lib_ssl_SSL_connect" = yes; then
                    for ac_header in openssl/x509.h openssl/rsa.h openssl/crypto.h openssl/pem.h openssl/ssl.h openssl/err.h
 do :
   as_ac_Header=`printf "%s\n" "ac_cv_header_$ac_header" | $as_tr_sh`
@@ -26537,7 +26573,46 @@ printf "%s\n" "$as_me: OPENSSL_ENABLED: $OPENSSL_ENABLED" >&6;}
 fi
 
 if test "$OPENSSL_ENABLED" = "1"; then
-  { printf "%s\n" "$as_me:${as_lineno-$LINENO}: checking for SRP support in OpenSSL" >&5
+        { printf "%s\n" "$as_me:${as_lineno-$LINENO}: checking for DES support in OpenSSL" >&5
+printf %s "checking for DES support in OpenSSL... " >&6; }
+  cat confdefs.h - <<_ACEOF >conftest.$ac_ext
+/* end confdefs.h.  */
+
+
+      #ifndef OPENSSL_SUPPRESS_DEPRECATED
+      #define OPENSSL_SUPPRESS_DEPRECATED
+      #endif
+      #include <openssl/des.h>
+
+int main(void)
+{
+
+      DES_ecb_encrypt(0, 0, 0, DES_ENCRYPT);
+
+  return 0;
+}
+
+_ACEOF
+if ac_fn_c_try_link "$LINENO"
+then :
+
+    { printf "%s\n" "$as_me:${as_lineno-$LINENO}: result: yes" >&5
+printf "%s\n" "yes" >&6; }
+
+printf "%s\n" "#define HAVE_DES_ECB_ENCRYPT 1" >>confdefs.h
+
+    HAVE_DES_ECB_ENCRYPT=1
+
+else $as_nop
+
+    { printf "%s\n" "$as_me:${as_lineno-$LINENO}: result: no" >&5
+printf "%s\n" "no" >&6; }
+
+fi
+rm -f core conftest.err conftest.$ac_objext conftest.beam \
+    conftest$ac_exeext conftest.$ac_ext
+
+        { printf "%s\n" "$as_me:${as_lineno-$LINENO}: checking for SRP support in OpenSSL" >&5
 printf %s "checking for SRP support in OpenSSL... " >&6; }
   cat confdefs.h - <<_ACEOF >conftest.$ac_ext
 /* end confdefs.h.  */
@@ -26576,10 +26651,8 @@ printf "%s\n" "no" >&6; }
 fi
 rm -f core conftest.err conftest.$ac_objext conftest.beam \
     conftest$ac_exeext conftest.$ac_ext
-fi
 
-if test X"$OPENSSL_ENABLED" = X"1"; then
-  # Check whether --enable-openssl-auto-load-config was given.
+        # Check whether --enable-openssl-auto-load-config was given.
 if test ${enable_openssl_auto_load_config+y}
 then :
   enableval=$enable_openssl_auto_load_config;  if test X"$enableval" = X"no"; then
@@ -26592,10 +26665,8 @@ printf "%s\n" "#define CURL_DISABLE_OPENSSL_AUTO_LOAD_CONFIG 1" >>confdefs.h
 
 fi
 
-fi
 
-if test "$OPENSSL_ENABLED" = "1"; then
-  { printf "%s\n" "$as_me:${as_lineno-$LINENO}: checking for QUIC support and OpenSSL >= 3.3" >&5
+        { printf "%s\n" "$as_me:${as_lineno-$LINENO}: checking for QUIC support and OpenSSL >= 3.3" >&5
 printf %s "checking for QUIC support and OpenSSL >= 3.3... " >&6; }
   cat confdefs.h - <<_ACEOF >conftest.$ac_ext
 /* end confdefs.h.  */
@@ -26907,9 +26978,8 @@ printf "%s\n" "$as_me: Added $gtlslib to CURL_LIBRARY_PATH" >&6;}
   test -z "$ssl_msg" || ssl_backends="${ssl_backends:+$ssl_backends, }$ssl_msg"
 fi
 
-
 if test "$GNUTLS_ENABLED" = "1"; then
-  USE_GNUTLS_NETTLE=
+        USE_GNUTLS_NETTLE=
   # First check if we can detect either crypto library via transitive linking
   { printf "%s\n" "$as_me:${as_lineno-$LINENO}: checking for nettle_MD5Init in -lgnutls" >&5
 printf %s "checking for nettle_MD5Init in -lgnutls... " >&6; }
@@ -26997,10 +27067,8 @@ fi
     as_fn_error $? "GnuTLS found, but nettle was not found" "$LINENO" 5
   fi
   LIBS="-lnettle $LIBS"
-fi
 
-if test "$GNUTLS_ENABLED" = "1"; then
-  { printf "%s\n" "$as_me:${as_lineno-$LINENO}: checking for gnutls_srp_verifier in -lgnutls" >&5
+        { printf "%s\n" "$as_me:${as_lineno-$LINENO}: checking for gnutls_srp_verifier in -lgnutls" >&5
 printf %s "checking for gnutls_srp_verifier in -lgnutls... " >&6; }
 if test ${ac_cv_lib_gnutls_gnutls_srp_verifier+y}
 then :
@@ -27045,7 +27113,6 @@ printf "%s\n" "#define HAVE_GNUTLS_SRP 1" >>confdefs.h
 fi
 
 fi
-
 
 
 
@@ -27200,6 +27267,17 @@ printf "%s\n" "$as_me: Added $mbedtlslib to CURL_LIBRARY_PATH" >&6;}
       fi
             if false; then
         LIBCURL_PC_REQUIRES_PRIVATE="$LIBCURL_PC_REQUIRES_PRIVATE mbedtls mbedx509 mbedcrypto"
+      fi
+
+            ac_fn_c_check_func "$LINENO" "mbedtls_des_crypt_ecb" "ac_cv_func_mbedtls_des_crypt_ecb"
+if test "x$ac_cv_func_mbedtls_des_crypt_ecb" = xyes
+then :
+  printf "%s\n" "#define HAVE_MBEDTLS_DES_CRYPT_ECB 1" >>confdefs.h
+
+fi
+
+      if test "$ac_cv_func_mbedtls_des_crypt_ecb" = 'yes'; then
+        HAVE_MBEDTLS_DES_CRYPT_ECB=1
       fi
     fi
 
@@ -27861,7 +27939,7 @@ printf "%s\n" "$as_me: pkg-config: SSL_CPPFLAGS: \"$SSL_CPPFLAGS\"" >&6;}
 
                                           LIBS="$SSL_LIBS $LIBS"
       link_pkgconfig=1
-      ssl_msg="rustls"
+      ssl_msg="Rustls"
 
 printf "%s\n" "#define USE_RUSTLS 1" >>confdefs.h
 
@@ -27939,7 +28017,7 @@ printf "%s\n" "#define USE_RUSTLS 1" >>confdefs.h
 
         RUSTLS_ENABLED=1
         USE_RUSTLS="yes"
-        ssl_msg="rustls"
+        ssl_msg="Rustls"
         test rustls != "$DEFAULT_SSL_BACKEND" || VALID_DEFAULT_SSL_BACKEND=yes
 
 else $as_nop
@@ -27959,6 +28037,63 @@ printf "%s\n" "$as_me: RUSTLS_ENABLED: $RUSTLS_ENABLED" >&6;}
     as_fn_error $? "--with-rustls was given but Rustls could not be detected" "$LINENO" 5
   fi
 fi
+
+
+{ printf "%s\n" "$as_me:${as_lineno-$LINENO}: checking whether to enable Apple OS native certificate validation" >&5
+printf %s "checking whether to enable Apple OS native certificate validation... " >&6; }
+if test "x$OPT_APPLE_SECTRUST" = xyes; then
+  cat confdefs.h - <<_ACEOF >conftest.$ac_ext
+/* end confdefs.h.  */
+
+
+      #include <sys/types.h>
+      #include <TargetConditionals.h>
+
+int main(void)
+{
+
+      #if TARGET_OS_MAC
+        return 0;
+      #else
+      #error Not macOS
+      #endif
+
+  return 0;
+}
+
+_ACEOF
+if ac_fn_c_try_compile "$LINENO"
+then :
+
+    build_for_apple="yes"
+
+else $as_nop
+
+    build_for_apple="no"
+
+fi
+rm -f core conftest.err conftest.$ac_objext conftest.beam conftest.$ac_ext
+  if test "x$build_for_apple" == "xno"; then
+    as_fn_error $? "Apple SecTrust can only be enabled for Apple OS targets" "$LINENO" 5
+  fi
+  if test "x$OPENSSL_ENABLED" == "x1" -o "x$GNUTLS_ENABLED" == "x1"; then
+    { printf "%s\n" "$as_me:${as_lineno-$LINENO}: result: yes" >&5
+printf "%s\n" "yes" >&6; }
+
+printf "%s\n" "#define USE_APPLE_SECTRUST 1" >>confdefs.h
+
+    APPLE_SECTRUST_ENABLED=1
+    APPLE_SECTRUST_LDFLAGS='-framework CoreFoundation -framework CoreServices -framework Security'
+    LDFLAGS="$LDFLAGS $APPLE_SECTRUST_LDFLAGS"
+    LDFLAGSPC="$LDFLAGSPC $APPLE_SECTRUST_LDFLAGS"
+  else
+    as_fn_error $? "Apple SecTrust is only supported for OpenSSL/GnuTLS builds" "$LINENO" 5
+  fi
+else
+  { printf "%s\n" "$as_me:${as_lineno-$LINENO}: result: no" >&5
+printf "%s\n" "no" >&6; }
+fi
+
 
 
 if test "x$USE_WIN32_CRYPTO" = "x1" -o "x$SCHANNEL_ENABLED" = "x1"; then
@@ -28059,6 +28194,12 @@ fi
   capath_warning="   (warning: certs not found)"
   check_capath=""
 
+  if test "x$APPLE_SECTRUST_ENABLED" = "x1"; then
+    ca_native="Apple SecTrust"
+  else
+    ca_native="no"
+  fi
+
   if test "x$want_ca" != "xno" -a "x$want_ca" != "xunset" -a \
           "x$want_capath" != "xno" -a "x$want_capath" != "xunset"; then
         ca="$want_ca"
@@ -28069,6 +28210,10 @@ fi
   elif test "x$want_capath" != "xno" -a "x$want_capath" != "xunset"; then
         capath="$want_capath"
     ca="no"
+  elif test "x$ca_native" != "xno"; then
+    # native ca configured, do not look further
+    ca="no"
+    capath="no"
   else
             ca="no"
     capath="no"
@@ -28539,23 +28684,192 @@ fi
 
 
 
+OPT_LIBGSASL=no
 
 # Check whether --with-libgsasl was given.
 if test ${with_libgsasl+y}
 then :
-  withval=$with_libgsasl; with_libgsasl=$withval
-else $as_nop
-  with_libgsasl=yes
+  withval=$with_libgsasl; OPT_LIBGSASL=$withval
 fi
 
-if test $with_libgsasl != "no"; then
-  { printf "%s\n" "$as_me:${as_lineno-$LINENO}: checking for library containing gsasl_init" >&5
-printf %s "checking for library containing gsasl_init... " >&6; }
-if test ${ac_cv_search_gsasl_init+y}
+
+if test "$OPT_LIBGSASL" != no; then
+    CLEANLDFLAGS="$LDFLAGS"
+  CLEANLDFLAGSPC="$LDFLAGSPC"
+  CLEANCPPFLAGS="$CPPFLAGS"
+  CLEANLIBS="$LIBS"
+
+  case "$OPT_LIBGSASL" in
+    yes)
+
+  if test -n "$PKG_CONFIG"; then
+    PKGCONFIG="$PKG_CONFIG"
+  else
+    if test -n "$ac_tool_prefix"; then
+  # Extract the first word of "${ac_tool_prefix}pkg-config", so it can be a program name with args.
+set dummy ${ac_tool_prefix}pkg-config; ac_word=$2
+{ printf "%s\n" "$as_me:${as_lineno-$LINENO}: checking for $ac_word" >&5
+printf %s "checking for $ac_word... " >&6; }
+if test ${ac_cv_path_PKGCONFIG+y}
 then :
   printf %s "(cached) " >&6
 else $as_nop
-  ac_func_search_save_LIBS=$LIBS
+  case $PKGCONFIG in
+  [\\/]* | ?:[\\/]*)
+  ac_cv_path_PKGCONFIG="$PKGCONFIG" # Let the user override the test with a path.
+  ;;
+  *)
+  as_save_IFS=$IFS; IFS=$PATH_SEPARATOR
+as_dummy="$PATH:/usr/bin:/usr/local/bin"
+for as_dir in $as_dummy
+do
+  IFS=$as_save_IFS
+  case $as_dir in #(((
+    '') as_dir=./ ;;
+    */) ;;
+    *) as_dir=$as_dir/ ;;
+  esac
+    for ac_exec_ext in '' $ac_executable_extensions; do
+  if as_fn_executable_p "$as_dir$ac_word$ac_exec_ext"; then
+    ac_cv_path_PKGCONFIG="$as_dir$ac_word$ac_exec_ext"
+    printf "%s\n" "$as_me:${as_lineno-$LINENO}: found $as_dir$ac_word$ac_exec_ext" >&5
+    break 2
+  fi
+done
+  done
+IFS=$as_save_IFS
+
+  ;;
+esac
+fi
+PKGCONFIG=$ac_cv_path_PKGCONFIG
+if test -n "$PKGCONFIG"; then
+  { printf "%s\n" "$as_me:${as_lineno-$LINENO}: result: $PKGCONFIG" >&5
+printf "%s\n" "$PKGCONFIG" >&6; }
+else
+  { printf "%s\n" "$as_me:${as_lineno-$LINENO}: result: no" >&5
+printf "%s\n" "no" >&6; }
+fi
+
+
+fi
+if test -z "$ac_cv_path_PKGCONFIG"; then
+  ac_pt_PKGCONFIG=$PKGCONFIG
+  # Extract the first word of "pkg-config", so it can be a program name with args.
+set dummy pkg-config; ac_word=$2
+{ printf "%s\n" "$as_me:${as_lineno-$LINENO}: checking for $ac_word" >&5
+printf %s "checking for $ac_word... " >&6; }
+if test ${ac_cv_path_ac_pt_PKGCONFIG+y}
+then :
+  printf %s "(cached) " >&6
+else $as_nop
+  case $ac_pt_PKGCONFIG in
+  [\\/]* | ?:[\\/]*)
+  ac_cv_path_ac_pt_PKGCONFIG="$ac_pt_PKGCONFIG" # Let the user override the test with a path.
+  ;;
+  *)
+  as_save_IFS=$IFS; IFS=$PATH_SEPARATOR
+as_dummy="$PATH:/usr/bin:/usr/local/bin"
+for as_dir in $as_dummy
+do
+  IFS=$as_save_IFS
+  case $as_dir in #(((
+    '') as_dir=./ ;;
+    */) ;;
+    *) as_dir=$as_dir/ ;;
+  esac
+    for ac_exec_ext in '' $ac_executable_extensions; do
+  if as_fn_executable_p "$as_dir$ac_word$ac_exec_ext"; then
+    ac_cv_path_ac_pt_PKGCONFIG="$as_dir$ac_word$ac_exec_ext"
+    printf "%s\n" "$as_me:${as_lineno-$LINENO}: found $as_dir$ac_word$ac_exec_ext" >&5
+    break 2
+  fi
+done
+  done
+IFS=$as_save_IFS
+
+  ;;
+esac
+fi
+ac_pt_PKGCONFIG=$ac_cv_path_ac_pt_PKGCONFIG
+if test -n "$ac_pt_PKGCONFIG"; then
+  { printf "%s\n" "$as_me:${as_lineno-$LINENO}: result: $ac_pt_PKGCONFIG" >&5
+printf "%s\n" "$ac_pt_PKGCONFIG" >&6; }
+else
+  { printf "%s\n" "$as_me:${as_lineno-$LINENO}: result: no" >&5
+printf "%s\n" "no" >&6; }
+fi
+
+  if test "x$ac_pt_PKGCONFIG" = x; then
+    PKGCONFIG="no"
+  else
+    case $cross_compiling:$ac_tool_warned in
+yes:)
+{ printf "%s\n" "$as_me:${as_lineno-$LINENO}: WARNING: using cross tools not prefixed with host triplet" >&5
+printf "%s\n" "$as_me: WARNING: using cross tools not prefixed with host triplet" >&2;}
+ac_tool_warned=yes ;;
+esac
+    PKGCONFIG=$ac_pt_PKGCONFIG
+  fi
+else
+  PKGCONFIG="$ac_cv_path_PKGCONFIG"
+fi
+
+  fi
+
+  if test "x$PKGCONFIG" != "xno"; then
+    { printf "%s\n" "$as_me:${as_lineno-$LINENO}: checking for libgsasl options with pkg-config" >&5
+printf %s "checking for libgsasl options with pkg-config... " >&6; }
+        itexists=`
+  if test -n ""; then
+    PKG_CONFIG_LIBDIR=""
+    export PKG_CONFIG_LIBDIR
+  fi
+       $PKGCONFIG --exists libgsasl >/dev/null 2>&1 && echo 1`
+
+    if test -z "$itexists"; then
+                  PKGCONFIG="no"
+      { printf "%s\n" "$as_me:${as_lineno-$LINENO}: result: no" >&5
+printf "%s\n" "no" >&6; }
+    else
+      { printf "%s\n" "$as_me:${as_lineno-$LINENO}: result: found" >&5
+printf "%s\n" "found" >&6; }
+    fi
+  fi
+
+
+      if test "$PKGCONFIG" != "no"; then
+        LIB_GSASL=`$PKGCONFIG --libs-only-l libgsasl`
+        LD_GSASL=`$PKGCONFIG --libs-only-L libgsasl`
+        CPP_GSASL=`$PKGCONFIG --cflags-only-I libgsasl`
+      else
+                LIB_GSASL="-lgsasl"
+      fi
+      ;;
+    *)
+            PREFIX_GSASL=$OPT_LIBGSASL
+      ;;
+  esac
+
+    if test -n "$PREFIX_GSASL"; then
+    LIB_GSASL="-lgsasl"
+    LD_GSASL=-L${PREFIX_GSASL}/lib$libsuff
+    CPP_GSASL=-I${PREFIX_GSASL}/include
+  fi
+
+  LDFLAGS="$LDFLAGS $LD_GSASL"
+  LDFLAGSPC="$LDFLAGSPC $LD_GSASL"
+  CPPFLAGS="$CPPFLAGS $CPP_GSASL"
+  LIBS="$LIB_GSASL $LIBS"
+
+  { printf "%s\n" "$as_me:${as_lineno-$LINENO}: checking for gsasl_init in -lgsasl" >&5
+printf %s "checking for gsasl_init in -lgsasl... " >&6; }
+if test ${ac_cv_lib_gsasl_gsasl_init+y}
+then :
+  printf %s "(cached) " >&6
+else $as_nop
+  ac_check_lib_save_LIBS=$LIBS
+LIBS="-lgsasl  $LIBS"
 cat confdefs.h - <<_ACEOF >conftest.$ac_ext
 /* end confdefs.h.  */
 
@@ -28570,51 +28884,46 @@ return gsasl_init ();
   return 0;
 }
 _ACEOF
-for ac_lib in '' gsasl
-do
-  if test -z "$ac_lib"; then
-    ac_res="none required"
-  else
-    ac_res=-l$ac_lib
-    LIBS="-l$ac_lib  $ac_func_search_save_LIBS"
-  fi
-  if ac_fn_c_try_link "$LINENO"
+if ac_fn_c_try_link "$LINENO"
 then :
-  ac_cv_search_gsasl_init=$ac_res
+  ac_cv_lib_gsasl_gsasl_init=yes
+else $as_nop
+  ac_cv_lib_gsasl_gsasl_init=no
 fi
 rm -f core conftest.err conftest.$ac_objext conftest.beam \
-    conftest$ac_exeext
-  if test ${ac_cv_search_gsasl_init+y}
-then :
-  break
+    conftest$ac_exeext conftest.$ac_ext
+LIBS=$ac_check_lib_save_LIBS
 fi
-done
-if test ${ac_cv_search_gsasl_init+y}
+{ printf "%s\n" "$as_me:${as_lineno-$LINENO}: result: $ac_cv_lib_gsasl_gsasl_init" >&5
+printf "%s\n" "$ac_cv_lib_gsasl_gsasl_init" >&6; }
+if test "x$ac_cv_lib_gsasl_gsasl_init" = xyes
 then :
 
-else $as_nop
-  ac_cv_search_gsasl_init=no
-fi
-rm conftest.$ac_ext
-LIBS=$ac_func_search_save_LIBS
-fi
-{ printf "%s\n" "$as_me:${as_lineno-$LINENO}: result: $ac_cv_search_gsasl_init" >&5
-printf "%s\n" "$ac_cv_search_gsasl_init" >&6; }
-ac_res=$ac_cv_search_gsasl_init
-if test "$ac_res" != no
+             for ac_header in gsasl.h
+do :
+  ac_fn_c_check_header_compile "$LINENO" "gsasl.h" "ac_cv_header_gsasl_h" "$ac_includes_default"
+if test "x$ac_cv_header_gsasl_h" = xyes
 then :
-  test "$ac_res" = "none required" || LIBS="$ac_res $LIBS"
-  curl_gsasl_msg="enabled";
+  printf "%s\n" "#define HAVE_GSASL_H 1" >>confdefs.h
+ curl_gsasl_msg="enabled"
 
 printf "%s\n" "#define USE_GSASL 1" >>confdefs.h
 
-      LIBCURL_PC_REQUIRES_PRIVATE="$LIBCURL_PC_REQUIRES_PRIVATE libgsasl"
+        USE_LIBGSASL=1
+        LIBCURL_PC_REQUIRES_PRIVATE="$LIBCURL_PC_REQUIRES_PRIVATE libgsasl"
+
+fi
+
+done
 
 else $as_nop
-  curl_gsasl_msg="no      (libgsasl not found)";
+        LDFLAGS=$CLEANLDFLAGS
+      LDFLAGSPC=$CLEANLDFLAGSPC
+      CPPFLAGS=$CLEANCPPFLAGS
+      LIBS=$CLEANLIBS
+      curl_gsasl_msg="no      (libgsasl not found)"
       { printf "%s\n" "$as_me:${as_lineno-$LINENO}: WARNING: libgsasl was not found" >&5
 printf "%s\n" "$as_me: WARNING: libgsasl was not found" >&2;}
-
 
 fi
 
@@ -28657,17 +28966,6 @@ then :
   withval=$with_libssh; OPT_LIBSSH=$withval
 else $as_nop
   OPT_LIBSSH=no
-fi
-
-
-OPT_WOLFSSH=off
-
-# Check whether --with-wolfssh was given.
-if test ${with_wolfssh+y}
-then :
-  withval=$with_wolfssh; OPT_WOLFSSH=$withval
-else $as_nop
-  OPT_WOLFSSH=no
 fi
 
 
@@ -28844,9 +29142,9 @@ printf "%s\n" "found" >&6; }
   CPPFLAGS="$CPPFLAGS $CPP_SSH2"
   LIBS="$LIB_SSH2 $LIBS"
 
-    { printf "%s\n" "$as_me:${as_lineno-$LINENO}: checking for libssh2_free in -lssh2" >&5
-printf %s "checking for libssh2_free in -lssh2... " >&6; }
-if test ${ac_cv_lib_ssh2_libssh2_free+y}
+    { printf "%s\n" "$as_me:${as_lineno-$LINENO}: checking for libssh2_agent_get_identity_path in -lssh2" >&5
+printf %s "checking for libssh2_agent_get_identity_path in -lssh2... " >&6; }
+if test ${ac_cv_lib_ssh2_libssh2_agent_get_identity_path+y}
 then :
   printf %s "(cached) " >&6
 else $as_nop
@@ -28859,26 +29157,26 @@ cat confdefs.h - <<_ACEOF >conftest.$ac_ext
 #ifdef __cplusplus
 extern "C"
 #endif
-char libssh2_free ();
+char libssh2_agent_get_identity_path ();
 int main(void)
 {
-return libssh2_free ();
+return libssh2_agent_get_identity_path ();
   return 0;
 }
 _ACEOF
 if ac_fn_c_try_link "$LINENO"
 then :
-  ac_cv_lib_ssh2_libssh2_free=yes
+  ac_cv_lib_ssh2_libssh2_agent_get_identity_path=yes
 else $as_nop
-  ac_cv_lib_ssh2_libssh2_free=no
+  ac_cv_lib_ssh2_libssh2_agent_get_identity_path=no
 fi
 rm -f core conftest.err conftest.$ac_objext conftest.beam \
     conftest$ac_exeext conftest.$ac_ext
 LIBS=$ac_check_lib_save_LIBS
 fi
-{ printf "%s\n" "$as_me:${as_lineno-$LINENO}: result: $ac_cv_lib_ssh2_libssh2_free" >&5
-printf "%s\n" "$ac_cv_lib_ssh2_libssh2_free" >&6; }
-if test "x$ac_cv_lib_ssh2_libssh2_free" = xyes
+{ printf "%s\n" "$as_me:${as_lineno-$LINENO}: result: $ac_cv_lib_ssh2_libssh2_agent_get_identity_path" >&5
+printf "%s\n" "$ac_cv_lib_ssh2_libssh2_agent_get_identity_path" >&6; }
+if test "x$ac_cv_lib_ssh2_libssh2_agent_get_identity_path" = xyes
 then :
   printf "%s\n" "#define HAVE_LIBSSH2 1" >>confdefs.h
 
@@ -29174,78 +29472,6 @@ printf "%s\n" "$as_me: Added $DIR_SSH to CURL_LIBRARY_PATH" >&6;}
     CPPFLAGS=$CLEANCPPFLAGS
     LIBS=$CLEANLIBS
   fi
-elif test X"$OPT_WOLFSSH" != Xno; then
-    CLEANLDFLAGS="$LDFLAGS"
-  CLEANLDFLAGSPC="$LDFLAGSPC"
-  CLEANCPPFLAGS="$CPPFLAGS"
-  CLEANLIBS="$LIBS"
-
-  if test "$OPT_WOLFSSH" != yes; then
-    WOLFCONFIG="$OPT_WOLFSSH/bin/wolfssh-config"
-    WOLFSSH_LIBS=`$WOLFCONFIG --libs`
-    LDFLAGS="$LDFLAGS $WOLFSSH_LIBS"
-    LDFLAGSPC="$LDFLAGSPC $WOLFSSH_LIBS"
-    CPPFLAGS="$CPPFLAGS `$WOLFCONFIG --cflags`"
-  fi
-
-  { printf "%s\n" "$as_me:${as_lineno-$LINENO}: checking for wolfSSH_Init in -lwolfssh" >&5
-printf %s "checking for wolfSSH_Init in -lwolfssh... " >&6; }
-if test ${ac_cv_lib_wolfssh_wolfSSH_Init+y}
-then :
-  printf %s "(cached) " >&6
-else $as_nop
-  ac_check_lib_save_LIBS=$LIBS
-LIBS="-lwolfssh  $LIBS"
-cat confdefs.h - <<_ACEOF >conftest.$ac_ext
-/* end confdefs.h.  */
-
-
-#ifdef __cplusplus
-extern "C"
-#endif
-char wolfSSH_Init ();
-int main(void)
-{
-return wolfSSH_Init ();
-  return 0;
-}
-_ACEOF
-if ac_fn_c_try_link "$LINENO"
-then :
-  ac_cv_lib_wolfssh_wolfSSH_Init=yes
-else $as_nop
-  ac_cv_lib_wolfssh_wolfSSH_Init=no
-fi
-rm -f core conftest.err conftest.$ac_objext conftest.beam \
-    conftest$ac_exeext conftest.$ac_ext
-LIBS=$ac_check_lib_save_LIBS
-fi
-{ printf "%s\n" "$as_me:${as_lineno-$LINENO}: result: $ac_cv_lib_wolfssh_wolfSSH_Init" >&5
-printf "%s\n" "$ac_cv_lib_wolfssh_wolfSSH_Init" >&6; }
-if test "x$ac_cv_lib_wolfssh_wolfSSH_Init" = xyes
-then :
-  printf "%s\n" "#define HAVE_LIBWOLFSSH 1" >>confdefs.h
-
-  LIBS="-lwolfssh $LIBS"
-
-fi
-
-
-         for ac_header in wolfssh/ssh.h
-do :
-  ac_fn_c_check_header_compile "$LINENO" "wolfssh/ssh.h" "ac_cv_header_wolfssh_ssh_h" "$ac_includes_default"
-if test "x$ac_cv_header_wolfssh_ssh_h" = xyes
-then :
-  printf "%s\n" "#define HAVE_WOLFSSH_SSH_H 1" >>confdefs.h
- curl_ssh_msg="enabled (wolfSSH)"
-
-printf "%s\n" "#define USE_WOLFSSH 1" >>confdefs.h
-
-    USE_WOLFSSH=1
-
-fi
-
-done
 fi
 
 
@@ -44186,9 +44412,9 @@ fi
 
       LIBS="$save_LIBS"
 
-            case $host in
+      case $host in
         *-hp-hpux*)
-                    USE_THREADS_POSIX=""
+          CFLAGS="$CFLAGS -mt"
           ;;
         *)
           ;;
@@ -45147,8 +45373,8 @@ fi
 done
   fi
   if test "x$RUSTLS_ENABLED" = "x1"; then
-      ECH_SUPPORT="$ECH_SUPPORT rustls-ffi"
-      ECH_ENABLED_RUSTLS=1
+    ECH_SUPPORT="$ECH_SUPPORT rustls-ffi"
+    ECH_ENABLED_RUSTLS=1
   fi
 
     if test "x$ECH_ENABLED_OPENSSL" = "x1" -o \
@@ -45421,10 +45647,11 @@ fi
 use_curl_ntlm_core=no
 
 if test "x$CURL_DISABLE_NTLM" != "x1"; then
-  if test "x$OPENSSL_ENABLED" = "x1" -o "x$MBEDTLS_ENABLED" = "x1" \
+  if test "x$HAVE_DES_ECB_ENCRYPT" = "x1" \
       -o "x$GNUTLS_ENABLED" = "x1" \
       -o "x$USE_WIN32_CRYPTO" = "x1" \
-      -o "x$HAVE_WOLFSSL_DES_ECB_ENCRYPT" = "x1"; then
+      -o "x$HAVE_WOLFSSL_DES_ECB_ENCRYPT" = "x1" \
+      -o "x$HAVE_MBEDTLS_DES_CRYPT_ECB" = "x1"; then
     use_curl_ntlm_core=yes
   fi
 
@@ -45488,6 +45715,10 @@ if test "x$OPENSSL_ENABLED" = "x1" -o -n "$SSL_ENABLED"; then
   if test "x$ECH_ENABLED" = "x1"; then
     SUPPORT_FEATURES="$SUPPORT_FEATURES ECH"
   fi
+fi
+
+if test "x$APPLE_SECTRUST_ENABLED" = "x1"; then
+  SUPPORT_FEATURES="$SUPPORT_FEATURES AppleSecTrust"
 fi
 
 if test "x$want_httpsrr" != "xno"; then
@@ -45633,9 +45864,6 @@ if test "x$USE_LIBSSH2" = "x1"; then
 fi
 if test "x$USE_LIBSSH" = "x1"; then
   SUPPORT_PROTOCOLS="$SUPPORT_PROTOCOLS SCP"
-  SUPPORT_PROTOCOLS="$SUPPORT_PROTOCOLS SFTP"
-fi
-if test "x$USE_WOLFSSH" = "x1"; then
   SUPPORT_PROTOCOLS="$SUPPORT_PROTOCOLS SFTP"
 fi
 if test "x$CURL_DISABLE_IPFS" != "x1"; then
@@ -48536,6 +48764,7 @@ SUPPORT_PROTOCOLS_LOWER=`echo "$SUPPORT_PROTOCOLS" | tr A-Z a-z`
   Verbose errors:   ${curl_verbose_msg}
   Code coverage:    ${curl_coverage_msg}
   SSPI:             ${curl_sspi_msg}
+  ca native:        ${ca_native}
   ca cert bundle:   ${ca}${ca_warning}
   ca cert path:     ${capath}${capath_warning}
   ca cert embed:    ${CURL_CA_EMBED_msg}
@@ -48590,6 +48819,7 @@ printf "%s\n" "$as_me: Configured to build curl/libcurl:
   Verbose errors:   ${curl_verbose_msg}
   Code coverage:    ${curl_coverage_msg}
   SSPI:             ${curl_sspi_msg}
+  ca native:        ${ca_native}
   ca cert bundle:   ${ca}${ca_warning}
   ca cert path:     ${capath}${capath_warning}
   ca cert embed:    ${CURL_CA_EMBED_msg}
@@ -48651,14 +48881,6 @@ fi
   if test "$curl_cv_winuwp" = 'yes'; then
     curl_pflags="${curl_pflags} UWP"
   fi
-  case $host in
-    *-*-*bsd*|*-*-aix*|*-*-hpux*|*-*-interix*|*-*-irix*|*-*-linux*|*-*-solaris*|*-*-sunos*|*-apple-*|*-*-cygwin*|*-*-msys*)
-      curl_pflags="${curl_pflags} UNIX";;
-  esac
-  case $host in
-    *-*-*bsd*)
-      curl_pflags="${curl_pflags} BSD";;
-  esac
   if test "$curl_cv_cygwin" = 'yes'; then
     curl_pflags="${curl_pflags} CYGWIN"
   fi
@@ -48668,6 +48890,11 @@ fi
   esac
   if test "x$compiler_id" = 'xGNU_C'; then
     curl_pflags="${curl_pflags} GCC"
+  fi
+  if test "$compiler_id" = "APPLECLANG"; then
+    curl_pflags="${curl_pflags} APPLE-CLANG"
+  elif test "$compiler_id" = "CLANG"; then
+    curl_pflags="${curl_pflags} LLVM-CLANG"
   fi
   case $host_os in
     mingw*) curl_pflags="${curl_pflags} MINGW";;

@@ -38,7 +38,7 @@ digest
 <name>
 SMTP DIGEST-MD5 authentication with SASL downgrade
 </name>
-<stdin>
+<stdin crlf="yes">
 mail body
 </stdin>
 <command>
@@ -49,7 +49,7 @@ smtp://%HOSTIP:%SMTPPORT/%TESTNUMBER --mail-rcpt recipient@example.com --mail-fr
 #
 # Verify data after the test has been "shot"
 <verify>
-<protocol>
+<protocol crlf="yes">
 EHLO %TESTNUMBER
 AUTH DIGEST-MD5
 *
@@ -60,7 +60,7 @@ RCPT TO:<recipient@example.com>
 DATA
 QUIT
 </protocol>
-<upload>
+<upload crlf="yes">
 mail body
 .
 </upload>

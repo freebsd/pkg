@@ -4,11 +4,14 @@ SPDX-License-Identifier: curl
 Long: follow
 Help: Follow redirects per spec
 Category: http
+Protocols: HTTP
 Added: 8.16.0
 Multi: boolean
 See-also:
   - request
   - location
+  - proto-redir
+  - max-redirs
 Example:
   - -X POST --follow $URL
 ---
@@ -23,3 +26,5 @@ status codes 307 or 308, but may be reset to GET for 301, 302 and 303.
 
 This is subtly different than --location, as that option always set the custom
 method in all subsequent requests independent of response code.
+
+Restrict which protocols a redirect is accepted to follow with --proto-redir.

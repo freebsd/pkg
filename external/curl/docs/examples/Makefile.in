@@ -159,7 +159,8 @@ check_PROGRAMS = 10-at-a-time$(EXEEXT) address-scope$(EXEEXT) \
 	imap-lsub$(EXEEXT) imap-multi$(EXEEXT) imap-noop$(EXEEXT) \
 	imap-search$(EXEEXT) imap-ssl$(EXEEXT) imap-store$(EXEEXT) \
 	imap-tls$(EXEEXT) interface$(EXEEXT) ipv6$(EXEEXT) \
-	keepalive$(EXEEXT) localport$(EXEEXT) maxconnects$(EXEEXT) \
+	keepalive$(EXEEXT) localport$(EXEEXT) \
+	log_failed_transfers$(EXEEXT) maxconnects$(EXEEXT) \
 	multi-app$(EXEEXT) multi-debugcallback$(EXEEXT) \
 	multi-double$(EXEEXT) multi-formadd$(EXEEXT) \
 	multi-legacy$(EXEEXT) multi-post$(EXEEXT) \
@@ -177,12 +178,14 @@ check_PROGRAMS = 10-at-a-time$(EXEEXT) address-scope$(EXEEXT) \
 	simplepost$(EXEEXT) simplessl$(EXEEXT) smtp-authzid$(EXEEXT) \
 	smtp-expn$(EXEEXT) smtp-mail$(EXEEXT) smtp-mime$(EXEEXT) \
 	smtp-multi$(EXEEXT) smtp-ssl$(EXEEXT) smtp-tls$(EXEEXT) \
-	smtp-vrfy$(EXEEXT) sslbackend$(EXEEXT) unixsocket$(EXEEXT) \
-	url2file$(EXEEXT) urlapi$(EXEEXT) websocket$(EXEEXT) \
-	websocket-cb$(EXEEXT) websocket-updown$(EXEEXT)
+	smtp-vrfy$(EXEEXT) sslbackend$(EXEEXT) synctime$(EXEEXT) \
+	unixsocket$(EXEEXT) url2file$(EXEEXT) urlapi$(EXEEXT) \
+	websocket$(EXEEXT) websocket-cb$(EXEEXT) \
+	websocket-updown$(EXEEXT)
 subdir = docs/examples
 ACLOCAL_M4 = $(top_srcdir)/aclocal.m4
 am__aclocal_m4_deps = $(top_srcdir)/m4/curl-amissl.m4 \
+	$(top_srcdir)/m4/curl-apple-sectrust.m4 \
 	$(top_srcdir)/m4/curl-compilers.m4 \
 	$(top_srcdir)/m4/curl-confopts.m4 \
 	$(top_srcdir)/m4/curl-functions.m4 \
@@ -452,6 +455,10 @@ localport_SOURCES = localport.c
 localport_OBJECTS = localport.$(OBJEXT)
 localport_LDADD = $(LDADD)
 localport_DEPENDENCIES = $(top_builddir)/lib/libcurl.la
+log_failed_transfers_SOURCES = log_failed_transfers.c
+log_failed_transfers_OBJECTS = log_failed_transfers.$(OBJEXT)
+log_failed_transfers_LDADD = $(LDADD)
+log_failed_transfers_DEPENDENCIES = $(top_builddir)/lib/libcurl.la
 maxconnects_SOURCES = maxconnects.c
 maxconnects_OBJECTS = maxconnects.$(OBJEXT)
 maxconnects_LDADD = $(LDADD)
@@ -644,6 +651,10 @@ sslbackend_SOURCES = sslbackend.c
 sslbackend_OBJECTS = sslbackend.$(OBJEXT)
 sslbackend_LDADD = $(LDADD)
 sslbackend_DEPENDENCIES = $(top_builddir)/lib/libcurl.la
+synctime_SOURCES = synctime.c
+synctime_OBJECTS = synctime.$(OBJEXT)
+synctime_LDADD = $(LDADD)
+synctime_DEPENDENCIES = $(top_builddir)/lib/libcurl.la
 unixsocket_SOURCES = unixsocket.c
 unixsocket_OBJECTS = unixsocket.$(OBJEXT)
 unixsocket_LDADD = $(LDADD)
@@ -714,34 +725,34 @@ am__depfiles_remade = ./$(DEPDIR)/10-at-a-time.Po \
 	./$(DEPDIR)/imap-store.Po ./$(DEPDIR)/imap-tls.Po \
 	./$(DEPDIR)/interface.Po ./$(DEPDIR)/ipv6.Po \
 	./$(DEPDIR)/keepalive.Po ./$(DEPDIR)/localport.Po \
-	./$(DEPDIR)/maxconnects.Po ./$(DEPDIR)/multi-app.Po \
-	./$(DEPDIR)/multi-debugcallback.Po ./$(DEPDIR)/multi-double.Po \
-	./$(DEPDIR)/multi-formadd.Po ./$(DEPDIR)/multi-legacy.Po \
-	./$(DEPDIR)/multi-post.Po ./$(DEPDIR)/multi-single.Po \
-	./$(DEPDIR)/netrc.Po ./$(DEPDIR)/parseurl.Po \
-	./$(DEPDIR)/persistent.Po ./$(DEPDIR)/pop3-authzid.Po \
-	./$(DEPDIR)/pop3-dele.Po ./$(DEPDIR)/pop3-list.Po \
-	./$(DEPDIR)/pop3-multi.Po ./$(DEPDIR)/pop3-noop.Po \
-	./$(DEPDIR)/pop3-retr.Po ./$(DEPDIR)/pop3-ssl.Po \
-	./$(DEPDIR)/pop3-stat.Po ./$(DEPDIR)/pop3-tls.Po \
-	./$(DEPDIR)/pop3-top.Po ./$(DEPDIR)/pop3-uidl.Po \
-	./$(DEPDIR)/post-callback.Po ./$(DEPDIR)/postinmemory.Po \
-	./$(DEPDIR)/postit2-formadd.Po ./$(DEPDIR)/postit2.Po \
-	./$(DEPDIR)/progressfunc.Po ./$(DEPDIR)/protofeats.Po \
-	./$(DEPDIR)/range.Po ./$(DEPDIR)/resolve.Po \
-	./$(DEPDIR)/rtsp-options.Po ./$(DEPDIR)/sendrecv.Po \
-	./$(DEPDIR)/sepheaders.Po ./$(DEPDIR)/sftpget.Po \
-	./$(DEPDIR)/sftpuploadresume.Po \
+	./$(DEPDIR)/log_failed_transfers.Po ./$(DEPDIR)/maxconnects.Po \
+	./$(DEPDIR)/multi-app.Po ./$(DEPDIR)/multi-debugcallback.Po \
+	./$(DEPDIR)/multi-double.Po ./$(DEPDIR)/multi-formadd.Po \
+	./$(DEPDIR)/multi-legacy.Po ./$(DEPDIR)/multi-post.Po \
+	./$(DEPDIR)/multi-single.Po ./$(DEPDIR)/netrc.Po \
+	./$(DEPDIR)/parseurl.Po ./$(DEPDIR)/persistent.Po \
+	./$(DEPDIR)/pop3-authzid.Po ./$(DEPDIR)/pop3-dele.Po \
+	./$(DEPDIR)/pop3-list.Po ./$(DEPDIR)/pop3-multi.Po \
+	./$(DEPDIR)/pop3-noop.Po ./$(DEPDIR)/pop3-retr.Po \
+	./$(DEPDIR)/pop3-ssl.Po ./$(DEPDIR)/pop3-stat.Po \
+	./$(DEPDIR)/pop3-tls.Po ./$(DEPDIR)/pop3-top.Po \
+	./$(DEPDIR)/pop3-uidl.Po ./$(DEPDIR)/post-callback.Po \
+	./$(DEPDIR)/postinmemory.Po ./$(DEPDIR)/postit2-formadd.Po \
+	./$(DEPDIR)/postit2.Po ./$(DEPDIR)/progressfunc.Po \
+	./$(DEPDIR)/protofeats.Po ./$(DEPDIR)/range.Po \
+	./$(DEPDIR)/resolve.Po ./$(DEPDIR)/rtsp-options.Po \
+	./$(DEPDIR)/sendrecv.Po ./$(DEPDIR)/sepheaders.Po \
+	./$(DEPDIR)/sftpget.Po ./$(DEPDIR)/sftpuploadresume.Po \
 	./$(DEPDIR)/shared-connection-cache.Po ./$(DEPDIR)/simple.Po \
 	./$(DEPDIR)/simplepost.Po ./$(DEPDIR)/simplessl.Po \
 	./$(DEPDIR)/smtp-authzid.Po ./$(DEPDIR)/smtp-expn.Po \
 	./$(DEPDIR)/smtp-mail.Po ./$(DEPDIR)/smtp-mime.Po \
 	./$(DEPDIR)/smtp-multi.Po ./$(DEPDIR)/smtp-ssl.Po \
 	./$(DEPDIR)/smtp-tls.Po ./$(DEPDIR)/smtp-vrfy.Po \
-	./$(DEPDIR)/sslbackend.Po ./$(DEPDIR)/unixsocket.Po \
-	./$(DEPDIR)/url2file.Po ./$(DEPDIR)/urlapi.Po \
-	./$(DEPDIR)/websocket-cb.Po ./$(DEPDIR)/websocket-updown.Po \
-	./$(DEPDIR)/websocket.Po
+	./$(DEPDIR)/sslbackend.Po ./$(DEPDIR)/synctime.Po \
+	./$(DEPDIR)/unixsocket.Po ./$(DEPDIR)/url2file.Po \
+	./$(DEPDIR)/urlapi.Po ./$(DEPDIR)/websocket-cb.Po \
+	./$(DEPDIR)/websocket-updown.Po ./$(DEPDIR)/websocket.Po
 am__mv = mv -f
 COMPILE = $(CC) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(AM_CPPFLAGS) \
 	$(CPPFLAGS) $(AM_CFLAGS) $(CFLAGS)
@@ -775,19 +786,20 @@ SOURCES = 10-at-a-time.c address-scope.c altsvc.c anyauthput.c \
 	imap-delete.c imap-examine.c imap-fetch.c imap-list.c \
 	imap-lsub.c imap-multi.c imap-noop.c imap-search.c imap-ssl.c \
 	imap-store.c imap-tls.c interface.c ipv6.c keepalive.c \
-	localport.c maxconnects.c multi-app.c multi-debugcallback.c \
-	multi-double.c multi-formadd.c multi-legacy.c multi-post.c \
-	multi-single.c netrc.c parseurl.c persistent.c pop3-authzid.c \
-	pop3-dele.c pop3-list.c pop3-multi.c pop3-noop.c pop3-retr.c \
-	pop3-ssl.c pop3-stat.c pop3-tls.c pop3-top.c pop3-uidl.c \
-	post-callback.c postinmemory.c postit2.c postit2-formadd.c \
-	progressfunc.c protofeats.c range.c resolve.c rtsp-options.c \
-	sendrecv.c sepheaders.c sftpget.c sftpuploadresume.c \
+	localport.c log_failed_transfers.c maxconnects.c multi-app.c \
+	multi-debugcallback.c multi-double.c multi-formadd.c \
+	multi-legacy.c multi-post.c multi-single.c netrc.c parseurl.c \
+	persistent.c pop3-authzid.c pop3-dele.c pop3-list.c \
+	pop3-multi.c pop3-noop.c pop3-retr.c pop3-ssl.c pop3-stat.c \
+	pop3-tls.c pop3-top.c pop3-uidl.c post-callback.c \
+	postinmemory.c postit2.c postit2-formadd.c progressfunc.c \
+	protofeats.c range.c resolve.c rtsp-options.c sendrecv.c \
+	sepheaders.c sftpget.c sftpuploadresume.c \
 	shared-connection-cache.c simple.c simplepost.c simplessl.c \
 	smtp-authzid.c smtp-expn.c smtp-mail.c smtp-mime.c \
 	smtp-multi.c smtp-ssl.c smtp-tls.c smtp-vrfy.c sslbackend.c \
-	unixsocket.c url2file.c urlapi.c websocket.c websocket-cb.c \
-	websocket-updown.c
+	synctime.c unixsocket.c url2file.c urlapi.c websocket.c \
+	websocket-cb.c websocket-updown.c
 DIST_SOURCES = 10-at-a-time.c address-scope.c altsvc.c anyauthput.c \
 	block_ip.c certinfo.c chkspeed.c connect-to.c \
 	cookie_interface.c debug.c default-scheme.c externalsocket.c \
@@ -802,19 +814,20 @@ DIST_SOURCES = 10-at-a-time.c address-scope.c altsvc.c anyauthput.c \
 	imap-delete.c imap-examine.c imap-fetch.c imap-list.c \
 	imap-lsub.c imap-multi.c imap-noop.c imap-search.c imap-ssl.c \
 	imap-store.c imap-tls.c interface.c ipv6.c keepalive.c \
-	localport.c maxconnects.c multi-app.c multi-debugcallback.c \
-	multi-double.c multi-formadd.c multi-legacy.c multi-post.c \
-	multi-single.c netrc.c parseurl.c persistent.c pop3-authzid.c \
-	pop3-dele.c pop3-list.c pop3-multi.c pop3-noop.c pop3-retr.c \
-	pop3-ssl.c pop3-stat.c pop3-tls.c pop3-top.c pop3-uidl.c \
-	post-callback.c postinmemory.c postit2.c postit2-formadd.c \
-	progressfunc.c protofeats.c range.c resolve.c rtsp-options.c \
-	sendrecv.c sepheaders.c sftpget.c sftpuploadresume.c \
+	localport.c log_failed_transfers.c maxconnects.c multi-app.c \
+	multi-debugcallback.c multi-double.c multi-formadd.c \
+	multi-legacy.c multi-post.c multi-single.c netrc.c parseurl.c \
+	persistent.c pop3-authzid.c pop3-dele.c pop3-list.c \
+	pop3-multi.c pop3-noop.c pop3-retr.c pop3-ssl.c pop3-stat.c \
+	pop3-tls.c pop3-top.c pop3-uidl.c post-callback.c \
+	postinmemory.c postit2.c postit2-formadd.c progressfunc.c \
+	protofeats.c range.c resolve.c rtsp-options.c sendrecv.c \
+	sepheaders.c sftpget.c sftpuploadresume.c \
 	shared-connection-cache.c simple.c simplepost.c simplessl.c \
 	smtp-authzid.c smtp-expn.c smtp-mail.c smtp-mime.c \
 	smtp-multi.c smtp-ssl.c smtp-tls.c smtp-vrfy.c sslbackend.c \
-	unixsocket.c url2file.c urlapi.c websocket.c websocket-cb.c \
-	websocket-updown.c
+	synctime.c unixsocket.c url2file.c urlapi.c websocket.c \
+	websocket-cb.c websocket-updown.c
 am__can_run_installinfo = \
   case $$AM_UPDATE_INFO_DIR in \
     n|no|NO) false;; \
@@ -1009,7 +1022,9 @@ top_build_prefix = @top_build_prefix@
 top_builddir = @top_builddir@
 top_srcdir = @top_srcdir@
 AUTOMAKE_OPTIONS = foreign nostdinc
-EXTRA_DIST = CMakeLists.txt README.md Makefile.example $(COMPLICATED_EXAMPLES)
+EXTRA_DIST = CMakeLists.txt .checksrc README.md Makefile.example \
+  $(COMPLICATED_MAY_BUILD) $(COMPLICATED_EXAMPLES)
+
 
 # Specify our include paths here, and do it relative to $(top_srcdir) and
 # $(top_builddir), to ensure that these paths which belong to the library
@@ -1024,10 +1039,20 @@ AM_CPPFLAGS = -I$(top_srcdir)/include $(am__append_1) $(am__append_2) \
 # Dependencies
 LDADD = $(top_builddir)/lib/libcurl.la
 
+# These examples require external dependencies that may be available during
+# the build.
+COMPLICATED_MAY_BUILD = \
+  cacertinmem.c \
+  multi-uv.c \
+  multithread.c \
+  sessioninfo.c \
+  threaded-ssl.c \
+  usercertinmem.c
+
+
 # These examples require external dependencies that may not be commonly
 # available on POSIX systems, so do not bother attempting to compile them here.
 COMPLICATED_EXAMPLES = \
-  cacertinmem.c \
   crawler.c \
   ephiperfifo.c \
   evhiperfifo.c \
@@ -1036,13 +1061,7 @@ COMPLICATED_EXAMPLES = \
   htmltidy.c \
   htmltitle.cpp \
   multi-event.c \
-  multi-uv.c \
-  multithread.c \
-  sessioninfo.c \
   smooth-gtk-thread.c \
-  synctime.c \
-  threaded-ssl.c \
-  usercertinmem.c \
   version-check.pl \
   xmlstream.c
 
@@ -1330,6 +1349,10 @@ localport$(EXEEXT): $(localport_OBJECTS) $(localport_DEPENDENCIES) $(EXTRA_local
 	@rm -f localport$(EXEEXT)
 	$(AM_V_CCLD)$(LINK) $(localport_OBJECTS) $(localport_LDADD) $(LIBS)
 
+log_failed_transfers$(EXEEXT): $(log_failed_transfers_OBJECTS) $(log_failed_transfers_DEPENDENCIES) $(EXTRA_log_failed_transfers_DEPENDENCIES) 
+	@rm -f log_failed_transfers$(EXEEXT)
+	$(AM_V_CCLD)$(LINK) $(log_failed_transfers_OBJECTS) $(log_failed_transfers_LDADD) $(LIBS)
+
 maxconnects$(EXEEXT): $(maxconnects_OBJECTS) $(maxconnects_DEPENDENCIES) $(EXTRA_maxconnects_DEPENDENCIES) 
 	@rm -f maxconnects$(EXEEXT)
 	$(AM_V_CCLD)$(LINK) $(maxconnects_OBJECTS) $(maxconnects_LDADD) $(LIBS)
@@ -1522,6 +1545,10 @@ sslbackend$(EXEEXT): $(sslbackend_OBJECTS) $(sslbackend_DEPENDENCIES) $(EXTRA_ss
 	@rm -f sslbackend$(EXEEXT)
 	$(AM_V_CCLD)$(LINK) $(sslbackend_OBJECTS) $(sslbackend_LDADD) $(LIBS)
 
+synctime$(EXEEXT): $(synctime_OBJECTS) $(synctime_DEPENDENCIES) $(EXTRA_synctime_DEPENDENCIES) 
+	@rm -f synctime$(EXEEXT)
+	$(AM_V_CCLD)$(LINK) $(synctime_OBJECTS) $(synctime_LDADD) $(LIBS)
+
 unixsocket$(EXEEXT): $(unixsocket_OBJECTS) $(unixsocket_DEPENDENCIES) $(EXTRA_unixsocket_DEPENDENCIES) 
 	@rm -f unixsocket$(EXEEXT)
 	$(AM_V_CCLD)$(LINK) $(unixsocket_OBJECTS) $(unixsocket_LDADD) $(LIBS)
@@ -1611,6 +1638,7 @@ distclean-compile:
 @AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/ipv6.Po@am__quote@ # am--include-marker
 @AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/keepalive.Po@am__quote@ # am--include-marker
 @AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/localport.Po@am__quote@ # am--include-marker
+@AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/log_failed_transfers.Po@am__quote@ # am--include-marker
 @AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/maxconnects.Po@am__quote@ # am--include-marker
 @AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/multi-app.Po@am__quote@ # am--include-marker
 @AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/multi-debugcallback.Po@am__quote@ # am--include-marker
@@ -1659,6 +1687,7 @@ distclean-compile:
 @AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/smtp-tls.Po@am__quote@ # am--include-marker
 @AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/smtp-vrfy.Po@am__quote@ # am--include-marker
 @AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/sslbackend.Po@am__quote@ # am--include-marker
+@AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/synctime.Po@am__quote@ # am--include-marker
 @AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/unixsocket.Po@am__quote@ # am--include-marker
 @AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/url2file.Po@am__quote@ # am--include-marker
 @AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/urlapi.Po@am__quote@ # am--include-marker
@@ -1888,6 +1917,7 @@ distclean: distclean-am
 	-rm -f ./$(DEPDIR)/ipv6.Po
 	-rm -f ./$(DEPDIR)/keepalive.Po
 	-rm -f ./$(DEPDIR)/localport.Po
+	-rm -f ./$(DEPDIR)/log_failed_transfers.Po
 	-rm -f ./$(DEPDIR)/maxconnects.Po
 	-rm -f ./$(DEPDIR)/multi-app.Po
 	-rm -f ./$(DEPDIR)/multi-debugcallback.Po
@@ -1936,6 +1966,7 @@ distclean: distclean-am
 	-rm -f ./$(DEPDIR)/smtp-tls.Po
 	-rm -f ./$(DEPDIR)/smtp-vrfy.Po
 	-rm -f ./$(DEPDIR)/sslbackend.Po
+	-rm -f ./$(DEPDIR)/synctime.Po
 	-rm -f ./$(DEPDIR)/unixsocket.Po
 	-rm -f ./$(DEPDIR)/url2file.Po
 	-rm -f ./$(DEPDIR)/urlapi.Po
@@ -2046,6 +2077,7 @@ maintainer-clean: maintainer-clean-am
 	-rm -f ./$(DEPDIR)/ipv6.Po
 	-rm -f ./$(DEPDIR)/keepalive.Po
 	-rm -f ./$(DEPDIR)/localport.Po
+	-rm -f ./$(DEPDIR)/log_failed_transfers.Po
 	-rm -f ./$(DEPDIR)/maxconnects.Po
 	-rm -f ./$(DEPDIR)/multi-app.Po
 	-rm -f ./$(DEPDIR)/multi-debugcallback.Po
@@ -2094,6 +2126,7 @@ maintainer-clean: maintainer-clean-am
 	-rm -f ./$(DEPDIR)/smtp-tls.Po
 	-rm -f ./$(DEPDIR)/smtp-vrfy.Po
 	-rm -f ./$(DEPDIR)/sslbackend.Po
+	-rm -f ./$(DEPDIR)/synctime.Po
 	-rm -f ./$(DEPDIR)/unixsocket.Po
 	-rm -f ./$(DEPDIR)/url2file.Po
 	-rm -f ./$(DEPDIR)/urlapi.Po
@@ -2137,7 +2170,7 @@ uninstall-am:
 .PRECIOUS: Makefile
 
 
-# Get check_PROGRAMS variable
+# Get check_PROGRAMS, COMPLICATED_MAY_BUILD, COMPLICATED_EXAMPLES variables
 
 all: $(check_PROGRAMS)
 

@@ -53,12 +53,14 @@ again:
 
   if(!res) {
     /* we are connected, now get an HTTP document the raw way */
-    static const char *request =
-      "GET /556 HTTP/1.1\r\n"
-      "Host: ninja\r\n\r\n";
+    char request[64];
     const char *sbuf = request;
-    size_t sblen = strlen(request);
+    size_t sblen;
     size_t nwritten = 0, nread = 0;
+
+    sblen = curl_msnprintf(request, sizeof(request),
+                           "GET /%d HTTP/1.1\r\n"
+                           "Host: ninja\r\n\r\n", testnum);
 
     do {
       char buf[1024];
@@ -83,8 +85,9 @@ again:
 #else
         if((size_t)write(STDOUT_FILENO, buf, nread) != nread) {
 #endif
+          char errbuf[STRERROR_LEN];
           curl_mfprintf(stderr, "write() failed: errno %d (%s)\n",
-                        errno, strerror(errno));
+                        errno, curlx_strerror(errno, errbuf, sizeof(errbuf)));
           res = TEST_ERR_FAILURE;
           break;
         }
