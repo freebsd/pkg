@@ -39,6 +39,7 @@ TESTS_SH= \
 	frontend/delete.sh \
 	frontend/extract.sh \
 	frontend/fetch.sh \
+	frontend/info.sh \
 	frontend/install.sh \
 	frontend/jpeg.sh \
 	frontend/key.sh \
