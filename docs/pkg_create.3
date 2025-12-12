@@ -1,4 +1,4 @@
-.Dd May 3, 2024
+.Dd December 12, 2025
 .Dt PKG_CREATE 3
 .Os
 .Sh NAME
@@ -50,12 +50,12 @@ except if specified otherwise in
 .Xr pkg.conf 5 .
 It returns
 .Va false
-if the compression format is unknown and fallback the the default format.
+if the compression format is unknown and will fall back to the default format.
 .Pp
 .Fn pkg_create_set_compression_level
-take a
+takes an
 .Ft int
-arguments which represents the expect compression level.
+argument which represents the expected compression level.
 3 special values are accepted:
 .Bl -tag -width indentation
 .It Va INT_MIN
@@ -67,18 +67,19 @@ Set the best compression ratio
 .El
 .Pp
 .Fn pkg_create_set_compression_threads
-take a
+takes an
 .Ft int
-arguments which represents the expected numbers of threads used during
+argument which represents the expected number of threads used during
 compression.
+.Pp
 .Fn pkg_create_set_overwrite
-Accept a boolean to define the default behaviour when creating a package and
+Accepts a boolean to define the default behaviour when creating a package if
 a local file already exists.
 The default behaviour is to overwrite.
 .Pp
 .Fn pkg_create_set_rootdir
-Tells the program where to find the root directory used for packaging (it is
-also known as staging area).
+Tells the program where to find the root directory used for packaging (this directory
+is also known as the staging area).
 If none is provided pkg will consider
 .Sq Va / .
 .Pp
@@ -87,7 +88,7 @@ Tells the program where to create the new packages.
 By default it will consider the current directory of the running program.
 .Pp
 .Fn pkg_create_set_timestamp
-Define the timestamp to use ad creation and modification time for the files to
+Define the timestamp to use as the creation and modification time for the files to
 be packaged.
 By default it will use the timestamp of the files on the filesystem.
 .Pp
@@ -108,25 +109,25 @@ A textual description (optional)
 .It shell scripts (optional):
 .Bl -tag -width pkg-post-deinstall
 .It +INSTALL
-Shell script that will be run during both in post and pre install (DEPRECATED)
+Shell script that will be run during both post and pre install (DEPRECATED)
 .It +PRE_INSTALL
 Shell script that will be run during pre install phase
 .It +POST_INSTALL
 Shell script that will be run during post install phase
 .It +DEINSTALL
-Shell script that will be run during both in post and pre deinstall (DEPRECATED)
+Shell script that will be run during both post and pre deinstall (DEPRECATED)
 .It +PRE_DEINSTALL
 Shell script that will be run during pre deinstall phase
 .It +POST_DEINSTALL
 Shell script that will be run during post deinstall phase
 .It pkg-install
-Shell script that will be run during both in post and pre install (DEPRECATED)
+Shell script that will be run during both post and pre install (DEPRECATED)
 .It pkg-pre-install
 Shell script that will be run during pre install phase
 .It pkg-post-install
 Shell script that will be run during post install phase
 .It pkg-deinstall
-Shell script that will be run during both in post and pre deinstall (DEPRECATED)
+Shell script that will be run during both post and pre deinstall (DEPRECATED)
 .It pkg-pre-deinstall
 Shell script that will be run during pre deinstall phase
 .It pkg-post-deinstall
@@ -152,7 +153,7 @@ If
 .Ar hash
 is set to
 .Va true
-then the file name will in the form:
+then the file name will be in the form:
 <pkgname>-<pkgversion>-<shorthash>.<extention>
 instead of
 <pkgname>-<pkgversion>.<extension>.

@@ -1,4 +1,4 @@
-.Dd February 8, 2015
+.Dd December 12, 2025
 .Dt PKG_REPOS 3
 .Os
 .Sh NAME
@@ -46,9 +46,9 @@
 .Fn pkg_repos
 Takes the address of a pointer to the repository.
 The pointer should be initialised to NULL before being passed to the
-function, on each iteration the r will point to the new repository.
+function, on each iteration the pointer will point to the new repository.
 Returns EPKG_FATAL if an error occurred, otherwise return EPKG_OK until
-the last repository is found in that case EPKG_END is returned.
+the last repository is found in which case EPKG_END is returned.
 .Pp
 .Fn pkg_repos_total_count
 returns the total number of defined repositories.
@@ -85,7 +85,7 @@ If the repository is not signed using the
 method, NULL will be returned.
 .Pp
 .Fn pkg_repo_signature_type
-Take a pointer to a repository as argument and return the type of
+takes a pointer to a repository as argument and returns the type of
 signature it uses.
 .Bl -tag -width SIG_FINGERPRINT
 .It Cm SIG_NONE
@@ -107,7 +107,7 @@ Otherwise, return
 .Fn pkg_repo_priority
 takes a pointer to a repository as argument and returns
 the priority of the repository as an unsigned integer.
-Packages ae chosed preferentially from the repository with the highest
+Packages ae chosen preferentially from the repository with the highest
 priority value and which has that package available.
 .Pp
 .Fn pkg_repo_mirror_type
@@ -115,7 +115,7 @@ takes a pointer to a repository as argument and returns the type of
 mirroring it uses.
 .Bl -tag -width NOMIRROR
 .It Cm SRV
-The repository is using SRV record query to get the mirrors.
+The repository is using an SRV record query to get the mirrors.
 .It Cm HTTP
 The repository is using the HTTP query method to get the mirrors.
 .It Cm NOMIRROR
@@ -123,12 +123,12 @@ The repository does not have any mirror.
 .El
 .Pp
 .Fn pkg_repo_find_ident
-Take an internal indentification string as argument and return a pointer to
+takes an internal identification string as argument and returns a pointer to
 a repository.
 If no repository matches, NULL is returned.
 .Pp
 .Fn pkg_repo_find_name
-Take a repository
+takes a repository
 .Qq name
-as argument and return a pointer to a repository.
+as argument and returns a pointer to a repository.
 If no repository matches, NULL is returned.
