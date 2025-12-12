@@ -11,7 +11,7 @@
 .\"    notice, this list of conditions and the following disclaimer in the
 .\"    documentation and/or other materials provided with the distribution.
 .\"
-.Dd October 28, 2025
+.Dd December 12, 2025
 .Dt PKG-LUA-SCRIPT 5
 .Os
 .Sh NAME
@@ -51,7 +51,7 @@ new post-install
 .Pp
 Lua scripts are always run after shell scripts (of the same phase).
 .Sh API
-All the regular lua API are available to the exception of the following changes:
+All the regular lua APIs are available with the exception of the following changes:
 .Bl -tag -width Ds
 .It Fn io.open
 has been modified to only open files relatively to the rootdir if specified by
@@ -158,7 +158,7 @@ expected in the following form:
 Will return an
 .Va ipair
 with the list of elements contained in the directory
-the specicial directory
+the special directory
 .Va So .
 .Sc
 and
