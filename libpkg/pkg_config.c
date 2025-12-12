@@ -61,6 +61,9 @@
 #ifndef DEFAULT_VULNXML_URL
 #define DEFAULT_VULNXML_URL "https://vuxml.freebsd.org/freebsd/vuln.xml.xz"
 #endif
+#ifndef DEFAULT_OSVF_URL
+#define DEFAULT_OSVF_URL "https://raw.githubusercontent.com/illuusio/freebsd-osv/refs/heads/main/db/freebsd-osv.json"
+#endif
 
 #ifdef	OSMAJOR
 #define STRINGIFY(X)	TEXT(X)
@@ -167,7 +170,12 @@ static struct config_entry c[] = {
 	{
 		PKG_STRING,
 		"VULNXML_SITE",
-		DEFAULT_VULNXML_URL,
+		DEFAULT_OSVF_URL,
+	},
+	{
+		PKG_STRING,
+		"OSVF_SITE",
+		DEFAULT_OSVF_URL,
 	},
 	{
 		PKG_INT,
