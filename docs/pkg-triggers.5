@@ -8,7 +8,7 @@
 .\"    notice, this list of conditions and the following disclaimer in the
 .\"    documentation and/or other materials provided with the distribution.
 .\"
-.Dd October 30, 2025
+.Dd December 12, 2025
 .Dt PKG-TRIGGERS 5
 .Os
 .Sh NAME
@@ -51,7 +51,7 @@ Each time a package installs a file or directory whose name matches one of the
 regular expressions, the trigger will be executed at the end of the
 transaction.
 .It Cm cleanup
-An object which represent the script to execute in case the transaction results
+An object which represents the script to execute in case the transaction results
 in removal of the trigger from the installation.
 The object requires the following fields:
 .Bl -tag -width xxxxxx

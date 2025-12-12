@@ -11,7 +11,7 @@
 .\"    notice, this list of conditions and the following disclaimer in the
 .\"    documentation and/or other materials provided with the distribution.
 .\"
-.Dd July 24, 2025
+.Dd December 12, 2025
 .Dt PKG-SCRIPT 5
 .Os
 .Sh NAME
@@ -20,7 +20,7 @@
 .Xr pkg 8
 .Sh DESCRIPTION
 .Xr pkg 8
-run scripts at given phases of the process it is running
+may run scripts at given phases of the process it is executing.
 .Pp
 The phases are the following:
 .Bl -tag -width Ds
@@ -46,7 +46,7 @@ replace binaries
 new post-install
 .El
 .Sh Environment
-The following environment variable are exported to be used by the script
+The following environment variables are exported to be used by the script.
 .Bl -tag -width Ds
 .It Ev PKG_NAME
 Represents the name of the package.
@@ -71,7 +71,7 @@ that will be shown at the end of the
 .Xr pkg 8
 process.
 .It Ev PKG_UPGRADE
-Variable existing when the scripts is run in the context of an upgrade of the package
+This variable is set when a script is run in the context of an upgrade of a package.
 .El
 .Sh SEE ALSO
 .Xr pkg_create 3 ,
