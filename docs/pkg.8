@@ -25,7 +25,7 @@
 .\"
 .\"     @(#)pkg.8
 .\"
-.Dd October 6, 2023
+.Dd December 13, 2025
 .Dt PKG 8
 .Os
 .\" ---------------------------------------------------------------------------
@@ -132,9 +132,9 @@ as its package management system or not.
 Example usage:
 .Bd -literal -offset indent
   if pkg -N >/dev/null 2>&1; then
-    # pkgng-specifics
+    # pkg(8) specific commands
   else
-    # pkg_install-specifics
+    # other package management system commands
   fi
 .Ed
 .Pp
@@ -159,9 +159,9 @@ is installed and activated:
   if TMPDIR=/dev/null ASSUME_ALWAYS_YES=yes \\
        PACKAGESITE=file:///nonexistent \\
        pkg info -x 'pkg(-devel)?$' >/dev/null 2>&1; then
-    # pkgng-specifics
+    # pkg(8) specific commands
   else
-    # pkg_install-specifics
+    # other package management system commands
   fi
 .Ed
 .It Fl j Ao jail name or id Ac , Cm --jail Ao jail name or id Ac

@@ -14,7 +14,7 @@
 .\"
 .\"     @(#)pkg.8
 .\"
-.Dd January 15, 2025
+.Dd December 13, 2025
 .Dt PKG-CREATE 8
 .Os
 .\" ---------------------------------------------------------------------------
@@ -150,12 +150,14 @@ or
 options.
 .It Fl T Ar threads
 .Ar threads
-represent the number of threads to use during the compression of the archive.
+represents the number of threads to use during the compression of the archive.
 Set it to
 .Qq 0
 or
 .Qq auto
-to let detect the number of CPU and use it.
+to have
+.Nm
+detect the number of CPUs and use one thread per CPU.
 .It Fl a , Cm --all
 Create package tarballs from all packages installed on your system.
 This option is incompatible with the
@@ -174,7 +176,7 @@ It can be one of
 or
 .Ar tar
 which are currently the only supported formats.
-If an invalid or no format is specified
+If an invalid format, or no format, is specified then
 .Ar tzst
 is assumed.
 .Po The
@@ -211,10 +213,10 @@ respectively, for the specified compression format, is used.
 .It Fl m Ar metadatadir , Cm --metadata Ar metadatadir
 Specify the directory containing the package manifest,
 .Pa +MANIFEST
-and optionally three other files; one containing a message to be
+and optionally two other files; one containing a message to be
 displayed on package installation,
-.Pa +DISPLAY .
-Another containing the description for the package,
+.Pa +DISPLAY ,
+and another containing the description for the package,
 .Pa +DESC .
 If specified, only a single package will be created.
 .Pa +DISPLAY

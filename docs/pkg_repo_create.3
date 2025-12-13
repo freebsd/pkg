@@ -1,4 +1,4 @@
-.Dd January 23, 2024
+.Dd December 12, 2025
 .Dt PKG_REPO_CREATE 3
 .Os
 .Sh NAME
@@ -38,7 +38,7 @@ which should be freed by the caller using
 .Fn pkg_repo_create_free .
 .Pp
 .Fn pkg_repo_create_set_output_dir
-defined the output directory where to generate the data.
+defines the output directory to save the data in.
 By default it will be the
 .Va path
 provided to the
@@ -46,7 +46,7 @@ provided to the
 function.
 .Pp
 .Fn pkg_repo_create_set_create_filelist
-Accept a boolean to define if a the file database should be created
+Accept a boolean to define if the file database should be created
 along with the metadata database
 .Pq deprecated .
 Defaults to

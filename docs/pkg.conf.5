@@ -27,7 +27,7 @@
 .\"
 .\"     @(#)pkg.1
 .\"
-.Dd September 17, 2025
+.Dd December 12, 2025
 .Dt PKG.CONF 5
 .Os
 .Sh NAME
@@ -95,8 +95,8 @@ command line when substituted in and followed by any remaining tokens from
 the original command line.
 Default: not set.
 .It Cm ARCHIVE_SYMLINK: boolean
-When creating a package, create a symlink to it using the legacy extension,
-this is a backward compatibility option, default: true
+When creating a package, create a symlink to it using the legacy extension.
+This is a backward compatibility option, default: true
 .It Cm AUTOCLEAN: boolean
 Automatically cleanout the content of
 .Em PKG_CACHEDIR
@@ -114,7 +114,7 @@ Default: NO.
 When this option is enabled
 .Xr pkg 1
 will automatically assume "yes" to all questions
-which require user confirmation before doing anything, as if it
+which require user confirmation before doing anything, as if
 the
 .Fl y
 flag was specified.
@@ -249,7 +249,7 @@ addresses by the default mechanisms configured on the system.
 See
 .Xr getaddrinfo 3 .
 .It Cm OSVERSION: integer
-Specifiy the exact
+Specify the exact
 .Fx
 version for the target ABI. This should be set in combination with the ABI option.
 The format is the same as the format of
