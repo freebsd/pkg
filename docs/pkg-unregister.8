@@ -14,12 +14,12 @@
 .\"
 .\"     @(#)pkg.8
 .\"
-.Dd December 2, 2025
+.Dd December 13, 2025
 .Dt PKG-UNREGISTER 8
 .Os
 .Sh NAME
 .Nm "pkg unregister"
-.Nd deletes packages records from the database
+.Nd deletes package records from the database
 .Sh SYNOPSIS
 .Nm
 .Op Fl fnqRy
@@ -75,7 +75,7 @@ The following options are supported by
 .It Fl a , Cm --all
 Deletes all installed packages from the db except for
 .Xr pkg 8
-from the system and cleans the database of information related to removed
+and cleans the database of information related to removed
 packages.
 .It Fl C , Cm --case-sensitive
 Make the standard or regular expression
