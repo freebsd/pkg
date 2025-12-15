@@ -73,6 +73,7 @@ SRCS=	\
 	splay.c \
 	strcase.c \
 	strdup.c \
+	strerr.c \
 	strerror.c \
 	strparse.c \
 	timeval.c \
