@@ -1167,8 +1167,23 @@ int
 print_pkg(struct pkg *p, void *ctx)
 {
 	int *counter = ctx;
+	bool locked, vital;
+	const char *lock_type;
 
-	pkg_printf("\t%n\n", p);
+	pkg_get(p, PKG_ATTR_LOCKED, &locked);
+	pkg_get(p, PKG_ATTR_VITAL, &vital);
+	if (locked) {
+		if (vital)
+			lock_type = "vital and locked";
+		else
+			lock_type = "locked";
+	} else {
+		if (vital)
+			lock_type = "vital";
+		else
+			lock_type = "invalid, report an issue";
+	}
+	pkg_printf("\t%n (%S)\n", p, lock_type);
 	(*counter)++;
 
 	return 0;

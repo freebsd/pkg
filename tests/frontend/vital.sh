@@ -39,7 +39,7 @@ EOF
 		pkg -o REPOS_DIR=/dev/null -r ${TMPDIR}/target query "%V" test
 
 	atf_check \
-		-o inline:"The following package(s) are locked or vital and may not be removed:\n\n\ttest\n\n" \
+		-o inline:"The following package(s) are locked or vital and may not be removed:\n\n\ttest (vital)\n\n" \
 		-e empty  \
 		-s exit:7 \
 		pkg -r ${TMPDIR}/target delete -qy test
