@@ -168,7 +168,7 @@ pkg_repo_binary_add_pkg(struct pkg *pkg, sqlite3 *sqlite, bool forced)
 try_again:
 	if ((ret = pkg_repo_binary_run_prstatement(PKG, args, NELEM(args))) != SQLITE_DONE) {
 		if (ret == SQLITE_CONSTRAINT) {
-			ERROR_SQLITE(sqlite, "grmbl");
+			ERROR_SQLITE(sqlite, pkg_repo_binary_sql_prstatement(PKG));
 			switch(pkg_repo_binary_delete_conflicting(pkg->origin,
 			    pkg->version, forced)) {
 			case EPKG_FATAL: /* sqlite error */
