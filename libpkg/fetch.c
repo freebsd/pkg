@@ -301,20 +301,8 @@ cleanup:
 		unsetenv(vec_pop(&envtounset));
 	vec_free(&envtounset);
 
-	if (repo->fetcher != NULL) {
-		if (repo->fetcher->close != NULL) {
-			repo->fetcher->close(repo);
-		}
-
-		if (repo->fetcher->cleanup != NULL) {
-			repo->fetcher->cleanup(repo);
-		}
-	}
-
-	if (fakerepo)
-	{
-		free(fakerepo->url);
-	}
+	if (repo->fetcher != NULL && repo->fetcher->close != NULL)
+		repo->fetcher->close(repo);
 	free(fakerepo);
 
 	if (retcode == EPKG_OK) {
