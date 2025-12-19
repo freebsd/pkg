@@ -137,8 +137,13 @@ pkg_create_from_dir(struct pkg *pkg, const char *root,
 				file->symlink_target[linklen] = '\0';
 			}
 
-			file->time[0] = st.st_atim;
-			file->time[1] = st.st_mtim;
+			if (pc->timestamp > (time_t)-1) {
+				file->time[0].tv_sec = pc->timestamp;
+				file->time[1].tv_sec = pc->timestamp;
+			} else {
+				file->time[0] = st.st_atim;
+				file->time[1] = st.st_mtim;
+			}
 		}
 
 		counter_count();
