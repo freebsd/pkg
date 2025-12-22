@@ -12,7 +12,6 @@
 #include <private/pkg_osvf.h>
 #include <stdlib.h>
 
-
 char *osvf_json_path = TESTING_TOP_DIR "/lib/FBSD-2025-05-28.json";
 
 ATF_TC_WITHOUT_HEAD(osvfdetect);
@@ -167,12 +166,12 @@ ATF_TC_BODY(osvfparse, tc)
 	char buf[1024];
 	char *version_strs[] =
 	{
-		"1.0.0",
 		"0.0.1",
-		"1.1.0_1",
+		"1.0.0",
 		"1.0.9_1",
+		"1.1.0_1",
+		"ae637a3ad",
 		"c14e07db4",
-		"ae637a3ad"
 	};
 	unsigned int version_types[] =
 	{
@@ -185,6 +184,19 @@ ATF_TC_BODY(osvfparse, tc)
 		"osvf-test-package10",
 		"osvf-test-package11",
 		"osvf-test-package12"
+	};
+	char *refrence_str[] =
+	{
+		"https://www.freebsd.org/",
+		"https://www.freebsd.org/about/",
+		"https://docs.freebsd.org/en/",
+		"https://docs.freebsd.org/en/books/handbook/basics/",
+		"https://wiki.freebsd.org/",
+		"https://lists.freebsd.org/",
+		"https://wiki.freebsd.org/IRC/Channels",
+		"https://docs.freebsd.org/en/books/",
+		"hhttps://www.freebsd.org/releases/",
+		"https://www.freebsd.org/releng/"
 	};
 	int reference_types[] =
 	{
@@ -218,18 +230,23 @@ ATF_TC_BODY(osvfparse, tc)
 	ATF_CHECK_STREQ(entry->pkgname, "osvf-test-package10");
 	ATF_CHECK_STREQ(entry->desc, "OSVF test");
 	ATF_CHECK_STREQ(entry->url, "https://www.freebsd.org/");
-	ATF_CHECK_STREQ(entry->id, "FBSD-2025-05-28");
+	ATF_CHECK_STREQ(entry->id, "FreeBSD-2025-05-28");
 
 	versions = entry->versions;
 	names = entry->names;
 	references = entry->references;
 	packages = entry->packages;
 
+	pos = 0;
+	otherpos = 0;
+
 	while(references)
 	{
-		ATF_CHECK_STREQ(references->url, "https://www.freebsd.org/");
-		ATF_CHECK_INTEQ(references->type, reference_types[pos++]);
+		ATF_CHECK_STREQ(references->url, refrence_str[otherpos]);
+		ATF_CHECK_INTEQ(references->type, reference_types[pos]);
 		references = references->next;
+		otherpos++;
+		pos ++;
 	}
 
 	pos = 0;
@@ -237,12 +254,17 @@ ATF_TC_BODY(osvfparse, tc)
 
 	while(versions)
 	{
-		ATF_CHECK_INTEQ(versions->type, version_types[otherpos++]);
-		ATF_CHECK_STREQ(versions->v2.version, version_strs[pos++]);
-		ATF_CHECK_INTEQ(versions->v2.type, OSVF_EVENT_FIXED);
-		ATF_CHECK_STREQ(versions->v1.version, version_strs[pos++]);
-		ATF_CHECK_INTEQ(versions->v1.type, OSVF_EVENT_INTRODUCED);
+		ATF_CHECK_INTEQ(versions->type, version_types[otherpos]);
+		ATF_CHECK_STREQ(versions->v1.version, version_strs[pos]);
+		pos ++;
+		ATF_CHECK_INTEQ(versions->v1.osv_type, OSVF_EVENT_INTRODUCED);
+		ATF_CHECK_INTEQ(versions->v1.type, GTE);
+		ATF_CHECK_STREQ(versions->v2.version, version_strs[pos]);
+		pos ++;
+		ATF_CHECK_INTEQ(versions->v2.osv_type, OSVF_EVENT_FIXED);
+		ATF_CHECK_INTEQ(versions->v2.type, LTE);
 		versions = versions->next;
+		otherpos ++;
 	}
 
 	pos = 0;
@@ -266,12 +288,18 @@ ATF_TC_BODY(osvfparse, tc)
 
 		while(versions)
 		{
-			ATF_CHECK_INTEQ(versions->type, version_types[otherpos++]);
-			ATF_CHECK_STREQ(versions->v2.version, version_strs[subpos++]);
-			ATF_CHECK_INTEQ(versions->v2.type, OSVF_EVENT_FIXED);
-			ATF_CHECK_STREQ(versions->v1.version, version_strs[subpos++]);
-			ATF_CHECK_INTEQ(versions->v1.type, OSVF_EVENT_INTRODUCED);
+			ATF_CHECK_INTEQ(versions->type, version_types[otherpos]);
+			ATF_CHECK_STREQ(versions->v1.version, version_strs[subpos]);
+			subpos ++;
+			ATF_CHECK_INTEQ(versions->v1.osv_type, OSVF_EVENT_INTRODUCED);
+			ATF_CHECK_INTEQ(versions->v1.type, GTE);
+
+			ATF_CHECK_STREQ(versions->v2.version, version_strs[subpos]);
+			subpos ++;
+			ATF_CHECK_INTEQ(versions->v2.osv_type, OSVF_EVENT_FIXED);
+			ATF_CHECK_INTEQ(versions->v2.type, LTE);
 			versions = versions->next;
+			otherpos ++;
 		}
 
 		packages = packages->next;
