@@ -121,7 +121,7 @@ format_rate_SI(char *buf, int size, off_t bytes)
 		i++;
 		bytes = (bytes + 500) / 1000;
 	}
-	snprintf(buf, size, "%3lld.%1lld%sB",
+	snprintf(buf, size, "%3lld.%1lld %sB",
 	    (long long) (bytes + 5) / 100,
 	    (long long) (bytes + 5) / 10 % 10,
 	    unit_SI[i]);
