@@ -1,5 +1,5 @@
 /*-
- * Copyright (c) 2011-2014 Baptiste Daroussin <bapt@FreeBSD.org>
+ * Copyright (c) 2011-2025 Baptiste Daroussin <bapt@FreeBSD.org>
  * Copyright (c) 2011-2012 Julien Laffaye <jlaffaye@FreeBSD.org>
  * Copyright (c) 2011 Will Andrews <will@FreeBSD.org>
  * Copyright (c) 2011-2012 Marin Atanasov Nikolov <dnaeon@gmail.com>
@@ -86,6 +86,7 @@ static int add_deps_depth;
 static vec_t(struct cleanup *) cleanup_list = vec_init();
 static bool signal_handler_installed = false;
 static size_t nbactions = 0;
+static size_t nbdigits = 0;
 static size_t nbdone = 0;
 
 /* units for format_size */
@@ -134,6 +135,20 @@ job_status_end(xstring *msg)
 	xstring_reset(msg);
 }
 
+static int
+count_digits(int n){
+	if (n == 0)
+		return (1);
+	if (n < 0)
+		n = -n;
+	int c = 0;
+	while (n > 0) {
+		n /= 10; c++;
+	}
+	return (c);
+}
+
+
 void
 job_status_begin(xstring *msg)
 {
@@ -173,8 +188,11 @@ job_status_begin(xstring *msg)
 		fprintf(msg->fp, "`-- ");
 	}
 
-	if ((nbtodl > 0 || nbactions > 0) && nbdone > 0)
-		fprintf(msg->fp, "[%zu/%zu] ", nbdone, (nbtodl) ? nbtodl : nbactions);
+	if ((nbtodl > 0 || nbactions > 0) && nbdone > 0) {
+		if (nbdigits == 0)
+			nbdigits = count_digits(nbtodl ? nbtodl : nbactions);
+		fprintf(msg->fp, "[%*zu/%zu] ", nbdigits, nbdone, (nbtodl) ? nbtodl : nbactions);
+	}
 	if (nbtodl > 0 && nbtodl == nbdone) {
 		nbtodl = 0;
 		nbdone = 0;
@@ -437,6 +455,14 @@ event_callback(void *data, struct pkg_event *ev)
 		filename = strrchr(ev->e_fetching.url, '/');
 		if (filename != NULL) {
 			filename++;
+			char *tmp = strrchr(filename, '~');
+			if (tmp != NULL) {
+				*tmp = '\0';
+			} else {
+				tmp = strrchr(filename, '.');
+				if (tmp != NULL && strcmp(tmp, ".pkg") == 0)
+					*tmp = '\0';
+			}
 		} else {
 			/*
 			 * We failed at being smart, so display
@@ -702,6 +728,7 @@ event_callback(void *data, struct pkg_event *ev)
 		break;
 	case PKG_EVENT_NEW_ACTION:
 		nbactions = ev->e_action.total;
+		nbdigits = 0;
 		nbdone = ev->e_action.current;
 		break;
 	case PKG_EVENT_MESSAGE:

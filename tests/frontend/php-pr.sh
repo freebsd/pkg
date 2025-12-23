@@ -241,7 +241,7 @@ php53-gd-5.3.27
 
 OUTPUT="Updating local repository catalogue...
 ${JAILED}Fetching meta.conf:  done
-${JAILED}Fetching data.pkg:  done
+${JAILED}Fetching data:  done
 Processing entries:  done
 local repository update completed. 4 packages processed.
 All repositories are up to date.

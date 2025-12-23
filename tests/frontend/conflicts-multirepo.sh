@@ -147,12 +147,12 @@ EOF
 
 OUTPUT="Updating local1 repository catalogue...
 ${JAILED}Fetching meta.conf:  done
-${JAILED}Fetching data.pkg:  done
+${JAILED}Fetching data:  done
 Processing entries:  done
 local1 repository update completed. 2 packages processed.
 Updating local2 repository catalogue...
 ${JAILED}Fetching meta.conf:  done
-${JAILED}Fetching data.pkg:  done
+${JAILED}Fetching data:  done
 Processing entries:  done
 local2 repository update completed. 2 packages processed.
 All repositories are up to date.
@@ -338,12 +338,12 @@ EOF
 
 OUTPUT="Updating local1 repository catalogue...
 ${JAILED}Fetching meta.conf:  done
-${JAILED}Fetching data.pkg:  done
+${JAILED}Fetching data:  done
 Processing entries:  done
 local1 repository update completed. 2 packages processed.
 Updating local2 repository catalogue...
 ${JAILED}Fetching meta.conf:  done
-${JAILED}Fetching data.pkg:  done
+${JAILED}Fetching data:  done
 Processing entries:  done
 local2 repository update completed. 2 packages processed.
 All repositories are up to date.
