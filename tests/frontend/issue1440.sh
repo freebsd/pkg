@@ -188,12 +188,12 @@ EOF
 
 OUTPUT_CASE1="Updating repoA repository catalogue...
 ${JAILED}Fetching meta.conf:  done
-${JAILED}Fetching data.pkg:  done
+${JAILED}Fetching data:  done
 Processing entries:  done
 repoA repository update completed. 4 packages processed.
 Updating repoB repository catalogue...
 ${JAILED}Fetching meta.conf:  done
-${JAILED}Fetching data.pkg:  done
+${JAILED}Fetching data:  done
 Processing entries:  done
 repoB repository update completed. 4 packages processed.
 All repositories are up to date.

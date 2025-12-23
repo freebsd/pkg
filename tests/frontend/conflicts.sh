@@ -461,7 +461,7 @@ EOF
 
 OUTPUT="Updating local repository catalogue...
 ${JAILED}Fetching meta.conf:  done
-${JAILED}Fetching data.pkg:  done
+${JAILED}Fetching data:  done
 Processing entries:  done
 local repository update completed. 1 packages processed.
 All repositories are up to date.
@@ -559,7 +559,7 @@ EOF
 
 OUTPUT="Updating local repository catalogue...
 ${JAILED}Fetching meta.conf:  done
-${JAILED}Fetching data.pkg:  done
+${JAILED}Fetching data:  done
 Processing entries:  done
 local repository update completed. 4 packages processed.
 All repositories are up to date.
@@ -680,7 +680,7 @@ EOF
 
 OUTPUT="Updating local repository catalogue...
 ${JAILED}Fetching meta.conf:  done
-${JAILED}Fetching data.pkg:  done
+${JAILED}Fetching data:  done
 Processing entries:  done
 local repository update completed. 4 packages processed.
 All repositories are up to date.
