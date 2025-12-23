@@ -312,9 +312,10 @@ dir(struct plist *p, char *line, struct file_attr *a)
 			    a->group ? a->group : p->gname,
 			    a->mode ? a->mode : p->perm,
 			    a->fflags, true);
-		else
+		else {
 			ret = pkg_adddir_attr(p->pkg, path, p->uname, p->gname,
-			    m, 0, true);
+			    p->perm == 0 ? m : p->perm, 0, true);
+		}
 	}
 
 	return (ret);
