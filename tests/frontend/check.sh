@@ -45,7 +45,7 @@ __EOF__
 	chmod -h 0644 ${TMPDIR}/target/${TMPDIR}/a
 	touch -hr ./a ${TMPDIR}/target/${TMPDIR}/a
 	# linux mangles perms on symlinks
-	if [ "${OS}" = "FreeBSD" ]; then
+	if [ "${OS}" = "FreeBSD" -o ${OS} = "Darwin" ]; then
 	    atf_check -s exit:1 -e match:"\[symlink\]" -e not-match:"\[perm\]" -e not-match:"\[mtime\]" pkg -r target check -mq
 	else
 	    atf_check -s exit:1 -e match:"\[symlink\]" -e match:"\[perm\]" -e not-match:"\[mtime\]" pkg -r target check -mq

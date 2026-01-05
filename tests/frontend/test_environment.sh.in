@@ -50,7 +50,7 @@ atf_require() {
 
 
 q_mtime() {
-    if [ "${OS}" = "FreeBSD" ]; then
+    if [ "${OS}" = "FreeBSD" -o "${OS}" = "Darwin" ]; then
 	stat -f "%m" "$1"
     else
 	stat -c "%Y" "$1"

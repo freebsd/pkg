@@ -51,6 +51,12 @@
 #define	roundup2(x, y)	(((x)+((y)-1))&(~((y)-1))) /* if y is powers of two */
 #endif
 
+#if defined(__APPLE__)
+#define st_mtim st_mtimespec
+#define st_atim st_atimespec
+#define st_ctim st_ctimespec
+#endif
+
 #if ARCHIVE_VERSION_NUMBER < 3000002
 #define archive_write_add_filter_xz(a) archive_write_set_compression_xz(a)
 #define archive_write_add_filter_bzip2(a) archive_write_set_compression_bzip2(a)
@@ -633,7 +639,14 @@ static inline sql_arg_t make_int64_arg(int64_t i) {
     return (a);
 }
 
+#if defined(__APPLE__) || defined(__MACH__)
+  #define IF_HAVE__DARWIN_TIME_T() __darwin_time_t: (sql_arg_t(*)(int64_t))(make_int64_arg),
+#else
+  #define IF_HAVE__DARWIN_TIME_T()
+#endif
+
 #define SQL_ARG(x) _Generic((x), \
+        IF_HAVE__DARWIN_TIME_T() \
         const char *: make_text_arg, \
         char *:       make_text_arg, \
         int64_t:      make_int64_arg, \

@@ -1587,6 +1587,7 @@ run_prstmt(sql_prstmt_index s, const sql_arg_t *args, size_t nargs)
 			sqlite3_bind_int64(stmt, bind_index, args[i].v.i64);
 			break;
 		default:
+			pkg_emit_error("unexpected type: %d\n", args[i].type);
 			return (SQLITE_MISUSE);
 		}
 	}
@@ -1759,6 +1760,7 @@ pkgdb_register_pkg(struct pkgdb *db, struct pkg *pkg, int forced,
 		if (ret == SQLITE_DONE)
 			continue;
 		if (ret != SQLITE_CONSTRAINT) {
+			pkg_emit_error("error: %d", ret);
 			ERROR_STMT_SQLITE(s, STMT(FILES));
 			goto cleanup;
 		}
