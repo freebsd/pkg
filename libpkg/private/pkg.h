@@ -518,7 +518,7 @@ struct pkg_repo_ops {
 					char *dest, size_t destlen);
 	int (*fetch_pkg)(struct pkg_repo *, struct pkg *);
 	int (*mirror_pkg)(struct pkg_repo *repo, struct pkg *pkg,
-		const char *destdir);
+		const char *destdir, bool symlink);
 };
 
 struct pkg_key {
@@ -683,7 +683,7 @@ int pkg_fetch_file_to_fd(struct pkg_repo *repo, int dest, struct fetch_item *,
     bool silent);
 int pkg_repo_open(struct pkg_repo *repo);
 int pkg_repo_fetch_package(struct pkg *pkg);
-int pkg_repo_mirror_package(struct pkg *pkg, const char *destdir);
+int pkg_repo_mirror_package(struct pkg *pkg, const char *destdir, bool symlink);
 int pkg_repo_fetch_remote_extract_fd(struct pkg_repo *repo, struct pkg_repo_content *);
 int pkg_repo_meta_dump_fd(struct pkg_repo_meta *target, const int fd);
 int pkg_repo_fetch_meta(struct pkg_repo *repo, time_t *t);

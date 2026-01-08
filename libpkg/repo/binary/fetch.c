@@ -97,6 +97,9 @@ pkg_repo_binary_create_symlink(struct pkg *pkg, const char *fname,
 {
 	const char *ext, *dest_fname;
 	char link_dest_tmp[MAXPATHLEN], link_dest[MAXPATHLEN];
+	char link_target[MAXPATHLEN];
+	struct stat st;
+	ssize_t link_len;
 
 	/* Create symlink from full pkgname */
 	ext = strrchr(fname, '.');
@@ -104,12 +107,29 @@ pkg_repo_binary_create_symlink(struct pkg *pkg, const char *fname,
 		dir, pkg, pkg, ext ? ext : "");
 	snprintf(link_dest_tmp, sizeof(link_dest_tmp), "%s.new", link_dest);
 
-	/* Ignore errors here */
-	(void)unlink(link_dest_tmp);
-
-	/* Trim the path to just the filename. */
 	if ((dest_fname = strrchr(fname, '/')) != NULL)
 		++dest_fname;
+	else
+		dest_fname = fname;
+
+	/* Check if symlink already exists and points to the same target */
+	if (lstat(link_dest, &st) == 0) {
+		if (S_ISLNK(st.st_mode)) {
+			link_len = readlink(link_dest, link_target,
+			    sizeof(link_target) - 1);
+			if (link_len > 0) {
+				link_target[link_len] = '\0';
+				if (strcmp(link_target, dest_fname) == 0)
+					return (EPKG_OK);
+			}
+			pkg_debug(1, "Replacing symlink %s (was -> %s, now -> %s)",
+			    link_dest, link_target, dest_fname);
+		}
+		(void)unlink(link_dest);
+	}
+
+	(void)unlink(link_dest_tmp);
+
 	if (symlink(dest_fname, link_dest_tmp) == -1) {
 		pkg_emit_errno("symlink", link_dest);
 		return (EPKG_FATAL);
@@ -126,11 +146,12 @@ pkg_repo_binary_create_symlink(struct pkg *pkg, const char *fname,
 
 static int
 pkg_repo_binary_try_fetch(struct pkg_repo *repo, struct pkg *pkg,
-	bool already_tried, bool mirror, const char *destdir)
+	bool already_tried, bool mirror, const char *destdir, bool symlink)
 {
 	char dest[MAXPATHLEN];
 	char url[MAXPATHLEN];
 	char *dir = NULL;
+	char *alldir = NULL;
 	bool fetched = false;
 	struct stat st;
 	const char *packagesite = NULL;
@@ -226,7 +247,7 @@ checksum:
 		pkg_emit_error("cached package %s-%s: "
 		    "missing or size mismatch, fetching from remote",
 		    pkg->name, pkg->version);
-		return (pkg_repo_binary_try_fetch(repo, pkg, true, mirror, destdir));
+		return (pkg_repo_binary_try_fetch(repo, pkg, true, mirror, destdir, symlink));
 	}
 	retval = pkg_checksum_validate_file(dest, pkg->sum);
 	if (retval == ENOENT) {
@@ -244,7 +265,7 @@ checksum:
 			    "checksum mismatch, fetching from remote",
 			    pkg->name, pkg->version);
 			unlink(dest);
-			return (pkg_repo_binary_try_fetch(repo, pkg, true, mirror, destdir));
+			return (pkg_repo_binary_try_fetch(repo, pkg, true, mirror, destdir, symlink));
 		}
 	}
 
@@ -255,8 +276,18 @@ cleanup:
 	else if (!mirror && dir != NULL) {
 		(void)pkg_repo_binary_create_symlink(pkg, dest, dir);
 	}
+	else if (mirror && symlink && dir != NULL) {
+		alldir = strdup(dir);
+		if (alldir != NULL) {
+			char *hashed = strstr(alldir, "/Hashed");
+			if (hashed != NULL) {
+				*hashed = '\0';
+				(void)pkg_repo_binary_create_symlink(pkg, dest, alldir);
+			}
+			free(alldir);
+		}
+	}
 
-	/* allowed even if dir is NULL */
 	free(dir);
 
 	return (retcode);
@@ -265,12 +296,12 @@ cleanup:
 int
 pkg_repo_binary_fetch(struct pkg_repo *repo, struct pkg *pkg)
 {
-	return (pkg_repo_binary_try_fetch(repo, pkg, false, false, NULL));
+	return (pkg_repo_binary_try_fetch(repo, pkg, false, false, NULL, false));
 }
 
 int
 pkg_repo_binary_mirror(struct pkg_repo *repo, struct pkg *pkg,
-	const char *destdir)
+	const char *destdir, bool symlink)
 {
-	return (pkg_repo_binary_try_fetch(repo, pkg, false, true, destdir));
+	return (pkg_repo_binary_try_fetch(repo, pkg, false, true, destdir, symlink));
 }

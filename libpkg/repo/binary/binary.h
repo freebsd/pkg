@@ -65,6 +65,6 @@ int pkg_repo_binary_fetch(struct pkg_repo *repo, struct pkg *pkg);
 int pkg_repo_binary_get_cached_name(struct pkg_repo *repo, struct pkg *pkg,
 	char *dest, size_t destlen);
 int pkg_repo_binary_mirror(struct pkg_repo *repo, struct pkg *pkg,
-	const char *destdir);
+	const char *destdir, bool symlink);
 
 #endif /* BINARY_H_ */

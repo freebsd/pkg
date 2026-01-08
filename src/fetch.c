@@ -44,7 +44,7 @@
 void
 usage_fetch(void)
 {
-	fprintf(stderr, "Usage: pkg fetch [-r reponame] [-o destdir] [-dqUy] "
+	fprintf(stderr, "Usage: pkg fetch [-r reponame] [-o destdir] [-dqsUy] "
 					"[-Cgix] <pkg-name> <...>\n");
 	fprintf(stderr, "       pkg fetch [-r reponame] [-dqUy] -a\n");
 	fprintf(stderr, "       pkg fetch [-r reponame] [-dqUy] -u\n\n");
@@ -66,6 +66,9 @@ exec_fetch(int argc, char **argv)
 	pkg_flags	 f = PKG_FLAG_NONE;
 	c_charv_t	reponames = vec_init();
 
+	if (getenv("PKG_REPO_SYMLINK") != NULL)
+		f |= PKG_FLAG_FETCH_SYMLINK;
+
 	struct option longopts[] = {
 		{ "all",		no_argument,		NULL,	'a' },
 		{ "case-sensitive",	no_argument,		NULL,	'C' },
@@ -74,6 +77,7 @@ exec_fetch(int argc, char **argv)
 		{ "case-insensitive",	no_argument,		NULL,	'i' },
 		{ "quiet",		no_argument,		NULL,	'q' },
 		{ "repository",		required_argument,	NULL,	'r' },
+		{ "symlink",		no_argument,		NULL,	's' },
 		{ "available-updates",	no_argument,		NULL,	'u' },
 		{ "no-repo-update",	no_argument,		NULL,	'U' },
 		{ "regex",		no_argument,		NULL,	'x' },
@@ -82,7 +86,7 @@ exec_fetch(int argc, char **argv)
 		{ NULL,			0,			NULL,	0   },
 	};
 
-	while ((ch = getopt_long(argc, argv, "+aCdgiqr:Uuxyo:", longopts, NULL)) != -1) {
+	while ((ch = getopt_long(argc, argv, "+aCdgiqr:sUuxyo:", longopts, NULL)) != -1) {
 		switch (ch) {
 		case 'a':
 			match = MATCH_ALL;
@@ -104,6 +108,9 @@ exec_fetch(int argc, char **argv)
 			break;
 		case 'r':
 			vec_push(&reponames, optarg);
+			break;
+		case 's':
+			f |= PKG_FLAG_FETCH_SYMLINK;
 			break;
 		case 'u':
 			f |= PKG_FLAG_UPGRADES_FOR_INSTALLED;
