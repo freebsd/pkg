@@ -2218,6 +2218,7 @@ pkg_jobs_fetch(struct pkg_jobs *j)
 	const char *cachedir = NULL;
 	char cachedpath[MAXPATHLEN];
 	bool mirror = (j->flags & PKG_FLAG_FETCH_MIRROR) ? true : false;
+	bool symlink = (j->flags & PKG_FLAG_FETCH_SYMLINK) ? true : false;
 	int retcode;
 
 
@@ -2301,7 +2302,7 @@ pkg_jobs_fetch(struct pkg_jobs *j)
 				continue;
 
 			if (mirror) {
-				retcode = pkg_repo_mirror_package(p, cachedir);
+				retcode = pkg_repo_mirror_package(p, cachedir, symlink);
 				if (retcode != EPKG_OK)
 					return (retcode);
 			}

@@ -1346,7 +1346,7 @@ pkg_repo_fetch_package(struct pkg *pkg)
 }
 
 int
-pkg_repo_mirror_package(struct pkg *pkg, const char *destdir)
+pkg_repo_mirror_package(struct pkg *pkg, const char *destdir, bool symlink)
 {
 	struct pkg_repo *repo;
 
@@ -1361,7 +1361,7 @@ pkg_repo_mirror_package(struct pkg *pkg, const char *destdir)
 		return (EPKG_FATAL);
 	}
 
-	return (repo->ops->mirror_pkg(repo, pkg, destdir));
+	return (repo->ops->mirror_pkg(repo, pkg, destdir, symlink));
 }
 
 int

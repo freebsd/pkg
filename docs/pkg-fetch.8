@@ -30,7 +30,7 @@
 .Nm
 .Op Fl r Ar reponame
 .Op Fl o Ar destdir
-.Op Fl dqUy
+.Op Fl dqsUy
 .Fl a
 .Nm
 .Op Fl r Ar reponame
@@ -40,13 +40,13 @@
 .Nm
 .Op Cm --repository Ar reponame
 .Op Cm --output Ar destdir
-.Op Cm --{dependencies,quiet,no-repo-update,yes}
+.Op Cm --{dependencies,quiet,symlink,no-repo-update,yes}
 .Op Cm --{case-sensitive,glob,case-insensitive,regex}
 .Ar pkg-name
 .Op ...
 .Nm
 .Op Cm --repository Ar reponame
-.Op Cm --{dependencies,quiet,no-repo-update,yes}
+.Op Cm --{dependencies,quiet,symlink,no-repo-update,yes}
 .Cm --all
 .Nm
 .Op Cm --repository Ar reponame
@@ -110,6 +110,17 @@ Fetches packages from the given
 if multiple repo support is enabled.
 See
 .Xr pkg.conf 5 .
+.It Fl s , Cm --symlink
+Create a symlink to the fetched package in the
+.Pa All
+directory when using
+.Fl o
+to fetch packages for distribution.
+This is useful when the remote repository stores packages in a hashed
+directory structure
+.Pa ( All/Hashed/xx/ )
+but local tools expect packages directly in
+.Pa All/ .
 .It Fl u , Cm --available-updates
 Fetch all available updates for the currently installed packages.
 .It Fl U , Cm --no-repo-update
@@ -130,9 +141,14 @@ Assume yes when asked for confirmation before fetching packages.
 .Sh ENVIRONMENT
 The following environment variables affect the execution of
 .Nm :
-.Bl -tag -width ".Ev NO_DESCRIPTIONS"
+.Bl -tag -width ".Ev PKG_REPO_SYMLINK"
 .It Ev PKG_DBDIR
 .It Ev CASE_SENSITIVE_MATCH
+.It Ev PKG_REPO_SYMLINK
+If set, enables symlink creation when fetching packages with
+.Fl o ,
+equivalent to specifying
+.Fl s .
 .El
 .Pp
 See
