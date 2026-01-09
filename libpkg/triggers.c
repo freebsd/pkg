@@ -463,7 +463,7 @@ trigger_execute_lua(const char *script, bool sandbox, pkghash *args)
 	int pstat;
 	pkghash_it it;
 
-	if (ctx.defer_triggers) {
+	if (!sandbox && ctx.defer_triggers) {
 		save_trigger(script, sandbox, args);
 		return (EPKG_OK);
 	}

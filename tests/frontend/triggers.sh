@@ -46,6 +46,7 @@ deferred_body() {
 path_glob: [ "/*" ]
 trigger: {
 	type: lua
+	sandbox: false
 	script: <<EOS
 	print("deferred " .. arg[1])
 EOS
@@ -57,8 +58,7 @@ EOF
 	unset PKG_TRIGGERS_DIR
 	unset PKG_DBDIR
 	atf_check pkg -o REPOS_DIR=/dev/null -o PKG_TRIGGERS_DIR="/trigger_dir" -r ${TMPDIR}/target install -qfy ${TMPDIR}/test-1.pkg
-OUTPUT='--sandbox
---begin args
+OUTPUT='--begin args
 -- /trigger_dir
 --end args
 --
