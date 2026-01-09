@@ -905,6 +905,22 @@ _dbdir_getcwd(char *path, size_t sz)
 	return (snprintf(path, sz, "/"));
 }
 
+static bool
+pkgdb_is_local_fs(int fd) {
+#if defined(HAVE_SYS_STATVFS_H) && defined(ST_LOCAL)
+	struct statvfs stfs;
+	if (fstatvfs(fd, &stfs) == 0) {
+		return (stfs.f_flag & ST_LOCAL);
+	}
+#elif defined(HAVE_FSTATFS) && defined(MNT_LOCAL)
+	struct statfs stfs;
+	if (fstatfs(fd, &stfs) == 0) {
+		return (stfs.f_flags & MNT_LOCAL);
+	}
+#endif
+	return (true);
+}
+
 void
 pkgdb_syscall_overload(void)
 {
@@ -931,28 +947,12 @@ pkgdb_nfs_corruption(sqlite3 *db)
 	 * Fall back on unix-dotfile locking strategy if on a network filesystem
 	 */
 
-#if defined(HAVE_SYS_STATVFS_H) && defined(ST_LOCAL)
 	int dbdirfd = pkg_get_dbdirfd();
-	struct statvfs stfs;
-
-	if (fstatvfs(dbdirfd, &stfs) == 0) {
-		if ((stfs.f_flag & ST_LOCAL) != ST_LOCAL)
-			pkg_emit_error("You are running on a remote filesystem,"
+	if (!pkgdb_is_local_fs(dbdirfd)) {
+		pkg_emit_error("You are running on a remote filesystem,"
 			    " please make sure, the locking mechanism is "
 			    " properly setup\n");
 	}
-#elif defined(HAVE_FSTATFS) && defined(MNT_LOCAL)
-	int dbdirfd = pkg_get_dbdirfd();
-	struct statfs stfs;
-
-	if (fstatfs(dbdirfd, &stfs) == 0) {
-		if ((stfs.f_flags & MNT_LOCAL) != MNT_LOCAL)
-			pkg_emit_error("You are running on a remote filesystem,"
-			    " please make sure, the locking mechanism is "
-			    " properly setup\n");
-	}
-#endif
-
 }
 
 int
@@ -1022,6 +1022,10 @@ retry:
 		if (create && pkgdb_init(db->sqlite) != EPKG_OK) {
 			pkgdb_close(db);
 			return (EPKG_FATAL);
+		}
+
+		if (pkgdb_is_local_fs(dbdirfd)) {
+			sql_exec(db->sqlite, "PRAGMA journal_mode = WAL;");
 		}
 
 		/* Create our functions */
