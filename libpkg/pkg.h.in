@@ -312,6 +312,8 @@ typedef enum {
 	PKG_ATTR_REQUIRES,
 	PKG_ATTR_CONFLICTS,
 	PKG_ATTR_NUM_FIELDS,		/* end of fields */
+	PKG_ATTR_SHLIBS_REQUIRED_IGNORE,
+	PKG_ATTR_SHLIBS_PROVIDED_IGNORE,
 } pkg_attr;
 
 typedef enum {
@@ -1004,6 +1006,8 @@ int pkgdb_delete_annotation(struct pkgdb *db, struct pkg *pkg,
 #define PKG_LOAD_PROVIDES		(1U << 14)
 #define PKG_LOAD_REQUIRES		(1U << 15)
 #define PKG_LOAD_LUA_SCRIPTS		(1u << 16)
+#define PKG_LOAD_SHLIBS_REQUIRED_IGNORE	(1U << 17)
+#define PKG_LOAD_SHLIBS_PROVIDED_IGNORE	(1U << 18)
 /* Make sure new PKG_LOAD don't conflict with PKG_CONTAINS_* */
 
 /**

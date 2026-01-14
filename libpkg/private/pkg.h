@@ -230,7 +230,9 @@ struct pkg {
 	charv_t		 users;
 	charv_t		 groups;
 	charv_t		 shlibs_required;
+	charv_t		 shlibs_required_ignore;
 	charv_t		 shlibs_provided;
+	charv_t		 shlibs_provided_ignore;
 	pkghash			*conflictshash;
 	struct pkg_conflict	*conflicts;
 	charv_t		 provides;
@@ -763,7 +765,9 @@ int get_pragma(sqlite3 *, const char *sql, int64_t *res, bool silence);
 
 int pkgdb_register_pkg(struct pkgdb *db, struct pkg *pkg, int forced, const char *);
 int pkgdb_update_shlibs_required(struct pkg *pkg, int64_t package_id, sqlite3 *s);
+int pkgdb_update_shlibs_required_ignore(struct pkg *pkg, int64_t package_id, sqlite3 *s);
 int pkgdb_update_shlibs_provided(struct pkg *pkg, int64_t package_id, sqlite3 *s);
+int pkgdb_update_shlibs_provided_ignore(struct pkg *pkg, int64_t package_id, sqlite3 *s);
 int pkgdb_update_provides(struct pkg *pkg, int64_t package_id, sqlite3 *s);
 int pkgdb_update_requires(struct pkg *pkg, int64_t package_id, sqlite3 *s);
 int pkgdb_insert_annotations(struct pkg *pkg, int64_t package_id, sqlite3 *s);
@@ -863,9 +867,9 @@ enum pkg_shlib_flags pkg_shlib_flags_from_abi(const struct pkg_abi *shlib_abi);
  */
 char *pkg_shlib_name_with_flags(const char *name, enum pkg_shlib_flags flags);
 int pkg_addshlib_required(struct pkg *pkg, const char *name, enum pkg_shlib_flags);
-/* No checking for duplicates or filtering */
-int pkg_addshlib_required_raw(struct pkg *pkg, const char *name);
+int pkg_addshlib_required_ignore(struct pkg *pkg, const char *name);
 int pkg_addshlib_provided(struct pkg *pkg, const char *name, enum pkg_shlib_flags);
+int pkg_addshlib_provided_ignore(struct pkg *pkg, const char *name);
 
 int pkg_addconflict(struct pkg *pkg, const char *name);
 int pkg_addprovide(struct pkg *pkg, const char *name);

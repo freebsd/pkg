@@ -74,7 +74,7 @@ extern struct pkg_ctx ctx;
 */
 
 #define DB_SCHEMA_MAJOR        0
-#define DB_SCHEMA_MINOR	37
+#define DB_SCHEMA_MINOR	38
 
 #define DBVERSION (DB_SCHEMA_MAJOR * 1000 + DB_SCHEMA_MINOR)
 
@@ -495,7 +495,21 @@ pkgdb_init(sqlite3 *sdb)
 			" ON DELETE RESTRICT ON UPDATE RESTRICT,"
 		"UNIQUE (package_id, shlib_id)"
 	");"
+	"CREATE TABLE pkg_shlibs_required_ignore ("
+		"package_id INTEGER NOT NULL REFERENCES packages(id)"
+			" ON DELETE CASCADE ON UPDATE CASCADE,"
+		"shlib_id INTEGER NOT NULL REFERENCES shlibs(id)"
+			" ON DELETE RESTRICT ON UPDATE RESTRICT,"
+		"UNIQUE (package_id, shlib_id)"
+	");"
 	"CREATE TABLE pkg_shlibs_provided ("
+		"package_id INTEGER NOT NULL REFERENCES packages(id)"
+			" ON DELETE CASCADE ON UPDATE CASCADE,"
+		"shlib_id INTEGER NOT NULL REFERENCES shlibs(id)"
+			" ON DELETE RESTRICT ON UPDATE RESTRICT,"
+		"UNIQUE (package_id, shlib_id)"
+	");"
+	"CREATE TABLE pkg_shlibs_provided_ignore ("
 		"package_id INTEGER NOT NULL REFERENCES packages(id)"
 			" ON DELETE CASCADE ON UPDATE CASCADE,"
 		"shlib_id INTEGER NOT NULL REFERENCES shlibs(id)"
@@ -560,7 +574,9 @@ pkgdb_init(sqlite3 *sdb)
 	"CREATE INDEX pkg_users_package_id ON pkg_users (package_id);"
 	"CREATE INDEX pkg_groups_package_id ON pkg_groups (package_id);"
 	"CREATE INDEX pkg_shlibs_required_package_id ON pkg_shlibs_required (package_id);"
+	"CREATE INDEX pkg_shlibs_required_ignore_package_id ON pkg_shlibs_required_ignore (package_id);"
 	"CREATE INDEX pkg_shlibs_provided_package_id ON pkg_shlibs_provided (package_id);"
+	"CREATE INDEX pkg_shlibs_provided_ignore_package_id ON pkg_shlibs_provided_ignore (package_id);"
 	"CREATE INDEX pkg_directories_directory_id ON pkg_directories (directory_id);"
 	"CREATE INDEX pkg_annotation_package_id ON pkg_annotation(package_id);"
 	"CREATE INDEX pkg_digest_id ON packages(origin, manifestdigest);"
@@ -1318,7 +1334,9 @@ typedef enum _sql_prstmt_index {
 	OPTION2,
 	SHLIBS1,
 	SHLIBS_REQD,
+	SHLIBS_REQD_IGNORE,
 	SHLIBS_PROV,
+	SHLIBS_PROV_IGNORE,
 	ANNOTATE1,
 	ANNOTATE2,
 	ANNOTATE_ADD1,
@@ -1451,9 +1469,19 @@ static sql_prstmt sql_prepared_statements[PRSTMT_LAST] = {
 		"INSERT OR IGNORE INTO pkg_shlibs_required(package_id, shlib_id) "
 		"VALUES (?1, (SELECT id FROM shlibs WHERE name = ?2))",
 	},
+	[SHLIBS_REQD_IGNORE] = {
+		NULL,
+		"INSERT OR IGNORE INTO pkg_shlibs_required_ignore(package_id, shlib_id) "
+		"VALUES (?1, (SELECT id FROM shlibs WHERE name = ?2))",
+	},
 	[SHLIBS_PROV] = {
 		NULL,
 		"INSERT OR IGNORE INTO pkg_shlibs_provided(package_id, shlib_id) "
+		"VALUES (?1, (SELECT id FROM shlibs WHERE name = ?2))",
+	},
+	[SHLIBS_PROV_IGNORE] = {
+		NULL,
+		"INSERT OR IGNORE INTO pkg_shlibs_provided_ignore(package_id, shlib_id) "
 		"VALUES (?1, (SELECT id FROM shlibs WHERE name = ?2))",
 	},
 	[ANNOTATE1] = {
@@ -1970,7 +1998,11 @@ pkgdb_register_pkg(struct pkgdb *db, struct pkg *pkg, int forced,
 	 */
 	if (pkgdb_update_shlibs_required(pkg, package_id, s) != EPKG_OK)
 		goto cleanup;
+	if (pkgdb_update_shlibs_required_ignore(pkg, package_id, s) != EPKG_OK)
+		goto cleanup;
 	if (pkgdb_update_shlibs_provided(pkg, package_id, s) != EPKG_OK)
+		goto cleanup;
+	if (pkgdb_update_shlibs_provided_ignore(pkg, package_id, s) != EPKG_OK)
 		goto cleanup;
 
 	/*
@@ -2082,6 +2114,28 @@ pkgdb_update_shlibs_required(struct pkg *pkg, int64_t package_id, sqlite3 *s)
 }
 
 int
+pkgdb_update_shlibs_required_ignore(struct pkg *pkg, int64_t package_id, sqlite3 *s)
+{
+	vec_foreach(pkg->shlibs_required_ignore, i) {
+		sql_arg_t arg1[] = { SQL_ARG(pkg->shlibs_required_ignore.d[i]) };
+		sql_arg_t arg2[] = {
+			SQL_ARG(package_id),
+			SQL_ARG(pkg->shlibs_required_ignore.d[i])
+		};
+		if (run_prstmt(SHLIBS1, arg1, NELEM(arg1))
+		    != SQLITE_DONE
+		    ||
+		    run_prstmt(SHLIBS_REQD_IGNORE, arg2, NELEM(arg2))
+		    != SQLITE_DONE) {
+			ERROR_STMT_SQLITE(s, STMT(SHLIBS_REQD_IGNORE));
+			return (EPKG_FATAL);
+		}
+	}
+
+	return (EPKG_OK);
+}
+
+int
 pkgdb_update_config_file_content(struct pkg *p, sqlite3 *s)
 {
 	struct pkg_config_file	*cf = NULL;
@@ -2116,6 +2170,28 @@ pkgdb_update_shlibs_provided(struct pkg *pkg, int64_t package_id, sqlite3 *s)
 		    run_prstmt(SHLIBS_PROV, arg2, NELEM(arg2))
 		    != SQLITE_DONE) {
 			ERROR_STMT_SQLITE(s, STMT(SHLIBS_PROV));
+			return (EPKG_FATAL);
+		}
+	}
+
+	return (EPKG_OK);
+}
+
+int
+pkgdb_update_shlibs_provided_ignore(struct pkg *pkg, int64_t package_id, sqlite3 *s)
+{
+	vec_foreach(pkg->shlibs_provided_ignore, i) {
+		sql_arg_t arg1[] = { SQL_ARG(pkg->shlibs_provided_ignore.d[i]) };
+		sql_arg_t arg2[] = {
+			SQL_ARG(package_id),
+			SQL_ARG(pkg->shlibs_provided_ignore.d[i]),
+		};
+		if (run_prstmt(SHLIBS1, arg1, NELEM(arg1))
+		    != SQLITE_DONE
+		    ||
+		    run_prstmt(SHLIBS_PROV_IGNORE, arg2, NELEM(arg2))
+		    != SQLITE_DONE) {
+			ERROR_STMT_SQLITE(s, STMT(SHLIBS_PROV_IGNORE));
 			return (EPKG_FATAL);
 		}
 	}
@@ -2374,7 +2450,11 @@ pkgdb_unregister_pkg(struct pkgdb *db, int64_t id)
 		"shlibs WHERE id NOT IN "
 			"(SELECT DISTINCT shlib_id FROM pkg_shlibs_required)"
 			"AND id NOT IN "
-			"(SELECT DISTINCT shlib_id FROM pkg_shlibs_provided)",
+			"(SELECT DISTINCT shlib_id FROM pkg_shlibs_required_ignore)"
+			"AND id NOT IN "
+			"(SELECT DISTINCT shlib_id FROM pkg_shlibs_provided)"
+			"AND id NOT IN "
+			"(SELECT DISTINCT shlib_id FROM pkg_shlibs_provided_ignore)",
 		"script WHERE script_id NOT IN "
 		        "(SELECT DISTINCT script_id FROM pkg_script)",
 		"lua_script WHERE lua_script_id NOT IN "

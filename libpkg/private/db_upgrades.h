@@ -739,6 +739,23 @@ static struct db_upgrades {
 	"ALTER TABLE directories ADD COLUMN gname TEXT; "
 	"ALTER TABLE directories ADD COLUMN perm INTEGER; "
 	"ALTER TABLE directories ADD COLUMN fflags INTEGER; "
+	}, { 38,
+	"CREATE TABLE pkg_shlibs_required_ignore ("
+		"package_id INTEGER NOT NULL REFERENCES packages(id)"
+			" ON DELETE CASCADE ON UPDATE CASCADE,"
+		"shlib_id INTEGER NOT NULL REFERENCES shlibs(id)"
+			" ON DELETE RESTRICT ON UPDATE RESTRICT,"
+		"UNIQUE (package_id, shlib_id)"
+	");"
+	"CREATE TABLE pkg_shlibs_provided_ignore ("
+		"package_id INTEGER NOT NULL REFERENCES packages(id)"
+			" ON DELETE CASCADE ON UPDATE CASCADE,"
+		"shlib_id INTEGER NOT NULL REFERENCES shlibs(id)"
+			" ON DELETE RESTRICT ON UPDATE RESTRICT,"
+		"UNIQUE (package_id, shlib_id)"
+	");"
+	"CREATE INDEX pkg_shlibs_required_ignore_package_id ON pkg_shlibs_required_ignore (package_id);"
+	"CREATE INDEX pkg_shlibs_provided_ignore_package_id ON pkg_shlibs_provided_ignore (package_id);"
 	},
 	/* Mark the end of the array */
 	{ -1, NULL }
