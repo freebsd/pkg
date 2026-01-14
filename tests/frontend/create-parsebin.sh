@@ -40,10 +40,6 @@ genmanifest() {
         shift
     done
 
-    if [ -n "${hide_provided}" ]; then
-        Xshlibs_provided=""
-    fi
-
 	cat << EOF > ${PKG_NAME}.manifest
 name: ${PKG_NAME}
 origin: ${PKG_NAME}
@@ -85,7 +81,11 @@ EOF
         echo "]" >> ${PKG_NAME}.expected
     fi
     if [ -n "${Xshlibs_provided}" ]; then
-        echo "shlibs_provided [" >> ${PKG_NAME}.expected
+        if [ -n "${hide_provided}" ]; then
+            echo "shlibs_provided_ignore [" >> ${PKG_NAME}.expected
+        else
+            echo "shlibs_provided [" >> ${PKG_NAME}.expected
+        fi
         for i in ${Xshlibs_provided}; do
             echo ${NL}"    "\"$i\", >> ${PKG_NAME}.expected
         done
