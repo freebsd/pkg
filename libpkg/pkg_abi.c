@@ -595,7 +595,6 @@ pkg_analyse_files(struct pkgdb *db __unused, struct pkg *pkg, const char *stage)
 			/* If the corresponding PATHS option isn't set (i.e. an empty ucl array)
 			   don't do any filtering for backwards compatibility. */
 			if (ucl_array_size(paths) == 0 || pkg_match_paths_list(paths, file->path)) {
-				lstat(fpath, &st);
 				if (S_ISREG(st.st_mode)) {
 					pkg_addshlib_provided(pkg, provided, provided_flags);
 				} else {
