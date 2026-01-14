@@ -46,6 +46,8 @@ enum {
 	MANIFEST_SHLIBS_PROVIDED,
 	MANIFEST_SHLIBS_REQUIRED,
 	MANIFEST_USERS,
+	MANIFEST_SHLIBS_REQUIRED_IGNORE,
+	MANIFEST_SHLIBS_PROVIDED_IGNORE,
 };
 
 #define PKG_MESSAGE_LEGACY	1
@@ -180,7 +182,13 @@ static const struct pkg_manifest_key {
 	{ "shlibs_provided",     MANIFEST_SHLIBS_PROVIDED,
 			TYPE_SHIFT(UCL_ARRAY),  pkg_array},
 
+	{ "shlibs_provided_ignore",     MANIFEST_SHLIBS_PROVIDED_IGNORE,
+			TYPE_SHIFT(UCL_ARRAY),  pkg_array},
+
 	{ "shlibs_required",     MANIFEST_SHLIBS_REQUIRED,
+			TYPE_SHIFT(UCL_ARRAY),  pkg_array},
+
+	{ "shlibs_required_ignore",     MANIFEST_SHLIBS_REQUIRED_IGNORE,
 			TYPE_SHIFT(UCL_ARRAY),  pkg_array},
 
 	{ "sum",                 offsetof(struct pkg, sum),
@@ -394,11 +402,23 @@ pkg_array(struct pkg *pkg, const ucl_object_t *obj, uint32_t attr)
 			else
 				pkg_addshlib_required(pkg, ucl_object_tostring(cur), PKG_SHLIB_FLAGS_NONE);
 			break;
+		case MANIFEST_SHLIBS_REQUIRED_IGNORE:
+			if (cur->type != UCL_STRING)
+				pkg_emit_error("Skipping malformed required shared library ignore");
+			else
+				pkg_addshlib_required_ignore(pkg, ucl_object_tostring(cur));
+			break;
 		case MANIFEST_SHLIBS_PROVIDED:
 			if (cur->type != UCL_STRING)
 				pkg_emit_error("Skipping malformed provided shared library");
 			else
 				pkg_addshlib_provided(pkg, ucl_object_tostring(cur), PKG_SHLIB_FLAGS_NONE);
+			break;
+		case MANIFEST_SHLIBS_PROVIDED_IGNORE:
+			if (cur->type != UCL_STRING)
+				pkg_emit_error("Skipping malformed provided shared library ignore");
+			else
+				pkg_addshlib_provided_ignore(pkg, ucl_object_tostring(cur));
 			break;
 		case MANIFEST_CONFLICTS:
 			if (cur->type != UCL_STRING)
@@ -1075,6 +1095,16 @@ pkg_emit_object(struct pkg *pkg, short flags)
 	if (seq)
 		ucl_object_insert_key(top, seq, "shlibs_required", 15, false);
 
+	dbg(4, "Emitting shibs_required_ignore");
+	seq = NULL;
+	vec_foreach(pkg->shlibs_required_ignore, i) {
+		if (seq == NULL)
+			seq = ucl_object_typed_new(UCL_ARRAY);
+		ucl_array_append(seq, ucl_object_fromstring(pkg->shlibs_required_ignore.d[i]));
+	}
+	if (seq)
+		ucl_object_insert_key(top, seq, "shlibs_required_ignore", 22, false);
+
 	dbg(4, "Emitting shlibs_provided");
 	seq = NULL;
 	vec_foreach(pkg->shlibs_provided, i) {
@@ -1084,6 +1114,16 @@ pkg_emit_object(struct pkg *pkg, short flags)
 	}
 	if (seq)
 		ucl_object_insert_key(top, seq, "shlibs_provided", 15, false);
+
+	dbg(4, "Emitting shlibs_provided_ignore");
+	seq = NULL;
+	vec_foreach(pkg->shlibs_provided_ignore, i) {
+		if (seq == NULL)
+			seq = ucl_object_typed_new(UCL_ARRAY);
+		ucl_array_append(seq, ucl_object_fromstring(pkg->shlibs_provided_ignore.d[i]));
+	}
+	if (seq)
+		ucl_object_insert_key(top, seq, "shlibs_provided_ignore", 22, false);
 
 	dbg(4, "Emitting conflicts");
 	seq = NULL;

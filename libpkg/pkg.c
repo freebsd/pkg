@@ -94,8 +94,12 @@ pkg_free(struct pkg *pkg)
 	pkg->flags &= ~PKG_LOAD_GROUPS;
 	vec_free_and_free(&pkg->shlibs_required, free);
 	pkg->flags &= ~PKG_LOAD_SHLIBS_REQUIRED;
+	vec_free_and_free(&pkg->shlibs_required_ignore, free);
+	pkg->flags &= ~PKG_LOAD_SHLIBS_REQUIRED_IGNORE;
 	vec_free_and_free(&pkg->shlibs_provided, free);
-	pkg->flags &= ~PKG_LOAD_SHLIBS_REQUIRED;
+	pkg->flags &= ~PKG_LOAD_SHLIBS_PROVIDED;
+	vec_free_and_free(&pkg->shlibs_provided_ignore, free);
+	pkg->flags &= ~PKG_LOAD_SHLIBS_PROVIDED_IGNORE;
 	vec_free_and_free(&pkg->provides, free);
 	pkg->flags &= ~PKG_LOAD_PROVIDES;
 	vec_free_and_free(&pkg->requires, free);
@@ -954,6 +958,25 @@ pkg_addshlib_required(struct pkg *pkg, const char *name,
 }
 
 int
+pkg_addshlib_required_ignore(struct pkg *pkg, const char *name)
+{
+	assert(pkg != NULL);
+	assert(name != NULL && name[0] != '\0');
+
+	char *owned_name = xstrdup(name);
+
+	/* silently ignore duplicates in case of shlibs */
+	if (charv_insert_sorted(&pkg->shlibs_required_ignore, owned_name) != NULL) {
+		free(owned_name);
+		return (EPKG_OK);
+	}
+
+	dbg(3, "added shlib required ignore for %s on %s", pkg->name, owned_name);
+
+	return (EPKG_OK);
+}
+
+int
 pkg_addshlib_provided(struct pkg *pkg, const char *name,
     enum pkg_shlib_flags flags)
 {
@@ -969,6 +992,25 @@ pkg_addshlib_provided(struct pkg *pkg, const char *name,
 	}
 
 	dbg(3, "added shlib provide %s for %s", full_name, pkg->name);
+
+	return (EPKG_OK);
+}
+
+int
+pkg_addshlib_provided_ignore(struct pkg *pkg, const char *name)
+{
+	assert(pkg != NULL);
+	assert(name != NULL && name[0] != '\0');
+
+	char *owned_name = xstrdup(name);
+
+	/* silently ignore duplicates in case of shlibs */
+	if (charv_insert_sorted(&pkg->shlibs_provided_ignore, owned_name) != NULL) {
+		free(owned_name);
+		return (EPKG_OK);
+	}
+
+	dbg(3, "added shlib provided ignore %s for %s", owned_name, pkg->name);
 
 	return (EPKG_OK);
 }

@@ -592,6 +592,29 @@ pkgdb_load_shlib_required(sqlite3 *sqlite, struct pkg *pkg)
 }
 
 static int
+addshlib_required_ignore_raw(struct pkg *pkg, const char *name)
+{
+	vec_push(&pkg->shlibs_required_ignore, xstrdup(name));
+	return (EPKG_OK);
+}
+
+static int
+pkgdb_load_shlib_required_ignore(sqlite3 *sqlite, struct pkg *pkg)
+{
+	const char	sql[] = ""
+		"SELECT name"
+		"  FROM pkg_shlibs_required_ignore, shlibs AS s"
+		"  WHERE package_id = ?1"
+		"    AND shlib_id = s.id"
+		"  ORDER by name ASC";
+
+	assert(pkg != NULL);
+
+	return (load_val(sqlite, pkg, sql, PKG_LOAD_SHLIBS_REQUIRED,
+	    addshlib_required_ignore_raw, PKG_ATTR_SHLIBS_REQUIRED_IGNORE));
+}
+
+static int
 addshlib_provided_raw(struct pkg *pkg, const char *name)
 {
 	vec_push(&pkg->shlibs_provided, xstrdup(name));
@@ -612,6 +635,29 @@ pkgdb_load_shlib_provided(sqlite3 *sqlite, struct pkg *pkg)
 
 	return (load_val(sqlite, pkg, sql, PKG_LOAD_SHLIBS_PROVIDED,
 	    addshlib_provided_raw, PKG_SHLIBS_PROVIDED));
+}
+
+static int
+addshlib_provided_ignore_raw(struct pkg *pkg, const char *name)
+{
+	vec_push(&pkg->shlibs_provided_ignore, xstrdup(name));
+	return (EPKG_OK);
+}
+
+static int
+pkgdb_load_shlib_provided_ignore(sqlite3 *sqlite, struct pkg *pkg)
+{
+	const char	sql[] = ""
+		"SELECT name"
+		"  FROM pkg_shlibs_provided_ignore, shlibs AS s"
+		"  WHERE package_id = ?1"
+		"    AND shlib_id = s.id"
+		"  ORDER by name ASC";
+
+	assert(pkg != NULL);
+
+	return (load_val(sqlite, pkg, sql, PKG_LOAD_SHLIBS_PROVIDED_IGNORE,
+	    addshlib_provided_ignore_raw, PKG_ATTR_SHLIBS_PROVIDED_IGNORE));
 }
 
 static int
@@ -1007,7 +1053,9 @@ static const struct load_on_flag {
 	{ PKG_LOAD_USERS,		pkgdb_load_user },
 	{ PKG_LOAD_GROUPS,		pkgdb_load_group },
 	{ PKG_LOAD_SHLIBS_REQUIRED,	pkgdb_load_shlib_required },
+	{ PKG_LOAD_SHLIBS_REQUIRED_IGNORE, pkgdb_load_shlib_required_ignore },
 	{ PKG_LOAD_SHLIBS_PROVIDED,	pkgdb_load_shlib_provided },
+	{ PKG_LOAD_SHLIBS_PROVIDED_IGNORE, pkgdb_load_shlib_provided_ignore },
 	{ PKG_LOAD_ANNOTATIONS,		pkgdb_load_annotations },
 	{ PKG_LOAD_CONFLICTS,		pkgdb_load_conflicts },
 	{ PKG_LOAD_PROVIDES,		pkgdb_load_provides },

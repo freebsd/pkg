@@ -320,7 +320,17 @@ pkg_get_element(struct pkg *p, pkg_attr a)
 		e->stringlist->list = &p->shlibs_required;
 		e->type = PKG_STRINGLIST;
 		break;
+	case PKG_ATTR_SHLIBS_REQUIRED_IGNORE:
+		e->stringlist = xcalloc(1, sizeof(struct pkg_stringlist *));
+		e->stringlist->list = &p->shlibs_required_ignore;
+		e->type = PKG_STRINGLIST;
+		break;
 	case PKG_ATTR_SHLIBS_PROVIDED:
+		e->stringlist = xcalloc(1, sizeof(struct pkg_stringlist *));
+		e->stringlist->list = &p->shlibs_provided;
+		e->type = PKG_STRINGLIST;
+		break;
+	case PKG_ATTR_SHLIBS_PROVIDED_IGNORE:
 		e->stringlist = xcalloc(1, sizeof(struct pkg_stringlist *));
 		e->stringlist->list = &p->shlibs_provided;
 		e->type = PKG_STRINGLIST;
