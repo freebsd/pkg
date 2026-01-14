@@ -74,13 +74,18 @@
 #define vec_pop(v) \
 	(v)->d[--(v)->len]
 
-#define vec_remove_and_free(v, cnt, free_func) \
+#define vec_remove(v, cnt) \
 	do {                                                    \
-		free_func((v)->d[cnt]);                         \
 		for (size_t _i = cnt; _i < (v)->len - 1; _i++) {    \
 			(v)->d[_i] = (v)->d[_i + 1];            \
 		}                                               \
 		(v)->len--;                                     \
+	} while (0)
+
+#define vec_remove_and_free(v, cnt, free_func) \
+	do {                                                    \
+		free_func((v)->d[cnt]);                         \
+		vec_remove(v, cnt);                             \
 	} while (0)
 
 /*

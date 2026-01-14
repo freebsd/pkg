@@ -462,12 +462,21 @@ pkg_cleanup_shlibs_required(struct pkg *pkg, charv_t *internal_provided)
 	const char *lib;
 
 	vec_foreach(pkg->shlibs_required, i) {
-		const char *s = pkg->shlibs_required.d[i];
+		char *s = pkg->shlibs_required.d[i];
 		if (charv_search(&pkg->shlibs_provided, s) != NULL ||
 		    charv_search(internal_provided, s) != NULL) {
 			pkg_debug(2,
 			    "remove %s from required shlibs as the "
 			    "package %s provides this library itself",
+			    s, pkg->name);
+			vec_remove_and_free(&pkg->shlibs_required, i, free);
+			i--;
+			continue;
+		}
+		if (charv_search(&pkg->shlibs_required_ignore, s) != NULL) {
+			pkg_debug(2,
+			    "remove %s from required shlibs for package %s as it "
+			    "is listed in shlibs_required_ignore.",
 			    s, pkg->name);
 			vec_remove_and_free(&pkg->shlibs_required, i, free);
 			i--;
@@ -480,7 +489,10 @@ pkg_cleanup_shlibs_required(struct pkg *pkg, charv_t *internal_provided)
 			    "remove %s from required shlibs for package %s as it "
 			    "is matched by SHLIB_REQUIRE_IGNORE_GLOB/REGEX.",
 			    s, pkg->name);
-			vec_remove_and_free(&pkg->shlibs_required, i, free);
+			vec_remove(&pkg->shlibs_required, i);
+			if (charv_insert_sorted(&pkg->shlibs_required_ignore, s) != NULL) {
+				free(s);
+			}
 			i--;
 			continue;
 		}
@@ -623,17 +635,35 @@ pkg_analyse_files(struct pkgdb *db __unused, struct pkg *pkg, const char *stage)
 	 * Do not depend on libraries that a package provides itself
 	 */
 	pkg_cleanup_shlibs_required(pkg, &internal_provided);
-	vec_free_and_free(&internal_provided, free);
+	while (internal_provided.len > 0) {
+		char *s = vec_pop(&internal_provided);
+		if (charv_insert_sorted(&pkg->shlibs_provided_ignore, s) != NULL) {
+			free(s);
+		}
+	}
 
 	vec_foreach(pkg->shlibs_provided, i) {
-		if (match_ucl_lists(pkg->shlibs_provided.d[i],
+		char *s = pkg->shlibs_provided.d[i];
+		if (charv_search(&pkg->shlibs_provided_ignore, s) != NULL) {
+			pkg_debug(2,
+			    "remove %s from provided shlibs for package %s as it "
+			    "is listed in shlibs_provided_ignore.",
+			    s, pkg->name);
+			vec_remove_and_free(&pkg->shlibs_provided, i, free);
+			i--;
+			continue;
+		}
+		if (match_ucl_lists(s,
 		    pkg_config_get("SHLIB_PROVIDE_IGNORE_GLOB"),
 		    pkg_config_get("SHLIB_PROVIDE_IGNORE_REGEX"))) {
 			pkg_debug(2,
 			    "remove %s from provided shlibs for package %s as it "
 			    "is matched by SHLIB_PROVIDE_IGNORE_GLOB/REGEX.",
-			    pkg->shlibs_provided.d[i], pkg->name);
-			vec_remove_and_free(&pkg->shlibs_provided, i, free);
+			    s, pkg->name);
+			vec_remove(&pkg->shlibs_provided, i);
+			if (charv_insert_sorted(&pkg->shlibs_provided_ignore, s) != NULL) {
+				free(s);
+			}
 			i--;
 			continue;
 		}
