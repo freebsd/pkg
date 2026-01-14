@@ -71,6 +71,12 @@ register_backup(struct pkgdb *db, struct pkg *orig, int fd, const char *path)
 		pkg->www = xstrdup("N/A");
 		pkg->prefix = xstrdup("/");
 		pkg->abi = xstrdup(orig->abi);
+		vec_foreach(orig->shlibs_provided_ignore, i) {
+			pkg_addshlib_provided_ignore(pkg, orig->shlibs_provided_ignore.d[i]);
+		}
+		vec_foreach(orig->shlibs_required_ignore, i) {
+			pkg_addshlib_required_ignore(pkg, orig->shlibs_required_ignore.d[i]);
+		}
 	} else {
 		free(name);
 		name = NULL;
