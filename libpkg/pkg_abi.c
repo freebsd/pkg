@@ -612,9 +612,11 @@ pkg_analyse_files(struct pkgdb *db __unused, struct pkg *pkg, const char *stage)
 			if (STREQ(maybe_provided.d[i], internal_provided.d[j])) {
 				pkg_addshlib_provided(pkg, maybe_provided.d[i], PKG_SHLIB_FLAGS_NONE);
 				vec_remove_and_free(&internal_provided, j, free);
+				j--;
 			}
 		}
 		vec_remove_and_free(&maybe_provided, i, free);
+		i--;
 	}
 	vec_free(&maybe_provided);
 	/*
@@ -632,6 +634,7 @@ pkg_analyse_files(struct pkgdb *db __unused, struct pkg *pkg, const char *stage)
 			    "is matched by SHLIB_PROVIDE_IGNORE_GLOB/REGEX.",
 			    pkg->shlibs_provided.d[i], pkg->name);
 			vec_remove_and_free(&pkg->shlibs_provided, i, free);
+			i--;
 			continue;
 		}
 	}
