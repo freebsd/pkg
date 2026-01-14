@@ -81,6 +81,10 @@ OTHER_LIBS+=	-lssl -lcrypto
 @if HAVE_LIBMD
 OTHER_LIBS+=	-lmd
 @endif
+@if HAVE_LIBPROCSTAT
+SRCS+=		ps.c
+OTHER_LIBS+=	-lprocstat -lkvm
+@endif
 
 @if PKG_LIBCURL_LIBS
 LOCAL_CFLAGS+=	@PKG_LIBCURL_CFLAGS@
