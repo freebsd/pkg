@@ -589,6 +589,7 @@ pkg_analyse_files(struct pkgdb *db __unused, struct pkg *pkg, const char *stage)
 
 			if (lstat(fpath, &st) != 0) {
 				pkg_emit_errno("lstat() failed for", fpath);
+				free(provided);
 				continue;
 			}
 			/* If the corresponding PATHS option isn't set (i.e. an empty ucl array)
