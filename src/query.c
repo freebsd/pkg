@@ -512,6 +512,8 @@ format_sql_condition(const char *str, xstring *sqlcond, bool for_remote)
 	unsigned int bracket_level = 0;
 	const char *sqlop;
 	bool collate_nocase = false;
+	bool multiline_subquery = false;
+	const char *pending_subquery = NULL;
 
 	fprintf(sqlcond->fp, " WHERE ");
 	while (str[0] != '\0') {
@@ -640,6 +642,57 @@ format_sql_condition(const char *str, xstring *sqlcond, bool for_remote)
 					}
 					state = OPERATOR_INT;
 					break;
+				case 'd':
+					str++;
+					if (str[0] == 'n')
+						pending_subquery = "SELECT * FROM deps AS d WHERE d.package_id=p.id AND name";
+					else if (str[0] == 'o')
+						pending_subquery = "SELECT * FROM deps AS d WHERE d.package_id=p.id AND origin";
+					else if (str[0] == 'v')
+						pending_subquery = "SELECT * FROM deps AS d WHERE d.package_id=p.id AND version";
+					multiline_subquery = true;
+					state = OPERATOR_STRING;
+					break;
+				case 'r':
+					str++;
+					if (str[0] == 'n')
+						pending_subquery = "SELECT * FROM packages AS p2 JOIN deps AS d ON d.package_id=p2.id WHERE d.name=p.name AND p2.name";
+					else if (str[0] == 'o')
+						pending_subquery = "SELECT * FROM packages AS p2 JOIN deps AS d ON d.package_id=p2.id WHERE d.name=p.name AND p2.origin";
+					else if (str[0] == 'v')
+						pending_subquery = "SELECT * FROM packages AS p2 JOIN deps AS d ON d.package_id=p2.id WHERE d.name=p.name AND p2.version";
+					multiline_subquery = true;
+					state = OPERATOR_STRING;
+					break;
+				case 'C':
+					pending_subquery = "SELECT * FROM categories AS c JOIN pkg_categories AS pc ON c.id=pc.category_id WHERE pc.package_id=p.id AND c.name";
+					multiline_subquery = true;
+					state = OPERATOR_STRING;
+					break;
+				case 'L':
+					pending_subquery = "SELECT * FROM licenses AS l JOIN pkg_licenses AS pl ON l.id=pl.license_id WHERE pl.package_id=p.id AND l.name";
+					multiline_subquery = true;
+					state = OPERATOR_STRING;
+					break;
+				case 'B':
+					pending_subquery = "SELECT * FROM shlibs AS s JOIN pkg_shlibs_required AS ps ON s.id=ps.shlib_id WHERE ps.package_id=p.id AND s.name";
+					multiline_subquery = true;
+					state = OPERATOR_STRING;
+					break;
+				case 'b':
+					pending_subquery = "SELECT * FROM shlibs AS s JOIN pkg_shlibs_provided AS ps ON s.id=ps.shlib_id WHERE ps.package_id=p.id AND s.name";
+					multiline_subquery = true;
+					state = OPERATOR_STRING;
+					break;
+				case 'A':
+					str++;
+					if (str[0] == 't')
+						pending_subquery = "SELECT * FROM annotation AS a JOIN pkg_annotation AS pa ON a.annotation_id=pa.tag_id WHERE pa.package_id=p.id AND a.annotation";
+					else if (str[0] == 'v')
+						pending_subquery = "SELECT * FROM annotation AS a JOIN pkg_annotation AS pa ON a.annotation_id=pa.value_id WHERE pa.package_id=p.id AND a.annotation";
+					multiline_subquery = true;
+					state = OPERATOR_STRING;
+					break;
 				default:
 bad_option:
 					fprintf(stderr, "malformed evaluation string\n");
@@ -705,12 +758,20 @@ bad_option:
 					fprintf(stderr, "~ expected only for string testing\n");
 					return (EPKG_FATAL);
 				}
+				if (pending_subquery) {
+					fprintf(sqlcond->fp, "EXISTS (%s", pending_subquery);
+					pending_subquery = NULL;
+				}
 				state = NEXT_IS_STRING;
 				fprintf(sqlcond->fp, " GLOB ");
 			} else if (str[0] == '>' || str[0] == '<') {
 				if (state != OPERATOR_INT) {
 					fprintf(stderr, "> expected only for integers\n");
 					return (EPKG_FATAL);
+				}
+				if (pending_subquery) {
+					fprintf(sqlcond->fp, "EXISTS (%s", pending_subquery);
+					pending_subquery = NULL;
 				}
 				state = NEXT_IS_INT;
 				fprintf(sqlcond->fp, "%c", str[0]);
@@ -724,6 +785,10 @@ bad_option:
 				} else {
 					state = NEXT_IS_INT;
 				}
+				if (pending_subquery) {
+					fprintf(sqlcond->fp, "EXISTS (%s", pending_subquery);
+					pending_subquery = NULL;
+				}
 				fprintf(sqlcond->fp, "%c", str[0]);
 				if (str[1] == '=') {
 					str++;
@@ -732,14 +797,27 @@ bad_option:
 					collate_nocase = true;
 				}
 			} else if (str[0] == '!') {
-				if (str[1] == '=') {
-					fprintf(sqlcond->fp, "%c", str[0]);
-					fprintf(sqlcond->fp, "%c", str[1]);
-				} else if (str[1] == '~') {
-					fprintf(sqlcond->fp, " NOT GLOB ");
+				if (pending_subquery) {
+					fprintf(sqlcond->fp, "NOT EXISTS (%s", pending_subquery);
+					pending_subquery = NULL;
+					if (str[1] == '=') {
+						fprintf(sqlcond->fp, "%c", str[1]);
+					} else if (str[1] == '~') {
+						fprintf(sqlcond->fp, " GLOB ");
+					} else {
+						fprintf(stderr, "expecting = or ~ after !\n");
+						return (EPKG_FATAL);
+					}
 				} else {
-					fprintf(stderr, "expecting = or ~ after !\n");
-					return (EPKG_FATAL);
+					if (str[1] == '=') {
+						fprintf(sqlcond->fp, "%c", str[0]);
+						fprintf(sqlcond->fp, "%c", str[1]);
+					} else if (str[1] == '~') {
+						fprintf(sqlcond->fp, " NOT GLOB ");
+					} else {
+						fprintf(stderr, "expecting = or ~ after !\n");
+						return (EPKG_FATAL);
+					}
 				}
 				str++;
 				if (state == OPERATOR_STRING) {
@@ -781,6 +859,10 @@ bad_option:
 		} else if (state == INT) {
 			if (!isdigit(str[0])) {
 				state = POST_EXPR;
+				if (multiline_subquery) {
+					fprintf(sqlcond->fp, ")");
+					multiline_subquery = false;
+				}
 				str--;
 			} else {
 				fprintf(sqlcond->fp, "%c", str[0]);
@@ -794,6 +876,10 @@ bad_option:
 				if (collate_nocase) {
 					fprintf(sqlcond->fp, " COLLATE NOCASE ");
 					collate_nocase = false;
+				}
+				if (multiline_subquery) {
+					fprintf(sqlcond->fp, ")");
+					multiline_subquery = false;
 				}
 			} else {
 				fprintf(sqlcond->fp, "%c", str[0]);
@@ -811,6 +897,10 @@ bad_option:
 		if (collate_nocase) {
 			fprintf(sqlcond->fp, " COLLATE NOCASE ");
 			collate_nocase = false;
+		}
+		if (multiline_subquery) {
+			fprintf(sqlcond->fp, ")");
+			multiline_subquery = false;
 		}
 	}
 
