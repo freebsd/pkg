@@ -158,6 +158,23 @@ EOF
 		-s exit:0 \
 		pkg query -e "%#O > 0 && %#D > 0" "%n"
 
+	atf_check \
+		-o inline:"plop\n" \
+		-e empty \
+		-s exit:0 \
+		pkg query -e '%dn = "test"' "%n"
+
+	atf_check \
+		-o inline:"test\n" \
+		-e empty \
+		-s exit:0 \
+		pkg query -e '%dn != "test"' "%n"
+
+	atf_check \
+		-o inline:"plop\ntest\n" \
+		-e empty \
+		-s exit:0 \
+		pkg query -e '%dn != "plop"' "%n"
 
 	atf_check \
 	    -o inline:"${TMPDIR}/test-dir\n" \
