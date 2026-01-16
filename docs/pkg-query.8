@@ -300,7 +300,7 @@ Parentheses can be used for grouping in the usual manner.
 String values are either any text not containing whitespace (possibly
 followed by but not including whitespace) or any text enclosed in single or
 double quotes.
-.Ss Variables
+.Ss Normal Variables
 .Bl -tag -width F1
 .It Cm \&%n
 Name of the package (type string)
@@ -335,6 +335,35 @@ Number of elements in the list of information (type integer).
 See
 .Cm %?
 above for what information is used.
+.El
+.Ss Multiline variables
+When used in an evaluation, these variables refer to the items in the list.
+The condition evaluates to true if
+.Em any
+element in the list matches.
+Negative operators are an exception: they check for the
+.Em absence
+of any matching element.
+.Pp
+For example,
+.Qq \&%dn != 'curl'
+means
+.Qq the package does not depend on curl .
+.Bl -tag -width F1
+.It Cm \&%d Ns Op nov
+Dependency of the package (type string)
+.It Cm \&%r Ns Op nov
+Reverse dependency of the package (type string)
+.It Cm \&%C
+Category of the package (type string)
+.It Cm \&%L
+License of the package (type string)
+.It Cm \&%B
+Required shared library of the package (type string)
+.It Cm \&%b
+Provided shared library of the package (type string)
+.It Cm \&%A Ns Op tv
+Annotation of the package (type string)
 .El
 .Ss Operators
 .Bl -tag -width F1
@@ -420,6 +449,9 @@ List automatic packages:
 .Pp
 List unmaintained packages:
 .Dl $ pkg query -e '%m = ports@FreeBSD.org' %o
+.Pp
+List packages that depend on python312:
+.Dl $ pkg query -e '%dn = python312' %o
 .Sh SEE ALSO
 .Xr pkg_create 3 ,
 .Xr pkg_printf 3 ,
