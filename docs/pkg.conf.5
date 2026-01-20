@@ -550,14 +550,14 @@ configuration files later on the
 search path to overwrite the equivalent settings for the same tag
 earlier on the search path.
 Hence the very common idiom, used to turn off the default
-.Cm FreeBSD
+.Cm FreeBSD-ports
 configuration shipped in
 .Pa /etc/pkg/FreeBSD.conf .
 Rather than editing that file directly, create
 .Pa /usr/local/etc/pkg/repos/FreeBSD.conf
 with this content:
 .Bd -literal -offset indent
-FreeBSD: { enabled: NO }
+FreeBSD-ports: { enabled: NO }
 .Ed
 .Pp
 Repositories are processed in the order they are found on the
@@ -626,7 +626,7 @@ file.
 .Fx
 latest repository configuration:
 .Bd -literal -offset indent
-FreeBSD: {
+FreeBSD-ports: {
     url: "pkg+https://pkg.freebsd.org/${ABI}/latest",
     enabled: true,
     signature_type: "fingerprints",
@@ -638,7 +638,7 @@ FreeBSD: {
 .Fx
 quarterly kernel modules repository configuration:
 .Bd -literal -offset indent
-FreeBSD-kmods: {
+FreeBSD-ports-kmods: {
     url: "pkg+https://pkg.freebsd.org/${ABI}/kmods_quarterly_${VERSION_MINOR}",
     enabled: true,
     signature_type: "fingerprints",
@@ -682,8 +682,8 @@ example: {
     url: http://pkgrepo.example.com/${ABI}
 }
 EOF
-# cat > /usr/local/etc/pkg/repos/FreeBSD.conf <<EOF
-FreeBSD: {
+# cat >> /usr/local/etc/pkg/repos/FreeBSD.conf <<EOF
+FreeBSD-ports: {
     enabled: NO
 }
 EOF
