@@ -392,8 +392,12 @@ pkg_jobs_universe_handle_provide(struct pkg_jobs_universe *universe,
 
 	prhead = pkghash_get_value(universe->provides, name);
 	while (pkgdb_it_next(it, &rpkg, flags) == EPKG_OK) {
+		dbg(4, "handle_provide: processing package %s for %s %s",
+		    rpkg->uid, is_shlib ? "shlib" : "provide", name);
+
 		/* Check for local packages */
 		if ((unit = pkghash_get_value(universe->items, rpkg->uid)) != NULL) {
+			dbg(4, "handle_provide: package %s already in universe", rpkg->uid);
 			/* Remote provide is newer, so we can add it */
 			if (pkg_jobs_universe_process_item(universe, rpkg,
 			    &unit) != EPKG_OK) {
@@ -406,6 +410,7 @@ pkg_jobs_universe_handle_provide(struct pkg_jobs_universe *universe,
 			/* Maybe local package has just been not added */
 			npkg = pkg_jobs_universe_get_local(universe, rpkg->uid, 0);
 			if (npkg != NULL) {
+				dbg(4, "handle_provide: found local package %s", npkg->uid);
 				if (pkg_jobs_universe_process_item(universe, npkg,
 						&unit) != EPKG_OK) {
 					return (EPKG_FATAL);
@@ -471,12 +476,21 @@ pkg_jobs_universe_process_shlibs(struct pkg_jobs_universe *universe,
 	struct pkgdb_it *it;
 	int rc;
 
+	dbg(4, "process_shlibs: processing %zu shlibs for %s",
+	    vec_len(&pkg->shlibs_required), pkg->uid);
+
 	vec_foreach(pkg->shlibs_required, i) {
 		const char *s = pkg->shlibs_required.d[i];
-		if (charv_search(&universe->j->system_shlibs, s) != NULL)
+		if (charv_search(&universe->j->system_shlibs, s) != NULL) {
+			dbg(4, "process_shlibs: %s is a system shlib, skipping", s);
 			continue;
-		if (pkghash_get(universe->provides, s) != NULL)
+		}
+		if (pkghash_get(universe->provides, s) != NULL) {
+			dbg(4, "process_shlibs: %s already in provides hash, skipping", s);
 			continue;
+		}
+
+		dbg(4, "process_shlibs: looking for providers of %s for %s", s, pkg->uid);
 
 		/* Check for local provides */
 		it = pkgdb_query_shlib_provide(universe->j->db, s);
@@ -518,10 +532,17 @@ pkg_jobs_universe_process_provides_requires(struct pkg_jobs_universe *universe,
 	struct pkgdb_it *it;
 	int rc;
 
+	dbg(4, "process_requires: processing %zu requires for %s",
+	    vec_len(&pkg->requires), pkg->uid);
+
 	vec_foreach(pkg->requires, i) {
 		const char *r = pkg->requires.d[i];
-		if (pkghash_get(universe->provides, r) != NULL)
+		if (pkghash_get(universe->provides, r) != NULL) {
+			dbg(4, "process_requires: %s already in provides hash, skipping", r);
 			continue;
+		}
+
+		dbg(4, "process_requires: looking for providers of %s for %s", r, pkg->uid);
 
 		/* Check for local provides */
 		it = pkgdb_query_provide(universe->j->db, r);
@@ -567,7 +588,7 @@ pkg_jobs_universe_process_item(struct pkg_jobs_universe *universe, struct pkg *p
 	pkg_jobs_t type = universe->j->type;
 	struct pkg_job_universe_item *found;
 
-	dbg(4, "Processing item %s\n", pkg->uid);
+	dbg(4, "Processing item %s", pkg->uid);
 
 	job_flags = universe->j->flags;
 
@@ -583,6 +604,7 @@ pkg_jobs_universe_process_item(struct pkg_jobs_universe *universe, struct pkg *p
 		*result = found;
 
 	if (rc == EPKG_END) {
+		dbg(4, "Package %s already seen, processed=%d", pkg->uid, found->processed);
 		if (found->processed)
 			return (EPKG_OK);
 	}
