@@ -30,6 +30,7 @@
 #include "pkg.h"
 #include "private/event.h"
 #include "private/pkg.h"
+#include "private/pkgdb.h"
 
 static int
 register_backup(struct pkgdb *db, struct pkg *orig, int fd, const char *path)
@@ -71,6 +72,11 @@ register_backup(struct pkgdb *db, struct pkg *orig, int fd, const char *path)
 		pkg->www = xstrdup("N/A");
 		pkg->prefix = xstrdup("/");
 		pkg->abi = xstrdup(orig->abi);
+
+		if (pkgdb_ensure_loaded(db, orig, PKG_LOAD_SHLIBS_PROVIDED_IGNORE |
+		    PKG_LOAD_SHLIBS_REQUIRED_IGNORE) != EPKG_OK) {
+			return (EPKG_FATAL);
+		}
 		vec_foreach(orig->shlibs_provided_ignore, i) {
 			pkg_addshlib_provided_ignore(pkg, orig->shlibs_provided_ignore.d[i]);
 		}
