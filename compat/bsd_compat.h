@@ -104,10 +104,6 @@ void closefrom(int lowfd);
 #define	AT_SYMLINK_NOFOLLOW	0x200
 #endif
 
-#if !HAVE_FSTATAT
-int fstatat(int fd, const char *path, struct stat *buf, int flag);
-#endif
-
 #if !HAVE_OPENAT
 int openat(int fd, const char *path, int flags, ...);
 #endif

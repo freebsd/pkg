@@ -33,7 +33,7 @@
 #include <stdarg.h>
 #include <unistd.h>
 
-#if !HAVE_UNLINKAT || !HAVE_FSTATAT
+#if !HAVE_UNLINKAT
 
 static pthread_mutex_t file_at_lock = PTHREAD_MUTEX_INITIALIZER;
 static int file_at_dfd = -1;
@@ -103,26 +103,6 @@ readlinkat(int fd, const char *restrict path, char *restrict buf,
 		return ret;
 
 	ret = readlink(path, buf, bufsize);
-
-	file_chdir_unlock(fd);
-	return ret;
-}
-#endif
-
-#if !HAVE_FSTATAT
-int
-fstatat(int fd, const char *path, struct stat *buf, int flag)
-{
-	int ret;
-
-	if ((ret = file_chdir_lock(fd) != 0))
-		return ret;
-
-	if (flag & AT_SYMLINK_NOFOLLOW) {
-		ret = lstat(path, buf);
-	} else {
-		ret = stat(path, buf);
-	}
 
 	file_chdir_unlock(fd);
 	return ret;
