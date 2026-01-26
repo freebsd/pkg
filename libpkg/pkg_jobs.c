@@ -36,6 +36,7 @@
 #include <sys/param.h>
 #include <sys/mount.h>
 #include <sys/types.h>
+#include <sys/statvfs.h>
 
 #include <archive.h>
 #include <archive_entry.h>
@@ -50,15 +51,6 @@
 #include <string.h>
 #include <sys/wait.h>
 #include <ctype.h>
-
-#if __has_include(<sys/statfs.h>)
-#include <sys/statfs.h>
-#define HAVE_SYS_STATFS_H 1
-#endif
-#if __has_include(<sys/statvfs.h>)
-#include <sys/statvfs.h>
-#define HAVE_SYS_STATVFS_H 1
-#endif
 
 #include "pkg.h"
 #include "private/event.h"
@@ -2212,6 +2204,7 @@ pkg_jobs_fetch(struct pkg_jobs *j)
 {
 	struct pkg *p = NULL;
 	struct stat st;
+	struct statvfs fs;
 	int64_t dlsize = 0, fs_avail = -1;
 	const char *cachedir = NULL;
 	char cachedpath[MAXPATHLEN];
@@ -2250,31 +2243,17 @@ pkg_jobs_fetch(struct pkg_jobs *j)
 	if (dlsize == 0)
 		return (EPKG_OK);
 
-#ifdef HAVE_SYS_STATFS_H
-	struct statfs fs;
-	while (statfs(cachedir, &fs) == -1) {
+	for (;;) {
+		if (statvfs(cachedir, &fs) == 0) break;
+		if (errno == EINTR) continue;
 		if (errno == ENOENT) {
-			if (pkg_mkdirs(cachedir) != EPKG_OK)
-				return (EPKG_FATAL);
-		} else {
-			pkg_emit_errno("statfs", cachedir);
-			return (EPKG_FATAL);
+			if (pkg_mkdirs(cachedir) != EPKG_OK) return EPKG_FATAL;
+			continue;
 		}
+		pkg_emit_errno("statvfs", cachedir);
+		return EPKG_FATAL;
 	}
-	fs_avail = fs.f_bsize * (int64_t)fs.f_bavail;
-#elif defined(HAVE_SYS_STATVFS_H)
-	struct statvfs fs;
-	while (statvfs(cachedir, &fs) == -1) {
-		if (errno == ENOENT) {
-			if (pkg_mkdirs(cachedir) != EPKG_OK)
-				return (EPKG_FATAL);
-		} else {
-			pkg_emit_errno("statvfs", cachedir);
-			return (EPKG_FATAL);
-		}
-	}
-	fs_avail = fs.f_bsize * (int64_t)fs.f_bavail;
-#endif
+	fs_avail = fs.f_frsize * (int64_t)fs.f_bavail;
 
 	if (fs_avail != -1 && dlsize > fs_avail) {
 		char dlsz[9], fsz[9];
