@@ -173,7 +173,7 @@ cc-with { -includes sys/stat.h } {
 }
 
 # check for sqlite
-cc-check-functions gmtime_r isnan localtime_r strchrnul strerror_r fdatasync \
+cc-check-functions gmtime_r localtime_r strchrnul strerror_r fdatasync \
 	fchown lstat readlink
 cc-check-includes stdint.h inttypes.h
 
@@ -371,7 +371,7 @@ if {[get-define CCACHE] ne {none}} {
 }
 
 make-config-header pkg_config.h -bare { DEFAULT_* }
-make-config-header external/sqlite/sqlite_cfg.h
+make-config-header external/sqlite/sqlite_generated.h
 make-config-header external/libcurl/curl_cfg.h
 foreach in [list mk/defs.mk.in libpkg/pkg.h.in libpkg/pkg.pc.in \
 	tests/frontend/test_environment.sh.in ] {

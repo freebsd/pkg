@@ -69,7 +69,7 @@ scripts/sbin/pkg2ng
 /external/libelf/Makefile
 /external/sqlite/Makefile
 /external/sqlite/config.h
-/external/sqlite/sqlite_cfg.h
+/external/sqlite/sqlite_generated.h
 /external/libelf/libelf_convert.c
 /external/libelf/libelf_fsize.c
 /external/libelf/libelf_msize.c
