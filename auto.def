@@ -178,7 +178,7 @@ cc-check-includes stdint.h inttypes.h
 
 # check for pkg itself
 cc-check-functions arc4random arc4random_stir chflagsat \
-	closefrom fopencookie funopen getprogname \
+	fopencookie funopen getprogname \
 	strtofflags strtonum utimensat __res_setservers \
 	fflagstostr reallocarray strchrnul \
 	copy_file_range

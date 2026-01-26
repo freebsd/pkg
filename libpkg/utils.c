@@ -568,7 +568,14 @@ process_spawn_pipe(FILE *inout[2], const char *command)
 			dup2(pipes[2], STDIN_FILENO);
 			close(pipes[2]);
 		}
+#ifndef __linux__
 		closefrom(STDERR_FILENO + 1);
+#else
+		long sc = sysconf(_SC_OPEN_MAX);
+		if (sc < 0)
+			sc = 1024;
+		close_range(STDERR_FILENO + 1, sc, 0);
+#endif
 
 		execve(_PATH_BSHELL, argv, environ);
 
