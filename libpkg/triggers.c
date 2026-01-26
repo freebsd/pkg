@@ -6,8 +6,9 @@
 
 #include "pkg_config.h"
 
-#ifdef HAVE_CAPSICUM
+#if __has_include(<sys/capsicum.h>)
 #include <sys/capsicum.h>
+#define HAVE_CAPSICUM 1
 #endif
 
 #include <sys/stat.h>

@@ -28,10 +28,6 @@
 
 #include "pkg_config.h"
 
-#ifdef HAVE_CAPSICUM
-#include <sys/capsicum.h>
-#endif
-
 #include <sys/stat.h>
 #include <sys/types.h>
 #include <sys/wait.h>
