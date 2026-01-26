@@ -25,17 +25,14 @@
  * THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  */
 
-#ifdef HAVE_CONFIG_H
-#include "pkg_config.h"
-#endif
-
 #include <sys/resource.h>
 #include <sys/types.h>
 #include <sys/wait.h>
 #include <sys/socket.h>
 
-#ifdef HAVE_CAPSICUM
+#if __has_include(<sys/capsicum.h>)
 #include <sys/capsicum.h>
+#define HAVE_CAPSICUM 1
 #endif
 
 #include <err.h>
@@ -99,7 +96,7 @@ pkg_handle_sandboxed_call(pkg_sandbox_cb func, int fd, void *ud)
 
 	/* Here comes child process */
 #ifdef HAVE_CAPSICUM
-#ifndef PKG_COVERAGE
+#ifndef COVERAGE
 	if (cap_enter() < 0 && errno != ENOSYS) {
 		warn("cap_enter() failed");
 		_exit(EXIT_FAILURE);
@@ -208,7 +205,7 @@ pkg_handle_sandboxed_get_string(pkg_sandbox_cb func, char **result, int64_t *len
 		err(EXIT_FAILURE, "Unable to setrlimit(RLIMIT_NPROC)");
 
 #ifdef HAVE_CAPSICUM
-#ifndef PKG_COVERAGE
+#ifndef COVERAGE
 	if (cap_enter() < 0 && errno != ENOSYS) {
 		warn("cap_enter() failed");
 		return (EPKG_FATAL);

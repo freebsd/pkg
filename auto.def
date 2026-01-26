@@ -307,17 +307,9 @@ if {[opt-bool with-tsan]} {
 	define tsan 1
 }
 if {[opt-bool with-coverage]} {
-	define-append COVERAGE_CFLAGS -O0 -g -fprofile-arcs -ftest-coverage -fprofile-instr-generate -fcoverage-mapping
+	define-append COVERAGE_CFLAGS -O0 -g -fprofile-arcs -ftest-coverage -fprofile-instr-generate -fcoverage-mapping -DCOVERAGE=1
 	define-append COVERAGE_LDFLAGS -fprofile-instr-generate
 	define coverage 1
-# disable capsicum when coverage is used because coverage does not work in
-# capsicum mode
-} else {
-# capsicum
-	if {[cc-check-functions cap_sandboxed]} {
-		define-feature capsicum
-			cc-check-includes sys/capsicum.h
-	}
 }
 
 if {[pkg-config-init 0]} {

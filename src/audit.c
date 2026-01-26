@@ -26,11 +26,8 @@
 #include <unistd.h>
 #include <ucl.h>
 
-#ifdef HAVE_SYS_CAPSICUM_H
-#include <sys/capsicum.h>
-#endif
-
-#ifdef HAVE_CAPSICUM
+#if __has_include(<sys/capsicum.h>)
+#define HAVE_CAPSICUM 1
 #include <sys/capsicum.h>
 #endif
 
@@ -391,7 +388,7 @@ exec_audit(int argc, char **argv)
 
 	/* Now we have vulnxml loaded and check list formed */
 #ifdef HAVE_CAPSICUM
-#ifndef PKG_COVERAGE
+#ifndef COVERAGE
 	if (cap_enter() < 0 && errno != ENOSYS) {
 		warn("cap_enter() failed");
 		pkg_audit_free(audit);

@@ -15,7 +15,8 @@
 /* For MIN */
 #include <sys/param.h>
 
-#ifdef HAVE_CAPSICUM
+#if __has_include(<sys/capsicum.h>)
+#define HAVE_CAPSICUM 1
 #include <sys/capsicum.h>
 #endif
 
@@ -351,7 +352,7 @@ exec_clean(int argc, char **argv)
 			return (EXIT_FAILURE);
 		}
 
-#ifndef PKG_COVERAGE
+#ifndef COVERAGE
 		if (cap_enter() < 0 && errno != ENOSYS) {
 			warn("cap_enter() failed");
 			close(cachefd);

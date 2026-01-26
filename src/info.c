@@ -28,12 +28,9 @@
  * THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  */
 
-#ifdef HAVE_CONFIG_H
-#include "pkg_config.h"
-#endif
-
-#ifdef HAVE_CAPSICUM
+#if __has_include(<sys/capsicum.h>)
 #include <sys/capsicum.h>
+#define HAVE_CAPSICUM 1
 #endif
 
 #include <err.h>
@@ -276,7 +273,7 @@ exec_info(int argc, char **argv)
 			return (EXIT_FAILURE);
 		}
 
-#ifndef PKG_COVERAGE
+#ifndef COVERAGE
 		if (cap_enter() < 0 && errno != ENOSYS) {
 			warn("cap_enter() failed");
 			close(fd);

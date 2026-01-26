@@ -27,8 +27,6 @@
  * THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  */
 
-#include "pkg_config.h"
-
 #include <sys/types.h>
 #include <sys/socket.h>
 #include <sys/wait.h>
@@ -42,13 +40,11 @@
 #include <pkghash.h>
 #include <pkg.h>
 
-#ifdef HAVE_SYS_CAPSICUM_H
+#if __has_include(<sys/capsicum.h>)
 #include <sys/capsicum.h>
+#define HAVE_CAPSICUM 1
 #endif
 
-#ifdef HAVE_CAPSICUM
-#include <sys/capsicum.h>
-#endif
 #include "pkgcli.h"
 #include <pkg/audit.h>
 
@@ -116,7 +112,7 @@ check_vulnerable(struct pkg_audit *audit, struct pkgdb *db, int sock)
 	pkg_drop_privileges();
 
 #ifdef HAVE_CAPSICUM
-#ifndef PKG_COVERAGE
+#ifndef COVERAGE
 	if (cap_enter() < 0 && errno != ENOSYS) {
 		warn("cap_enter() failed");
 		goto out_cleanup;

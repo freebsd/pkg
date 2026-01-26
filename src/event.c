@@ -41,10 +41,6 @@
 #include <sys/wait.h>
 #include <sys/socket.h>
 
-#ifdef HAVE_CAPSICUM
-#include <sys/capsicum.h>
-#endif
-
 #include <err.h>
 #include <string.h>
 #include <unistd.h>
