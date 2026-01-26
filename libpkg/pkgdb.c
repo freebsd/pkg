@@ -983,7 +983,7 @@ pkgdb_is_local_fs(int fd) {
 	if (fstatvfs(fd, &stfs) == 0) {
 		return (stfs.f_flag & ST_LOCAL);
 	}
-#elif defined(HAVE_FSTATFS) && defined(MNT_LOCAL)
+#elif defined(MNT_LOCAL)
 	struct statfs stfs;
 	if (fstatfs(fd, &stfs) == 0) {
 		return (stfs.f_flags & MNT_LOCAL);

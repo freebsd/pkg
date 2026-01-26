@@ -88,16 +88,7 @@ closefrom(int lowfd)
     } else
 #endif
     {
-	/*
-	 * Fall back on sysconf() or getdtablesize().  We avoid checking
-	 * resource limits since it is possible to open a file descriptor
-	 * and then drop the rlimit such that it is below the open fd.
-	 */
-#ifdef HAVE_SYSCONF
 	maxfd = sysconf(_SC_OPEN_MAX);
-#else
-	maxfd = getdtablesize();
-#endif /* HAVE_SYSCONF */
 	if (maxfd < 0)
 	    maxfd = OPEN_MAX;
 
