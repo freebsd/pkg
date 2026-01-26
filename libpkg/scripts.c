@@ -26,10 +26,8 @@
  * THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  */
 
-#include "pkg_config.h"
-
 #include <sys/wait.h>
-#ifdef HAVE_SYS_PROCCTL_H
+#if __has_include(<sys/procctl.h>)
 #include <sys/procctl.h>
 #endif
 

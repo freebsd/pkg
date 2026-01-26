@@ -27,7 +27,7 @@
 #include <errno.h>
 #include <regex.h>
 #include <grp.h>
-#ifdef HAVE_LIBUTIL_H
+#if __has_include(<libutil.h>)
 #include <libutil.h>
 #endif
 #include <stdlib.h>
@@ -40,8 +40,9 @@
 
 #include <sqlite3.h>
 
-#if defined(HAVE_SYS_STATVFS_H)
+#if __has_include(<sys/statvfs.h>)
 #include <sys/statvfs.h>
+#define HAVE_SYS_STATVFS_H 1
 #endif
 
 #include "pkg.h"

@@ -23,7 +23,7 @@
 #include <errno.h>
 #include <regex.h>
 #include <grp.h>
-#ifdef HAVE_LIBUTIL_H
+#if __has_include(<libutil.h>)
 #include <libutil.h>
 #endif
 #include <stdlib.h>

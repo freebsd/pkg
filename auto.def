@@ -213,8 +213,8 @@ if {![cc-check-functions dlclose]} {
 	}
 }
 
-cc-check-includes link.h machine/endian.h osreldate.h readpassphrase.h \
-	sys/procctl.h sys/statfs.h sys/statvfs.h libutil.h
+cc-check-includes link.h machine/endian.h readpassphrase.h \
+	sys/procctl.h sys/statfs.h libutil.h
 
 # for compat
 cc-check-includes dirent.h sys/sockio.h

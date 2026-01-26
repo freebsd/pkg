@@ -19,7 +19,7 @@
 #include <fcntl.h>
 #include <grp.h>
 #include <inttypes.h>
-#ifdef HAVE_LIBUTIL_H
+#if __has_include(<libutil.h>)
 #include <libutil.h>
 #endif
 #include <string.h>

@@ -51,7 +51,7 @@
 #include <errno.h>
 #include <time.h>
 #include <signal.h>
-#ifdef HAVE_LIBUTIL_H
+#if __has_include(<libutil.h>)
 #include <libutil.h>
 #endif
 

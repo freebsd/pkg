@@ -4,9 +4,7 @@
  * SPDX-License-Identifier: BSD-2-Clause
  */
 
-#include "pkg_config.h"
-
-#ifdef HAVE_SYS_PROCCTL_H
+#if __has_include(<sys/procctl.h>)
 #include <sys/procctl.h>
 #endif
 
