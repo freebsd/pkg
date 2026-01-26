@@ -23,10 +23,6 @@
  * THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  */
 
-#ifdef HAVE_CONFIG_H
-#include "pkg_config.h"
-#endif
-
 #include <sys/uio.h>
 
 #include <bsd_compat.h>
@@ -37,9 +33,9 @@
 #include <stdio.h>
 #include <string.h>
 
-#ifdef HAVE_READPASSPHRASE_H
+#if __has_include(<readpassphrase.h>)
 #include <readpassphrase.h>
-#elif defined(HAVE_BSD_READPASSPHRASE_H)
+#elif __has_include(<bsd/readpassphrase.h>)
 #include <bsd/readpassphrase.h>
 #else
 #include "readpassphrase_compat.h"

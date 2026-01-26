@@ -32,7 +32,7 @@
 #include <err.h>
 #include <getopt.h>
 #include <inttypes.h>
-#ifdef HAVE_LIBUTIL_H
+#if __has_include(<libutil.h>)
 #include <libutil.h>
 #endif
 #include <stdio.h>

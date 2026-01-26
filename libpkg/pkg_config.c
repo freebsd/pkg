@@ -37,7 +37,7 @@
 #include <dlfcn.h>
 #include <errno.h>
 #include <fcntl.h>
-#ifdef HAVE_OSRELDATE_H
+#if __has_include(<osreldate.h>)
 #include <osreldate.h>
 #endif
 #include <ucl.h>

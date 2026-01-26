@@ -29,10 +29,6 @@
  * THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  */
 
-#ifdef HAVE_CONFIG_H
-#include "pkg_config.h"
-#endif
-
 #define dbg(x, ...) pkg_dbg(PKG_DBG_JOBS, x, __VA_ARGS__)
 
 #include <bsd_compat.h>
@@ -45,7 +41,7 @@
 #include <archive_entry.h>
 #include <assert.h>
 #include <errno.h>
-#ifdef HAVE_LIBUTIL_H
+#if __has_include(<libutil.h>)
 #include <libutil.h>
 #endif
 #include <search.h>
@@ -55,11 +51,13 @@
 #include <sys/wait.h>
 #include <ctype.h>
 
-#ifdef HAVE_SYS_STATFS_H
+#if __has_include(<sys/statfs.h>)
 #include <sys/statfs.h>
+#define HAVE_SYS_STATFS_H 1
 #endif
-#if defined(HAVE_SYS_STATVFS_H)
+#if __has_include(<sys/statvfs.h>)
 #include <sys/statvfs.h>
+#define HAVE_SYS_STATVFS_H 1
 #endif
 
 #include "pkg.h"
@@ -2252,7 +2250,7 @@ pkg_jobs_fetch(struct pkg_jobs *j)
 	if (dlsize == 0)
 		return (EPKG_OK);
 
-#ifdef HAVE_FSTATFS
+#ifdef HAVE_SYS_STATFS_H
 	struct statfs fs;
 	while (statfs(cachedir, &fs) == -1) {
 		if (errno == ENOENT) {

@@ -1,6 +1,6 @@
 /*-
  * Copyright (c) 2011-2024 Baptiste Daroussin <bapt@FreeBSD.org>
- * 
+ *
  * Redistribution and use in source and binary forms, with or without
  * modification, are permitted provided that the following conditions
  * are met:
@@ -10,7 +10,7 @@
  * 2. Redistributions in binary form must reproduce the above copyright
  *    notice, this list of conditions and the following disclaimer in the
  *    documentation and/or other materials provided with the distribution.
- * 
+ *
  * THIS SOFTWARE IS PROVIDED BY THE AUTHOR(S) ``AS IS'' AND ANY EXPRESS OR
  * IMPLIED WARRANTIES, INCLUDING, BUT NOT LIMITED TO, THE IMPLIED WARRANTIES
  * OF MERCHANTABILITY AND FITNESS FOR A PARTICULAR PURPOSE ARE DISCLAIMED.
@@ -23,19 +23,15 @@
  * THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  */
 
-#ifdef HAVE_CONFIG_H
-#include "pkg_config.h"
-#endif
-
 #include <bsd_compat.h>
 #include <getopt.h>
 #include <signal.h>
 #include <stdio.h>
 #include <string.h>
 
-#ifdef HAVE_READPASSPHRASE_H
+#if __has_include(<readpassphrase.h>)
 #include <readpassphrase.h>
-#elif defined(HAVE_BSD_READPASSPHRASE_H)
+#elif __has_include(<bsd/readpassphrase.h>)
 #include <bsd/readpassphrase.h>
 #else
 #include "readpassphrase_compat.h"

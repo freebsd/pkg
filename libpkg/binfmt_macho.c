@@ -27,11 +27,11 @@
 #include "pkg_config.h"
 #endif
 
-#ifdef HAVE_SYS_ENDIAN_H
+#if __has_include(<sys/endian.h>)
 #include <sys/endian.h>
-#elif HAVE_ENDIAN_H
+#elif __has_include(<endian.h>)
 #include <endian.h>
-#elif HAVE_MACHINE_ENDIAN_H
+#elif __has_include(<machine/endian.h>)
 #include <machine/endian.h>
 #endif
 #include <errno.h>
