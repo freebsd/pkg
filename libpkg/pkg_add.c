@@ -952,6 +952,57 @@ backup_file_if_needed(struct pkg *p, struct pkg_file *f)
 	    p->rootfd, RELATIVE_PATH(path));
 }
 
+static bool
+files_are_identical(int rootfd, const char *path1, const char *path2)
+{
+	struct stat st1, st2;
+	int fd1, fd2;
+	char buf1[32768], buf2[32768];
+	ssize_t n1, n2;
+	bool identical = true;
+
+	if (fstatat(rootfd, RELATIVE_PATH(path1), &st1, AT_SYMLINK_NOFOLLOW) == -1)
+		return (false);
+	if (fstatat(rootfd, RELATIVE_PATH(path2), &st2, AT_SYMLINK_NOFOLLOW) == -1)
+		return (false);
+	if (st1.st_size != st2.st_size)
+		return (false);
+
+	fd1 = openat(rootfd, RELATIVE_PATH(path1), O_RDONLY);
+	if (fd1 == -1)
+		return (false);
+
+	fd2 = openat(rootfd, RELATIVE_PATH(path2), O_RDONLY);
+	if (fd2 == -1) {
+		close(fd1);
+		return (false);
+	}
+
+	while (identical) {
+		n1 = read(fd1, buf1, sizeof(buf1));
+		n2 = read(fd2, buf2, sizeof(buf2));
+
+		if (n1 != n2) {
+			identical = false;
+			break;
+		}
+		if (n1 == 0)
+			break;
+		if (n1 == -1) {
+			identical = false;
+			break;
+		}
+		if (memcmp(buf1, buf2, n1) != 0) {
+			identical = false;
+			break;
+		}
+	}
+
+	close(fd1);
+	close(fd2);
+	return (identical);
+}
+
 static int
 pkg_extract_finalize(struct pkg *pkg, tempdirs_t *tempdirs)
 {
@@ -966,6 +1017,7 @@ pkg_extract_finalize(struct pkg *pkg, tempdirs_t *tempdirs)
 	install_as_user = (getenv("INSTALL_AS_USER") != NULL);
 #endif
 
+	pkg_debug(2, "pkg_extract_finalize: starting");
 
 	if (tempdirs != NULL) {
 		vec_foreach(*tempdirs, i) {
@@ -982,19 +1034,25 @@ pkg_extract_finalize(struct pkg *pkg, tempdirs_t *tempdirs)
 
 		if (match_ucl_lists(f->path,
 		    pkg_config_get("FILES_IGNORE_GLOB"),
-		    pkg_config_get("FILES_IGNORE_REGEX")))
+		    pkg_config_get("FILES_IGNORE_REGEX"))) {
+			pkg_debug(2, "pkg_extract_finalize: ignore list, skipping %s", f->path);
 			continue;
+		}
 		append_touched_file(f->path);
-		if (*f->temppath == '\0')
+		if (*f->temppath == '\0') {
+			pkg_debug(2, "pkg_extract_finalize: empty temppath, skipping %s", f->path);
 			continue;
+		}
 		fto = f->path;
 		if (f->config && f->config->status == MERGE_FAILED &&
 		    f->previous != PKG_FILE_NONE) {
 			snprintf(path, sizeof(path), "%s.pkgnew", f->path);
 			fto = path;
+			pkg_debug(2, "pkg_extract_finalize: merge failed, %s, using %s", f->path, fto);
 		}
 
 		if (f->config && f->config->status == MERGE_NOT_LOCAL) {
+			pkg_debug(2, "pkg_extract_finalize: merge not local, backing up %s", f->path);
 			backup_file_if_needed(pkg, f);
 		}
 
@@ -1006,21 +1064,51 @@ pkg_extract_finalize(struct pkg *pkg, tempdirs_t *tempdirs)
 		if (f->previous != PKG_FILE_NONE &&
 		    fstatat(pkg->rootfd, RELATIVE_PATH(fto), &st,
 		    AT_SYMLINK_NOFOLLOW) != -1) {
+			/*
+			 * check if files are identical before attempting unlink,
+			 * to handle the case where the file cannot be removed, such
+			 * as nullfs mounted into jail
+			 */
+			if (files_are_identical(pkg->rootfd, f->temppath, fto)) {
+				pkg_debug(2, "pkg_extract_finalize: identical, %s, skipping %s",
+				    fto, f->temppath);
+				unlinkat(pkg->rootfd, RELATIVE_PATH(f->temppath), 0);
+				f->temppath[0] = '\0';
+				continue;
+			}
+			pkg_debug(2, "pkg_extract_finalize: over-writing %s with %s",
+			    fto, f->temppath);
 #ifdef HAVE_CHFLAGSAT
 			if (!install_as_user && st.st_flags & NOCHANGESFLAGS) {
 				chflagsat(pkg->rootfd, RELATIVE_PATH(fto), 0,
 				    AT_SYMLINK_NOFOLLOW);
 			}
 #endif
-			/* if the files does not belong to any package, we do save it */
+			/* if the file does not belong to any package, save it */
 			if (f->previous == PKG_FILE_SAVE) {
+				pkg_debug(2, "pkg_extract_finalize: backing up %s, marked for save", f->path);
 				backup_file_if_needed(pkg, f);
 			}
-			unlinkat(pkg->rootfd, RELATIVE_PATH(fto), 0);
+			/* unlink can fail if the file cannot be removed */
+			if (unlinkat(pkg->rootfd, RELATIVE_PATH(fto), 0) == -1) {
+				pkg_debug(2, "pkg_extract_finalize: unlink %s failed, errno=%d", fto, errno);
+				snprintf(path, sizeof(path), "%s.pkgnew", f->path);
+				pkg_emit_error("cannot remove %s: %s, new version "
+				    "saved as %s", fto, strerror(errno), path);
+				if (renameat(pkg->rootfd, RELATIVE_PATH(f->temppath),
+				    pkg->rootfd, RELATIVE_PATH(path)) == -1) {
+					pkg_fatal_errno("failed to rename %s -> %s",
+					    f->temppath, path);
+				}
+				f->temppath[0] = '\0';
+				continue;
+			}
 		}
+
+		pkg_debug(2, "pkg_extract_finalize: renaming %s -> %s", f->temppath, fto);
 		if (renameat(pkg->rootfd, RELATIVE_PATH(f->temppath),
 		    pkg->rootfd, RELATIVE_PATH(fto)) == -1) {
-			pkg_fatal_errno("Fail to rename %s -> %s",
+			pkg_fatal_errno("failed to rename %s -> %s",
 			    f->temppath, fto);
 		}
 
@@ -1040,6 +1128,8 @@ pkg_extract_finalize(struct pkg *pkg, tempdirs_t *tempdirs)
 	}
 	if (tempdirs != NULL)
 		vec_free(tempdirs);
+
+	pkg_debug(2, "pkg_extract_finalize: done");
 
 	return (EPKG_OK);
 }
