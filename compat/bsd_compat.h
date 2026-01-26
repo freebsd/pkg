@@ -104,10 +104,6 @@ void closefrom(int lowfd);
 #define	AT_SYMLINK_NOFOLLOW	0x200
 #endif
 
-#if !HAVE_READLINKAT
-ssize_t readlinkat(int fd, const char *restrict path, char *restrict buf, size_t bufsize);
-#endif
-
 #if !HAVE_STRTONUM
 long long strtonum(const char *, long long, long long, const char **);
 #endif

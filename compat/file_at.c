@@ -91,20 +91,3 @@ file_chdir_unlock(int dfd)
 	pthread_mutex_unlock(&file_at_lock);
 }
 #endif
-
-#if !HAVE_READLINKAT
-ssize_t
-readlinkat(int fd, const char *restrict path, char *restrict buf,
-	   size_t bufsize)
-{
-	int ret;
-
-	if ((ret = file_chdir_lock(fd) != 0))
-		return ret;
-
-	ret = readlink(path, buf, bufsize);
-
-	file_chdir_unlock(fd);
-	return ret;
-}
-#endif
