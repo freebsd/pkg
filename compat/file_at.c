@@ -108,26 +108,3 @@ readlinkat(int fd, const char *restrict path, char *restrict buf,
 	return ret;
 }
 #endif
-
-#if !HAVE_OPENAT
-int
-openat(int fd, const char *path, int flags, ...)
-{
-	int ret;
-	va_list ap;
-
-	if ((ret = file_chdir_lock(fd) != 0))
-		return ret;
-
-	if (flags & O_CREAT) {
-		va_start(ap, flags);
-		ret = open(path, flags, va_arg(ap, int));
-		va_end(ap);
-	} else {
-		ret = open(path, flags);
-	}
-
-	file_chdir_unlock(fd);
-	return ret;
-}
-#endif
