@@ -132,10 +132,6 @@ ssize_t readlinkat(int fd, const char *restrict path, char *restrict buf, size_t
 long long strtonum(const char *, long long, long long, const char **);
 #endif
 
-#if !HAVE_STRNSTR
-char * strnstr(const char *s, const char *find, size_t slen);
-#endif
-
 #ifndef _PATH_GROUP
 #define _PATH_GROUP "/etc/group"
 #endif
