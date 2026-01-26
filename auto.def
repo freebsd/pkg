@@ -180,7 +180,7 @@ cc-check-includes stdint.h inttypes.h
 # check for pkg itself
 cc-check-functions arc4random arc4random_stir basename_r chflagsat \
 	closefrom dirfd eaccess fopencookie fstatfs funopen getprogname strnstr \
-	strtofflags strtonum sysconf utimensat __res_setservers unlinkat \
+	strtofflags strtonum sysconf utimensat __res_setservers \
 	faccessat fstatat openat readlinkat fflagstostr reallocarray strchrnul \
 	copy_file_range
 

@@ -1,7 +1,7 @@
 /*
  * Copyright (c) 2014 Landon Fuller <landon@landonf.org>
  * All rights reserved.
- * 
+ *
  * Redistribution and use in source and binary forms, with or without
  * modification, are permitted provided that the following conditions
  * are met:
@@ -11,7 +11,7 @@
  * 2. Redistributions in binary form must reproduce the above copyright
  *    notice, this list of conditions and the following disclaimer in the
  *    documentation and/or other materials provided with the distribution.
- * 
+ *
  * THIS SOFTWARE IS PROVIDED BY THE AUTHOR(S) ``AS IS'' AND ANY EXPRESS OR
  * IMPLIED WARRANTIES, INCLUDING, BUT NOT LIMITED TO, THE IMPLIED WARRANTIES
  * OF MERCHANTABILITY AND FITNESS FOR A PARTICULAR PURPOSE ARE DISCLAIMED.
@@ -170,26 +170,6 @@ openat(int fd, const char *path, int flags, ...)
 		va_end(ap);
 	} else {
 		ret = open(path, flags);
-	}
-
-	file_chdir_unlock(fd);
-	return ret;
-}
-#endif
-
-#if !HAVE_UNLINKAT
-int
-unlinkat(int fd, const char *path, int flag)
-{
-	int ret;
-
-	if ((ret = file_chdir_lock(fd) != 0))
-		return ret;
-
-	if (flag & AT_REMOVEDIR) {
-		ret = rmdir(path);
-	} else {
-		ret = unlink(path);
 	}
 
 	file_chdir_unlock(fd);
