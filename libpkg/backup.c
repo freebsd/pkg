@@ -2,7 +2,7 @@
  * Copyright (c) 2011-2020 Baptiste Daroussin <bapt@FreeBSD.org>
  * Copyright (c) 2012 Matthew Seaman <matthew@FreeBSD.org>
  * All rights reserved.
- * 
+ *
  * Redistribution and use in source and binary forms, with or without
  * modification, are permitted provided that the following conditions
  * are met:
@@ -12,7 +12,7 @@
  * 2. Redistributions in binary form must reproduce the above copyright
  *    notice, this list of conditions and the following disclaimer in the
  *    documentation and/or other materials provided with the distribution.
- * 
+ *
  * THIS SOFTWARE IS PROVIDED BY THE AUTHOR(S) ``AS IS'' AND ANY EXPRESS OR
  * IMPLIED WARRANTIES, INCLUDING, BUT NOT LIMITED TO, THE IMPLIED WARRANTIES
  * OF MERCHANTABILITY AND FITNESS FOR A PARTICULAR PURPOSE ARE DISCLAIMED.
@@ -153,7 +153,7 @@ pkgdb_load(struct pkgdb *db, const char *src)
 	sqlite3	*restore;
 	int	 ret;
 
-	if (eaccess(src, R_OK))
+	if (faccessat(AT_FDCWD, src, R_OK, AT_EACCESS))
 		pkg_fatal_errno("Unable to access '%s'", src);
 
 	ret = sqlite3_open(src, &restore);

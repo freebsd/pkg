@@ -1,7 +1,7 @@
 /*-
  * Copyright (c) 2012 Matthew Seaman <matthew@FreeBSD.org>
  * All rights reserved.
- * 
+ *
  * Redistribution and use in source and binary forms, with or without
  * modification, are permitted provided that the following conditions
  * are met:
@@ -11,7 +11,7 @@
  * 2. Redistributions in binary form must reproduce the above copyright
  *    notice, this list of conditions and the following disclaimer in the
  *    documentation and/or other materials provided with the distribution.
- * 
+ *
  * THIS SOFTWARE IS PROVIDED BY THE AUTHOR(S) ``AS IS'' AND ANY EXPRESS OR
  * IMPLIED WARRANTIES, INCLUDING, BUT NOT LIMITED TO, THE IMPLIED WARRANTIES
  * OF MERCHANTABILITY AND FITNESS FOR A PARTICULAR PURPOSE ARE DISCLAIMED.
@@ -76,9 +76,9 @@ pkg_status(int *count)
 
 	snprintf(dbpath, sizeof(dbpath), "%s/local.sqlite", ctx.dbdir);
 
-	if (eaccess(dbpath, R_OK) == -1)
+	if (faccessat(AT_FDCWD, dbpath, R_OK, AT_EACCESS) == -1)
 		return (PKG_STATUS_NODB);
-	
+
 	/* Try opening the DB and preparing and running a simple query. */
 
 	dbsuccess = (sqlite3_initialize() == SQLITE_OK);

@@ -92,31 +92,6 @@ file_chdir_unlock(int dfd)
 }
 #endif
 
-#if !HAVE_FACCESSAT
-int
-faccessat(int fd, const char *path, int mode, int flag)
-{
-	int ret;
-	char saved_cwd[MAXPATHLEN];
-	const char *cwd;
-
-	if ((cwd = getcwd(saved_cwd, sizeof(saved_cwd))) == NULL)
-		return (-1);
-
-	if ((ret = file_chdir_lock(fd) != 0))
-		return ret;
-
-	if (flag & AT_EACCESS) {
-		ret = eaccess(path, mode);
-	} else {
-		ret = access(path, mode);
-	}
-
-	file_chdir_unlock(fd);
-	return ret;
-}
-#endif
-
 #if !HAVE_READLINKAT
 ssize_t
 readlinkat(int fd, const char *restrict path, char *restrict buf,

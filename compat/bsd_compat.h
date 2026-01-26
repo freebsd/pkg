@@ -88,10 +88,6 @@
 #include <sys/stat.h>
 #include "endian_util.h"
 
-#if !HAVE_EACCESS
-#define eaccess(_p, _m) access(_p, _m)
-#endif
-
 #if !HAVE_HUMANIZE_NUMBER
 #include "humanize_number.h"
 #endif
@@ -104,16 +100,8 @@ void closefrom(int lowfd);
 #define AT_FDCWD		-100
 #endif
 
-#ifndef AT_EACCESS
-#define AT_EACCESS		0x100
-#endif
-
 #ifndef AT_SYMLINK_NOFOLLOW
 #define	AT_SYMLINK_NOFOLLOW	0x200
-#endif
-
-#if !HAVE_FACCESSAT
-int faccessat(int fd, const char *path, int mode, int flag);
 #endif
 
 #if !HAVE_FSTATAT
