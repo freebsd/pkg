@@ -127,9 +127,7 @@ LOCAL_LDFLAGS+= -ldl
 @endif
 
 @if pkgos_darwin
-LOCAL_LDFLAGS+=	-lresolv -lz \
-	-framework CoreFoundation -framework CoreServices \
-	-framework SystemConfiguration
+LOCAL_LDFLAGS+=	-lresolv
 @else
 @if pkgos_freebsd
 LOCAL_LDFLAGS+=	-Wl,--version-script=$(top_srcdir)/libpkg/libpkg.ver,--undefined-version
@@ -173,8 +171,12 @@ LOCAL_CFLAGS+=	@PKG_LIBCURL_CFLAGS@
 LOCAL_LDFLAGS+=	@PKG_LIBCURL_LDFLAGS@ @PKG_LIBCURL_LIBS@
 @else
 LOCAL_CFLAGS+=	-I$(top_srcdir)/external/curl/include
-LOCAL_LDFLAGS+=	-L$(top_builddir)/external/libcurl -lcurl_pic
+LOCAL_LDFLAGS+=	-L$(top_builddir)/external/libcurl -lcurl_pic -lz
 STATIC_LIBS+=	$(top_builddir)/external/libcurl/libcurl.a
+@if pkgos_darwin
+LOCAL_LDFLAGS+=	-framework CoreFoundation -framework CoreServices \
+		-framework SystemConfiguration
+@endif
 @endif
 
 VPATH=	$(top_srcdir)/libpkg
