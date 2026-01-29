@@ -1,6 +1,7 @@
 include @builddir@/mk/defs.mk
 LIB=	bsd_compat
-SRCS=	humanize_number.c \
+SRCS=	closefrom.c \
+	humanize_number.c \
 	strtonum.c \
 	funopen.c
 

@@ -92,6 +92,10 @@
 #include "humanize_number.h"
 #endif
 
+#if !HAVE_CLOSEFROM
+void closefrom(int lowfd);
+#endif
+
 #ifndef AT_FDCWD
 #define AT_FDCWD		-100
 #endif
