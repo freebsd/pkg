@@ -41,6 +41,7 @@ extern "C" {
 struct pkg_audit_version {
 	char *version;
 	int type;
+	int osv_type;
 };
 
 struct pkg_audit_versions_range {
