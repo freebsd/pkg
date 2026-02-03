@@ -37,7 +37,7 @@
  #endif
 #endif
 
-#ifndef HAVE_BSD_SYS_CDEFS_H
+#if !__has_include(<bsd/sys/cdefs.h>)
 
 #include <sys/cdefs.h>
 
@@ -52,35 +52,35 @@
 #include <bsd/sys/cdefs.h>
 #endif
 
-#ifdef HAVE_BSD_STDLIB_H
+#if __has_include(<bsd/stdlib.h>)
 #include <bsd/stdlib.h>
 #endif
 
-#ifdef HAVE_BSD_UNISTD_H
+#if __has_include(<bsd/unistd.h>)
 #include <bsd/unistd.h>
 #endif
 
-#ifdef HAVE_BSD_STRING_H
+#if __has_include(<bsd/string.h>)
 #include <bsd/string.h>
 #endif
 
-#ifdef HAVE_BSD_STDIO_H
+#if __has_include(<bsd/stdio.h>)
 #include <bsd/stdio.h>
 #endif
 
-#ifdef HAVE_BSD_STLIB_H
+#if __has_include(<bsd/stdlib.h>)
 #include <bsd/stdlib.h>
 #endif
 
-#ifdef HAVE_BSD_ERR_H
+#if __has_include(<bsd/err.h>)
 #include <bsd/err.h>
 #endif
 
-#ifdef HAVE_BSD_LIBUTIL_H
+#if __has_include(<bsd/libutil.h>)
 #include <bsd/libutil.h>
 #endif
 
-#ifdef HAVE_BSD_SYS_TIME_H
+#if __has_include(<bsd/sys/time.h>)
 #include <bsd/sys/time.h>
 #endif
 
