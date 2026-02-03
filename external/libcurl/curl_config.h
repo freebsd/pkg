@@ -1021,4 +1021,9 @@
 
 /* the signed version of size_t */
 /* #undef ssize_t */
+
+#if __has_include(<sys/sockio.h>)
+#define HAVE_SYS_SOCKIO_H 1
+#endif
+
 #include "curl_cfg.h"
