@@ -166,7 +166,6 @@ cc-with { -includes sys/stat.h } {
 
 # check for sqlite
 cc-check-functions strchrnul
-cc-check-includes stdint.h inttypes.h
 
 # check for pkg itself
 cc-check-functions arc4random arc4random_stir chflagsat \
