@@ -23,7 +23,6 @@
 #ifndef PKG_JOBS_H_
 #define PKG_JOBS_H_
 
-#include <sys/cdefs.h>
 #include <sys/types.h>
 
 #include <stdbool.h>

@@ -13,7 +13,6 @@
 #include "bsd_compat.h"
 
 #include <sys/param.h>
-#include <sys/cdefs.h>
 #include <sys/types.h>
 
 #include <archive.h>
