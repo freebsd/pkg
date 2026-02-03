@@ -22,8 +22,8 @@
 #include <sys/param.h>
 #include <unistd.h>
 #include <stdio.h>
-#ifdef HAVE_FCNTL_H
-# include <fcntl.h>
+#if __has_include(<fcntl.h>)
+#include <fcntl.h>
 #endif
 #include <limits.h>
 #include <stdlib.h>
@@ -44,7 +44,7 @@ __unused static const char rcsid[] = "$Sudo: closefrom.c,v 1.11 2006/08/17 15:26
 /*
  * Close all file descriptors greater than or equal to lowfd.
  */
-#if HAVE_DECL_F_CLOSEM
+#ifdef F_CLOSEM
 void
 closefrom(int lowfd)
 {

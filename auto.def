@@ -156,14 +156,6 @@ foreach fct [list memmove usleep pread pwrite] {
 	}
 }
 
-cc-with { -includes fcntl.h } {
-	cc-check-decls F_CLOSEM
-}
-
-cc-with { -includes sys/socket.h } {
-	cc-check-decls SOCK_SEQPACKET
-}
-
 cc-with { -includes netinet/in.h } {
 	cc-check-members "struct sockaddr_in.sin_len"
 }

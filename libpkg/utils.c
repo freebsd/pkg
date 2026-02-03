@@ -869,7 +869,7 @@ get_socketpair(int *pipe)
 {
 	int r;
 
-#ifdef HAVE_DECL_SOCK_SEQPACKET
+#ifdef SOCK_SEQPACKET
 	r = socketpair(AF_LOCAL, SOCK_SEQPACKET, 0, pipe);
 	if (r == -1) {
 		r = socketpair(AF_LOCAL, SOCK_DGRAM, 0, pipe);
