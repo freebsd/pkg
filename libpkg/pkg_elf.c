@@ -17,7 +17,7 @@
 #include <machine/endian.h>
 #endif
 #include <sys/types.h>
-#if defined(HAVE_SYS_ELF_COMMON_H) && !defined(__DragonFly__)
+#if __has_include(<sys/elf_common.h>) && !defined(__DragonFly__)
 #include <sys/elf_common.h>
 #endif
 #include <sys/stat.h>

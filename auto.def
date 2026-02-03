@@ -228,9 +228,6 @@ if {[string match *-darwin* [get-define host]]} {
 # libelf
 	define waflags "-Wl,-whole-archive"
 	define nowaflags "-Wl,-no-whole-archive"
-	cc-with { -includes { sys/types.h }} {
-		cc-check-includes elf-hints.h sys/elf_common.h
-	}
 
 	if {[cc-check-includes gelf.h libelf.h]} {
 		cc-with { -libs { -lelf } } {
