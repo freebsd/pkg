@@ -203,8 +203,6 @@ if {![cc-check-functions dlclose]} {
 	}
 }
 
-cc-check-includes sys/procctl.h sys/statfs.h libutil.h
-
 #endian stuff
 foreach fct [list be16dec be16enc be32dec be32enc be64dec be64enc le16dec le16enc le32dec le32enc le64dec le64enc] {
 	foreach header [list endian.h sys/endian.h machine/endian.h] {
