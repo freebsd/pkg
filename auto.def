@@ -216,7 +216,7 @@ cc-check-includes link.h machine/endian.h readpassphrase.h \
 	sys/procctl.h sys/statfs.h libutil.h
 
 # for compat
-cc-check-includes dirent.h sys/sockio.h
+cc-check-includes sys/sockio.h
 
 #endian stuff
 foreach fct [list be16dec be16enc be32dec be32enc be64dec be64enc le16dec le16enc le32dec le32enc le64dec le64enc] {
