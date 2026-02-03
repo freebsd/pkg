@@ -203,7 +203,7 @@ if {![cc-check-functions dlclose]} {
 	}
 }
 
-cc-check-includes link.h machine/endian.h readpassphrase.h \
+cc-check-includes machine/endian.h readpassphrase.h \
 	sys/procctl.h sys/statfs.h libutil.h
 
 #endian stuff

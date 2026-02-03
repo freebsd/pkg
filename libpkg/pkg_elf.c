@@ -27,7 +27,7 @@
 #include <fcntl.h>
 #include <gelf.h>
 #include <libgen.h>
-#if defined(HAVE_LINK_H) && !defined(__DragonFly__) && defined(HAVE_LIBELF)
+#if __has_include(<link.h>) && !defined(__DragonFly__) && defined(HAVE_LIBELF)
 #include <link.h>
 #endif
 #include <paths.h>
