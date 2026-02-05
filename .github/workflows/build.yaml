@@ -73,7 +73,7 @@ jobs:
             llvm-bindir: /usr/lib/llvm-18/bin
         exclude:
           - build-os: macos-latest
-            sanitize: ["lsan"]
+            sanitize: ["asan", "lsan"]
     steps:
       - name: install packages (macOS)
         if: runner.os == 'macOS'
