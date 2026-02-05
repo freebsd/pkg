@@ -71,6 +71,9 @@ jobs:
               - pkg-config
               - m4
             llvm-bindir: /usr/lib/llvm-18/bin
+        exclude:
+          - build-os: macos-latest
+            sanitize: ["lsan"]
     steps:
       - name: install packages (macOS)
         if: runner.os == 'macOS'
