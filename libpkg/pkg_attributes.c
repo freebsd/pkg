@@ -68,6 +68,7 @@ pkg_file_free(struct pkg_file *file)
 	free(file->gname);
 	free(file->symlink_target);
 	free(file->sum);
+	free(file->temppath);
 	free(file);
 }
 
