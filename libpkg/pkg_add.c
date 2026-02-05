@@ -606,7 +606,7 @@ create_hardlink(struct pkg_add_context *context, struct pkg_file *f, const char 
 		    " hardlinked to %s", f->path, path);
 		return (EPKG_FATAL);
 	}
-	if (fh->temppath != NULL) {
+	if (fh->temppath == NULL) {
 		vec_foreach(*tempdirs, i) {
 			if (strncmp(tempdirs->d[i]->name, fh->path, tempdirs->d[i]->len) == 0 &&
 			    fh->path[tempdirs->d[i]->len] == '/' ) {
