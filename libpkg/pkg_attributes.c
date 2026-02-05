@@ -63,8 +63,21 @@ pkg_dep_is_locked(struct pkg_dep const * const d)
 void
 pkg_file_free(struct pkg_file *file)
 {
+	free(file->path);
+	free(file->uname);
+	free(file->gname);
+	free(file->symlink_target);
 	free(file->sum);
 	free(file);
+}
+
+void
+pkg_dir_free(struct pkg_dir *dir)
+{
+	free(dir->path);
+	free(dir->uname);
+	free(dir->gname);
+	free(dir);
 }
 
 /*
@@ -120,6 +133,7 @@ pkg_config_file_free(struct pkg_config_file *c)
 	if (c == NULL)
 		return;
 
+	free(c->path);
 	free(c->content);
 	free(c);
 }
