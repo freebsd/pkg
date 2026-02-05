@@ -465,7 +465,9 @@ do_extract_dir(struct pkg_add_context* context, struct archive *a __unused, stru
 	d->perm = aest->st_mode;
 	d->uid = get_uid_from_uname(archive_entry_uname(ae));
 	d->gid = get_gid_from_gname(archive_entry_gname(ae));
+	free(d->uname);
 	d->uname = xstrdup(archive_entry_uname(ae));
+	free(d->gname);
 	d->gname = xstrdup(archive_entry_uname(ae));
 	fill_timespec_buf(aest, d->time);
 	archive_entry_fflags(ae, &d->fflags, &clear);
@@ -562,7 +564,9 @@ do_extract_symlink(struct pkg_add_context *context, struct archive *a __unused,
 	archive_entry_fflags(ae, &f->fflags, &clear);
 	f->uid = get_uid_from_uname(archive_entry_uname(ae));
 	f->gid = get_gid_from_gname(archive_entry_gname(ae));
+	free(f->uname);
 	f->uname = xstrdup(archive_entry_uname(ae));
+	free(f->gname);
 	f->gname = xstrdup(archive_entry_gname(ae));
 	f->perm = aest->st_mode;
 	fill_timespec_buf(aest, f->time);
@@ -816,7 +820,9 @@ do_extract_regfile(struct pkg_add_context *context, struct archive *a, struct ar
 	f->perm = aest->st_mode;
 	f->uid = get_uid_from_uname(archive_entry_uname(ae));
 	f->gid = get_gid_from_gname(archive_entry_gname(ae));
+	free(f->uname);
 	f->uname = xstrdup(archive_entry_uname(ae));
+	free(f->gname);
 	f->gname = xstrdup(archive_entry_gname(ae));
 	fill_timespec_buf(aest, f->time);
 	archive_entry_fflags(ae, &f->fflags, &clear);

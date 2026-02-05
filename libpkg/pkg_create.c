@@ -135,6 +135,7 @@ pkg_create_from_dir(struct pkg *pkg, const char *root,
 					pkg_emit_errno("pkg_create_from_dir", "readlink failed");
 					return (EPKG_FATAL);
 				}
+				free(file->symlink_target);
 				file->symlink_target = xstrdup(link);
 			}
 
