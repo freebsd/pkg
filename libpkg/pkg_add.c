@@ -468,7 +468,7 @@ do_extract_dir(struct pkg_add_context* context, struct archive *a __unused, stru
 	free(d->uname);
 	d->uname = xstrdup(archive_entry_uname(ae));
 	free(d->gname);
-	d->gname = xstrdup(archive_entry_uname(ae));
+	d->gname = xstrdup(archive_entry_gname(ae));
 	fill_timespec_buf(aest, d->time);
 	archive_entry_fflags(ae, &d->fflags, &clear);
 
