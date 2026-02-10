@@ -363,7 +363,7 @@ curl_open(struct pkg_repo *repo, struct fetch_item *fi __unused)
 		}
 		repo->http = http_getmirrors(repo, cr);
 		if (repo->http == NULL) {
-			pkg_emit_error("No HTTP mirrors founds for the repo "
+			pkg_emit_error("No HTTP mirrors found for the repo "
 			    "'%s'", repo->name);
 			repo->mirror_type = NOMIRROR;
 		}
