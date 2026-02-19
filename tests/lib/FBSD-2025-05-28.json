@@ -1,6 +1,6 @@
 {
   "schema_version": "1.7.0",
-  "id": "FBSD-2025-05-28",
+  "id": "FreeBSD-2025-05-28",
   "modified": "2025-05-26T12:30:00Z",
   "published": "2025-09-28T16:00:00Z",
   "summary": "OSVF test",
@@ -12,39 +12,39 @@
     },
     {
       "type": "ARTICLE",
-      "url": "https://www.freebsd.org/"
+      "url": "https://www.freebsd.org/about/"
     },
     {
       "type": "DETECTION",
-      "url": "https://www.freebsd.org/"
+      "url": "https://docs.freebsd.org/en/"
     },
     {
       "type": "DISCUSSION",
-      "url": "https://www.freebsd.org/"
+      "url": "https://docs.freebsd.org/en/books/handbook/basics/"
     },
     {
       "type": "REPORT",
-      "url": "https://www.freebsd.org/"
+      "url": "https://wiki.freebsd.org/"
     },
     {
       "type": "FIX",
-      "url": "https://www.freebsd.org/"
+      "url": "https://lists.freebsd.org/"
     },
     {
       "type": "INTRODUCED",
-      "url": "https://www.freebsd.org/"
+      "url": "https://wiki.freebsd.org/IRC/Channels"
     },
     {
       "type": "PACKAGE",
-      "url": "https://www.freebsd.org/"
+      "url": "https://docs.freebsd.org/en/books/"
     },
     {
       "type": "EVIDENCE",
-      "url": "https://www.freebsd.org/"
+      "url": "hhttps://www.freebsd.org/releases/"
     },
     {
       "type": "WEB",
-      "url": "https://www.freebsd.org/"
+      "url": "https://www.freebsd.org/releng/"
     }
   ],
   "affected": [
