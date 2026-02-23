@@ -746,14 +746,6 @@ main(int argc, char **argv)
 			exit(EXIT_SUCCESS);
 		} else {
 			if (access("/usr/sbin/pkg", R_OK) == 0) {
-				/* Only 10.0+ supported 'bootstrap -f' */
-#if __FreeBSD_version < 1000502
-				printf("Execute these steps to rebootstrap"
-				     " pkg(8):\n");
-				printf("# pkg delete -f pkg\n");
-				printf("# /usr/sbin/pkg -v\n");
-				exit(EXIT_SUCCESS);
-#endif
 				printf("pkg(8) is already installed. Forcing "
 				    "reinstallation through pkg(7).\n");
 				execl("/usr/sbin/pkg", "pkg", "bootstrap",
