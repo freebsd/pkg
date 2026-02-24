@@ -103,6 +103,7 @@ pkg_arch_to_cputype(enum pkg_arch arch) {
 		cpu.type_is64 = true;
 		cpu.subtype_ppc = CPU_SUBTYPE_POWERPC_ALL;
 		break;
+	case PKG_ARCH_ANY:
 	case PKG_ARCH_POWERPC64LE:
 	case PKG_ARCH_RISCV32:
 	case PKG_ARCH_RISCV64:
@@ -455,7 +456,7 @@ pkg_analyse_macho(const bool developer_mode, struct pkg *pkg,
 }
 
 int
-pkg_analyse_close_macho()
+pkg_analyse_close_macho(void)
 {
 	return EPKG_OK;
 }

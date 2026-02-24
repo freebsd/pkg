@@ -49,7 +49,7 @@ struct kv {
 	struct kv *next;
 };
 
-struct kv *
+static struct kv *
 kv_new(const char *k, const char *v)
 {
 	struct kv *kv = xcalloc(1, sizeof(*kv));
@@ -158,6 +158,7 @@ static const struct _pkg_cksum_type {
 	[PKG_HASH_TYPE_UNKNOWN] = {
 		NULL,
 		-1,
+		NULL,
 		NULL,
 		NULL,
 		NULL

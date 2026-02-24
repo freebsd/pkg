@@ -100,16 +100,16 @@ pkg_lua_script_run(struct pkg * const pkg, pkg_lua_script type, bool upgrade)
 
 			/* parse and set arguments of the line is in the comments */
 			if (STARTS_WITH(script, "-- args: ")) {
-				char *walk, *begin, *line = NULL;
+				char *walk, *begin, *cline = NULL;
 				int spaces, argc = 0;
 				char **args = NULL;
 
 				walk = strchr(script, '\n');
 				begin = script + strlen("-- args: ");
-				line = xstrndup(begin, walk - begin);
-				spaces = pkg_utils_count_spaces(line);
+				cline = xstrndup(begin, walk - begin);
+				spaces = pkg_utils_count_spaces(cline);
 				args = xmalloc((spaces + 1)* sizeof(char *));
-				walk = xstrdup(line);
+				walk = xstrdup(cline);
 				while (walk != NULL) {
 					args[argc++] = pkg_utils_tokenize(&walk);
 				}

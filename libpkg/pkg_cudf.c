@@ -61,7 +61,7 @@ cudf_print_package_name(FILE *f, const char *name)
 }
 
 static inline int
-cudf_print_element(FILE *f, const char *line, bool has_next, int *column)
+cudf_print_element(FILE *f, const char *line, bool has_next, size_t *column)
 {
 	int ret = 0;
 	if (*column > 80) {
@@ -83,7 +83,7 @@ cudf_print_element(FILE *f, const char *line, bool has_next, int *column)
 }
 
 static inline int
-cudf_print_conflict(FILE *f, const char *uid, int ver, bool has_next, int *column)
+cudf_print_conflict(FILE *f, const char *uid, int ver, bool has_next, size_t *column)
 {
 	int ret = 0;
 	if (*column > 80) {
@@ -113,7 +113,8 @@ cudf_emit_pkg(struct pkg *pkg, int version, FILE *f,
 	struct pkg_dep *dep;
 	struct pkg_conflict *conflict;
 	struct pkg_job_universe_item *u;
-	int column = 0, ver;
+	size_t column = 0;
+	int ver;
 
 	if (fprintf(f, "package: ") < 0)
 		return (EPKG_FATAL);
@@ -182,7 +183,7 @@ static int
 cudf_emit_request_packages(const char *op, struct pkg_jobs *j, FILE *f)
 {
 	struct pkg_job_request *req;
-	int column = 0, cnt = 0, max;
+	size_t column = 0, cnt = 0, max;
 	bool printed = false;
 	pkghash_it it;
 

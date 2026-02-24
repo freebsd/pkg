@@ -297,7 +297,7 @@ trigger_is_it_a_cleanup(struct triggers *t, const char *path)
 /*
  * Load triggers from a specific directory and add them to a vec.
  */
-void
+static void
 triggers_load_from(trigger_t *triggers, bool cleanup_only, const char *dir)
 {
 	int dfd;
@@ -632,7 +632,7 @@ append_touched_file(const char *path)
 	free(newpath);
 }
 
-void
+static void
 exec_deferred(int dfd, const char *name)
 {
 	bool sandbox = false;

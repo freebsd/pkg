@@ -459,7 +459,7 @@ append_to_del_request(struct pkg_jobs *j, pkgs_t *to_process, const char *uid, c
 	return (true);
 }
 
-bool
+static bool
 delete_process_provides(struct pkg_jobs *j, struct pkg *lp, const char *provide,
     struct pkgdb_it *(*provideq)(struct pkgdb *db, const char *req),
     struct pkgdb_it *(*requireq)(struct pkgdb *db, const char *req),
