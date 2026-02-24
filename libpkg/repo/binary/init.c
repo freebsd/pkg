@@ -71,7 +71,7 @@ pkg_repo_binary_get_user_version(sqlite3 *sqlite, int *reposcver)
 	return (retcode);
 }
 
-int
+static int
 pkg_repo_binary_check_version(struct pkg_repo *repo, sqlite3 *sqlite)
 {
 	int reposcver;

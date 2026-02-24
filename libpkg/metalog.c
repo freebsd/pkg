@@ -100,7 +100,7 @@ out:
 }
 
 void
-metalog_close()
+metalog_close(void)
 {
 	if (metalogfp != NULL) {
 		fclose(metalogfp);

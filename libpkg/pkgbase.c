@@ -98,7 +98,7 @@ int
 scan_system_shlibs(charv_t *system_shlibs, const char *rootdir)
 {
 	int r = EPKG_OK;
-	for (int i = 0; i < NELEM(system_shlib_table); i++) {
+	for (size_t i = 0; i < NELEM(system_shlib_table); i++) {
 		char *dir;
 		if (rootdir != NULL) {
 			xasprintf(&dir, "%s%s", rootdir, system_shlib_table[i].dir);

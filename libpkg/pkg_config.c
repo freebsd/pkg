@@ -1022,7 +1022,7 @@ type_to_string(int type)
 	return ("unknown");
 }
 
-const struct pkg_dbg_flags *
+static const struct pkg_dbg_flags *
 _find_flag(const char *str)
 {
 	for (size_t i = 0; i < NELEM(debug_flags); i++) {
@@ -1057,7 +1057,7 @@ config_validate_debug_flags(const ucl_object_t *o)
 }
 
 static bool
-config_validate_shlib_provide_paths() {
+config_validate_shlib_provide_paths(void) {
 	const char *config_options[] = {
 		"SHLIB_PROVIDE_PATHS_NATIVE",
 		"SHLIB_PROVIDE_PATHS_COMPAT_32",

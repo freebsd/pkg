@@ -856,7 +856,8 @@ pkg_solve_jobs_to_sat(struct pkg_jobs *j)
 static int
 pkg_solve_picosat_iter(struct pkg_solve_problem *problem, int iter __unused)
 {
-	int res, i;
+	size_t i;
+	int res;
 	struct pkg_solve_variable *var, *cur;
 	bool is_installed = false;
 

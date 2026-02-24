@@ -326,7 +326,8 @@ pkg_abi_from_file(struct pkg_abi *abi)
 	char work_abi_file[PATH_MAX];
 	char work_arch_hint[PATH_MAX];
 
-	int i, fd;
+	size_t i;
+	int fd;
 
 	/*
 	 * Perhaps not yet needed, but it may be in the future that there's no

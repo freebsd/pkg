@@ -31,8 +31,8 @@
 #include "pkg/audit.h"
 #include "private/pkg_cpe.h"
 
-struct pkg_audit_cpe *
-pkg_cpe_new()
+static struct pkg_audit_cpe *
+pkg_cpe_new(void)
 {
 	return (struct pkg_audit_cpe *)xcalloc(1, sizeof(struct pkg_audit_cpe));
 }

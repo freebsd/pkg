@@ -685,6 +685,6 @@ int pkg_analyse_elf(const bool developer_mode, struct pkg *pkg,
 	return ret;
 }
 
-int pkg_analyse_close_elf() {
+int pkg_analyse_close_elf(void) {
 	return EPKG_OK;
 }

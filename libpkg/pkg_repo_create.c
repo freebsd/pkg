@@ -1052,7 +1052,7 @@ pack_sign(struct packing *pack, struct pkgsign_ctx *sctx, const char *path,
 	sigtype = pkgsign_impl_name(sctx);
 	if (!STREQ(sigtype, "rsa")) {
 		size = snprintf(buf, sizeof(buf), "%s%s$", PKGSIGN_HEAD, sigtype);
-		if (size >= sizeof(buf)) {
+		if (size >= (int)sizeof(buf)) {
 			free(sigret);
 			return (EPKG_FATAL);
 		}
@@ -1104,7 +1104,7 @@ pack_command_sign(struct packing *pack, const char *path, char **argv, int argc,
 			sigtype[--typelen] = '\0';
 		size = snprintf(buf, sizeof(buf), "%s%s$", PKGSIGN_HEAD, sigtype);
 		free(sigtype);
-		if (size >= sizeof(buf)) {
+		if (size >= (int)sizeof(buf)) {
 			free(sig);
 			free(pub);
 			return (EPKG_FATAL);

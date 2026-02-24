@@ -549,6 +549,7 @@ pkg_audit_parse_vulnxml(struct pkg_audit *audit)
 	while (walk < end) {
 		r = yxml_parse(&x, *walk++);
 		switch (r) {
+		case YXML_EEOF:
 		case YXML_EREF:
 		case YXML_ESTACK:
 			pkg_emit_error("Unexpected EOF while parsing vulnxml");
@@ -578,6 +579,11 @@ pkg_audit_parse_vulnxml(struct pkg_audit *audit)
 		case YXML_ATTREND:
 			vulnxml_end_attribute(&ud, &x);
 			/* ignore */
+			break;
+		case YXML_OK:
+		case YXML_PISTART:
+		case YXML_PICONTENT:
+		case YXML_PIEND:
 			break;
 		}
 	}

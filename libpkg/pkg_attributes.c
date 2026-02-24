@@ -375,6 +375,19 @@ pkg_get_element(struct pkg *p, pkg_attr a)
 		e->stringlist->list = &p->licenses;
 		e->type = PKG_STRINGLIST;
 		break;
+	case PKG_ATTR_COMMENT:
+	case PKG_ATTR_MTREE:
+	case PKG_ATTR_MESSAGE:
+	case PKG_ATTR_OLD_VERSION:
+	case PKG_ATTR_DIGEST:
+	case PKG_ATTR_LICENSE_LOGIC:
+	case PKG_ATTR_ROWID:
+	case PKG_ATTR_TIME:
+	case PKG_ATTR_OLD_DIGEST:
+	case PKG_ATTR_DEP_FORMULA:
+	case PKG_ATTR_CONFLICTS:
+	case PKG_ATTR_NUM_FIELDS:
+		break;
 	}
 
 	return (e);
