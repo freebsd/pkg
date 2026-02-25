@@ -966,7 +966,6 @@ pkg_emit_object(struct pkg *pkg, short flags)
 	struct pkg_conflict	*conflict = NULL;
 	struct pkg_config_file	*cf       = NULL;
 	xstring		*tmpsbuf  = NULL;
-	int i;
 	const char *script_types = NULL;
 	char legacyarch[BUFSIZ];
 	char perm_str[sizeof("00000")];
@@ -1285,7 +1284,7 @@ pkg_emit_object(struct pkg *pkg, short flags)
 
 		dbg(4, "Emitting scripts");
 		map = NULL;
-		for (i = 0; i < PKG_NUM_SCRIPTS; i++) {
+		for (int i = 0; i < PKG_NUM_SCRIPTS; i++) {
 			if (pkg_script_get(pkg, i) == NULL)
 				continue;
 
@@ -1322,7 +1321,7 @@ pkg_emit_object(struct pkg *pkg, short flags)
 
 		dbg(4, "Emitting lua scripts");
 		map = NULL;
-		for (i = 0; i < PKG_NUM_LUA_SCRIPTS; i++) {
+		for (int i = 0; i < PKG_NUM_LUA_SCRIPTS; i++) {
 			if (vec_len(&pkg->lua_scripts[i]) == 0)
 				continue;
 			switch(i) {

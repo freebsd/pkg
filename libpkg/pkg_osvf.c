@@ -528,7 +528,7 @@ struct pkg_osvf_hash
 	char *name;
 };
 
-struct pkg_osvf_hash references_global[] =
+static struct pkg_osvf_hash references_global[] =
 {
 	{OSVF_REFERENCE_ADVISORY, "ADVISORY"},
 	{OSVF_REFERENCE_ARTICLE, "ARTICLE"},
@@ -543,7 +543,7 @@ struct pkg_osvf_hash references_global[] =
 	{OSVF_REFERENCE_UNKNOWN, NULL}
 };
 
-struct pkg_osvf_hash event_global[] =
+static struct pkg_osvf_hash event_global[] =
 {
 	{OSVF_EVENT_VERSION_SEMVER, "SEMVER"},
 	{OSVF_EVENT_VERSION_ECOSYSTEM, "ECOSYSTEM"},
@@ -552,7 +552,7 @@ struct pkg_osvf_hash event_global[] =
 };
 
 static ucl_object_t *
-create_schema_obj()
+create_schema_obj(void)
 {
 	struct ucl_parser *uclparser;
 	ucl_object_t *obj = NULL;
@@ -630,8 +630,8 @@ pkg_osvf_open(const char *location)
 	return (obj);
 }
 
-struct pkg_audit_entry *
-pkg_osvf_new_entry()
+static struct pkg_audit_entry *
+pkg_osvf_new_entry(void)
 {
 	struct pkg_audit_entry *entry = xcalloc(1, sizeof(struct pkg_audit_entry));
 
@@ -644,7 +644,7 @@ pkg_osvf_new_entry()
 	return entry;
 }
 
-void
+static void
 pkg_osvf_free_pkgname(struct pkg_audit_pkgname *pkgname)
 {
 	if(!pkgname)
@@ -661,7 +661,7 @@ pkg_osvf_free_pkgname(struct pkg_audit_pkgname *pkgname)
 	free(pkgname);
 }
 
-void
+static void
 pkg_osvf_free_version(struct pkg_audit_version *ver)
 {
 	if(!ver)
@@ -675,7 +675,7 @@ pkg_osvf_free_version(struct pkg_audit_version *ver)
 	free(ver);
 }
 
-void
+static void
 pkg_osvf_free_range(struct pkg_audit_versions_range *range)
 {
 	free(range);
@@ -702,7 +702,7 @@ pkg_osvf_free_ecosystem(struct pkg_audit_ecosystem *ecosystem)
 	free(ecosystem);
 }
 
-void
+static void
 pkg_osvf_free_package(struct pkg_audit_package *package)
 {
 	if(!package)
@@ -725,7 +725,7 @@ pkg_osvf_free_package(struct pkg_audit_package *package)
 	free(package);
 }
 
-void
+static void
 pkg_osvf_free_cve(struct pkg_audit_cve *cve)
 {
 	if(!cve)
@@ -742,7 +742,7 @@ pkg_osvf_free_cve(struct pkg_audit_cve *cve)
 	free(cve);
 }
 
-void
+static void
 pkg_osvf_free_reference(struct pkg_audit_reference *reference)
 {
 	if(!reference)
@@ -813,7 +813,7 @@ pkg_osvf_free_entry(struct pkg_audit_entry *entry)
 	free(entry);
 }
 
-struct pkghash *
+static struct pkghash *
 pkg_osvf_create_seek_hash(struct pkg_osvf_hash *osvf_ptr)
 {
 	struct pkghash *hash_table = pkghash_new();
@@ -827,7 +827,7 @@ pkg_osvf_create_seek_hash(struct pkg_osvf_hash *osvf_ptr)
 	return hash_table;
 }
 
-unsigned int
+static unsigned int
 pkg_osvf_get_hash(const char *key, struct pkg_osvf_hash *global, unsigned int unknow)
 {
 	struct pkghash *hash = NULL;
@@ -932,8 +932,8 @@ pkg_osvf_get_event(const char *event_type)
 }
 
 
-const char *
-pkg_osvf_ucl_string(const ucl_object_t *obj, char *key)
+static const char *
+pkg_osvf_ucl_string(const ucl_object_t *obj, const char *key)
 {
 	const ucl_object_t *key_obj = ucl_object_find_key(obj, key);
 
@@ -945,7 +945,7 @@ pkg_osvf_ucl_string(const ucl_object_t *obj, char *key)
 	return "";
 }
 
-void
+static void
 pkg_osvf_parse_package(struct pkg_audit_package *package, const ucl_object_t *package_obj)
 {
 	/* Parses package structure:
@@ -964,7 +964,7 @@ pkg_osvf_parse_package(struct pkg_audit_package *package, const ucl_object_t *pa
 	package->ecosystem = pkg_osvf_get_ecosystem(pkg_osvf_ucl_string(package_obj, "ecosystem"));
 }
 
-void
+static void
 pkg_osvf_parse_events(struct pkg_audit_versions_range *range, const ucl_object_t *event_array, const char *type)
 {
 	ucl_object_iter_t it = NULL;
@@ -1006,7 +1006,7 @@ pkg_osvf_parse_events(struct pkg_audit_versions_range *range, const ucl_object_t
 }
 
 
-void
+static void
 pkg_osvf_parse_ranges(struct pkg_audit_versions_range *range, const ucl_object_t *range_array)
 {
 	ucl_object_iter_t it = NULL;
@@ -1053,7 +1053,7 @@ pkg_osvf_parse_ranges(struct pkg_audit_versions_range *range, const ucl_object_t
 	}
 }
 
-void
+static void
 pkg_osvf_parse_reference(struct pkg_audit_reference *ref, const ucl_object_t *ref_obj)
 {
 	if(!ref_obj || ucl_object_type(ref_obj) != UCL_OBJECT)
@@ -1072,7 +1072,7 @@ pkg_osvf_parse_reference(struct pkg_audit_reference *ref, const ucl_object_t *re
 	ref->type = pkg_osvf_get_reference(pkg_osvf_ucl_string(ref_obj, "type"));
 }
 
-void
+static void
 pkg_osvf_parse_references(struct pkg_audit_entry *entry, const ucl_object_t *ref_obj)
 {
 	ucl_object_iter_t it = NULL;
@@ -1116,7 +1116,7 @@ pkg_osvf_parse_references(struct pkg_audit_entry *entry, const ucl_object_t *ref
 
 }
 
-void
+static void
 pkg_osvf_parse_affected(struct pkg_audit_entry *entry, const ucl_object_t *aff_obj)
 {
 	ucl_object_iter_t it = NULL;
@@ -1183,7 +1183,7 @@ pkg_osvf_parse_affected(struct pkg_audit_entry *entry, const ucl_object_t *aff_o
 	}
 }
 
-void
+static void
 pkg_osvf_append_version_range(struct pkg_audit_versions_range *to, struct pkg_audit_versions_range *from)
 {
 	struct pkg_audit_versions_range *ptr_from = from;
@@ -1210,7 +1210,7 @@ pkg_osvf_append_version_range(struct pkg_audit_versions_range *to, struct pkg_au
 	}
 }
 
-void
+static void
 pkg_osvf_print_version_type(struct pkg_audit_versions_range *versions)
 {
 	if(!versions)
@@ -1236,7 +1236,7 @@ pkg_osvf_print_version_type(struct pkg_audit_versions_range *versions)
 	}
 }
 
-void
+static void
 pkg_osvf_print_version(struct pkg_audit_version *version)
 {
 	if(!version)
@@ -1266,7 +1266,7 @@ pkg_osvf_print_version(struct pkg_audit_version *version)
 	printf("%s\n", version->version);
 }
 
-void
+static void
 pkg_osvf_print_ecosystem(struct pkg_audit_ecosystem *ecosystem)
 {
 	ucl_object_iter_t it = NULL;

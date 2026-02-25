@@ -166,11 +166,11 @@ pkg_script_run(struct pkg * const pkg, pkg_script type, bool upgrade, bool noexe
 			 * consider cur_pipe[1] to probably be the lastest
 			 * opened fd close all unuseful fd up to there
 			 */
-			for (int j = 5; j <= cur_pipe[1]; j++) {
-				if (j != cur_pipe[0] && j != ctx.devnullfd)
-					posix_spawn_file_actions_addclose(&action, j);
+			for (int k = 5; k <= cur_pipe[1]; k++) {
+				if (k != cur_pipe[0] && k != ctx.devnullfd)
+					posix_spawn_file_actions_addclose(&action, k);
 			}
-			if (script_len > argmax) {
+			if (argmax < 0 || script_len > (size_t)argmax) {
 				if (pipe(stdin_pipe) < 0) {
 					ret = EPKG_FATAL;
 					posix_spawn_file_actions_destroy(&action);

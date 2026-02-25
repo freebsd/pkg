@@ -38,7 +38,7 @@ pkg_key_new(struct pkg_key **key, const char *keytype, const char *keypath,
     pkg_password_cb *cb)
 {
 	struct pkg_key *nkey;
-	struct pkgsign_ctx *ctx = NULL;
+	struct pkgsign_ctx *nctx = NULL;
 	int ret;
 
 	assert(*key == NULL);
@@ -46,14 +46,14 @@ pkg_key_new(struct pkg_key **key, const char *keytype, const char *keypath,
 	if (*keypath == '\0')
 		return (EPKG_FATAL);
 
-	ret = pkgsign_new_sign(keytype, &ctx);
+	ret = pkgsign_new_sign(keytype, &nctx);
 	if (ret != 0)
 		return (EPKG_FATAL);
 
-	pkgsign_set(ctx, cb, keypath);
+	pkgsign_set(nctx, cb, keypath);
 
 	nkey = xcalloc(1, sizeof(*nkey));
-	nkey->ctx = ctx;
+	nkey->ctx = nctx;
 
 	*key = nkey;
 	return (EPKG_OK);

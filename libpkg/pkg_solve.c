@@ -1124,9 +1124,9 @@ reiterate:
 		failed = picosat_next_maximal_satisfiable_subset_of_assumptions(problem->sat);
 
 		while (*failed) {
-			struct pkg_solve_variable *var = &problem->variables[*failed - 1];
+			struct pkg_solve_variable *lvar = &problem->variables[*failed - 1];
 
-			pkg_emit_notice("var: %s", var->uid);
+			pkg_emit_notice("lvar: %s", lvar->uid);
 
 			failed ++;
 		}
@@ -1139,17 +1139,17 @@ reiterate:
 		/* Assign vars */
 		for (i = 0; i < problem->nvars; i ++) {
 			int val = picosat_deref(problem->sat, i + 1);
-			struct pkg_solve_variable *var = &problem->variables[i];
+			struct pkg_solve_variable *lvar = &problem->variables[i];
 
 			if (val > 0)
-				var->flags |= PKG_VAR_INSTALL;
+				lvar->flags |= PKG_VAR_INSTALL;
 			else
-				var->flags &= ~PKG_VAR_INSTALL;
+				lvar->flags &= ~PKG_VAR_INSTALL;
 
 			dbg(2, "decided %s %s-%s to %s",
-					var->unit->pkg->type == PKG_INSTALLED ? "local" : "remote",
-							var->uid, var->digest,
-							var->flags & PKG_VAR_INSTALL ? "install" : "delete");
+					lvar->unit->pkg->type == PKG_INSTALLED ? "local" : "remote",
+							lvar->uid, lvar->digest,
+							lvar->flags & PKG_VAR_INSTALL ? "install" : "delete");
 		}
 
 		/* Check for reiterations */
@@ -1157,10 +1157,10 @@ reiterate:
 				problem->j->type == PKG_JOBS_UPGRADE) && iter == 0) {
 			for (i = 0; i < problem->nvars; i ++) {
 				bool failed_var = false;
-				struct pkg_solve_variable *var = &problem->variables[i], *cur;
+				struct pkg_solve_variable *lvar = &problem->variables[i], *cur;
 
-				if (!(var->flags & PKG_VAR_INSTALL)) {
-					LL_FOREACH(var, cur) {
+				if (!(lvar->flags & PKG_VAR_INSTALL)) {
+					LL_FOREACH(lvar, cur) {
 						if (cur->flags & PKG_VAR_INSTALL) {
 							failed_var = false;
 							break;
@@ -1178,10 +1178,10 @@ reiterate:
 				if (failed_var) {
 					dbg (1, "trying to delete local package %s-%s on install/upgrade,"
 							" reiterate on SAT",
-							var->unit->pkg->name, var->unit->pkg->version);
+							lvar->unit->pkg->name, lvar->unit->pkg->version);
 					need_reiterate = true;
 
-					LL_FOREACH(var, cur) {
+					LL_FOREACH(lvar, cur) {
 						cur->flags |= PKG_VAR_FAILED;
 					}
 				}
@@ -1194,15 +1194,15 @@ reiterate:
 
 		/* Restore top-level assumptions */
 		for (i = 0; i < problem->nvars; i ++) {
-			struct pkg_solve_variable *var = &problem->variables[i];
+			struct pkg_solve_variable *lvar = &problem->variables[i];
 
-			if (var->flags & PKG_VAR_TOP) {
-				if (var->flags & PKG_VAR_FAILED) {
-					var->flags ^= PKG_VAR_INSTALL | PKG_VAR_FAILED;
+			if (lvar->flags & PKG_VAR_TOP) {
+				if (lvar->flags & PKG_VAR_FAILED) {
+					lvar->flags ^= PKG_VAR_INSTALL | PKG_VAR_FAILED;
 				}
 
-				picosat_assume(problem->sat, var->order *
-						(var->flags & PKG_VAR_INSTALL ? 1 : -1));
+				picosat_assume(problem->sat, lvar->order *
+						(lvar->flags & PKG_VAR_INSTALL ? 1 : -1));
 			}
 		}
 

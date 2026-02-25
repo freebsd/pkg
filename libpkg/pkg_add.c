@@ -56,7 +56,7 @@ merge_with_external_tool(const char *merge_tool, struct pkg_config_file *lcf,
 	int status;
 	FILE *inout[2];
 
-	char *tmpdir = getenv("TMPDIR");
+	char const *tmpdir = getenv("TMPDIR");
 	if (tmpdir == NULL)
 		tmpdir = "/tmp";
 
