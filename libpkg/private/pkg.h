@@ -858,6 +858,7 @@ enum pkg_shlib_flags {
 	PKG_SHLIB_FLAGS_NONE = 0,
 	PKG_SHLIB_FLAGS_COMPAT_32 = 1 << 0,
 	PKG_SHLIB_FLAGS_COMPAT_LINUX = 1 << 1,
+	PKG_SHLIB_FLAGS_COMPAT_LINUX_32 = (1 << 0) | (1 << 1),
 };
 /* Determine shlib flags by comparing the shlib abi with ctx.abi */
 enum pkg_shlib_flags pkg_shlib_flags_from_abi(const struct pkg_abi *shlib_abi);

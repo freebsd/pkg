@@ -591,7 +591,7 @@ pkg_analyse_files(struct pkgdb *db __unused, struct pkg *pkg, const char *stage)
 			case PKG_SHLIB_FLAGS_COMPAT_LINUX:
 				paths = pkg_config_get("SHLIB_PROVIDE_PATHS_COMPAT_LINUX");
 				break;
-			case (PKG_SHLIB_FLAGS_COMPAT_32 | PKG_SHLIB_FLAGS_COMPAT_LINUX):
+			case PKG_SHLIB_FLAGS_COMPAT_LINUX_32:
 				paths = pkg_config_get("SHLIB_PROVIDE_PATHS_COMPAT_LINUX_32");
 				break;
 			default:
