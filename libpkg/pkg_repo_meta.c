@@ -107,7 +107,7 @@ pkg_repo_meta_free(struct pkg_repo_meta *meta)
 }
 
 static ucl_object_t*
-pkg_repo_meta_open_schema_v1()
+pkg_repo_meta_open_schema_v1(void)
 {
 	struct ucl_parser *parser;
 	static const char meta_schema_str_v1[] = ""
@@ -165,7 +165,7 @@ pkg_repo_meta_open_schema_v1()
 }
 
 static ucl_object_t*
-pkg_repo_meta_open_schema_v2()
+pkg_repo_meta_open_schema_v2(void)
 {
 	struct ucl_parser *parser;
 	static const char meta_schema_str_v2[] = ""

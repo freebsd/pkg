@@ -906,6 +906,16 @@ pkg_shlib_flags_from_abi(const struct pkg_abi *shlib_abi)
 				flags |= PKG_SHLIB_FLAGS_COMPAT_32;
 			}
 			break;
+		case PKG_ARCH_UNKNOWN:
+		case PKG_ARCH_I386:
+		case PKG_ARCH_ARMV6:
+		case PKG_ARCH_ARMV7:
+		case PKG_ARCH_POWERPC:
+		case PKG_ARCH_POWERPC64LE:
+		case PKG_ARCH_RISCV32:
+		case PKG_ARCH_RISCV64:
+		case PKG_ARCH_ANY:
+			break;
 		}
 	}
 
@@ -1194,6 +1204,13 @@ pkg_list_free(struct pkg *pkg, pkg_list list)  {
 		pkghash_destroy(pkg->conflictshash);
 		pkg->conflictshash = NULL;
 		pkg->flags &= ~PKG_LOAD_CONFLICTS;
+		break;
+	case PKG_USERS:
+	case PKG_GROUPS:
+	case PKG_SHLIBS_REQUIRED:
+	case PKG_SHLIBS_PROVIDED:
+	case PKG_PROVIDES:
+	case PKG_REQUIRES:
 		break;
 	}
 }

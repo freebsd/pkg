@@ -535,7 +535,8 @@ static void
 pkg_checksum_encode_base32(unsigned char *in, size_t inlen,
 				char *out, size_t outlen)
 {
-	int i, remain = -1, r, x;
+	size_t i;
+	int remain = -1, r, x;
 
 	if (outlen < inlen * 8 / 5) {
 		pkg_emit_error("cannot encode base32 as outlen is not sufficient");
@@ -593,7 +594,7 @@ static void
 pkg_checksum_encode_hex(unsigned char *in, size_t inlen,
 				char *out, size_t outlen)
 {
-	int i;
+	size_t i;
 
 	if (outlen < inlen * 2) {
 		pkg_emit_error("cannot encode hex as outlen is not sufficient");

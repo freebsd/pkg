@@ -95,7 +95,7 @@ pkg_os_to_string(enum pkg_os os)
 	assert(0);
 }
 
-enum pkg_os
+static enum pkg_os
 pkg_os_from_string(const char *string)
 {
 	for (size_t i = 0; os_string_table[i].string != NULL; i++) {
@@ -146,7 +146,7 @@ pkg_arch_to_string(enum pkg_os os, enum pkg_arch arch)
 	assert(0);
 }
 
-enum pkg_arch
+static enum pkg_arch
 pkg_arch_from_string(enum pkg_os os, const char *string)
 {
 	if (os == PKG_OS_DRAGONFLY) {
@@ -526,7 +526,7 @@ pkg_analyse_files(struct pkgdb *db __unused, struct pkg *pkg, const char *stage)
 	int (*pkg_analyse_init)(const char *stage);
 	int (*pkg_analyse)(const bool developer_mode, struct pkg *pkg,
 	    const char *fpath, char **provided, enum pkg_shlib_flags *flags);
-	int (*pkg_analyse_close)();
+	int (*pkg_analyse_close)(void);
 
 	if (0 == strncmp(pkg->abi, "Darwin", 6)) {
 		pkg_analyse_init=pkg_analyse_init_macho;

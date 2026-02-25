@@ -111,9 +111,9 @@ pkg_status(int *count)
 static bool
 is_exec_at_localbase(const char *progname)
 {
-	char	pkgpath[MAXPATHLEN];
-	char	*env;
-	bool	result = true;
+	char		 pkgpath[MAXPATHLEN];
+	char const	*env;
+	bool		 result = true;
 
 	if ((env = getenv("LOCALBASE")) == NULL)
 		env = _LOCALBASE;
