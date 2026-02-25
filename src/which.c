@@ -146,9 +146,6 @@ exec_which(int argc, char **argv)
 				savedpath=p;
 				for (;;) {
 					res = get_match(&match, &p, argv[0]);
-					if (p == NULL)
-						break;
-
 					if (res == (EXIT_FAILURE)) {
 						printf("%s was not found in PATH, falling back to non-search behaviour\n", argv[0]);
 						search = false;
@@ -164,6 +161,9 @@ exec_which(int argc, char **argv)
 						vec_push(&patterns, xstrdup(pathabs));
 						free(match);
 					}
+
+					if (p == NULL)
+						break;
 				}
 				free(savedpath);
 			}
