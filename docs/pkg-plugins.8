@@ -14,35 +14,52 @@
 .\"
 .\"     @(#)pkg.8
 .\"
-.Dd October 30, 2014
-.Dt PKG-SSH 8
+.Dd March 2, 2026
+.Dt PKG-PLUGINS 8
 .Os
 .Sh NAME
-.Nm "pkg ssh"
-.Nd package server
+.Nm "pkg plugins"
+.Nd list available plugins
 .Sh SYNOPSIS
 .Nm
+.Op Fl l
+.Pp
+.Nm
+.Op Cm --list-only
 .Sh DESCRIPTION
 .Nm
-provides a minimal package server.
-It is most commonly used with the SSH transport protocol.
-.Pp
-This command is not meant to be used by the user.
+is used to display the available
 .Xr pkg 8
-will start the server automatically through
-.Xr ssh 1
-when the ssh:// scheme is specified in the repository configuration.
+plugins.
+It prints a table listing each plugin's name, description and version.
+.Pp
+Plugins must be enabled by setting
+.Va PKG_ENABLE_PLUGINS
+to
+.Dq Li true
+in
+.Xr pkg.conf 5
+and listing the desired plugins in the
+.Va PLUGINS
+array.
 .Sh OPTIONS
-.Nm
-supports no options.
+The following options are supported by
+.Nm :
+.Bl -tag -width list-only
+.It Fl l , Cm --list-only
+List available plugins.
+This is currently the default behavior.
+.El
 .Sh ENVIRONMENT
 The following environment variables affect the execution of
 .Nm .
 See
 .Xr pkg.conf 5
 for further description.
-.Bl -tag -width ".Ev NO_DESCRIPTIONS"
-.It Ev SSH_RESTRICT_DIR
+.Bl -tag -width ".Ev PKG_ENABLE_PLUGINS"
+.It Ev PKG_ENABLE_PLUGINS
+.It Ev PLUGINS
+.It Ev PLUGINS_DIR
 .El
 .Sh FILES
 See
@@ -75,7 +92,6 @@ See
 .Xr pkg-install 8 ,
 .Xr pkg-key 8 ,
 .Xr pkg-lock 8 ,
-.Xr pkg-plugins 8 ,
 .Xr pkg-query 8 ,
 .Xr pkg-register 8 ,
 .Xr pkg-repo 8 ,
@@ -85,6 +101,7 @@ See
 .Xr pkg-set 8 ,
 .Xr pkg-shell 8 ,
 .Xr pkg-shlib 8 ,
+.Xr pkg-ssh 8 ,
 .Xr pkg-stats 8 ,
 .Xr pkg-triggers 8 ,
 .Xr pkg-unregister 8 ,

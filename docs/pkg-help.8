@@ -11,68 +11,50 @@
 .\"    notice, this list of conditions and the following disclaimer in the
 .\"    documentation and/or other materials provided with the distribution.
 .\"
-.Dd December 12, 2025
-.Dt PKG-SCRIPT 5
+.\"
+.\"     @(#)pkg.8
+.\"
+.Dd March 2, 2026
+.Dt PKG-HELP 8
 .Os
 .Sh NAME
-.Nm "shell scripts"
-.Nd Shell scripts that are run by
-.Xr pkg 8
+.Nm "pkg help"
+.Nd display usage information for pkg commands
+.Sh SYNOPSIS
+.Nm
+.Ar command
 .Sh DESCRIPTION
+.Nm
+is used to display the manual page for a
 .Xr pkg 8
-may run scripts at given phases of the process it is executing.
+command.
+When invoked with a valid command name,
+.Nm
+opens the corresponding manual page using
+.Xr man 1 .
 .Pp
-The phases are the following:
-.Bl -tag -width Ds
-.It Cm pre-install :
-run before installing the files on the system.
-.It Cm post-install :
-run after installing the files on the system.
-.It Cm pre-deinstall :
-run before removing the files on the system.
-.It Cm post-deinstall :
-run after removing the files on the system.
-.El
+If the specified command is an alias defined in
+.Xr pkg.conf 5 ,
+.Nm
+displays the alias expansion instead.
 .Pp
-In the particular case of an upgrade the scripts are run in the following order:
-.Bl -enum -compact
-.It
-new pre-install
-.It
-old pre-deinstall
-.It
-replace binaries
-.It
-new post-install
-.El
-.Sh Environment
-The following environment variables are exported to be used by the script.
-.Bl -tag -width Ds
-.It Ev PKG_NAME
-Represents the name of the package.
-.It Ev PKG_PREFIX
-.Va PREFIX
-defined within the package at build time.
-.It Ev PKG_ROOTDIR
-represents the root directory where the package will be installed as specified
-by the
-.Fl r
-arguments passed to
-.Xr pkg 8 .
-.It Ev PKG_METALOG
-When set, provides the path to a
-.Xr mtree 5
-METALOG file in which package file metadata (e.g., ownership, mode) should be
-recorded.
-This is typically used when installing packages as a non-root user.
-.It Ev PKG_MSGFD
-Number of a file descriptor to be used to be able to send messages to the user
-that will be shown at the end of the
+When invoked without arguments,
+.Nm
+displays a brief usage summary of all available
 .Xr pkg 8
-process.
-.It Ev PKG_UPGRADE
-This variable is set when a script is run in the context of an upgrade of a package.
-.El
+commands.
+.Sh EXAMPLES
+Display the manual page for the
+.Cm install
+command:
+.Dl $ pkg help install
+.Pp
+Display the manual page for
+.Xr pkg.conf 5 :
+.Dl $ pkg help pkg.conf
+.Pp
+Display all available commands:
+.Dl $ pkg help
 .Sh SEE ALSO
 .Xr pkg_create 3 ,
 .Xr pkg_printf 3 ,
@@ -81,6 +63,7 @@ This variable is set when a script is run in the context of an upgrade of a pack
 .Xr pkg-keywords 5 ,
 .Xr pkg-lua-script 5 ,
 .Xr pkg-repository 5 ,
+.Xr pkg-script 5 ,
 .Xr pkg-triggers 5 ,
 .Xr pkg.conf 5 ,
 .Xr pkg 8 ,
@@ -95,7 +78,6 @@ This variable is set when a script is run in the context of an upgrade of a pack
 .Xr pkg-create 8 ,
 .Xr pkg-delete 8 ,
 .Xr pkg-fetch 8 ,
-.Xr pkg-help 8 ,
 .Xr pkg-info 8 ,
 .Xr pkg-install 8 ,
 .Xr pkg-key 8 ,

@@ -21,10 +21,12 @@ MAN8=	pkg-add.8 \
 	pkg-create.8 \
 	pkg-delete.8 \
 	pkg-fetch.8 \
+	pkg-help.8 \
 	pkg-info.8 \
 	pkg-install.8 \
 	pkg-key.8 \
 	pkg-lock.8 \
+	pkg-plugins.8 \
 	pkg-query.8 \
 	pkg-register.8 \
 	pkg-repo.8 \
