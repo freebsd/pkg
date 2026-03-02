@@ -26,7 +26,7 @@
 .Op Fl Cgix
 .Ar pkg-name ...
 .Nm
-.Op Fl Dnqy
+.Op Fl nqy
 .Fl a
 .Pp
 .Nm
@@ -83,8 +83,6 @@ Make the standard or regular expression
 matching against
 .Ar pkg-name
 case sensitive.
-.It Fl D , Cm --no-scripts
-If a deinstallation script exists for a given package, do not execute it.
 .It Fl f , Cm --force
 Forces packages to be removed from the db despite leaving unresolved dependencies.
 In combination with the
