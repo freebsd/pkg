@@ -51,7 +51,7 @@ should always be used with caution.
 The following options are supported by
 .Nm :
 .Bl -tag -width automatic
-.It Fl A Ar 01 , Cm --automatic Ar 01
+.It Fl A Ar 0|1 , Cm --automatic Ar 0|1
 Set automatic flag for the package: 0 is not automatic, 1 is automatic.
 This affects the operation of
 .Xr pkg-autoremove 8 .
@@ -108,7 +108,7 @@ Match
 .Ar pkg-name
 as a regular expression according to the "modern" or "extended" syntax of
 .Xr re_format 7 .
-.It Fl v Ar 01
+.It Fl v Ar 0|1 , Cm --vital Ar 0|1
 Set or unset the
 .Qq vital
 flag on the target package(s).
