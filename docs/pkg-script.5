@@ -70,6 +70,13 @@ Number of a file descriptor to be used to be able to send messages to the user
 that will be shown at the end of the
 .Xr pkg 8
 process.
+.It Ev PKG_CHROOTED
+Set to
+.Dq true
+when
+.Xr pkg 8
+is operating inside a chroot via
+.Ar -c .
 .It Ev PKG_UPGRADE
 This variable is set when a script is run in the context of an upgrade of a package.
 .El
