@@ -124,6 +124,14 @@ Treat the package names as regular expressions according to the
 .Xr re_format 7 .
 .It Fl y , Cm --yes
 Assume yes when asked for confirmation before package deletion.
+.It Cm --script-no-exec
+Do not execute the pre-deinstall and post-deinstall scripts but still log
+the scripts in the package database for future reference.
+Unlike
+.Fl D ,
+which prevents scripts from both running and being recorded,
+.Cm --script-no-exec
+only suppresses execution.
 .El
 .Sh ENVIRONMENT
 The following environment variables affect the execution of
