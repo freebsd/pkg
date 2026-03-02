@@ -94,9 +94,6 @@ a syntactically correct
 command line when substituted in and followed by any remaining tokens from
 the original command line.
 Default: not set.
-.It Cm ARCHIVE_SYMLINK: boolean
-When creating a package, create a symlink to it using the legacy extension.
-This is a backward compatibility option, default: true
 .It Cm AUTOCLEAN: boolean
 Automatically cleanout the content of
 .Em PKG_CACHEDIR
@@ -104,6 +101,7 @@ after each non dry-run call to
 .Xr pkg-install 8
 or
 .Xr pkg-upgrade 8 .
+Default: NO.
 .It Cm DEFAULT_ALWAYS_YES: boolean
 When this option is enabled
 .Xr pkg 1
@@ -148,7 +146,9 @@ Set the default compression level, special values are:
 .It -1 default value per pkg developers (default)
 .El
 .It Cm COMPRESSION_THREADS: integer
-Set the number of threads to use during compression (only functional for txz and tzst)
+Set the number of threads to use during compression
+(only functional for txz and tzst).
+Default: -1 (automatic).
 .It Cm CONSERVATIVE_UPGRADE: boolean
 Ensure in multi repository mode that the priority is given as much as possible
 to the repository where a package was first installed from.
@@ -205,6 +205,7 @@ Default: NO.
 .It Cm HTTP_USER_AGENT: string
 Define User-agent to be sent to HTTP server when getting repository
 data.
+Default: pkg/<version>.
 .It Cm IGNORE_OSVERSION: boolean [FreeBSD specific]
 Ignore FreeBSD OS version check, useful on -STABLE and -CURRENT branches.
 Default: NO.
@@ -300,10 +301,10 @@ Directory which
 will load plugins from.
 Default:
 .Pa /usr/local/lib/pkg .
-.It Cm PKG_TRIGGERS_ENABLE
+.It Cm PKG_TRIGGERS_ENABLE: boolean
 Enable or disable execution of triggers at the end of the transactions.
 Default: YES.
-.It Cm PKG_TRIGGERS_DIR
+.It Cm PKG_TRIGGERS_DIR: array
 List of directories where triggers are stored.
 Default:
 .Pa /usr/share/pkg/triggers ,
@@ -384,15 +385,16 @@ for remote.
 Default: If unset, the algorithm described in
 .Xr pkg-version 8
 is used to determine the version source automatically.
-.It Cm VALID_URL_SCHEME
-List of url scheme that pkg can accept while parsing the repository
-confguration file.
+.It Cm VALID_URL_SCHEME: array
+List of url schemes that pkg can accept while parsing the repository
+configuration file.
+Default: pkg+http, pkg+https, https, http, file, ssh, tcp.
 .It Cm VULNXML_SITE: string
 Specifies the URL to fetch the
 .Pa vuln.xml
 vulnerability database from.
 Default:
-.Pa http://vuxml.freebsd.org/freebsd/vuln.xml.xz .
+.Pa https://vuxml.freebsd.org/freebsd/vuln.xml.xz .
 .It Cm WARN_SIZE_LIMIT: integer
 When download and total change is less than than this option, don't ask
 the user to confirm the desired action.
@@ -405,10 +407,104 @@ If set to 0,
 .Va hw.ncpu
 is used.
 Default: 0.
-.It Cm PKG_REINSTALL_ON_OPTIONS_CHANGE
+.It Cm PKG_REINSTALL_ON_OPTIONS_CHANGE: boolean
 Reinstall packages if options changed between the local version and the
 remote version.
-Default: true
+Default: YES.
+.It Cm AUTOMERGE: boolean
+When enabled, automatically attempt to merge configuration files
+during package upgrades.
+Default: YES.
+.It Cm MERGETOOL: string
+Specifies an external tool command to use for merging configuration
+files during package upgrades.
+Used in conjunction with
+.Cm AUTOMERGE .
+Default: not set.
+.It Cm FORCE_CAN_REMOVE_VITAL: boolean
+When true, the
+.Fl f
+(force) flag is allowed to override the protection on vital packages,
+allowing them to be removed.
+Default: YES.
+.It Cm DEBUG_SCHEDULER_DOT_FILE: string
+When defined to a valid path, pkg will generate a
+.Xr dot 1
+file with the dependency graph of the internal scheduler.
+Similar to
+.Cm DOT_FILE
+but specifically for the job scheduler.
+Default: not set.
+.It Cm REPOSITORIES: object
+Allows defining repositories directly within
+.Nm
+rather than in separate repository configuration files.
+Default: not set.
+.It Cm AUDIT_IGNORE_GLOB: array
+A list of glob patterns for package names to ignore during
+.Xr pkg-audit 8 .
+Packages matching any of these patterns will be excluded
+from vulnerability checks.
+Default: not set.
+.It Cm AUDIT_IGNORE_REGEX: array
+A list of regular expressions for package names to ignore during
+.Xr pkg-audit 8 .
+Packages matching any of these patterns will be excluded
+from vulnerability checks.
+Default: not set.
+.It Cm REPO_ACCEPT_LEGACY_PKG: boolean
+When true, allows pkg to accept packages in the legacy package format
+from repositories.
+Default: NO.
+.It Cm FILES_IGNORE_GLOB: array
+A list of glob patterns for files to ignore during package
+installation and registration.
+Files matching these patterns will be skipped.
+Default: not set.
+.It Cm FILES_IGNORE_REGEX: array
+A list of regular expressions for files to ignore during package
+installation and registration.
+Files matching these patterns will be skipped.
+Default: not set.
+.It Cm SHLIB_PROVIDE_PATHS_NATIVE: array
+List of absolute paths where native shared libraries are provided.
+Used to filter which shared libraries a package provides
+based on path.
+Default: not set.
+.It Cm SHLIB_PROVIDE_PATHS_COMPAT_32: array
+List of absolute paths where 32-bit compatibility shared libraries
+are provided.
+Default: not set.
+.It Cm SHLIB_PROVIDE_PATHS_COMPAT_LINUX: array
+List of absolute paths where Linux compatibility shared libraries
+are provided.
+Default: not set.
+.It Cm SHLIB_PROVIDE_PATHS_COMPAT_LINUX_32: array
+List of absolute paths where 32-bit Linux compatibility shared
+libraries are provided.
+Default: not set.
+.It Cm SHLIB_PROVIDE_IGNORE_GLOB: array
+List of glob patterns to ignore when computing shared libraries
+provided by a package.
+Default: not set.
+.It Cm SHLIB_PROVIDE_IGNORE_REGEX: array
+List of regular expressions to ignore when computing shared libraries
+provided by a package.
+Default: not set.
+.It Cm SHLIB_REQUIRE_IGNORE_GLOB: array
+List of glob patterns to ignore when computing shared libraries
+required by a package.
+Default: not set.
+.It Cm SHLIB_REQUIRE_IGNORE_REGEX: array
+List of regular expressions to ignore when computing shared libraries
+required by a package.
+Default: not set.
+.It Cm PKG_DEBUG_FLAGS: array
+Controls which debug subsystems produce output.
+Default: all.
+.It Cm TRACK_LINUX_COMPAT_SHLIBS: boolean
+When enabled, pkg tracks Linux compatibility shared libraries.
+Default: NO.
 .El
 .Sh REPOSITORY CONFIGURATION
 To use a repository you will need at least one repository
