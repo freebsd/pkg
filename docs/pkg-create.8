@@ -183,6 +183,11 @@ is assumed.
 .Pa .pkg
 extension is used for all compression types.
 .Pc
+.It Fl h , Cm --hash
+Append a short hash of the package contents to the package filename.
+This can be used in combination with
+.Fl s
+to create symlinks between the hashed and regular filenames.
 .It Fl g , Cm --glob
 Interpret
 .Ar pkg-name
