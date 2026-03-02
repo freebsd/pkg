@@ -105,13 +105,16 @@ Optional integer revision number.
 Optional end-of-life timestamp (Unix epoch).
 .El
 .It Pa packagesite.pkg
+(Deprecated, kept for backward compatibility.)
 A compressed archive containing
 .Pa packagesite.yaml ,
 a concatenation of the manifests from all packages in the repository.
 Each manifest is represented as a single-line compact JSON text,
 and the manifests are separated by newlines.
+Superseded by
+.Pa data.pkg .
 .It Pa data.pkg
-A compressed archive containing the
+The primary catalogue archive, containing the
 .Pa data
 file in JSON format with the following top-level keys:
 .Bl -tag -width "expired_packages" -compact

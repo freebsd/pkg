@@ -45,63 +45,49 @@ and are intrinsic to the operation of
 or
 .Nm "pkg upgrade" .
 .Pp
+The current repository format is version 2.
 The repository files created by
 .Nm
-consist of a number of compressed tar archives stored typically at the
-top level of the repository filesystem.
-Of these,
-.Pa meta.txz
-must exist at the apex of the repository filesystem.
-This is a well-known name that is hard-wired into
-.Xr pkg 8 .
+consist of a UCL metadata file and a set of compressed
+.Pa .pkg
+archives stored at the top level of the repository filesystem.
 .Pp
-.Pa meta.txz
-contains at least one file:
-.Pa meta
-which contains a key to the location and format of the other files
-comprising the catalogue information.
-Other files may have arbitrary names as defined in
-.Pa meta ,
-but conventionally the following names are used.
+.Pa meta.conf
+is a plain-text UCL file that must exist at the apex of the
+repository filesystem.
+It describes the repository version, compression format, and the
+names of the catalogue archives.
+See
+.Xr pkg-repository 5
+for a detailed description of its fields.
 .Pp
-.Pa digests.txz
-contains
-.Pa digests
-which lists the cryptographic checksums for each of the packages in
-the repository.
-This is downloaded when
-.Cm SIGNATURE_TYPE
-is set to
-.Ar FINGERPRINTS
-in the repository configuration.
-.Pp
-.Pa filesite.txz
-contains
-.Pa filesite.yaml
-which is a database of all of the files present in all of the packages in
-the repository, containing filenames, file sizes and checksums as described in
-.Xr pkg-repository 5 .
-Generating
-.Pa filesite.txz
-involves significant additional system resources and is not usually done.
-.Pp
-.Pa packagesite.txz
-similarly contains at least one file
+.Pa packagesite.pkg
+is a deprecated compressed archive containing
 .Pa packagesite.yaml ,
-which lists selected metadata for each of the
-packages in the repository as described in
-.Xr pkg-repository 5 .
-This is the key file containing the working data used by
-.Xr pkg 8
-and includes the run-time dependencies for each package,
-plus shared library dependencies and similar data that are used by
-.Xr pkg 8
-to solve package dependency problems.
+which lists the metadata for each of the packages in the repository.
+Each package manifest is represented as a single-line compact JSON
+text, with manifests separated by newlines.
+It is still generated for backward compatibility but is superseded by
+.Pa data.pkg .
 .Pp
-In addition to the files already mentioned, the
-.Pa .txz
-archives may also contain cryptographic signatures.
-These will be produced when the internal signature mechanism of
+.Pa data.pkg
+is the primary catalogue archive.
+It contains a JSON file with package manifests, package group definitions, and
+expired package entries.
+See
+.Xr pkg-repository 5
+for details.
+.Pp
+.Pa filesite.pkg
+is an optional compressed archive containing
+.Pa filesite.yaml ,
+a database of all files present in all packages in the repository.
+It is only generated when the
+.Fl l
+flag is used.
+.Pp
+The compressed archives may also contain cryptographic signatures
+when the signing mechanism of
 .Nm
 is enabled.
 .Pp
@@ -116,16 +102,17 @@ directory beneath which all the packages are stored as
 .Nm
 will search the filesystem beneath
 .Ar repo-path
-to find all the packages it contains.
+to find all
+.Pa .pkg
+files it contains.
 Directories starting with
 .Sq \&.
-or
-named
+or named
 .Pa Latest
 are not traversed.
 .Pp
-The repository files will be created in the top-level repository directory
-unless relocated by specifying
+The repository files will be created in the top-level repository
+directory unless relocated by specifying
 .Fl o Ar output-dir
 or
 .Cm --output-dir Ar output-dir .
@@ -243,7 +230,7 @@ This is the same as setting the
 .Ev PKG_REPO_HASH
 environment variable.
 .It Fl l , Cm --list-files
-Generate list of all files in repo as filesite.txz archive.
+Generate list of all files in repo as filesite.pkg archive.
 .It Fl m Ar meta-file , Cm --meta-file Ar meta-file
 Use the specified file as repository meta file instead of the default settings.
 .It Fl o Ar output-dir , Cm --output-dir Ar output-dir
