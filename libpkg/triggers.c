@@ -221,12 +221,12 @@ trigger_load(int dfd, const char *name, bool cleanup_only, ucl_object_t *schema)
 	o = ucl_object_find_key(obj, "path_glob");
 	if (o != NULL)
 		t->path_glob = ucl_object_ref(o);
-	o = ucl_object_find_key(obj, "path_regex");
+	o = ucl_object_find_key(obj, "path_regexp");
 	if (o != NULL)
-		t->path_regex = ucl_object_ref(o);
+		t->path_regexp = ucl_object_ref(o);
 	if (t->path == NULL &&
 	    t->path_glob == NULL &&
-	    t->path_regex == NULL) {
+	    t->path_regexp == NULL) {
 		pkg_emit_error("No path* in trigger %s, skipping", name);
 		goto err;
 	}
@@ -240,8 +240,8 @@ err:
 			ucl_object_unref(t->path);
 		if (t->path_glob != NULL)
 			ucl_object_unref(t->path_glob);
-		if (t->path_regex != NULL)
-			ucl_object_unref(t->path_regex);
+		if (t->path_regexp != NULL)
+			ucl_object_unref(t->path_regexp);
 		if (t->script.script != NULL)
 			free(t->script.script);
 		if (t->cleanup.script != NULL)
@@ -385,8 +385,8 @@ trigger_free(struct trigger *t)
 		ucl_object_unref(t->path);
 	if (t->path_glob)
 		ucl_object_unref(t->path_glob);
-	if (t->path_regex)
-		ucl_object_unref(t->path_regex);
+	if (t->path_regexp)
+		ucl_object_unref(t->path_regexp);
 	free(t->cleanup.script);
 	free(t->script.script);
 	free(t);
@@ -552,7 +552,7 @@ trigger_check_match(struct trigger *t, char *dir)
 		}
 	}
 
-	if (match_ucl_lists(dir, t->path_glob, t->path_regex)) {
+	if (match_ucl_lists(dir, t->path_glob, t->path_regexp)) {
 		pkghash_safe_add(t->matched, dir, dir, NULL);
 	}
 }

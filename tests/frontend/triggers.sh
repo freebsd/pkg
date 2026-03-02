@@ -6,7 +6,7 @@ tests_init \
 	cleanup_lua \
 	deferred \
 	glob_trigger \
-	regex_trigger \
+	regexp_trigger \
 	path_trigger \
 	pkg_exec_sandbox \
 	pkg_exec_no_sandbox \
@@ -89,11 +89,11 @@ EOF
 	atf_check -o inline:"triggered ${TMPDIR}/trigger_dir\n" pkg -o REPOS_DIR=/dev/null -o PKG_TRIGGERS_DIR="${TMPDIR}/trigger_dir" install -qfy ${TMPDIR}/test-1.pkg
 }
 
-regex_trigger_body() {
+regexp_trigger_body() {
 	atf_check -s exit:0 sh ${RESOURCEDIR}/test_subr.sh new_pkg "test" "test" "1" "/"
 	mkdir trigger_dir/
 	cat << EOF >> trigger_dir/trigger.ucl
-path_regex: [ ".*trigger.*" ]
+path_regexp: [ ".*trigger.*" ]
 trigger: {
 	type: lua
 	script: <<EOS

@@ -263,7 +263,7 @@ struct trigger {
 	char *name;
 	ucl_object_t *path;
 	ucl_object_t *path_glob;
-	ucl_object_t *path_regex;
+	ucl_object_t *path_regexp;
 	struct {
 		char *script;
 		int type;
