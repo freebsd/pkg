@@ -73,6 +73,8 @@ argument passed to
 .Xr pkg 8 .
 .It Fn os.execute
 has been disabled.
+.It Fn os.exit
+has been disabled.
 .El
 .Pp
 The following variables are available defined to any lua scripts:
@@ -97,6 +99,15 @@ This is typically used when installing packages as a non-root user.
 If no METALOG is configured, this variable is unset and is equal to nil.
 .It Va pkg_upgrade
 Boolean to inform the scripts that it is running or not in the context of an upgrade
+.It Va arg
+When the first line of a Lua script starts with
+.Dq -- args:\&
+followed by a space-separated list of tokens, those tokens are parsed
+and made available in the global
+.Va arg
+table.
+This allows passing arguments to Lua scripts, should not be used by regular scripts.
+This is used internally for deferred triggers.
 .El
 .Pp
 The following functions have been added:
@@ -120,7 +131,7 @@ if the files are identical,
 if the files are different and
 .Va >1
 if an error occurred
-.If Fn pkg.metalog_copy "source" "destination"
+.It Fn pkg.metalog_copy "source" "destination"
 Will create an entry in the
 .Qq metalog
 if one has been defined which will clone the
