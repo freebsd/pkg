@@ -90,6 +90,14 @@ packages, do not execute them.
 Force the installation of the package with missing dependencies.
 .It Fl q , Cm --quiet
 Force quiet output.
+.It Cm --script-no-exec
+Do not execute the pre-install and post-install scripts but still log
+the scripts in the package database for future reference.
+Unlike
+.Fl I ,
+which prevents scripts from both running and being recorded,
+.Cm --script-no-exec
+only suppresses execution.
 .It Cm --relocate Ar location
 Annotates the package as having been relocated to
 .Pa location ,
