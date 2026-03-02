@@ -37,6 +37,9 @@ extension.
 .Pp
 The format is the following:
 .Bl -tag -width xxxxxxxxxxx
+.It Cm description
+An optional string providing a human-readable description
+of what the trigger does.
 .It Cm path
 An array of strings containing exact paths.
 Each time a package installs a file or directory whose name is equal to one of
@@ -54,7 +57,7 @@ transaction.
 An object which represents the script to execute in case the transaction results
 in removal of the trigger from the installation.
 The object requires the following fields:
-.Bl -tag -width xxxxxx
+.Bl -tag -width xxxxxxx
 .It Cm type
 The type of the script to be executed.
 The only supported type is Lua, indicated by the value
@@ -63,12 +66,20 @@ The only supported type is Lua, indicated by the value
 .Xr pkg-lua-script 5 ) .
 .It Cm script
 The script itself.
+.It Cm sandbox
+A boolean controlling whether the script runs inside a
+.Xr capsicum 4
+sandbox.
+Defaults to
+.Cm true .
+When disabled, the script has full system access including
+.Fn pkg.exec .
 .El
 .It Cm trigger
 An object which represents the script to execute at the end of the transaction
 if a pattern has been matched.
 This object requires the following fields:
-.Bl -tag -width xxxxxx
+.Bl -tag -width xxxxxxx
 .It Cm type
 The type of the script to be executed.
 The only supported type is Lua, indicated by the value
@@ -79,6 +90,14 @@ The only supported type is Lua, indicated by the value
 The script itself.
 It will receive as arguments the list of paths that matched the patterns during
 the transaction.
+.It Cm sandbox
+A boolean controlling whether the script runs inside a
+.Xr capsicum 4
+sandbox.
+Defaults to
+.Cm true .
+When disabled, the script has full system access including
+.Fn pkg.exec .
 .El
 .El
 .Sh SEE ALSO
