@@ -32,17 +32,17 @@ is used to create or extract signing keys for use with
 Cryptographically signing your package repository catalogue is strongly
 recommended.
 .Pp
-One of the
+If none of the
 .Fl -create ,
 .Fl -public ,
 or
 .Fl -sign
-operations must be specified.
-Future work may write information about the
+operations are specified,
+.Nm
+displays information about the
 .Ar keyfile
-out to
-.Em stdout
-when no key operation has been specified.
+on
+.Em stdout .
 .Pp
 See
 .Xr pkg-repo
