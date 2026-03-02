@@ -1,3 +1,10 @@
+Changes from 2.5.99.3 to 2.6.0
+- autoremove/force delete: fix deletion order
+- which: fix a bug which skiped the last PATH element
+- plenty of code cleanup
+- huge updates to manpage documentation
+- fix type in trigger which prevent triggering based on regexp
+
 Changes from 2.5.99.2 to 2.5.99.3
 - extract: revert the extact optimization:
   - on low ended hardware it may be actually worst
