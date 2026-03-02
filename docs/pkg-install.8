@@ -133,8 +133,6 @@ If any installation scripts (pre-install or post-install) exist for a given
 package, do not execute them.
 When a package is updated, deinstallation
 scripts (pre-deinstall or post-deinstall) are not run either.
-.It Fl i , Cm --register-only
-Record the packages installation in the database but do not extract any files
 .It Fl i , Cm --case-insensitive
 Make the standard or the regular expression
 .Fl ( x )
@@ -180,8 +178,24 @@ Otherwise they are silently ignored.
 Treat the package names as regular expressions according to the
 "modern" or "extended" syntax of
 .Xr re_format 7 .
+.It Fl X , Cm --register-only
+Record the package installation in the database but do not extract any files.
+This also implies
+.Fl I .
 .It Fl y , Cm --yes
 Assume yes when asked for confirmation before package installation.
+.It Fl l , Cm --local-only
+Skip the remote repository and only install from local archives.
+Suppress the automatic update of the repository catalogue.
+.It Cm --script-no-exec
+Do not execute the pre-install and post-install scripts but still log
+the scripts
+in the package database for future reference.
+Unlike
+.Fl I ,
+which prevents scripts from both running and being recorded,
+.Cm --script-no-exec
+only suppresses execution.
 .El
 .Sh ENVIRONMENT
 The following environment variables affect the execution of
