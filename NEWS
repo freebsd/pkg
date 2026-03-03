@@ -1,3 +1,8 @@
+Changes from 2.6.0 to 2.6.1
+- fix regression in pkg delete -f: it should ignore its reverse
+  depencies for the sake of being compatible with pkg_delete and the
+  ports tree expectations
+
 Changes from 2.5.99.3 to 2.6.0
 - autoremove/force delete: fix deletion order
 - which: fix a bug which skiped the last PATH element
