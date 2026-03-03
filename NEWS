@@ -1,3 +1,9 @@
+Changes from 2.5.99.3 to 2.6.99.0
+- triggers: fix typo regex -> regexp
+- remove FreeBSD 9 compat code
+- lots of documentation behaviour
+- fix ordering of pkg autoremove
+
 Changes from 2.5.99.2 to 2.5.99.3
 - extract: revert the extact optimization:
   - on low ended hardware it may be actually worst
