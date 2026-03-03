@@ -7,7 +7,9 @@ tests_init \
 	delete_pkg \
 	delete_with_directory_owned \
 	simple_delete \
-	simple_delete_prefix_ending_with_slash
+	simple_delete_prefix_ending_with_slash \
+	delete_force_ignores_rdeps \
+	delete_without_force_pulls_rdeps
 
 delete_all_body() {
 	atf_check -s exit:0 sh ${RESOURCEDIR}/test_subr.sh new_pkg "foo" "foo" "1"
@@ -88,6 +90,67 @@ EOF
 	test -f dir/file2 && atf_fail "'dir/file2' still present"
 	test -d dir && atf_fail "'dir' still present"
 	test -d ${TMPDIR} || atf_fail "Prefix have been removed"
+}
+
+delete_force_ignores_rdeps_body() {
+	# B depends on A. "pkg delete -fy A" should only delete A, not B.
+	atf_check -s exit:0 sh ${RESOURCEDIR}/test_subr.sh new_pkg "pkgA" "pkgA" "1"
+	atf_check -s exit:0 sh ${RESOURCEDIR}/test_subr.sh new_pkg "pkgB" "pkgB" "1"
+	cat << EOF >> pkgB.ucl
+deps: {
+	pkgA {
+		origin: pkgA,
+		version: "1"
+	}
+}
+EOF
+
+	atf_check -o ignore pkg register -M pkgA.ucl
+	atf_check -o ignore pkg register -M pkgB.ucl
+
+	# Force delete pkgA: should succeed and not pull in pkgB
+	atf_check \
+		-o match:"Deinstalling pkgA" \
+		-o not-match:"pkgB" \
+		-s exit:0 \
+		pkg delete -yf pkgA
+
+	# pkgB should still be installed
+	atf_check \
+		-o match:"pkgB" \
+		-s exit:0 \
+		pkg info
+}
+
+delete_without_force_pulls_rdeps_body() {
+	# B depends on A. "pkg delete A" (no -f) should also schedule B for removal.
+	atf_check -s exit:0 sh ${RESOURCEDIR}/test_subr.sh new_pkg "pkgA" "pkgA" "1"
+	atf_check -s exit:0 sh ${RESOURCEDIR}/test_subr.sh new_pkg "pkgB" "pkgB" "1"
+	cat << EOF >> pkgB.ucl
+deps: {
+	pkgA {
+		origin: pkgA,
+		version: "1"
+	}
+}
+EOF
+
+	atf_check -o ignore pkg register -M pkgA.ucl
+	atf_check -o ignore pkg register -M pkgB.ucl
+
+	# Delete pkgA without force: should also remove pkgB (rdep)
+	atf_check \
+		-o match:"Deinstalling pkgA" \
+		-o match:"Deinstalling pkgB" \
+		-s exit:0 \
+		pkg delete -y pkgA
+
+	# Both should be gone
+	atf_check \
+		-o not-match:"pkgA" \
+		-o not-match:"pkgB" \
+		-s exit:0 \
+		pkg info
 }
 
 delete_with_directory_owned_body() {
