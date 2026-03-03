@@ -10,7 +10,8 @@ tests_init \
 	config_filenotexist \
 	config_fileexist_notinpkg \
 	config_hardlink \
-	config_morecomplicated
+	config_morecomplicated \
+	config_register_only_reinstall
 
 config_body()
 {
@@ -352,4 +353,43 @@ config_morecomplicated_body()
 	atf_check \
 		-o inline:"entry1\nentry2\nentry3\nentry4\n" \
 		cat ${TMPDIR}/target/${TMPDIR}/test.config
+}
+
+config_register_only_reinstall_body()
+{
+	atf_check -s exit:0 sh ${RESOURCEDIR}/test_subr.sh new_pkg "test" "test" "1"
+	echo "@config ${TMPDIR}/a" > plist
+
+	echo "entry" > a
+
+	atf_check \
+		pkg create -M test.ucl -p plist
+
+	atf_check \
+		-o match:"^config" \
+		pkg info -R --raw-format ucl -F ${TMPDIR}/test-1.pkg
+
+	mkdir -p ${TMPDIR}/target/${TMPDIR}
+	echo "entry" > ${TMPDIR}/target/${TMPDIR}/a
+	echo "addition" >> ${TMPDIR}/target/${TMPDIR}/a
+	atf_check \
+		-o inline:"entry\naddition\n" \
+		cat ${TMPDIR}/target/${TMPDIR}/a
+
+	unset PKG_DBDIR
+	atf_check \
+		pkg -o REPOS_DIR=/dev/null -r ${TMPDIR}/target \
+		install --register-only -qy ${TMPDIR}/test-1.pkg
+
+	atf_check \
+		-o inline:"entry\naddition\n" \
+		cat ${TMPDIR}/target/${TMPDIR}/a
+
+	atf_check \
+		pkg -o REPOS_DIR=/dev/null -r ${TMPDIR}/target \
+		install -f -qy ${TMPDIR}/test-1.pkg
+
+	atf_check \
+		-o inline:"entry\naddition\n" \
+		cat ${TMPDIR}/target/${TMPDIR}/a
 }
