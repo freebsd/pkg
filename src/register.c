@@ -199,8 +199,10 @@ exec_register(int argc, char **argv)
 	}
 
 	pkg_free(pkg);
-	if (db != NULL)
+	if (db != NULL) {
 		pkgdb_release_lock(db, PKGDB_LOCK_EXCLUSIVE);
+		pkgdb_close(db);
+	}
 
 	return (retcode != EPKG_OK ? EXIT_FAILURE : EXIT_SUCCESS);
 }
