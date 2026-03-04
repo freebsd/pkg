@@ -1,4 +1,5 @@
 Changes from 2.6.1 to 2.6.2
+- register: properly close the database
 - fix an issue which make some installed packages temporary invisible
   to the non root users (regression from the WAL introduction)
 - fix the json for info --raw --raw-format json when requested on multiple
