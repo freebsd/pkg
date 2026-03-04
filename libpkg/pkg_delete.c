@@ -1,5 +1,5 @@
 /*-
- * Copyright (c) 2011-2014 Baptiste Daroussin <bapt@FreeBSD.org>
+ * Copyright (c) 2011-2026 Baptiste Daroussin <bapt@FreeBSD.org>
  * Copyright (c) 2011-2012 Julien Laffaye <jlaffaye@FreeBSD.org>
  * Copyright (c) 2011 Will Andrews <will@FreeBSD.org>
  * Copyright (c) 2011 Philippe Pepiot <phil@philpep.org>
@@ -100,6 +100,12 @@ pkg_delete(struct pkg *pkg, struct pkg *rpkg, struct pkgdb *db, int flags,
 			return (ret);
 	}
 
+	/*
+	 * Execute per-package pre-deinstall triggers
+	 */
+	if (t != NULL)
+		triggers_execute_perpackage(t, pkg, TRIGGER_PHASE_PRE_DEINSTALL);
+
 	if ((flags & PKG_DELETE_KEEPFILES) == 0) {
 		ret = pkg_delete_files(db, pkg, rpkg, flags, t);
 		if (ret == EPKG_CANCEL)
@@ -115,6 +121,12 @@ pkg_delete(struct pkg *pkg, struct pkg *rpkg, struct pkgdb *db, int flags,
 		if (ret != EPKG_OK && (ctx.developer_mode || noexec))
 			return (ret);
 	}
+
+	/*
+	 * Execute per-package post-deinstall triggers
+	 */
+	if (t != NULL)
+		triggers_execute_perpackage(t, pkg, TRIGGER_PHASE_POST_DEINSTALL);
 
 	if ((flags & PKG_DELETE_KEEPFILES) == 0) {
 		ret = pkg_delete_dirs(db, pkg, NULL);

@@ -1,5 +1,5 @@
 /*-
- * Copyright (c) 2020-2025 Baptiste Daroussin <bapt@FreeBSD.org>
+ * Copyright (c) 2020-2026 Baptiste Daroussin <bapt@FreeBSD.org>
  *
  * SPDX-License-Identifier: BSD-2-Clause
  */
@@ -22,6 +22,7 @@
 #include <spawn.h>
 #include <xstring.h>
 
+#include <pkg.h>
 #include <private/pkg.h>
 #include <private/event.h>
 #include <private/lua.h>
@@ -115,19 +116,46 @@ trigger_open_schema(void)
 	return (trigger_schema);
 }
 
+static bool
+parse_trigger_script_block(const ucl_object_t *block, const char *block_name,
+    const char *trigger_name, char **out_script, int *out_type, bool *out_sandbox)
+{
+	const ucl_object_t *o;
+
+	o = ucl_object_find_key(block, "type");
+	if (o == NULL) {
+		pkg_emit_error("%s %s doesn't have a script type", block_name, trigger_name);
+		return (false);
+	}
+	*out_type = get_script_type(ucl_object_tostring(o));
+	if (*out_type == SCRIPT_UNKNOWN) {
+		pkg_emit_error("Unknown script type for %s in %s", block_name, trigger_name);
+		return (false);
+	}
+	o = ucl_object_find_key(block, "script");
+	if (o == NULL) {
+		pkg_emit_error("No script in %s %s", block_name, trigger_name);
+		return (false);
+	}
+	*out_script = xstrdup(ucl_object_tostring(o));
+	o = ucl_object_find_key(block, "sandbox");
+	*out_sandbox = (o == NULL) ? true : ucl_object_toboolean(o);
+	return (true);
+}
+
 static struct trigger *
 trigger_load(int dfd, const char *name, bool cleanup_only, ucl_object_t *schema)
 {
 	struct ucl_parser *p;
 	ucl_object_t *obj = NULL;
-	const ucl_object_t *o = NULL, *trigger = NULL, *cleanup = NULL;
+	const ucl_object_t *block = NULL;
 	int fd;
 	struct ucl_schema_error err;
 	struct trigger *t;
 
 	fd = openat(dfd, name, O_RDONLY);
 	if (fd == -1) {
-		pkg_emit_error("Unable to open the tigger: %s", name);
+		pkg_emit_error("Unable to open the trigger: %s", name);
 		return (NULL);
 	}
 
@@ -156,74 +184,31 @@ trigger_load(int dfd, const char *name, bool cleanup_only, ucl_object_t *schema)
 	t->name = xstrdup(name);
 
 	if (cleanup_only) {
-		cleanup = ucl_object_find_key(obj, "cleanup");
-		if (cleanup == NULL)
+		block = ucl_object_find_key(obj, "cleanup");
+		if (block == NULL)
 			goto err;
-		o = ucl_object_find_key(cleanup, "type");
-		if (o == NULL) {
-			pkg_emit_error("cleanup %s doesn't have a script type", name);
+		if (!parse_trigger_script_block(block, "cleanup", name,
+		    &t->cleanup.script, &t->cleanup.type, &t->cleanup.sandbox))
 			goto err;
-		}
-		t->cleanup.type = get_script_type(ucl_object_tostring(o));
-		if (t->cleanup.type == SCRIPT_UNKNOWN) {
-			pkg_emit_error("Unknown script type for cleanup in %s", name);
-			goto err;
-		}
-		o = ucl_object_find_key(cleanup, "script");
-		if (o == NULL) {
-			pkg_emit_error("No script in cleanup %s", name);
-			goto err;
-		}
-
-		t->cleanup.script = xstrdup(ucl_object_tostring(o));
-		o = ucl_object_find_key(cleanup, "sandbox");
-		if (o == NULL) {
-			t->cleanup.sandbox = true;
-		} else {
-			t->cleanup.sandbox = ucl_object_toboolean(o);
-		}
 		ucl_object_unref(obj);
 		return (t);
 	}
 
-	trigger = ucl_object_find_key(obj, "trigger");
-	if (trigger == NULL) {
-		pkg_emit_error("trigger %s doesn't have any trigger block, ignoring", name);
+	block = ucl_object_find_key(obj, "trigger");
+	if (!parse_trigger_script_block(block, "trigger", name,
+	    &t->script.script, &t->script.type, &t->script.sandbox))
 		goto err;
-	}
 
-	o = ucl_object_find_key(trigger, "type");
-	if (o == NULL) {
-		pkg_emit_error("trigger %s doesn't have a script type", name);
-		goto err;
-	}
-	t->script.type = get_script_type(ucl_object_tostring(o));
-	if (t->script.type == SCRIPT_UNKNOWN) {
-		pkg_emit_error("Unknown script type for trigger in %s", name);
-		goto err;
-	}
-	o = ucl_object_find_key(trigger, "script");
-	if (o == NULL) {
-		pkg_emit_error("No script in trigger %s", name);
-		goto err;
-	}
-	t->script.script = xstrdup(ucl_object_tostring(o));
-	o = ucl_object_find_key(trigger, "sandbox");
-	if (o == NULL) {
-		t->script.sandbox = true;
-	} else {
-		t->script.sandbox = ucl_object_toboolean(o);
-	}
-
-	o = ucl_object_find_key(obj, "path");
-	if (o != NULL)
-		t->path = ucl_object_ref(o);
-	o = ucl_object_find_key(obj, "path_glob");
-	if (o != NULL)
-		t->path_glob = ucl_object_ref(o);
-	o = ucl_object_find_key(obj, "path_regexp");
-	if (o != NULL)
-		t->path_regexp = ucl_object_ref(o);
+	/* Load path patterns (required for any non-cleanup block) */
+	block = ucl_object_find_key(obj, "path");
+	if (block != NULL)
+		t->path = ucl_object_ref(block);
+	block = ucl_object_find_key(obj, "path_glob");
+	if (block != NULL)
+		t->path_glob = ucl_object_ref(block);
+	block = ucl_object_find_key(obj, "path_regexp");
+	if (block != NULL)
+		t->path_regexp = ucl_object_ref(block);
 	if (t->path == NULL &&
 	    t->path_glob == NULL &&
 	    t->path_regexp == NULL) {
@@ -242,10 +227,8 @@ err:
 			ucl_object_unref(t->path_glob);
 		if (t->path_regexp != NULL)
 			ucl_object_unref(t->path_regexp);
-		if (t->script.script != NULL)
-			free(t->script.script);
-		if (t->cleanup.script != NULL)
-			free(t->cleanup.script);
+		free(t->script.script);
+		free(t->cleanup.script);
 		free(t);
 	}
 	ucl_object_unref(obj);
@@ -458,13 +441,14 @@ save_trigger(const char *script, bool sandbox, pkghash *args)
 }
 
 static int
-trigger_execute_lua(const char *script, bool sandbox, pkghash *args)
+trigger_execute_lua_common(const char *script, bool sandbox, pkghash *args,
+    bool defer, const char *pkgname, const char *pkgversion)
 {
 	lua_State *L;
 	int pstat;
 	pkghash_it it;
 
-	if (!sandbox && ctx.defer_triggers) {
+	if (defer && !sandbox && ctx.defer_triggers) {
 		save_trigger(script, sandbox, args);
 		return (EPKG_OK);
 	}
@@ -488,6 +472,14 @@ trigger_execute_lua(const char *script, bool sandbox, pkghash *args)
 		lua_setglobal(L, "pkg");
 		lua_pushinteger(L, ctx.rootfd);
 		lua_setglobal(L, "rootfd");
+		if (pkgname != NULL) {
+			lua_pushstring(L, pkgname);
+			lua_setglobal(L, "pkg_name");
+		}
+		if (pkgversion != NULL) {
+			lua_pushstring(L, pkgversion);
+			lua_setglobal(L, "pkg_version");
+		}
 		char **arguments = NULL;
 		int i = 0;
 		if (args != NULL) {
@@ -536,6 +528,13 @@ trigger_execute_lua(const char *script, bool sandbox, pkghash *args)
 	return (EPKG_OK);
 }
 
+static int
+trigger_execute_lua(const char *script, bool sandbox, pkghash *args)
+{
+	return (trigger_execute_lua_common(script, sandbox, args,
+	    true, NULL, NULL));
+}
+
 static void
 trigger_check_match(struct trigger *t, char *dir)
 {
@@ -558,24 +557,26 @@ trigger_check_match(struct trigger *t, char *dir)
 }
 
 /*
- * first execute all triggers then the cleanup scripts
- * from the triggers that are not there anymore
- * Then execute all triggers
+ * first execute cleanup scripts from the triggers that are not there anymore,
+ * then execute all per-transaction triggers that matched touched directories.
+ * Always reload triggers from disk: new trigger files may have been installed
+ * during the transaction.
  */
 int
-triggers_execute(trigger_t *cleanup_triggers)
+triggers_execute(struct triggers *t)
 {
 	trigger_t *triggers;
 	int ret = EPKG_OK;
 
 	triggers = triggers_load(false);
+
 	pkg_emit_triggers_begin();
-	if (cleanup_triggers != NULL) {
-		vec_foreach(*cleanup_triggers, i) {
-			pkg_emit_trigger(cleanup_triggers->d[i]->name, true);
-			if (cleanup_triggers->d[i]->cleanup.type == SCRIPT_LUA) {
-				ret = trigger_execute_lua(cleanup_triggers->d[i]->cleanup.script,
-				    cleanup_triggers->d[i]->cleanup.sandbox, NULL);
+	if (t != NULL && t->cleanup != NULL) {
+		vec_foreach(*t->cleanup, i) {
+			pkg_emit_trigger(t->cleanup->d[i]->name, true);
+			if (t->cleanup->d[i]->cleanup.type == SCRIPT_LUA) {
+				ret = trigger_execute_lua(t->cleanup->d[i]->cleanup.script,
+				    t->cleanup->d[i]->cleanup.sandbox, NULL);
 			}
 			if (ret != EPKG_OK)
 				goto cleanup;
@@ -587,7 +588,6 @@ triggers_execute(trigger_t *cleanup_triggers)
 		while (pkghash_next(&it)) {
 			vec_foreach(*triggers, i)
 				trigger_check_match(triggers->d[i], it.key);
-			/* We need to check if that matches a trigger */
 		}
 	}
 
@@ -609,6 +609,150 @@ cleanup:
 	free(triggers);
 
 	return (EPKG_OK);
+}
+
+/*
+ * Match a dir against a trigger's path patterns, adding to local_matched.
+ */
+static bool
+trigger_check_match_local(struct trigger *t, const char *dir, pkghash **matched)
+{
+	const ucl_object_t *cur;
+	ucl_object_iter_t it;
+
+	if (t->path != NULL) {
+		it = NULL;
+		while ((cur = ucl_iterate_object(t->path, &it, true))) {
+			if (STREQ(dir, ucl_object_tostring(cur))) {
+				pkghash_safe_add(*matched, dir, NULL, NULL);
+				return (true);
+			}
+		}
+	}
+
+	if (match_ucl_lists(dir, t->path_glob, t->path_regexp)) {
+		pkghash_safe_add(*matched, dir, NULL, NULL);
+		return (true);
+	}
+	return (false);
+}
+
+/*
+ * Per-package trigger subdirectory names, indexed by trigger_phase_t.
+ */
+static const char *trigger_phase_dirs[] = {
+	[TRIGGER_PHASE_PRE_INSTALL] = "pre_install",
+	[TRIGGER_PHASE_POST_INSTALL] = "post_install",
+	[TRIGGER_PHASE_PRE_DEINSTALL] = "pre_deinstall",
+	[TRIGGER_PHASE_POST_DEINSTALL] = "post_deinstall",
+};
+
+/*
+ * Load per-package triggers from the phase-specific subdirectory
+ * under each configured PKG_TRIGGERS_DIR.
+ */
+static trigger_t *
+triggers_load_perpackage(trigger_phase_t phase)
+{
+	trigger_t *ret;
+	const pkg_object *dirs, *cur;
+	pkg_iter it = NULL;
+	char path[MAXPATHLEN];
+
+	ret = xcalloc(1, sizeof(*ret));
+
+	dirs = pkg_config_get("PKG_TRIGGERS_DIR");
+	while ((cur = pkg_object_iterate(dirs, &it))) {
+		const char *dir;
+
+		dir = RELATIVE_PATH(pkg_object_string(cur));
+		snprintf(path, sizeof(path), "%s/%s",
+		    dir, trigger_phase_dirs[phase]);
+		triggers_load_from(ret, false, path);
+	}
+
+	return (ret);
+}
+
+/*
+ * Execute per-package triggers for a given phase on a specific package.
+ * Triggers are loaded from the phase-specific subdirectory (e.g.
+ * post_install/) so only relevant triggers are parsed.  They are
+ * reloaded from disk each time so that triggers installed or removed
+ * by earlier packages in the same transaction are picked up.
+ */
+int
+triggers_execute_perpackage(struct triggers *t, struct pkg *pkg,
+    trigger_phase_t phase)
+{
+	struct pkg_file *f = NULL;
+	struct pkg_dir *d = NULL;
+	pkghash *pkg_dirs_hash = NULL;
+	int ret = EPKG_OK;
+	trigger_t *triggers;
+
+	if (t == NULL)
+		return (EPKG_OK);
+
+	triggers = triggers_load_perpackage(phase);
+
+	if (triggers->len == 0) {
+		vec_free_and_free(triggers, trigger_free);
+		free(triggers);
+		return (EPKG_OK);
+	}
+
+	/* Build set of parent directories from the package's files */
+	while (pkg_files(pkg, &f) == EPKG_OK) {
+		char *dir, *slash;
+		dir = xstrdup(f->path);
+		slash = strrchr(dir, '/');
+		if (slash != NULL) {
+			*slash = '\0';
+			pkghash_safe_add(pkg_dirs_hash, dir, NULL, NULL);
+		}
+		free(dir);
+	}
+	while (pkg_dirs(pkg, &d) == EPKG_OK) {
+		pkghash_safe_add(pkg_dirs_hash, d->path, NULL, NULL);
+	}
+
+	if (pkg_dirs_hash == NULL) {
+		vec_free_and_free(triggers, trigger_free);
+		free(triggers);
+		return (EPKG_OK);
+	}
+
+	/* Match and execute */
+	vec_foreach(*triggers, i) {
+		struct trigger *trig = triggers->d[i];
+		pkghash *local_matched = NULL;
+		pkghash_it it = pkghash_iterator(pkg_dirs_hash);
+
+		while (pkghash_next(&it))
+			trigger_check_match_local(trig, it.key, &local_matched);
+
+		if (local_matched == NULL)
+			continue;
+
+		pkg_emit_trigger(trig->name, false);
+		if (trig->script.type == SCRIPT_LUA) {
+			ret = trigger_execute_lua_common(trig->script.script,
+			    trig->script.sandbox, local_matched, false,
+			    pkg->name, pkg->version);
+		}
+		pkghash_destroy(local_matched);
+		if (ret != EPKG_OK) {
+			pkg_emit_error("per-package trigger %s failed "
+			    "for %s, continuing", trig->name, pkg->name);
+			ret = EPKG_OK;
+		}
+	}
+
+	pkghash_destroy(pkg_dirs_hash);
+	vec_free_and_free(triggers, trigger_free);
+	free(triggers);
+	return (ret);
 }
 
 void

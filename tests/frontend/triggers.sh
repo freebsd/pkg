@@ -10,7 +10,11 @@ tests_init \
 	path_trigger \
 	pkg_exec_sandbox \
 	pkg_exec_no_sandbox \
-	pkg_add
+	pkg_add \
+	perpackage_pre_install \
+	perpackage_post_install \
+	perpackage_pre_deinstall \
+	perpackage_post_deinstall
 
 cleanup_lua_body() {
 	atf_check -s exit:0 sh ${RESOURCEDIR}/test_subr.sh new_pkg "test" "test" "1" "/"
@@ -200,4 +204,115 @@ Extracting meh-1:  done
 plop
 "
 	atf_check -o inline:"${OUTPUT}" pkg -o PKG_TRIGGERS_DIR="${TMPDIR}/trigger_dir" add meh-1.pkg
+}
+
+perpackage_pre_install_body() {
+	# Create a trigger in the pre_install/ subdirectory
+	mkdir -p target/trigger_dir/pre_install/
+	cat << EOF >> target/trigger_dir/pre_install/ldconfig.ucl
+path_regexp: [ ".*/ldconfig" ]
+trigger: {
+	type: lua
+	sandbox: false
+	script: <<EOS
+print("ldconfig: pre_install for " .. pkg_name .. "-" .. pkg_version)
+for i, v in ipairs(arg) do
+	print("  path: " .. v)
+end
+EOS
+}
+EOF
+	atf_check -s exit:0 sh ${RESOURCEDIR}/test_subr.sh new_pkg "mylib" "mylib" "1.0" "/usr/local"
+	mkdir -p usr/local/libdata/ldconfig/
+	echo "# ldconfig hints" > usr/local/libdata/ldconfig/mylib.conf
+	echo /usr/local/libdata/ldconfig/mylib.conf > plist
+	atf_check pkg create -M mylib.ucl -p plist -r .
+	unset PKG_TRIGGERS_DIR
+	atf_check -o match:"ldconfig: pre_install for mylib-1.0" \
+	    -o match:"path: /usr/local/libdata/ldconfig" \
+	    pkg -o REPOS_DIR=/dev/null -o PKG_TRIGGERS_DIR="/trigger_dir" -r ${TMPDIR}/target install -qfy ${TMPDIR}/mylib-1.0.pkg
+}
+
+perpackage_post_install_body() {
+	# Create a trigger in the post_install/ subdirectory
+	mkdir -p target/trigger_dir/post_install/
+	cat << EOF >> target/trigger_dir/post_install/ldconfig.ucl
+path_regexp: [ ".*/ldconfig" ]
+trigger: {
+	type: lua
+	sandbox: false
+	script: <<EOS
+print("ldconfig: post_install for " .. pkg_name .. "-" .. pkg_version)
+for i, v in ipairs(arg) do
+	print("  path: " .. v)
+end
+EOS
+}
+EOF
+	# Create a package that installs a file into /usr/local/libdata/ldconfig/
+	atf_check -s exit:0 sh ${RESOURCEDIR}/test_subr.sh new_pkg "mylib" "mylib" "1.0" "/usr/local"
+	mkdir -p usr/local/libdata/ldconfig/
+	echo "# ldconfig hints" > usr/local/libdata/ldconfig/mylib.conf
+	echo /usr/local/libdata/ldconfig/mylib.conf > plist
+	atf_check pkg create -M mylib.ucl -p plist -r .
+	unset PKG_TRIGGERS_DIR
+	atf_check -o match:"ldconfig: post_install for mylib-1.0" \
+	    -o match:"path: /usr/local/libdata/ldconfig" \
+	    pkg -o REPOS_DIR=/dev/null -o PKG_TRIGGERS_DIR="/trigger_dir" -r ${TMPDIR}/target install -qfy ${TMPDIR}/mylib-1.0.pkg
+}
+
+perpackage_pre_deinstall_body() {
+	# Install a package first, then delete it with a pre_deinstall trigger
+	mkdir -p target/trigger_dir/pre_deinstall/
+	cat << EOF >> target/trigger_dir/pre_deinstall/ldconfig.ucl
+path_regexp: [ ".*/ldconfig" ]
+trigger: {
+	type: lua
+	sandbox: false
+	script: <<EOS
+print("ldconfig: pre_deinstall for " .. pkg_name .. "-" .. pkg_version)
+for i, v in ipairs(arg) do
+	print("  path: " .. v)
+end
+EOS
+}
+EOF
+	atf_check -s exit:0 sh ${RESOURCEDIR}/test_subr.sh new_pkg "mylib" "mylib" "1.0" "/usr/local"
+	mkdir -p usr/local/libdata/ldconfig/
+	echo "# ldconfig hints" > usr/local/libdata/ldconfig/mylib.conf
+	echo /usr/local/libdata/ldconfig/mylib.conf > plist
+	atf_check pkg create -M mylib.ucl -p plist -r .
+	unset PKG_TRIGGERS_DIR
+	atf_check pkg -o REPOS_DIR=/dev/null -o PKG_TRIGGERS_DIR="/trigger_dir" -r ${TMPDIR}/target install -qfy ${TMPDIR}/mylib-1.0.pkg
+	atf_check -o match:"ldconfig: pre_deinstall for mylib-1.0" \
+	    -o match:"path: /usr/local/libdata/ldconfig" \
+	    pkg -o REPOS_DIR=/dev/null -o PKG_TRIGGERS_DIR="/trigger_dir" -r ${TMPDIR}/target delete -qy mylib
+}
+
+perpackage_post_deinstall_body() {
+	# Install a package first, then delete it with a post_deinstall trigger
+	mkdir -p target/trigger_dir/post_deinstall/
+	cat << EOF >> target/trigger_dir/post_deinstall/ldconfig.ucl
+path_regexp: [ ".*/ldconfig" ]
+trigger: {
+	type: lua
+	sandbox: false
+	script: <<EOS
+print("ldconfig: post_deinstall for " .. pkg_name .. "-" .. pkg_version)
+for i, v in ipairs(arg) do
+	print("  path: " .. v)
+end
+EOS
+}
+EOF
+	atf_check -s exit:0 sh ${RESOURCEDIR}/test_subr.sh new_pkg "mylib" "mylib" "1.0" "/usr/local"
+	mkdir -p usr/local/libdata/ldconfig/
+	echo "# ldconfig hints" > usr/local/libdata/ldconfig/mylib.conf
+	echo /usr/local/libdata/ldconfig/mylib.conf > plist
+	atf_check pkg create -M mylib.ucl -p plist -r .
+	unset PKG_TRIGGERS_DIR
+	atf_check pkg -o REPOS_DIR=/dev/null -o PKG_TRIGGERS_DIR="/trigger_dir" -r ${TMPDIR}/target install -qfy ${TMPDIR}/mylib-1.0.pkg
+	atf_check -o match:"ldconfig: post_deinstall for mylib-1.0" \
+	    -o match:"path: /usr/local/libdata/ldconfig" \
+	    pkg -o REPOS_DIR=/dev/null -o PKG_TRIGGERS_DIR="/trigger_dir" -r ${TMPDIR}/target delete -qy mylib
 }

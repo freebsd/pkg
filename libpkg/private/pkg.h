@@ -1,5 +1,5 @@
 /*-
- * Copyright (c) 2011-2024 Baptiste Daroussin <bapt@FreeBSD.org>
+ * Copyright (c) 2011-2026 Baptiste Daroussin <bapt@FreeBSD.org>
  * Copyright (c) 2011-2012 Julien Laffaye <jlaffaye@FreeBSD.org>
  * Copyright (c) 2013 Matthew Seaman <matthew@FreeBSD.org>
  * Copyright (c) 2013-2017 Vsevolod Stakhov <vsevolod@FreeBSD.org>
@@ -259,6 +259,13 @@ typedef enum {
 	SCRIPT_LUA,
 } script_type_t;
 
+typedef enum {
+	TRIGGER_PHASE_PRE_INSTALL,
+	TRIGGER_PHASE_POST_INSTALL,
+	TRIGGER_PHASE_PRE_DEINSTALL,
+	TRIGGER_PHASE_POST_DEINSTALL,
+} trigger_phase_t;
+
 struct trigger {
 	char *name;
 	ucl_object_t *path;
@@ -283,7 +290,6 @@ struct triggers {
 	int dfd;
 	trigger_t *cleanup;
 	trigger_t *post_transaction;
-	trigger_t *post_install;
 };
 
 struct pkg_create {
@@ -912,11 +918,12 @@ int suggest_arch(struct pkg *, bool);
 int set_attrsat(int fd, const char *path, mode_t perm, uid_t uid, gid_t gid, const struct timespec *ats, const struct timespec *mts);
 
 trigger_t *triggers_load(bool cleanup_only);
-int triggers_execute(trigger_t *cleanup_triggers);
+int triggers_execute(struct triggers *t);
 void trigger_is_it_a_cleanup(struct triggers *t, const char *path);
 void trigger_free(struct trigger *);
 void append_touched_dir(const char *path);
 void append_touched_file(const char *path);
+int triggers_execute_perpackage(struct triggers *t, struct pkg *pkg, trigger_phase_t phase);
 
 int pkg_parse_manifest_ucl(struct pkg *pkg, ucl_object_t *o);
 int pkg_get_reposdirfd(void);

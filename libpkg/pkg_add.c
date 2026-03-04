@@ -1,5 +1,5 @@
 /*-
- * Copyright (c) 2011-2025 Baptiste Daroussin <bapt@FreeBSD.org>
+ * Copyright (c) 2011-2026 Baptiste Daroussin <bapt@FreeBSD.org>
  * Copyright (c) 2011-2012 Julien Laffaye <jlaffaye@FreeBSD.org>
  * Copyright (c) 2016, Vsevolod Stakhov
  * Copyright (c) 2024, Future Crew, LLC
@@ -1465,6 +1465,11 @@ pkg_add_common(struct pkgdb *db, const char *path, unsigned flags,
 			goto cleanup;
 	}
 
+	/*
+	 * Execute per-package pre-install triggers
+	 */
+	if (t != NULL)
+		triggers_execute_perpackage(t, pkg, TRIGGER_PHASE_PRE_INSTALL);
 
 	/* add the user and group if necessary */
 
@@ -1522,6 +1527,12 @@ pkg_add_common(struct pkgdb *db, const char *path, unsigned flags,
 			goto cleanup;
 		retcode = EPKG_OK;
 	}
+
+	/*
+	 * Execute per-package post-install triggers
+	 */
+	if (t != NULL)
+		triggers_execute_perpackage(t, pkg, TRIGGER_PHASE_POST_INSTALL);
 
 	/*
 	 * start the different related services if the users do want that

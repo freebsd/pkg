@@ -1,5 +1,5 @@
 /*-
- * Copyright (c) 2011-2022 Baptiste Daroussin <bapt@FreeBSD.org>
+ * Copyright (c) 2011-2026 Baptiste Daroussin <bapt@FreeBSD.org>
  * Copyright (c) 2011-2012 Julien Laffaye <jlaffaye@FreeBSD.org>
  * Copyright (c) 2011-2012 Marin Atanasov Nikolov <dnaeon@gmail.com>
  * Copyright (c) 2013 Matthew Seaman <matthew@FreeBSD.org>
@@ -2134,7 +2134,7 @@ pkg_jobs_execute(struct pkg_jobs *j)
 	}
 
 	pkg_plugins_hook_run(post, j, j->db);
-	triggers_execute(j->triggers.cleanup);
+	triggers_execute(&j->triggers);
 
 cleanup:
 	pkgdb_release_lock(j->db, PKGDB_LOCK_EXCLUSIVE);
