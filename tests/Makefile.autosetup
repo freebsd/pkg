@@ -74,7 +74,8 @@ TESTS_SH= \
 	frontend/backup_lib.sh \
 	frontend/abi.sh \
 	frontend/http.sh \
-	frontend/triggers.sh
+	frontend/triggers.sh \
+	frontend/info.sh
 
 #
 # These files are mostly simple binaries obtained from
