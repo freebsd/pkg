@@ -91,6 +91,8 @@ exec_info(int argc, char **argv)
 	bool pkg_exists = false;
 	bool origin_search = false;
 	bool e_flag = false;
+	bool json_array = false;
+	bool json_first = true;
 #ifdef HAVE_CAPSICUM
 	cap_rights_t rights;
 #endif
@@ -323,6 +325,12 @@ exec_info(int argc, char **argv)
 		return (EXIT_FAILURE);
 	}
 
+	if ((opt & INFO_RAW) &&
+	    (opt & (INFO_RAW_JSON | INFO_RAW_JSON_COMPACT))) {
+		json_array = true;
+		printf("[");
+	}
+
 	i = 0;
 	do {
 		gotone = false;
@@ -496,8 +504,14 @@ exec_info(int argc, char **argv)
 			}
 			if (pkg_exists)
 				retcode = EXIT_SUCCESS;
-			else
+			else {
+				if (json_array) {
+					if (!json_first)
+						printf(",");
+					json_first = false;
+				}
 				print_info(db, pkg, opt);
+			}
 		}
 		if (ret != EPKG_END) {
 			retcode = EXIT_FAILURE;
@@ -513,6 +527,9 @@ exec_info(int argc, char **argv)
 
 		i++;
 	} while (i < argc);
+
+	if (json_array)
+		printf("]\n");
 
 cleanup:
 	pkg_free(pkg);
