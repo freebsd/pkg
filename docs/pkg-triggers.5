@@ -8,21 +8,33 @@
 .\"    notice, this list of conditions and the following disclaimer in the
 .\"    documentation and/or other materials provided with the distribution.
 .\"
-.Dd December 12, 2025
+.Dd March 4, 2026
 .Dt PKG-TRIGGERS 5
 .Os
 .Sh NAME
 .Nm triggers
 .Nd trigger file format
 .Sh DESCRIPTION
-Package triggers define commands to be executed at the end of a
-.Xr pkg 8
-transaction when particular files are installed, modified, or removed.
-Triggers can be used, for example, to update a database or index of files based
-on files installed by other packages.
-Triggers are always executed at the end of the transaction, after all changes
-to files have been committed to disk.
-They are only executed once even if they have been triggered multiple times.
+Package triggers define commands to be executed when particular files are
+installed, modified, or removed by
+.Xr pkg 8 .
+Triggers can be used, for example, to update a database or index of files
+based on files installed by other packages.
+.Pp
+There are two kinds of triggers:
+.Bl -tag -width "Per-package"
+.It Sy Per-transaction
+Executed once at the end of the transaction, after all packages have been
+processed and all file changes committed to disk.
+Even if multiple packages match the same trigger, it is executed only once
+and receives the combined list of matched paths.
+.It Sy Per-package
+Executed individually for each package as it is being installed or removed.
+Per-package triggers run at a specific phase of the operation
+.Pq pre-install, post-install, pre-deinstall, or post-deinstall .
+Their failure is non-blocking: the package operation continues even if the
+trigger fails.
+.El
 .Pp
 Triggers are searched for in the list of directories configured by the
 .Ev PKG_TRIGGERS_DIR
@@ -34,6 +46,8 @@ and
 Triggers are in UCL format and should have a
 .Va .ucl
 extension.
+.Ss Per-transaction triggers
+Per-transaction trigger files are placed directly in a trigger directory.
 .Pp
 The format is the following:
 .Bl -tag -width xxxxxxxxxxx
@@ -78,7 +92,7 @@ When disabled, the script has full system access including
 .It Cm trigger
 An object which represents the script to execute at the end of the transaction
 if a pattern has been matched.
-This object requires the following fields:
+This object is required and has the following fields:
 .Bl -tag -width xxxxxxx
 .It Cm type
 The type of the script to be executed.
@@ -99,6 +113,55 @@ Defaults to
 When disabled, the script has full system access including
 .Fn pkg.exec .
 .El
+.El
+.Ss Per-package triggers
+Per-package trigger files are placed in a subdirectory of a trigger directory
+named after the phase at which they should execute:
+.Bl -tag -width "post_deinstall/" -compact
+.It Pa pre_install/
+Before the package files are extracted.
+.It Pa post_install/
+After the package files have been extracted and post-install scripts have run.
+.It Pa pre_deinstall/
+Before the package files are removed.
+.It Pa post_deinstall/
+After the package files have been removed and post-deinstall scripts have run.
+.El
+.Pp
+For example, a trigger that should run after each package installation would be
+placed in:
+.Pp
+.Pa <localbase>/share/pkg/triggers/post_install/mytrigger.ucl
+.Pp
+The file format is the same as for per-transaction triggers.
+The
+.Cm path , path_glob ,
+and
+.Cm path_regexp
+fields are used to match the files and directories of the individual package.
+The
+.Cm trigger
+object contains the script to execute.
+.Pp
+Per-package triggers are reloaded from disk before processing each package,
+so a trigger installed by an earlier package in the same transaction will
+be active for subsequent packages.
+.Pp
+In addition to the
+.Va arg
+table containing matched paths, per-package trigger scripts have access to
+the following Lua global variables:
+.Bl -tag -width "pkg_version"
+.It Va pkg_name
+The name of the package being processed.
+.It Va pkg_version
+The version of the package being processed.
+.It Va pkg_upgrade
+A boolean set to
+.Cm true
+if the operation is part of an upgrade, or
+.Cm false
+for a fresh installation or a standalone removal.
 .El
 .Sh SEE ALSO
 .Xr pkg_create 3 ,
