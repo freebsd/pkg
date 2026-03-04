@@ -923,7 +923,7 @@ void trigger_is_it_a_cleanup(struct triggers *t, const char *path);
 void trigger_free(struct trigger *);
 void append_touched_dir(const char *path);
 void append_touched_file(const char *path);
-int triggers_execute_perpackage(struct triggers *t, struct pkg *pkg, trigger_phase_t phase);
+int triggers_execute_perpackage(struct triggers *t, struct pkg *pkg, trigger_phase_t phase, bool upgrade);
 
 int pkg_parse_manifest_ucl(struct pkg *pkg, ucl_object_t *o);
 int pkg_get_reposdirfd(void);

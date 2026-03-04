@@ -442,7 +442,7 @@ save_trigger(const char *script, bool sandbox, pkghash *args)
 
 static int
 trigger_execute_lua_common(const char *script, bool sandbox, pkghash *args,
-    bool defer, const char *pkgname, const char *pkgversion)
+    bool defer, const char *pkgname, const char *pkgversion, bool upgrade)
 {
 	lua_State *L;
 	int pstat;
@@ -480,6 +480,8 @@ trigger_execute_lua_common(const char *script, bool sandbox, pkghash *args,
 			lua_pushstring(L, pkgversion);
 			lua_setglobal(L, "pkg_version");
 		}
+		lua_pushboolean(L, upgrade);
+		lua_setglobal(L, "pkg_upgrade");
 		char **arguments = NULL;
 		int i = 0;
 		if (args != NULL) {
@@ -532,7 +534,7 @@ static int
 trigger_execute_lua(const char *script, bool sandbox, pkghash *args)
 {
 	return (trigger_execute_lua_common(script, sandbox, args,
-	    true, NULL, NULL));
+	    true, NULL, NULL, false));
 }
 
 static void
@@ -683,7 +685,7 @@ triggers_load_perpackage(trigger_phase_t phase)
  */
 int
 triggers_execute_perpackage(struct triggers *t, struct pkg *pkg,
-    trigger_phase_t phase)
+    trigger_phase_t phase, bool upgrade)
 {
 	struct pkg_file *f = NULL;
 	struct pkg_dir *d = NULL;
@@ -739,7 +741,7 @@ triggers_execute_perpackage(struct triggers *t, struct pkg *pkg,
 		if (trig->script.type == SCRIPT_LUA) {
 			ret = trigger_execute_lua_common(trig->script.script,
 			    trig->script.sandbox, local_matched, false,
-			    pkg->name, pkg->version);
+			    pkg->name, pkg->version, upgrade);
 		}
 		pkghash_destroy(local_matched);
 		if (ret != EPKG_OK) {

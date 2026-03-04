@@ -216,6 +216,7 @@ trigger: {
 	sandbox: false
 	script: <<EOS
 print("ldconfig: pre_install for " .. pkg_name .. "-" .. pkg_version)
+print("upgrade: " .. tostring(pkg_upgrade))
 for i, v in ipairs(arg) do
 	print("  path: " .. v)
 end
@@ -229,6 +230,7 @@ EOF
 	atf_check pkg create -M mylib.ucl -p plist -r .
 	unset PKG_TRIGGERS_DIR
 	atf_check -o match:"ldconfig: pre_install for mylib-1.0" \
+	    -o match:"upgrade: false" \
 	    -o match:"path: /usr/local/libdata/ldconfig" \
 	    pkg -o REPOS_DIR=/dev/null -o PKG_TRIGGERS_DIR="/trigger_dir" -r ${TMPDIR}/target install -qfy ${TMPDIR}/mylib-1.0.pkg
 }
@@ -243,6 +245,7 @@ trigger: {
 	sandbox: false
 	script: <<EOS
 print("ldconfig: post_install for " .. pkg_name .. "-" .. pkg_version)
+print("upgrade: " .. tostring(pkg_upgrade))
 for i, v in ipairs(arg) do
 	print("  path: " .. v)
 end
@@ -257,6 +260,7 @@ EOF
 	atf_check pkg create -M mylib.ucl -p plist -r .
 	unset PKG_TRIGGERS_DIR
 	atf_check -o match:"ldconfig: post_install for mylib-1.0" \
+	    -o match:"upgrade: false" \
 	    -o match:"path: /usr/local/libdata/ldconfig" \
 	    pkg -o REPOS_DIR=/dev/null -o PKG_TRIGGERS_DIR="/trigger_dir" -r ${TMPDIR}/target install -qfy ${TMPDIR}/mylib-1.0.pkg
 }
@@ -271,6 +275,7 @@ trigger: {
 	sandbox: false
 	script: <<EOS
 print("ldconfig: pre_deinstall for " .. pkg_name .. "-" .. pkg_version)
+print("upgrade: " .. tostring(pkg_upgrade))
 for i, v in ipairs(arg) do
 	print("  path: " .. v)
 end
@@ -285,6 +290,7 @@ EOF
 	unset PKG_TRIGGERS_DIR
 	atf_check pkg -o REPOS_DIR=/dev/null -o PKG_TRIGGERS_DIR="/trigger_dir" -r ${TMPDIR}/target install -qfy ${TMPDIR}/mylib-1.0.pkg
 	atf_check -o match:"ldconfig: pre_deinstall for mylib-1.0" \
+	    -o match:"upgrade: false" \
 	    -o match:"path: /usr/local/libdata/ldconfig" \
 	    pkg -o REPOS_DIR=/dev/null -o PKG_TRIGGERS_DIR="/trigger_dir" -r ${TMPDIR}/target delete -qy mylib
 }
@@ -299,6 +305,7 @@ trigger: {
 	sandbox: false
 	script: <<EOS
 print("ldconfig: post_deinstall for " .. pkg_name .. "-" .. pkg_version)
+print("upgrade: " .. tostring(pkg_upgrade))
 for i, v in ipairs(arg) do
 	print("  path: " .. v)
 end
@@ -313,6 +320,7 @@ EOF
 	unset PKG_TRIGGERS_DIR
 	atf_check pkg -o REPOS_DIR=/dev/null -o PKG_TRIGGERS_DIR="/trigger_dir" -r ${TMPDIR}/target install -qfy ${TMPDIR}/mylib-1.0.pkg
 	atf_check -o match:"ldconfig: post_deinstall for mylib-1.0" \
+	    -o match:"upgrade: false" \
 	    -o match:"path: /usr/local/libdata/ldconfig" \
 	    pkg -o REPOS_DIR=/dev/null -o PKG_TRIGGERS_DIR="/trigger_dir" -r ${TMPDIR}/target delete -qy mylib
 }

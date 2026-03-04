@@ -104,7 +104,8 @@ pkg_delete(struct pkg *pkg, struct pkg *rpkg, struct pkgdb *db, int flags,
 	 * Execute per-package pre-deinstall triggers
 	 */
 	if (t != NULL)
-		triggers_execute_perpackage(t, pkg, TRIGGER_PHASE_PRE_DEINSTALL);
+		triggers_execute_perpackage(t, pkg, TRIGGER_PHASE_PRE_DEINSTALL,
+		    (flags & PKG_DELETE_UPGRADE) != 0);
 
 	if ((flags & PKG_DELETE_KEEPFILES) == 0) {
 		ret = pkg_delete_files(db, pkg, rpkg, flags, t);
@@ -126,7 +127,8 @@ pkg_delete(struct pkg *pkg, struct pkg *rpkg, struct pkgdb *db, int flags,
 	 * Execute per-package post-deinstall triggers
 	 */
 	if (t != NULL)
-		triggers_execute_perpackage(t, pkg, TRIGGER_PHASE_POST_DEINSTALL);
+		triggers_execute_perpackage(t, pkg, TRIGGER_PHASE_POST_DEINSTALL,
+		    (flags & PKG_DELETE_UPGRADE) != 0);
 
 	if ((flags & PKG_DELETE_KEEPFILES) == 0) {
 		ret = pkg_delete_dirs(db, pkg, NULL);
