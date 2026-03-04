@@ -1207,8 +1207,18 @@ pkgdb_close(struct pkgdb *db)
 
 		vec_free_and_free(&db->repos, pkgdb_free_repo);
 
-		if (!sqlite3_db_readonly(db->sqlite, "main"))
+		if (!sqlite3_db_readonly(db->sqlite, "main")) {
 			pkg_plugins_hook_run(PKG_PLUGIN_HOOK_PKGDB_CLOSE_RW, NULL, db);
+			/*
+			 * Force a full WAL checkpoint so that all data is
+			 * written back into the main database file.  This
+			 * ensures that read-only users opening with
+			 * immutable=1 (which bypasses the WAL) see the
+			 * complete and up-to-date database.
+			 */
+			sqlite3_wal_checkpoint_v2(db->sqlite, NULL,
+			    SQLITE_CHECKPOINT_TRUNCATE, NULL, NULL);
+		}
 
 		if (sqlite3_close(db->sqlite) != SQLITE_OK)
 			pkg_emit_error("Package database is busy while closing!");
