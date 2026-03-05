@@ -659,12 +659,17 @@ pkg_jobs_universe_process_item(struct pkg_jobs_universe *universe, struct pkg *p
 		if (rc != EPKG_OK)
 			return (rc);
 		/*
-		 * Handle reverse depends, but only when we are not already
-		 * inside rdeps processing.  Without this guard the universe
-		 * expands exponentially: target → dep → rdep → dep → rdep …
-		 * pulling in thousands of unrelated packages.
+		 * Handle reverse depends.  Limit recursive expansion to
+		 * prevent the universe from growing exponentially
+		 * (target → dep → rdep → dep → rdep …).
+		 *
+		 * Process rdeps when:
+		 * - We are not inside rdeps processing yet (depth == 0), OR
+		 * - This is a remote package (an upgrade is being considered
+		 *   and its rdeps may need updating too).
 		 */
-		if (universe->rdeps_depth == 0) {
+		if (universe->rdeps_depth == 0 ||
+		    pkg->type != PKG_INSTALLED) {
 			universe->rdeps_depth++;
 			rc = pkg_jobs_universe_process_deps(universe, pkg,
 				flags|DEPS_FLAG_REVERSE);
