@@ -110,6 +110,7 @@ struct pkg_jobs_universe {
 	pkghash *provides;	/* shlibs, pkg_job_provide */
 	struct pkg_jobs *j;
 	size_t nitems;
+	int rdeps_depth;	/* track rdeps recursion to prevent explosion */
 };
 
 struct pkg_jobs_conflict_item {

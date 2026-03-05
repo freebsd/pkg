@@ -658,11 +658,20 @@ pkg_jobs_universe_process_item(struct pkg_jobs_universe *universe, struct pkg *p
 		rc = pkg_jobs_universe_process_deps(universe, pkg, flags);
 		if (rc != EPKG_OK)
 			return (rc);
-		/* Handle reverse depends */
-		rc = pkg_jobs_universe_process_deps(universe, pkg,
-			flags|DEPS_FLAG_REVERSE);
-		if (rc != EPKG_OK)
+		/*
+		 * Handle reverse depends, but only when we are not already
+		 * inside rdeps processing.  Without this guard the universe
+		 * expands exponentially: target → dep → rdep → dep → rdep …
+		 * pulling in thousands of unrelated packages.
+		 */
+		if (universe->rdeps_depth == 0) {
+			universe->rdeps_depth++;
+			rc = pkg_jobs_universe_process_deps(universe, pkg,
+				flags|DEPS_FLAG_REVERSE);
+			universe->rdeps_depth--;
+			if (rc != EPKG_OK)
 				return (rc);
+		}
 		/* Provides/requires */
 		rc = pkg_jobs_universe_process_shlibs(universe, pkg);
 		if (rc != EPKG_OK)
