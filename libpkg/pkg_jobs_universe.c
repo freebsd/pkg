@@ -398,7 +398,20 @@ pkg_jobs_universe_handle_provide(struct pkg_jobs_universe *universe,
 		/* Check for local packages */
 		if ((unit = pkghash_get_value(universe->items, rpkg->uid)) != NULL) {
 			dbg(4, "handle_provide: package %s already in universe", rpkg->uid);
-			/* Remote provide is newer, so we can add it */
+			/*
+			 * Skip adding the remote package if a local version
+			 * with the same digest already exists in the universe:
+			 * there is nothing to upgrade.
+			 */
+			if (unit->pkg->type == PKG_INSTALLED &&
+			    unit->pkg->digest != NULL &&
+			    rpkg->digest != NULL &&
+			    STREQ(unit->pkg->digest, rpkg->digest)) {
+				dbg(4, "handle_provide: %s remote identical to local, skipping", rpkg->uid);
+				pkg_free(rpkg);
+				rpkg = NULL;
+				goto provide;
+			}
 			if (pkg_jobs_universe_process_item(universe, rpkg,
 			    &unit) != EPKG_OK) {
 				continue;
@@ -414,6 +427,18 @@ pkg_jobs_universe_handle_provide(struct pkg_jobs_universe *universe,
 				if (pkg_jobs_universe_process_item(universe, npkg,
 						&unit) != EPKG_OK) {
 					return (EPKG_FATAL);
+				}
+				/*
+				 * Skip adding the remote package if the local
+				 * version has the same digest.
+				 */
+				if (npkg->digest != NULL &&
+				    rpkg->digest != NULL &&
+				    STREQ(npkg->digest, rpkg->digest)) {
+					dbg(4, "handle_provide: %s remote identical to local, skipping", rpkg->uid);
+					pkg_free(rpkg);
+					rpkg = NULL;
+					goto provide;
 				}
 				if (pkg_jobs_universe_process_item(universe, rpkg,
 						&unit) != EPKG_OK) {
@@ -444,6 +469,7 @@ pkg_jobs_universe_handle_provide(struct pkg_jobs_universe *universe,
 			rpkg = NULL;
 		}
 
+provide:
 		pr = xcalloc (1, sizeof (*pr));
 		pr->un = unit;
 		pr->provide = name;
