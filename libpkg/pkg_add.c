@@ -116,7 +116,8 @@ merge_with_external_tool(const char *merge_tool, struct pkg_config_file *lcf,
 	}
 
 	char command[MAXPATHLEN];
-	for (int i = 0; *merge_tool != '\0'; i++, merge_tool++) {
+	int i = 0;
+	for (; *merge_tool != '\0' && i < (int)sizeof(command) - 1; i++, merge_tool++) {
 		if (*merge_tool != '%') {
 			command[i] = *merge_tool;
 			continue;
@@ -146,6 +147,7 @@ merge_with_external_tool(const char *merge_tool, struct pkg_config_file *lcf,
 		}
 		i += strlcpy(&command[i], tmp_files[tmp_files_index].path, sizeof(command) - i) - 1;
 	}
+	command[i] = '\0';
 
 	pid_t pid = process_spawn_pipe(inout, command);
 	wait_res = waitpid(pid, &status, 0);
