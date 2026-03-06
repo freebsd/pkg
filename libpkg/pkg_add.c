@@ -771,6 +771,10 @@ create_regfile(struct pkg_add_context *context, struct pkg_file *f, struct archi
 			const char *merge_tool = pkg_object_string(pkg_config_get("MERGETOOL"));
 
 			pkg_debug(1, "Populating config_file %s", f->path);
+			if (archive_entry_size(ae) < 0) {
+				pkg_emit_error("Invalid config file size for %s", f->path);
+				return (EPKG_FATAL);
+			}
 			len = archive_entry_size(ae);
 			f->config->content = xmalloc(len + 1);
 			archive_read_data(a, f->config->content, len);
