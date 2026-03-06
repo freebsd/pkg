@@ -486,8 +486,6 @@ event_callback(void *data, struct pkg_event *ev)
 		printf("%s", msg_buf->buf);
 		break;
 	case PKG_EVENT_INSTALL_FINISHED:
-		if (quiet)
-			break;
 		break;
 	case PKG_EVENT_EXTRACT_BEGIN:
 		if (quiet)
@@ -552,8 +550,6 @@ event_callback(void *data, struct pkg_event *ev)
 		printf("%s", msg_buf->buf);
 		break;
 	case PKG_EVENT_DEINSTALL_FINISHED:
-		if (quiet)
-			break;
 		break;
 	case PKG_EVENT_DELETE_FILES_BEGIN:
 		if (quiet)
@@ -593,8 +589,6 @@ event_callback(void *data, struct pkg_event *ev)
 		printf("%s", msg_buf->buf);
 		break;
 	case PKG_EVENT_UPGRADE_FINISHED:
-		if (quiet)
-			break;
 		break;
 	case PKG_EVENT_LOCKED:
 		pkg = ev->e_locked.pkg;
