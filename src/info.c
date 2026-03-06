@@ -53,6 +53,44 @@ enum sign {
 	EQ
 };
 
+static bool
+version_match(const char *version, const char *constraint, int sign)
+{
+	switch (pkg_version_cmp(version, constraint)) {
+	case -1:
+		return (sign == LT || sign == LE);
+	case 0:
+		return (sign == LE || sign == GE || sign == EQ);
+	case 1:
+		return (sign == GT || sign == GE);
+	}
+	return (false);
+}
+
+static void
+parse_version_op(char *pkgname, int j, char **verp, int *signp)
+{
+	int base_sign;
+
+	switch (pkgname[j]) {
+	case '<': base_sign = LT; break;
+	case '>': base_sign = GT; break;
+	case '=': base_sign = EQ; break;
+	default: return;
+	}
+
+	*verp = pkgname + j;
+	*signp = base_sign;
+	(*verp)[0] = '\0';
+	(*verp)++;
+	if ((*verp)[0] == '=' && base_sign != EQ) {
+		(*verp)++;
+		*signp = (base_sign == LT) ? LE : GE;
+	} else if ((*verp)[0] == '=') {
+		(*verp)++;
+	}
+}
+
 void
 usage_info(void)
 {
@@ -344,76 +382,13 @@ exec_info(int argc, char **argv)
 			pkgname[strlen(pkgname) -1] = '\0';
 
 		if (argc > 0) {
-			j=0;
-			while (pkgname[j] != '\0') {
-				if (pkgname[j] == '<') {
-					if (pkgversion) {
-						pkgversion2 = pkgname + j;
-						sign2 = LT;
-						pkgversion2[0] = '\0';
-						pkgversion2++;
-						if (pkgversion2[0] == '=') {
-							pkgversion2++;
-							sign2=LE;
-							j++;
-						}
-					} else {
-						pkgversion = pkgname + j;
-						sign = LT;
-						pkgversion[0] = '\0';
-						pkgversion++;
-						if (pkgversion[0] == '=') {
-							pkgversion++;
-							sign=LE;
-							j++;
-						}
-					}
-				} else if (pkgname[j] == '>') {
-					if (pkgversion) {
-						pkgversion2 = pkgname + j;
-						sign2 = GT;
-						pkgversion2[0] = '\0';
-						pkgversion2++;
-						if (pkgversion2[0] == '=') {
-							pkgversion2++;
-							sign2=GE;
-							j++;
-						}
-					} else {
-						pkgversion = pkgname + j;
-						sign = GT;
-						pkgversion[0] = '\0';
-						pkgversion++;
-						if (pkgversion[0] == '=') {
-							pkgversion++;
-							sign=GE;
-							j++;
-						}
-					}
-				} else if (pkgname[j] == '=') {
-					if (pkgversion) {
-						pkgversion2 = pkgname + j;
-						sign2 = EQ;
-						pkgversion2[0] = '\0';
-						pkgversion2++;
-						if (pkgversion2[0] == '=') {
-							pkgversion2++;
-							sign2=EQ;
-							j++;
-						}
-					} else {
-						pkgversion = pkgname + j;
-						sign = EQ;
-						pkgversion[0] = '\0';
-						pkgversion++;
-						if (pkgversion[0] == '=') {
-							pkgversion++;
-							sign=EQ;
-							j++;
-						}
-					}
+			for (j = 0; pkgname[j] != '\0'; j++) {
+				if (pkgname[j] == '<' || pkgname[j] == '>' || pkgname[j] == '=') {
+					if (pkgversion)
+						parse_version_op(pkgname, j, &pkgversion2, &sign2);
+					else
+						parse_version_op(pkgname, j, &pkgversion, &sign);
 				}
-				j++;
 			}
 		}
 
@@ -454,53 +429,13 @@ exec_info(int argc, char **argv)
 			const char *version;
 
 			pkg_get(pkg, PKG_ATTR_VERSION, &version);
-			if (pkgversion != NULL) {
-				switch (pkg_version_cmp(version, pkgversion)) {
-				case -1:
-					if (sign != LT && sign != LE) {
-						gotone = false;
-						continue;
-					}
-					break;
-				case 0:
-					if (sign != LE &&
-					    sign != GE &&
-					    sign != EQ) {
-						gotone = false;
-						continue;
-					}
-					break;
-				case 1:
-					if (sign != GT && sign != GE) {
-						gotone = false;
-						continue;
-					}
-					break;
-				}
+			if (pkgversion != NULL && !version_match(version, pkgversion, sign)) {
+				gotone = false;
+				continue;
 			}
-			if (pkgversion2 != NULL) {
-				switch (pkg_version_cmp(version, pkgversion2)) {
-				case -1:
-					if (sign2 != LT && sign2 != LE) {
-						gotone = false;
-						continue;
-					}
-					break;
-				case 0:
-					if (sign2 != LE &&
-					    sign2 != GE &&
-					    sign2 != EQ) {
-						gotone = false;
-						continue;
-					}
-					break;
-				case 1:
-					if (sign2 != GT && sign2 != GE) {
-						gotone = false;
-						continue;
-					}
-					break;
-				}
+			if (pkgversion2 != NULL && !version_match(version, pkgversion2, sign2)) {
+				gotone = false;
+				continue;
 			}
 			if (pkg_exists)
 				retcode = EXIT_SUCCESS;
