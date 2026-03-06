@@ -189,10 +189,10 @@ do_testpattern(unsigned int opt, int argc, char ** restrict argv)
 		return (EXIT_FAILURE);
 	}
 
-	if (strncmp(argv[0], "-", 1) == 0)
+	if (argv[0][0] == '-')
 		pattern_from_stdin = true;
 
-	if (strncmp(argv[1], "-", 1) == 0)
+	if (argv[1][0] == '-')
 		pkgname_from_stdin = true;
 
 	if (pattern_from_stdin && pkgname_from_stdin) {
