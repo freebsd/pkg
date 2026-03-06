@@ -783,6 +783,7 @@ event_callback(void *data, struct pkg_event *ev)
 			else
 				printf("==> Running trigger: %s\n", ev->e_trigger.name);
 		}
+		break;
 	default:
 		break;
 	}
