@@ -244,6 +244,7 @@ cleanup:
 		(*buffer)[st.st_size] = '\0';
 		*sz = st.st_size;
 	} else {
+		free(*buffer);
 		*buffer = NULL;
 		*sz = -1;
 	}
