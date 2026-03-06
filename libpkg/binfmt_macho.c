@@ -314,7 +314,7 @@ read_macho_header(const int fd, macho_header_t *dest)
 	ssize_t n = 0, x;
 	uint32_t reserved;
 
-	if ((x = read_u32(fd, false, &dest->magic) < 0)) {
+	if ((x = read_u32(fd, false, &dest->magic)) < 0) {
 		return x;
 	}
 	n += x;
