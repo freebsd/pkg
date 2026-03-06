@@ -277,7 +277,7 @@ exec_updating(int argc, char **argv)
 			retcode = EXIT_FAILURE;
 			goto cleanup;
 		}
-		asprintf(&updatingfile, "%s/UPDATING", portsdir);
+		xasprintf(&updatingfile, "%s/UPDATING", portsdir);
 	}
 
 	fd = fopen(updatingfile, "r");
