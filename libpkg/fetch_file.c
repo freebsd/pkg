@@ -45,12 +45,12 @@ file_open(struct pkg_repo *repo, struct fetch_item *fi)
 	if (len > 5)
 		u += 5; /* file: */
 	if (len < 8) {
-		pkg_emit_error("Invalid url: %s'\n', "
+		pkg_emit_error("Invalid URL: '%s', "
 		    "file://<absolutepath> expected", fi->url);
 		return (EPKG_FATAL);
 	}
 	if (strncmp(u, "//", 2) != 0) {
-		pkg_emit_error("invalid url: '%s'\n", fi->url);
+		pkg_emit_error("Invalid URL: '%s'", fi->url);
 		return (EPKG_FATAL);
 	}
 	u+=2;

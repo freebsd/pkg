@@ -113,7 +113,7 @@ exec_register(int argc, char **argv)
 			location = optarg;
 			break;
 		default:
-			warnx("Unrecognised option -%c\n", ch);
+			warnx("Unrecognised option -%c", ch);
 			usage_register();
 			pkg_free(pkg);
 			return (EXIT_FAILURE);

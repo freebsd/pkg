@@ -262,7 +262,7 @@ lua_pkg_copy(lua_State *L)
 	if (!install_as_user && s1.st_flags != 0) {
 		if (chflagsat(rootfd, RELATIVE_PATH(dst),
 		    s1.st_flags, AT_SYMLINK_NOFOLLOW) == -1) {
-			pkg_fatal_errno("Fail to chflags %s", dst);
+			pkg_fatal_errno("Failed to chflags %s", dst);
 			lua_pushinteger(L, -1);
 			return (1);
 		}

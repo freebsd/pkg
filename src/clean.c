@@ -190,7 +190,7 @@ recursive_analysis(int fd, struct pkgdb *db, const char *dir,
 	d = fdopendir(tmpfd);
 	if (d == NULL) {
 		close(tmpfd);
-		warnx("Impossible to open the directory %s", dir);
+		warnx("Unable to open the directory %s", dir);
 		return (0);
 	}
 
@@ -203,7 +203,7 @@ recursive_analysis(int fd, struct pkgdb *db, const char *dir,
 			nbfiles++;
 			newfd = openat(fd, ent->d_name, O_DIRECTORY|O_CLOEXEC, 0);
 			if (newfd == -1) {
-				warnx("Impossible to open the directory %s",
+				warnx("Unable to open the directory %s",
 				    path);
 				continue;
 			}
@@ -305,7 +305,7 @@ exec_clean(int argc, char **argv)
 	cachedir = pkg_get_cachedir();
 	cachefd = pkg_get_cachedirfd();
 	if (cachefd == -1) {
-		warn("Impossible to open %s", cachedir);
+		warn("Unable to open %s", cachedir);
 		return (errno == ENOENT ? EXIT_SUCCESS : EXIT_FAILURE);
 	}
 

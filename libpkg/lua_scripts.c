@@ -156,7 +156,7 @@ cleanup:
 		killemall.rk_sig = SIGKILL;
 		killemall.rk_flags = 0;
 		if (procctl(P_PID, mypid, PROC_REAP_KILL, &killemall) != 0) {
-			pkg_errno("%s", "Fail to kill all processes");
+			pkg_errno("%s", "Failed to kill all processes");
 		}
 	}
 	procctl(P_PID, mypid, PROC_REAP_RELEASE, NULL);
@@ -187,7 +187,7 @@ pkg_lua_script_from_ucl(struct pkg *pkg, const ucl_object_t *obj, pkg_lua_script
 
 	while ((cur = ucl_iterate_object(obj, &it, true))) {
 		if (ucl_object_type(cur) != UCL_STRING) {
-			pkg_emit_error("lua scripts be strings");
+			pkg_emit_error("lua scripts must be strings");
 			return (EPKG_FATAL);
 		}
 		vec_push(&pkg->lua_scripts[type], xstrdup(ucl_object_tostring(cur)));

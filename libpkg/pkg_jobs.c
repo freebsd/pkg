@@ -259,7 +259,7 @@ pkg_jobs_add(struct pkg_jobs *j, match_t match, char **argv, int argc)
 
 	if (j->solved) {
 		pkg_emit_error("The job has already been solved. "
-		    "Impossible to append new elements");
+		    "Unable to append new elements");
 		return (EPKG_FATAL);
 	}
 

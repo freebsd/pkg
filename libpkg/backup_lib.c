@@ -137,7 +137,7 @@ backup_library(struct pkgdb *db, struct pkg *p, const char *path)
 
 	if (mkdirat(p->rootfd, RELATIVE_PATH(ctx.backup_library_path), 0755) == -1) {
 		if (!mkdirat_p(p->rootfd, RELATIVE_PATH(ctx.backup_library_path))) {
-			pkg_emit_errno("Impossible to create the library backup "
+			pkg_emit_errno("Unable to create the library backup "
 			    "directory", ctx.backup_library_path);
 			close(from);
 			return;
@@ -146,7 +146,7 @@ backup_library(struct pkgdb *db, struct pkg *p, const char *path)
 	backupdir = openat(p->rootfd, RELATIVE_PATH(ctx.backup_library_path),
 	    O_DIRECTORY);
 	if (backupdir == -1) {
-		pkg_emit_error("Impossible to open the library backup "
+		pkg_emit_error("Unable to open the library backup "
 		    "directory %s", ctx.backup_library_path);
 		goto out;
 	}
@@ -159,7 +159,7 @@ backup_library(struct pkgdb *db, struct pkg *p, const char *path)
 	unlinkat(backupdir, libname, 0);
 	to = openat(backupdir, libname, O_EXCL|O_CREAT|O_WRONLY, 0644);
 	if (to == -1) {
-		pkg_emit_errno("Impossible to create the backup library", libname);
+		pkg_emit_errno("Unable to create the backup library", libname);
 		goto out;
 	}
 
@@ -175,7 +175,7 @@ backup_library(struct pkgdb *db, struct pkg *p, const char *path)
 	}
 
 out:
-	pkg_emit_errno("Fail to backup the library", libname);
+	pkg_emit_errno("Failed to backup the library", libname);
 	if (backupdir >= 0)
 		close(backupdir);
 	if (from >= 0)

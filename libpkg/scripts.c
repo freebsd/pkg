@@ -262,7 +262,7 @@ cleanup:
 		killemall.rk_flags = 0;
 		if (procctl(P_PID, mypid, PROC_REAP_KILL, &killemall) != 0) {
 			if (errno != ESRCH || killemall.rk_killed != 0 ) {
-				pkg_errno("%s", "Fail to kill all processes");
+				pkg_errno("%s", "Failed to kill all processes");
 			}
 		}
 	}

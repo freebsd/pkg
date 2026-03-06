@@ -240,7 +240,7 @@ attempt_to_merge(int rootfd, struct pkg_config_file *rcf, struct pkg *local,
 	newconf = xstring_new();
 	if (merge_3way(lcf->content, localconf, rcf->content, newconf) != 0) {
 		xstring_free(newconf);
-		pkg_emit_error("Impossible to merge configuration file: %s", rcf->path);
+		pkg_emit_error("Unable to merge configuration file: %s", rcf->path);
 	} else {
 		char *conf = xstring_get(newconf);
 		rcf->newcontent = conf;
@@ -259,7 +259,7 @@ set_chflags(int fd, const char *path, u_long fflags)
 	if (fflags == 0)
 		return (EPKG_OK);
 	if (chflagsat(fd, RELATIVE_PATH(path), fflags, AT_SYMLINK_NOFOLLOW) == -1) {
-		pkg_fatal_errno("Fail to chflags %s", path);
+		pkg_fatal_errno("Failed to chflags %s", path);
 	}
 #endif
 	return (EPKG_OK);
@@ -275,7 +275,7 @@ set_attrsat(int fd, const char *path, mode_t perm, uid_t uid, gid_t gid,
 	times[1] = *mts;
 	if (utimensat(fd, RELATIVE_PATH(path), times,
 	    AT_SYMLINK_NOFOLLOW) == -1 && errno != EOPNOTSUPP){
-		pkg_fatal_errno("Fail to set time on %s", path);
+		pkg_fatal_errno("Failed to set time on %s", path);
 	}
 
 	if (getenv("INSTALL_AS_USER") == NULL) {
@@ -283,11 +283,11 @@ set_attrsat(int fd, const char *path, mode_t perm, uid_t uid, gid_t gid,
 				AT_SYMLINK_NOFOLLOW) == -1) {
 			if (errno == ENOTSUP) {
 				if (fchownat(fd, RELATIVE_PATH(path), uid, gid, 0) == -1) {
-					pkg_fatal_errno("Fail to chown(fallback) %s", path);
+					pkg_fatal_errno("Failed to chown(fallback) %s", path);
 				}
 			}
 			else {
-				pkg_fatal_errno("Fail to chown %s", path);
+				pkg_fatal_errno("Failed to chown %s", path);
 			}
 		}
 	}
@@ -307,16 +307,16 @@ set_attrsat(int fd, const char *path, mode_t perm, uid_t uid, gid_t gid,
 			 * thus cosmetic, just skip them on these systems.
 			 */
 			if (fstatat(fd, RELATIVE_PATH(path), &st, AT_SYMLINK_NOFOLLOW) == -1) {
-				pkg_fatal_errno("Fail to get file status %s", path);
+				pkg_fatal_errno("Failed to get file status %s", path);
 			}
 			if (!S_ISLNK(st.st_mode)) {
 				if (fchmodat(fd, RELATIVE_PATH(path), perm, 0) == -1) {
-					pkg_fatal_errno("Fail to chmod(fallback) %s", path);
+					pkg_fatal_errno("Failed to chmod(fallback) %s", path);
 				}
 			}
 		}
 		else {
-			pkg_fatal_errno("Fail to chmod %s", path);
+			pkg_fatal_errno("Failed to chmod %s", path);
 		}
 	}
 
@@ -413,29 +413,29 @@ create_dir(struct pkg_add_context *context, struct pkg_dir *d,
 	if (fstatat(fd, RELATIVE_PATH(path), &st, 0) == -1) {
 		if (errno != ENOENT) {
 			close_tempdir(tmpdir);
-			pkg_fatal_errno("Fail to stat directory %s", d->path);
+			pkg_fatal_errno("Failed to stat directory %s", d->path);
 		}
 		/* path is a dangling symlink. */
 		error = unlinkat(fd, RELATIVE_PATH(path), 0);
 		if (error != 0) {
 			close_tempdir(tmpdir);
-			pkg_fatal_errno("Fail to unlink dangling symlink %s",
+			pkg_fatal_errno("Failed to unlink dangling symlink %s",
 			    d->path);
 		}
 		if (mkdirat(fd, RELATIVE_PATH(path), 0755) == -1) {
 			if (tmpdir != NULL) {
 				close_tempdir(tmpdir);
 				pkg_fatal_errno(
-				    "Fail to create directory %s/%s",
+				    "Failed to create directory %s/%s",
 				    tmpdir->temp, path);
 			} else {
-				pkg_fatal_errno("Fail to create directory %s",
+				pkg_fatal_errno("Failed to create directory %s",
 				    path);
 			}
 		}
 		if (fstatat(fd, RELATIVE_PATH(path), &st, 0) == -1) {
 			close_tempdir(tmpdir);
-			pkg_fatal_errno("Fail to stat directory %s", d->path);
+			pkg_fatal_errno("Failed to stat directory %s", d->path);
 		}
 	}
 
@@ -515,7 +515,7 @@ create_symlinks(struct pkg_add_context *context, struct pkg_file *f, const char 
 	}
 	if (tmpdir == NULL) {
 		if (f->temppath == NULL) {
-			pkg_emit_error("Fail to create symlink %s: "
+			pkg_emit_error("Failed to create symlink %s: "
 			    "no temporary path", f->path);
 			return (EPKG_FATAL);
 		}
@@ -536,7 +536,7 @@ retry:
 			goto retry;
 		}
 
-		pkg_fatal_errno("Fail to create symlink: %s", path);
+		pkg_fatal_errno("Failed to create symlink: %s", path);
 	}
 
 	if (set_attrsat(fd, path, f->perm, f->uid, f->gid,
@@ -629,7 +629,7 @@ create_hardlink(struct pkg_add_context *context, struct pkg_file *f, const char 
 	if (tmpdir == NULL) {
 		if (f->temppath == NULL) {
 			close_tempdir(tmpdir);
-			pkg_emit_error("Fail to create hardlink %s: "
+			pkg_emit_error("Failed to create hardlink %s: "
 			    "no temporary path", f->path);
 			return (EPKG_FATAL);
 		}
@@ -643,7 +643,7 @@ create_hardlink(struct pkg_add_context *context, struct pkg_file *f, const char 
 	if (tmphdir == NULL) {
 		if (fh->temppath == NULL) {
 			close_tempdir(tmpdir);
-			pkg_emit_error("Fail to create hardlink %s -> %s: "
+			pkg_emit_error("Failed to create hardlink %s -> %s: "
 			    "no temporary path for source", f->path, path);
 			return (EPKG_FATAL);
 		}
@@ -669,7 +669,7 @@ retry:
 
 		close_tempdir(tmpdir);
 		close_tempdir(tmphdir);
-		pkg_fatal_errno("Fail to create hardlink: %s <-> %s", pathfrom, pathto);
+		pkg_fatal_errno("Failed to create hardlink: %s <-> %s", pathfrom, pathto);
 	}
 	close_tempdir(tmpdir);
 	close_tempdir(tmphdir);
@@ -745,7 +745,7 @@ create_regfile(struct pkg_add_context *context, struct pkg_file *f, struct archi
 	} else if (f->temppath != NULL) {
 		fd = open_tempfile(context->rootfd, f->temppath, f->perm);
 	} else {
-		pkg_emit_error("Fail to create temporary file for %s", f->path);
+		pkg_emit_error("Failed to create temporary file for %s", f->path);
 		return (EPKG_FATAL);
 	}
 	if (fd == -2) {
@@ -756,9 +756,9 @@ create_regfile(struct pkg_add_context *context, struct pkg_file *f, struct archi
 	if (fd == -1) {
 		if (tmpdir != NULL) {
 			close_tempdir(tmpdir);
-			pkg_fatal_errno("Fail to create temporary file '%s/%s' for %s", tmpdir->name, f->path + tmpdir->len, f->path);
+			pkg_fatal_errno("Failed to create temporary file '%s/%s' for %s", tmpdir->name, f->path + tmpdir->len, f->path);
 		}
-		pkg_fatal_errno("Fail to create temporary file for %s", f->path);
+		pkg_fatal_errno("Failed to create temporary file for %s", f->path);
 	}
 
 	if (fromfd == -1) {
@@ -789,21 +789,21 @@ create_regfile(struct pkg_add_context *context, struct pkg_file *f, struct archi
 			if (ftruncate(fd, archive_entry_size(ae)) == -1) {
 				close(fd);
 				close_tempdir(tmpdir);
-				pkg_fatal_errno("Fail to truncate file: %s", f->path);
+				pkg_fatal_errno("Failed to truncate file: %s", f->path);
 			}
 		}
 
 		if (!f->config && archive_read_data_into_fd(a, fd) != ARCHIVE_OK) {
 			close(fd);
 			close_tempdir(tmpdir);
-			pkg_emit_error("Fail to extract %s from package: %s",
+			pkg_emit_error("Failed to extract %s from package: %s",
 			    f->path, archive_error_string(a));
 			return (EPKG_FATAL);
 		}
 	} else {
 		while ((len = read(fromfd, buf, sizeof(buf))) > 0)
 			if (write(fd, buf, len) == -1) {
-				pkg_errno("Fail to write file: %s", f->temppath);
+				pkg_errno("Failed to write file: %s", f->temppath);
 			}
 	}
 	if (fd != -1)
@@ -992,7 +992,7 @@ pkg_extract_finalize(struct pkg *pkg, tempdirs_t *tempdirs)
 			struct tempdir *t = tempdirs->d[i];
 			if (renameat(pkg->rootfd, RELATIVE_PATH(t->temp),
 			    pkg->rootfd, RELATIVE_PATH(t->name)) != 0) {
-				pkg_fatal_errno("Fail to rename %s -> %s",
+				pkg_fatal_errno("Failed to rename %s -> %s",
 				    t->temp, t->name);
 			}
 			free(t);
@@ -1044,7 +1044,7 @@ pkg_extract_finalize(struct pkg *pkg, tempdirs_t *tempdirs)
 			snprintf(pkgnew, sizeof(pkgnew), "%s.pkgnew", f->path);
 			if (renameat(pkg->rootfd, RELATIVE_PATH(f->temppath),
 			    pkg->rootfd, RELATIVE_PATH(pkgnew)) == -1) {
-				pkg_fatal_errno("Fail to rename %s -> %s",
+				pkg_fatal_errno("Failed to rename %s -> %s",
 				    f->temppath, fto);
 			}
 			pkg_emit_notice("Cannot install %s, "
@@ -1639,14 +1639,14 @@ pkg_add_group(struct pkg *pkg)
 	hidden_tempfile(temp, MAXPATHLEN, pkg->name);
 	int fd = openat(gfd, temp, O_CREAT|O_EXCL|O_WRONLY, 0644);
 	if (fd == -1) {
-		pkg_emit_errno("impossible to create group file %s", pkg->name);
+		pkg_emit_errno("Unable to create group file %s", pkg->name);
 		return (EPKG_FATAL);
 	}
 	pkg_group_dump(fd, pkg);
 	close(fd);
 	if (renameat(gfd, temp, gfd, pkg->name) == -1) {
 		unlinkat(gfd, temp, 0);
-		pkg_emit_errno("impossible to create group file %s", pkg->name);
+		pkg_emit_errno("Unable to create group file %s", pkg->name);
 		return (EPKG_FATAL);
 	}
 	return (EPKG_OK);
@@ -1797,7 +1797,7 @@ pkg_add_fromdir(struct pkg *pkg, const char *src, struct pkgdb *db __unused)
 			    sizeof(target))) == -1) {
 				vec_free_and_free(&hardlinks, free);
 				close(fromfd);
-				pkg_fatal_errno("Impossible to read symlinks "
+				pkg_fatal_errno("Unable to read symlinks "
 				    "'%s'", f->path);
 			}
 			target[link_len] = '\0';
@@ -1810,7 +1810,7 @@ pkg_add_fromdir(struct pkg *pkg, const char *src, struct pkgdb *db __unused)
 			    O_RDONLY)) == -1) {
 				vec_free_and_free(&hardlinks, free);
 				close(fromfd);
-				pkg_fatal_errno("Impossible to open source file"
+				pkg_fatal_errno("Unable to open source file"
 				    " '%s'", RELATIVE_PATH(f->path));
 			}
 			path = NULL;
@@ -1934,7 +1934,7 @@ open_tempdir(struct pkg_add_context *context, const char *path)
 		t = xcalloc(1, sizeof(*t));
 		hidden_tempfile(t->temp, sizeof(t->temp), walk);
 		if (mkdirat(rootfd, RELATIVE_PATH(t->temp), 0755) == -1) {
-			pkg_errno("Fail to create temporary directory: %s", t->temp);
+			pkg_errno("Failed to create temporary directory: %s", t->temp);
 			free(t);
 			return (NULL);
 		}
@@ -1943,7 +1943,7 @@ open_tempdir(struct pkg_add_context *context, const char *path)
 		t->len = strlen(t->name);
 		t->fd = openat(rootfd, RELATIVE_PATH(t->temp), O_DIRECTORY|O_CLOEXEC);
 		if (t->fd == -1) {
-			pkg_errno("Fail to open directory %s", t->temp);
+			pkg_errno("Failed to open directory %s", t->temp);
 			free(t);
 			return (NULL);
 		}

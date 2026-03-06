@@ -524,7 +524,7 @@ connect_evpipe(const char *evpipe) {
 	if (S_ISFIFO(st.st_mode)) {
 		flag |= O_NONBLOCK;
 		if ((ctx.eventpipe = open(evpipe, flag)) == -1)
-			pkg_emit_errno("open event pipe", evpipe);
+			pkg_emit_errno("Open event pipe", evpipe);
 		return;
 	}
 
@@ -1232,7 +1232,7 @@ pkg_ini(const char *path, const char *reposdir, pkg_init_flags flags)
 	k = NULL;
 	o = NULL;
 	if (ctx.rootfd == -1 && (ctx.rootfd = open("/", O_DIRECTORY|O_RDONLY|O_CLOEXEC)) < 0) {
-		pkg_emit_error("Impossible to open /");
+		pkg_emit_error("Unable to open /");
 		return (EPKG_FATAL);
 	}
 
@@ -1880,7 +1880,7 @@ pkg_set_rootdir(const char *rootdir) {
 		close(ctx.rootfd);
 
 	if ((ctx.rootfd = open(rootdir, O_DIRECTORY|O_RDONLY|O_CLOEXEC)) < 0) {
-		pkg_emit_error("Impossible to open %s", rootdir);
+		pkg_emit_error("Unable to open %s", rootdir);
 		return (EPKG_FATAL);
 	}
 	ctx.pkg_rootdir = rootdir;

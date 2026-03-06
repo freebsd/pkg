@@ -829,7 +829,7 @@ external_keyword(struct plist *plist, char *keyword, char *line, struct file_att
 	}
 	ret = apply_keyword_file(o, plist, line, attr);
 	if (ret != EPKG_OK) {
-		pkg_emit_error("Fail to apply keyword '%s'", keyword);
+		pkg_emit_error("Failed to apply keyword '%s'", keyword);
 	}
 
 	return (ret);
@@ -1247,12 +1247,12 @@ include_plist(struct plist *p, char *name, struct file_attr *a __unused)
 
 	fd = openat(p->plistdirfd, name, O_RDONLY);
 	if (fd == -1) {
-		pkg_emit_errno("Inpossible to include", name);
+		pkg_emit_errno("Unable to include", name);
 		return (EPKG_FATAL);
 	}
 	f = fdopen(fd, "r");
 	if (f == NULL) {
-		pkg_emit_errno("Inpossible to include", name);
+		pkg_emit_errno("Unable to include", name);
 		close(fd);
 		return (EPKG_FATAL);
 	}
@@ -1278,7 +1278,7 @@ ports_parse_plist(struct pkg *pkg, const char *plist, const char *stage)
 
 	pplist->plistdirfd = open_directory_of(plist);
 	if (pplist->plistdirfd == -1) {
-		pkg_emit_error("impossible to open the directory where the plist is: %s", plist);
+		pkg_emit_error("Unable to open the directory where the plist is: %s", plist);
 		plist_free(pplist);
 		return (EPKG_FATAL);
 	}

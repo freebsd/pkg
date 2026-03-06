@@ -214,7 +214,7 @@ exec_set(int argc, char **argv)
 		depfield = PKG_SET_DEPORIGIN;
 	}
 	if (partial && ((sets & (NAME|ORIGIN)) == 0)) {
-		warnx("-p requires either -o or -n option)");
+		warnx("-p requires either -o or -n option");
 		usage_set();
 		return (EXIT_FAILURE);
 	}

@@ -267,7 +267,7 @@ http_getmirrors(struct pkg_repo *r, struct curl_repodata *cr)
 		url = curl_url();
 		if (curl_url_set(url, CURLUPART_URL, line, 0)) {
 			curl_url_cleanup(url);
-			pkg_emit_error("Invalid mirror url: '%s'", line);
+			pkg_emit_error("Invalid mirror URL: '%s'", line);
 			continue;
 		}
 		m = xmalloc(sizeof(*m));
@@ -330,7 +330,7 @@ curl_open(struct pkg_repo *repo, struct fetch_item *fi __unused)
 			urloff = 4;
 		CURLUcode c = curl_url_set(cr->url, CURLUPART_URL, repo->url + urloff, 0);
 		if (c) {
-			pkg_emit_error("impossible to parse url: '%s'", repo->url);
+			pkg_emit_error("Unable to parse URL: '%s'", repo->url);
 			return (EPKG_FATAL);
 		}
 
@@ -358,7 +358,7 @@ curl_open(struct pkg_repo *repo, struct fetch_item *fi __unused)
 		cr->url = curl_url();
 		CURLUcode c = curl_url_set(cr->url, CURLUPART_URL, repo->url, 0);
 		if (c) {
-			pkg_emit_error("impossible to parse url: '%s'", repo->url);
+			pkg_emit_error("Unable to parse URL: '%s'", repo->url);
 			return (EPKG_FATAL);
 		}
 		repo->http = http_getmirrors(repo, cr);
@@ -556,7 +556,7 @@ do_retry:
 		fi->mtime = t;
 	} else if (response_code != 304 && retcode != EPKG_FATAL &&
 	    retcode != EPKG_CANCEL && retcode != EPKG_ENOENT) {
-		pkg_emit_error("Impossible to get the value from Last-Modified"
+		pkg_emit_error("Unable to get the value from Last-Modified"
 		    " HTTP header");
 		fi->mtime = 0;
 	}

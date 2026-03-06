@@ -850,7 +850,7 @@ mkdirat_p(int fd, const char *path)
 				strlcat(pathdone, "/", sizeof(pathdone));
 				continue;
 			}
-			pkg_errno("Fail to create /%s", pathdone);
+			pkg_errno("Failed to create /%s", pathdone);
 			return (false);
 		}
 		strlcat(pathdone, "/", sizeof(pathdone));
