@@ -295,14 +295,8 @@ exec_set(int argc, char **argv)
 			goto cleanup;
 		}
 
-		if (pkgdb_it_next(it, &pkg, PKG_LOAD_BASIC) != EPKG_OK) {
+		if (pkgdb_it_next(it, &pkg, PKG_LOAD_BASIC) != EPKG_OK)
 			pkg = NULL;
-/*			fprintf(stderr, "%s not installed\n", oldorigin);
-			free(oldorigin);
-			pkgdb_it_free(it);
-			pkgdb_close(db);
-			return (EXIT_FAILURE);*/
-		}
 
 		rc = yes;
 		if (!yes) {
