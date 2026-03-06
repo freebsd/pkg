@@ -203,7 +203,7 @@ exec_unregister(int argc, char **argv)
 			goto cleanup;
 		}
 		if (!quiet) {
-			printf("%d packages requested for removal form the db: "
+			printf("%d packages requested for removal from the db: "
 			    "%d locked, %d missing\n",
 			    argc, locked_pkgs, argc - locked_pkgs);
 		}
