@@ -93,16 +93,17 @@ static void draw_progressbar(int64_t current, int64_t total);
 static void
 cleanup_handler(int dummy __unused)
 {
+	static const char msg[] = "\nsignal received, cleaning up\n";
 	struct cleanup *ev;
 
 	if (cleanup_list.len == 0)
-		return;
-	warnx("\nsignal received, cleaning up");
+		_exit(1);
+	write(STDERR_FILENO, msg, sizeof(msg) - 1);
 	vec_foreach(cleanup_list, i) {
 		ev = cleanup_list.d[i];
 		ev->cb(ev->data);
 	}
-	exit(1);
+	_exit(1);
 }
 
 static void
