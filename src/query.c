@@ -396,7 +396,22 @@ print_query(struct pkg *pkg, char *qstr, char multiline)
 		}
 		break;
 	case 'C':
-		pkg_get(pkg, PKG_ATTR_CATEGORIES, &sl);
+	case 'L':
+	case 'U':
+	case 'G':
+	case 'B':
+	case 'b':;
+		int attr;
+		switch (multiline) {
+		case 'C': attr = PKG_ATTR_CATEGORIES; break;
+		case 'L': attr = PKG_ATTR_LICENSES; break;
+		case 'U': attr = PKG_ATTR_USERS; break;
+		case 'G': attr = PKG_ATTR_GROUPS; break;
+		case 'B': attr = PKG_ATTR_SHLIBS_REQUIRED; break;
+		case 'b': attr = PKG_ATTR_SHLIBS_PROVIDED; break;
+		default: __unreachable();
+		}
+		pkg_get(pkg, attr, &sl);
 		slit = pkg_stringlist_iterator(sl);
 		while ((str = pkg_stringlist_next(slit))) {
 			format_str(pkg, output, qstr, str);
@@ -423,56 +438,6 @@ print_query(struct pkg *pkg, char *qstr, char multiline)
 			format_str(pkg, output, qstr, dir);
 			printf("%s\n", output->buf);
 		}
-		break;
-	case 'L':
-		pkg_get(pkg, PKG_ATTR_LICENSES, &sl);
-		slit = pkg_stringlist_iterator(sl);
-		while ((str = pkg_stringlist_next(slit))) {
-			format_str(pkg, output, qstr, str);
-			printf("%s\n", output->buf);
-		}
-		free(slit);
-		free(sl);
-		break;
-	case 'U':
-		pkg_get(pkg, PKG_ATTR_USERS, &sl);
-		slit = pkg_stringlist_iterator(sl);
-		while ((str = pkg_stringlist_next(slit))) {
-			format_str(pkg, output, qstr, str);
-			printf("%s\n", output->buf);
-		}
-		free(slit);
-		free(sl);
-		break;
-	case 'G':
-		pkg_get(pkg, PKG_ATTR_GROUPS, &sl);
-		slit = pkg_stringlist_iterator(sl);
-		while ((str = pkg_stringlist_next(slit))) {
-			format_str(pkg, output, qstr, str);
-			printf("%s\n", output->buf);
-		}
-		free(slit);
-		free(sl);
-		break;
-	case 'B':
-		pkg_get(pkg, PKG_ATTR_SHLIBS_REQUIRED, &sl);
-		slit = pkg_stringlist_iterator(sl);
-		while ((str = pkg_stringlist_next(slit))) {
-			format_str(pkg, output, qstr, str);
-			printf("%s\n", output->buf);
-		}
-		free(slit);
-		free(sl);
-		break;
-	case 'b':
-		pkg_get(pkg, PKG_ATTR_SHLIBS_PROVIDED, &sl);
-		slit = pkg_stringlist_iterator(sl);
-		while ((str = pkg_stringlist_next(slit))) {
-			format_str(pkg, output, qstr, str);
-			printf("%s\n", output->buf);
-		}
-		free(slit);
-		free(sl);
 		break;
 	case 'A':
 		pkg_get(pkg, PKG_ATTR_ANNOTATIONS, &kl);
