@@ -169,8 +169,9 @@ exec_add(int argc, char **argv)
 			   testing for that at the moment */
 
 			if (!STREQ(file, "-") && access(file, F_OK) != 0) {
+				int saved_errno = errno;
 				warn("%s", file);
-				if (errno == ENOENT)
+				if (saved_errno == ENOENT)
 					warnx("Was 'pkg install %s' meant?", file);
 				fprintf(failedpkgs->fp, "%s", argv[i]);
 				if (i != argc - 1)
