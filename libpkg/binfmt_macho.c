@@ -42,6 +42,7 @@
 #include <unistd.h>
 
 #include <bsd_compat.h>
+#include <xmalloc.h>
 #include "private/binfmt_macho.h"
 
 /**
@@ -195,7 +196,7 @@ read_min_version(const int fd, const bool swap, const uint32_t loadcmd,
 {
 	ssize_t n = 0, x;
 
-	*dest = malloc(sizeof(build_version_t));
+	*dest = xmalloc(sizeof(build_version_t));
 	(*dest)->ntools = 0;
 	switch (loadcmd) {
 	case LC_VERSION_MIN_IPHONEOS:
@@ -230,7 +231,7 @@ read_path(const int fd, const bool swap, const uint32_t loadcmdsize,
 		return x;
 	}
 	n += name_ofs - 12;
-	*dest = malloc(loadcmdsize - name_ofs + 1);
+	*dest = xmalloc(loadcmdsize - name_ofs + 1);
 	if ((x = read_fully(fd, loadcmdsize - name_ofs, *dest)) < 0) {
 		free(*dest);
 		*dest = 0;
@@ -262,7 +263,7 @@ read_dylib(const int fd, const bool swap, const uint32_t loadcmdsize,
 	}
 	n += name_ofs - 24;
 
-	*dest = malloc(sizeof(dylib_t) + loadcmdsize - name_ofs + 1);
+	*dest = xmalloc(sizeof(dylib_t) + loadcmdsize - name_ofs + 1);
 	(*dest)->timestamp = timestamp;
 	(*dest)->current_version = current_version;
 	(*dest)->compatibility_version = compatibility_version;
@@ -291,7 +292,7 @@ read_build_version(const int fd, const bool swap, build_version_t **dest)
 	READ(version, sdk);
 	READ(u32, ntools);
 
-	*dest = malloc(
+	*dest = xmalloc(
 	    sizeof(build_version_t) + ntools * sizeof(tool_version_t));
 	(*dest)->platform = platform;
 	(*dest)->minos = minos;
@@ -360,7 +361,7 @@ read_macho_file(const int fd, macho_file_t **dest)
 	case FAT_CIGAM:
 	case FAT_CIGAM_64:
 		READ(u32, nfat_arch);
-		*dest = malloc(
+		*dest = xmalloc(
 		    sizeof(macho_file_t) + nfat_arch * sizeof(fat_arch_t));
 		(*dest)->magic = magic;
 		(*dest)->narch = nfat_arch;
@@ -382,7 +383,7 @@ read_macho_file(const int fd, macho_file_t **dest)
 	case MH_CIGAM:
 	case MH_CIGAM_64:
 		nfat_arch = 1;
-		*dest = malloc(
+		*dest = xmalloc(
 		    sizeof(macho_file_t) + nfat_arch * sizeof(fat_arch_t));
 		(*dest)->magic = magic;
 		(*dest)->narch = nfat_arch;
