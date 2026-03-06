@@ -465,9 +465,7 @@ expand_aliases(int argc, char ***argv)
 	spaces = pkg_utils_count_spaces(alias_value);
 	arglen = strlen(alias_value) + 1;
 	veclen = sizeof(char *) * (spaces + argc + 1);
-	buf = malloc(veclen + arglen);
-	if (buf == NULL)
-		err(EXIT_FAILURE, "expanding aliases");
+	buf = xmalloc(veclen + arglen);
 
 	newargv = (char **) buf;
 	args = (char *) (buf + veclen);

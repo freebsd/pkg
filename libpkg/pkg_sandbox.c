@@ -49,6 +49,7 @@
 # endif
 #endif
 
+#include <xmalloc.h>
 #include "pkg.h"
 
 int
@@ -140,20 +141,12 @@ pkg_handle_sandboxed_get_string(pkg_sandbox_cb func, char **result, int64_t *len
 		 * We use blocking IO here as if the child is terminated we would have
 		 * EINTR here
 		 */
-		buf = malloc(BUFSIZ);
-		if (buf == NULL) {
-			warn("malloc failed");
-			return (EPKG_FATAL);
-		}
+		buf = xmalloc(BUFSIZ);
 		allocated_len = BUFSIZ;
 		do {
 			if (off >= allocated_len) {
 				allocated_len *= 2;
-				buf = realloc(buf, allocated_len);
-				if (buf == NULL) {
-					warn("realloc failed");
-					return (EPKG_FATAL);
-				}
+				buf = xrealloc(buf, allocated_len);
 			}
 
 			r = read(pair[1], buf + off, allocated_len - off);

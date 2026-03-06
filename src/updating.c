@@ -21,6 +21,7 @@
 #include <ctype.h>
 #include <regex.h>
 
+#include <xmalloc.h>
 #include "pkgcli.h"
 
 struct regex_cache {
@@ -53,9 +54,7 @@ convert_re(const char *src)
 	char *q;
 	bool brace_flag = false;
 	size_t len = strlen(src);
-	char *buf = malloc(len*2+1);
-	if (buf == NULL)
-		return NULL;
+	char *buf = xmalloc(len*2+1);
 
 	for (p=src, q=buf; p < src+len; p++) {
 		switch (*p) {
@@ -103,9 +102,7 @@ matcher(const char *affects, const char *origin, bool ignorecase)
 	vec_t(struct regex_cache *) cache = vec_init();
 
 	len = strlen(affects);
-	buf = strdup(affects);
-	if (buf == NULL)
-		return 0;
+	buf = xstrdup(affects);
 
 	for (count = 0, was_spc = true, p = buf; p < buf + len ; p++) {
 		if (isspace(*p)) {
@@ -120,11 +117,7 @@ matcher(const char *affects, const char *origin, bool ignorecase)
 		}
 	}
 
-	words = malloc(sizeof(char*)*count);
-	if (words == NULL) {
-		free(buf);
-		return 0;
-	}
+	words = xmalloc(sizeof(char*)*count);
 
 	for (i = 0, was_spc = true, p = buf; p < buf + len ; p++) {
 		if (*p == '\0') {
@@ -176,15 +169,8 @@ matcher(const char *affects, const char *origin, bool ignorecase)
 			}
 		}
 		if (found == 0) {
-			if ((ent = malloc(sizeof(struct regex_cache))) == NULL) {
-				ret = 0;
-				goto out;
-			}
-			if ((ent->pattern = strdup(words[i])) == NULL) {
-				regex_cache_free(ent);
-				ret = 0;
-				goto out;
-			}
+			ent = xmalloc(sizeof(struct regex_cache));
+			ent->pattern = xstrdup(words[i]);
 			re = convert_re(words[i]);
 			if (re == NULL) {
 				regex_cache_free(ent);
@@ -317,7 +303,7 @@ exec_updating(int argc, char **argv)
 		}
 	} else {
 		while (*argv) {
-			char *orig = strdup(*argv);
+			char *orig = xstrdup(*argv);
 			vec_push(&origins, orig);
 			argv++;
 		}
@@ -326,7 +312,7 @@ exec_updating(int argc, char **argv)
 	while (getline(&line, &linecap, fd) > 0) {
 		if (strspn(line, "0123456789:") == 9) {
 			free(dateline);
-			dateline = strdup(line);
+			dateline = xstrdup(line);
 			found = 0;
 			head = 1;
 		} else if (head == 0) {

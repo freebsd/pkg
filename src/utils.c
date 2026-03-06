@@ -826,12 +826,7 @@ set_jobs_summary_pkg(struct pkg_jobs *jobs, struct pkg *new_pkg,
 	if (old_pkg != NULL)
 		pkg_get(old_pkg, PKG_ATTR_FLATSIZE, &oldflatsize);
 
-	it = malloc(sizeof (*it));
-	if (it == NULL) {
-		fprintf(stderr, "malloc failed for "
-				"pkg_solved_display: %s", strerror (errno));
-		return;
-	}
+	it = xmalloc(sizeof (*it));
 	it->new = new_pkg;
 	it->old = old_pkg;
 	it->solved_type = type;

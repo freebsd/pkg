@@ -241,7 +241,7 @@ lua_meta(lua_State *L,
 	int ret;
 	luaL_argcheck(L, n == 1, n > 1 ? 2 : n,
 	    "takes exactly one argument");
-	char *str = strdup(luaL_checkstring(L, 1));
+	char *str = xstrdup(luaL_checkstring(L, 1));
 	lua_getglobal(L, "plist");
 	struct plist *p = lua_touserdata(L, -1);
 	lua_getglobal(L, "attrs");

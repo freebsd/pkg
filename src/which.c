@@ -135,11 +135,7 @@ exec_which(int argc, char **argv)
 					goto cleanup;
 				}
 
-				p = malloc(pathlen);
-				if (p == NULL) {
-					retcode = EXIT_FAILURE;
-					goto cleanup;
-				}
+				p = xmalloc(pathlen);
 				strlcpy(p, path, pathlen);
 
 				match = NULL;

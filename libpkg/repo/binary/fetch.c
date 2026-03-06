@@ -277,15 +277,13 @@ cleanup:
 		(void)pkg_repo_binary_create_symlink(pkg, dest, dir);
 	}
 	else if (mirror && symlink && dir != NULL) {
-		alldir = strdup(dir);
-		if (alldir != NULL) {
-			char *hashed = strstr(alldir, "/Hashed");
-			if (hashed != NULL) {
-				*hashed = '\0';
-				(void)pkg_repo_binary_create_symlink(pkg, dest, alldir);
-			}
-			free(alldir);
+		alldir = xstrdup(dir);
+		char *hashed = strstr(alldir, "/Hashed");
+		if (hashed != NULL) {
+			*hashed = '\0';
+			(void)pkg_repo_binary_create_symlink(pkg, dest, alldir);
 		}
+		free(alldir);
 	}
 
 	free(dir);
