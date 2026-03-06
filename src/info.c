@@ -151,7 +151,7 @@ exec_info(int argc, char **argv)
 			opt |= INFO_MESSAGE;
 			break;
 		case 'e':
-			pkg_exists = true;;
+			pkg_exists = true;
 			retcode = 1;
 			break;
 		case 'E': /* ports compatibility */
