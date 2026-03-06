@@ -337,7 +337,9 @@ pkg_repo_meta_extract_signature_fingerprints(int fd, void *ud)
 	archive_read_open_fd(a, cb->afd, 4096);
 
 	while (archive_read_next_header(a, &ae) == ARCHIVE_OK) {
-		if (pkg_repo_file_has_ext(archive_entry_pathname(ae), ".sig")) {
+		if (pkg_repo_file_has_ext(archive_entry_pathname(ae), ".sig") ||
+		    pkg_repo_file_has_ext(archive_entry_pathname(ae), ".pub")) {
+			t = pkg_repo_file_has_ext(archive_entry_pathname(ae), ".sig") ? 0 : 1;
 			snprintf(key, sizeof(key), "%.*s",
 					(int) strlen(archive_entry_pathname(ae)) - 4,
 					archive_entry_pathname(ae));
@@ -355,7 +357,6 @@ pkg_repo_meta_extract_signature_fingerprints(int fd, void *ud)
 				sigdata = memchr(type, '$', siglen - ((uint8_t *)type - sig));
 				if (sigdata != NULL) {
 					*sigdata++ = '\0';
-
 					siglen -= sigdata - sig;
 				} else {
 					/* Malformed, proceed as if no header at all. */
@@ -367,8 +368,6 @@ pkg_repo_meta_extract_signature_fingerprints(int fd, void *ud)
 			if (type == NULL)
 				type = "rsa";
 			typelen = strlen(type);
-			/* Signature type */
-			t = 0;
 			keylen = strlen(key);
 			iov[0].iov_base = &t;
 			iov[0].iov_len = sizeof(t);
@@ -379,62 +378,6 @@ pkg_repo_meta_extract_signature_fingerprints(int fd, void *ud)
 			iov[3].iov_base = &typelen;
 			iov[3].iov_len = sizeof(typelen);
 			iov[4].iov_base = __DECONST(void *, type);
-			iov[4].iov_len = typelen;
-			iov[5].iov_base = &siglen;
-			iov[5].iov_len = sizeof(siglen);
-			iov[6].iov_base = sigdata;
-			iov[6].iov_len = siglen;
-			if (writev(fd, iov, NELEM(iov)) == -1) {
-				pkg_emit_errno("pkg_repo_meta_extract_signature",
-						"writev failed");
-				free(sig);
-				return (EPKG_FATAL);
-			}
-			free(sig);
-			rc = EPKG_OK;
-		}
-		else if (pkg_repo_file_has_ext(archive_entry_pathname(ae), ".pub")) {
-			snprintf(key, sizeof(key), "%.*s",
-					(int) strlen(archive_entry_pathname(ae)) - 4,
-					archive_entry_pathname(ae));
-			type = NULL;
-			siglen = archive_entry_size(ae);
-			sigdata = sig = xmalloc(siglen);
-			if (archive_read_data(a, sig, siglen) == -1) {
-				pkg_emit_errno("pkg_repo_meta_extract_signature",
-						"archive_read_data failed");
-				free(sig);
-				return (EPKG_FATAL);
-			}
-			if (strncmp(sig, PKGSIGN_HEAD, strlen(PKGSIGN_HEAD)) == 0) {
-				type = sig + strlen(PKGSIGN_HEAD);
-				sigdata = memchr(type, '$', siglen - ((uint8_t *)type - sig));
-				if (sigdata != NULL) {
-					*sigdata++ = '\0';
-
-					siglen -= sigdata - sig;
-				} else {
-					/* Malformed, proceed as if no header at all. */
-					type = NULL;
-					sigdata = sig;
-				}
-			}
-
-			if (type == NULL)
-				type = "rsa";
-			typelen = strlen(type);
-			/* Pubkey type */
-			t = 1;
-			keylen = strlen(key);
-			iov[0].iov_base = &t;
-			iov[0].iov_len = sizeof(t);
-			iov[1].iov_base = &keylen;
-			iov[1].iov_len = sizeof(keylen);
-			iov[2].iov_base = key;
-			iov[2].iov_len = keylen;
-			iov[3].iov_base = &typelen;
-			iov[3].iov_len = sizeof(typelen);
-			iov[4].iov_base = __DECONST(char *, type);
 			iov[4].iov_len = typelen;
 			iov[5].iov_base = &siglen;
 			iov[5].iov_len = sizeof(siglen);
