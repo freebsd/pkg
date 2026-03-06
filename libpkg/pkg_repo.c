@@ -123,24 +123,6 @@ pkg_repo_fetch_remote_tmp(struct pkg_repo *repo,
 }
 
 static bool
-pkg_repo_file_has_ext(const char *path, const char *ext)
-{
-	size_t n, l;
-	const char *p = NULL;
-
-	n = strlen(path);
-	l = strlen(ext);
-	if (l > n)
-		return (false);
-	p = &path[n - l];
-
-	if (STREQ(p, ext))
-		return (true);
-
-	return (false);
-}
-
-static bool
 pkg_repo_check_fingerprint(struct pkg_repo *repo, pkghash *sc, bool fatal)
 {
 	char *hash;
@@ -337,9 +319,9 @@ pkg_repo_meta_extract_signature_fingerprints(int fd, void *ud)
 	archive_read_open_fd(a, cb->afd, 4096);
 
 	while (archive_read_next_header(a, &ae) == ARCHIVE_OK) {
-		if (pkg_repo_file_has_ext(archive_entry_pathname(ae), ".sig") ||
-		    pkg_repo_file_has_ext(archive_entry_pathname(ae), ".pub")) {
-			t = pkg_repo_file_has_ext(archive_entry_pathname(ae), ".sig") ? 0 : 1;
+		if (str_ends_with(archive_entry_pathname(ae), ".sig") ||
+		    str_ends_with(archive_entry_pathname(ae), ".pub")) {
+			t = str_ends_with(archive_entry_pathname(ae), ".sig") ? 0 : 1;
 			snprintf(key, sizeof(key), "%.*s",
 					(int) strlen(archive_entry_pathname(ae)) - 4,
 					archive_entry_pathname(ae));
