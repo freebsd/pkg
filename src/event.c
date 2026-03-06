@@ -490,12 +490,10 @@ event_callback(void *data, struct pkg_event *ev)
 	case PKG_EVENT_EXTRACT_BEGIN:
 		if (quiet)
 			break;
-		else {
-			job_status_begin(msg_buf);
-			pkg = ev->e_install_begin.pkg;
-			pkg_fprintf(msg_buf->fp, "Extracting %n-%v", pkg, pkg);
-			fflush(msg_buf->fp);
-		}
+		job_status_begin(msg_buf);
+		pkg = ev->e_install_begin.pkg;
+		pkg_fprintf(msg_buf->fp, "Extracting %n-%v", pkg, pkg);
+		fflush(msg_buf->fp);
 		break;
 	case PKG_EVENT_EXTRACT_FINISHED:
 		break;
@@ -554,12 +552,10 @@ event_callback(void *data, struct pkg_event *ev)
 	case PKG_EVENT_DELETE_FILES_BEGIN:
 		if (quiet)
 			break;
-		else {
-			job_status_begin(msg_buf);
-			pkg = ev->e_install_begin.pkg;
-			pkg_fprintf(msg_buf->fp, "Deleting files for %n-%v",
-			    pkg, pkg);
-		}
+		job_status_begin(msg_buf);
+		pkg = ev->e_install_begin.pkg;
+		pkg_fprintf(msg_buf->fp, "Deleting files for %n-%v",
+		    pkg, pkg);
 		break;
 	case PKG_EVENT_DELETE_FILES_FINISHED:
 		break;
