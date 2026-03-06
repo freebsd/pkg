@@ -329,36 +329,36 @@ format_str(struct pkg *pkg, xstring *dest, const char *qstr, const void *data)
 				pkg_fprintf(dest->fp, "%X", pkg);
 				break;
 			case '%':
-				fprintf(dest->fp, "%c", '%');
+				fputc('%', dest->fp);
 				break;
 			}
 		} else  if (qstr[0] == '\\') {
 			qstr++;
 			switch (qstr[0]) {
 			case 'n':
-				fprintf(dest->fp, "%c", '\n');
+				fputc('\n', dest->fp);
 				break;
 			case 'a':
-				fprintf(dest->fp, "%c", '\a');
+				fputc('\a', dest->fp);
 				break;
 			case 'b':
-				fprintf(dest->fp, "%c", '\b');
+				fputc('\b', dest->fp);
 				break;
 			case 'f':
-				fprintf(dest->fp, "%c", '\f');
+				fputc('\f', dest->fp);
 				break;
 			case 'r':
-				fprintf(dest->fp, "%c", '\r');
+				fputc('\r', dest->fp);
 				break;
 			case '\\':
-				fprintf(dest->fp, "%c", '\\');
+				fputc('\\', dest->fp);
 				break;
 			case 't':
-				fprintf(dest->fp, "%c", '\t');
+				fputc('\t', dest->fp);
 				break;
 			}
 		} else {
-			fprintf(dest->fp, "%c", qstr[0]);
+			fputc(qstr[0], dest->fp);
 		}
 		qstr++;
 	}
