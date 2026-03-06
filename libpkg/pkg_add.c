@@ -907,35 +907,14 @@ do_extract(struct archive *a, struct archive_entry *ae,
 			extract_cb = do_extract_regfile;
 			break;
 		case AE_IFMT:
-			pkg_emit_error("Archive contains an unsupported filetype (AE_IFMT): %s", path);
-			retcode = EPKG_FATAL;
-			goto cleanup;
-			break;
 		case AE_IFSOCK:
-			pkg_emit_error("Archive contains an unsupported filetype (AE_IFSOCK): %s", path);
-			retcode = EPKG_FATAL;
-			goto cleanup;
-			break;
 		case AE_IFCHR:
-			pkg_emit_error("Archive contains an unsupported filetype (AE_IFCHR): %s", path);
-			retcode = EPKG_FATAL;
-			goto cleanup;
-			break;
 		case AE_IFIFO:
-			pkg_emit_error("Archive contains an unsupported filetype (AE_IFIFO): %s", path);
-			retcode = EPKG_FATAL;
-			goto cleanup;
-			break;
 		case AE_IFBLK:
-			pkg_emit_error("Archive contains an unsupported filetype (AE_IFBLK): %s", path);
-			retcode = EPKG_FATAL;
-			goto cleanup;
-			break;
 		default:
 			pkg_emit_error("Archive contains an unsupported filetype (%d): %s", archive_entry_filetype(ae), path);
 			retcode = EPKG_FATAL;
 			goto cleanup;
-			break;
 		}
 
 		if (extract_cb(context, a, ae, path, local, tempdirs) != EPKG_OK) {
