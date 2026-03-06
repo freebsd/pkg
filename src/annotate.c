@@ -155,7 +155,8 @@ do_show(struct pkg *pkg, const char *tag)
 			else
 				pkg_printf("%n-%v: Tag: %S Value: %S\n",
 				    pkg, pkg, note->key, note->value);
-			return (EPKG_OK);
+			ret = EPKG_OK;
+			break;
 		}
 	}
 	free(kit);
