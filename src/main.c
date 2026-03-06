@@ -229,11 +229,9 @@ exec_help(int argc, char **argv)
 	if (plugins_enabled) {
 		vec_foreach(plugins, i) {
 			if (STREQ(plugins.d[i]->name, argv[1])) {
-				xasprintf(&manpage, "/usr/bin/man pkg-%s", plugins.d[i]->name);
-				system(manpage);
-				free(manpage);
-
-				return (0);
+				xasprintf(&manpage, "pkg-%s", plugins.d[i]->name);
+				execlp("/usr/bin/man", "man", manpage, NULL);
+				err(EXIT_FAILURE, "execlp(/usr/bin/man)");
 			}
 		}
 	}
