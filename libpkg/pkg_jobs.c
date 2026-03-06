@@ -801,88 +801,6 @@ pkg_jobs_process_remote_pkg(struct pkg_jobs *j, struct pkg *rp,
 }
 
 static int
-pkg_jobs_try_remote_candidate(struct pkg_jobs *j, const char *cond, const char *pattern, match_t m)
-{
-	struct pkg *p = NULL;
-	struct pkgdb_it *it;
-	unsigned flags = PKG_LOAD_BASIC|PKG_LOAD_OPTIONS|PKG_LOAD_DEPS|
-				PKG_LOAD_REQUIRES|PKG_LOAD_PROVIDES|
-				PKG_LOAD_SHLIBS_REQUIRED|PKG_LOAD_SHLIBS_PROVIDED|
-				PKG_LOAD_ANNOTATIONS|PKG_LOAD_CONFLICTS;
-	int rc = EPKG_FATAL;
-	xstring *qmsg = NULL;
-
-	if ((it = pkgdb_repo_query_cond2(j->db, cond, pattern, m, j->reponames)) == NULL)
-		return (EPKG_FATAL);
-
-	while (pkgdb_it_next(it, &p, flags) == EPKG_OK) {
-		xstring_renew(qmsg);
-	}
-
-
-	pkg_free(p);
-
-	xstring_free(qmsg);
-	pkgdb_it_free(it);
-
-	return (rc);
-}
-
-static int
-pkg_jobs_guess_upgrade_candidate(struct pkg_jobs *j, const char *pattern)
-{
-
-	int rc = EPKG_FATAL;
-	const char *pos, *opattern = pattern;
-	char *cpy;
-	size_t len, olen;
-
-	/* First of all, try to search a package with the same name */
-	pos = strchr(pattern, '/');
-	if (pos != NULL && pos[1] != '\0') {
-		if (pkg_jobs_try_remote_candidate(j, pos + 1, NULL, MATCH_INTERNAL)
-						== EPKG_OK)
-			return (EPKG_OK);
-
-		pos ++;
-	} else {
-		pos = pattern;
-	}
-
-	/* Figure, if we have any numbers at the end of the package */
-	olen = strlen(pos);
-	len = olen;
-	while (len > 0) {
-		if (isdigit(pos[len - 1]) || pos[len - 1] == '.')
-			len --;
-		else
-			break;
-	}
-
-	if (olen != len) {
-		/* Try exact pattern without numbers */
-		cpy = xmalloc(len + 1);
-		strlcpy(cpy, pos, len + 1);
-		if (pkg_jobs_try_remote_candidate(j, cpy, NULL, MATCH_INTERNAL) != EPKG_OK) {
-			free(cpy);
-			cpy = sqlite3_mprintf(" WHERE p.name REGEXP ('^' || %.*Q || '[0-9.]*$')",
-					len, pos);
-
-			if (pkg_jobs_try_remote_candidate(j, cpy, opattern, MATCH_ALL)
-					== EPKG_OK)
-				rc = EPKG_OK;
-			sqlite3_free(cpy);
-		}
-		else {
-			free(cpy);
-			rc = EPKG_OK;
-		}
-	}
-
-	return (rc);
-}
-
-static int
 pkg_jobs_find_upgrade(struct pkg_jobs *j, const char *pattern, match_t m)
 {
 	struct pkg *p = NULL;
@@ -951,9 +869,6 @@ pkg_jobs_find_upgrade(struct pkg_jobs *j, const char *pattern, match_t m)
 		dbg(2, "non-automatic package with pattern %s has not been found in "
 				"remote repo", pattern);
 		rc = pkg_jobs_universe_add_pkg(j->universe, p, &unit);
-		if (rc == EPKG_OK) {
-			rc = pkg_jobs_guess_upgrade_candidate(j, pattern);
-		}
 	}
 
 	return (rc);
