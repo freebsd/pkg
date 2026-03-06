@@ -445,7 +445,7 @@ exec_info(int argc, char **argv)
 		if (argc == 1 && !origin_search && !quiet && !e_flag &&
 		    match == MATCH_GLOB &&
 		    strcspn(pkgname, "*[]{}()") == strlen(pkgname) &&
-		    opt == INFO_TAG_NAMEVER && !quiet)
+		    opt == INFO_TAG_NAMEVER)
 			opt |= INFO_FULL;
 
 		query_flags = info_flags(opt, false);
