@@ -103,15 +103,15 @@ exec_repo(int argc, char **argv)
 	argc -= optind;
 	argv += optind;
 
-	pkg_repo_create_set_hash(prc, hash);
-	pkg_repo_create_set_hash_symlink(prc, hash_symlink);
-	pkg_repo_create_set_sign(prc, argv + 1, argc - 1, password_cb);
-
 	if (argc < 1) {
 		pkg_repo_create_free(prc);
 		usage_repo();
 		return (EXIT_FAILURE);
 	}
+
+	pkg_repo_create_set_hash(prc, hash);
+	pkg_repo_create_set_hash_symlink(prc, hash_symlink);
+	pkg_repo_create_set_sign(prc, argv + 1, argc - 1, password_cb);
 
 	if (argc > 2 && !STREQ(argv[1], "signing_command:")) {
 		pkg_repo_create_free(prc);
