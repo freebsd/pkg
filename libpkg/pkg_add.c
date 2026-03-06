@@ -568,7 +568,6 @@ do_extract_symlink(struct pkg_add_context *context, struct archive *a __unused,
 	}
 
 	aest = archive_entry_stat(ae);
-	archive_entry_fflags(ae, &f->fflags, &clear);
 	f->uid = get_uid_from_uname(archive_entry_uname(ae));
 	f->gid = get_gid_from_gname(archive_entry_gname(ae));
 	free(f->uname);
@@ -844,7 +843,6 @@ do_extract_regfile(struct pkg_add_context *context, struct archive *a, struct ar
 	}
 
 	aest = archive_entry_stat(ae);
-	archive_entry_fflags(ae, &f->fflags, &clear);
 	f->perm = aest->st_mode;
 	f->uid = get_uid_from_uname(archive_entry_uname(ae));
 	f->gid = get_gid_from_gname(archive_entry_gname(ae));
