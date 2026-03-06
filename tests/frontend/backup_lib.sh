@@ -6,7 +6,9 @@ tests_init \
 	basic \
 	split_upgrade \
 	depends \
-	multiple_upgrade
+	multiple_upgrade \
+	per_library_packages \
+	per_library_delete
 
 basic_body() {
 	atf_skip_on Darwin The macOS linker uses different flags
@@ -65,7 +67,7 @@ EOF
 	atf_check -o ignore \
 	    ls target/back/libempty.so.1
 	atf_check -o inline:"/back/libempty.so.1\n" \
-	    pkg -r ${TMPDIR}/target query "%Fp" test-backup-libraries
+	    pkg -r ${TMPDIR}/target query "%Fp" test-backup-libempty.so.1
 	rm foo-1.pkg
 	atf_check sh ${RESOURCEDIR}/test_subr.sh new_pkg "foo" "foo" "2"
 	atf_check pkg create -M foo.ucl
@@ -75,16 +77,21 @@ EOF
 	        -o REPOS_DIR=${TMPDIR}/reposconf -r ${TMPDIR}/target \
 	        update -f
 
-	version1=$(pkg -r ${TMPDIR}/target query "%v" test-backup-libraries)
+	version1=$(pkg -r ${TMPDIR}/target query "%v" test-backup-libempty.so.1)
 	atf_check -o ignore \
 	    pkg -o BACKUP_LIBRARY_PATH=/back/ -o BACKUP_LIBRARIES=true \
 	        -o REPOS_DIR=${TMPDIR}/reposconf -r ${TMPDIR}/target \
 	        upgrade -y
 	atf_check -o inline:"/back/libempty.so.1\n" \
-	    pkg -r ${TMPDIR}/target query "%Fp" test-backup-libraries
+	    pkg -r ${TMPDIR}/target query "%Fp" test-backup-libempty.so.1
 	atf_check -o inline:"/back/libfoo.so.1\n" \
-	    pkg -r ${TMPDIR}/target query "%Fp" foo-backup-libraries
-	version2=$(pkg -r ${TMPDIR}/target query "%v" test-backup-libraries)
+	    pkg -r ${TMPDIR}/target query "%Fp" foo-backup-libfoo.so.1
+	# Verify each backup package provides its shlib
+	atf_check -o inline:"libempty.so.1\n" \
+	    pkg -r ${TMPDIR}/target query "%b" test-backup-libempty.so.1
+	atf_check -o inline:"libfoo.so.1\n" \
+	    pkg -r ${TMPDIR}/target query "%b" foo-backup-libfoo.so.1
+	version2=$(pkg -r ${TMPDIR}/target query "%v" test-backup-libempty.so.1)
 	[ ${version2} -ge ${version1} ] || \
 	    atf_fail "the version hasn't been bumped ${version2} >= ${version1}"
 }
@@ -164,9 +171,9 @@ EOF
 	atf_check test -f ${TMPDIR}/target/back/libfoo.so.1
 	atf_check test -f ${TMPDIR}/target/back/libbar.so.1
 	atf_check -o inline:"libbar.so.1\n" \
-	    pkg -r ${TMPDIR}/target query "%b" bar-backup-libraries
+	    pkg -r ${TMPDIR}/target query "%b" bar-backup-libbar.so.1
 	atf_check -o inline:"libfoo.so.1\n" \
-	    pkg -r ${TMPDIR}/target query "%b" foo-backup-libraries
+	    pkg -r ${TMPDIR}/target query "%b" foo-backup-libfoo.so.1
 }
 
 # If a package foo provides libfoo.so.1 and a different package bar
@@ -388,10 +395,149 @@ EOF
 	# split, otherwise pkg would first upgrade baz-1->baz-3 and then there
 	# would be no need to split the bar upgrade.
 	atf_check -o ignore \
-	    -e match:"bar-backup-libraries-.* conflicts with foo-backup-libraries-.*" \
+	    -e match:"bar-backup-lib.*\.so\.1-.* conflicts with foo-backup-lib.*\.so\.1-.*" \
 	    pkg \
 	        -o REPOS_DIR=${TMPDIR}/reposconf -r ${TMPDIR}/target \
 		-o BACKUP_LIBRARIES=yes \
 		-o BACKUP_LIBRARY_PATH=/back/ \
 	        upgrade -y
+}
+
+# Verify that a package providing multiple libraries creates one separate
+# backup package per library, each containing only its own file and
+# providing only its own shlib.
+per_library_packages_body()
+{
+	atf_skip_on Darwin The macOS linker uses different flags
+
+	atf_check touch empty.c
+	atf_check cc -shared -Wl,-soname=libfoo.so.1 empty.c -o libfoo.so.1
+	atf_check cc -shared -Wl,-soname=libbar.so.1 empty.c -o libbar.so.1
+	atf_check cc -shared -Wl,-soname=libbaz.so.1 empty.c -o libbaz.so.1
+
+	atf_check sh ${RESOURCEDIR}/test_subr.sh new_pkg "multi" "multi" "1"
+	cat << EOF >> multi.ucl
+files: {
+	${TMPDIR}/libfoo.so.1: "",
+	${TMPDIR}/libbar.so.1: "",
+	${TMPDIR}/libbaz.so.1: "",
+}
+EOF
+	atf_check pkg create -M multi.ucl
+
+	# Version 2 drops all libraries
+	atf_check sh ${RESOURCEDIR}/test_subr.sh new_pkg "multi" "multi" "2"
+	atf_check pkg create -M multi.ucl
+
+	atf_check mkdir ${TMPDIR}/target ${TMPDIR}/reposconf
+
+	# Install version 1
+	atf_check \
+	    pkg -o REPOS_DIR=/dev/null -r ${TMPDIR}/target \
+	        install -qfy ${TMPDIR}/multi-1.pkg
+
+	rm multi-1.pkg
+	atf_check -o ignore pkg repo .
+	cat <<EOF > ${TMPDIR}/reposconf/repo.conf
+local: {
+	url: file://${TMPDIR},
+	enabled: true
+}
+EOF
+
+	# Upgrade to version 2: all 3 libs should be backed up
+	atf_check -o ignore \
+	    pkg -o BACKUP_LIBRARY_PATH=/back/ -o BACKUP_LIBRARIES=true \
+	        -o REPOS_DIR=${TMPDIR}/reposconf -r ${TMPDIR}/target \
+	        upgrade -y
+
+	# Verify 3 separate backup packages were created
+	atf_check -o inline:"multi-backup-libbar.so.1\nmulti-backup-libbaz.so.1\nmulti-backup-libfoo.so.1\n" \
+	    pkg -r ${TMPDIR}/target query -g "%n" "multi-backup-*"
+
+	# Each backup package has exactly one file
+	atf_check -o inline:"/back/libfoo.so.1\n" \
+	    pkg -r ${TMPDIR}/target query "%Fp" multi-backup-libfoo.so.1
+	atf_check -o inline:"/back/libbar.so.1\n" \
+	    pkg -r ${TMPDIR}/target query "%Fp" multi-backup-libbar.so.1
+	atf_check -o inline:"/back/libbaz.so.1\n" \
+	    pkg -r ${TMPDIR}/target query "%Fp" multi-backup-libbaz.so.1
+
+	# Each backup package provides only its own shlib
+	atf_check -o inline:"libfoo.so.1\n" \
+	    pkg -r ${TMPDIR}/target query "%b" multi-backup-libfoo.so.1
+	atf_check -o inline:"libbar.so.1\n" \
+	    pkg -r ${TMPDIR}/target query "%b" multi-backup-libbar.so.1
+	atf_check -o inline:"libbaz.so.1\n" \
+	    pkg -r ${TMPDIR}/target query "%b" multi-backup-libbaz.so.1
+
+	# Verify backup files exist on disk
+	atf_check test -f ${TMPDIR}/target/back/libfoo.so.1
+	atf_check test -f ${TMPDIR}/target/back/libbar.so.1
+	atf_check test -f ${TMPDIR}/target/back/libbaz.so.1
+}
+
+# Verify that individual backup packages can be deleted independently
+# without affecting the others.
+per_library_delete_body()
+{
+	atf_skip_on Darwin The macOS linker uses different flags
+
+	atf_check touch empty.c
+	atf_check cc -shared -Wl,-soname=libfoo.so.1 empty.c -o libfoo.so.1
+	atf_check cc -shared -Wl,-soname=libbar.so.1 empty.c -o libbar.so.1
+
+	atf_check sh ${RESOURCEDIR}/test_subr.sh new_pkg "test" "test" "1"
+	cat << EOF >> test.ucl
+files: {
+	${TMPDIR}/libfoo.so.1: "",
+	${TMPDIR}/libbar.so.1: "",
+}
+EOF
+	atf_check pkg create -M test.ucl
+
+	# Version 2 drops all libraries
+	atf_check sh ${RESOURCEDIR}/test_subr.sh new_pkg "test" "test" "2"
+	atf_check pkg create -M test.ucl
+
+	atf_check mkdir ${TMPDIR}/target ${TMPDIR}/reposconf
+
+	atf_check \
+	    pkg -o REPOS_DIR=/dev/null -r ${TMPDIR}/target \
+	        install -qfy ${TMPDIR}/test-1.pkg
+
+	rm test-1.pkg
+	atf_check -o ignore pkg repo .
+	cat <<EOF > ${TMPDIR}/reposconf/repo.conf
+local: {
+	url: file://${TMPDIR},
+	enabled: true
+}
+EOF
+
+	atf_check -o ignore \
+	    pkg -o BACKUP_LIBRARY_PATH=/back/ -o BACKUP_LIBRARIES=true \
+	        -o REPOS_DIR=${TMPDIR}/reposconf -r ${TMPDIR}/target \
+	        upgrade -y
+
+	# Both backup packages exist and provide their shlib
+	atf_check test -f ${TMPDIR}/target/back/libfoo.so.1
+	atf_check test -f ${TMPDIR}/target/back/libbar.so.1
+	atf_check -o inline:"libfoo.so.1\n" \
+	    pkg -r ${TMPDIR}/target query "%b" test-backup-libfoo.so.1
+	atf_check -o inline:"libbar.so.1\n" \
+	    pkg -r ${TMPDIR}/target query "%b" test-backup-libbar.so.1
+
+	# Delete only the libfoo backup
+	atf_check -o ignore \
+	    pkg -r ${TMPDIR}/target -o REPOS_DIR=/dev/null delete -qy \
+	        test-backup-libfoo.so.1
+
+	# libfoo backup is gone, libbar backup remains
+	atf_check test ! -f ${TMPDIR}/target/back/libfoo.so.1
+	atf_check test -f ${TMPDIR}/target/back/libbar.so.1
+	atf_check -s exit:1 \
+	    pkg -r ${TMPDIR}/target info -e test-backup-libfoo.so.1
+	atf_check \
+	    pkg -r ${TMPDIR}/target info -e test-backup-libbar.so.1
 }

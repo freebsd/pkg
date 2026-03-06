@@ -33,7 +33,7 @@
 #include "private/pkgdb.h"
 
 static int
-register_backup(struct pkgdb *db, struct pkg *orig, int fd, const char *path)
+register_backup(struct pkgdb *db, struct pkg *orig, int fd, const char *libname)
 {
 	struct pkgdb_it *it;
 	struct pkg *pkg = NULL;
@@ -45,10 +45,10 @@ register_backup(struct pkgdb *db, struct pkg *orig, int fd, const char *path)
 	pkghash_entry *e;
 	int retcode;
 
-	sum = pkg_checksum_generate_fileat(fd, RELATIVE_PATH(path),
+	sum = pkg_checksum_generate_fileat(fd, RELATIVE_PATH(libname),
 	    PKG_HASH_TYPE_SHA256_HEX);
 
-	(void)xasprintf(&name, "%s-backup-libraries", orig->name);
+	(void)xasprintf(&name, "%s-backup-%s", orig->name, libname);
 
 	it = pkgdb_query(db, name, MATCH_EXACT);
 	if (it != NULL) {
@@ -62,7 +62,7 @@ register_backup(struct pkgdb *db, struct pkg *orig, int fd, const char *path)
 			return (EPKG_FATAL);
 		}
 		pkg->name = name;
-		(void)xasprintf(&origin, "%s-backup", orig->origin);
+		(void)xasprintf(&origin, "%s-backup-%s", orig->origin, libname);
 		pkg->origin = origin;
 		pkg->comment = xstrdup(
 		    "Compatibility libraries saved during package upgrade");
@@ -87,12 +87,12 @@ register_backup(struct pkgdb *db, struct pkg *orig, int fd, const char *path)
 		free(name);
 		name = NULL;
 	}
-	if ((e = pkghash_get(pkg->filehash, path)) != NULL) {
+	if ((e = pkghash_get(pkg->filehash, libname)) != NULL) {
 		DL_DELETE(pkg->files, (struct pkg_file *)e->value);
 		pkg_file_free(e->value);
-		pkghash_del(pkg->filehash, path);
+		pkghash_del(pkg->filehash, libname);
 	}
-	xasprintf(&lpath, "%s/%s", ctx.backup_library_path, path);
+	xasprintf(&lpath, "%s/%s", ctx.backup_library_path, libname);
 	pkg_addfile(pkg, lpath, sum, false);
 	free(lpath);
 
