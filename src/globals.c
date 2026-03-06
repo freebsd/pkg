@@ -28,8 +28,8 @@ int yes; /* Assume always yes */
 int dry_run; /* Do not perform any actions */
 bool auto_update; /* Do not update repo */
 int force; /* Forced operation */
-int quiet; /* Silent output */
-int newpkgversion; /* New package version is available */
+bool quiet; /* Silent output */
+bool newpkgversion; /* New package version is available */
 int nbtodl;
 
 void
