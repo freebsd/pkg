@@ -1332,7 +1332,6 @@ void
 pkgdb_set_case_sensitivity(bool case_sensitive)
 {
 	ctx.case_sensitive = case_sensitive;
-	return;
 }
 
 bool
@@ -1675,7 +1674,6 @@ prstmt_finalize(struct pkgdb *db)
 		}
 	}
 	db->prstmt_initialized = false;
-	return;
 }
 
 static int
