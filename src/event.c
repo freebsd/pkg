@@ -684,22 +684,18 @@ event_callback(void *data, struct pkg_event *ev)
 		return ( ev->e_query_yesno.deft ?
 			query_yesno(true, ev->e_query_yesno.msg, "[Y/n]") :
 			query_yesno(false, ev->e_query_yesno.msg, "[y/N]") );
-		break;
 	case PKG_EVENT_QUERY_SELECT:
 		return query_select(ev->e_query_select.msg, ev->e_query_select.items,
 			ev->e_query_select.ncnt, ev->e_query_select.deft);
-		break;
 	case PKG_EVENT_SANDBOX_CALL:
 		return ( pkg_handle_sandboxed_call(ev->e_sandbox_call.call,
 				ev->e_sandbox_call.fd,
 				ev->e_sandbox_call.userdata) );
-		break;
 	case PKG_EVENT_SANDBOX_GET_STRING:
 		return ( pkg_handle_sandboxed_get_string(ev->e_sandbox_call_str.call,
 				ev->e_sandbox_call_str.result,
 				ev->e_sandbox_call_str.len,
 				ev->e_sandbox_call_str.userdata) );
-		break;
 	case PKG_EVENT_PROGRESS_START:
 		progressbar_start(ev->e_progress_start.msg);
 		break;

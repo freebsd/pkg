@@ -875,7 +875,6 @@ set_jobs_summary_pkg(struct pkg_jobs *jobs, struct pkg *new_pkg,
 		/* Ignore split-upgrade packages for display */
 		free(it);
 		return;
-		break;
 
 	case PKG_SOLVED_FETCH:
 		*newsize += pkgsize;
@@ -944,7 +943,6 @@ display_summary_item(struct pkg_solved_display *it, int64_t dlsize)
 		case PKG_SOLVED_UPGRADE_REMOVE:
 			printf("and may not be deinstalled\n");
 			return;
-			break;
 		case PKG_SOLVED_FETCH:
 			printf("but a new package can still be fetched\n");
 			break;
