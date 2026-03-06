@@ -347,7 +347,7 @@ pkg_checksum_file_get_type(const char *cksum, size_t clen __unused)
 {
 	unsigned int value;
 
-	if (strchr(cksum, PKG_CKSUM_SEPARATOR) == NULL)
+	if (cksum == NULL || strchr(cksum, PKG_CKSUM_SEPARATOR) == NULL)
 		return (PKG_HASH_TYPE_UNKNOWN);
 
 	value = strtoul(cksum, NULL, 10);
