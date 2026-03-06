@@ -489,7 +489,9 @@ exec_audit(int argc, char **argv)
 		} else {
 			ucl_object_insert_key(top, ucl_object_fromint(vuln), "pkg_count", 9, false );
 			ucl_object_insert_key(top, vuln_objs, "packages", 8, false);
-			fprintf(stdout, "%s\n", ucl_object_emit(top, raw));
+			char *output = ucl_object_emit(top, raw);
+			fprintf(stdout, "%s\n", output);
+			free(output);
 			ucl_object_unref(top);
 		}
 	} else {
