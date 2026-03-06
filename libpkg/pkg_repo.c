@@ -248,18 +248,22 @@ struct pkg_extract_cbdata {
 static int
 pkg_repo_write_sig_from_archive(struct archive *a, int fd, size_t siglen)
 {
-	char sig[siglen];
+	char *sig;
 
+	sig = xmalloc(siglen);
 	if (archive_read_data(a, sig, siglen) == -1) {
 		pkg_emit_errno("pkg_repo_meta_extract_signature",
 		    "archive_read_data failed");
+		free(sig);
 		return (EPKG_FATAL);
 	}
 	if (write(fd, sig, siglen) == -1) {
 		pkg_emit_errno("pkg_repo_meta_extract_signature",
 		    "write failed");
+		free(sig);
 		return (EPKG_FATAL);
 	}
+	free(sig);
 	return (EPKG_OK);
 }
 
