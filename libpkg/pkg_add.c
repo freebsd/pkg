@@ -152,7 +152,7 @@ merge_with_external_tool(const char *merge_tool, struct pkg_config_file *lcf,
 
 	fclose(inout[0]);
 	fclose(inout[1]);
-	for (int i = 0; i < sizeof(tmp_files); i++) {
+	for (int i = 0; i < NELEM(tmp_files); i++) {
 		unlink(tmp_files[i].path);
 	}
 
