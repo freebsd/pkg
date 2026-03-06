@@ -1119,7 +1119,7 @@ str_ends_with(const char *str, const char *end)
 	el = strlen(end);
 	if (sl < el)
 		return (false);
-	return (strncmp(str + (sl - el), end, (sl - el)) == 0);
+	return (strncmp(str + (sl - el), end, el) == 0);
 }
 
 int
