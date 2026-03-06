@@ -130,6 +130,8 @@ pkg_repo_file_has_ext(const char *path, const char *ext)
 
 	n = strlen(path);
 	l = strlen(ext);
+	if (l > n)
+		return (false);
 	p = &path[n - l];
 
 	if (STREQ(p, ext))
