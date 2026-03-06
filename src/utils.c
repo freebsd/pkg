@@ -176,17 +176,10 @@ vquery_yesno(bool deft, const char *msg, va_list ap)
 			printf("%s", out);
 		}
 		else {
-			if (errno == EINTR) {
+			if (errno == EINTR)
 				continue;
-			} else {
-				if (default_yes) {
-					r = true;
-				/* Else, assume EOF as false */
-				} else {
-					r = false;
-				}
-				break;
-			}
+			r = default_yes;
+			break;
 		}
 	}
 
