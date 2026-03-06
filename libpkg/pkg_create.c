@@ -444,7 +444,7 @@ pkg_create(struct pkg_create *pc, const char *metadata, const char *plist,
 {
 	struct pkg *pkg = NULL;
 	struct packing *pkg_archive = NULL;
-	int ret = ENOMEM;
+	int ret = EPKG_FATAL;
 
 	pkg_debug(1, "Creating package");
 	if (pkg_new(&pkg, PKG_FILE) != EPKG_OK) {
