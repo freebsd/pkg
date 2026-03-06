@@ -1804,7 +1804,6 @@ pkgdb_register_pkg(struct pkgdb *db, struct pkg *pkg, int forced,
 		    pkg_config_get("FILES_IGNORE_GLOB"),
 		    pkg_config_get("FILES_IGNORE_REGEX"))) {
 			continue;
-			printf("matched\n");
 		}
 
 		sql_arg_t args[] = {
