@@ -402,20 +402,31 @@ start_process_worker(char *const *save_argv)
 			if (child_pid == -1)
 				err(EXIT_FAILURE, "Failed to fork worker process");
 
+			/*
+			 * Ignore SIGINT in the parent while the child
+			 * is running: the child will handle it and we
+			 * just need to collect its exit status.
+			 */
+			signal(SIGINT, SIG_IGN);
 			while (waitpid(child_pid, &status, 0) == -1) {
 				if (errno != EINTR)
 					err(EXIT_FAILURE, "Child process pid=%d", (int)child_pid);
 			}
+			signal(SIGINT, SIG_DFL);
 
 			ret = WEXITSTATUS(status);
 
 			if (WIFEXITED(status) && ret != EX_NEEDRESTART)
 				break;
 			if (WIFSIGNALED(status)) {
-				/* Process got some terminating signal, hence stop the loop */
-				fprintf(stderr, "Child process pid=%d terminated abnormally: %s\n",
-						(int)child_pid, strsignal (WTERMSIG(status)));
-				ret = 128 + WTERMSIG(status);
+				int sig = WTERMSIG(status);
+				/*
+				 * Re-signal ourselves so the parent shell
+				 * sees the correct wait status instead of
+				 * pkg appearing to continue in the background.
+				 */
+				signal(sig, SIG_DFL);
+				kill(getpid(), sig);
 				break;
 			}
 		}

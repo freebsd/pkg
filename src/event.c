@@ -91,19 +91,24 @@ static const char *unit_SI[] = { " ", "k", "M", "G", "T", };
 static void draw_progressbar(int64_t current, int64_t total);
 
 static void
-cleanup_handler(int dummy __unused)
+cleanup_handler(int sig)
 {
 	static const char msg[] = "\nsignal received, cleaning up\n";
 	struct cleanup *ev;
 
-	if (cleanup_list.len == 0)
-		_exit(1);
+	if (cleanup_list.len == 0) {
+		signal(sig, SIG_DFL);
+		kill(getpid(), sig);
+		_exit(128 + sig);
+	}
 	write(STDERR_FILENO, msg, sizeof(msg) - 1);
 	vec_foreach(cleanup_list, i) {
 		ev = cleanup_list.d[i];
 		ev->cb(ev->data);
 	}
-	_exit(1);
+	signal(sig, SIG_DFL);
+	kill(getpid(), sig);
+	_exit(128 + sig);
 }
 
 static void
