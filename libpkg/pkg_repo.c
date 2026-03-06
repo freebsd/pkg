@@ -751,8 +751,9 @@ pkg_repo_archive_extract_check_archive(int fd, const char *file,
 	return (EPKG_OK);
 }
 
-int
-pkg_repo_fetch_data_fd(struct pkg_repo *repo, struct pkg_repo_content *prc)
+static int
+pkg_repo_fetch_extract_to_fd(struct pkg_repo *repo, struct pkg_repo_content *prc,
+    const char *name, int *out_fd, off_t *out_len)
 {
 	int fd;
 	const char *tmpdir;
@@ -760,11 +761,11 @@ pkg_repo_fetch_data_fd(struct pkg_repo *repo, struct pkg_repo_content *prc)
 	struct stat st;
 	int rc = EPKG_OK;
 
-	fd = pkg_repo_fetch_remote_tmp(repo, repo->meta->data, "pkg", &prc->mtime, &rc, false);
+	fd = pkg_repo_fetch_remote_tmp(repo, name, "pkg", &prc->mtime, &rc, false);
 	if (fd == -1) {
 		if (rc == EPKG_UPTODATE)
 			return (rc);
-		fd = pkg_repo_fetch_remote_tmp(repo, repo->meta->data,
+		fd = pkg_repo_fetch_remote_tmp(repo, name,
 		    packing_format_to_string(repo->meta->packing_format), &prc->mtime, &rc, false);
 		if (fd == -1)
 			return (EPKG_FATAL);
@@ -773,82 +774,46 @@ pkg_repo_fetch_data_fd(struct pkg_repo *repo, struct pkg_repo_content *prc)
 	tmpdir = getenv("TMPDIR");
 	if (tmpdir == NULL)
 		tmpdir = "/tmp";
-	snprintf(tmp, sizeof(tmp), "%s/%s.XXXXXX", tmpdir, repo->meta->data);
-	prc->data_fd = mkstemp(tmp);
-	if (prc->data_fd == -1) {
-		pkg_emit_error("Cound not create temporary file %s, "
+	snprintf(tmp, sizeof(tmp), "%s/%s.XXXXXX", tmpdir, name);
+	*out_fd = mkstemp(tmp);
+	if (*out_fd == -1) {
+		pkg_emit_error("Could not create temporary file %s, "
 		    "aborting update.\n", tmp);
 		close(fd);
 		return (EPKG_FATAL);
 	}
 
 	unlink(tmp);
-	if (pkg_repo_archive_extract_check_archive(fd, repo->meta->data, repo, prc->data_fd) != EPKG_OK) {
-		close(prc->data_fd);
+	if (pkg_repo_archive_extract_check_archive(fd, name, repo, *out_fd) != EPKG_OK) {
+		close(*out_fd);
 		close(fd);
 		return (EPKG_FATAL);
 	}
 
 	close(fd);
-	if (fstat(prc->data_fd, &st) == -1) {
-		close(prc->data_fd);
+	if (fstat(*out_fd, &st) == -1) {
+		close(*out_fd);
 		return (EPKG_FATAL);
 	}
+
+	if (out_len != NULL)
+		*out_len = st.st_size;
 
 	return (EPKG_OK);
 }
 
 int
+pkg_repo_fetch_data_fd(struct pkg_repo *repo, struct pkg_repo_content *prc)
+{
+	return (pkg_repo_fetch_extract_to_fd(repo, prc, repo->meta->data,
+	    &prc->data_fd, NULL));
+}
+
+int
 pkg_repo_fetch_remote_extract_fd(struct pkg_repo *repo, struct pkg_repo_content *prc)
 {
-	int fd;
-	const char *tmpdir;
-	char tmp[MAXPATHLEN];
-	struct stat st;
-	int rc = EPKG_OK;
-
-	fd = pkg_repo_fetch_remote_tmp(repo, repo->meta->manifests, "pkg", &prc->mtime, &rc, false);
-	if (fd == -1) {
-		if (rc == EPKG_UPTODATE)
-			return (rc);
-
-		fd = pkg_repo_fetch_remote_tmp(repo, repo->meta->manifests,
-		    packing_format_to_string(repo->meta->packing_format), &prc->mtime, &rc, false);
-		if (fd == -1)
-			return (EPKG_FATAL);
-	}
-
-	tmpdir = getenv("TMPDIR");
-	if (tmpdir == NULL)
-		tmpdir = "/tmp";
-	snprintf(tmp, sizeof(tmp), "%s/%s.XXXXXX", tmpdir, repo->meta->manifests);
-
-	prc->manifest_fd = mkstemp(tmp);
-	if (prc->manifest_fd == -1) {
-		pkg_emit_error("Could not create temporary file %s, "
-				"aborting update.\n", tmp);
-		close(fd);
-		return (EPKG_FATAL);
-	}
-
-	(void)unlink(tmp);
-	if (pkg_repo_archive_extract_check_archive(fd, repo->meta->manifests, repo, prc->manifest_fd)
-			!= EPKG_OK) {
-		close(prc->manifest_fd);
-		close(fd);
-		return (EPKG_FATAL);
-	}
-
-	/* Thus removing archived file as well */
-	close(fd);
-	if (fstat(prc->manifest_fd, &st) == -1) {
-		close(prc->manifest_fd);
-		return (EPKG_FATAL);
-	}
-
-	prc->manifest_len = st.st_size;
-
-	return (EPKG_OK);
+	return (pkg_repo_fetch_extract_to_fd(repo, prc, repo->meta->manifests,
+	    &prc->manifest_fd, &prc->manifest_len));
 }
 
 struct pkg_repo_check_cbdata {
