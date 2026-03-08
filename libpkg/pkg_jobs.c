@@ -35,6 +35,7 @@
 
 #include <sys/param.h>
 #include <sys/mount.h>
+#include <sys/sysctl.h>
 #include <sys/types.h>
 #include <sys/statvfs.h>
 
@@ -2230,6 +2231,70 @@ pkg_jobs_fetch(struct pkg_jobs *j)
 	return (EPKG_OK);
 }
 
+static bool
+pkg_jobs_chflags_allowed(void)
+{
+#if defined(HAVE_CHFLAGSAT) && defined(HAVE_LIBJAIL)
+	int jailed = 0;
+	size_t len = sizeof(jailed);
+
+	if (sysctlbyname("security.jail.jailed", &jailed, &len,
+	    NULL, 0) == -1 || jailed == 0)
+		return (true);
+	int allowed = 0;
+	len = sizeof(allowed);
+	if (sysctlbyname("security.jail.chflags_allowed", &allowed, &len,
+	    NULL, 0) == -1)
+		return (false);
+	return (allowed != 0);
+#else
+	return (true);
+#endif
+}
+
+static int
+pkg_jobs_check_chflags(struct pkg_jobs *j)
+{
+	struct pkg_file *f;
+	struct pkg_dir *d;
+
+	if (pkg_jobs_chflags_allowed())
+		return (EPKG_OK);
+
+	vec_foreach(j->jobs, i) {
+		struct pkg_solved *ps = j->jobs.d[i];
+		struct pkg *p = ps->items[0]->pkg;
+
+		if (p->type != PKG_REMOTE)
+			pkgdb_ensure_loaded(j->db, p,
+			    PKG_LOAD_FILES|PKG_LOAD_DIRS);
+
+		f = NULL;
+		while (pkg_files(p, &f) == EPKG_OK) {
+			if (f->fflags != 0) {
+				pkg_emit_error("Package %s requires file "
+				    "flags (chflags) but this jail does not "
+				    "allow chflags operations. "
+				    "Set allow.chflags in the jail "
+				    "configuration.", p->name);
+				return (EPKG_FATAL);
+			}
+		}
+		d = NULL;
+		while (pkg_dirs(p, &d) == EPKG_OK) {
+			if (d->fflags != 0) {
+				pkg_emit_error("Package %s requires file "
+				    "flags (chflags) but this jail does not "
+				    "allow chflags operations. "
+				    "Set allow.chflags in the jail "
+				    "configuration.", p->name);
+				return (EPKG_FATAL);
+			}
+		}
+	}
+	return (EPKG_OK);
+}
+
 static int
 pkg_jobs_check_conflicts(struct pkg_jobs *j)
 {
@@ -2261,6 +2326,12 @@ pkg_jobs_check_conflicts(struct pkg_jobs *j)
 	pkg_emit_integritycheck_finished(j->conflicts_registered);
 	if (j->conflicts_registered > 0)
 		ret = EPKG_CONFLICT;
+
+	if (ret == EPKG_OK) {
+		res = pkg_jobs_check_chflags(j);
+		if (res != EPKG_OK)
+			ret = res;
+	}
 
 	return (ret);
 }
