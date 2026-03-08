@@ -297,7 +297,7 @@ EOS
 EOF
 	atf_check \
 		-o empty \
-		-e inline:"meh\n${PROGNAME}: Fail to apply keyword 'test'\n" \
+		-e inline:"meh\n${PROGNAME}: Failed to apply keyword 'test'\n" \
 		-s exit:1 \
 		pkg -o PLIST_KEYWORDS_DIR=. create -o ${TMPDIR} -m . -p test.plist -r .
 
@@ -311,7 +311,7 @@ EOS
 EOF
 	atf_check \
 		-o inline:"file1\n" \
-		-e inline:"meh\n${PROGNAME}: Fail to apply keyword 'test'\n" \
+		-e inline:"meh\n${PROGNAME}: Failed to apply keyword 'test'\n" \
 		-s exit:1 \
 		pkg -o PLIST_KEYWORDS_DIR=. create -o ${TMPDIR} -m . -p test.plist -r .
 
@@ -325,7 +325,7 @@ EOS
 EOF
 	atf_check \
 		-o inline:"0\n" \
-		-e inline:"meh\n${PROGNAME}: Fail to apply keyword 'test'\n" \
+		-e inline:"meh\n${PROGNAME}: Failed to apply keyword 'test'\n" \
 		-s exit:1 \
 		pkg -o PLIST_KEYWORDS_DIR=. create -o ${TMPDIR} -m . -p test.plist -r .
 
@@ -340,7 +340,7 @@ EOS
 EOF
 	atf_check \
 		-o inline:"1\n" \
-		-e inline:"meh\n${PROGNAME}: Fail to apply keyword 'test'\n" \
+		-e inline:"meh\n${PROGNAME}: Failed to apply keyword 'test'\n" \
 		-s exit:1 \
 		pkg -o PLIST_KEYWORDS_DIR=. create -o ${TMPDIR} -m . -p test.plist -r .
 
@@ -365,11 +365,11 @@ io.stderr:write("Invalid number of arguments '".. #arg .. "' expecting 1 or 2\n"
 return 1
 EOS
 EOF
-output="${PROGNAME}: Fail to apply keyword 'test'
+output="${PROGNAME}: Failed to apply keyword 'test'
 The first and the second argument are identical
-${PROGNAME}: Fail to apply keyword 'test'
+${PROGNAME}: Failed to apply keyword 'test'
 Invalid number of arguments '3' expecting 1 or 2
-${PROGNAME}: Fail to apply keyword 'test'
+${PROGNAME}: Failed to apply keyword 'test'
 "
 	atf_check \
 		-e inline:"${output}" \
@@ -395,7 +395,7 @@ EOF
 
 	atf_check \
 		-o empty \
-		-e inline:"${PROGNAME}: Requesting argument %2 while only 1 arguments are available\n${PROGNAME}: Fail to apply keyword 'testkeyword'\n" \
+		-e inline:"${PROGNAME}: Requesting argument %2 while only 1 arguments are available\n${PROGNAME}: Failed to apply keyword 'testkeyword'\n" \
 		-s exit:1 \
 		pkg -o PLIST_KEYWORDS_DIR=. create -o ${TMPDIR} -m . -p test.plist -r .
 
@@ -410,7 +410,7 @@ EOF
 
 	atf_check \
 		-o empty \
-		-e inline:"${PROGNAME}: Invalid argument: expecting a number got (%1)\n${PROGNAME}: Fail to apply keyword 'testkeyword'\n" \
+		-e inline:"${PROGNAME}: Invalid argument: expecting a number got (%1)\n${PROGNAME}: Failed to apply keyword 'testkeyword'\n" \
 		-s exit:1 \
 		pkg -o PLIST_KEYWORDS_DIR=. create -o ${TMPDIR} -m . -p test.plist -r .
 
@@ -796,7 +796,7 @@ touch D
 
 output="${PROGNAME}: Unable to access file ./A:No such file or directory
 ${PROGNAME}: Unable to access file ./B:No such file or directory
-${PROGNAME}: Fail to apply keyword 'test'
+${PROGNAME}: Failed to apply keyword 'test'
 "
 
 	atf_check \

@@ -18,7 +18,7 @@ EOF
 
 	atf_check \
 		-o match:"Unable to update repository test" \
-		-e match:"Invalid url: 'file://empty//meta.conf'" \
+		-e match:"Invalid URL: 'file://empty//meta.conf'" \
 		-s exit:1 \
 		pkg -R repos update
 }
@@ -40,7 +40,7 @@ EOF
 
 	atf_check \
 		-o match:"Unable to update repository test" \
-		-e match:"invalid url: 'file:/empty//meta.conf" \
+		-e match:"Invalid URL: 'file:/empty//meta.conf" \
 		-s exit:1 \
 		pkg -R repos update
 
@@ -54,7 +54,7 @@ test: {
 EOF
 	atf_check \
 		-o match:"Unable to update repository test" \
-		-e match:"Invalid url: 'file://here/meta.conf'" \
+		-e match:"Invalid URL: 'file://here/meta.conf'" \
 		-s exit:1 \
 		pkg -R repos update
 
@@ -114,7 +114,7 @@ EOF
 
 	atf_check \
 		-o match:"Unable to update repository test" \
-		-e match:"Invalid url: 'file:/${here}/meta.conf'" \
+		-e match:"Invalid URL: 'file:/${here}/meta.conf'" \
 		-s exit:1 \
 		pkg -R repos update
 

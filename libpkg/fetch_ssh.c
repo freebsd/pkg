@@ -267,7 +267,7 @@ pkgprotocol_open(struct pkg_repo *repo, struct fetch_item *fi,
 
 	if (yuarel_parse(&url, url_to_free) == -1) {
 		free(url_to_free);
-		pkg_emit_error("Invalid url: '%s'", fi->url);
+		pkg_emit_error("Invalid URL: '%s'", fi->url);
 		return (EPKG_FATAL);
 	}
 
