@@ -1155,7 +1155,7 @@ get_uid_from_uname(const char *uname)
 	err = getpwnam_r(testuname, &pwent, user_buffer, sizeof(user_buffer),
 	    &result);
 	if (err != 0) {
-		pkg_emit_errno("getpwnam_r", testuname);
+		pkg_emit_error("getpwnam_r(%s): %s", testuname, strerror(err));
 		return (0);
 	}
 	if (result == NULL)
@@ -1179,7 +1179,7 @@ get_gid_from_gname(const char *gname)
 	err = getgrnam_r(testgname, &grent, group_buffer, sizeof(group_buffer),
 	    &result);
 	if (err != 0) {
-		pkg_emit_errno("getgrnam_r", testgname);
+		pkg_emit_error("getgrnam_r(%s): %s", testgname, strerror(err));
 		return (0);
 	}
 	if (result == NULL)

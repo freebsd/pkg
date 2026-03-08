@@ -1694,7 +1694,7 @@ pkg_add_fromdir(struct pkg *pkg, const char *src, struct pkgdb *db __unused)
 			err = getpwnam_r(d->uname, &pwent, buffer,
 			    sizeof(buffer), &pw);
 			if (err != 0) {
-				pkg_emit_errno("getpwnam_r", d->uname);
+				pkg_emit_error("getpwnam_r(%s): %s", d->uname, strerror(err));
 				retcode = EPKG_FATAL;
 				goto cleanup;
 			}
@@ -1706,7 +1706,7 @@ pkg_add_fromdir(struct pkg *pkg, const char *src, struct pkgdb *db __unused)
 			err = getgrnam_r(d->gname, &grent, buffer,
 			    sizeof(buffer), &gr);
 			if (err != 0) {
-				pkg_emit_errno("getgrnam_r", d->gname);
+				pkg_emit_error("getgrnam_r(%s): %s", d->gname, strerror(err));
 				retcode = EPKG_FATAL;
 				goto cleanup;
 			}
@@ -1750,7 +1750,7 @@ pkg_add_fromdir(struct pkg *pkg, const char *src, struct pkgdb *db __unused)
 			err = getpwnam_r(f->uname, &pwent, buffer,
 			    sizeof(buffer), &pw);
 			if (err != 0) {
-				pkg_emit_errno("getpwnam_r", f->uname);
+				pkg_emit_error("getpwnam_r(%s): %s", f->uname, strerror(err));
 				retcode = EPKG_FATAL;
 				goto cleanup;
 			}
@@ -1763,7 +1763,7 @@ pkg_add_fromdir(struct pkg *pkg, const char *src, struct pkgdb *db __unused)
 			err = getgrnam_r(f->gname, &grent, buffer,
 			    sizeof(buffer), &gr);
 			if (err != 0) {
-				pkg_emit_errno("getgrnam_r", f->gname);
+				pkg_emit_error("getgrnam_r(%s): %s", f->gname, strerror(err));
 				retcode = EPKG_FATAL;
 				goto cleanup;
 			}
