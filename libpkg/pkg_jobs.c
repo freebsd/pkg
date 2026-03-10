@@ -2231,25 +2231,47 @@ pkg_jobs_fetch(struct pkg_jobs *j)
 	return (EPKG_OK);
 }
 
-static bool
-pkg_jobs_chflags_allowed(void)
+#if defined(UF_NOUNLINK)
+#define NOCHANGESFLAGS	\
+    (UF_IMMUTABLE | UF_APPEND | UF_NOUNLINK | \
+     SF_IMMUTABLE | SF_APPEND | SF_NOUNLINK)
+#else
+#define NOCHANGESFLAGS	\
+    (UF_IMMUTABLE | UF_APPEND | SF_IMMUTABLE | SF_APPEND)
+#endif
+#define SYSTEM_FLAGS	(SF_IMMUTABLE | SF_APPEND | SF_NOUNLINK)
+
+/*
+ * Check chflags restrictions from jail or securelevel.
+ * Returns:
+ *   0  - all chflags operations allowed
+ *   1  - jail restricts chflags (no flags allowed)
+ *   2  - securelevel restricts system flags (SF_*)
+ */
+static int
+pkg_jobs_chflags_restricted(void)
 {
-#if defined(HAVE_CHFLAGSAT) && defined(HAVE_LIBJAIL)
+#ifdef HAVE_CHFLAGSAT
+#ifdef HAVE_LIBJAIL
 	int jailed = 0;
 	size_t len = sizeof(jailed);
 
 	if (sysctlbyname("security.jail.jailed", &jailed, &len,
-	    NULL, 0) == -1 || jailed == 0)
-		return (true);
-	int allowed = 0;
-	len = sizeof(allowed);
-	if (sysctlbyname("security.jail.chflags_allowed", &allowed, &len,
-	    NULL, 0) == -1)
-		return (false);
-	return (allowed != 0);
-#else
-	return (true);
+	    NULL, 0) != -1 && jailed == 1) {
+		int allowed = 0;
+		len = sizeof(allowed);
+		if (sysctlbyname("security.jail.chflags_allowed", &allowed,
+		    &len, NULL, 0) == -1 || allowed == 0)
+			return (1);
+	}
 #endif
+	int securelevel = -1;
+	size_t slen = sizeof(securelevel);
+	if (sysctlbyname("kern.securelevel", &securelevel, &slen,
+	    NULL, 0) != -1 && securelevel >= 1)
+		return (2);
+#endif
+	return (0);
 }
 
 static int
@@ -2257,9 +2279,16 @@ pkg_jobs_check_chflags(struct pkg_jobs *j)
 {
 	struct pkg_file *f;
 	struct pkg_dir *d;
+	int restriction;
+	u_long mask;
 
-	if (pkg_jobs_chflags_allowed())
+	restriction = pkg_jobs_chflags_restricted();
+	if (restriction == 0)
 		return (EPKG_OK);
+
+	/* jail without chflags: no flags at all allowed */
+	/* securelevel >= 1: only system flags (SF_*) restricted */
+	mask = (restriction == 1) ? NOCHANGESFLAGS : SYSTEM_FLAGS;
 
 	vec_foreach(j->jobs, i) {
 		struct pkg_solved *ps = j->jobs.d[i];
@@ -2271,26 +2300,28 @@ pkg_jobs_check_chflags(struct pkg_jobs *j)
 
 		f = NULL;
 		while (pkg_files(p, &f) == EPKG_OK) {
-			if (f->fflags != 0) {
-				pkg_emit_error("Package %s requires file "
-				    "flags (chflags) but this jail does not "
-				    "allow chflags operations. "
-				    "Set allow.chflags in the jail "
-				    "configuration.", p->name);
-				return (EPKG_FATAL);
-			}
+			if (f->fflags & mask)
+				goto restricted;
 		}
 		d = NULL;
 		while (pkg_dirs(p, &d) == EPKG_OK) {
-			if (d->fflags != 0) {
-				pkg_emit_error("Package %s requires file "
-				    "flags (chflags) but this jail does not "
-				    "allow chflags operations. "
-				    "Set allow.chflags in the jail "
-				    "configuration.", p->name);
-				return (EPKG_FATAL);
-			}
+			if (d->fflags & mask)
+				goto restricted;
 		}
+		continue;
+restricted:
+		if (restriction == 1)
+			pkg_emit_error("Package %s has files with flags "
+			    "that cannot be managed in this jail. "
+			    "Set allow.chflags in the jail configuration.",
+			    p->name);
+		else
+			pkg_emit_error("Package %s has files with system "
+			    "flags (schg, sunlnk, ...) that cannot be "
+			    "managed at securelevel %d. Lower the "
+			    "securelevel to -1 to allow this operation.",
+			    p->name, 1);
+		return (EPKG_FATAL);
 	}
 	return (EPKG_OK);
 }
