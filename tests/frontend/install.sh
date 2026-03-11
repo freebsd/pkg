@@ -14,7 +14,8 @@ tests_init \
 	install_suggest_clear_automatic \
 	install_suggest_set_automatic \
 	install_no_suggest_when_flag_matches \
-	install_from_url
+	install_from_url \
+	install_automatic_flag_not_on_upgrade
 
 test_setup()
 {
@@ -464,6 +465,56 @@ EOF
 	atf_check \
 		-o inline:"0\n" \
 		pkg query "%a" test
+}
+
+install_automatic_flag_not_on_upgrade_body() {
+	# Issue #1350: pkg install -Ay newpkg base should NOT mark base
+	# as automatic when base is being upgraded (not newly installed).
+	# Only genuinely new installs should get -A.
+
+	# Install base v1 as non-automatic
+	atf_check -s exit:0 sh ${RESOURCEDIR}/test_subr.sh new_pkg "base" "base" "1"
+	atf_check -o ignore pkg register -M base.ucl
+
+	atf_check \
+		-o inline:"0\n" \
+		pkg query "%a" base
+
+	# Create repo with base v2 and newpkg v1
+	atf_check -s exit:0 sh ${RESOURCEDIR}/test_subr.sh new_pkg "base2" "base" "2"
+	atf_check pkg create -M base2.ucl -o ./repo
+
+	atf_check -s exit:0 sh ${RESOURCEDIR}/test_subr.sh new_pkg "newpkg" "newpkg" "1"
+	atf_check pkg create -M newpkg.ucl -o ./repo
+
+	cat << EOF > pkg.conf
+PKG_DBDIR=${TMPDIR}
+REPOS_DIR=[]
+repositories: {
+	local: { url : file://${TMPDIR}/repo }
+}
+EOF
+
+	atf_check -o ignore pkg -C ./pkg.conf repo ./repo
+	atf_check -o ignore pkg -C ./pkg.conf update -f
+
+	# Install both with -Ay: base is upgraded, newpkg is new
+	atf_check \
+		-o match:"Installing newpkg" \
+		-o match:"Upgrading base" \
+		-e ignore \
+		-s exit:0 \
+		pkg -C ./pkg.conf install -Ay newpkg base
+
+	# newpkg should be automatic (newly installed with -A)
+	atf_check \
+		-o inline:"1\n" \
+		pkg query "%a" newpkg
+
+	# base should still be non-automatic (only upgraded, not newly installed)
+	atf_check \
+		-o inline:"0\n" \
+		pkg query "%a" base
 }
 
 install_from_url_body() {

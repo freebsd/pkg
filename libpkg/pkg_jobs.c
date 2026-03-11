@@ -1969,7 +1969,9 @@ pkg_jobs_handle_install(struct pkg_solved *ps, struct pkg_jobs *j)
 		if (ps->type == PKG_SOLVED_UPGRADE_INSTALL)
 			flags |= PKG_ADD_SPLITTED_UPGRADE;
 	}
-	if (new->automatic || (j->flags & PKG_FLAG_AUTOMATIC) == PKG_FLAG_AUTOMATIC)
+	if (new->automatic ||
+	    ((j->flags & PKG_FLAG_AUTOMATIC) == PKG_FLAG_AUTOMATIC &&
+	    ps->type == PKG_SOLVED_INSTALL))
 		flags |= PKG_ADD_AUTOMATIC;
 
 	if (new->type == PKG_GROUP_REMOTE)
