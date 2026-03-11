@@ -35,7 +35,9 @@
 
 #include <sys/param.h>
 #include <sys/mount.h>
+#if __has_include(<sys/sysctl.h>)
 #include <sys/sysctl.h>
+#endif
 #include <sys/types.h>
 #include <sys/statvfs.h>
 
