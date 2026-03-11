@@ -375,7 +375,6 @@ exec_audit(int argc, char **argv)
 		if (db != NULL) {
 			pkgdb_it_free(it);
 			pkgdb_release_lock(db, PKGDB_LOCK_READONLY);
-			pkgdb_close(db);
 		}
 		if (ret != EXIT_SUCCESS) {
 			pkg_audit_free(audit);
@@ -467,7 +466,7 @@ exec_audit(int argc, char **argv)
 				}
 				if (top != NULL) {
 					ucl_object_insert_key(obj, array, "reverse dependencies", 20, false);
-					ucl_object_insert_key(vuln_objs, obj, xstrdup(name), strlen(name), false);
+					ucl_object_insert_key(vuln_objs, obj, name, strlen(name), true);
 				}
 			}
 			pkg_audit_issues_free(issues);
@@ -501,6 +500,7 @@ exec_audit(int argc, char **argv)
 	}
 
 	pkg_audit_free(audit);
+	pkgdb_close(db);
 	if (vuln != 0)
 		ret = EXIT_FAILURE;
 
