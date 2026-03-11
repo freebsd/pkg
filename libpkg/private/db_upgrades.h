@@ -756,6 +756,14 @@ static struct db_upgrades {
 	");"
 	"CREATE INDEX pkg_shlibs_required_ignore_package_id ON pkg_shlibs_required_ignore (package_id);"
 	"CREATE INDEX pkg_shlibs_provided_ignore_package_id ON pkg_shlibs_provided_ignore (package_id);"
+	}, { 39,
+	"CREATE INDEX provides_provide ON provides(provide);"
+	"CREATE INDEX pkg_provides_provide_id ON pkg_provides(provide_id);"
+	"CREATE INDEX requires_require ON requires(require);"
+	"CREATE INDEX pkg_requires_require_id ON pkg_requires(require_id);"
+	"CREATE INDEX pkg_requires_package_id ON pkg_requires(package_id);"
+	"CREATE INDEX config_files_package_id ON config_files(package_id);"
+	"CREATE INDEX pkg_lua_script_package_id ON pkg_lua_script(package_id);"
 	},
 	/* Mark the end of the array */
 	{ -1, NULL }

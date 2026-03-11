@@ -75,7 +75,7 @@ extern struct pkg_ctx ctx;
 */
 
 #define DB_SCHEMA_MAJOR        0
-#define DB_SCHEMA_MINOR	38
+#define DB_SCHEMA_MINOR	39
 
 #define DBVERSION (DB_SCHEMA_MAJOR * 1000 + DB_SCHEMA_MINOR)
 
@@ -584,6 +584,8 @@ pkgdb_init(sqlite3 *sdb)
 	"CREATE INDEX pkg_conflicts_pid ON pkg_conflicts(package_id);"
 	"CREATE INDEX pkg_conflicts_cid ON pkg_conflicts(conflict_id);"
 	"CREATE INDEX pkg_provides_id ON pkg_provides(package_id);"
+	"CREATE INDEX provides_provide ON provides(provide);"
+	"CREATE INDEX pkg_provides_provide_id ON pkg_provides(provide_id);"
 	"CREATE INDEX packages_origin ON packages(origin COLLATE NOCASE);"
 	"CREATE INDEX packages_name ON packages(name COLLATE NOCASE);"
 	"CREATE TABLE requires("
@@ -597,6 +599,10 @@ pkgdb_init(sqlite3 *sdb)
 	    "  ON DELETE RESTRICT ON UPDATE RESTRICT,"
 	    "UNIQUE(package_id, require_id)"
 	");"
+	"CREATE INDEX requires_require ON requires(require);"
+	"CREATE INDEX pkg_requires_require_id ON pkg_requires(require_id);"
+	"CREATE INDEX pkg_requires_package_id ON pkg_requires(package_id);"
+	"CREATE INDEX config_files_package_id ON config_files(package_id);"
 	"CREATE TABLE lua_script("
 	"    lua_script_id INTEGER PRIMARY KEY,"
 	"    lua_script TEXT NOT NULL UNIQUE"
@@ -609,6 +615,7 @@ pkgdb_init(sqlite3 *sdb)
 		"type INTEGER,"
 		"UNIQUE(package_id, lua_script_id)"
 	");"
+	"CREATE INDEX pkg_lua_script_package_id ON pkg_lua_script(package_id);"
 	"PRAGMA user_version = %d;"
 	"COMMIT;"
 	;
