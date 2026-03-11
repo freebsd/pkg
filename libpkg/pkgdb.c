@@ -1141,9 +1141,11 @@ retry:
 		/* Create our functions */
 		pkgdb_sqlcmd_init(db->sqlite, NULL, NULL);
 
-		if (pkgdb_upgrade(db) != EPKG_OK) {
-			pkgdb_close(db);
-			return (EPKG_FATAL);
+		if (!sqlite3_db_readonly(db->sqlite, "main")) {
+			if (pkgdb_upgrade(db) != EPKG_OK) {
+				pkgdb_close(db);
+				return (EPKG_FATAL);
+			}
 		}
 
 		/*
