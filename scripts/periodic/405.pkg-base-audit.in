@@ -54,7 +54,7 @@ auditfile="${PKG_DBDIR}/vuln.xml"
 audit_base() {
 	local pkgargs="$1"
 	local basedir="$2"
-	local rc
+	local rc=0
 	local then
 	local now
 	local usrlv
@@ -108,6 +108,10 @@ audit_base() {
 		echo -n 'Database fetched: '
 		date -r "${then}" -Iminutes || rc=3
 	fi
+
+	# Reset rc: the stat/date block above only informs the fetch
+	# decision; the actual return code should come from pkg audit.
+	rc=0
 
 	# cannot check kernel in jail or chroot
 	if [ -z "`echo "$pkgargs" | egrep '^-[cj]'`" -a `sysctl -n security.jail.jailed` = 0 ]; then
