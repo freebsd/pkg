@@ -95,9 +95,61 @@ ATF_TC_BODY(analyse_elf, tc)
 	pkg_free(p);
 }
 
+ATF_TC_WITHOUT_HEAD(static_lib_non_elf);
+
+ATF_TC_BODY(static_lib_non_elf, tc)
+{
+	struct pkg *p = NULL;
+	char *provided = NULL;
+	enum pkg_shlib_flags provided_flags = PKG_SHLIB_FLAGS_NONE;
+
+	ctx.abi.os = PKG_OS_FREEBSD;
+	ctx.abi.arch = PKG_ARCH_AMD64;
+	ctx.developer_mode = true;
+
+	/* Create a non-ELF .a archive (e.g. WASM static library) */
+	FILE *fp = fopen("dummy.txt", "w");
+	ATF_REQUIRE(fp != NULL);
+	fprintf(fp, "not an ELF object\n");
+	fclose(fp);
+	ATF_REQUIRE_EQ(0, system("ar rcs libwasm.a dummy.txt"));
+
+	/* Create an ELF .a archive (native static library) */
+	fp = fopen("empty.c", "w");
+	ATF_REQUIRE(fp != NULL);
+	fprintf(fp, "int placeholder;\n");
+	fclose(fp);
+	ATF_REQUIRE_EQ(0, system("cc -c -o empty.o empty.c"));
+	ATF_REQUIRE_EQ(0, system("ar rcs libnative.a empty.o"));
+
+	/* Non-ELF .a should NOT set PKG_CONTAINS_STATIC_LIBS */
+	ATF_REQUIRE_EQ(EPKG_OK, pkg_new(&p, PKG_INSTALLED));
+	p->flags &= ~PKG_CONTAINS_STATIC_LIBS;
+	ATF_REQUIRE_EQ(pkg_analyse_elf(true, p, "libwasm.a",
+	    &provided, &provided_flags), EPKG_END);
+	ATF_CHECK_EQ_MSG(0, p->flags & PKG_CONTAINS_STATIC_LIBS,
+	    "non-ELF .a should not set PKG_CONTAINS_STATIC_LIBS");
+	pkg_free(p);
+	free(provided);
+
+	/* ELF .a should set PKG_CONTAINS_STATIC_LIBS */
+	provided = NULL;
+	provided_flags = PKG_SHLIB_FLAGS_NONE;
+	ATF_REQUIRE_EQ(EPKG_OK, pkg_new(&p, PKG_INSTALLED));
+	p->flags &= ~PKG_CONTAINS_STATIC_LIBS;
+	ATF_REQUIRE_EQ(pkg_analyse_elf(true, p, "libnative.a",
+	    &provided, &provided_flags), EPKG_END);
+	ATF_CHECK_EQ_MSG(PKG_CONTAINS_STATIC_LIBS,
+	    p->flags & PKG_CONTAINS_STATIC_LIBS,
+	    "ELF .a should set PKG_CONTAINS_STATIC_LIBS");
+	pkg_free(p);
+	free(provided);
+}
+
 ATF_TP_ADD_TCS(tp)
 {
 	ATF_TP_ADD_TC(tp, analyse_elf);
+	ATF_TP_ADD_TC(tp, static_lib_non_elf);
 
 	return (atf_no_error());
 }

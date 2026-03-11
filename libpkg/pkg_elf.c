@@ -101,6 +101,29 @@ analyse_elf(struct pkg *pkg, const char *fpath, char **provided,
 		goto cleanup;
 	}
 
+	if (elf_kind(e) == ELF_K_AR) {
+		/*
+		 * ar archive: check if it contains ELF objects.
+		 * WASM .a archives contain non-ELF objects and
+		 * should not be flagged as architecture-specific.
+		 */
+		if (ctx.developer_mode) {
+			Elf_Cmd cmd = ELF_C_READ;
+			Elf *member;
+			while ((member = elf_begin(fd, cmd, e)) != NULL) {
+				if (elf_kind(member) == ELF_K_ELF) {
+					pkg->flags |= PKG_CONTAINS_STATIC_LIBS;
+					elf_end(member);
+					break;
+				}
+				cmd = elf_next(member);
+				elf_end(member);
+			}
+		}
+		ret = EPKG_END;
+		goto cleanup;
+	}
+
 	if (elf_kind(e) != ELF_K_ELF) {
 		/* Not an elf file: no results */
 		ret = EPKG_END;
@@ -271,9 +294,6 @@ analyse_fpath(struct pkg *pkg, const char *fpath)
 
 	if (dot == NULL)	/* No extension */
 		return (EPKG_OK);
-
-	if (dot[1] == 'a' && dot[2] == '\0')
-		pkg->flags |= PKG_CONTAINS_STATIC_LIBS;
 
 	if ((dot[1] == 'l' && dot[2] == 'a' && dot[3] == '\0'))
 		pkg->flags |= PKG_CONTAINS_LA;
