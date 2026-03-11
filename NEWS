@@ -1,3 +1,31 @@
+Changes from 2.6.99.0 to 2.6.99.1
+- greatly improve the test coverage
+- add support for trigger per package (pre installation, post installation)
+- fix info export wrong json for multiple packages
+- solver: many fixes preventing useless extra reinstallation
+- jobs: prevent install -f from deleting packages
+- upgrade: prevent rdeps discovery explosion
+- fix crash when using external merge tool
+- fix ctrl-c during download not really killing pkg
+- lots of code cleanup
+- prevent running in jail if fflages are involved and the jail does not allow them
+- prevent running if secure_level will block them
+- improve performance by adding new indexes
+- don't try anymore to upgrade the DB if it is readonly
+- only open the db RW if needed
+- fix pkg -N with WAL
+- repositories: add per repo ssh_args
+- delete,install,upgrade: add --autoremove
+- pkg install foo if foo is installed will now mark it as non automatic
+- pkg install -A foo if foo is installed will now mark it as automatic
+- query: print an empty line instead of nothing if querying a multiline with no value
+- install: accept https:// as an argument
+- plenty of small fixes
+- updating support globs
+- delete: fix -fR
+- search: add -Scomment-description
+- lots of documentation updates
+
 Changes from 2.5.99.3 to 2.6.99.0
 - triggers: fix typo regex -> regexp
 - remove FreeBSD 9 compat code
