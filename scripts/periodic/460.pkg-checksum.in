@@ -29,7 +29,7 @@ checksum_pkg() {
 }
 
 checksum_pkg_all() {
-    local rc
+    local rc=0
 
     # We always check the checksums for the host system, but only
     # print a banner line if we're also checking on any chroots or
@@ -42,6 +42,7 @@ checksum_pkg_all() {
     fi
 
     checksum_pkg ''
+    [ $? -eq 1 ] && rc=1
 
     for c in $security_status_pkg_checksum_chroots ; do
 	echo
