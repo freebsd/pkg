@@ -83,7 +83,23 @@ pkg_status(int *count)
 
 	dbsuccess = (sqlite3_initialize() == SQLITE_OK);
 	if (dbsuccess) {
-		dbsuccess = (sqlite3_open_v2(dbpath, &db, SQLITE_OPEN_READONLY, NULL) == SQLITE_OK);
+		/*
+		 * When we don't have write access, open with immutable=1
+		 * to handle databases in WAL journal mode.  WAL requires
+		 * -shm/-wal sidecar files which cannot be created without
+		 * write access, causing queries to fail.
+		 */
+		if (faccessat(AT_FDCWD, dbpath, W_OK, AT_EACCESS) != 0) {
+			char uripath[MAXPATHLEN];
+			snprintf(uripath, sizeof(uripath),
+			    "file:%s?immutable=1", dbpath);
+			dbsuccess = (sqlite3_open_v2(uripath, &db,
+			    SQLITE_OPEN_READONLY | SQLITE_OPEN_URI,
+			    NULL) == SQLITE_OK);
+		} else {
+			dbsuccess = (sqlite3_open_v2(dbpath, &db,
+			    SQLITE_OPEN_READONLY, NULL) == SQLITE_OK);
+		}
 		if (dbsuccess) {
 			dbsuccess = (sqlite3_prepare_v2(db, sql, -1, &stmt, NULL) == SQLITE_OK);
 			if (dbsuccess) {

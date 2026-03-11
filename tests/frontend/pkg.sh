@@ -4,6 +4,8 @@
 
 tests_init \
 	pkg_no_database \
+	pkg_activate \
+	pkg_activate_wal_readonly \
 	pkg_config_defaults \
 	pkg_create_manifest_bad_syntax \
 	pkg_repo_load_order \
@@ -18,6 +20,38 @@ pkg_no_database_body() {
 	    -e inline:"${PROGNAME}: package database non-existent\n" \
 	    -s exit:1 \
 	    env -i UBSAN_OPTIONS="${UBSAN_OPTIONS}" LSAN_OPTIONS="${LSAN_OPTIONS}" ASAN_OPTIONS="${ASAN_OPTIONS}" PATH="${PATH}" DYLD_LIBRARY_PATH="${DYLD_LIBRARY_PATH}" LD_LIBRARY_PATH="${LD_LIBRARY_PATH}" pkg -o PKG_DBDIR=/dev/null -N
+}
+
+pkg_activate_body() {
+	atf_check -s exit:0 sh ${RESOURCEDIR}/test_subr.sh new_pkg "test" "test" "1.0" "/usr/local"
+	atf_check -o ignore pkg register -M test.ucl
+
+	atf_check \
+		-e match:"1 packages installed" \
+		-s exit:0 \
+		pkg -N
+}
+
+pkg_activate_wal_readonly_body() {
+	# Reproduce issue #2620: pkg -N fails for regular users when
+	# the database is in WAL journal mode (set by root's pkg upgrade)
+	# because SQLite needs to create -shm/-wal sidecar files.
+	atf_check -s exit:0 sh ${RESOURCEDIR}/test_subr.sh new_pkg "test" "test" "1.0" "/usr/local"
+	atf_check -o ignore pkg register -M test.ucl
+
+	# After pkg register the DB is in WAL mode.
+	# Remove sidecar files and make DB read-only to simulate
+	# a regular user without write access.
+	rm -f local.sqlite-shm local.sqlite-wal
+	chmod 444 local.sqlite
+
+	atf_check \
+		-e match:"1 packages installed" \
+		-s exit:0 \
+		pkg -N
+
+	# Restore for cleanup
+	chmod 644 local.sqlite
 }
 
 pkg_config_defaults_body()
