@@ -10,7 +10,10 @@ tests_init \
 	install_missing_dep \
 	install_register_only \
 	install_autoremove \
-	install_autoremove_flag
+	install_autoremove_flag \
+	install_suggest_clear_automatic \
+	install_suggest_set_automatic \
+	install_no_suggest_when_flag_matches
 
 test_setup()
 {
@@ -345,4 +348,119 @@ EOF
 
 	atf_check -s exit:0 pkg info -e master
 	atf_check -s exit:1 pkg info -e olddep
+}
+
+install_suggest_clear_automatic_body() {
+	# pkg install foo when foo is already installed with automatic=1
+	# should suggest clearing the automatic flag
+	atf_check -s exit:0 sh ${RESOURCEDIR}/test_subr.sh new_pkg "test" "test" "1"
+
+	# Register as automatic
+	atf_check -o ignore pkg register -A -M test.ucl
+
+	atf_check \
+		-o inline:"1\n" \
+		pkg query "%a" test
+
+	# Create repo with same package
+	atf_check pkg create -M test.ucl -o ./repo
+
+	cat << EOF > pkg.conf
+PKG_DBDIR=${TMPDIR}
+REPOS_DIR=[]
+repositories: {
+	local: { url : file://${TMPDIR}/repo }
+}
+EOF
+
+	atf_check -o ignore pkg -C ./pkg.conf repo ./repo
+	atf_check -o ignore pkg -C ./pkg.conf update -f
+
+	# pkg install -y test: should toggle automatic from 1 to 0
+	atf_check \
+		-o not-match:"already installed" \
+		-s exit:0 \
+		pkg -C ./pkg.conf install -y test
+
+	# Verify automatic flag was cleared
+	atf_check \
+		-o inline:"0\n" \
+		pkg query "%a" test
+}
+
+install_suggest_set_automatic_body() {
+	# pkg install -A foo when foo is already installed with automatic=0
+	# should suggest setting the automatic flag
+	atf_check -s exit:0 sh ${RESOURCEDIR}/test_subr.sh new_pkg "test" "test" "1"
+
+	# Register as non-automatic
+	atf_check -o ignore pkg register -M test.ucl
+
+	atf_check \
+		-o inline:"0\n" \
+		pkg query "%a" test
+
+	# Create repo with same package
+	atf_check pkg create -M test.ucl -o ./repo
+
+	cat << EOF > pkg.conf
+PKG_DBDIR=${TMPDIR}
+REPOS_DIR=[]
+repositories: {
+	local: { url : file://${TMPDIR}/repo }
+}
+EOF
+
+	atf_check -o ignore pkg -C ./pkg.conf repo ./repo
+	atf_check -o ignore pkg -C ./pkg.conf update -f
+
+	# pkg install -Ay test: should toggle automatic from 0 to 1
+	atf_check \
+		-o not-match:"already installed" \
+		-s exit:0 \
+		pkg -C ./pkg.conf install -Ay test
+
+	# Verify automatic flag was set
+	atf_check \
+		-o inline:"1\n" \
+		pkg query "%a" test
+}
+
+install_no_suggest_when_flag_matches_body() {
+	# pkg install foo when foo is already installed with automatic=0
+	# should not suggest anything, just print the standard message
+	atf_check -s exit:0 sh ${RESOURCEDIR}/test_subr.sh new_pkg "test" "test" "1"
+
+	# Register as non-automatic
+	atf_check -o ignore pkg register -M test.ucl
+
+	atf_check \
+		-o inline:"0\n" \
+		pkg query "%a" test
+
+	# Create repo with same package
+	atf_check pkg create -M test.ucl -o ./repo
+
+	cat << EOF > pkg.conf
+PKG_DBDIR=${TMPDIR}
+REPOS_DIR=[]
+repositories: {
+	local: { url : file://${TMPDIR}/repo }
+}
+EOF
+
+	atf_check -o ignore pkg -C ./pkg.conf repo ./repo
+	atf_check -o ignore pkg -C ./pkg.conf update -f
+
+	# pkg install -y test: flag already matches, standard message
+	atf_check \
+		-o match:"already installed" \
+		-o not-match:"Mark as" \
+		-s exit:0 \
+		pkg -C ./pkg.conf install -y test
+
+	# Flag should remain 0
+	atf_check \
+		-o inline:"0\n" \
+		pkg query "%a" test
 }
