@@ -276,8 +276,46 @@ exec_install(int argc, char **argv)
 		break;
 	}
 
-	if (done == 0 && rc)
-		printf("The most recent versions of packages are already installed\n");
+	if (done == 0 && rc) {
+		bool want_automatic = (f & PKG_FLAG_AUTOMATIC) != 0;
+		bool suggested = false;
+
+		for (int i = 0; i < argc; i++) {
+			struct pkgdb_it *lit;
+			struct pkg *lpkg = NULL;
+			bool automatic;
+
+			lit = pkgdb_query(db, argv[i], match);
+			if (lit == NULL)
+				continue;
+			if (pkgdb_it_next(lit, &lpkg, PKG_LOAD_BASIC) != EPKG_OK) {
+				pkgdb_it_free(lit);
+				continue;
+			}
+			pkgdb_it_free(lit);
+			pkg_get(lpkg, PKG_ATTR_AUTOMATIC, &automatic);
+			if (!want_automatic && automatic) {
+				if (query_yesno(false,
+				    "%n-%v is already installed as automatic. "
+				    "Mark as non-automatic? ",
+				    lpkg, lpkg))
+					pkgdb_set(db, lpkg,
+					    PKG_SET_AUTOMATIC, (int)false);
+				suggested = true;
+			} else if (want_automatic && !automatic) {
+				if (query_yesno(false,
+				    "%n-%v is already installed. "
+				    "Mark as automatically installed? ",
+				    lpkg, lpkg))
+					pkgdb_set(db, lpkg,
+					    PKG_SET_AUTOMATIC, (int)true);
+				suggested = true;
+			}
+			pkg_free(lpkg);
+		}
+		if (!suggested)
+			printf("The most recent versions of packages are already installed\n");
+	}
 
 	if (!rc)
 		status = EXIT_FAILURE;

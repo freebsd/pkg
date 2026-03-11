@@ -64,9 +64,19 @@ See
 .Xr pkg-autoremove 8
 for details.
 .Pp
-Autoremoval flags are sticky, and will persist over reinstallation or
-upgrade of the packages concerned, even if subsequently the packages
-are named explicitly on a command line.
+If a requested package is already installed at the latest version,
+.Nm
+will check whether its autoremoval flag matches the requested state.
+If
+.Nm
+is run without
+.Fl A
+and the package is marked as automatically installed,
+the user will be prompted to clear the autoremoval flag.
+Conversely, if
+.Fl A
+is specified and the package is not marked as automatic,
+the user will be prompted to set it.
 See
 .Xr pkg-query 8
 for finding the autoremoval status of a package, and
