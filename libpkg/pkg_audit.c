@@ -129,6 +129,7 @@ pkg_audit_free_entry(struct pkg_audit_entry *e)
 				free(pname->pkgname);
 				free(pname);
 			}
+			free(ppkg);
 		}
 		LL_FOREACH_SAFE(e->cve, cve, cve_tmp) {
 			free(cve->cvename);
@@ -909,4 +910,5 @@ pkg_audit_issues_free(struct pkg_audit_issues *issues)
 		LL_DELETE(issues->issues, issue);
 		free(issue);
 	}
+	free(issues);
 }
