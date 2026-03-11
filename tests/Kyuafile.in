@@ -9,5 +9,6 @@ atf_test_program{name='pkg_add_dir_to_del'}
 atf_test_program{name='merge'}
 atf_test_program{name='checksum'}
 atf_test_program{name='deps_formula'}
+atf_test_program{name='pkg_jobs_dryrun'}
 
 include('frontend/Kyuafile')

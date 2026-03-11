@@ -2033,6 +2033,9 @@ pkg_jobs_execute(struct pkg_jobs *j)
 	if (j->flags & PKG_FLAG_SKIP_INSTALL)
 		return (EPKG_OK);
 
+	if (j->flags & PKG_FLAG_DRY_RUN)
+		return (EPKG_OK);
+
 	retcode = pkgdb_upgrade_lock(j->db, PKGDB_LOCK_ADVISORY,
 			PKGDB_LOCK_EXCLUSIVE);
 	if (retcode != EPKG_OK)
