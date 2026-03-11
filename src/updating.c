@@ -12,6 +12,7 @@
 
 #include <err.h>
 #include <errno.h>
+#include <fnmatch.h>
 #include <getopt.h>
 #include <pkg.h>
 #include <stdio.h>
@@ -23,21 +24,6 @@
 
 #include <xmalloc.h>
 #include "pkgcli.h"
-
-struct regex_cache {
-	char *pattern;
-	regex_t reg;
-};
-
-static void
-regex_cache_free(struct regex_cache *p)
-{
-	if (!p)
-		return;
-	regfree(&p->reg);
-	free(p->pattern);
-	free(p);
-}
 
 void
 usage_updating(void)
@@ -94,12 +80,10 @@ convert_re(const char *src)
 int
 matcher(const char *affects, const char *origin, bool ignorecase)
 {
-	int i, n, count, found, ret, rc;
+	int i, n, count, ret, fnflags;
 	bool was_spc;
 	size_t len;
 	char *re, *buf, *p, **words;
-	struct regex_cache *ent;
-	vec_t(struct regex_cache *) cache = vec_init();
 
 	len = strlen(affects);
 	buf = xstrdup(affects);
@@ -136,59 +120,39 @@ matcher(const char *affects, const char *origin, bool ignorecase)
 		if (words[i][n-1] == ',') {
 			words[i][n-1] = '\0';
 		}
-		if (strpbrk(words[i],"^$*|?") == NULL &&
-			(strchr(words[i],'[') == NULL || strchr(words[i],']') == NULL) &&
-			(strchr(words[i],'{') == NULL || strchr(words[i],'}') == NULL) &&
-			(strchr(words[i],'(') == NULL || strchr(words[i],')') == NULL)) {
-			if (ignorecase) {
-				if (strcasecmp(words[i], origin) == 0) {
-					ret = 1;
-					break;
-				}
-			} else {
-				if (strcmp(words[i], origin) == 0) {
-					ret = 1;
-					break;
-				}
-			}
-			continue;
+
+		fnflags = ignorecase ? FNM_CASEFOLD : 0;
+
+		/* Try glob match in both directions: AFFECTS word as
+		 * pattern against origin, and origin as pattern against
+		 * AFFECTS word (for user-provided globs on the command
+		 * line, issue #1786) */
+		if (fnmatch(words[i], origin, fnflags) == 0 ||
+		    fnmatch(origin, words[i], fnflags) == 0) {
+			ret = 1;
+			break;
 		}
 
-		found = 0;
-		vec_foreach(cache, j) {
-			if (ignorecase)
-				rc = strcasecmp(words[i], cache.d[j]->pattern);
-			else
-				rc = strcmp(words[i], cache.d[j]->pattern);
-			if (rc == 0) {
-				found++;
-				if (regexec(&cache.d[j]->reg, origin, 0, NULL, 0) == 0) {
-					ret = 1;
-					break;
-				}
-			}
-		}
-		if (found == 0) {
-			ent = xmalloc(sizeof(struct regex_cache));
-			ent->pattern = xstrdup(words[i]);
+		/* Handle {a,b} brace expansion and (a|b) alternation
+		 * via regex conversion (not supported by fnmatch) */
+		if ((strchr(words[i], '{') != NULL && strchr(words[i], '}') != NULL) ||
+		    (strchr(words[i], '(') != NULL && strchr(words[i], ')') != NULL)) {
 			re = convert_re(words[i]);
-			if (re == NULL) {
-				regex_cache_free(ent);
-				ret = 0;
-				goto out;
-			}
-			regcomp(&ent->reg, re, (ignorecase) ? REG_ICASE|REG_EXTENDED : REG_EXTENDED);
-			free(re);
-			vec_push(&cache, ent);
-			if (regexec(&ent->reg, origin, 0, NULL, 0) == 0) {
-				ret = 1;
-				break;
+			if (re != NULL) {
+				regex_t reg;
+				if (regcomp(&reg, re,
+				    REG_EXTENDED | (ignorecase ? REG_ICASE : 0)) == 0) {
+					if (regexec(&reg, origin, 0, NULL, 0) == 0)
+						ret = 1;
+					regfree(&reg);
+				}
+				free(re);
+				if (ret)
+					break;
 			}
 		}
 	}
 
-out:
-	vec_free_and_free(&cache, regex_cache_free);
 	free(words);
 	free(buf);
 	return (ret);

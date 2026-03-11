@@ -12,6 +12,7 @@ tests_init \
         updating_postgresql \
         updating_cupsbase \
         updating_cups \
+	updating_user_glob \
 
 updating_all_users_body() {
 	cat > UPDATING <<EOF
@@ -231,4 +232,46 @@ EOF
 		-o empty \
 		-e empty \
 		pkg updating -f UPDATING
+}
+
+updating_user_glob_body() {
+	cat > UPDATING <<EOF
+20190630:
+  AFFECTS: users of lang/php74-imagick
+  AUTHOR: ports@FreeBSD.org
+
+  Messages about php74-imagick...
+
+20190631:
+  AFFECTS: users of databases/py-sqlite3
+  AUTHOR: ports@FreeBSD.org
+
+  Messages about py-sqlite3...
+
+20190632:
+  AFFECTS: users of net/samba413
+  AUTHOR: ports@FreeBSD.org
+
+  Messages about samba413...
+EOF
+
+	# User-provided glob should match exact AFFECTS entries
+	atf_check \
+		-o match:"^20190630:$" \
+		pkg updating -f UPDATING lang/php74*
+
+	atf_check \
+		-o match:"^20190631:$" \
+		pkg updating -f UPDATING 'databases/py-*'
+
+	# User glob should not match unrelated entries
+	atf_check \
+		-o empty \
+		-e empty \
+		pkg updating -f UPDATING 'www/apache*'
+
+	# User glob with ? wildcard
+	atf_check \
+		-o match:"^20190632:$" \
+		pkg updating -f UPDATING 'net/samba4??'
 }
