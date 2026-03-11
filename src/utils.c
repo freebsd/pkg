@@ -1201,6 +1201,9 @@ print_repository(struct pkg_repo *repo, bool pad)
 	if (pkg_repo_key(repo) != NULL)
 		printf(",\n    %-16s: \"%s\"",
 				"pubkey", pkg_repo_key(repo));
+	if (pkg_repo_ssh_args(repo) != NULL)
+		printf(",\n    %-16s: \"%s\"",
+				"ssh_args", pkg_repo_ssh_args(repo));
 	if (pkg_repo_ip_version(repo) != 0)
 		printf(",\n    %-16s: %u",
 				"ip_version", pkg_repo_ip_version(repo));

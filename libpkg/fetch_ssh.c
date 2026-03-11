@@ -188,7 +188,10 @@ ssh_connect(struct pkg_repo *repo, struct yuarel *u)
 		cmd = xstring_new();
 		fputs("/usr/bin/ssh -e none -T ", cmd->fp);
 
-		ssh_args = pkg_object_string(pkg_config_get("PKG_SSH_ARGS"));
+		ssh_args = repo->ssh_args;
+		if (ssh_args == NULL)
+			ssh_args = pkg_object_string(
+			    pkg_config_get("PKG_SSH_ARGS"));
 		if (ssh_args != NULL)
 			fprintf(cmd->fp, "%s ", ssh_args);
 		if (repo->ip == IPV4)

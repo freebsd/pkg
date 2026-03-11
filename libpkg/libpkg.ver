@@ -165,6 +165,7 @@ global:
 	pkg_repo_mirror_type;
 	pkg_repo_name;
 	pkg_repo_priority;
+	pkg_repo_ssh_args;
 	pkg_repo_signature_type;
 	pkg_repo_url;
 	pkg_repos;

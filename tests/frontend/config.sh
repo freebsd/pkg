@@ -5,6 +5,7 @@ tests_init \
 	empty_conf \
 	duplicate_pkgs_notallowed \
 	inline_repo \
+	repo_ssh_args \
 	nameserver \
 	expansion \
 	validate_shlib_provide_paths
@@ -97,6 +98,53 @@ EOF
 	atf_check -o match:'^    url             : "file:///tmp",$' \
 		-o match:'^    url             : "file:///tmp2",$' \
 		pkg -o REPOS_DIR=/dev/null -C pkgconfiguration -vv
+}
+
+repo_ssh_args_body() {
+	# Per-repo ssh_args (issue #725)
+	mkdir -p reposconf
+	cat > reposconf/test.conf << EOF
+myrepo: {
+    url: "ssh://myhost/repo",
+    ssh_args: "-i /path/to/key -o ConnectTimeout=10",
+}
+EOF
+
+	# ssh_args should appear in -vv output
+	atf_check \
+		-o match:'ssh_args.*-i /path/to/key -o ConnectTimeout=10' \
+		-s exit:0 \
+		pkg -o REPOS_DIR="${TMPDIR}/reposconf" -vv
+
+	# Without ssh_args, it should not appear
+	cat > reposconf/test.conf << EOF
+plain: {
+    url: "ssh://otherhost/repo",
+}
+EOF
+
+	atf_check \
+		-o not-match:'ssh_args' \
+		-s exit:0 \
+		pkg -o REPOS_DIR="${TMPDIR}/reposconf" -vv
+
+	# Two repos: one with ssh_args, one without
+	cat > reposconf/test.conf << EOF
+repo_with_args: {
+    url: "ssh://host1/repo",
+    ssh_args: "-i /special/key",
+}
+repo_without_args: {
+    url: "ssh://host2/repo",
+}
+EOF
+
+	atf_check \
+		-o match:'ssh_args.*-i /special/key' \
+		-o match:'repo_with_args' \
+		-o match:'repo_without_args' \
+		-s exit:0 \
+		pkg -o REPOS_DIR="${TMPDIR}/reposconf" -vv
 }
 
 nameserver_body()

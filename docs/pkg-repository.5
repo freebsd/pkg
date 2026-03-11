@@ -234,6 +234,21 @@ schemes are used with
 .Cm SRV
 mirror type to enable DNS-based mirror discovery.
 .Pp
+For
+.Cm ssh://
+repositories, extra arguments can be passed to
+.Xr ssh 1
+via the
+.Cm SSH_ARGS
+per-repository option or the global
+.Cm PKG_SSH_ARGS
+setting in
+.Xr pkg.conf 5 .
+The per-repository setting takes precedence over the global one.
+This is useful for specifying a private key
+.Pq Fl i
+or other connection options for a specific repository.
+.Pp
 Additional URL schemes can be configured via the
 .Cm VALID_URL_SCHEME
 option in

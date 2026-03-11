@@ -546,6 +546,7 @@ struct pkg_repo {
 	};
 	signature_t signature_type;
 	char *fingerprints;
+	char *ssh_args;
 	FILE *fh;
 	void *fetch_priv;
 	bool silent;

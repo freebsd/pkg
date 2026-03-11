@@ -615,6 +615,7 @@ add_repo(const ucl_object_t *obj, struct pkg_repo *r, const char *rname, pkg_ini
 	bool enable = true;
 	const char *url = NULL, *pubkey = NULL, *mirror_type = NULL;
 	const char *signature_type = NULL, *fingerprints = NULL;
+	const char *ssh_args = NULL;
 	const char *key;
 	const char *type = NULL;
 	int use_ipvx = 0;
@@ -711,6 +712,14 @@ add_repo(const ucl_object_t *obj, struct pkg_repo *r, const char *rname, pkg_ini
 				return;
 			}
 			priority = ucl_object_toint(cur);
+		} else if (STRIEQ(key, "ssh_args")) {
+			if (cur->type != UCL_STRING) {
+				pkg_emit_error("Expecting a string for the "
+					"'%s' key of the '%s' repo",
+					key, rname);
+				return;
+			}
+			ssh_args = ucl_object_tostring(cur);
 		} else if (STRIEQ(key, "env")) {
 			if (cur->type != UCL_OBJECT) {
 				pkg_emit_error("Expecting an object for the "
@@ -749,6 +758,11 @@ add_repo(const ucl_object_t *obj, struct pkg_repo *r, const char *rname, pkg_ini
 	if (pubkey != NULL) {
 		free(r->pubkey);
 		r->pubkey = xstrdup(pubkey);
+	}
+
+	if (ssh_args != NULL) {
+		free(r->ssh_args);
+		r->ssh_args = xstrdup(ssh_args);
 	}
 
 	r->enable = enable;
@@ -1704,6 +1718,7 @@ pkg_repo_free(struct pkg_repo *r)
 	free(r->name);
 	free(r->pubkey);
 	free(r->fingerprints);
+	free(r->ssh_args);
 	pkg_repo_meta_free(r->meta);
 	if (r->fetcher != NULL && r->fetcher->cleanup != NULL)
 		r->fetcher->cleanup(r);
@@ -1802,6 +1817,12 @@ const char *
 pkg_repo_fingerprints(struct pkg_repo *r)
 {
 	return (r->fingerprints);
+}
+
+const char *
+pkg_repo_ssh_args(struct pkg_repo *r)
+{
+	return (r->ssh_args);
 }
 
 signature_t
