@@ -20,7 +20,9 @@ tests_init \
 	delete_no_scripts \
 	delete_all_preserves_pkg \
 	delete_recursive_force \
-	delete_dry_run_no_remove
+	delete_dry_run_no_remove \
+	delete_autoremove \
+	delete_autoremove_flag
 
 delete_all_body() {
 	atf_check -s exit:0 sh ${RESOURCEDIR}/test_subr.sh new_pkg "foo" "foo" "1"
@@ -459,4 +461,73 @@ EOF
 	atf_check -s exit:0 pkg info -e pkgA
 	atf_check -s exit:0 pkg info -e pkgB
 	atf_check -s exit:1 pkg info -e pkgC
+}
+
+delete_autoremove_body() {
+	# test: automatic dependency; master: manual package depending on test
+	atf_check -s exit:0 sh ${RESOURCEDIR}/test_subr.sh new_pkg "dep" "dep" "1"
+	atf_check -s exit:0 sh ${RESOURCEDIR}/test_subr.sh new_pkg "master" "master" "1"
+	cat << EOF >> master.ucl
+deps: {
+	dep {
+		origin: dep,
+		version: 1
+	}
+}
+EOF
+
+	atf_check -o ignore pkg register -A -M dep.ucl
+	atf_check -o ignore pkg register -M master.ucl
+
+	# Without AUTOREMOVE, delete master should leave dep
+	atf_check \
+		-o match:"Deinstalling master" \
+		-o not-match:"dep" \
+		-s exit:0 \
+		pkg delete -yf master
+
+	atf_check -s exit:0 pkg info -e dep
+
+	# Reinstall
+	atf_check -o ignore pkg register -M master.ucl
+
+	# With AUTOREMOVE=YES, delete master should also autoremove dep
+	echo "AUTOREMOVE=YES" > pkg.conf
+	atf_check \
+		-o match:"Deinstalling master" \
+		-o match:"Deinstalling dep" \
+		-s exit:0 \
+		pkg -C ${TMPDIR}/pkg.conf delete -yf master
+
+	# Both should be gone
+	atf_check -s exit:1 pkg info -e master
+	atf_check -s exit:1 pkg info -e dep
+}
+
+delete_autoremove_flag_body() {
+	# Same as delete_autoremove but using --autoremove flag instead of config
+	atf_check -s exit:0 sh ${RESOURCEDIR}/test_subr.sh new_pkg "dep" "dep" "1"
+	atf_check -s exit:0 sh ${RESOURCEDIR}/test_subr.sh new_pkg "master" "master" "1"
+	cat << EOF >> master.ucl
+deps: {
+	dep {
+		origin: dep,
+		version: 1
+	}
+}
+EOF
+
+	atf_check -o ignore pkg register -A -M dep.ucl
+	atf_check -o ignore pkg register -M master.ucl
+
+	# With --autoremove flag, delete master should also autoremove dep
+	atf_check \
+		-o match:"Deinstalling master" \
+		-o match:"Deinstalling dep" \
+		-s exit:0 \
+		pkg delete -yf --autoremove master
+
+	# Both should be gone
+	atf_check -s exit:1 pkg info -e master
+	atf_check -s exit:1 pkg info -e dep
 }

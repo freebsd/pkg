@@ -30,11 +30,11 @@
 .Fl a
 .Pp
 .Nm
-.Op Cm --{no-scripts,force,dry-run,quiet,recursive,yes}
+.Op Cm --{no-scripts,force,dry-run,quiet,recursive,yes,autoremove}
 .Op Cm --{case-sensitive,glob,case-insensitive,regex}
 .Ar pkg-name ...
 .Nm
-.Op Cm --{no-scripts,dry-run,quiet,yes}
+.Op Cm --{no-scripts,dry-run,quiet,yes,autoremove}
 .Cm --all
 .Sh DESCRIPTION
 .Nm
@@ -124,6 +124,16 @@ Treat the package names as regular expressions according to the
 .Xr re_format 7 .
 .It Fl y , Cm --yes
 Assume yes when asked for confirmation before package deletion.
+.It Cm --autoremove
+After deleting the requested packages, automatically remove any orphaned
+packages that were installed as dependencies and are no longer required.
+This is equivalent to running
+.Xr pkg-autoremove 8
+after the deletion.
+Can also be enabled permanently via the
+.Cm AUTOREMOVE
+option in
+.Xr pkg.conf 5 .
 .It Cm --script-no-exec
 Do not execute the pre-deinstall and post-deinstall scripts but still log
 the scripts in the package database for future reference.

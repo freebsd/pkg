@@ -265,6 +265,7 @@ void job_status_end(xstring *);
 int event_callback(void *data, struct pkg_event *ev);
 int print_pkg(struct pkg *p, void *ctx);
 void print_repository(struct pkg_repo *repo, bool pad);
+void pkgcli_autoremove(struct pkgdb *db, bool flag);
 void progressbar_start(const char *pmsg);
 void progressbar_tick(int64_t current, int64_t total);
 void progressbar_stop(void);

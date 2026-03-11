@@ -102,6 +102,16 @@ after each non dry-run call to
 or
 .Xr pkg-upgrade 8 .
 Default: NO.
+.It Cm AUTOREMOVE: boolean
+Automatically remove orphaned packages after each non dry-run call to
+.Xr pkg-install 8 ,
+.Xr pkg-delete 8
+or
+.Xr pkg-upgrade 8 .
+This is equivalent to running
+.Xr pkg-autoremove 8
+after each operation.
+Default: NO.
 .It Cm DEFAULT_ALWAYS_YES: boolean
 When this option is enabled
 .Xr pkg 1

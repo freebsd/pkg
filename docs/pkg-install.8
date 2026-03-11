@@ -28,7 +28,7 @@
 .Ar <pkg-origin|pkg-name|pkg-name-version> ...
 .Pp
 .Nm
-.Op Cm --{automatic,force,no-scripts,ignore-missing,register-only}
+.Op Cm --{automatic,force,no-scripts,ignore-missing,register-only,autoremove}
 .Op Cm --{dry-run,fetch-only,quiet,recursive,no-repo-update,yes}
 .Op Cm --repository Ar reponame
 .Op Cm --{case-sensitive,glob,case-insensitive,regex}
@@ -187,6 +187,16 @@ Assume yes when asked for confirmation before package installation.
 .It Fl l , Cm --local-only
 Skip the remote repository and only install from local archives.
 Suppress the automatic update of the repository catalogue.
+.It Cm --autoremove
+After installing the requested packages, automatically remove any orphaned
+packages that were installed as dependencies and are no longer required.
+This is equivalent to running
+.Xr pkg-autoremove 8
+after the installation.
+Can also be enabled permanently via the
+.Cm AUTOREMOVE
+option in
+.Xr pkg.conf 5 .
 .It Cm --script-no-exec
 Do not execute the pre-install and post-install scripts but still log
 the scripts

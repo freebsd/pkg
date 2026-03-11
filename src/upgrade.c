@@ -53,7 +53,7 @@ static const char vuln_end_lit[] = "**END**";
 void
 usage_upgrade(void)
 {
-	fprintf(stderr, "Usage: pkg upgrade [-fInFqUy] [-r reponame] [-Cgix] <pkg-name> ...\n\n");
+	fprintf(stderr, "Usage: pkg upgrade [-fInFqUy] [--autoremove] [-r reponame] [-Cgix] <pkg-name> ...\n\n");
 	fprintf(stderr, "For more information see 'pkg help upgrade'.\n");
 }
 
@@ -244,11 +244,14 @@ exec_upgrade(int argc, char **argv)
 	int		 done = 0;
 	int		 nbactions = 0;
 	int		 scriptnoexec = 0;
+	int		 autoremove = 0;
 	bool	rc = true;
+	bool	autoremove_flag = false;
 	pkg_flags	 f = PKG_FLAG_NONE | PKG_FLAG_PKG_VERSION_TEST;
 	c_charv_t	reponames = vec_init();
 
 	struct option longopts[] = {
+		{ "autoremove",		no_argument,		&autoremove,	1 },
 		{ "case-sensitive",	no_argument,		NULL,	'C' },
 		{ "force",		no_argument,		NULL,	'f' },
 		{ "fetch-only",		no_argument,		NULL,	'F' },
@@ -313,6 +316,8 @@ exec_upgrade(int argc, char **argv)
 		case 0:
 			if (scriptnoexec == 1)
 				f |= PKG_FLAG_NOEXEC;
+			if (autoremove)
+				autoremove_flag = true;
 			break;
 		default:
 			usage_upgrade();
@@ -424,6 +429,9 @@ exec_upgrade(int argc, char **argv)
 		retcode = EXIT_SUCCESS;
 	else
 		retcode = EXIT_FAILURE;
+
+	if (done && retcode == EXIT_SUCCESS)
+		pkgcli_autoremove(db, autoremove_flag);
 
 cleanup:
 	pkg_jobs_free(jobs);

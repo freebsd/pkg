@@ -47,7 +47,7 @@ void
 usage_install(void)
 {
 	fprintf(stderr,
-	    "Usage: pkg install [-AfInFMqRUy] [-r reponame] [-Cgix] <pkg-name> ...\n\n");
+	    "Usage: pkg install [-AfInFMqRUy] [--autoremove] [-r reponame] [-Cgix] <pkg-name> ...\n\n");
 	fprintf(stderr, "For more information see 'pkg help install'.\n");
 }
 
@@ -65,14 +65,17 @@ exec_install(int argc, char **argv)
 	int		 lock_type = PKGDB_LOCK_ADVISORY;
 	int		 nbactions = 0;
 	int		 scriptnoexec = 0;
+	int		 autoremove = 0;
 	bool		 rc = true;
 	bool		 local_only = false;
+	bool		 autoremove_flag = false;
 	match_t		 match = MATCH_EXACT;
 	pkg_flags	 f = PKG_FLAG_NONE | PKG_FLAG_PKG_VERSION_TEST;
 	c_charv_t	reponames = vec_init();
 
 	struct option longopts[] = {
 		{ "automatic",		no_argument,		NULL,	'A' },
+		{ "autoremove",		no_argument,		&autoremove,	1 },
 		{ "case-sensitive",	no_argument,		NULL,	'C' },
 		{ "force",		no_argument,		NULL,	'f' },
 		{ "fetch-only",		no_argument,		NULL,	'F' },
@@ -160,6 +163,8 @@ exec_install(int argc, char **argv)
 		case 0:
 			if (scriptnoexec == 1)
 				f |= PKG_FLAG_NOEXEC;
+			if (autoremove)
+				autoremove_flag = true;
 			break;
 		default:
 			usage_install();
@@ -276,6 +281,9 @@ exec_install(int argc, char **argv)
 
 	if (!rc)
 		status = EXIT_FAILURE;
+
+	if (done && status == EXIT_SUCCESS)
+		pkgcli_autoremove(db, autoremove_flag);
 
 cleanup:
 	pkgdb_release_lock(db, lock_type);

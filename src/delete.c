@@ -41,8 +41,8 @@
 void
 usage_delete(void)
 {
-	fprintf(stderr, "Usage: pkg delete [-DfnqRy] [-Cgix] <pkg-name> ...\n");
-	fprintf(stderr, "       pkg delete [-Dnqy] -a\n\n");
+	fprintf(stderr, "Usage: pkg delete [-DfnqRy] [--autoremove] [-Cgix] <pkg-name> ...\n");
+	fprintf(stderr, "       pkg delete [-Dnqy] [--autoremove] -a\n\n");
 	fprintf(stderr, "For more information see 'pkg help delete'.\n");
 }
 
@@ -54,6 +54,7 @@ exec_delete(int argc, char **argv)
 	match_t		 match = MATCH_EXACT;
 	pkg_flags	 f = PKG_FLAG_NONE;
 	bool		 recursive_flag = false, rc = false;
+	bool		 autoremove_flag = false;
 	int		 retcode = EXIT_FAILURE;
 	int		 ch;
 	int		 i;
@@ -61,9 +62,11 @@ exec_delete(int argc, char **argv)
 	int		 locked_pkgs = 0;
 	int		 nbactions = 0;
 	int		 scriptnoexec = 0;
+	int		 autoremove = 0;
 
 	struct option longopts[] = {
 		{ "all",			no_argument,	NULL,	'a' },
+		{ "autoremove",			no_argument,	&autoremove,	1 },
 		{ "case-sensitive",		no_argument,	NULL,	'C' },
 		{ "no-scripts",			no_argument,	NULL,	'D' },
 		{ "script-no-exec",		no_argument,	&scriptnoexec,	1 },
@@ -120,6 +123,8 @@ exec_delete(int argc, char **argv)
 		case 0:
 			if (scriptnoexec)
 				f |= PKG_FLAG_NOEXEC;
+			if (autoremove)
+				autoremove_flag = true;
 			break;
 		default:
 			usage_delete();
@@ -250,6 +255,7 @@ exec_delete(int argc, char **argv)
 		printf("%s", messages->buf);
 	}
 	pkgdb_compact(db);
+	pkgcli_autoremove(db, autoremove_flag);
 
 	retcode = EXIT_SUCCESS;
 

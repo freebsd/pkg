@@ -8,7 +8,9 @@ tests_init \
 	pre_script_fail \
 	post_script_ignored \
 	install_missing_dep \
-	install_register_only
+	install_register_only \
+	install_autoremove \
+	install_autoremove_flag
 
 test_setup()
 {
@@ -258,4 +260,89 @@ EOF
 		-e ignore \
 		-s exit:1 \
 		test -d dir
+}
+
+install_autoremove_body() {
+	# Pre-register: olddep (automatic), master depends on olddep
+	atf_check -s exit:0 sh ${RESOURCEDIR}/test_subr.sh new_pkg "olddep" "olddep" "1"
+	atf_check -o ignore pkg register -A -M olddep.ucl
+
+	atf_check -s exit:0 sh ${RESOURCEDIR}/test_subr.sh new_pkg "master" "master" "1"
+	cat << EOF >> master.ucl
+deps: {
+	olddep {
+		origin: olddep,
+		version: 1
+	}
+}
+EOF
+	atf_check -o ignore pkg register -M master.ucl
+
+	# Create master v2 in repo (no longer depends on olddep)
+	atf_check -s exit:0 sh ${RESOURCEDIR}/test_subr.sh new_pkg "master2" "master" "2"
+	atf_check pkg create -M master2.ucl -o ./repo
+
+	cat << EOF > pkg.conf
+PKG_DBDIR=${TMPDIR}
+REPOS_DIR=[]
+AUTOREMOVE=YES
+repositories: {
+	local: { url : file://${TMPDIR}/repo }
+}
+EOF
+
+	atf_check -o ignore pkg -C ./pkg.conf repo ./repo
+	atf_check -o ignore pkg -C ./pkg.conf update -f
+
+	# Install/upgrade master: olddep should be autoremoved
+	atf_check \
+		-o match:"Upgrading master" \
+		-o match:"Deinstalling olddep" \
+		-s exit:0 \
+		pkg -C ./pkg.conf install -y master
+
+	atf_check -s exit:0 pkg info -e master
+	atf_check -s exit:1 pkg info -e olddep
+}
+
+install_autoremove_flag_body() {
+	# Same scenario but with --autoremove flag
+	atf_check -s exit:0 sh ${RESOURCEDIR}/test_subr.sh new_pkg "olddep" "olddep" "1"
+	atf_check -o ignore pkg register -A -M olddep.ucl
+
+	atf_check -s exit:0 sh ${RESOURCEDIR}/test_subr.sh new_pkg "master" "master" "1"
+	cat << EOF >> master.ucl
+deps: {
+	olddep {
+		origin: olddep,
+		version: 1
+	}
+}
+EOF
+	atf_check -o ignore pkg register -M master.ucl
+
+	# Create master v2 in repo (no longer depends on olddep)
+	atf_check -s exit:0 sh ${RESOURCEDIR}/test_subr.sh new_pkg "master2" "master" "2"
+	atf_check pkg create -M master2.ucl -o ./repo
+
+	cat << EOF > pkg.conf
+PKG_DBDIR=${TMPDIR}
+REPOS_DIR=[]
+repositories: {
+	local: { url : file://${TMPDIR}/repo }
+}
+EOF
+
+	atf_check -o ignore pkg -C ./pkg.conf repo ./repo
+	atf_check -o ignore pkg -C ./pkg.conf update -f
+
+	# Install/upgrade master with --autoremove: olddep should be removed
+	atf_check \
+		-o match:"Upgrading master" \
+		-o match:"Deinstalling olddep" \
+		-s exit:0 \
+		pkg -C ./pkg.conf install -y --autoremove master
+
+	atf_check -s exit:0 pkg info -e master
+	atf_check -s exit:1 pkg info -e olddep
 }

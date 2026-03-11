@@ -1209,3 +1209,45 @@ print_repository(struct pkg_repo *repo, bool pad)
 				"ip_version", pkg_repo_ip_version(repo));
 	printf("\n  }\n");
 }
+
+void
+pkgcli_autoremove(struct pkgdb *db, bool flag)
+{
+	struct pkg_jobs *jobs = NULL;
+	int nbactions;
+	pkg_flags f = PKG_FLAG_FORCE;
+
+	if (!flag && !pkg_object_bool(pkg_config_get("AUTOREMOVE")))
+		return;
+	if (dry_run)
+		return;
+
+	if (pkg_jobs_new(&jobs, PKG_JOBS_AUTOREMOVE, db) != EPKG_OK)
+		return;
+
+	pkg_jobs_set_flags(jobs, f);
+
+	if (pkg_jobs_solve(jobs) != EPKG_OK) {
+		pkg_jobs_free(jobs);
+		return;
+	}
+
+	if ((nbactions = pkg_jobs_count(jobs)) == 0) {
+		pkg_jobs_free(jobs);
+		return;
+	}
+
+	if (!quiet) {
+		print_jobs_summary(jobs,
+		    "Autoremoval has been requested for the following "
+		    "%d packages:\n\n", nbactions);
+	}
+
+	if (yes || query_yesno(false,
+	    "\nProceed with autoremoval of packages? ")) {
+		pkg_jobs_apply(jobs);
+	}
+
+	pkg_jobs_free(jobs);
+	pkgdb_compact(db);
+}

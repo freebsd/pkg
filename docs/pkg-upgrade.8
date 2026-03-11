@@ -28,7 +28,7 @@
 .Op Ar <pkg-origin|pkg-name|pkg-name-version> ...
 .Pp
 .Nm
-.Op Cm --{force,no-scripts,dry-run,fetch-only}
+.Op Cm --{force,no-scripts,dry-run,fetch-only,autoremove}
 .Op Cm --{quiet,no-repo-update,yes}
 .Op Cm --repository Ar reponame
 .Op Cm --{case-sensitive,glob,case-insensitive,regex}
@@ -184,6 +184,16 @@ Treat the package names as regular expressions according to the
 .Xr re_format 7 .
 .It Fl y , Cm --yes
 Assume yes when asked for confirmation before package installation.
+.It Cm --autoremove
+After upgrading the requested packages, automatically remove any orphaned
+packages that were installed as dependencies and are no longer required.
+This is equivalent to running
+.Xr pkg-autoremove 8
+after the upgrade.
+Can also be enabled permanently via the
+.Cm AUTOREMOVE
+option in
+.Xr pkg.conf 5 .
 .It Cm --script-no-exec
 Do not execute the pre-install, post-install, pre-deinstall, or post-deinstall
 scripts but still log the scripts in the package database for future reference.
