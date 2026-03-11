@@ -208,6 +208,45 @@ pkg_jobs_free(struct pkg_jobs *j)
 }
 
 static bool
+pkg_jobs_maybe_match_url(struct job_pattern *jp, const char *pattern)
+{
+	char path[MAXPATHLEN];
+	const char *name;
+
+	if (strncmp(pattern, "http://", 7) != 0 &&
+	    strncmp(pattern, "https://", 8) != 0 &&
+	    strncmp(pattern, "file://", 7) != 0)
+		return (false);
+
+	if (!str_ends_with(pattern, ".pkg"))
+		return (false);
+
+	name = strrchr(pattern, '/');
+	if (name == NULL)
+		name = pattern;
+	else
+		name++;
+
+	snprintf(path, sizeof(path), "%s/%s.XXXXX",
+	    getenv("TMPDIR") ? getenv("TMPDIR") : "/tmp", name);
+
+	if (pkg_fetch_file(NULL, pattern, path, 0, 0, 0) != EPKG_OK) {
+		pkg_emit_error("Failed to fetch package from '%s'", pattern);
+		return (false);
+	}
+
+	dbg(2, "Fetched URL to file: %s", path);
+	jp->flags |= PKG_PATTERN_FLAG_FILE;
+	jp->path = xstrdup(path);
+	/* Use just the filename (without .pkg extension) as the pattern */
+	int len = strlen(name) - 3; /* strip ".pkg" */
+	jp->pattern = xmalloc(len);
+	strlcpy(jp->pattern, name, len);
+
+	return (true);
+}
+
+static bool
 pkg_jobs_maybe_match_file(struct job_pattern *jp, const char *pattern)
 {
 	const char *dot_pos;
@@ -215,6 +254,9 @@ pkg_jobs_maybe_match_file(struct job_pattern *jp, const char *pattern)
 
 	assert(jp != NULL);
 	assert(pattern != NULL);
+
+	if (pkg_jobs_maybe_match_url(jp, pattern))
+		return (true);
 
 	dot_pos = strrchr(pattern, '.');
 	if (dot_pos != NULL) {

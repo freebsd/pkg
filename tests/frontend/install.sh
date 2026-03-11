@@ -13,7 +13,8 @@ tests_init \
 	install_autoremove_flag \
 	install_suggest_clear_automatic \
 	install_suggest_set_automatic \
-	install_no_suggest_when_flag_matches
+	install_no_suggest_when_flag_matches \
+	install_from_url
 
 test_setup()
 {
@@ -463,4 +464,30 @@ EOF
 	atf_check \
 		-o inline:"0\n" \
 		pkg query "%a" test
+}
+
+install_from_url_body() {
+	# pkg install should accept file:// URLs
+	atf_check -s exit:0 sh ${RESOURCEDIR}/test_subr.sh new_pkg "test" "test" "1"
+
+	atf_check pkg create -M test.ucl -o ./repo
+
+	cat << EOF > pkg.conf
+PKG_DBDIR=${TMPDIR}
+REPOS_DIR=[]
+repositories: {
+	local: { url : file://${TMPDIR}/repo }
+}
+EOF
+
+	atf_check -o ignore pkg -C ./pkg.conf repo ./repo
+	atf_check -o ignore pkg -C ./pkg.conf update -f
+
+	# Install from a file:// URL
+	atf_check \
+		-o match:"Installing test" \
+		-s exit:0 \
+		pkg -C ./pkg.conf install -y file://${TMPDIR}/repo/test-1.pkg
+
+	atf_check -s exit:0 pkg info -e test
 }
