@@ -135,19 +135,21 @@ pipeevent(struct pkg_event *ev)
 		    "\"pkgversion\": \"%v\""
 		    "}}", ev->e_extract_finished.pkg, ev->e_extract_finished.pkg);
 		break;
-	case PKG_EVENT_INSTALL_FINISHED:
+	case PKG_EVENT_INSTALL_FINISHED: {
+		char *msgjson = pkg_has_message(ev->e_install_finished.pkg) ?
+		    pkg_message_to_str(ev->e_install_finished.pkg) : NULL;
 		pkg_fprintf(msg->fp, "{ \"type\": \"INFO_INSTALL_FINISHED\", "
 		    "\"data\": { "
 		    "\"pkgname\": \"%n\", "
 		    "\"pkgversion\": \"%v\", "
-		    "\"message\": \"%S\""
+		    "\"message\": %S"
 		    "}}",
 		    ev->e_install_finished.pkg,
 		    ev->e_install_finished.pkg,
-			pkg_has_message(ev->e_install_finished.pkg) ?
-				pkg_message_to_str(ev->e_install_finished.pkg) :
-				"");
+		    msgjson != NULL ? msgjson : "\"\"");
+		free(msgjson);
 		break;
+	}
 	case PKG_EVENT_INTEGRITYCHECK_BEGIN:
 		fputs("{ \"type\": \"INFO_INTEGRITYCHECK_BEGIN\", "
 		    "\"data\": {}}", msg->fp);
