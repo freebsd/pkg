@@ -290,7 +290,8 @@ exec_set(int argc, char **argv)
 
 	if (oldvalue != NULL) {
 		match = MATCH_ALL;
-		if ((it = pkgdb_query(db, oldvalue, MATCH_EXACT)) == NULL) {
+		if ((it = pkgdb_query(db, oldvalue,
+		    (sets & NAME) ? MATCH_INTERNAL : MATCH_EXACT)) == NULL) {
 			retcode = EXIT_FAILURE;
 			goto cleanup;
 		}

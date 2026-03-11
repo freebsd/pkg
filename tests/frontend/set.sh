@@ -6,6 +6,7 @@ tests_init \
 	set_automatic \
 	set_change_name \
 	set_change_origin \
+	set_change_name_not_origin \
 	set_vital \
 	set_partial
 
@@ -82,6 +83,32 @@ set_change_origin_body() {
 
 	atf_check \
 		-o inline:"neworigin/test\n" \
+		-e empty \
+		-s exit:0 \
+		pkg info -qo
+}
+
+set_change_name_not_origin_body() {
+	initialize_pkg
+
+	# pkg set -n should match by name only, not by origin (issue #1187).
+	# "origin/test" contains a slash and matches the origin, but -n
+	# must not find the package through its origin and rename it.
+	atf_check \
+		-s exit:0 \
+		pkg set -yn origin/test:newname
+
+	# Verify the package name and origin are unchanged:
+	# Before the fix, the name would become "newname" because -n
+	# matched via origin instead of name.
+	atf_check \
+		-o inline:"test-1\n" \
+		-e empty \
+		-s exit:0 \
+		pkg info -q
+
+	atf_check \
+		-o inline:"origin/test\n" \
 		-e empty \
 		-s exit:0 \
 		pkg info -qo
