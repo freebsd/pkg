@@ -672,6 +672,9 @@ pkg_audit_preprocess(struct pkg_audit_entry *h)
 
 	qsort(ret, n, sizeof(*ret), pkg_audit_entry_cmp);
 
+	if (n < 2)
+		goto first_byte_idx;
+
 	/*
 	 * Determining jump indexes to the next different prefix.
 	 * Only non-1 increments are calculated there.
@@ -697,6 +700,7 @@ pkg_audit_preprocess(struct pkg_audit_entry *h)
 		}
 	}
 
+first_byte_idx:
 	/* Calculate jump indexes for the first byte of the package name */
 	memset(audit_entry_first_byte_idx, '\0', sizeof(audit_entry_first_byte_idx));
 	for (n = 1, i = 0; n < 256; n++) {

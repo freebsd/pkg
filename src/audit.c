@@ -416,6 +416,7 @@ exec_audit(int argc, char **argv)
 							pkg_printf("%n-%v\n", pkg, pkg);
 						else
 							pkg_printf("%s\n", pkg);
+						pkg_audit_issues_free(issues);
 						continue;
 					}
 
