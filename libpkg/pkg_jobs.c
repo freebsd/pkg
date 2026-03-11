@@ -804,8 +804,10 @@ pkg_jobs_process_remote_pkg(struct pkg_jobs *j, struct pkg *rp,
 	}
 	if (j->type != PKG_JOBS_FETCH) {
 		lp = pkg_jobs_universe_get_local(j->universe, rp->uid, 0);
-		if (lp && lp->locked)
+		if (lp && lp->locked) {
+			pkg_emit_locked(lp);
 			return (EPKG_LOCKED);
+		}
 	}
 
 	nit = pkg_jobs_universe_get_upgrade_candidates(j->universe, rp->uid, lp,
@@ -892,7 +894,7 @@ pkg_jobs_find_upgrade(struct pkg_jobs *j, const char *pattern, match_t m)
 
 	pkgdb_it_free(it);
 
-	if (!found && rc != EPKG_INSTALLED) {
+	if (!found && rc != EPKG_INSTALLED && rc != EPKG_LOCKED) {
 		/*
 		 * Here we need to ensure that this package has no
 		 * reverse deps installed
