@@ -1303,6 +1303,78 @@ pkg_solve_dimacs_export(struct pkg_solve_problem *problem, FILE *f)
 	return (EPKG_OK);
 }
 
+/*
+ * Check whether a non-requested installed package can safely be kept:
+ * - All its dependencies are still satisfied (at least one version of
+ *   each dep has PKG_VAR_INSTALL set).
+ * - It does not conflict with any package being installed.
+ *
+ * Returns true if the package can stay.
+ */
+static bool
+pkg_solve_can_keep(struct pkg_solve_problem *problem,
+    struct pkg_solve_variable *var)
+{
+	struct pkg *pkg = var->unit->pkg;
+	struct pkg_dep *dep = NULL;
+	struct pkg_conflict *conflict = NULL;
+
+	/* Check dependencies */
+	while (pkg_deps(pkg, &dep) == EPKG_OK) {
+		struct pkg_solve_variable *depvar;
+
+		depvar = pkghash_get_value(problem->variables_by_uid, dep->uid);
+		if (depvar == NULL) {
+			/*
+			 * Dep not in the universe at all – it is either
+			 * already installed outside the solver scope or
+			 * genuinely missing.  Assume satisfied.
+			 */
+			continue;
+		}
+
+		/* Check if any version of this dep is being installed/kept */
+		bool dep_ok = false;
+		struct pkg_solve_variable *cv;
+		LL_FOREACH(depvar, cv) {
+			if (cv->flags & PKG_VAR_INSTALL) {
+				dep_ok = true;
+				break;
+			}
+		}
+
+		if (!dep_ok) {
+			dbg(4, "dep %s of %s-%s not satisfied",
+			    dep->uid, pkg->name, pkg->version);
+			return (false);
+		}
+	}
+
+	/* Check conflicts: if any conflicting package is being installed,
+	 * this package must be removed */
+	LL_FOREACH(pkg->conflicts, conflict) {
+		struct pkg_solve_variable *confvar;
+
+		confvar = pkghash_get_value(problem->variables_by_uid,
+		    conflict->uid);
+		if (confvar == NULL)
+			continue;
+
+		struct pkg_solve_variable *cv;
+		LL_FOREACH(confvar, cv) {
+			if (cv->flags & PKG_VAR_INSTALL) {
+				dbg(4, "%s-%s conflicts with %s-%s being installed",
+				    pkg->name, pkg->version,
+				    cv->unit->pkg->name,
+				    cv->unit->pkg->version);
+				return (false);
+			}
+		}
+	}
+
+	return (true);
+}
+
 static void
 pkg_solve_insert_res_job (struct pkg_solve_variable *var,
 		struct pkg_solve_problem *problem)
@@ -1363,6 +1435,26 @@ pkg_solve_insert_res_job (struct pkg_solve_variable *var,
 				/* Skip already added items */
 				if (seen_add > 0 && cur_var == del_var)
 					continue;
+
+				/*
+				 * For install/upgrade jobs, avoid spurious
+				 * removal of packages that entered the universe
+				 * via rdeps but whose dependencies are all still
+				 * satisfied.  Only allow removal if the package
+				 * was explicitly requested for deletion, or if
+				 * at least one of its dependencies will no
+				 * longer be met.  (issue #2566)
+				 */
+				if ((j->type == PKG_JOBS_INSTALL ||
+				    j->type == PKG_JOBS_UPGRADE) &&
+				    pkghash_get(j->request_delete, cur_var->uid) == NULL &&
+				    pkg_solve_can_keep(problem, cur_var)) {
+					dbg(2, "keeping %s-%s: deps still satisfied",
+					    cur_var->unit->pkg->name,
+					    cur_var->unit->pkg->version);
+					cur_var->flags |= PKG_VAR_INSTALL;
+					continue;
+				}
 
 				res = xcalloc(1, sizeof(struct pkg_solved));
 				res->items[0] = cur_var->unit;

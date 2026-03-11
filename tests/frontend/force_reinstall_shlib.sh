@@ -3,7 +3,8 @@
 . $(atf_get_srcdir)/test_environment.sh
 
 tests_init \
-	force_install_no_unrelated_reinstall
+	force_install_no_unrelated_reinstall \
+	force_install_no_rdep_removal
 
 force_install_no_unrelated_reinstall_body() {
 	atf_skip_on Darwin The macOS linker uses different flags
@@ -77,4 +78,74 @@ EOF
 		-s exit:1 \
 		pkg -o REPOS_DIR="${TMPDIR}/reposconf" -o PKG_CACHEDIR="${TMPDIR}" \
 		install -fn target
+}
+
+force_install_no_rdep_removal_body() {
+	# Regression test for issue #2566: pkg install -f of a package
+	# that many other packages depend on should NOT propose to remove
+	# those reverse dependencies.
+
+	# base: the package we will force-reinstall
+	atf_check -s exit:0 sh ${RESOURCEDIR}/test_subr.sh new_pkg base base 1 /usr/local
+
+	# rdep1, rdep2: packages that depend on base
+	atf_check -s exit:0 sh ${RESOURCEDIR}/test_subr.sh new_pkg rdep1 rdep1 1 /usr/local
+	cat << EOF >> rdep1.ucl
+deps: {
+	base: {
+		origin: "base",
+		version: "1"
+	}
+}
+EOF
+
+	atf_check -s exit:0 sh ${RESOURCEDIR}/test_subr.sh new_pkg rdep2 rdep2 1 /usr/local
+	cat << EOF >> rdep2.ucl
+deps: {
+	base: {
+		origin: "base",
+		version: "1"
+	}
+}
+EOF
+
+	# Create packages and repo
+	for p in base rdep1 rdep2; do
+		atf_check \
+			-o ignore \
+			-e empty \
+			-s exit:0 \
+			pkg create -M ${p}.ucl
+	done
+
+	atf_check \
+		-o ignore \
+		-e empty \
+		-s exit:0 \
+		pkg repo .
+
+	mkdir reposconf
+	cat << EOF > reposconf/repo.conf
+local: {
+	url: file:///$TMPDIR,
+	enabled: true
+}
+EOF
+
+	# Install all three packages
+	atf_check \
+		-o ignore \
+		-s exit:0 \
+		pkg -o REPOS_DIR="${TMPDIR}/reposconf" -o PKG_CACHEDIR="${TMPDIR}" \
+		install -y base rdep1 rdep2
+
+	# Force reinstall base: rdep1 and rdep2 must NOT be removed
+	atf_check \
+		-o match:"base" \
+		-o not-match:"REMOVED" \
+		-o not-match:"rdep1" \
+		-o not-match:"rdep2" \
+		-s exit:1 \
+		pkg -o REPOS_DIR="${TMPDIR}/reposconf" -o PKG_CACHEDIR="${TMPDIR}" \
+		install -fn base
 }
