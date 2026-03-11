@@ -1151,7 +1151,7 @@ pkg_add_check_pkg_archive(struct pkgdb *db, struct pkg *pkg,
 		return (EPKG_FATAL);
 	}
 
-	if (!is_valid_os_version(pkg) && (flags & PKG_ADD_FORCE) == 0) {
+	if ((flags & PKG_ADD_FORCE) == 0 && !is_valid_os_version(pkg)) {
 		return (EPKG_FATAL);
 	}
 
