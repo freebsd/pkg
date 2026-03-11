@@ -114,14 +114,6 @@ ATF_TC_BODY(static_lib_non_elf, tc)
 	fclose(fp);
 	ATF_REQUIRE_EQ(0, system("ar rcs libwasm.a dummy.txt"));
 
-	/* Create an ELF .a archive (native static library) */
-	fp = fopen("empty.c", "w");
-	ATF_REQUIRE(fp != NULL);
-	fprintf(fp, "int placeholder;\n");
-	fclose(fp);
-	ATF_REQUIRE_EQ(0, system("cc -c -o empty.o empty.c"));
-	ATF_REQUIRE_EQ(0, system("ar rcs libnative.a empty.o"));
-
 	/* Non-ELF .a should NOT set PKG_CONTAINS_STATIC_LIBS */
 	ATF_REQUIRE_EQ(EPKG_OK, pkg_new(&p, PKG_INSTALLED));
 	p->flags &= ~PKG_CONTAINS_STATIC_LIBS;
@@ -132,7 +124,16 @@ ATF_TC_BODY(static_lib_non_elf, tc)
 	pkg_free(p);
 	free(provided);
 
-	/* ELF .a should set PKG_CONTAINS_STATIC_LIBS */
+#ifdef __ELF__
+	/* ELF .a should set PKG_CONTAINS_STATIC_LIBS
+	 * (only testable on ELF platforms where cc produces ELF objects) */
+	fp = fopen("empty.c", "w");
+	ATF_REQUIRE(fp != NULL);
+	fprintf(fp, "void placeholder(void) {}\n");
+	fclose(fp);
+	ATF_REQUIRE_EQ(0, system("cc -c -o empty.o empty.c"));
+	ATF_REQUIRE_EQ(0, system("ar rcs libnative.a empty.o"));
+
 	provided = NULL;
 	provided_flags = PKG_SHLIB_FLAGS_NONE;
 	ATF_REQUIRE_EQ(EPKG_OK, pkg_new(&p, PKG_INSTALLED));
@@ -144,6 +145,7 @@ ATF_TC_BODY(static_lib_non_elf, tc)
 	    "ELF .a should set PKG_CONTAINS_STATIC_LIBS");
 	pkg_free(p);
 	free(provided);
+#endif
 }
 
 ATF_TP_ADD_TCS(tp)
