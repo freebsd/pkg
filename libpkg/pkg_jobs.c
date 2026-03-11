@@ -572,7 +572,8 @@ pkg_jobs_process_delete_request(struct pkg_jobs *j)
 	pkgs_t to_process = vec_init();
 	pkghash_it it;
 
-	if (j->type == PKG_JOBS_DEINSTALL && force)
+	if (j->type == PKG_JOBS_DEINSTALL && force &&
+	    (j->flags & PKG_FLAG_RECURSIVE) == 0)
 		return (EPKG_OK);
 
 	/*

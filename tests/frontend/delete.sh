@@ -20,6 +20,7 @@ tests_init \
 	delete_no_scripts \
 	delete_all_preserves_pkg \
 	delete_recursive_force \
+	delete_force_recursive \
 	delete_dry_run_no_remove \
 	delete_autoremove \
 	delete_autoremove_flag
@@ -461,6 +462,35 @@ EOF
 	atf_check -s exit:0 pkg info -e pkgA
 	atf_check -s exit:0 pkg info -e pkgB
 	atf_check -s exit:1 pkg info -e pkgC
+}
+
+delete_force_recursive_body() {
+	# Regression test for issue #2124: pkg delete -fR should re-enable
+	# recursive deletion (which -f alone disables).
+
+	atf_check -s exit:0 sh ${RESOURCEDIR}/test_subr.sh new_pkg "lib" "lib" "1"
+	atf_check -s exit:0 sh ${RESOURCEDIR}/test_subr.sh new_pkg "app" "app" "1"
+	cat << EOF >> app.ucl
+deps: {
+	lib {
+		origin: lib,
+		version: "1"
+	}
+}
+EOF
+
+	atf_check -o ignore pkg register -M lib.ucl
+	atf_check -o ignore pkg register -M app.ucl
+
+	# -fR: force + recursive, both lib and its rdep app should be removed
+	atf_check \
+		-o match:"lib" \
+		-o match:"app" \
+		-s exit:0 \
+		pkg delete -yfR lib
+
+	atf_check -s exit:1 pkg info -e lib
+	atf_check -s exit:1 pkg info -e app
 }
 
 delete_autoremove_body() {
