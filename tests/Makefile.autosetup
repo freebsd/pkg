@@ -23,6 +23,7 @@ TESTS=	\
 	kv
 
 TESTS_SH= \
+	frontend/audit.sh \
 	frontend/pkg.sh \
 	frontend/add.sh \
 	frontend/alias.sh \
@@ -52,6 +53,7 @@ TESTS_SH= \
 	frontend/query.sh \
 	frontend/register.sh \
 	frontend/repo.sh \
+	frontend/rquery.sh \
 	frontend/requires.sh \
 	frontend/rootdir.sh \
 	frontend/rubypuppet.sh \
