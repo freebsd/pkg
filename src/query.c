@@ -381,18 +381,21 @@ print_query(struct pkg *pkg, char *qstr, char multiline)
 	struct pkg_kvlist_iterator	*kit;
 
 	output = xstring_new();
+	bool printed = false;
 
 	switch (multiline) {
 	case 'd':
 		while (pkg_deps(pkg, &dep) == EPKG_OK) {
 			format_str(pkg, output, qstr, dep);
 			printf("%s\n", output->buf);
+			printed = true;
 		}
 		break;
 	case 'r':
 		while (pkg_rdeps(pkg, &dep) == EPKG_OK) {
 			format_str(pkg, output, qstr, dep);
 			printf("%s\n", output->buf);
+			printed = true;
 		}
 		break;
 	case 'C':
@@ -416,6 +419,7 @@ print_query(struct pkg *pkg, char *qstr, char multiline)
 		while ((str = pkg_stringlist_next(slit))) {
 			format_str(pkg, output, qstr, str);
 			printf("%s\n", output->buf);
+			printed = true;
 		}
 		free(slit);
 		free(sl);
@@ -424,12 +428,14 @@ print_query(struct pkg *pkg, char *qstr, char multiline)
 		while (pkg_options(pkg, &option) == EPKG_OK) {
 			format_str(pkg, output, qstr, option);
 			printf("%s\n", output->buf);
+			printed = true;
 		}
 		break;
 	case 'F':
 		while (pkg_files(pkg, &file) == EPKG_OK) {
 			format_str(pkg, output, qstr, file);
 			printf("%s\n", output->buf);
+			printed = true;
 		}
 		break;
 	case 'D':
@@ -437,6 +443,7 @@ print_query(struct pkg *pkg, char *qstr, char multiline)
 		while (pkg_dirs(pkg, &dir) == EPKG_OK) {
 			format_str(pkg, output, qstr, dir);
 			printf("%s\n", output->buf);
+			printed = true;
 		}
 		break;
 	case 'A':
@@ -445,6 +452,7 @@ print_query(struct pkg *pkg, char *qstr, char multiline)
 		while ((kv = pkg_kvlist_next(kit))) {
 			format_str(pkg, output, qstr, kv);
 			printf("%s\n", output->buf);
+			printed = true;
 		}
 		free(kit);
 		free(kl);
@@ -452,7 +460,12 @@ print_query(struct pkg *pkg, char *qstr, char multiline)
 	default:
 		format_str(pkg, output, qstr, dep);
 		printf("%s\n", output->buf);
+		printed = true;
 		break;
+	}
+	if (!printed) {
+		format_str(pkg, output, qstr, "");
+		printf("%s\n", output->buf);
 	}
 	xstring_free(output);
 }

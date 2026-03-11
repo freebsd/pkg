@@ -3,7 +3,8 @@
 . $(atf_get_srcdir)/test_environment.sh
 
 tests_init \
-	query
+	query \
+	query_empty_multiline
 
 query_body() {
 	touch plop
@@ -285,4 +286,36 @@ EOF
 		-e empty \
 		-s exit:0 \
 		pkg query -F ./plop-1.pkg '%c'
+}
+
+query_empty_multiline_body() {
+	# Packages without licenses should not be skipped by %L queries
+	atf_check -s exit:0 sh ${RESOURCEDIR}/test_subr.sh new_pkg nolic nolic 1
+	atf_check -s exit:0 sh ${RESOURCEDIR}/test_subr.sh new_pkg withlicense withlicense 1
+	cat >> withlicense.ucl << EOF
+licenses: ["BSD2CLAUSE"]
+EOF
+
+	atf_check -o ignore pkg register -M nolic.ucl
+	atf_check -o ignore pkg register -M withlicense.ucl
+
+	# %n without multiline: both packages listed
+	atf_check \
+		-o inline:"nolic\nwithlicense\n" \
+		-s exit:0 \
+		pkg query "%n"
+
+	# %n %L: both packages must appear, nolic with empty license
+	atf_check \
+		-o inline:"nolic \nwithlicense BSD2CLAUSE\n" \
+		-s exit:0 \
+		pkg query "%n %L"
+
+	# Same for categories: nolic has no categories in test_subr
+	# but test_subr adds categories: [test], so both have one.
+	# Test with shlibs instead (no package has shlibs)
+	atf_check \
+		-o inline:"nolic \nwithlicense \n" \
+		-s exit:0 \
+		pkg query "%n %B"
 }
