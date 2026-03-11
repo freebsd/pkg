@@ -27,7 +27,7 @@
 .\"
 .\"     @(#)pkg.1
 .\"
-.Dd December 12, 2025
+.Dd March 11, 2026
 .Dt PKG.CONF 5
 .Os
 .Sh NAME
@@ -751,9 +751,9 @@ configuration file always overrides the value of an option set in the
 file.
 .Sh EXAMPLES
 .Fx
-latest repository configuration:
+latest ports repository configuration:
 .Bd -literal -offset indent
-FreeBSD: {
+FreeBSD-ports: {
     url: "pkg+https://pkg.freebsd.org/${ABI}/latest",
     enabled: true,
     signature_type: "fingerprints",
@@ -763,9 +763,21 @@ FreeBSD: {
 .Ed
 .Pp
 .Fx
+latest base repository configuration:
+.Bd -literal -offset indent
+FreeBSD-base: {
+  url: "pkg+https://pkg.FreeBSD.org/${ABI}/base_latest",
+  enabled: true,
+  signature_type: "fingerprints",
+  fingerprints: "/usr/share/keys/pkg",
+  mirror_type: "srv"
+}
+.Ed
+.Pp
+.Fx
 quarterly kernel modules repository configuration:
 .Bd -literal -offset indent
-FreeBSD-kmods: {
+FreeBSD-ports-kmods: {
     url: "pkg+https://pkg.freebsd.org/${ABI}/kmods_quarterly_${VERSION_MINOR}",
     enabled: true,
     signature_type: "fingerprints",
