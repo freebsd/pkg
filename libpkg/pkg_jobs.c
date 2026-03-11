@@ -2286,6 +2286,7 @@ pkg_jobs_check_chflags(struct pkg_jobs *j)
 	int restriction;
 	u_long mask;
 
+#ifdef HAVE_CHFLAGSAT
 	restriction = pkg_jobs_chflags_restricted();
 	if (restriction == 0)
 		return (EPKG_OK);
@@ -2327,6 +2328,7 @@ restricted:
 			    p->name, 1);
 		return (EPKG_FATAL);
 	}
+#endif
 	return (EPKG_OK);
 }
 
