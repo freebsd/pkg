@@ -169,6 +169,7 @@ exec_rquery(int argc, char **argv)
 			break;
 		default:
 			usage_rquery();
+			vec_free(&reponames);
 			return (EXIT_FAILURE);
 		}
 	}
@@ -178,6 +179,7 @@ exec_rquery(int argc, char **argv)
 
 	if (argc == 0 && !index_output) {
 		usage_rquery();
+		vec_free(&reponames);
 		return (EXIT_FAILURE);
 	}
 
@@ -187,6 +189,7 @@ exec_rquery(int argc, char **argv)
 			match = MATCH_ALL;
 		} else if (((argc == 1) ^ (match == MATCH_ALL )) && condition == NULL) {
 			usage_rquery();
+			vec_free(&reponames);
 			return (EXIT_FAILURE);
 		}
 	} else {
@@ -194,13 +197,16 @@ exec_rquery(int argc, char **argv)
 			match = MATCH_ALL;
 	}
 
-	if (!index_output && analyse_query_string(argv[0], accepted_rquery_flags, q_flags_len, &query_flags, &multiline) != EPKG_OK)
+	if (!index_output && analyse_query_string(argv[0], accepted_rquery_flags, q_flags_len, &query_flags, &multiline) != EPKG_OK) {
+		vec_free(&reponames);
 		return (EXIT_FAILURE);
+	}
 
 	if (condition != NULL) {
 		sqlcond = xstring_new();
 		if (format_sql_condition(condition, sqlcond, true) != EPKG_OK) {
 			xstring_free(sqlcond);
+			vec_free(&reponames);
 			return (EXIT_FAILURE);
 		}
 	}
@@ -209,9 +215,11 @@ exec_rquery(int argc, char **argv)
 	if (ret == EPKG_ENOACCESS) {
 		warnx("Insufficient privileges to query the package database");
 		xstring_free(sqlcond);
+		vec_free(&reponames);
 		return (EXIT_FAILURE);
 	} else if (ret != EPKG_OK) {
 		xstring_free(sqlcond);
+		vec_free(&reponames);
 		return (EXIT_FAILURE);
 	}
 
@@ -220,6 +228,7 @@ exec_rquery(int argc, char **argv)
 	quiet = true;
 	if (auto_update && (ret = pkgcli_update(false, false, &reponames)) != EPKG_OK) {
 		xstring_free(sqlcond);
+		vec_free(&reponames);
 		return (ret);
 	}
 	quiet = old_quiet;
@@ -227,6 +236,7 @@ exec_rquery(int argc, char **argv)
 	ret = pkgdb_open_all2(&db, PKGDB_REMOTE, &reponames);
 	if (ret != EPKG_OK) {
 		xstring_free(sqlcond);
+		vec_free(&reponames);
 		return (EXIT_FAILURE);
 	}
 	pkg_drop_privileges();
@@ -241,6 +251,7 @@ exec_rquery(int argc, char **argv)
 	if (match == MATCH_ALL) {
 		if ((it = pkgdb_repo_query_cond2(db, condition_sql, NULL, match, &reponames)) == NULL) {
 			xstring_free(sqlcond);
+			vec_free(&reponames);
 			return (EXIT_FAILURE);
 		}
 
@@ -261,6 +272,7 @@ exec_rquery(int argc, char **argv)
 
 			if ((it = pkgdb_repo_query_cond2(db, condition_sql, pkgname, match, &reponames)) == NULL) {
 				xstring_free(sqlcond);
+				vec_free(&reponames);
 				return (EXIT_FAILURE);
 			}
 
@@ -286,6 +298,7 @@ exec_rquery(int argc, char **argv)
 	xstring_free(sqlcond);
 	pkg_free(pkg);
 	pkgdb_close(db);
+	vec_free(&reponames);
 
 	return (retcode);
 }
