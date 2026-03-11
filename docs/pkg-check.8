@@ -139,6 +139,11 @@ corrupted:
 .Bd -literal -offset indent
 pkg check -sa
 .Ed
+.Pp
+If corrupted packages are found, they can be reinstalled using:
+.Bd -literal -offset indent
+pkg install -f <package-name>
+.Ed
 .Sh SEE ALSO
 .Xr pkg_create 3 ,
 .Xr pkg_printf 3 ,
