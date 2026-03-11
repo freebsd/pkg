@@ -10,5 +10,6 @@ atf_test_program{name='merge'}
 atf_test_program{name='checksum'}
 atf_test_program{name='deps_formula'}
 atf_test_program{name='pkg_jobs_dryrun'}
+atf_test_program{name='pkg_sandbox'}
 
 include('frontend/Kyuafile')

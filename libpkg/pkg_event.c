@@ -1018,7 +1018,9 @@ int
 pkg_emit_sandbox_get_string(pkg_sandbox_cb call, void *ud, char **str, int64_t *len)
 {
 	struct pkg_event ev;
-	int ret;
+
+	if (_cb == NULL)
+		return (pkg_handle_sandboxed_get_string(call, str, len, ud));
 
 	ev.type = PKG_EVENT_SANDBOX_GET_STRING;
 	ev.e_sandbox_call_str.call = call;
@@ -1026,23 +1028,23 @@ pkg_emit_sandbox_get_string(pkg_sandbox_cb call, void *ud, char **str, int64_t *
 	ev.e_sandbox_call_str.result = str;
 	ev.e_sandbox_call_str.len = len;
 
-	ret = pkg_emit_event(&ev);
-	return ret;
+	return (pkg_emit_event(&ev));
 }
 
 int
 pkg_emit_sandbox_call(pkg_sandbox_cb call, int fd, void *ud)
 {
 	struct pkg_event ev;
-	int ret;
+
+	if (_cb == NULL)
+		return (pkg_handle_sandboxed_call(call, fd, ud));
 
 	ev.type = PKG_EVENT_SANDBOX_CALL;
 	ev.e_sandbox_call.call = call;
 	ev.e_sandbox_call.fd = fd;
 	ev.e_sandbox_call.userdata = ud;
 
-	ret = pkg_emit_event(&ev);
-	return ret;
+	return (pkg_emit_event(&ev));
 }
 
 void

@@ -161,6 +161,11 @@ pkg_handle_sandboxed_get_string(pkg_sandbox_cb func, char **result, int64_t *len
 		} while (r > 0);
 
 		/* Fill the result buffer */
+		if (off >= allocated_len) {
+			allocated_len = off + 1;
+			buf = xrealloc(buf, allocated_len);
+		}
+		buf[off] = '\0';
 		*len = off;
 		*result = buf;
 		if (*result == NULL) {
