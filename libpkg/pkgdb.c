@@ -80,6 +80,7 @@ extern struct pkg_ctx ctx;
 #define DBVERSION (DB_SCHEMA_MAJOR * 1000 + DB_SCHEMA_MINOR)
 
 static int pkgdb_upgrade(struct pkgdb *);
+static int pkgdb_init(sqlite3 *sdb);
 static int prstmt_initialize(struct pkgdb *db);
 static void prstmt_finalize(struct pkgdb *db);
 static int pkgdb_insert_scripts(struct pkg *pkg, int64_t package_id, sqlite3 *s);
@@ -247,7 +248,18 @@ pkgdb_upgrade(struct pkgdb *db)
 
 	if (db_version == DBVERSION)
 		return (EPKG_OK);
-	else if (db_version > DBVERSION) {
+
+	/*
+	 * If user_version is 0 the database has no schema yet.  This
+	 * can happen when another process created the file but has not
+	 * yet committed pkgdb_init().  Initialize from scratch instead
+	 * of running incremental migrations which would fail because
+	 * the base tables do not exist.
+	 */
+	if (db_version == 0)
+		return (pkgdb_init(db->sqlite));
+
+	if (db_version > DBVERSION) {
 		if (db_version / 1000 <= DB_SCHEMA_MAJOR) {
 			/* VIEWS and TRIGGERS used as compatibility hack */
 			pkg_emit_error("warning: database version %" PRId64
