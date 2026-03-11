@@ -135,6 +135,11 @@ Do not perform installation of packages, merely fetch packages that should be
 upgraded and detect possible conflicts.
 .It Fl f , Cm --force
 Force the reinstallation or upgrade of the whole set of packages.
+To reinstall a single specific package, prefer using
+.Nm pkg install Fl f
+instead.
+See
+.Xr pkg-install 8 .
 .It Fl g , Cm --glob
 Treat the package names as shell glob patterns.
 .It Fl I , Cm --no-scripts
