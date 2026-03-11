@@ -2233,6 +2233,7 @@ pkg_jobs_fetch(struct pkg_jobs *j)
 	return (EPKG_OK);
 }
 
+#ifdef HAVE_CHFLAGSAT
 #if defined(UF_NOUNLINK)
 #define NOCHANGESFLAGS	\
     (UF_IMMUTABLE | UF_APPEND | UF_NOUNLINK | \
@@ -2242,6 +2243,7 @@ pkg_jobs_fetch(struct pkg_jobs *j)
     (UF_IMMUTABLE | UF_APPEND | SF_IMMUTABLE | SF_APPEND)
 #endif
 #define SYSTEM_FLAGS	(SF_IMMUTABLE | SF_APPEND | SF_NOUNLINK)
+#endif
 
 /*
  * Check chflags restrictions from jail or securelevel.
