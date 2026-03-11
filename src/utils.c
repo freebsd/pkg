@@ -353,6 +353,7 @@ print_depinfo(struct pkgdb *db, struct pkg *pkg, bool print_tag,
 	}
 	free(slit);
 	free(sl);
+	pkgbase_free(pb);
 }
 
 void
