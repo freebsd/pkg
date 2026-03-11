@@ -57,7 +57,7 @@ A boolean option is marked as enabled if one of the following values is
 specified in the configuration file -
 .Dv YES, TRUE
 and
-.Dv ON.
+.Dv ON .
 .Sh OPTIONS
 The following options can be defined in
 .Nm :
@@ -141,9 +141,11 @@ Set the default compression format: tzst, txz, tbz, tar.
 Default: tzst.
 .It Cm COMPRESSION_LEVEL: integer
 Set the default compression level, special values are:
-.Bl -tag
-.It 0 default value per libarchive developers
-.It -1 default value per pkg developers (default)
+.Bl -tag -width "-1"
+.It 0
+default value per libarchive developers
+.It -1
+default value per pkg developers (default)
 .El
 .It Cm COMPRESSION_THREADS: integer
 Set the number of threads to use during compression
@@ -206,8 +208,10 @@ Default: NO.
 Define User-agent to be sent to HTTP server when getting repository
 data.
 Default: pkg/<version>.
-.It Cm IGNORE_OSVERSION: boolean [FreeBSD specific]
-Ignore FreeBSD OS version check, useful on -STABLE and -CURRENT branches.
+.It Cm IGNORE_OSVERSION: boolean [FreeBSD specific ]
+Ignore
+.Fx
+OS version check, useful on -STABLE and -CURRENT branches.
 Default: NO.
 .It Cm INDEXDIR: string
 If set, the directory to search for
@@ -252,7 +256,8 @@ See
 .It Cm OSVERSION: integer
 Specify the exact
 .Fx
-version for the target ABI. This should be set in combination with the ABI option.
+version for the target ABI.
+This should be set in combination with the ABI option.
 The format is the same as the format of
 .Dv __FreeBSD_version
 in
@@ -530,7 +535,7 @@ For example
 .Pp
 A repository file is in UCL format and has the following form:
 .Bl -tag -width ".Cm myrepo:"
-.It Cm myrepo:
+.It Cm myrepo :
 .Bl -tag -width ".Cm MIRROR_TYPE: string"
 .It Cm ENV: object
 A list of key value entries that will be passed as environment variable
@@ -715,7 +720,7 @@ If targeting
 expands to the target version in the same format as
 .Dv __FreeBSD_version
 in
-.PA /usr/include/sys/param.h .
+.Pa /usr/include/sys/param.h .
 .It Va ARCH
 Expands to the architecture of the system.
 .El
@@ -724,8 +729,10 @@ Since the values of these variables are affected by some options that
 may be set in
 .Nm
 (for example ABI or ABI_FILE), it is necessary to parse pkg.conf in two
-passes. The first pass only parses the ABI, ABI_FILE, and OSVERSION
-options and does no variable expansion. The second pass expands the
+passes.
+The first pass only parses the ABI, ABI_FILE, and OSVERSION
+options and does no variable expansion.
+The second pass expands the
 variables listed above and ignores the ABI, ABI_FILE, and OSVERSION
 options.
 .Sh ENVIRONMENT
