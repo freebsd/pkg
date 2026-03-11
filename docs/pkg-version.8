@@ -27,7 +27,7 @@
 .Op Fl l Ar limchar
 .Op Fl L Ar limchar
 .Op Fl Cegix Ar pattern
-.Op Fl r Ar reponame
+.Op Fl r Ar reponame ...
 .Op Fl O Ar origin | Fl n Ar pkgname
 .Op Ar index
 .Nm
@@ -41,7 +41,7 @@
 .Op Fl -like Ar limchar
 .Op Fl -not-like Ar limchar
 .Op Fl -{case-sensitive,exact,glob,case-insensitive,regex} Ar pattern
-.Op Fl -repository Ar reponame
+.Op Fl -repository Ar reponame ...
 .Op Fl -match-origin Ar origin
 .Op Ar index
 .Nm
@@ -162,7 +162,9 @@ effective UID of the process has write access to the package database.
 Otherwise they are silently ignored.
 .It Fl r Ar reponame , Fl -repository Ar reponame
 Compare installed package versions to packages available from the
-named repository only, irrespective of the configured
+named repository only.
+This option can be specified multiple times to use several repositories.
+Packages will be compared against the named repositories only, irrespective of the configured
 .Dq enabled
 status from
 .Pa repo.conf .

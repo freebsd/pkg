@@ -23,7 +23,7 @@
 .Sh SYNOPSIS
 .Nm
 .Op Fl U
-.Op Fl r Ar reponame
+.Op Fl r Ar reponame ...
 .Op Fl S Ar search
 .Op Fl L Ar label
 .Op Fl Q Ar query-modifier
@@ -31,13 +31,13 @@
 .Ar pattern
 .Nm
 .Op Fl cDdfopqRsU
-.Op Fl r Ar reponame
+.Op Fl r Ar reponame ...
 .Op Fl Cegix
 .Ar pattern
 .Pp
 .Nm
 .Op Cm --no-repo-update
-.Op Cm --repository Ar reponame
+.Op Cm --repository Ar reponame ...
 .Op Cm --search Ar search
 .Op Cm --label Ar label
 .Op Cm --query-modifier Ar query-modifier
@@ -46,7 +46,7 @@
 .Nm
 .Op Cm --{comment,description,depends-on,full,origins,prefix}
 .Op Cm --{quiet,raw,size,no-repo-update}
-.Op Cm --repository Ar reponame
+.Op Cm --repository Ar reponame ...
 .Op Cm --{case-sensitive,exact,glob,case-insensitive,regex}
 .Op Fl -raw-format Ar format
 .Ar pattern
@@ -170,8 +170,9 @@ See the
 .Qq Sx Output Modifier Options
 section for details.
 .It Fl r Ar reponame , Cm --repository Ar reponame
-Search for packages from only the named repository,
-irrespective of the configured
+Search for packages from only the named repository.
+This option can be specified multiple times to use several repositories.
+Packages will be searched from the named repositories only, irrespective of the configured
 .Dq enabled
 status from
 .Pa repo.conf .

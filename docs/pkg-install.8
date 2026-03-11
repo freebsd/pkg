@@ -23,14 +23,14 @@
 .Sh SYNOPSIS
 .Nm
 .Op Fl AfIMnFqRXUy
-.Op Fl r Ar reponame
+.Op Fl r Ar reponame ...
 .Op Fl Cgix
 .Ar <pkg-origin|pkg-name|pkg-name-version> ...
 .Pp
 .Nm
 .Op Cm --{automatic,force,no-scripts,ignore-missing,register-only,autoremove}
 .Op Cm --{dry-run,fetch-only,quiet,recursive,no-repo-update,yes}
-.Op Cm --repository Ar reponame
+.Op Cm --repository Ar reponame ...
 .Op Cm --{case-sensitive,glob,case-insensitive,regex}
 .Ar <pkg-origin|pkg-name|pkg-name-version> ...
 .Sh DESCRIPTION
@@ -173,8 +173,9 @@ When used with
 .Fl f ,
 reinstalls any packages that require the given package.
 .It Fl r Ar reponame , Cm --repository Ar reponame
-Install packages from only the named repository,
-irrespective of the configured
+Install packages from only the named repository.
+This option can be specified multiple times to use several repositories.
+Packages will be fetched from the named repositories only, irrespective of the configured
 .Dq enabled
 status from
 .Pa repo.conf .

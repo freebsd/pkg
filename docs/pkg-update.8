@@ -23,11 +23,11 @@
 .Sh SYNOPSIS
 .Nm
 .Op Fl fq
-.Op Fl r Ar reponame
+.Op Fl r Ar reponame ...
 .Pp
 .Nm
 .Op Cm --{force,quiet}
-.Op Cm --repository Ar reponame
+.Op Cm --repository Ar reponame ...
 .Sh DESCRIPTION
 .Nm
 is used for updating the local copy of the repository catalogues
@@ -79,7 +79,8 @@ Force a full download of the repository catalogue without regard to the
 respective ages of the local and remote copies of the catalogue.
 .It Fl r Ar reponame , Cm --repository Ar reponame
 Download the catalogue for the named repository only.
-This will update only the named repository, irrespective of the configured
+This option can be specified multiple times to update several repositories.
+This will update only the named repositories, irrespective of the configured
 .Dq enabled
 status from
 .Pa repo.conf .

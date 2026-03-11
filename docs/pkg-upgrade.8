@@ -23,14 +23,14 @@
 .Sh SYNOPSIS
 .Nm
 .Op Fl fInFqUy
-.Op Fl r Ar reponame
+.Op Fl r Ar reponame ...
 .Op Fl Cgix
 .Op Ar <pkg-origin|pkg-name|pkg-name-version> ...
 .Pp
 .Nm
 .Op Cm --{force,no-scripts,dry-run,fetch-only,autoremove}
 .Op Cm --{quiet,no-repo-update,yes}
-.Op Cm --repository Ar reponame
+.Op Cm --repository Ar reponame ...
 .Op Cm --{case-sensitive,glob,case-insensitive,regex}
 .Op Ar <pkg-origin|pkg-name|pkg-name-version> ...
 .Sh DESCRIPTION
@@ -167,8 +167,9 @@ Force quiet output, except when
 .Fl n
 is used, where a summary of the work list is always displayed.
 .It Fl r Ar reponame , Cm --repository Ar reponame
-Install packages from only the named repository,
-irrespective of the configured
+Install packages from only the named repository.
+This option can be specified multiple times to use several repositories.
+Packages will be fetched from the named repositories only, irrespective of the configured
 .Dq enabled
 status from
 .Pa repo.conf .

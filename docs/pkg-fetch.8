@@ -22,34 +22,34 @@
 .Nd fetch remote packages
 .Sh SYNOPSIS
 .Nm
-.Op Fl r Ar reponame
+.Op Fl r Ar reponame ...
 .Op Fl dqUy
 .Op Fl Cgix
 .Ar pkg-name
 .Op ...
 .Nm
-.Op Fl r Ar reponame
+.Op Fl r Ar reponame ...
 .Op Fl o Ar destdir
 .Op Fl dqsUy
 .Fl a
 .Nm
-.Op Fl r Ar reponame
+.Op Fl r Ar reponame ...
 .Op Fl dqUy
 .Fl u
 .Pp
 .Nm
-.Op Cm --repository Ar reponame
+.Op Cm --repository Ar reponame ...
 .Op Cm --output Ar destdir
 .Op Cm --{dependencies,quiet,symlink,no-repo-update,yes}
 .Op Cm --{case-sensitive,glob,case-insensitive,regex}
 .Ar pkg-name
 .Op ...
 .Nm
-.Op Cm --repository Ar reponame
+.Op Cm --repository Ar reponame ...
 .Op Cm --{dependencies,quiet,symlink,no-repo-update,yes}
 .Cm --all
 .Nm
-.Op Cm --repository Ar reponame
+.Op Cm --repository Ar reponame ...
 .Op Cm --{dependencies,quiet,no-repo-update,yes}
 .Cm --available-updates
 .Sh DESCRIPTION
@@ -108,6 +108,7 @@ Show less output.
 Fetches packages from the given
 .Ar reponame
 if multiple repo support is enabled.
+This option can be specified multiple times to use several repositories.
 See
 .Xr pkg.conf 5 .
 .It Fl s , Cm --symlink

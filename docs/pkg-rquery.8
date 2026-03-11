@@ -26,13 +26,13 @@
 .Ar pkg-name
 .Nm
 .Op Fl aU
-.Op Fl r Ar reponame
+.Op Fl r Ar reponame ...
 .Fl I Ns | Ns Ar query-format
 .Nm
 .Op Fl U
 .Op Fl Cgix
 .Op Fl e Ar evaluation-condition
-.Op Fl r Ar reponame
+.Op Fl r Ar reponame ...
 .Fl I Ns | Ns Ar query-format
 .Ar pattern ...
 .Sh DESCRIPTION
@@ -79,8 +79,9 @@ Only the first query format (including the
 .Fl I
 option) on the command line will be interpreted.
 .It Fl r Ar reponame , Fl -repository Ar reponame
-Query for data about packages from only the named repository,
-irrespective of the configured
+Query for data about packages from only the named repository.
+This option can be specified multiple times to use several repositories.
+Data will be queried from the named repositories only, irrespective of the configured
 .Dq enabled
 status from
 .Pa repo.conf .
