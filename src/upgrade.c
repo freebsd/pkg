@@ -441,7 +441,7 @@ cleanup:
 	if (!dry_run)
 		pkg_cache_full_clean();
 
-	if (!rc && newpkgversion)
+	if (newpkgversion && (!rc || !done))
 		newpkgversion = false;
 
 	return (retcode);

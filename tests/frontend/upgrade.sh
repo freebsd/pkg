@@ -20,6 +20,7 @@ tests_init \
 	upgrade_autoremove \
 	upgrade_autoremove_flag \
 	symlink_to_dir_upgrade \
+	newpkgversion_two_repos \
 
 issue1881_body() {
 	atf_check -s exit:0 sh ${RESOURCEDIR}/test_subr.sh new_pkg pkg1 pkg_a 1
@@ -768,4 +769,39 @@ symlink_to_dir_upgrade_body() {
 	# Verify the directory replaced the symlink
 	atf_check test -d target/${TMPDIR}/errors-mx
 	atf_check test -f target/${TMPDIR}/errors-mx/newfile
+}
+
+newpkgversion_two_repos_body() {
+	# Issue #2023: when two repos provide the same newer version of "pkg",
+	# pkg upgrade could loop forever because newpkgversion was not reset
+	# when the solver found nothing to do.
+
+	atf_check -s exit:0 sh ${RESOURCEDIR}/test_subr.sh new_pkg "pkg1" "pkg" "1.0"
+	atf_check -o ignore pkg register -M pkg1.ucl
+
+	# Create two repos, both with pkg 2.0
+	atf_check -s exit:0 sh ${RESOURCEDIR}/test_subr.sh new_pkg "pkg2" "pkg" "2.0"
+	atf_check pkg create -M pkg2.ucl -o ./repo1
+	atf_check pkg create -M pkg2.ucl -o ./repo2
+
+	atf_check -o ignore pkg repo ./repo1
+	atf_check -o ignore pkg repo ./repo2
+
+	cat << EOF > pkg.conf
+PKG_DBDIR=${TMPDIR}
+REPOS_DIR=[]
+repositories: {
+	repo1: { url : file://${TMPDIR}/repo1 }
+	repo2: { url : file://${TMPDIR}/repo2 }
+}
+EOF
+
+	atf_check -o ignore pkg -C ./pkg.conf update -f
+
+	# This must not loop forever; should exit 0
+	atf_check \
+		-o ignore \
+		-e empty \
+		-s exit:0 \
+		pkg -C ./pkg.conf upgrade -y
 }
