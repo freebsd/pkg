@@ -1233,7 +1233,6 @@ pkgdb_close(struct pkgdb *db)
 			pkg_emit_error("Package database is busy while closing!");
 	}
 
-	sqlite3_shutdown();
 	free(db);
 }
 
