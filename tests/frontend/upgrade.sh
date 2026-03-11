@@ -19,6 +19,7 @@ tests_init \
 	upgrade_glob_abi_arch \
 	upgrade_autoremove \
 	upgrade_autoremove_flag \
+	symlink_to_dir_upgrade \
 
 issue1881_body() {
 	atf_check -s exit:0 sh ${RESOURCEDIR}/test_subr.sh new_pkg pkg1 pkg_a 1
@@ -730,4 +731,41 @@ EOF
 
 	atf_check -s exit:0 pkg info -e master
 	atf_check -s exit:1 pkg info -e olddep
+}
+
+symlink_to_dir_upgrade_body() {
+	# PR #2041: when v1 has a symlink and v2 replaces it with a real
+	# directory containing files, pkg should remove the symlink before
+	# renaming the temporary directory into place.
+
+	atf_check -s exit:0 sh ${RESOURCEDIR}/test_subr.sh new_pkg "pkg" "pkg" "1"
+	mkdir -p base
+	echo "content" > base/file
+	ln -s ../base errors-mx
+	echo "${TMPDIR}/base/file" > plist-1
+	echo "${TMPDIR}/errors-mx" >> plist-1
+	atf_check pkg create -M pkg.ucl -p plist-1
+	mkdir target
+	atf_check -o ignore pkg -o REPOS_DIR="${TMPDIR}" -r ${TMPDIR}/target install -Uy ${TMPDIR}/pkg-1.pkg
+
+	# Verify symlink was installed
+	atf_check test -L target/${TMPDIR}/errors-mx
+
+	# v2: replaces symlink with a real directory containing a file
+	atf_check -s exit:0 sh ${RESOURCEDIR}/test_subr.sh new_pkg "pkg" "pkg" "2"
+	rm errors-mx
+	mkdir errors-mx
+	echo "new content" > errors-mx/newfile
+	echo "${TMPDIR}/errors-mx/newfile" > plist-2
+	atf_check pkg create -M pkg.ucl -p plist-2
+
+	# Upgrade: should succeed despite symlink existing at target
+	atf_check \
+		-o ignore \
+		-s exit:0 \
+		pkg -o REPOS_DIR="${TMPDIR}" -r ${TMPDIR}/target install -Uy ${TMPDIR}/pkg-2.pkg
+
+	# Verify the directory replaced the symlink
+	atf_check test -d target/${TMPDIR}/errors-mx
+	atf_check test -f target/${TMPDIR}/errors-mx/newfile
 }

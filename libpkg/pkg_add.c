@@ -990,6 +990,10 @@ pkg_extract_finalize(struct pkg *pkg, tempdirs_t *tempdirs)
 	if (tempdirs != NULL) {
 		vec_foreach(*tempdirs, i) {
 			struct tempdir *t = tempdirs->d[i];
+			if (fstatat(pkg->rootfd, RELATIVE_PATH(t->name),
+			    &st, AT_SYMLINK_NOFOLLOW) == 0)
+				unlinkat(pkg->rootfd,
+				    RELATIVE_PATH(t->name), 0);
 			if (renameat(pkg->rootfd, RELATIVE_PATH(t->temp),
 			    pkg->rootfd, RELATIVE_PATH(t->name)) != 0) {
 				pkg_fatal_errno("Failed to rename %s -> %s",
