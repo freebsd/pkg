@@ -234,6 +234,18 @@ include the package name, equivalent to
 When chosen as a search option, only the
 .Sy comment
 field is used for sorting the output.
+.It Sy comment-description
+Both the one line comment and the multi-line description fields.
+When chosen as a search option, a package will match if
+.Ar pattern
+is found in either field.
+The output format will include the package name, comment and
+description.
+Results are sorted by comment.
+This option is only available as a search field
+.Fl ( S ) ,
+not as a label option
+.Fl ( L ) .
 .It Sy description
 The multi-line package description from the
 .Fa pkg-descr

@@ -429,9 +429,17 @@ pkg_repo_binary_build_search_query(xstring *sql, match_t match,
 	case FIELD_DESC:
 		what = "desc";
 		break;
+	case FIELD_COMMENT_DESC:
+		break;
 	}
 
-	if (what != NULL && how != NULL)
+	if (field == FIELD_COMMENT_DESC && how != NULL) {
+		fprintf(sql->fp, "(");
+		fprintf(sql->fp, how, "comment");
+		fprintf(sql->fp, " OR ");
+		fprintf(sql->fp, how, "desc");
+		fprintf(sql->fp, ")");
+	} else if (what != NULL && how != NULL)
 		fprintf(sql->fp, how, what);
 
 	switch (sort) {
@@ -454,6 +462,9 @@ pkg_repo_binary_build_search_query(xstring *sql, match_t match,
 		break;
 	case FIELD_DESC:
 		orderby = " ORDER BY desc";
+		break;
+	case FIELD_COMMENT_DESC:
+		orderby = " ORDER BY comment";
 		break;
 	}
 

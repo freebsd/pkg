@@ -46,12 +46,13 @@ typedef struct _cliopt {
 
 /* an option string should not be a prefix of any other option string */
 static const cliopt search_label[] = {
-	{ "comment",     'c'  },
-	{ "description", 'd'  },
-	{ "name",        'n'  },
-	{ "origin",      'o'  },
-	{ "pkg-name",    'p'  },
-	{ NULL,          '\0' },
+	{ "comment",             'c'  },
+	{ "comment-description", 'D'  },
+	{ "description",         'd'  },
+	{ "name",                'n'  },
+	{ "origin",              'o'  },
+	{ "pkg-name",            'p'  },
+	{ NULL,                  '\0' },
 };
 
 static const cliopt modifiers[] = {
@@ -92,7 +93,13 @@ match_optarg(const cliopt *optlist, const char *opt)
 	for (i = 0; optlist[i].option != NULL; i++) {
 		if (strncmp(opt, optlist[i].option, optlen) != 0)
 			continue;
-		if (matched > 0) {
+		/* Exact match: use it immediately */
+		if (strlen(optlist[i].option) == optlen) {
+			matched = i;
+			key = optlist[i].key;
+			break;
+		}
+		if (matched >= 0) {
 			warnx("\"%s\" is ambiguous. Was "
 			      "\"%s\" or \"%s\" meant?", opt,
 			      optlist[matched].option, optlist[i].option);
@@ -126,6 +133,9 @@ search_label_opt(const char *optionarg)
 		break;
 	case 'd':
 		field = FIELD_DESC;
+		break;
+	case 'D':
+		field = FIELD_COMMENT_DESC;
 		break;
 	default:
 		usage_search();
@@ -407,6 +417,9 @@ exec_search(int argc, char **argv)
 		break;
 	case FIELD_DESC:
 		opt |= INFO_TAG_NAMEVER|INFO_DESCR;
+		break;
+	case FIELD_COMMENT_DESC:
+		opt |= INFO_TAG_NAMEVER|INFO_COMMENT|INFO_DESCR;
 		break;
 	}
 

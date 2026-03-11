@@ -222,6 +222,7 @@ typedef enum {
 	FIELD_NAMEVER,
 	FIELD_COMMENT,
 	FIELD_DESC,
+	FIELD_COMMENT_DESC,
 	FIELD_FLAVOR,
 } pkgdb_field;
 
