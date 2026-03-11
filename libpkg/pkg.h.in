@@ -1256,7 +1256,7 @@ int pkg_fetch_file(struct pkg_repo *repo, const char *url, char *dest, time_t t,
  * Fetch a file to temporary destination
  */
 int pkg_fetch_file_tmp(struct pkg_repo *repo, const char *url, char *dest,
-	time_t t);
+	time_t t, int *outfd);
 
 /**
  * Get cached name of a package

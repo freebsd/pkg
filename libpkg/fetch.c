@@ -101,7 +101,7 @@ static struct fetcher fetchers[] = {
 
 int
 pkg_fetch_file_tmp(struct pkg_repo *repo, const char *url, char *dest,
-	time_t t)
+	time_t t, int *outfd)
 {
 	int fd = -1;
 	int retcode = EPKG_FATAL;
@@ -115,6 +115,10 @@ pkg_fetch_file_tmp(struct pkg_repo *repo, const char *url, char *dest,
 		pkg_emit_errno("mkstemp", dest);
 		return(EPKG_FATAL);
 	}
+
+	/* Unlink immediately so the temp file is cleaned up even if the
+	 * process is killed by a signal during the fetch (issue #1988) */
+	unlink(dest);
 
 	fi.url = url;
 	fi.mtime = t;
@@ -134,11 +138,14 @@ pkg_fetch_file_tmp(struct pkg_repo *repo, const char *url, char *dest,
 		futimens(fd, ts);
 	}
 
-	close(fd);
+	if (retcode != EPKG_OK) {
+		close(fd);
+		return (retcode);
+	}
 
-	/* Remove local file if fetch failed */
-	if (retcode != EPKG_OK)
-		unlink(dest);
+	/* Rewind so the caller can read from the beginning */
+	lseek(fd, 0, SEEK_SET);
+	*outfd = fd;
 
 	return (retcode);
 }

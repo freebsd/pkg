@@ -237,7 +237,7 @@ pkg_audit_fetch(const char *src, const char *dest)
 			t = st.st_mtime;
 	}
 
-	switch (pkg_fetch_file_tmp(NULL, src, tmp, t)) {
+	switch (pkg_fetch_file_tmp(NULL, src, tmp, t, &fd)) {
 	case EPKG_OK:
 		break;
 	case EPKG_UPTODATE:
@@ -248,11 +248,6 @@ pkg_audit_fetch(const char *src, const char *dest)
 		pkg_emit_error("cannot fetch vulnxml file");
 		goto cleanup;
 	}
-
-	/* Open input fd */
-	fd = open(tmp, O_RDONLY);
-	if (fd == -1)
-		goto cleanup;
 	/* Open out fd */
 	if (dest != NULL) {
 		outfd = open(dest, O_RDWR|O_CREAT|O_TRUNC,
@@ -278,8 +273,6 @@ pkg_audit_fetch(const char *src, const char *dest)
 	futimens(outfd, ts);
 
 cleanup:
-	unlink(tmp);
-
 	if (fd != -1)
 		close(fd);
 	if (outfd != -1)
