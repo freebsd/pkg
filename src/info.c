@@ -352,7 +352,7 @@ exec_info(int argc, char **argv)
 		return (EXIT_FAILURE);
 	} else if (ret != EPKG_OK)
 		return (EXIT_FAILURE);
-	ret = pkgdb_open(&db, PKGDB_DEFAULT);
+	ret = pkgdb_open(&db, PKGDB_DEFAULT_READONLY);
 	if (ret != EPKG_OK)
 		return (EXIT_FAILURE);
 

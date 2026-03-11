@@ -60,7 +60,7 @@ pkg_create_matches(int argc, char **argv, match_t match, struct pkg_create *pc)
 	bool foundone;
 	vec_t(struct pkg *) pkglist = vec_init();
 
-	if (pkgdb_open(&db, PKGDB_DEFAULT) != EPKG_OK) {
+	if (pkgdb_open(&db, PKGDB_DEFAULT_READONLY) != EPKG_OK) {
 		pkgdb_close(db);
 		return (EXIT_FAILURE);
 	}

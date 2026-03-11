@@ -174,7 +174,8 @@ typedef enum {
 typedef enum {
 	PKGDB_DEFAULT = 0,
 	PKGDB_REMOTE,
-	PKGDB_MAYBE_REMOTE
+	PKGDB_MAYBE_REMOTE,
+	PKGDB_DEFAULT_READONLY,
 } pkgdb_t;
 
 typedef enum {

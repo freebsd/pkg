@@ -413,7 +413,7 @@ do_source_index(unsigned int opt, char limchar, char *pattern, match_t match,
 		return (EXIT_FAILURE);
 	}
 
-	if (pkgdb_open(&db, PKGDB_DEFAULT) != EPKG_OK)
+	if (pkgdb_open(&db, PKGDB_DEFAULT_READONLY) != EPKG_OK)
 		return (EXIT_FAILURE);
 
 	index = hash_indexfile(indexfile);
@@ -742,7 +742,7 @@ do_source_ports(unsigned int opt, char limchar, char *pattern, match_t match,
 	if (portsfd == -1)
 		err(EXIT_FAILURE, "Cannot open '%s'", portsdir);
 
-	if (pkgdb_open(&db, PKGDB_DEFAULT) != EPKG_OK)
+	if (pkgdb_open(&db, PKGDB_DEFAULT_READONLY) != EPKG_OK)
 		return (EXIT_FAILURE);
 
 	if (pkgdb_obtain_lock(db, PKGDB_LOCK_READONLY) != EPKG_OK) {

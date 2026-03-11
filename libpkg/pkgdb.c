@@ -1107,8 +1107,9 @@ retry:
 		 * Immutable mode bypasses WAL/SHM entirely and reads
 		 * directly from the main database file.
 		 */
-		if (!create && faccessat(dbdirfd, "local.sqlite",
-		    W_OK, AT_EACCESS) != 0) {
+		if (!create && (type == PKGDB_DEFAULT_READONLY ||
+		    faccessat(dbdirfd, "local.sqlite",
+		    W_OK, AT_EACCESS) != 0)) {
 			ret = sqlite3_open_v2(
 			    "file:/local.sqlite?immutable=1",
 			    &db->sqlite,

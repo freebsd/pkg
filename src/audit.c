@@ -346,7 +346,7 @@ exec_audit(int argc, char **argv)
 			return (EXIT_FAILURE);
 		}
 
-		if (pkgdb_open(&db, PKGDB_DEFAULT) != EPKG_OK) {
+		if (pkgdb_open(&db, PKGDB_DEFAULT_READONLY) != EPKG_OK) {
 			pkg_audit_free(audit);
 			pkghash_destroy(check);
 			return (EXIT_FAILURE);

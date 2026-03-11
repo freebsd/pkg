@@ -248,7 +248,7 @@ exec_updating(int argc, char **argv)
 		if (strlen(date) != 8 || strspn(date, "0123456789") != 8)
 			err(EXIT_FAILURE, "Invalid date format");
 
-	if (pkgdb_open(&db, PKGDB_DEFAULT) != EPKG_OK)
+	if (pkgdb_open(&db, PKGDB_DEFAULT_READONLY) != EPKG_OK)
 		return (EXIT_FAILURE);
 
 	if (pkgdb_obtain_lock(db, PKGDB_LOCK_READONLY) != EPKG_OK) {

@@ -189,7 +189,7 @@ exec_shlib(int argc, char **argv)
 		return (EXIT_FAILURE);
 	}
 
-	retcode = pkgdb_open(&db, PKGDB_DEFAULT);
+	retcode = pkgdb_open(&db, PKGDB_DEFAULT_READONLY);
 	if (retcode != EPKG_OK)
 		return (EXIT_FAILURE);
 

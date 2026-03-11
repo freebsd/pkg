@@ -1137,7 +1137,7 @@ exec_query(int argc, char **argv)
 		goto cleanup;
 	}
 
-	ret = pkgdb_open(&db, PKGDB_DEFAULT);
+	ret = pkgdb_open(&db, PKGDB_DEFAULT_READONLY);
 	if (ret != EPKG_OK) {
 		retcode = EXIT_FAILURE;
 		goto cleanup;
