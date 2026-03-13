@@ -30,6 +30,10 @@
 
 #include "bsd_compat.h"
 
+#if !defined(TCP_NOPUSH) && defined(TCP_CORK)
+#define TCP_NOPUSH TCP_CORK
+#endif
+
 /*
  * The following copyright applies to the base64 code:
  *
@@ -1543,8 +1547,10 @@ http_connect(struct url *URL, struct url *purl, const char *flags)
 			DEBUGF("reusing cached connection to %s:%d\n",
 			    URL->host, URL->port);
 			val = 1;
+#ifdef TCP_NOPUSH
 			setsockopt(conn->sd, IPPROTO_TCP, TCP_NOPUSH,
 			    &val, sizeof(val));
+#endif
 			return (conn);
 		}
 		/* stale cache — different host */
@@ -1637,7 +1643,9 @@ retry:
 	}
 
 	val = 1;
+#ifdef TCP_NOPUSH
 	setsockopt(conn->sd, IPPROTO_TCP, TCP_NOPUSH, &val, sizeof(val));
+#endif
 
 	clean_http_headerbuf(&headerbuf);
 	return (conn);
@@ -1940,8 +1948,10 @@ http_request_body(struct url *URL, const char *op, struct url_stat *us,
 		 * options to force the pending data to be written.
 		 */
 		val = 0;
+#ifdef TCP_NOPUSH
 		setsockopt(conn->sd, IPPROTO_TCP, TCP_NOPUSH, &val,
 			   sizeof(val));
+#endif
 		val = 1;
 		setsockopt(conn->sd, IPPROTO_TCP, TCP_NODELAY, &val,
 			   sizeof(val));
