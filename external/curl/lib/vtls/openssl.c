@@ -1874,6 +1874,9 @@ static int ossl_init(void)
 #else
     OPENSSL_INIT_LOAD_CONFIG |
 #endif
+#ifdef OPENSSL_INIT_NO_ATEXIT
+    OPENSSL_INIT_NO_ATEXIT |
+#endif
     0;
   OPENSSL_init_ssl(flags, NULL);
 #else
