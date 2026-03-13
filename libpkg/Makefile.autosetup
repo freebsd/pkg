@@ -57,6 +57,7 @@ SRCS=	backup_lib.c \
 	flags.c \
 	fetch_ssh.c \
 	fetch_libcurl.c \
+	fetch_libfetch.c \
 	fetch_file.c \
 	triggers.c \
 	pkghash.c \
@@ -69,12 +70,14 @@ LOCAL_CFLAGS=	-I$(top_srcdir)/compat \
 		-I$(top_srcdir)/external/uthash \
 		-I$(top_srcdir)/external/picosat \
 		-I$(top_srcdir)/external/yxml \
+		-I$(top_srcdir)/external/uthash \
 		-I$(top_srcdir)/external/include \
 		-I$(top_srcdir)/external/libucl/include \
 		-I$(top_srcdir)/external/lua/src \
 		-I$(top_srcdir)/external/liblua/ \
 		-I$(top_srcdir)/external/libder/libder \
 		-I$(top_srcdir)/external/libecc/include \
+		-I$(top_srcdir)/external/libfetch \
 		-I$(top_srcdir)/libpkg/repo \
 		-I$(top_builddir)/libpkg/repo \
 		-I$(top_srcdir)/libpkg \
@@ -100,6 +103,7 @@ LOCAL_LDFLAGS=	@waflags@ \
 		-L$(top_builddir)/external/liblua -llua_pic \
 		-L$(top_builddir)/external/libder -lder_pic \
 		-L$(top_builddir)/external/libecc -lecc_pic \
+		-L$(top_builddir)/external/libfetch -lfetch_pic \
 		@nowaflags@ \
 		-lm
 
@@ -114,6 +118,7 @@ STATIC_LIBS=	@REPOS_STATIC_LIBS@ \
 		$(top_builddir)/compat/libbsd_compat.a \
 		$(top_builddir)/external/libder/libder.a \
 		$(top_builddir)/external/libecc/libecc.a \
+		$(top_builddir)/external/libfetch/libfetch.a \
 		lib$(LIB).a
 
 @if HAVE_LIBUTIL

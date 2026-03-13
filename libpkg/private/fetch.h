@@ -49,3 +49,6 @@ int stdio_fetch(struct pkg_repo *, int dest, struct fetch_item *);
 int curl_open(struct pkg_repo *, struct fetch_item *);
 int curl_fetch(struct pkg_repo *, int dest, struct fetch_item *);
 void curl_cleanup(struct pkg_repo *);
+int libfetch_open(struct pkg_repo *, struct fetch_item *);
+int libfetch_fetch(struct pkg_repo *, int dest, struct fetch_item *);
+void libfetch_cleanup(struct pkg_repo *);
