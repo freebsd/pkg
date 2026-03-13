@@ -20,7 +20,6 @@ options {
 	with-lsan => "build with Clang LeakSanitizer (non-prod use)"
 	with-ubsan => "build with Clang UndefinedBehaviorSanitizer (non-prod use)"
 	with-tsan => "build with Clang ThreadSanitizer (non-prod use)"
-	with-libcurl => "build with libcurl via pkg-config"
 	with-openssl.pc => "build with openssl via pkg-config"
 	default-format:txz => "Default compression format: tzst (default), txz, tbz, tar"
 }
@@ -302,14 +301,6 @@ if {[pkg-config-init 0]} {
 			define PKG_LIBDNS_LIBS_STATIC [exec pkg-config --static --libs-only-l libldns]
 		}
 	}
-	if {[opt-bool with-libcurl]} {
-		if {![pkg-config libcurl]} {
-			user-error "Unable to find libcurl"
-		}
-		user-notice LIBCURL_CFLAGS=[get-define PKG_LIBCURL_CFLAGS]
-		user-notice LIBCURL_LDLAGS=[get-define PKG_LIBCURL_LDFLAGS]
-		user-notice LIBCURL_LIBS=[get-define PKG_LIBCURL_LIBS]
-	}
 	if {[opt-bool with-libarchive.pc]} {
 		if {![pkg-config libarchive]} {
 			user-error "Unable to find libarchive"
@@ -347,7 +338,6 @@ if {[get-define CCACHE] ne {none}} {
 
 make-config-header pkg_config.h -bare { DEFAULT_* }
 make-config-header external/sqlite/sqlite_generated.h
-make-config-header external/libcurl/curl_cfg.h
 foreach in [list mk/defs.mk.in libpkg/pkg.h.in libpkg/pkg.pc.in \
 	tests/frontend/test_environment.sh.in ] {
 	make-template $in
@@ -360,7 +350,7 @@ foreach dir [list external/blake2 external/picosat \
 	external/linenoise external/sqlite external/libfetch \
 	external compat libpkg libpkg/repo libpkg/repo/binary src \
 	external/libucl external/libelf tests docs \
-	external/liblua external/yxml scripts external/libcurl external/libder \
+	external/liblua external/yxml scripts external/libder \
 	external/libecc] {
 	make-template $dir/Makefile.autosetup $dir/Makefile
 	define-append CONF_GEN_FILES $dir/Makefile.autosetup

@@ -3,7 +3,4 @@ DIRS=	blake2 picosat linenoise libfetch sqlite libucl liblua yxml libder libecc
 @if libelf-internal
 DIRS+=	libelf
 @endif
-@if !PKG_LIBCURL_LIBS
-DIRS+=	libcurl
-@endif
 include $(MK)/dir.mk

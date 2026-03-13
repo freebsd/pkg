@@ -82,11 +82,6 @@ OTHER_LIBS+=	-lssl -lcrypto
 OTHER_LIBS+=	-lmd
 @endif
 
-@if PKG_LIBCURL_LIBS
-LOCAL_CFLAGS+=	@PKG_LIBCURL_CFLAGS@
-OTHER_LIBS+=	@PKG_LIBCURL_LDFLAGS@ @PKG_LIBCURL_LIBS@
-@endif
-
 @if pkgos_darwin
 LOCAL_LDFLAGS=	$(LIBPKGFLAT) $(LIBS) $(OTHER_LIBS) -lresolv -lz \
 	-framework CoreFoundation -framework CoreServices \
