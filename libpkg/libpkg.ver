@@ -175,6 +175,7 @@ global:
 	pkg_set_b;
 	pkg_set_debug_level;
 	pkg_set_i;
+	pkg_set_ignore_osversion;
 	pkg_set_invalid;
 	pkg_set_ischrooted;
 	pkg_set_rootdir;
