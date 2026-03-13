@@ -10,7 +10,12 @@ LOCAL_CFLAGS=	-I$(top_srcdir)/compat \
 		-Wno-unused-parameter \
 		-Wno-pointer-sign \
 		-DWITH_SSL \
-		-DINET6
+		-DINET6 \
+		-DOPENSSL_API_COMPAT=0x10100000L
+
+@if PKG_OPENSSL_CFLAGS
+CFLAGS+=	@PKG_OPENSSL_CFLAGS@
+@else
 
 VPATH=	$(top_srcdir)/external/libfetch
 
