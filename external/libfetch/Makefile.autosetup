@@ -15,7 +15,7 @@ LOCAL_CFLAGS=	-I$(top_srcdir)/compat \
 
 @if PKG_OPENSSL_CFLAGS
 CFLAGS+=	@PKG_OPENSSL_CFLAGS@
-@else
+@endif
 
 VPATH=	$(top_srcdir)/external/libfetch
 
