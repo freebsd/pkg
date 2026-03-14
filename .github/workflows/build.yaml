@@ -50,7 +50,6 @@ jobs:
             compiler: clang-18
             pkgs:
               - clang-18
-              - libcurl4-openssl-dev
               - libsqlite3-dev
               - libbsd-dev
               - libarchive-tools
@@ -83,7 +82,6 @@ jobs:
           #   * ld from system
           #   * libarchive from brew (system provided libarchive has no header files for development)
           #   * openssl from brew
-          #   * libcurl from system
           #
 
           brew update --quiet || true
@@ -139,7 +137,7 @@ jobs:
 
           mkdir -p "${BUILD_PKG}"
           cd "${BUILD_PKG}"
-          ${SRC_PKG}/configure --prefix=${INST_PKG} --with-libarchive.pc --with-libcurl \
+          ${SRC_PKG}/configure --prefix=${INST_PKG} --with-libarchive.pc \
             --with-openssl.pc ${CFG_OPTS}
           make -j${NPROC}
 
