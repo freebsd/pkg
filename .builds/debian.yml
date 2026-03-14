@@ -1,6 +1,5 @@
 image: debian/testing
 packages:
-  - libcurl4-openssl-dev
   - libsqlite3-dev
   - libbsd-dev
   - libarchive-tools
@@ -26,7 +25,7 @@ tasks:
   - configure: |
       mkdir build
       cd build
-      ../pkg/configure --default-format=txz --with-libarchive.pc --with-libcurl --with-openssl.pc
+      ../pkg/configure --default-format=txz --with-libarchive.pc --with-openssl.pc
   - build: |
       cd build
       make
