@@ -1593,7 +1593,7 @@ fetch_add_entry(struct url_ent **p, int *size, int *len,
 	}
 
 	if (*len >= *size - 1) {
-		tmp = reallocarray(*p, *size * 2 + 1, sizeof(**p));
+		tmp = realloc(*p, (*size * 2 + 1) * sizeof(**p));
 		if (tmp == NULL) {
 			errno = ENOMEM;
 			fetch_syserr();
