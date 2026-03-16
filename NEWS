@@ -1,3 +1,14 @@
+Changes from 2.6.99.1 to 2.6.99.2
+- fetch: switch back to libfetch, completely remove curl
+- add: resolve shlibs and provides via symlink directory layout
+- add: ignore dead symlinks for provides/requires
+- add: skip osversion check when force is set
+- install -A: do not mark upgraded/reinstalled packages as automatic
+- DB: fix a race condition in db initialization
+- 400.status-pkg: provide an option to select the source to check
+- docs: all manpages now mention -r can be called multiple times
+- docs: update usage for create, install and set commands
+
 Changes from 2.6.99.0 to 2.6.99.1
 - greatly improve the test coverage
 - add support for trigger per package (pre installation, post installation)
