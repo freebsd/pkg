@@ -47,7 +47,7 @@ void
 usage_install(void)
 {
 	fprintf(stderr,
-	    "Usage: pkg install [-AfInFMqRUy] [--autoremove] [-r reponame] [-Cgix] <pkg-name> ...\n\n");
+	    "Usage: pkg install [-ACfFgiIlMnqRUxy] [--autoremove] [-r reponame] <pkg-name> ...\n\n");
 	fprintf(stderr, "For more information see 'pkg help install'.\n");
 }
 
