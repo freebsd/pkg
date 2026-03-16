@@ -21,7 +21,8 @@ tests_init	\
 		add_shlib_accept_missing \
 		add_shlib_already_installed \
 		add_provides_requires \
-		add_shlib_stdin_skip
+		add_shlib_stdin_skip \
+		add_shlib_dead_symlink
 
 initialize_pkg() {
 	touch a
@@ -545,4 +546,45 @@ add_shlib_stdin_skip_body() {
 		-e empty \
 		-s exit:0 \
 		pkg add - < All/consumer-1.pkg
+}
+
+add_shlib_dead_symlink_body() {
+	atf_skip_on Darwin "The macOS linker uses different flags"
+	mkdir -p All
+	create_shlibs
+
+	# Provider package
+	atf_check -s exit:0 sh ${RESOURCEDIR}/test_subr.sh new_pkg provider provider 1 /usr/local
+	cat << EOF >> provider.ucl
+files: {
+	$(pwd)/libtest.so.1: "",
+}
+EOF
+	atf_check -o ignore -e empty -s exit:0 \
+		pkg create -M provider.ucl
+	mv provider-1.pkg All/
+
+	# Consumer package
+	atf_check -s exit:0 sh ${RESOURCEDIR}/test_subr.sh new_pkg consumer consumer 1 /usr/local
+	cat << EOF >> consumer.ucl
+files: {
+	$(pwd)/libconsumer.so.1: "",
+}
+EOF
+	atf_check -o ignore -e empty -s exit:0 \
+		pkg create -M consumer.ucl
+	mv consumer-1.pkg All/
+
+	# Symlink dir with one dead symlink and one valid one
+	mkdir -p shlibs/libtest.so.1
+	ln -s ../../All/nonexistent-1.pkg shlibs/libtest.so.1/dead.pkg
+	ln -s ../../All/provider-1.pkg shlibs/libtest.so.1/provider.pkg
+
+	# Dead symlink should be ignored, valid provider used
+	atf_check \
+		-o match:"Installing provider-1" \
+		-o match:"Installing consumer-1" \
+		-e empty \
+		-s exit:0 \
+		pkg add $(pwd)/All/consumer-1.pkg
 }

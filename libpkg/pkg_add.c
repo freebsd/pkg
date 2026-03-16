@@ -1165,11 +1165,17 @@ select_provider_from_dir(const char *dirpath, const char *ext)
 		return (NULL);
 
 	charv_t entries = vec_init();
+	char fullpath[MAXPATHLEN];
 	struct dirent *de;
 	while ((de = readdir(d)) != NULL) {
 		if (de->d_name[0] == '.')
 			continue;
 		if (!str_ends_with(de->d_name, ext))
+			continue;
+		/* Skip dangling symlinks */
+		snprintf(fullpath, sizeof(fullpath), "%s/%s",
+		    dirpath, de->d_name);
+		if (access(fullpath, F_OK) != 0)
 			continue;
 		vec_push(&entries, xstrdup(de->d_name));
 	}
