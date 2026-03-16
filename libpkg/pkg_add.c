@@ -27,6 +27,8 @@
 #include <time.h>
 #include <xstring.h>
 
+#include <dirent.h>
+
 #include "pkg.h"
 #include "private/event.h"
 #include "private/utils.h"
@@ -1132,6 +1134,74 @@ append_pkg_if_newer(pkgs_t *localpkgs, struct pkg *p)
 	return (true);
 }
 
+static charv_t system_shlibs_cache = vec_init();
+static bool system_shlibs_scanned = false;
+
+static charv_t *
+get_system_shlibs(void)
+{
+	if (!system_shlibs_scanned) {
+		scan_system_shlibs(&system_shlibs_cache, ctx.pkg_rootdir);
+		system_shlibs_scanned = true;
+	}
+	return (&system_shlibs_cache);
+}
+
+/*
+ * Select a provider package from a symlink directory.
+ * dirpath: e.g. "/repo/shlibs/libfoo.so.1"
+ * ext:     package extension including dot (e.g. ".pkg")
+ *
+ * Selection logic:
+ * - Single entry → use it
+ * - Multiple → sort alphabetically, pick first (lowest NN. prefix = highest priority)
+ * Returns xasprintf'd full path or NULL.
+ */
+static char *
+select_provider_from_dir(const char *dirpath, const char *ext)
+{
+	DIR *d = opendir(dirpath);
+	if (d == NULL)
+		return (NULL);
+
+	charv_t entries = vec_init();
+	struct dirent *de;
+	while ((de = readdir(d)) != NULL) {
+		if (de->d_name[0] == '.')
+			continue;
+		if (!str_ends_with(de->d_name, ext))
+			continue;
+		vec_push(&entries, xstrdup(de->d_name));
+	}
+	closedir(d);
+
+	if (entries.len == 0) {
+		vec_free(&entries);
+		return (NULL);
+	}
+
+	char *selected = NULL;
+
+	if (entries.len == 1) {
+		selected = entries.d[0];
+		entries.d[0] = NULL;
+	} else {
+		/* Sort alphabetically, pick first (lowest NN. prefix wins) */
+		qsort(entries.d, entries.len, sizeof(char *), char_cmp);
+		selected = entries.d[0];
+		entries.d[0] = NULL;
+	}
+
+	char *result = NULL;
+	if (selected != NULL) {
+		xasprintf(&result, "%s/%s", dirpath, selected);
+		free(selected);
+	}
+
+	vec_free_and_free(&entries, free);
+	return (result);
+}
+
 static int
 pkg_add_check_pkg_archive(struct pkgdb *db, struct pkg *pkg,
 	const char *path, int flags, const char *location)
@@ -1246,6 +1316,80 @@ pkg_add_check_pkg_archive(struct pkgdb *db, struct pkg *pkg,
 		} else {
 			pkg_emit_missing_dep(pkg, dep);
 			if ((flags & PKG_ADD_FORCE_MISSING) == 0)
+				goto cleanup;
+		}
+	}
+
+	/*
+	 * Phase 2: Resolve shlibs_required via symlink directory layout.
+	 * Look in basedir/../shlibs/<shlibname>/ for provider packages.
+	 */
+	if (!fromstdin && (flags & PKG_ADD_UPGRADE) == 0) {
+		char parentdir[MAXPATHLEN];
+		strlcpy(parentdir, bd, sizeof(parentdir));
+		char *pslash = strrchr(parentdir, '/');
+		if (pslash != NULL)
+			*pslash = '\0';
+
+		charv_t *system_shlibs = get_system_shlibs();
+
+		vec_foreach(pkg->shlibs_required, si) {
+			const char *shlibname = pkg->shlibs_required.d[si];
+
+			if (charv_search(system_shlibs, shlibname) != NULL)
+				continue;
+
+			if (pkgdb_is_shlib_provided(db, shlibname))
+				continue;
+
+			char provdir[MAXPATHLEN];
+			snprintf(provdir, sizeof(provdir), "%s/shlibs/%s",
+			    parentdir, shlibname);
+			char *provider = select_provider_from_dir(
+			    provdir, ext);
+
+			if (provider == NULL) {
+				pkg_emit_error("Missing shlib %s required by %s",
+				    pkg->shlibs_required.d[si], pkg->name);
+				if ((flags & PKG_ADD_FORCE_MISSING) == 0)
+					goto cleanup;
+				continue;
+			}
+			ret = pkg_add(db, provider, PKG_ADD_AUTOMATIC,
+			    location);
+			free(provider);
+			if (ret != EPKG_OK && ret != EPKG_INSTALLED)
+				goto cleanup;
+		}
+
+		/*
+		 * Phase 3: Resolve abstract requires via symlink directory
+		 * layout.  Look in basedir/../provides/<label>/ for providers.
+		 */
+		vec_foreach(pkg->requires, ri) {
+			const char *req = pkg->requires.d[ri];
+
+			if (pkgdb_is_provided(db, req))
+				continue;
+
+			char provdir[MAXPATHLEN];
+			snprintf(provdir, sizeof(provdir), "%s/provides/%s",
+			    parentdir, req);
+			char *provider = select_provider_from_dir(
+			    provdir, ext);
+
+			if (provider == NULL) {
+				pkg_emit_error(
+				    "Missing provide %s required by %s",
+				    req, pkg->name);
+				if ((flags & PKG_ADD_FORCE_MISSING) == 0)
+					goto cleanup;
+				continue;
+			}
+			ret = pkg_add(db, provider, PKG_ADD_AUTOMATIC,
+			    location);
+			free(provider);
+			if (ret != EPKG_OK && ret != EPKG_INSTALLED)
 				goto cleanup;
 		}
 	}
