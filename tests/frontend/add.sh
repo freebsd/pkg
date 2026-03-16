@@ -332,6 +332,7 @@ create_shlibs() {
 # Creates real shared libs, packages in All/, and symlink dir.
 setup_provider_layout() {
 	atf_skip_on Darwin "The macOS linker uses different flags"
+	atf_skip_on Linux "On linux (debian-like) the library are not on the scanned path for shlibs"
 	mkdir -p All
 	create_shlibs
 
@@ -385,6 +386,7 @@ add_shlib_provider_body() {
 
 add_shlib_priority_body() {
 	atf_skip_on Darwin "The macOS linker uses different flags"
+	atf_skip_on Linux "On Linux (debian-like) the library are not on the scanned path for shlibs"
 	mkdir -p All
 	create_shlibs
 
@@ -429,6 +431,7 @@ EOF
 
 add_shlib_missing_body() {
 	atf_skip_on Darwin "The macOS linker uses different flags"
+	atf_skip_on Linux "On Linux (debian-like) the library are not on the scanned path for shlibs"
 	mkdir -p All
 	create_shlibs
 
@@ -453,6 +456,7 @@ EOF
 
 add_shlib_accept_missing_body() {
 	atf_skip_on Darwin "The macOS linker uses different flags"
+	atf_skip_on Linux "On Linux (debian-like) the library are not on the scanned path for shlibs"
 	mkdir -p All
 	create_shlibs
 
@@ -551,6 +555,7 @@ add_shlib_stdin_skip_body() {
 
 add_shlib_dead_symlink_body() {
 	atf_skip_on Darwin "The macOS linker uses different flags"
+	atf_skip_on Linux "On Linux (debian-like) the library are not on the scanned path for shlibs"
 	mkdir -p All
 	create_shlibs
 
