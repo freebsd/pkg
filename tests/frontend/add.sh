@@ -324,7 +324,8 @@ create_shlibs() {
 	touch empty.c
 	cc -shared -Wl,-soname=libtest.so.1 empty.c -o libtest.so.1
 	ln -s libtest.so.1 libtest.so
-	cc -shared -Wl,-soname=libconsumer.so.1 empty.c -o libconsumer.so.1 -L. -ltest
+	cc -shared -Wl,-soname=libconsumer.so.1 -Wl,--no-as-needed \
+		empty.c -o libconsumer.so.1 -L. -ltest
 }
 
 # Helper: set up the symlink directory layout for shlib tests.
