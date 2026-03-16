@@ -12,10 +12,19 @@ pkgcmd=%prefix%/sbin/pkg
 status_pkg() {
     local pkgargs
     local rc
+    local srcflag
 
     pkgargs="$1"
 
-    rc=$(${pkgcmd} ${pkgargs} version -CRv ${pkg_version_index} |
+    # weekly_status_pkg_source: I (index), P (ports), R (remote).
+    : ${weekly_status_pkg_source=R}
+    case "${weekly_status_pkg_source}" in
+	[Ii]*)	srcflag="-I" ;;
+	[Pp]*)	srcflag="-P" ;;
+	*)	srcflag="-R" ;;
+    esac
+
+    rc=$(${pkgcmd} ${pkgargs} version -Cv ${srcflag} ${pkg_version_index} |
 	sed -n -e '/up-to-date/d' \
 	    -e 's/^\([^[:space:]]*\)[[:space:]]*[<>=!?][[:space:]]*\(.*\)$/\1 \2/p' |
 	tee /dev/stderr |
