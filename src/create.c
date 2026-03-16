@@ -33,14 +33,14 @@
 void
 usage_create(void)
 {
-	fprintf(stderr, "Usage: pkg create [-eOhnqv] [-f format] [-l level] "
-		"[-T threads] [-o outdir] [-p plist] [-r rootdir] -m metadatadir\n");
-	fprintf(stderr, "Usage: pkg create [-eOhnqv] [-f format] [-l level] "
-		"[-T threads] [-o outdir] [-r rootdir] -M manifest\n");
-	fprintf(stderr, "       pkg create [-eOhgnqvx] [-f format] [-l level] "
-		"[-T threads] [-o outdir] [-r rootdir] pkg-name ...\n");
-	fprintf(stderr, "       pkg create [-eOhnqv] [-f format] [-l level] "
-		"[-T threads] [-o outdir] [-r rootdir] -a\n\n");
+	fprintf(stderr, "Usage: pkg create [-ehnqv] [-f format] [-l level] "
+		"[-o outdir] [-p plist] [-r rootdir] [-t timestamp] [-T threads] -m metadatadir\n");
+	fprintf(stderr, "Usage: pkg create [-ehnqv] [-f format] [-l level] "
+		"[-o outdir] [-r rootdir] [-t timestamp] [-T threads] -M manifest\n");
+	fprintf(stderr, "       pkg create [-eghnqvx] [-f format] [-l level] "
+		"[-o outdir] [-r rootdir] [-t timestamp] [-T threads] pkg-name ...\n");
+	fprintf(stderr, "       pkg create [-ehnqv] [-f format] [-l level] "
+		"[-o outdir] [-r rootdir] [-t timestamp] [-T threads] -a\n\n");
 	fprintf(stderr, "For more information see 'pkg help create'.\n");
 }
 
