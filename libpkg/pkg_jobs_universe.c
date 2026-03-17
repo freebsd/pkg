@@ -941,6 +941,23 @@ pkg_jobs_universe_select_candidate(struct pkg_job_universe_item *chain,
 		}
 	}
 
+	/*
+	 * When all heuristics fail and a local package exists, prefer
+	 * the remote candidate whose digest matches the installed one.
+	 * This avoids proposing a spurious reinstall from another repo
+	 * when the same version is available in multiple repositories.
+	 */
+	if (res == NULL && local != NULL) {
+		struct pkg_job_universe_item *cur;
+		LL_FOREACH(chain, cur) {
+			if (cur->pkg->type != PKG_INSTALLED &&
+			    STREQ(local->pkg->digest, cur->pkg->digest)) {
+				res = cur;
+				break;
+			}
+		}
+	}
+
 	/* Fallback to any */
 	return (res != NULL ? res : chain);
 }
