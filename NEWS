@@ -1,3 +1,7 @@
+Changes from 2.6.99.2 to 2.6.99.3
+- libfetch: fix segfault at exit when using SRV mirror type
+- solver: avoid spurious reinstall from wrong repo with multi-repo setups
+
 Changes from 2.6.99.1 to 2.6.99.2
 - fetch: switch back to libfetch, completely remove curl
 - add: resolve shlibs and provides via symlink directory layout
