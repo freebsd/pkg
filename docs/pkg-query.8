@@ -146,7 +146,7 @@ available, or
 otherwise.
 .It Cm \&%X
 Internal package checksum
-.It Cm \&%\&? Ns Op drCFODLUGBbA
+.It Cm \&%\&? Ns Op drCFODLUGBbAyY
 Returns 0 if the list is empty and 1 if the list has information to display.
 .Bl -tag -width indent
 .It Cm d
@@ -171,10 +171,14 @@ for groups
 for required shared libraries
 .It Cm b
 for provided shared libraries
+.It Cm y
+for provides
+.It Cm Y
+for requires
 .It Cm A
 for annotations
 .El
-.It Cm \&%# Ns Op drCFODLUGBbA
+.It Cm \&%# Ns Op drCFODLUGBbAyY
 Returns the number of elements in the list
 .Bl -tag -width indent
 .It Cm d
@@ -199,6 +203,10 @@ for groups
 for required shared libraries
 .It Cm b
 for provided shared libraries
+.It Cm y
+for provides
+.It Cm Y
+for requires
 .It Cm A
 for annotations
 .El
@@ -279,6 +287,10 @@ Expands to the list of groups needed by the matched package.
 Expands to the list of shared libraries used by programs from the matched package.
 .It Cm \&%b
 Expands to the list of shared libraries provided by the matched package.
+.It Cm \&%y
+Expands to the list of provides for the matched package.
+.It Cm \&%Y
+Expands to the list of requires for the matched package.
 .It Cm \&%A Ns Op tv
 Expands to the list of annotations for the matched package,
 where
@@ -330,7 +342,7 @@ Message of the package (type string)
 Timestamp that the package was installed (type integer)
 .It Cm \&%i
 Additional information about the package (type string)
-.It Cm \&%# Ns Op drCFODLUGBbA
+.It Cm \&%# Ns Op drCFODLUGBbAyY
 Number of elements in the list of information (type integer).
 See
 .Cm %?
@@ -362,6 +374,10 @@ License of the package (type string)
 Required shared library of the package (type string)
 .It Cm \&%b
 Provided shared library of the package (type string)
+.It Cm \&%y
+Provide of the package (type string)
+.It Cm \&%Y
+Require of the package (type string)
 .It Cm \&%A Ns Op tv
 Annotation of the package (type string)
 .El

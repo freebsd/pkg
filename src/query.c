@@ -54,9 +54,11 @@ static const struct query_flags accepted_query_flags[] = {
 	{ 'G', "",		1, PKG_LOAD_GROUPS },
 	{ 'B', "",		1, PKG_LOAD_SHLIBS_REQUIRED },
 	{ 'b', "",		1, PKG_LOAD_SHLIBS_PROVIDED },
+	{ 'y', "",		1, PKG_LOAD_PROVIDES },
+	{ 'Y', "",		1, PKG_LOAD_REQUIRES },
 	{ 'A', "tv",            1, PKG_LOAD_ANNOTATIONS },
-	{ '?', "drCFODLUGBbA",	1, PKG_LOAD_BASIC },	/* dbflags handled in analyse_query_string() */
-	{ '#', "drCFODLUGBbA",	1, PKG_LOAD_BASIC },	/* dbflags handled in analyse_query_string() */
+	{ '?', "drCFODLUGBbAyY",	1, PKG_LOAD_BASIC },	/* dbflags handled in analyse_query_string() */
+	{ '#', "drCFODLUGBbAyY",	1, PKG_LOAD_BASIC },	/* dbflags handled in analyse_query_string() */
 	{ 's', "hb",		0, PKG_LOAD_BASIC },
 	{ 'Q', "",		0, PKG_LOAD_BASIC },
 	{ 'n', "",		0, PKG_LOAD_BASIC },
@@ -173,6 +175,12 @@ format_str(struct pkg *pkg, xstring *dest, const char *qstr, const void *data)
 				case 'b':
 					pkg_fprintf(dest->fp, "%?b", pkg);
 					break;
+				case 'y':
+					pkg_fprintf(dest->fp, "%?y", pkg);
+					break;
+				case 'Y':
+					pkg_fprintf(dest->fp, "%?Y", pkg);
+					break;
 				case 'A':
 					pkg_fprintf(dest->fp, "%?A", pkg);
 					break;
@@ -213,6 +221,12 @@ format_str(struct pkg *pkg, xstring *dest, const char *qstr, const void *data)
 					break;
 				case 'b':
 					pkg_fprintf(dest->fp, "%#b", pkg);
+					break;
+				case 'y':
+					pkg_fprintf(dest->fp, "%#y", pkg);
+					break;
+				case 'Y':
+					pkg_fprintf(dest->fp, "%#Y", pkg);
 					break;
 				case 'A':
 					pkg_fprintf(dest->fp, "%#A", pkg);
@@ -310,6 +324,12 @@ format_str(struct pkg *pkg, xstring *dest, const char *qstr, const void *data)
 			case 'b':
 				pkg_fprintf(dest->fp, "%bn", data);
 				break;
+			case 'y':
+				fprintf(dest->fp, "%s", (const char *)data);
+				break;
+			case 'Y':
+				fprintf(dest->fp, "%s", (const char *)data);
+				break;
 			case 'A':
 				qstr++;
 				if (qstr[0] == 't')
@@ -403,7 +423,9 @@ print_query(struct pkg *pkg, char *qstr, char multiline)
 	case 'U':
 	case 'G':
 	case 'B':
-	case 'b':;
+	case 'b':
+	case 'y':
+	case 'Y':;
 		int attr;
 		switch (multiline) {
 		case 'C': attr = PKG_ATTR_CATEGORIES; break;
@@ -412,6 +434,8 @@ print_query(struct pkg *pkg, char *qstr, char multiline)
 		case 'G': attr = PKG_ATTR_GROUPS; break;
 		case 'B': attr = PKG_ATTR_SHLIBS_REQUIRED; break;
 		case 'b': attr = PKG_ATTR_SHLIBS_PROVIDED; break;
+		case 'y': attr = PKG_ATTR_PROVIDES; break;
+		case 'Y': attr = PKG_ATTR_REQUIRES; break;
 		default: __unreachable();
 		}
 		pkg_get(pkg, attr, &sl);
@@ -612,6 +636,12 @@ format_sql_condition(const char *str, xstring *sqlcond, bool for_remote)
 						case 'b':
 							fprintf(sqlcond->fp, "(SELECT %s FROM pkg_shlibs_provided AS d WHERE d.package_id=p.id)", sqlop);
 							break;
+						case 'y':
+							fprintf(sqlcond->fp, "(SELECT %s FROM pkg_provides AS d WHERE d.package_id=p.id)", sqlop);
+							break;
+						case 'Y':
+							fprintf(sqlcond->fp, "(SELECT %s FROM pkg_requires AS d WHERE d.package_id=p.id)", sqlop);
+							break;
 						case 'A':
 							fprintf(sqlcond->fp, "(SELECT %s FROM pkg_annotation AS d WHERE d.package_id=p.id)", sqlop);
 							break;
@@ -659,6 +689,16 @@ format_sql_condition(const char *str, xstring *sqlcond, bool for_remote)
 					break;
 				case 'b':
 					pending_subquery = "SELECT * FROM shlibs AS s JOIN pkg_shlibs_provided AS ps ON s.id=ps.shlib_id WHERE ps.package_id=p.id AND s.name";
+					multiline_subquery = true;
+					state = OPERATOR_STRING;
+					break;
+				case 'y':
+					pending_subquery = "SELECT * FROM provides AS s JOIN pkg_provides AS ps ON s.id=ps.provide_id WHERE ps.package_id=p.id AND s.provide";
+					multiline_subquery = true;
+					state = OPERATOR_STRING;
+					break;
+				case 'Y':
+					pending_subquery = "SELECT * FROM requires AS s JOIN pkg_requires AS ps ON s.id=ps.require_id WHERE ps.package_id=p.id AND s.require";
 					multiline_subquery = true;
 					state = OPERATOR_STRING;
 					break;
