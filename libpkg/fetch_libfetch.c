@@ -283,12 +283,19 @@ libfetch_fetch(struct pkg_repo *repo, int dest, struct fetch_item *fi)
 void
 libfetch_cleanup(struct pkg_repo *repo)
 {
-	struct http_mirror *m, *tmp;
-
-	LL_FOREACH_SAFE(repo->http, m, tmp) {
-		fetchFreeURL(m->url);
-		free(m);
+	if (repo->mirror_type == HTTP) {
+		struct http_mirror *m, *tmp;
+		LL_FOREACH_SAFE(repo->http, m, tmp) {
+			fetchFreeURL(m->url);
+			free(m);
+		}
+		repo->http = NULL;
+	} else if (repo->mirror_type == SRV) {
+		struct dns_srvinfo *s, *stmp;
+		LL_FOREACH_SAFE(repo->srv, s, stmp) {
+			free(s);
+		}
+		repo->srv = NULL;
 	}
-	repo->http = NULL;
 	fh_close(repo);
 }
