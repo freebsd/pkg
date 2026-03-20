@@ -1974,6 +1974,12 @@ pkg_jobs_handle_install(struct pkg_solved *ps, struct pkg_jobs *j)
 	    ps->type == PKG_SOLVED_INSTALL))
 		flags |= PKG_ADD_AUTOMATIC;
 
+	// Treat installs where there is already a local package (e.g. a forced install)
+	// like an upgrade to handle config merging properly.
+	if (old == NULL) {
+		old = pkg_jobs_universe_get_local(j->universe, new->uid, 0);
+	}
+
 	if (new->type == PKG_GROUP_REMOTE)
 		retcode = pkg_add_group(new);
 	else if (old != NULL)
