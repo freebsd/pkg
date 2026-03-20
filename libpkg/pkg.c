@@ -558,6 +558,9 @@ pkg_addfile_attr(struct pkg *pkg, const char *path, const char *sum,
 	return (EPKG_OK);
 }
 
+/*
+ * content should be populated later by e.g. pkg_add_common() if NULL
+ */
 int
 pkg_addconfig_file(struct pkg *pkg, const char *path, const char *content)
 {

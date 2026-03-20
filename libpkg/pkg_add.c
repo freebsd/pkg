@@ -195,7 +195,7 @@ attempt_to_merge(int rootfd, struct pkg_config_file *rcf, struct pkg *local,
 	}
 
 	if (!pkg_is_config_file(local, rcf->path, &lf, &lcf)) {
-		pkg_debug(3, "No local package");
+		pkg_debug(3, "Corresponding file in local package not a config file");
 		rcf->status = MERGE_FAILED;
 		return;
 	}
@@ -1482,6 +1482,46 @@ pkg_add_triggers(void)
 	return (triggers_execute(NULL));
 }
 
+
+static int
+populate_config_file_contents(struct archive *a, struct archive_entry *ae,
+	struct pkg *pkg)
+{
+	int	retcode = EPKG_OK;
+	int	ret = 0;
+	char	path[MAXPATHLEN];
+
+	do {
+		if (archive_entry_filetype(ae) != AE_IFREG) {
+			continue;
+		}
+
+		pkg_absolutepath(archive_entry_pathname(ae), path, sizeof(path), true);
+
+		struct pkg_config_file *config = pkghash_get_value(pkg->config_files_hash, path);
+		if (config == NULL) {
+			continue;
+		}
+
+		if (archive_entry_size(ae) < 0) {
+			pkg_emit_error("Invalid config file size for %s", path);
+			return (EPKG_FATAL);
+		}
+		size_t len = archive_entry_size(ae);
+		config->content = xmalloc(len + 1);
+		archive_read_data(a, config->content, len);
+		config->content[len] = '\0';
+	} while ((ret = archive_read_next_header(a, &ae)) == ARCHIVE_OK);
+
+	if (ret != ARCHIVE_EOF) {
+		pkg_emit_error("archive_read_next_header(): %s",
+		    archive_error_string(a));
+		retcode = EPKG_FATAL;
+	}
+
+	return (retcode);
+}
+
 static int
 pkg_add_common(struct pkgdb *db, const char *path, unsigned flags,
     const char *reloc, struct pkg *remote,
@@ -1622,6 +1662,13 @@ pkg_add_common(struct pkgdb *db, const char *path, unsigned flags,
 			/* If the add failed, clean up (silently) */
 			pkg_rollback_pkg(pkg);
 			pkg_delete_dirs(db, pkg, NULL);
+			goto cleanup;
+		}
+	} else if (flags & PKG_ADD_REGISTER_ONLY) {
+		/* Need to populate config file contents so they can be stored in
+		   the database */
+		retcode = populate_config_file_contents(a, ae, pkg);
+		if (retcode != EPKG_OK) {
 			goto cleanup;
 		}
 	}
