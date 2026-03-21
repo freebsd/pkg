@@ -9,6 +9,7 @@ tests_init \
 	post_script_ignored \
 	install_missing_dep \
 	install_register_only \
+	install_register_only_empty \
 	install_autoremove \
 	install_autoremove_flag \
 	install_suggest_clear_automatic \
@@ -265,6 +266,46 @@ EOF
 		-e ignore \
 		-s exit:1 \
 		test -d dir
+}
+
+install_register_only_empty_body()
+{
+	test_setup
+
+	atf_check -s exit:0 sh ${RESOURCEDIR}/test_subr.sh new_pkg "test" "test" "1" "${TMPDIR}"
+
+	mkdir repoconf
+	cat << EOF > repoconf/repo.conf
+repo: {
+	url: file:///$TMPDIR/repo,
+	enabled: true
+}
+EOF
+
+	mkdir repo
+
+	atf_check \
+		-o empty \
+		-e empty \
+		-s exit:0 \
+		pkg create -M test.ucl -o repo
+
+	atf_check \
+		-o ignore \
+		-e empty \
+		-s exit:0 \
+		pkg repo repo
+
+	export REPOS_DIR="${TMPDIR}/repoconf"
+	atf_check \
+		-o ignore \
+		-s exit:0 \
+		pkg install -r repo -y --register-only test
+
+	atf_check \
+		-o inline:"0\n" \
+		-e empty \
+		pkg query "%a" test
 }
 
 install_autoremove_body() {

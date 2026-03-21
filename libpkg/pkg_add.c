@@ -1664,7 +1664,7 @@ pkg_add_common(struct pkgdb *db, const char *path, unsigned flags,
 			pkg_delete_dirs(db, pkg, NULL);
 			goto cleanup;
 		}
-	} else if (flags & PKG_ADD_REGISTER_ONLY) {
+	} else if (flags & PKG_ADD_REGISTER_ONLY && nfiles > 0) {
 		/* Need to populate config file contents so they can be stored in
 		   the database */
 		retcode = populate_config_file_contents(a, ae, pkg);
