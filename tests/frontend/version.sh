@@ -4,7 +4,8 @@
 
 tests_init \
 	version \
-	compare
+	compare \
+	compare_ge_le
 
 version_body() {
 	atf_check -o inline:"<\n" -s exit:0 pkg version -t 1 2
@@ -49,4 +50,34 @@ compare_body() {
 		-e ignore \
 		-s exit:1 \
 		pkg info "test>5.20_3<6"
+}
+
+compare_ge_le_body() {
+	atf_check -s exit:0 sh ${RESOURCEDIR}/test_subr.sh new_pkg test test 5.20_3
+
+	atf_check \
+		-o match:".*Installing.*" \
+		pkg register -M test.ucl
+	atf_check \
+		-o ignore \
+		pkg info "test>=5.20_3"
+	atf_check \
+		-o ignore \
+		pkg info "test<=5.20_3"
+	atf_check \
+		-o ignore \
+		pkg info "test>=5"
+	atf_check \
+		-o ignore \
+		-e ignore \
+		-s exit:1 \
+		pkg info "test>=6"
+	atf_check \
+		-o ignore \
+		-e ignore \
+		-s exit:1 \
+		pkg info "test<=5"
+	atf_check \
+		-o ignore \
+		pkg info "test>=5<=6"
 }

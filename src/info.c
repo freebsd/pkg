@@ -384,10 +384,13 @@ exec_info(int argc, char **argv)
 		if (argc > 0) {
 			for (j = 0; pkgname[j] != '\0'; j++) {
 				if (pkgname[j] == '<' || pkgname[j] == '>' || pkgname[j] == '=') {
-					if (pkgversion)
+					if (pkgversion) {
 						parse_version_op(pkgname, j, &pkgversion2, &sign2);
-					else
+						j = pkgversion2 - pkgname - 1;
+					} else {
 						parse_version_op(pkgname, j, &pkgversion, &sign);
+						j = pkgversion - pkgname - 1;
+					}
 				}
 			}
 		}
