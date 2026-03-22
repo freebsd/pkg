@@ -365,6 +365,76 @@ pkg_repo_binary_require(struct pkg_repo *repo, const char *provide)
 	return (pkg_repo_binary_it_new(repo, stmt, PKGDB_IT_FLAG_ONCE));
 }
 
+struct pkg_repo_it *
+pkg_repo_binary_file_which(struct pkg_repo *repo, const char *path, bool glob)
+{
+	sqlite3_stmt	*stmt;
+	sqlite3 *sqlite = PRIV_GET(repo);
+	char *sql = NULL;
+	int64_t has_files = 0;
+
+	/* Check if file_dirs table exists (filesite may not have been loaded) */
+	if (get_pragma(sqlite,
+	    "SELECT count(name) FROM sqlite_master "
+	    "WHERE type='table' AND name='file_dirs';",
+	    &has_files, false) != EPKG_OK || has_files == 0) {
+		return (NULL);
+	}
+
+	if (glob) {
+		const char basesql[] = ""
+		    "SELECT p.id, p.origin, p.name, p.version, p.comment, "
+		    "p.name as uniqueid, "
+		    "p.prefix, p.desc, p.arch, p.maintainer, p.www, "
+		    "p.licenselogic, p.flatsize, p.pkgsize, "
+		    "p.cksum, p.manifestdigest, p.path AS repopath, '%s' AS dbname "
+		    "FROM packages AS p "
+		    "INNER JOIN pkg_files AS pf ON p.id = pf.package_id "
+		    "INNER JOIN file_dirs AS fd ON pf.dir_id = fd.id "
+		    "WHERE fd.path || '/' || pf.name GLOB ?1 "
+		    "GROUP BY p.id;";
+
+		xasprintf(&sql, basesql, repo->name);
+		stmt = prepare_sql(sqlite, sql);
+		free(sql);
+		if (stmt == NULL)
+			return (NULL);
+
+		sqlite3_bind_text(stmt, 1, path, -1, SQLITE_TRANSIENT);
+	} else {
+		const char *last_slash = strrchr(path, '/');
+		if (last_slash == NULL)
+			return (NULL);
+
+		const char basesql[] = ""
+		    "SELECT p.id, p.origin, p.name, p.version, p.comment, "
+		    "p.name as uniqueid, "
+		    "p.prefix, p.desc, p.arch, p.maintainer, p.www, "
+		    "p.licenselogic, p.flatsize, p.pkgsize, "
+		    "p.cksum, p.manifestdigest, p.path AS repopath, '%s' AS dbname "
+		    "FROM packages AS p "
+		    "INNER JOIN pkg_files AS pf ON p.id = pf.package_id "
+		    "INNER JOIN file_dirs AS fd ON pf.dir_id = fd.id "
+		    "WHERE fd.path = ?1 AND pf.name = ?2 "
+		    "GROUP BY p.id;";
+
+		xasprintf(&sql, basesql, repo->name);
+		stmt = prepare_sql(sqlite, sql);
+		free(sql);
+		if (stmt == NULL)
+			return (NULL);
+
+		size_t dir_len = last_slash - path;
+		if (dir_len == 0) dir_len = 1;
+		sqlite3_bind_text(stmt, 1, path, dir_len, SQLITE_TRANSIENT);
+		sqlite3_bind_text(stmt, 2, last_slash + 1, -1, SQLITE_TRANSIENT);
+	}
+
+	pkgdb_debug(4, stmt);
+
+	return (pkg_repo_binary_it_new(repo, stmt, PKGDB_IT_FLAG_ONCE));
+}
+
 static const char *
 pkg_repo_binary_search_how(match_t match)
 {

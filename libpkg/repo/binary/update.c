@@ -573,13 +573,135 @@ dump_json(struct pkg_repo *repo, const char *line, jsmntok_t *tok, const char *d
 }
 
 static int
+pkg_repo_binary_add_from_filelist(FILE *f, sqlite3 *sqlite)
+{
+	char *line = NULL;
+	size_t linecap = 0;
+	ssize_t linelen;
+	int64_t package_id = -1;
+	sqlite3_stmt *stmt;
+	int rc = EPKG_OK;
+	int cnt = 0;
+	int cur_dir_idx = -1;
+	char **dir_table = NULL;
+	int dir_count = 0;
+	int dir_cap = 0;
+
+	/*
+	 * Phase 1: Read front-compressed directory dictionary.
+	 * Each line is "N suffix" where N is the number of bytes
+	 * to keep from the previous path (locate(1)-style).
+	 */
+	char pathbuf[MAXPATHLEN];
+	pathbuf[0] = '\0';
+
+	while ((linelen = getline(&line, &linecap, f)) > 0) {
+		if (linelen > 0 && line[linelen - 1] == '\n')
+			line[--linelen] = '\0';
+		if (linelen == 0)
+			break;
+
+		char *sp = strchr(line, ' ');
+		if (sp == NULL)
+			continue;
+		*sp = '\0';
+		int prefix_len = (int)strtol(line, NULL, 10);
+		if (prefix_len < 0 ||
+		    (size_t)prefix_len >= sizeof(pathbuf))
+			prefix_len = 0;
+		strlcpy(pathbuf + prefix_len, sp + 1,
+		    sizeof(pathbuf) - prefix_len);
+
+		if (dir_count >= dir_cap) {
+			dir_cap = dir_cap == 0 ? 256 : dir_cap * 2;
+			dir_table = reallocf(dir_table,
+			    dir_cap * sizeof(char *));
+		}
+		dir_table[dir_count++] = xstrdup(pathbuf);
+
+		sql_arg_t dir_arg[] = { SQL_ARG(pathbuf) };
+		if (pkg_repo_binary_run_prstatement(FILEDIR1,
+		    dir_arg, NELEM(dir_arg)) != SQLITE_DONE) {
+			rc = EPKG_FATAL;
+			goto cleanup;
+		}
+	}
+
+	/* Phase 2: Read package blocks */
+	while ((linelen = getline(&line, &linecap, f)) > 0) {
+		if (linelen > 0 && line[linelen - 1] == '\n')
+			line[--linelen] = '\0';
+
+		/* Empty line = end of package block */
+		if (linelen == 0) {
+			package_id = -1;
+			cur_dir_idx = -1;
+			continue;
+		}
+
+		/* If no current package, this is a header */
+		if (package_id == -1) {
+			char *sp = strchr(line, ' ');
+			if (sp == NULL)
+				continue;
+			*sp = '\0';
+
+			stmt = pkg_repo_binary_stmt_prstatement(PKGID);
+			sqlite3_reset(stmt);
+			sqlite3_bind_text(stmt, 1, line, -1, SQLITE_STATIC);
+			sqlite3_bind_text(stmt, 2, sp + 1, -1, SQLITE_STATIC);
+			if (sqlite3_step(stmt) == SQLITE_ROW)
+				package_id = sqlite3_column_int64(stmt, 0);
+			sqlite3_reset(stmt);
+			continue;
+		}
+
+		/* Directory index lines are prefixed with '>' */
+		if (line[0] == '>') {
+			long idx = strtol(line + 1, NULL, 10);
+			if (idx >= 0 && idx < dir_count) {
+				cur_dir_idx = (int)idx;
+				continue;
+			}
+		}
+
+		/* Basename line */
+		if (cur_dir_idx < 0 || cur_dir_idx >= dir_count)
+			continue;
+
+		sql_arg_t file_arg[] = {
+			SQL_ARG(package_id),
+			SQL_ARG(dir_table[cur_dir_idx]),
+			SQL_ARG(line),
+		};
+		if (pkg_repo_binary_run_prstatement(FILEDIR2,
+		    file_arg, NELEM(file_arg)) != SQLITE_DONE) {
+			rc = EPKG_FATAL;
+			break;
+		}
+
+		cnt++;
+		if ((cnt % 100) == 0)
+			pkg_emit_progress_tick(cnt, 0);
+	}
+
+cleanup:
+	for (int i = 0; i < dir_count; i++)
+		free(dir_table[i]);
+	free(dir_table);
+	free(line);
+	pkg_emit_progress_tick(cnt, cnt);
+	return (rc);
+}
+
+static int
 pkg_repo_binary_update_proceed(const char *name, struct pkg_repo *repo,
 	time_t *mtime, bool force)
 {
 	int rc = EPKG_FATAL, cancel = 0;
 	sqlite3 *sqlite = NULL;
 	int cnt = 0;
-	time_t local_t;
+	time_t local_t, orig_mtime;
 	bool in_trans = false;
 	char *path = NULL;
 	FILE *f = NULL;
@@ -594,6 +716,8 @@ pkg_repo_binary_update_proceed(const char *name, struct pkg_repo *repo,
 	if (force)
 		*mtime = 0;
 
+	orig_mtime = *mtime;
+
 	/* Fetch meta */
 	local_t = *mtime;
 	if (pkg_repo_fetch_meta(repo, &local_t) == EPKG_FATAL)
@@ -606,6 +730,7 @@ pkg_repo_binary_update_proceed(const char *name, struct pkg_repo *repo,
 	prc.mtime = *mtime;
 	prc.manifest_len = 0;
 	prc.data_fd = -1;
+	prc.filesite_fd = -1;
 
 	rc = pkg_repo_fetch_data_fd(repo, &prc);
 	if (rc == EPKG_UPTODATE)
@@ -741,6 +866,32 @@ pkg_repo_binary_update_proceed(const char *name, struct pkg_repo *repo,
 	"CREATE INDEX packages_version ON packages(name, version);"
 	"CREATE UNIQUE INDEX packages_digest ON packages(manifestdigest);"
 	 );
+
+	/* Fetch and process filesite (file lists) if available */
+	if (rc == EPKG_OK) {
+		struct pkg_repo_content fprc = { .mtime = orig_mtime, .filesite_fd = -1 };
+		int frc;
+
+		frc = pkg_repo_fetch_filesite_fd(repo, &fprc);
+		if (frc == EPKG_OK) {
+			FILE *ff = fdopen(fprc.filesite_fd, "r");
+			if (ff != NULL) {
+				pkg_emit_progress_start("Processing file entries");
+				rewind(ff);
+				pkg_repo_binary_add_from_filelist(ff, sqlite);
+				fclose(ff);
+
+				sql_exec(sqlite, ""
+				    "CREATE INDEX pkg_files_package_id ON pkg_files(package_id);"
+				    "CREATE INDEX pkg_files_dir_name ON pkg_files(dir_id, name);"
+				    "CREATE INDEX pkg_files_name ON pkg_files(name);"
+				);
+			} else {
+				close(fprc.filesite_fd);
+			}
+		}
+		/* filesite is optional, don't fail if not available */
+	}
 
 cleanup:
 

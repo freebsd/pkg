@@ -51,8 +51,8 @@ pkg_repo_meta_set_default(struct pkg_repo_meta *meta)
 	meta->data_archive = xstrdup("data");
 	meta->manifests = xstrdup("packagesite.yaml");
 	meta->manifests_archive = xstrdup("packagesite");
-	meta->filesite = xstrdup("filesite.yaml");
-	meta->filesite_archive = xstrdup("filesite");
+	meta->filesite = xstrdup("files");
+	meta->filesite_archive = xstrdup("files");
 	/* Not using fulldb */
 	meta->fulldb = NULL;
 	meta->fulldb_archive = NULL;

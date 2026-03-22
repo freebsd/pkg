@@ -52,6 +52,8 @@ struct pkg_repo_it *pkg_repo_binary_shlib_require(struct pkg_repo *repo,
 	const char *provide);
 struct pkg_repo_it *pkg_repo_binary_require(struct pkg_repo *repo,
 	const char *provide);
+struct pkg_repo_it *pkg_repo_binary_file_which(struct pkg_repo *repo,
+	const char *path, bool glob);
 struct pkg_repo_it *pkg_repo_binary_search(struct pkg_repo *repo,
 	const char *pattern, match_t match,
     pkgdb_field field, pkgdb_field sort);

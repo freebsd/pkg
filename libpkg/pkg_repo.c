@@ -798,6 +798,55 @@ pkg_repo_fetch_remote_extract_fd(struct pkg_repo *repo, struct pkg_repo_content 
 	    &prc->manifest_fd, &prc->manifest_len));
 }
 
+int
+pkg_repo_fetch_filesite_fd(struct pkg_repo *repo, struct pkg_repo_content *prc)
+{
+	int fd;
+	const char *tmpdir;
+	char tmp[MAXPATHLEN];
+	struct stat st;
+	int rc = EPKG_OK;
+	const char *name = repo->meta->filesite;
+
+	/* Try to fetch filesite silently — it is optional */
+	fd = pkg_repo_fetch_remote_tmp(repo, name, "pkg", &prc->mtime, &rc, true);
+	if (fd == -1) {
+		fd = pkg_repo_fetch_remote_tmp(repo, name,
+		    packing_format_to_string(repo->meta->packing_format),
+		    &prc->mtime, &rc, true);
+		if (fd == -1)
+			return (EPKG_FATAL);
+	}
+
+	tmpdir = getenv("TMPDIR");
+	if (tmpdir == NULL)
+		tmpdir = "/tmp";
+	snprintf(tmp, sizeof(tmp), "%s/%s.XXXXXX", tmpdir, name);
+	prc->filesite_fd = mkstemp(tmp);
+	if (prc->filesite_fd == -1) {
+		close(fd);
+		return (EPKG_FATAL);
+	}
+
+	unlink(tmp);
+	if (pkg_repo_archive_extract_check_archive(fd, name, repo,
+	    prc->filesite_fd) != EPKG_OK) {
+		close(prc->filesite_fd);
+		prc->filesite_fd = -1;
+		close(fd);
+		return (EPKG_FATAL);
+	}
+
+	close(fd);
+	if (fstat(prc->filesite_fd, &st) == -1) {
+		close(prc->filesite_fd);
+		prc->filesite_fd = -1;
+		return (EPKG_FATAL);
+	}
+
+	return (EPKG_OK);
+}
+
 struct pkg_repo_check_cbdata {
 	unsigned char *map;
 	size_t len;

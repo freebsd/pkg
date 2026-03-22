@@ -892,21 +892,21 @@ pkg_parse_manifest_file(struct pkg *pkg, const char *file)
 	} while (0)
 
 int
-pkg_emit_filelist(struct pkg *pkg, FILE *f)
+pkg_emit_filelist(struct pkg *pkg, FILE *f, pkghash **dirs, int *ndirs)
 {
-	ucl_object_t *obj = NULL, *seq;
 	struct pkg_file *file = NULL;
-	xstring *b = NULL;
+	int cur_idx = -1;
 
-	obj = ucl_object_typed_new(UCL_OBJECT);
-	MANIFEST_EXPORT_FIELD(obj, pkg, origin, string);
-	MANIFEST_EXPORT_FIELD(obj, pkg, name, string);
-	MANIFEST_EXPORT_FIELD(obj, pkg, version, string);
+	fprintf(f, "%s %s\n", pkg->name, pkg->version);
 
-	seq = NULL;
 	while (pkg_files(pkg, &file) == EPKG_OK) {
 		char dpath[MAXPATHLEN];
 		const char *dp = file->path;
+		const char *last_slash, *base;
+		size_t dir_len;
+		char dirbuf[MAXPATHLEN];
+		int idx;
+		pkghash_entry *e;
 
 		if (pkg->oprefix != NULL) {
 			size_t l = strlen(pkg->prefix);
@@ -917,18 +917,42 @@ pkg_emit_filelist(struct pkg *pkg, FILE *f)
 				dp = dpath;
 			}
 		}
-		urlencode(dp, &b);
-		if (seq == NULL)
-			seq = ucl_object_typed_new(UCL_ARRAY);
-		ucl_array_append(seq, ucl_object_fromlstring(b->buf, strlen(b->buf)));
+
+		last_slash = strrchr(dp, '/');
+		if (last_slash != NULL) {
+			dir_len = last_slash - dp;
+			if (dir_len == 0)
+				dir_len = 1;
+			base = last_slash + 1;
+		} else {
+			dir_len = 0;
+			base = dp;
+		}
+
+		if (dir_len >= sizeof(dirbuf))
+			continue;
+		memcpy(dirbuf, dp, dir_len);
+		dirbuf[dir_len] = '\0';
+
+		/* Get or assign directory index */
+		e = pkghash_get(*dirs, dirbuf);
+		if (e != NULL) {
+			idx = (int)(intptr_t)e->value;
+		} else {
+			idx = (*ndirs)++;
+			if (*dirs == NULL)
+				*dirs = pkghash_new();
+			pkghash_add(*dirs, dirbuf, (void *)(intptr_t)idx, NULL);
+		}
+
+		if (idx != cur_idx) {
+			fprintf(f, ">%d\n", idx);
+			cur_idx = idx;
+		}
+		fprintf(f, "%s\n", base);
 	}
-	if (seq != NULL)
-		ucl_object_insert_key(obj, seq, "files", 5, false);
 
-	ucl_object_emit_file(obj, UCL_EMIT_JSON_COMPACT, f);
-
-	xstring_free(b);
-	ucl_object_unref(obj);
+	fprintf(f, "\n");
 
 	return (EPKG_OK);
 }

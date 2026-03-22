@@ -89,10 +89,10 @@ The base name of the compressed data archive
 .Pq default: Pa data .
 .It Cm filesite
 The name of the uncompressed file listing
-.Pq default: Pa filesite.yaml .
+.Pq default: Pa files .
 .It Cm filesite_archive
 The base name of the compressed file listing archive
-.Pq default: Pa filesite .
+.Pq default: Pa files .
 .It Cm maintainer
 Optional maintainer string.
 .It Cm source
@@ -125,14 +125,100 @@ An array of expired package entries (if configured).
 .It Cm packages
 An array of all package manifests.
 .El
-.It Pa filesite.pkg
+.It Pa files.pkg
 (Optional, generated with
 .Fl l
 flag to
 .Xr pkg-repo 8 ) .
 A compressed archive containing
-.Pa filesite.yaml ,
-a concatenation of the file lists from all packages in the repository.
+.Pa files ,
+a directory-grouped listing of all files in all packages in the repository.
+.Pp
+The file uses a line-based text format.
+Since newlines cannot appear in Unix file paths, each line is unambiguous
+and no encoding is required; bytes pass through as-is.
+.Pp
+The file is divided into two sections separated by an empty line:
+.Bl -enum -compact
+.It
+A
+.Em front-compressed directory dictionary ,
+using the same technique as
+.Xr locate 1 .
+Directories are sorted lexicographically; each line is
+.Do Ar N Ar suffix Dc
+where
+.Ar N
+is the number of bytes to keep from the previous entry and
+.Ar suffix
+is appended to form the full path.
+The line number (starting at 0) is the directory's index.
+Because sorted paths share long common prefixes, most of each path
+is elided.
+.It
+.Em Package blocks ,
+each separated by an empty line.
+Within each block:
+.Bl -bullet -compact
+.It
+The first line is the package header:
+.Do name version Dc .
+.It
+A line starting with
+.Ql >
+is a directory index, selecting the current directory from the
+dictionary (e.g.\&
+.Ql >2
+selects directory index 2).
+The
+.Ql >
+prefix prevents ambiguity with file basenames that happen to be
+purely numeric.
+.It
+All other non-empty lines are file basenames within the current directory.
+.El
+.El
+.Pp
+Example:
+.Bd -literal -offset indent
+0 /usr/local/bin
+15 lib
+15 share/man/man1
+
+bash 5.2.26
+>0
+bash
+bashbug
+>2
+bash.1.gz
+
+curl 8.7.1
+>0
+curl
+>1
+libcurl.so.4
+.Ed
+.Pp
+In this example, the first directory is
+.Pa /usr/local/bin
+(index 0, prefix length 0 = full path).
+Index 1 keeps 15 bytes
+.Pq Dq /usr/local/
+and appends
+.Dq lib
+to form
+.Pa /usr/local/lib .
+Index 2 likewise keeps the same 15-byte prefix and appends
+.Dq share/man/man1 .
+The common prefix is never repeated, significantly reducing the size
+of the directory dictionary.
+When a client runs
+.Xr pkg-update 8 ,
+the data is fetched and loaded into the local repository database
+.Pq tables Pa file_dirs No and Pa pkg_files ,
+enabling
+.Xr pkg-rwhich 8
+queries.
 .El
 .Pp
 Compressed archives use the

@@ -81,6 +81,7 @@ static struct commands {
 	{ "repo", "Creates a package repository catalogue", exec_repo, usage_repo},
 	{ "repositories", "Show repositories information", exec_repositories, usage_repositories},
 	{ "rquery", "Queries information in repository catalogues", exec_rquery, usage_rquery},
+	{ "rwhich", "Displays which remote package provides a specific file", exec_rwhich, usage_rwhich},
 	{ "search", "Performs a search of package repository catalogues", exec_search, usage_search},
 	{ "set", "Modifies information about packages in the local database", exec_set, usage_set},
 	{ "ssh", "Package server (to be used via ssh)", exec_ssh, usage_ssh},

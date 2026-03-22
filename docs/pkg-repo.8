@@ -78,13 +78,24 @@ See
 .Xr pkg-repository 5
 for details.
 .Pp
-.Pa filesite.pkg
+.Pa files.pkg
 is an optional compressed archive containing
-.Pa filesite.yaml ,
-a database of all files present in all packages in the repository.
+.Pa files ,
+a directory-grouped listing of all files present in all packages in the
+repository.
 It is only generated when the
 .Fl l
 flag is used.
+The file uses a compact line-based text format where paths are grouped by
+directory.
+When fetched by
+.Xr pkg-update 8 ,
+this data enables
+.Xr pkg-rwhich 8
+to look up which remote package provides a given file.
+See
+.Xr pkg-repository 5
+for a full description of the format.
 .Pp
 The compressed archives may also contain cryptographic signatures
 when the signing mechanism of
@@ -230,7 +241,7 @@ This is the same as setting the
 .Ev PKG_REPO_HASH
 environment variable.
 .It Fl l , Cm --list-files
-Generate list of all files in repo as filesite.pkg archive.
+Generate list of all files in repo as files.pkg archive.
 .It Fl m Ar meta-file , Cm --meta-file Ar meta-file
 Use the specified file as repository meta file instead of the default settings.
 .It Fl o Ar output-dir , Cm --output-dir Ar output-dir

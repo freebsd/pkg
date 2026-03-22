@@ -177,6 +177,10 @@ void usage_version(void);
 int exec_which(int, char **);
 void usage_which(void);
 
+/* pkg rwhich */
+int exec_rwhich(int, char **);
+void usage_rwhich(void);
+
 /* pkg ssh */
 int exec_ssh(int, char **);
 void usage_ssh(void);

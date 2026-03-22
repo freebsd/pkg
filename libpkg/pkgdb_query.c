@@ -497,6 +497,27 @@ pkgdb_repo_provide(struct pkgdb *db, const char *require, c_charv_t *repo)
 }
 
 struct pkgdb_it *
+pkgdb_repo_which(struct pkgdb *db, const char *path, bool glob, c_charv_t *repos)
+{
+	struct pkgdb_it *it;
+	struct pkg_repo_it *rit;
+
+	it = pkgdb_it_new_repo(db);
+
+	vec_foreach(db->repos, i) {
+		if (consider_this_repo(repos, db->repos.d[i]->name)) {
+			if (db->repos.d[i]->ops->file_which != NULL) {
+				rit = db->repos.d[i]->ops->file_which(db->repos.d[i], path, glob);
+				if (rit != NULL)
+					pkgdb_it_repo_attach(it, rit);
+			}
+		}
+	}
+
+	return (it);
+}
+
+struct pkgdb_it *
 pkgdb_repo_search(struct pkgdb *db, const char *pattern, match_t match,
     pkgdb_field field, pkgdb_field sort, const char *repo)
 {

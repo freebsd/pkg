@@ -1,0 +1,96 @@
+.\"
+.\" FreeBSD pkg - a next generation package for the installation and maintenance
+.\" of non-core utilities.
+.\"
+.\" Redistribution and use in source and binary forms, with or without
+.\" modification, are permitted provided that the following conditions
+.\" are met:
+.\" 1. Redistributions of source code must retain the above copyright
+.\"    notice, this list of conditions and the following disclaimer.
+.\" 2. Redistributions in binary form must reproduce the above copyright
+.\"    notice, this list of conditions and the following disclaimer in the
+.\"    documentation and/or other materials provided with the distribution.
+.\"
+.\"
+.\"     @(#)pkg.8
+.\"
+.Dd March 21, 2025
+.Dt PKG-RWHICH 8
+.Os
+.Sh NAME
+.Nm "pkg rwhich"
+.Nd display which remote package provides a specific file
+.Sh SYNOPSIS
+.Nm
+.Op Fl gq
+.Op Fl r Ar reponame
+.Ar file
+.Sh DESCRIPTION
+.Nm
+queries the repository catalogues to find which remote package provides the
+specified
+.Ar file .
+.Pp
+This requires that the repository was created with the
+.Fl l
+flag to
+.Xr pkg-repo 8
+.Pq to generate the file listing ,
+and that the client has run
+.Xr pkg-update 8
+to fetch the file metadata.
+.Pp
+Unlike
+.Xr pkg-which 8 ,
+which searches locally installed packages,
+.Nm
+searches the remote repository catalogues.
+.Sh OPTIONS
+The following options are supported by
+.Nm :
+.Bl -tag -width repository
+.It Fl g , Cm --glob
+Treat
+.Ar file
+as a glob pattern.
+.It Fl q , Cm --quiet
+Be quiet.
+Only print the package name and version, one per line.
+.It Fl r Ar reponame , Cm --repository Ar reponame
+Limit the search to the named repository.
+.El
+.Sh EXAMPLES
+Find which package provides a specific binary:
+.Bd -literal -offset indent
+$ pkg rwhich /usr/local/bin/bash
+/usr/local/bin/bash is provided by package bash-5.2.26_2
+.Ed
+.Pp
+Find which package provides a shared library using a glob pattern:
+.Bd -literal -offset indent
+$ pkg rwhich -g '*/lib/libcurl*'
+*/lib/libcurl* is provided by package curl-8.7.1
+.Ed
+.Pp
+Quiet mode for scripting:
+.Bd -literal -offset indent
+$ pkg rwhich -q /usr/local/bin/python3.11
+python311-3.11.9
+.Ed
+.Sh ENVIRONMENT
+The following environment variables affect the execution of
+.Nm .
+See
+.Xr pkg.conf 5
+for further description.
+.Bl -tag -width ".Ev NO_DESCRIPTIONS"
+.It Ev PKG_DBDIR
+.It Ev REPOS_DIR
+.El
+.Sh SEE ALSO
+.Xr pkg.conf 5 ,
+.Xr pkg-repository 5 ,
+.Xr pkg 8 ,
+.Xr pkg-repo 8 ,
+.Xr pkg-update 8 ,
+.Xr pkg-which 8

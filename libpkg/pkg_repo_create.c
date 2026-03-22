@@ -294,6 +294,8 @@ struct thr_env {
 	pthread_mutex_t llock;
 	pthread_mutex_t flock;
 	pthread_cond_t cond;
+	pkghash *file_dirs;
+	int nfile_dirs;
 };
 
 static void *
@@ -350,7 +352,8 @@ pkg_create_repo_thread(void *arg)
 			ucl_object_unref(o);
 
 			if (te->ffile != NULL) {
-				pkg_emit_filelist(pkg, te->ffile);
+				pkg_emit_filelist(pkg, te->ffile,
+				    &te->file_dirs, &te->nfile_dirs);
 			}
 
 			pthread_mutex_unlock(&te->flock);
@@ -704,6 +707,19 @@ cleanup:
 	return (ret);
 }
 
+struct dir_entry {
+	char *path;
+	int old_idx;
+};
+
+static int
+dir_entry_cmp(const void *a, const void *b)
+{
+	const struct dir_entry *da = a;
+	const struct dir_entry *db = b;
+	return (strcmp(da->path, db->path));
+}
+
 int
 pkg_repo_create(struct pkg_repo_create *prc, char *path)
 {
@@ -721,7 +737,7 @@ pkg_repo_create(struct pkg_repo_create *prc, char *path)
 	if (prc->outdir == NULL)
 		prc->outdir = path;
 
-	te.dfile = te.ffile = te.mfile = NULL;
+	te.dfile = te.mfile = NULL;
 
 	if (!is_dir(path)) {
 		pkg_emit_error("%s is not a directory", path);
@@ -806,13 +822,11 @@ pkg_repo_create(struct pkg_repo_create *prc, char *path)
 	}
 
 	if (prc->filelist) {
-		if ((ffd = openat(prc->ofd, prc->meta->filesite,
-		        O_CREAT|O_TRUNC|O_WRONLY, 00644)) == -1) {
+		te.ffile = tmpfile();
+		if (te.ffile == NULL)
 			goto cleanup;
-		}
-		if ((te.ffile = fdopen(ffd,"w")) == NULL) {
-			goto cleanup;
-		}
+		te.file_dirs = NULL;
+		te.nfile_dirs = 0;
 	}
 
 	len = 0;
@@ -855,8 +869,8 @@ pkg_repo_create(struct pkg_repo_create *prc, char *path)
 	ucl_object_emit_streamline_start_container(te.ctx, ar);
 
 	for (int i = 0; i < num_workers; i++) {
-		/* Create new worker */
-		pthread_create(&threads[i], NULL, &pkg_create_repo_thread, &te);
+		pthread_create(&threads[i], NULL,
+		    &pkg_create_repo_thread, &te);
 	}
 
 	pthread_mutex_lock(&te.nlock);
@@ -869,6 +883,92 @@ pkg_repo_create(struct pkg_repo_create *prc, char *path)
 	for (int i = 0; i < num_workers; i++)
 		pthread_join(threads[i], NULL);
 	free(threads);
+
+	/* Assemble filelist: write dictionary header + package data */
+	if (te.ffile != NULL && te.file_dirs != NULL) {
+		FILE *final;
+		char *line = NULL;
+		size_t linecap = 0;
+		ssize_t linelen;
+
+		ffd = openat(prc->ofd, prc->meta->filesite,
+		    O_CREAT|O_TRUNC|O_WRONLY, 00644);
+		if (ffd != -1 && (final = fdopen(ffd, "w")) != NULL) {
+			/*
+			 * Sort directories and write a front-compressed
+			 * dictionary.  Each line is "N suffix" where N
+			 * is the number of bytes to keep from the
+			 * previous path.  This is the same technique
+			 * used by locate(1).
+			 */
+			struct dir_entry *dirs = xcalloc(te.nfile_dirs,
+			    sizeof(struct dir_entry));
+			pkghash_it hit = pkghash_iterator(te.file_dirs);
+			while (pkghash_next(&hit)) {
+				int idx = (int)(intptr_t)hit.value;
+				dirs[idx].path = hit.key;
+				dirs[idx].old_idx = idx;
+			}
+			qsort(dirs, te.nfile_dirs,
+			    sizeof(struct dir_entry), dir_entry_cmp);
+
+			int *old_to_new = xcalloc(te.nfile_dirs,
+			    sizeof(int));
+			for (int i = 0; i < te.nfile_dirs; i++)
+				old_to_new[dirs[i].old_idx] = i;
+
+			const char *prev = "";
+			for (int i = 0; i < te.nfile_dirs; i++) {
+				const char *cur = dirs[i].path;
+				int common = 0;
+				while (prev[common] != '\0' &&
+				    cur[common] != '\0' &&
+				    prev[common] == cur[common])
+					common++;
+				fprintf(final, "%d %s\n", common,
+				    cur + common);
+				prev = cur;
+			}
+
+			fprintf(final, "\n");
+
+			/* Append package data, remapping directory indices */
+			fflush(te.ffile);
+			rewind(te.ffile);
+			while ((linelen = getline(&line, &linecap,
+			    te.ffile)) > 0) {
+				if (linelen > 0 &&
+				    line[linelen - 1] == '\n')
+					line[--linelen] = '\0';
+				if (linelen == 0) {
+					fprintf(final, "\n");
+					continue;
+				}
+				if (line[0] == '>') {
+					long idx = strtol(line + 1,
+					    NULL, 10);
+					if (idx >= 0 &&
+					    idx < te.nfile_dirs)
+						fprintf(final, ">%d\n",
+						    old_to_new[idx]);
+					else
+						fprintf(final, "%s\n",
+						    line);
+				} else {
+					fprintf(final, "%s\n", line);
+				}
+			}
+
+			free(old_to_new);
+			free(dirs);
+			free(line);
+
+			fclose(final);
+		}
+		pkghash_destroy(te.file_dirs);
+		te.file_dirs = NULL;
+	}
+
 	ucl_object_emit_streamline_end_container(te.ctx);
 	pkg_emit_progress_tick(len, len);
 	ucl_object_emit_streamline_finish(te.ctx);

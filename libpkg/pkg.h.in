@@ -965,6 +965,8 @@ struct pkgdb_it * pkgdb_all_search(struct pkgdb *db, const char *pattern,
     match_t type, pkgdb_field field, pkgdb_field sort, const char *reponame);
 struct pkgdb_it * pkgdb_all_search2(struct pkgdb *db, const char *pattern,
     match_t type, pkgdb_field field, pkgdb_field sort, c_charv_t *reponames);
+struct pkgdb_it *pkgdb_repo_which(struct pkgdb *db, const char *path,
+    bool glob, c_charv_t *repos);
 
 /**
  * @todo Return directly the struct pkg?

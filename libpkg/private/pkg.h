@@ -167,6 +167,7 @@ struct pkg_repo_content {
 	int manifest_fd;
 	size_t manifest_len;
 	int data_fd;
+	int filesite_fd;
 };
 
 struct pkgsign_ctx;
@@ -532,6 +533,8 @@ struct pkg_repo_ops {
 					const char *);
 	struct pkg_repo_it * (*provided)(struct pkg_repo *,
 					const char *);
+	struct pkg_repo_it * (*file_which)(struct pkg_repo *,
+					const char *, bool);
 	struct pkg_repo_it * (*search)(struct pkg_repo *, const char *, match_t,
 					pkgdb_field field, pkgdb_field sort);
 	struct pkg_repo_it * (*groupsearch)(struct pkg_repo *, const char *,
@@ -728,6 +731,7 @@ int pkg_repo_meta_dump_fd(struct pkg_repo_meta *target, const int fd);
 int pkg_repo_fetch_meta(struct pkg_repo *repo, time_t *t);
 int pkg_repo_fetch_remote_extract_fd(struct pkg_repo *repo, struct pkg_repo_content *);
 int pkg_repo_fetch_data_fd(struct pkg_repo *repo, struct pkg_repo_content *);
+int pkg_repo_fetch_filesite_fd(struct pkg_repo *repo, struct pkg_repo_content *);
 
 struct pkg_repo_meta *pkg_repo_meta_default(void);
 int pkg_repo_meta_load(const int fd, struct pkg_repo_meta **target);
@@ -817,7 +821,7 @@ int pkgdb_set_pkg_digest(struct pkgdb *db, struct pkg *pkg);
 int pkgdb_is_dir_used(struct pkgdb *db, struct pkg *p, const char *dir, int64_t *res);
 int pkgdb_file_set_cksum(struct pkgdb *db, struct pkg_file *file, const char *sha256);
 
-int pkg_emit_filelist(struct pkg *, FILE *);
+int pkg_emit_filelist(struct pkg *, FILE *, pkghash **dirs, int *ndirs);
 
 bool ucl_object_emit_buf(const ucl_object_t *obj, enum ucl_emitter emit_type,
     xstring **buf);

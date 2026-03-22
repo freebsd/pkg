@@ -108,6 +108,8 @@ struct pkgdb_it *pkgdb_repo_provide(struct pkgdb *db, const char *require, c_cha
 
 struct pkgdb_it *pkgdb_repo_require(struct pkgdb *db, const char *provide, c_charv_t *repo);
 
+struct pkgdb_it *pkgdb_repo_which(struct pkgdb *db, const char *path, bool glob, c_charv_t *repos);
+
 /**
  * Unregister a package from the database
  * @return An error code.

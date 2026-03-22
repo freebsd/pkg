@@ -134,6 +134,19 @@ static sql_prstmt sql_prepared_statements[PRSTMT_LAST] = {
 		"INSERT OR IGNORE INTO pkg_requires(package_id, require_id) "
 		"VALUES (?1, (SELECT id FROM requires WHERE require = ?2))",
 	},
+	[FILEDIR1] = {
+		NULL,
+		"INSERT OR IGNORE INTO file_dirs(path) VALUES(?1)",
+	},
+	[FILEDIR2] = {
+		NULL,
+		"INSERT OR IGNORE INTO pkg_files(package_id, dir_id, name) "
+		"VALUES (?1, (SELECT id FROM file_dirs WHERE path = ?2), ?3)",
+	},
+	[PKGID] = {
+		NULL,
+		"SELECT id FROM packages WHERE name = ?1 AND version = ?2",
+	},
 	/* PRSTMT_LAST */
 };
 

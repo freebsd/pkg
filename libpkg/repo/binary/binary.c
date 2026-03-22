@@ -38,6 +38,7 @@ struct pkg_repo_ops pkg_repo_binary_ops = {
 	.shlib_required = pkg_repo_binary_shlib_require,
 	.provided = pkg_repo_binary_provide,
 	.required = pkg_repo_binary_require,
+	.file_which = pkg_repo_binary_file_which,
 	.search = pkg_repo_binary_search,
 	.groupsearch = pkg_repo_binary_groupsearch,
 	.fetch_pkg = pkg_repo_binary_fetch,
