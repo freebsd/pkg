@@ -1,3 +1,9 @@
+Changes from 2.6.99.3 to 2.6.99.4
+- info: fix version comparison with multi-character operators (>=, <=)
+- fix --register-only to populate config file contents
+- attempt config file merge for force install
+- query: add %y and %Y for provides/requires
+
 Changes from 2.6.99.2 to 2.6.99.3
 - libfetch: fix segfault at exit when using SRV mirror type
 - solver: avoid spurious reinstall from wrong repo with multi-repo setups
