@@ -1,3 +1,7 @@
+Changes from 2.6.99.4 to 2.6.99.5
+- libpkg: fix --register-only with empty packages
+- query: fix crash on multiline
+
 Changes from 2.6.99.3 to 2.6.99.4
 - info: fix version comparison with multi-character operators (>=, <=)
 - fix --register-only to populate config file contents
