@@ -964,7 +964,7 @@ format_annotation_name(xstring *buf, const void *data, struct percent_esc *p)
 {
 	const struct pkg_kv	*kv = data;
 
-	return (string_val(buf, kv->key, p));
+	return (string_val(buf, kv == NULL ? NULL: kv->key, p));
 }
 
 /*
@@ -975,7 +975,7 @@ format_annotation_value(xstring *buf, const void *data, struct percent_esc *p)
 {
 	const struct pkg_kv	*kv = data;
 
-	return (string_val(buf, kv->value, p));
+	return (string_val(buf, kv == NULL ? NULL: kv->value, p));
 }
 
 /*
@@ -1122,7 +1122,7 @@ format_directory_group(xstring *buf, const void *data,
 {
 	const struct pkg_dir	*dir = data;
 
-	return (string_val(buf, dir->gname, p));
+	return (string_val(buf, dir == NULL ? NULL: dir->gname, p));
 }
 
 /*
@@ -1133,7 +1133,7 @@ format_directory_path(xstring *buf, const void *data, struct percent_esc *p)
 {
 	const struct pkg_dir	*dir = data;
 
-	return (string_val(buf, dir->path, p));
+	return (string_val(buf, dir == NULL ? NULL: dir->path, p));
 }
 
 /*
@@ -1157,7 +1157,7 @@ format_directory_user(xstring *buf, const void *data,
 {
 	const struct pkg_dir	*dir = data;
 
-	return (string_val(buf, dir->uname, p));
+	return (string_val(buf, dir == NULL ? NULL: dir->uname, p));
 }
 
 /*
@@ -1214,7 +1214,7 @@ format_file_group(xstring *buf, const void *data, struct percent_esc *p)
 {
 	const struct pkg_file	*file = data;
 
-	return (string_val(buf, file->gname, p));
+	return (string_val(buf, file == NULL ? NULL: file->gname, p));
 }
 
 /*
@@ -1225,7 +1225,7 @@ format_file_path(xstring *buf, const void *data, struct percent_esc *p)
 {
 	const struct pkg_file	*file = data;
 
-	return (string_val(buf, file->path, p));
+	return (string_val(buf, file == NULL ? NULL: file->path, p));
 }
 
 /*
@@ -1247,7 +1247,7 @@ format_file_sha256(xstring *buf, const void *data, struct percent_esc *p)
 {
 	const struct pkg_file	*file = data;
 
-	return (string_val(buf, file->sum, p));
+	return (string_val(buf, file == NULL ? NULL: file->sum, p));
 }
 
 /*
@@ -1257,7 +1257,7 @@ xstring *
 format_file_symlink_target(xstring *buf, const void *data, struct percent_esc *p)
 {
 	const struct pkg_file *file = data;
-	return (string_val(buf, file->symlink_target ? file->symlink_target : "", p));
+	return (string_val(buf, file == NULL ? NULL: file->symlink_target ? file->symlink_target : "", p));
 }
 
 /*
@@ -1268,7 +1268,7 @@ format_file_user(xstring *buf, const void *data, struct percent_esc *p)
 {
 	const struct pkg_file	*file = data;
 
-	return (string_val(buf, file->uname, p));
+	return (string_val(buf, file == NULL ? NULL: file->uname, p));
 }
 
 /*
@@ -1498,7 +1498,7 @@ format_option_name(xstring *buf, const void *data, struct percent_esc *p)
 {
 	const struct pkg_option	*option = data;
 
-	return (string_val(buf, option->key, p));
+	return (string_val(buf, option == NULL ? NULL: option->key, p));
 }
 
 /*
@@ -1509,7 +1509,7 @@ format_option_value(xstring *buf, const void *data, struct percent_esc *p)
 {
 	const struct pkg_option	*option = data;
 
-	return (string_val(buf, option->value, p));
+	return (string_val(buf, option == NULL ? NULL: option->value, p));
 }
 
 /*
@@ -1520,7 +1520,7 @@ format_option_default(xstring *buf, const void *data, struct percent_esc *p)
 {
 	const struct pkg_option	*option = data;
 
-	return (string_val(buf, option->value, p));
+	return (string_val(buf, option == NULL ? NULL: option->value, p));
 }
 
 /*
@@ -1531,7 +1531,7 @@ format_option_description(xstring *buf, const void *data, struct percent_esc *p)
 {
 	const struct pkg_option	*option = data;
 
-	return (string_val(buf, option->description, p));
+	return (string_val(buf, option == NULL ? NULL: option->description, p));
 }
 
 /*
@@ -1542,7 +1542,7 @@ format_altabi(xstring *buf, const void *data, struct percent_esc *p)
 {
 	const struct pkg	*pkg = data;
 
-	return (string_val(buf, pkg->altabi, p));
+	return (string_val(buf, pkg == NULL ? NULL: pkg->altabi, p));
 }
 
 /*
@@ -1553,7 +1553,7 @@ format_repo_path(xstring *buf, const void *data, struct percent_esc *p)
 {
 	const struct pkg	*pkg = data;
 
-	return (string_val(buf, pkg->repopath, p));
+	return (string_val(buf, pkg == NULL ? NULL: pkg->repopath, p));
 }
 
 /*
@@ -1620,7 +1620,7 @@ format_old_version(xstring *buf, const void *data, struct percent_esc *p)
 {
 	const struct pkg	*pkg = data;
 
-	return (string_val(buf, pkg->old_version, p));
+	return (string_val(buf, pkg == NULL ? NULL: pkg->old_version, p));
 }
 
 /*
@@ -1632,7 +1632,7 @@ format_int_checksum(xstring *buf, const void *data, struct percent_esc *p)
 	struct pkg	*pkg = (struct pkg *)data;
 
 	pkg_checksum_calculate(pkg, NULL, true, false, true);
-	return (string_val(buf, pkg->digest, p));
+	return (string_val(buf, pkg == NULL ? NULL: pkg->digest, p));
 }
 
 /*
@@ -1732,7 +1732,7 @@ format_comment(xstring *buf, const void *data, struct percent_esc *p)
 {
 	const struct pkg	*pkg = data;
 
-	return (string_val(buf, pkg->comment, p));
+	return (string_val(buf, pkg == NULL ? NULL: pkg->comment, p));
 }
 
 /*
@@ -1790,7 +1790,7 @@ format_dependency_name(xstring *buf, const void *data,
 {
 	const struct pkg_dep	*dep = data;
 
-	return (string_val(buf, dep->name, p));
+	return (string_val(buf, dep == NULL ? NULL : dep->name, p));
 }
 
 /*
@@ -1802,7 +1802,7 @@ format_dependency_origin(xstring *buf, const void *data,
 {
 	const struct pkg_dep	*dep = data;
 
-	return (string_val(buf, dep->origin, p));
+	return (string_val(buf, dep == NULL ? NULL: dep->origin, p));
 }
 
 /*
@@ -1814,7 +1814,7 @@ format_dependency_version(xstring *buf, const void *data,
 {
 	const struct pkg_dep	*dep = data;
 
-	return (string_val(buf, dep->version, p));
+	return (string_val(buf, dep == NULL ? NULL: dep->version, p));
 }
 
 /*
@@ -1825,7 +1825,7 @@ format_description(xstring *buf, const void *data, struct percent_esc *p)
 {
 	const struct pkg	*pkg = data;
 
-	return (string_val(buf, pkg->desc, p));
+	return (string_val(buf, pkg == NULL ? NULL: pkg->desc, p));
 }
 
 /*
@@ -1862,7 +1862,7 @@ format_maintainer(xstring *buf, const void *data, struct percent_esc *p)
 {
 	const struct pkg	*pkg = data;
 
-	return (string_val(buf, pkg->maintainer, p));
+	return (string_val(buf, pkg == NULL ? NULL: pkg->maintainer, p));
 }
 
 /*
@@ -1873,7 +1873,7 @@ format_name(xstring *buf, const void *data, struct percent_esc *p)
 {
 	const struct pkg	*pkg = data;
 
-	return (string_val(buf, pkg->name, p));
+	return (string_val(buf, pkg == NULL ? NULL: pkg->name, p));
 }
 
 /*
@@ -1884,7 +1884,7 @@ format_origin(xstring *buf, const void *data, struct percent_esc *p)
 {
 	const struct pkg	*pkg = data;
 
-	return (string_val(buf, pkg->origin, p));
+	return (string_val(buf, pkg == NULL ? NULL: pkg->origin, p));
 }
 
 /*
@@ -1895,7 +1895,7 @@ format_prefix(xstring *buf, const void *data, struct percent_esc *p)
 {
 	const struct pkg	*pkg = data;
 
-	return (string_val(buf, pkg->prefix, p));
+	return (string_val(buf, pkg == NULL ? NULL: pkg->prefix, p));
 }
 
 /*
@@ -1906,7 +1906,7 @@ format_architecture(xstring *buf, const void *data, struct percent_esc *p)
 {
 	const struct pkg	*pkg = data;
 
-	return (string_val(buf, pkg->abi, p));
+	return (string_val(buf, pkg == NULL ? NULL: pkg->abi, p));
 }
 
 /*
@@ -1980,7 +1980,7 @@ format_version(xstring *buf, const void *data, struct percent_esc *p)
 {
 	const struct pkg	*pkg = data;
 
-	return (string_val(buf, pkg->version, p));
+	return (string_val(buf, pkg == NULL ? NULL: pkg->version, p));
 }
 
 /*
@@ -1991,7 +1991,7 @@ format_checksum(xstring *buf, const void *data, struct percent_esc *p)
 {
 	const struct pkg	*pkg = data;
 
-	return (string_val(buf, pkg->sum, p));
+	return (string_val(buf, pkg == NULL ? NULL: pkg->sum, p));
 }
 
 /*
@@ -2002,7 +2002,7 @@ format_home_url(xstring *buf, const void *data, struct percent_esc *p)
 {
 	const struct pkg	*pkg = data;
 
-	return (string_val(buf, pkg->www, p));
+	return (string_val(buf, pkg == NULL ? NULL: pkg->www, p));
 }
 
 /*
@@ -2307,7 +2307,7 @@ string_val(xstring *buf, const char *str, struct percent_esc *p)
 	if (gen_format(format, sizeof(format), p->flags, "s") == NULL)
 		return (NULL);
 
-	fprintf(buf->fp, format, p->width, str);
+	fprintf(buf->fp, format, p->width, str == NULL ? "" : str);
 	return (buf);
 }
 

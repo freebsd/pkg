@@ -488,7 +488,7 @@ print_query(struct pkg *pkg, char *qstr, char multiline)
 		break;
 	}
 	if (!printed) {
-		format_str(pkg, output, qstr, "");
+		format_str(pkg, output, qstr, NULL);
 		printf("%s\n", output->buf);
 	}
 	xstring_free(output);
