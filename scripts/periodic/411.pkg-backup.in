@@ -34,7 +34,7 @@ backup_pkg() {
 			mv -f "${file}" "${bak_file}.${higher}"
 	done
 
-	if do_dump | xz -c > ${bak_file}; then
+	if do_dump | ${compress_cmd} > ${bak_file}; then
 		rc=0
 	else
 		rc=3
@@ -75,13 +75,13 @@ backup_pkg_all() {
 		echo "Host system:"
 	fi
 
-	backup_pkg '' "${bak}/pkg.sql.xz"
+	backup_pkg '' "${bak}/pkg.sql${compress_ext}"
 	rc=$?
 
 	for c in $daily_backup_pkg_chroots ; do
 		echo
 		echo "chroot: $c"
-		bak_file="${bak}/pkg.chroot-$(echo $c | tr -C a-zA-Z0-9.- _).sql.xz"
+		bak_file="${bak}/pkg.chroot-$(echo $c | tr -C a-zA-Z0-9.- _).sql${compress_ext}"
 		backup_pkg "-c $c" $bak_file
 		last_rc=$?
 		[ $last_rc -gt 1 ] && rc=$last_rc
@@ -102,7 +102,7 @@ backup_pkg_all() {
 	for j in $jails ; do
 		echo
 		echo "jail: $j"
-		bak_file="${bak}/pkg.jail-$(echo $j | tr -C a-zA-Z0-9._- _).sql.xz"
+		bak_file="${bak}/pkg.jail-$(echo $j | tr -C a-zA-Z0-9._- _).sql${compress_ext}"
 		backup_pkg "-j $j" $bak_file
 		last_rc=$?
 		[ $last_rc -gt 1 ] && rc=$last_rc
@@ -116,7 +116,15 @@ case "${daily_backup_pkg_enable:-YES}" in
 	;;
 *)
 	bak="${daily_backup_pkg_dir:-/var/backups}"
-	bak_file="${bak}/pkg.sql.xz"
+	compress_cmd="${daily_backup_pkg_compress:-zstd -c}"
+	case "${compress_cmd}" in
+	*zstd*)	compress_ext=".zst" ;;
+	*xz*)	compress_ext=".xz" ;;
+	*bzip2*|*bz2*)	compress_ext=".bz2" ;;
+	*gzip*|*gz*)	compress_ext=".gz" ;;
+	*)	compress_ext="" ;;
+	esac
+	bak_file="${bak}/pkg.sql${compress_ext}"
 	pkgcmd=%prefix%/sbin/pkg
 
 	if ! ${pkgcmd} -N >/dev/null 2>&1 ; then
