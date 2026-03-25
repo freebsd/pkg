@@ -4,7 +4,7 @@
 set -e
 
 if [ $# -eq 0 ]; then
-	echo "Usage: $0 pkg.txz" >&2
+	echo "Usage: $0 pkg.pkg" >&2
 	exit 1
 fi
 
