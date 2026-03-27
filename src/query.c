@@ -385,6 +385,25 @@ format_str(struct pkg *pkg, xstring *dest, const char *qstr, const void *data)
 	fflush(dest->fp);
 }
 
+static bool
+query_has_nonmultiline(const char *qstr)
+{
+	while (*qstr) {
+		if (*qstr == '%') {
+			qstr++;
+			for (unsigned int i = 0; i < NELEM(accepted_query_flags); i++) {
+				if (*qstr == accepted_query_flags[i].flag &&
+				    accepted_query_flags[i].multiline == 0) {
+					return (true);
+				}
+			}
+		}
+		if (*qstr)
+			qstr++;
+	}
+	return (false);
+}
+
 void
 print_query(struct pkg *pkg, char *qstr, char multiline)
 {
@@ -487,7 +506,7 @@ print_query(struct pkg *pkg, char *qstr, char multiline)
 		printed = true;
 		break;
 	}
-	if (!printed) {
+	if (!printed && query_has_nonmultiline(qstr)) {
 		format_str(pkg, output, qstr, NULL);
 		printf("%s\n", output->buf);
 	}
