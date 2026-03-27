@@ -1,3 +1,8 @@
+Changes from 2.6.99.5 to 2.6.99.6
+- query: fix empty line output for purely multiline formats breaking poudriere
+- pkg-backup: make the compression configurable
+- sign_pkg.sh: use the .pkg extension
+
 Changes from 2.6.99.4 to 2.6.99.5
 - libpkg: fix --register-only with empty packages
 - query: fix crash on multiline
