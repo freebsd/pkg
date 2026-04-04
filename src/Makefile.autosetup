@@ -55,7 +55,7 @@ OTHER_LIBS=	@EXTRA_LIBS@ -lm -pthread
 OTHER_LIBS+=	@PKG_LIBARCHIVE_LDFLAGS@ @PKG_LIBARCHIVE_LIBS@
 LOCAL_CFLAGS+=	@PKG_LIBARCHIVE_CFLAGS@
 @else
-OTHER_LIBS+=	-larchive -lbz2 -lz -llzma @ZSTDLIB@
+OTHER_LIBS+=	-larchive
 @endif
 
 @if HAVE_LIBUTIL
@@ -83,12 +83,8 @@ OTHER_LIBS+=	-lmd
 @endif
 
 @if pkgos_darwin
-LOCAL_LDFLAGS=	$(LIBPKGFLAT) $(LIBS) $(OTHER_LIBS) -lresolv -lz \
-	-framework CoreFoundation -framework CoreServices \
-	-framework SystemConfiguration
-STATIC_LDFLAGS=	$(LIBPKGFLAT) $(LIBS) $(OTHER_LIBS) -lresolv -lz \
-	-framework CoreFoundation -framework CoreServices \
-	-framework SystemConfiguration
+LOCAL_LDFLAGS=	$(LIBPKGFLAT) $(LIBS) $(OTHER_LIBS) -lresolv
+STATIC_LDFLAGS=	$(LIBPKGFLAT) $(LIBS) $(OTHER_LIBS) -lresolv
 # OSX doesn't support static binaries, sigh
 STATIC_ARG=
 @else
@@ -100,6 +96,9 @@ LOCAL_LDFLAGS=	-Wl,-Bstatic \
 STATIC_ARG=	-static
 STATIC_LDFLAGS=	$(LIBPKGFLAT) $(LIBS) $(OTHER_LIBS)
 @endif
+
+# For libarchive
+STATIC_LDFLAGS+=	-lbz2 -lz -llzma @ZSTDLIB@
 
 VPATH=	$(top_srcdir)/src
 
