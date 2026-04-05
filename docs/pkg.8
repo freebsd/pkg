@@ -323,7 +323,7 @@ See
 .\" ---------------------------------------------------------------------------
 .Sh EXAMPLES
 Search for a package:
-.Dl $ pkg search perl
+.Dl % pkg search perl
 .Pp
 Install a package:
 .Dl Installing must specify a unique origin or version otherwise it will try installing all matches.
@@ -331,7 +331,7 @@ Install a package:
 .Dl % pkg install perl-5.14
 .Pp
 List installed packages:
-.Dl $ pkg info
+.Dl % pkg info
 .Pp
 Upgrade from remote repository:
 .Dl % pkg upgrade
@@ -341,10 +341,10 @@ Change the origin for an installed package:
 .Dl % pkg install -Rf lang/perl5.14
 .Pp
 List non-automatic packages:
-.Dl $ pkg query -e '%a = 0' %o
+.Dl % pkg query -e '%a = 0' %o
 .Pp
 List automatic packages:
-.Dl $ pkg query -e '%a = 1' %o
+.Dl % pkg query -e '%a = 1' %o
 .Pp
 Delete an installed package:
 .Dl % pkg delete perl-5.14
@@ -366,10 +366,10 @@ Create package file from an installed package:
 .Dl % pkg create -o /usr/ports/packages/All perl-5.14
 .Pp
 Determine which package installed a file:
-.Dl $ pkg which /usr/local/bin/perl
+.Dl % pkg which /usr/local/bin/perl
 .Pp
 Audit installed packages for security advisories:
-.Dl $ pkg audit
+.Dl % pkg audit
 .Pp
 Check installed packages for checksum mismatches:
 .Dl # pkg check -s -a
