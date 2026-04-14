@@ -65,17 +65,15 @@ static const struct {
 };
 
 static const struct {
-	enum pkg_os os;
 	const char *string;
 } os_string_table[] = {
-	{ PKG_OS_UNKNOWN, "Unknown" },
-	{ PKG_OS_FREEBSD, "FreeBSD" },
-	{ PKG_OS_NETBSD, "NetBSD" },
-	{ PKG_OS_DRAGONFLY, "dragonfly" },
-	{ PKG_OS_LINUX, "Linux" },
-	{ PKG_OS_DARWIN, "Darwin" },
-	{ PKG_OS_ANY, "*" },
-	{ -1, NULL },
+	[PKG_OS_UNKNOWN] =	{ "Unknown" },
+	[PKG_OS_FREEBSD] =	{ "FreeBSD" },
+	[PKG_OS_NETBSD] =	{ "NetBSD" },
+	[PKG_OS_DRAGONFLY] =	{ "dragonfly" },
+	[PKG_OS_LINUX] =	{ "Linux" },
+	[PKG_OS_DARWIN] =	{ "Darwin" },
+	[PKG_OS_ANY] =		{ "*" },
 };
 
 /* This table does not include PKG_ARCH_AMD64 as the string translation of
@@ -99,20 +97,17 @@ static const struct {
 const char *
 pkg_os_to_string(enum pkg_os os)
 {
-	for (size_t i = 0; os_string_table[i].string != NULL; i++) {
-		if (os == os_string_table[i].os) {
-			return os_string_table[i].string;
-		}
-	}
-	assert(0);
+	assert(os >= PKG_OS_UNKNOWN && os <= PKG_OS_ANY);
+
+	return (os_string_table[os].string);
 }
 
 static enum pkg_os
 pkg_os_from_string(const char *string)
 {
-	for (size_t i = 0; os_string_table[i].string != NULL; i++) {
+	for (int i = 0; i < nitems(os_string_table); i++) {
 		if (STREQ(string, os_string_table[i].string)) {
-			return os_string_table[i].os;
+			return ((enum pkg_os)i);
 		}
 	}
 	return (PKG_OS_UNKNOWN);
