@@ -66,13 +66,15 @@ static const struct {
 
 static const struct {
 	const char *string;
-} os_string_table[] = {
+	const char *amd64_string;
+	bool major_version_only;
+} os_table[] = {
 	[PKG_OS_UNKNOWN] =	{ "Unknown" },
-	[PKG_OS_FREEBSD] =	{ "FreeBSD" },
-	[PKG_OS_NETBSD] =	{ "NetBSD" },
-	[PKG_OS_DRAGONFLY] =	{ "dragonfly" },
-	[PKG_OS_LINUX] =	{ "Linux" },
-	[PKG_OS_DARWIN] =	{ "Darwin" },
+	[PKG_OS_FREEBSD] =	{ "FreeBSD",	"amd64",	true },
+	[PKG_OS_NETBSD] =	{ "NetBSD",	"x86_64",	true },
+	[PKG_OS_DRAGONFLY] =	{ "dragonfly",	"x86:64",	false },
+	[PKG_OS_LINUX] =	{ "Linux",	"x86_64",	false },
+	[PKG_OS_DARWIN] =	{ "Darwin",	"x86_64",	true },
 	[PKG_OS_ANY] =		{ "*" },
 };
 
@@ -99,48 +101,26 @@ pkg_os_to_string(enum pkg_os os)
 {
 	assert(os >= PKG_OS_UNKNOWN && os <= PKG_OS_ANY);
 
-	return (os_string_table[os].string);
+	return (os_table[os].string);
 }
 
 static enum pkg_os
 pkg_os_from_string(const char *string)
 {
-	for (int i = 0; i < nitems(os_string_table); i++) {
-		if (STREQ(string, os_string_table[i].string)) {
+	for (int i = 0; i < nitems(os_table); i++) {
+		if (STREQ(string, os_table[i].string)) {
 			return ((enum pkg_os)i);
 		}
 	}
 	return (PKG_OS_UNKNOWN);
 }
 
-/* Returns true if the OS uses "amd64" rather than "x86_64" */
-static bool
-pkg_os_uses_amd64_name(enum pkg_os os)
-{
-	switch (os) {
-	case PKG_OS_FREEBSD:
-		return (true);
-	case PKG_OS_DARWIN:
-	case PKG_OS_NETBSD:
-	case PKG_OS_LINUX:
-		return (false);
-	case PKG_OS_DRAGONFLY:
-	case PKG_OS_UNKNOWN:
-	default:
-		assert(0);
-	}
-}
-
 const char *
 pkg_arch_to_string(enum pkg_os os, enum pkg_arch arch)
 {
 	if (arch == PKG_ARCH_AMD64) {
-		if (os == PKG_OS_DRAGONFLY) {
-			return ("x86:64");
-		} else if (pkg_os_uses_amd64_name(os)) {
-			return ("amd64");
-		} else {
-			return ("x86_64");
+		if (os_table[os].amd64_string != NULL) {
+			return (os_table[os].amd64_string);
 		}
 	}
 
@@ -151,16 +131,8 @@ pkg_arch_to_string(enum pkg_os os, enum pkg_arch arch)
 static enum pkg_arch
 pkg_arch_from_string(enum pkg_os os, const char *string)
 {
-	if (os == PKG_OS_DRAGONFLY) {
-		if (STREQ(string, "x86:64")) {
-			return (PKG_ARCH_AMD64);
-		}
-	} else if (pkg_os_uses_amd64_name(os)) {
-		if (STREQ(string, "amd64")) {
-			return (PKG_ARCH_AMD64);
-		}
-	} else {
-		if (STREQ(string, "x86_64")) {
+	if (os_table[os].amd64_string != NULL) {
+		if (STREQ(string, os_table[os].amd64_string)) {
 			return (PKG_ARCH_AMD64);
 		}
 	}
@@ -178,18 +150,9 @@ pkg_arch_from_string(enum pkg_os os, const char *string)
 bool
 pkg_abi_string_only_major_version(enum pkg_os os)
 {
-	switch (os) {
-	case PKG_OS_FREEBSD:
-	case PKG_OS_NETBSD:
-	case PKG_OS_DARWIN:
-		return (true);
-	case PKG_OS_DRAGONFLY:
-	case PKG_OS_LINUX:
-		return (false);
-	case PKG_OS_UNKNOWN:
-	default:
-		assert (0);
-	}
+	assert(os > PKG_OS_UNKNOWN && os < PKG_OS_ANY);
+
+	return (os_table[os].major_version_only);
 }
 
 char *
