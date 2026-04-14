@@ -27,13 +27,15 @@
 
 #define _PATH_UNAME "/usr/bin/uname"
 
+#ifndef nitems
+#define	nitems(x)	(sizeof((x)) / sizeof((x)[0]))
+#endif
+
 /* All possibilities on FreeBSD as of 5/26/2014 */
-struct arch_trans {
+static const struct {
 	const char *elftype;
 	const char *archid;
-};
-
-static const struct arch_trans machine_arch_translation[] = {
+} machine_arch_translation[] = {
 	{ "x86:32", "i386" },
 	{ "x86:64", "amd64" },
 
@@ -60,8 +62,6 @@ static const struct arch_trans machine_arch_translation[] = {
 	{ "riscv:32:sf", "riscv32sf" },
 	{ "riscv:64:hf", "riscv64" },
 	{ "riscv:64:sf", "riscv64sf" },
-
-	{ NULL, NULL }
 };
 
 static const struct {
@@ -434,7 +434,6 @@ int
 pkg_arch_to_legacy(const char *arch, char *dest, size_t sz)
 {
 	int i = 0;
-	const struct arch_trans *arch_trans;
 
 	memset(dest, '\0', sz);
 	/* Lower case the OS */
@@ -457,10 +456,9 @@ pkg_arch_to_legacy(const char *arch, char *dest, size_t sz)
 
 	dest[i++] = ':';
 
-	for (arch_trans = machine_arch_translation; arch_trans->elftype != NULL;
-	    arch_trans++) {
-		if (STREQ(arch + i, arch_trans->archid)) {
-			strlcpy(dest + i, arch_trans->elftype,
+	for (int j = 0; j < nitems(machine_arch_translation); j++) {
+		if (STREQ(arch + i, machine_arch_translation[j].archid)) {
+			strlcpy(dest + i, machine_arch_translation[j].elftype,
 			    sz - (arch + i - dest));
 			return (0);
 		}
