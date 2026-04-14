@@ -81,21 +81,19 @@ static const struct {
 /* This table does not include PKG_ARCH_AMD64 as the string translation of
    that arch is os-dependent. */
 static const struct {
-	enum pkg_arch arch;
 	const char *string;
 } arch_string_table[] = {
-	{ PKG_ARCH_UNKNOWN, "unknown"},
-	{ PKG_ARCH_I386, "i386"},
-	{ PKG_ARCH_ARMV6, "armv6"},
-	{ PKG_ARCH_ARMV7, "armv7"},
-	{ PKG_ARCH_AARCH64, "aarch64"},
-	{ PKG_ARCH_POWERPC, "powerpc"},
-	{ PKG_ARCH_POWERPC64, "powerpc64"},
-	{ PKG_ARCH_POWERPC64LE, "powerpc64le"},
-	{ PKG_ARCH_RISCV32, "riscv32"},
-	{ PKG_ARCH_RISCV64, "riscv64"},
-	{ PKG_ARCH_ANY,	"*"},
-	{ -1, NULL },
+	[PKG_ARCH_UNKNOWN] =		{"unknown"},
+	[PKG_ARCH_I386] =		{"i386"},
+	[PKG_ARCH_ARMV6] =		{"armv6"},
+	[PKG_ARCH_ARMV7] =		{"armv7"},
+	[PKG_ARCH_AARCH64] =		{"aarch64"},
+	[PKG_ARCH_POWERPC] =		{"powerpc"},
+	[PKG_ARCH_POWERPC64] =		{"powerpc64"},
+	[PKG_ARCH_POWERPC64LE] =	{"powerpc64le"},
+	[PKG_ARCH_RISCV32] =		{"riscv32"},
+	[PKG_ARCH_RISCV64] =		{"riscv64"},
+	[PKG_ARCH_ANY] =		{"*"},
 };
 
 const char *
@@ -151,13 +149,8 @@ pkg_arch_to_string(enum pkg_os os, enum pkg_arch arch)
 		}
 	}
 
-	for (size_t i = 0; arch_string_table[i].string != NULL; i++) {
-		if (arch == arch_string_table[i].arch) {
-			return arch_string_table[i].string;
-		}
-	}
-
-	assert(0);
+	assert(arch >= PKG_ARCH_UNKNOWN && arch <= PKG_ARCH_ANY);
+	return (arch_string_table[arch].string);
 }
 
 static enum pkg_arch
@@ -177,9 +170,10 @@ pkg_arch_from_string(enum pkg_os os, const char *string)
 		}
 	}
 
-	for (size_t i = 0; arch_string_table[i].string != NULL; i++) {
-		if (STREQ(string, arch_string_table[i].string)) {
-			return arch_string_table[i].arch;
+	for (int i = 0; i < nitems(arch_string_table); i++) {
+		if (arch_string_table[i].string != NULL &&
+		    STREQ(string, arch_string_table[i].string)) {
+			return ((enum pkg_arch)i);
 		}
 	}
 
