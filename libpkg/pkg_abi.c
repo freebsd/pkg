@@ -50,6 +50,8 @@ static const struct {
 	{ "armv6:32:el:eabi:hardfp", "armv6" },
 	{ "armv7:32:el:eabi:hardfp", "armv7" },
 	{ "aarch64:64", "aarch64" },
+	{ "aarch64:64:cheri", "aarch64c" },
+	{ "aarch64:64:cheri:benchmark", "aarch64cb" },
 
 	{ "mips:32:el:o32", "mipsel" },
 	{ "mips:32:el:n32", "mipsn32el" },
@@ -61,6 +63,7 @@ static const struct {
 	{ "riscv:32:hf", "riscv32" },
 	{ "riscv:32:sf", "riscv32sf" },
 	{ "riscv:64:hf", "riscv64" },
+	{ "riscv:64:cheri:hf", "riscv64c" },
 	{ "riscv:64:sf", "riscv64sf" },
 };
 
@@ -75,6 +78,7 @@ static const struct {
 	[PKG_OS_DRAGONFLY] =	{ "dragonfly",	"x86:64",	false },
 	[PKG_OS_LINUX] =	{ "Linux",	"x86_64",	false },
 	[PKG_OS_DARWIN] =	{ "Darwin",	"x86_64",	true },
+	[PKG_OS_CHERIBSD] =	{ "CheriBSD",	"amd64",	true },
 	[PKG_OS_ANY] =		{ "*" },
 };
 
@@ -88,11 +92,14 @@ static const struct {
 	[PKG_ARCH_ARMV6] =		{"armv6"},
 	[PKG_ARCH_ARMV7] =		{"armv7"},
 	[PKG_ARCH_AARCH64] =		{"aarch64"},
+	[PKG_ARCH_AARCH64C] =		{"aarch64c"},
+	[PKG_ARCH_AARCH64CB] =		{"aarch64cb"},
 	[PKG_ARCH_POWERPC] =		{"powerpc"},
 	[PKG_ARCH_POWERPC64] =		{"powerpc64"},
 	[PKG_ARCH_POWERPC64LE] =	{"powerpc64le"},
 	[PKG_ARCH_RISCV32] =		{"riscv32"},
 	[PKG_ARCH_RISCV64] =		{"riscv64"},
+	[PKG_ARCH_RISCV64C] =		{"riscv64c"},
 	[PKG_ARCH_ANY] =		{"*"},
 };
 
