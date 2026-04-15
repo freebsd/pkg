@@ -321,6 +321,7 @@ exec_upgrade(int argc, char **argv)
 			break;
 		default:
 			usage_upgrade();
+			vec_free(&reponames);
 			return (EXIT_FAILURE);
 			/* NOTREACHED */
 		}
@@ -344,23 +345,30 @@ exec_upgrade(int argc, char **argv)
 
 	if (retcode == EPKG_ENOACCESS) {
 		warnx("Insufficient privilege to upgrade packages");
+		vec_free(&reponames);
 		return (EXIT_FAILURE);
-	} else if (retcode != EPKG_OK)
+	} else if (retcode != EPKG_OK) {
+		vec_free(&reponames);
 		return (EXIT_FAILURE);
-	else
+	} else
 		retcode = EXIT_FAILURE;
 
 	/* first update the remote repositories if needed */
 	if (auto_update &&
-	    (updcode = pkgcli_update(false, false, &reponames)) != EPKG_OK)
+	    (updcode = pkgcli_update(false, false, &reponames)) != EPKG_OK) {
+		vec_free(&reponames);
 		return (updcode);
+	}
 
-	if (pkgdb_open_all2(&db, PKGDB_REMOTE, &reponames) != EPKG_OK)
+	if (pkgdb_open_all2(&db, PKGDB_REMOTE, &reponames) != EPKG_OK) {
+		vec_free(&reponames);
 		return (EXIT_FAILURE);
+	}
 
 	if (pkgdb_obtain_lock(db, lock_type) != EPKG_OK) {
 		pkgdb_close(db);
 		warnx("Cannot get an advisory lock on a database, it is locked by another process");
+		vec_free(&reponames);
 		return (EXIT_FAILURE);
 	}
 
@@ -443,6 +451,8 @@ cleanup:
 
 	if (newpkgversion && (!rc || !done))
 		newpkgversion = false;
+
+	vec_free(&reponames);
 
 	return (retcode);
 }
