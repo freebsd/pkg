@@ -185,14 +185,15 @@ char *basename(char *path)
 #define ucl_realpath realpath
 #endif
 
-typedef void (*ucl_object_dtor)(ucl_object_t *obj);
-static void ucl_object_free_internal(ucl_object_t *obj, bool allow_rec,
-									 ucl_object_dtor dtor);
-static void ucl_object_dtor_unref(ucl_object_t *obj);
+typedef void (*ucl_object_dtor)(void *ptr);
+static void ucl_object_free_internal(ucl_object_t *obj, bool allow_rec, ucl_object_dtor dtor);
+static void ucl_object_dtor_unref(void *obj);
 
 static void
-ucl_object_dtor_free(ucl_object_t *obj)
+ucl_object_dtor_free(void *ptr)
 {
+	ucl_object_t *obj = ptr;
+
 	if (obj->trash_stack[UCL_TRASH_KEY] != NULL) {
 		UCL_FREE(obj->hh.keylen, obj->trash_stack[UCL_TRASH_KEY]);
 	}
@@ -235,8 +236,9 @@ ucl_object_dtor_unref_single(ucl_object_t *obj)
 }
 
 static void
-ucl_object_dtor_unref(ucl_object_t *obj)
+ucl_object_dtor_unref(void *ptr)
 {
+	ucl_object_t *obj = ptr;
 	if (obj->ref == 0) {
 		ucl_object_dtor_free(obj);
 	}
