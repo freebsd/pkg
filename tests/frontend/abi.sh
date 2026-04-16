@@ -57,6 +57,36 @@ override_body() {
 		-o inline:"${_expected}" \
 		-e ignore \
 		pkg -o ABI=FreeBSD:12:powerpc -o OSVERSION=1201000 config altabi
+	_expected="CheriBSD:20250301:aarch64c\n"
+	atf_check \
+		-o inline:"${_expected}" \
+		-e ignore \
+		pkg -o ABI=CheriBSD:20250301:aarch64c config abi
+	_expected="CheriBSD:20250301:aarch64cb\n"
+	atf_check \
+		-o inline:"${_expected}" \
+		-e ignore \
+		pkg -o ABI=CheriBSD:20250301:aarch64cb config abi
+	_expected="cheribsd:20250301:aarch64:64:cheri\n"
+	atf_check \
+		-o inline:"${_expected}" \
+		-e ignore \
+		pkg -o ABI=CheriBSD:20250301:aarch64c config altabi
+	_expected="cheribsd:20250301:aarch64:64:cheri:benchmark\n"
+	atf_check \
+		-o inline:"${_expected}" \
+		-e ignore \
+		pkg -o ABI=CheriBSD:20250301:aarch64cb config altabi
+	_expected="CheriBSD:20250301:riscv64c\n"
+	atf_check \
+		-o inline:"${_expected}" \
+		-e ignore \
+		pkg -o ABI=CheriBSD:20250301:riscv64c config abi
+	_expected="cheribsd:20260101:riscv:64:cheri:hf\n"
+	atf_check \
+		-o inline:"${_expected}" \
+		-e ignore \
+		pkg -o ABI=CheriBSD:20260101:riscv64c config altabi
 }
 
 elfparse_body() {
