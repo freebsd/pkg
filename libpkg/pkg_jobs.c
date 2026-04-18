@@ -91,6 +91,7 @@ pkg_jobs_new(struct pkg_jobs **j, pkg_jobs_t t, struct pkgdb *db)
 	(*j)->solved = false;
 	(*j)->pinning = true;
 	(*j)->flags = PKG_FLAG_NONE;
+	pkg_deferred_rc_init(&(*j)->rc);
 	(*j)->conservative = pkg_object_bool(pkg_config_get("CONSERVATIVE_UPGRADE"));
 	(*j)->triggers.dfd = -1;
 
@@ -202,6 +203,7 @@ pkg_jobs_free(struct pkg_jobs *j)
 		close(j->triggers.dfd);
 	if (j->triggers.schema != NULL)
 		ucl_object_unref(j->triggers.schema);
+	pkg_deferred_rc_free(&j->rc);
 	pkghash_destroy(j->orphaned);
 	pkghash_destroy(j->notorphaned);
 	vec_free_and_free(&j->system_shlibs, free);
@@ -2041,9 +2043,9 @@ pkg_jobs_handle_install(struct pkg_solved *ps, struct pkg_jobs *j)
 	if (new->type == PKG_GROUP_REMOTE)
 		retcode = pkg_add_group(new);
 	else if (old != NULL)
-		retcode = pkg_add_upgrade(j->db, target, flags, NULL, new, old, &j->triggers);
+		retcode = pkg_add_upgrade(j->db, target, flags, NULL, new, old, &j->triggers, &j->rc);
 	else
-		retcode = pkg_add_from_remote(j->db, target, flags, NULL, new, &j->triggers);
+		retcode = pkg_add_from_remote(j->db, target, flags, NULL, new, &j->triggers, &j->rc);
 
 	dbg(2, "end %s:", __func__);
 	return (retcode);
@@ -2066,7 +2068,7 @@ pkg_jobs_handle_delete(struct pkg_solved *ps, struct pkg_jobs *j)
 		rpkg = ps->xlink->items[0]->pkg;
 	}
 	return (pkg_delete(ps->items[0]->pkg, rpkg, j->db, flags,
-	    &j->triggers));
+	    &j->triggers, &j->rc));
 }
 
 static int
@@ -2167,6 +2169,7 @@ pkg_jobs_execute(struct pkg_jobs *j)
 
 	pkg_plugins_hook_run(post, j, j->db);
 	triggers_execute(&j->triggers);
+	pkg_deferred_rc_execute(&j->rc);
 
 cleanup:
 	pkgdb_release_lock(j->db, PKGDB_LOCK_EXCLUSIVE);

@@ -1408,12 +1408,16 @@ cleanup:
 }
 
 static int
-pkg_add_cleanup_old(struct pkgdb *db, struct pkg *old, struct pkg *new, struct triggers *t, int flags)
+pkg_add_cleanup_old(struct pkgdb *db, struct pkg *old, struct pkg *new,
+    struct triggers *t, int flags, struct deferred_rc *rc)
 {
 	struct pkg_file *f;
 	int ret = EPKG_OK;
 
-	pkg_start_stop_rc_scripts(old, PKG_RC_STOP);
+	if (rc != NULL)
+		pkg_deferred_rc_add(rc, old, PKG_RC_STOP);
+	else
+		pkg_start_stop_rc_scripts(old, PKG_RC_STOP);
 
 	/*
 	 * Execute pre deinstall scripts
@@ -1525,7 +1529,7 @@ populate_config_file_contents(struct archive *a, struct archive_entry *ae,
 static int
 pkg_add_common(struct pkgdb *db, const char *path, unsigned flags,
     const char *reloc, struct pkg *remote,
-    struct pkg *local, struct triggers *t)
+    struct pkg *local, struct triggers *t, struct deferred_rc *rc)
 {
 	struct archive		*a;
 	struct archive_entry	*ae;
@@ -1679,7 +1683,7 @@ pkg_add_common(struct pkgdb *db, const char *path, unsigned flags,
 	if (local != NULL && (flags & PKG_ADD_SPLITTED_UPGRADE) == 0) {
 		pkg_open_root_fd(local);
 		pkg_debug(1, "Cleaning up old version");
-		if (pkg_add_cleanup_old(db, local, pkg, t, flags) != EPKG_OK) {
+		if (pkg_add_cleanup_old(db, local, pkg, t, flags, rc) != EPKG_OK) {
 			retcode = EPKG_FATAL;
 			goto cleanup;
 		}
@@ -1717,11 +1721,13 @@ pkg_add_common(struct pkgdb *db, const char *path, unsigned flags,
 	triggers_execute_perpackage(pkg, TRIGGER_PHASE_POST_INSTALL, (local != NULL));
 
 	/*
-	 * start the different related services if the users do want that
-	 * and that the service is running
+	 * Record rc scripts for (re)start at the end of the transaction,
+	 * or start them immediately if running outside a transaction.
 	 */
-
-	pkg_start_stop_rc_scripts(pkg, PKG_RC_START);
+	if (rc != NULL)
+		pkg_deferred_rc_add(rc, pkg, PKG_RC_START);
+	else
+		pkg_start_stop_rc_scripts(pkg, PKG_RC_START);
 
 	if ((flags & (PKG_ADD_UPGRADE | PKG_ADD_SPLITTED_UPGRADE)) !=
 	    PKG_ADD_UPGRADE)
@@ -1787,26 +1793,28 @@ int
 pkg_add(struct pkgdb *db, const char *path, unsigned flags,
     const char *location)
 {
-	return pkg_add_common(db, path, flags, location, NULL, NULL, NULL);
+	return pkg_add_common(db, path, flags, location, NULL, NULL, NULL, NULL);
 }
 
 int
 pkg_add_from_remote(struct pkgdb *db, const char *path, unsigned flags,
-    const char *location, struct pkg *rp, struct triggers *t)
+    const char *location, struct pkg *rp, struct triggers *t,
+    struct deferred_rc *rc)
 {
-	return pkg_add_common(db, path, flags, location, rp, NULL, t);
+	return pkg_add_common(db, path, flags, location, rp, NULL, t, rc);
 }
 
 int
 pkg_add_upgrade(struct pkgdb *db, const char *path, unsigned flags,
     const char *location,
-    struct pkg *rp, struct pkg *lp, struct triggers *t)
+    struct pkg *rp, struct pkg *lp, struct triggers *t,
+    struct deferred_rc *rc)
 {
 	if (pkgdb_ensure_loaded(db, lp,
 	    PKG_LOAD_FILES|PKG_LOAD_SCRIPTS|PKG_LOAD_DIRS|PKG_LOAD_LUA_SCRIPTS) != EPKG_OK)
 		return (EPKG_FATAL);
 
-	return pkg_add_common(db, path, flags, location, rp, lp, t);
+	return pkg_add_common(db, path, flags, location, rp, lp, t, rc);
 }
 
 static int

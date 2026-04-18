@@ -57,7 +57,7 @@
 
 int
 pkg_delete(struct pkg *pkg, struct pkg *rpkg, struct pkgdb *db, int flags,
-    struct triggers *t)
+    struct triggers *t, struct deferred_rc *rc)
 {
 	xstring		*message = NULL;
 	int		 ret, cancel = 0;
@@ -82,12 +82,16 @@ pkg_delete(struct pkg *pkg, struct pkg *rpkg, struct pkgdb *db, int flags,
 	}
 
 	/*
-	 * stop the different related services if the users do want that
-	 * and that the service is running
+	 * Record rc scripts for deferred stop at the end of the transaction,
+	 * or stop them immediately if running outside a transaction.
 	 */
 	handle_rc = pkg_object_bool(pkg_config_get("HANDLE_RC_SCRIPTS"));
-	if (handle_rc)
-		pkg_start_stop_rc_scripts(pkg, PKG_RC_STOP);
+	if (handle_rc) {
+		if (rc != NULL)
+			pkg_deferred_rc_add(rc, pkg, PKG_RC_STOP);
+		else
+			pkg_start_stop_rc_scripts(pkg, PKG_RC_STOP);
+	}
 
 	if ((flags & PKG_DELETE_NOSCRIPT) == 0) {
 		bool noexec = ((flags & PKG_DELETE_NOEXEC) == PKG_DELETE_NOEXEC);

@@ -140,6 +140,7 @@ struct pkg_jobs {
 	bool ignore_compat32;
 	void		*lockedpkgs;
 	struct triggers triggers;
+	struct deferred_rc rc;
 	struct pkghash *orphaned;
 	struct pkghash *notorphaned;
 	charv_t system_shlibs;

@@ -291,6 +291,35 @@ struct triggers {
 	trigger_t *post_transaction;
 };
 
+/*
+ * Deferred rc script handling.
+ *
+ * During a transaction we collect the names of rc scripts that need to be
+ * stopped and/or started.  Old scripts are copied to a temporary directory
+ * so they survive file replacement.  At the end of the transaction:
+ *
+ * - Upgraded services (in both stop and start sets) are restarted via
+ *   "service <name> restart", letting the rc script handle the transition
+ *   gracefully (e.g. sshd preserves active connections).
+ * - Deleted services (stop only) are stopped using the saved old script.
+ * - Newly installed services (start only) are started if enabled.
+ *
+ * Skipped entirely when operating on an alternate rootdir (pkg -r).
+ */
+struct deferred_rc_stop {
+	char *name;		/* rc script basename, e.g. "nginx" */
+	char *oldpath;		/* saved copy in tmpdir, or NULL */
+};
+typedef vec_t(struct deferred_rc_stop) rc_stop_t;
+
+struct deferred_rc {
+	char *tmpdir;		/* mkdtemp'd dir for saved old scripts */
+	rc_stop_t to_stop;	/* services to stop (deletions & upgrades) */
+	charv_t to_start;	/* service names to start (installs & upgrades) */
+	pkghash *seen_stop;	/* dedup: names already in to_stop */
+	pkghash *seen_start;	/* dedup: names already in to_start */
+};
+
 struct pkg_create {
 	bool overwrite;
 	bool expand_manifest;
@@ -683,7 +712,7 @@ typedef enum {
  * @return An error code.
  */
 int pkg_delete(struct pkg *pkg, struct pkg *rpkg, struct pkgdb *db, int flags,
-    struct triggers *);
+    struct triggers *, struct deferred_rc *);
 #define PKG_DELETE_UPGRADE	(1 << 1)	/* delete as a split upgrade */
 #define PKG_DELETE_NOSCRIPT	(1 << 2)	/* don't run delete scripts */
 #define PKG_DELETE_NOEXEC	(1 << 3)	/* don't run delete scripts which execute things*/
@@ -721,6 +750,10 @@ int pkg_repo_load_fingerprints(struct pkg_repo *repo);
 
 
 int pkg_start_stop_rc_scripts(struct pkg *, pkg_rc_attr attr);
+void pkg_deferred_rc_init(struct deferred_rc *);
+void pkg_deferred_rc_free(struct deferred_rc *);
+void pkg_deferred_rc_add(struct deferred_rc *, struct pkg *, pkg_rc_attr);
+int pkg_deferred_rc_execute(struct deferred_rc *);
 
 int pkg_script_run(struct pkg *, pkg_script type, bool upgrade, bool noexec);
 int pkg_lua_script_run(struct pkg *, pkg_lua_script type, bool upgrade);
@@ -829,9 +862,11 @@ char *pkg_checksum_generate_fileat(int fd, const char *path,
 
 int pkg_add_group(struct pkg *pkg);
 int pkg_add_upgrade(struct pkgdb *db, const char *path, unsigned flags,
-    const char *location, struct pkg *rp, struct pkg *lp, struct triggers *);
+    const char *location, struct pkg *rp, struct pkg *lp, struct triggers *,
+    struct deferred_rc *);
 int pkg_add_from_remote(struct pkgdb *db, const char *path, unsigned flags,
-    const char *location, struct pkg *rp, struct triggers *);
+    const char *location, struct pkg *rp, struct triggers *,
+    struct deferred_rc *);
 void pkg_delete_dir(struct pkg *pkg, struct pkg_dir *dir);
 void pkg_delete_file(struct pkg *pkg, struct pkg_file *file);
 int pkg_open_root_fd(struct pkg *pkg);
