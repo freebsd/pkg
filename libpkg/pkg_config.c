@@ -628,6 +628,14 @@ add_repo(const ucl_object_t *obj, struct pkg_repo *r, const char *rname, pkg_ini
 	int use_ipvx = 0;
 	int priority = 0;
 
+#define repo_ucl_check_type(cur, expected, tname, key, rname) \
+	if ((cur)->type != (expected)) { \
+		pkg_emit_error("Expecting %s for the " \
+		    "'%s' key of the '%s' repo", \
+		    (tname), (key), (rname)); \
+		return; \
+	}
+
 	dbg(1, "parsing repository object %s", rname);
 
 	env = NULL;
@@ -640,88 +648,40 @@ add_repo(const ucl_object_t *obj, struct pkg_repo *r, const char *rname, pkg_ini
 		if (STRIEQ(key, "enabled")) {
 			enable = ucl_object_toboolean(cur);
 		} else if (STRIEQ(key, "url")) {
-			if (cur->type != UCL_STRING) {
-				pkg_emit_error("Expecting a string for the "
-				    "'%s' key of the '%s' repo",
-				    key, rname);
-				return;
-			}
+			repo_ucl_check_type(cur, UCL_STRING, "a string", key, rname);
 			url = ucl_object_tostring(cur);
 		} else if (STRIEQ(key, "pubkey")) {
-			if (cur->type != UCL_STRING) {
-				pkg_emit_error("Expecting a string for the "
-				    "'%s' key of the '%s' repo",
-				    key, rname);
-				return;
-			}
+			repo_ucl_check_type(cur, UCL_STRING, "a string", key, rname);
 			pubkey = ucl_object_tostring(cur);
 		} else if (STRIEQ(key, "mirror_type")) {
-			if (cur->type != UCL_STRING) {
-				pkg_emit_error("Expecting a string for the "
-				    "'%s' key of the '%s' repo",
-				    key, rname);
-				return;
-			}
+			repo_ucl_check_type(cur, UCL_STRING, "a string", key, rname);
 			mirror_type = ucl_object_tostring(cur);
 		} else if (STRIEQ(key, "signature_type")) {
-			if (cur->type != UCL_STRING) {
-				pkg_emit_error("Expecting a string for the "
-				    "'%s' key of the '%s' repo",
-				    key, rname);
-				return;
-			}
+			repo_ucl_check_type(cur, UCL_STRING, "a string", key, rname);
 			signature_type = ucl_object_tostring(cur);
 		} else if (STRIEQ(key, "fingerprints")) {
-			if (cur->type != UCL_STRING) {
-				pkg_emit_error("Expecting a string for the "
-				    "'%s' key of the '%s' repo",
-				    key, rname);
-				return;
-			}
+			repo_ucl_check_type(cur, UCL_STRING, "a string", key, rname);
 			fingerprints = ucl_object_tostring(cur);
 		} else if (STRIEQ(key, "type")) {
-			if (cur->type != UCL_STRING) {
-				pkg_emit_error("Expecting a string for the "
-					"'%s' key of the '%s' repo",
-					key, rname);
-				return;
-			}
+			repo_ucl_check_type(cur, UCL_STRING, "a string", key, rname);
 			type = ucl_object_tostring(cur);
 		} else if (STRIEQ(key, "ip_version")) {
-			if (cur->type != UCL_INT) {
-				pkg_emit_error("Expecting a integer for the "
-					"'%s' key of the '%s' repo",
-					key, rname);
-				return;
-			}
+			repo_ucl_check_type(cur, UCL_INT, "an integer", key, rname);
 			use_ipvx = ucl_object_toint(cur);
 			if (use_ipvx != 4 && use_ipvx != 6)
 				use_ipvx = 0;
 		} else if (STRIEQ(key, "priority")) {
-			if (cur->type != UCL_INT) {
-				pkg_emit_error("Expecting a integer for the "
-					"'%s' key of the '%s' repo",
-					key, rname);
-				return;
-			}
+			repo_ucl_check_type(cur, UCL_INT, "an integer", key, rname);
 			priority = ucl_object_toint(cur);
 		} else if (STRIEQ(key, "ssh_args")) {
-			if (cur->type != UCL_STRING) {
-				pkg_emit_error("Expecting a string for the "
-					"'%s' key of the '%s' repo",
-					key, rname);
-				return;
-			}
+			repo_ucl_check_type(cur, UCL_STRING, "a string", key, rname);
 			ssh_args = ucl_object_tostring(cur);
 		} else if (STRIEQ(key, "env")) {
-			if (cur->type != UCL_OBJECT) {
-				pkg_emit_error("Expecting an object for the "
-					"'%s' key of the '%s' repo",
-					key, rname);
-			}
+			repo_ucl_check_type(cur, UCL_OBJECT, "an object", key, rname);
 			env = cur;
 		}
 	}
+#undef repo_ucl_check_type
 
 	if (r == NULL && url == NULL) {
 		dbg(1, "No repo and no url for %s", rname);
