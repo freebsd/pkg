@@ -107,11 +107,8 @@ exec_which(int argc, char **argv)
 		return (EXIT_FAILURE);
 	}
 
-	if (pkgdb_obtain_lock(db, PKGDB_LOCK_READONLY) != EPKG_OK) {
-		pkgdb_close(db);
-		warnx("Cannot get a read lock on a database, it is locked by another process");
+	if (!pkgdb_lock_or_fail(db, PKGDB_LOCK_READONLY))
 		return (EXIT_FAILURE);
-	}
 
 	if (search_s) {
 		if ((path = getenv("PATH")) == NULL) {

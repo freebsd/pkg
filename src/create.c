@@ -65,11 +65,8 @@ pkg_create_matches(int argc, char **argv, match_t match, struct pkg_create *pc)
 		return (EXIT_FAILURE);
 	}
 	/* XXX: get rid of hardcoded timeouts */
-	if (pkgdb_obtain_lock(db, PKGDB_LOCK_READONLY) != EPKG_OK) {
-		pkgdb_close(db);
-		warnx("Cannot get a read lock on a database, it is locked by another process");
+	if (!pkgdb_lock_or_fail(db, PKGDB_LOCK_READONLY))
 		return (EXIT_FAILURE);
-	}
 
 	for (i = 0; i < argc || match == MATCH_ALL; i++) {
 		if (match == MATCH_ALL) {

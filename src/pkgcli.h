@@ -8,6 +8,7 @@
 #ifndef _PKGCLI_H
 #define _PKGCLI_H
 
+#include <err.h>
 #include <search.h>
 #include <stdbool.h>
 #include <stdint.h>
@@ -251,6 +252,18 @@ void usage_config(void);
 			 INFO_SHLIBS_PROVIDED|INFO_ANNOTATIONS|	       \
 			 INFO_DESCR|INFO_MESSAGE|INFO_DEPS|INFO_RDEPS| \
 			 INFO_FILES|INFO_DIRS)
+
+static inline bool
+pkgdb_lock_or_fail(struct pkgdb *db, pkgdb_lock_t lock_type)
+{
+	if (pkgdb_obtain_lock(db, lock_type) != EPKG_OK) {
+		pkgdb_close(db);
+		warnx("Cannot get an advisory lock on a database, "
+		    "it is locked by another process");
+		return (false);
+	}
+	return (true);
+}
 
 bool query_yesno(bool deft, const char *msg, ...);
 int query_select(const char *msg, const char **opts, int ncnt, int deft);

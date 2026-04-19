@@ -318,11 +318,8 @@ exec_annotate(int argc, char **argv)
 		return (EXIT_FAILURE);
 	}
 
-	if (pkgdb_obtain_lock(db, lock_type) != EPKG_OK) {
-		pkgdb_close(db);
-		warnx("Cannot get an exclusive lock on a database, it is locked by another process");
+	if (!pkgdb_lock_or_fail(db, lock_type))
 		return (EXIT_FAILURE);
-	}
 
 	if ((it = pkgdb_query(db, pkgname, match)) == NULL) {
 		exitcode = EXIT_FAILURE;

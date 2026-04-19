@@ -83,12 +83,8 @@ do_lock_unlock(struct pkgdb *db, int match, const char *pkgname,
 	bool		 gotone = false;
 	vec_t(struct pkg *)pkgs = vec_init();
 
-	if (pkgdb_obtain_lock(db, PKGDB_LOCK_EXCLUSIVE) != EPKG_OK) {
-		pkgdb_close(db);
-		warnx("Cannot get an exclusive lock on database. "
-		      "It is locked by another process");
+	if (!pkgdb_lock_or_fail(db, PKGDB_LOCK_EXCLUSIVE))
 		return (EXIT_FAILURE);
-	}
 
 	if ((it = pkgdb_query(db, pkgname, match)) == NULL) {
 		exitcode = EXIT_FAILURE;

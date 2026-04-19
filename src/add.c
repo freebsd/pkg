@@ -137,11 +137,8 @@ exec_add(int argc, char **argv)
 	if (pkgdb_open(&db, PKGDB_DEFAULT) != EPKG_OK)
 		return (EXIT_FAILURE);
 
-	if (pkgdb_obtain_lock(db, PKGDB_LOCK_EXCLUSIVE) != EPKG_OK) {
-		pkgdb_close(db);
-		warnx("Cannot get an exclusive lock on a database, it is locked by another process");
+	if (!pkgdb_lock_or_fail(db, PKGDB_LOCK_EXCLUSIVE))
 		return (EXIT_FAILURE);
-	}
 
 	failedpkgs = xstring_new();
 	for (i = 0; i < argc; i++) {
