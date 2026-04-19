@@ -384,7 +384,6 @@ save_trigger(const char *script, bool sandbox, pkghash *args)
 		return;
 
 	int trigfd = openat(db, "triggers", O_DIRECTORY);
-	close(db);
 	if (trigfd == -1) {
 		pkg_errno("Failed to open '%s' as a directory", "triggers");
 		return;
@@ -408,6 +407,11 @@ save_trigger(const char *script, bool sandbox, pkghash *args)
 	}
 	close(trigfd);
 	FILE *f = fdopen(fd, "w");
+	if (f == NULL) {
+		close(fd);
+		pkg_errno("Can't open deferred trigger for %s", "writing");
+		return;
+	}
 	if (sandbox)
 		fputs("--sandbox\n", f);
 	fputs("--begin args\n", f);
@@ -771,6 +775,7 @@ exec_deferred(int dfd, const char *name)
 	}
 	FILE *f = fdopen(fd, "r");
 	if (f == NULL) {
+		close(fd);
 		pkg_errno("Unable to open the trigger '%s'", name);
 		return;
 	}
