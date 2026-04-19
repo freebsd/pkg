@@ -504,14 +504,12 @@ pkg_obj(struct pkg *pkg, const ucl_object_t *obj, uint32_t attr)
 				   key);
 			break;
 		case MANIFEST_OPTIONS:
-			if (cur->type != UCL_STRING && cur->type != UCL_BOOLEAN)
-				pkg_emit_error("Skipping malformed option %s",
-				    key);
-			else if (cur->type == UCL_STRING) {
+			if (cur->type == UCL_STRING)
 				pkg_addoption(pkg, key, ucl_object_tostring(cur));
-			} else {
+			else if (cur->type == UCL_BOOLEAN)
 				pkg_addoption(pkg, key, ucl_object_toboolean(cur) ? "on" : "off");
-			}
+			else
+				pkg_emit_error("Skipping malformed option %s", key);
 			break;
 		case MANIFEST_SCRIPTS:
 			if (cur->type != UCL_STRING)
