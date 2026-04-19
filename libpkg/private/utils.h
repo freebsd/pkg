@@ -106,4 +106,7 @@ DEFINE_VEC_INSERT_SORTED_PROTO(charv_t, charv, char *);
 uid_t get_uid_from_uname(const char *);
 gid_t get_gid_from_gname(const char *);
 
+ucl_object_t *ucl_parse_fd(int fd, const char *name);
+ucl_object_t *ucl_parse_buf(const char *buf, size_t len, const char *name);
+
 #endif

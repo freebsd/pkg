@@ -26,6 +26,7 @@
 #include <private/pkg.h>
 #include <private/event.h>
 #include <private/lua.h>
+#include <private/utils.h>
 
 extern char **environ;
 
@@ -43,7 +44,6 @@ get_script_type(const char *str)
 static ucl_object_t *
 trigger_open_schema(void)
 {
-	struct ucl_parser *parser;
 	ucl_object_t *trigger_schema;
 	static const char trigger_schema_str[] = ""
 		"{"
@@ -102,17 +102,8 @@ trigger_open_schema(void)
 		"  required = [ trigger ];"
 		"}";
 
-	parser = ucl_parser_new(UCL_PARSER_NO_FILEVARS);
-	if (!ucl_parser_add_chunk(parser, trigger_schema_str,
-	    sizeof(trigger_schema_str) -1)) {
-		pkg_emit_error("Cannot parse schema for trigger: %s",
-		    ucl_parser_get_error(parser));
-		ucl_parser_free(parser);
-		return (NULL);
-	}
-
-	trigger_schema = ucl_parser_get_object(parser);
-	ucl_parser_free(parser);
+	trigger_schema = ucl_parse_buf(trigger_schema_str,
+	    sizeof(trigger_schema_str) - 1, "trigger schema");
 	return (trigger_schema);
 }
 
@@ -146,7 +137,6 @@ parse_trigger_script_block(const ucl_object_t *block, const char *block_name,
 static struct trigger *
 trigger_load(int dfd, const char *name, bool cleanup_only, ucl_object_t *schema)
 {
-	struct ucl_parser *p;
 	ucl_object_t *obj = NULL;
 	const ucl_object_t *block = NULL;
 	int fd;
@@ -159,18 +149,8 @@ trigger_load(int dfd, const char *name, bool cleanup_only, ucl_object_t *schema)
 		return (NULL);
 	}
 
-	p = ucl_parser_new(0);
-	if (!ucl_parser_add_fd(p, fd)) {
-		pkg_emit_error("Error parsing trigger '%s': %s", name,
-		    ucl_parser_get_error(p));
-		ucl_parser_free(p);
-		close(fd);
-		return (NULL);
-	}
+	obj = ucl_parse_fd(fd, name);
 	close(fd);
-
-	obj = ucl_parser_get_object(p);
-	ucl_parser_free(p);
 	if (obj == NULL)
 		return (NULL);
 

@@ -528,7 +528,6 @@ pkg_repo_binary_groupsearch(struct pkg_repo *repo, const char *pattern, match_t 
 	ucl_object_t *groups, *ar, *el;
 	const ucl_object_t *o;
 	const char *cmp;
-	struct ucl_parser *p;
 	int fd;
 	regex_t *re = NULL;
 	int flag = 0;
@@ -552,18 +551,10 @@ pkg_repo_binary_groupsearch(struct pkg_repo *repo, const char *pattern, match_t 
 	fd = openat(repo->dfd, "groups.ucl", O_RDONLY|O_CLOEXEC);
 	if (fd == -1)
 		return (NULL);
-	p = ucl_parser_new(0);
-	if (!ucl_parser_add_fd(p, fd)) {
-		pkg_emit_error("Error parsing groups for: %s'",
-		    repo->name);
-		ucl_parser_free(p);
-		close(fd);
-		return (NULL);
-
-	}
-	groups = ucl_parser_get_object(p);
-	ucl_parser_free(p);
+	groups = ucl_parse_fd(fd, repo->name);
 	close(fd);
+	if (groups == NULL)
+		return (NULL);
 
 	if (ucl_object_type(groups) != UCL_ARRAY) {
 		ucl_object_unref(groups);

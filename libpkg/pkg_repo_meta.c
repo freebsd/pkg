@@ -30,6 +30,7 @@
 #include "pkg.h"
 #include "private/event.h"
 #include "private/pkg.h"
+#include "private/utils.h"
 
 /* Default to repo v1 for now */
 #define	DEFAULT_META_VERSION	2
@@ -109,7 +110,6 @@ pkg_repo_meta_free(struct pkg_repo_meta *meta)
 static ucl_object_t*
 pkg_repo_meta_open_schema_v1(void)
 {
-	struct ucl_parser *parser;
 	static const char meta_schema_str_v1[] = ""
 			"{"
 			"type = object;"
@@ -149,17 +149,8 @@ pkg_repo_meta_open_schema_v1(void)
 	if (repo_meta_schema_v1 != NULL)
 		return (repo_meta_schema_v1);
 
-	parser = ucl_parser_new(UCL_PARSER_NO_FILEVARS);
-	if (!ucl_parser_add_chunk(parser, meta_schema_str_v1,
-			sizeof(meta_schema_str_v1) - 1)) {
-		pkg_emit_error("cannot parse schema for repo meta: %s",
-				ucl_parser_get_error(parser));
-		ucl_parser_free(parser);
-		return (NULL);
-	}
-
-	repo_meta_schema_v1 = ucl_parser_get_object(parser);
-	ucl_parser_free(parser);
+	repo_meta_schema_v1 = ucl_parse_buf(meta_schema_str_v1,
+	    sizeof(meta_schema_str_v1) - 1, "repo meta schema v1");
 
 	return (repo_meta_schema_v1);
 }
@@ -167,7 +158,6 @@ pkg_repo_meta_open_schema_v1(void)
 static ucl_object_t*
 pkg_repo_meta_open_schema_v2(void)
 {
-	struct ucl_parser *parser;
 	static const char meta_schema_str_v2[] = ""
 			"{"
 			"type = object;"
@@ -206,17 +196,8 @@ pkg_repo_meta_open_schema_v2(void)
 	if (repo_meta_schema_v2 != NULL)
 		return (repo_meta_schema_v2);
 
-	parser = ucl_parser_new(UCL_PARSER_NO_FILEVARS);
-	if (!ucl_parser_add_chunk(parser, meta_schema_str_v2,
-			sizeof(meta_schema_str_v2) - 1)) {
-		pkg_emit_error("cannot parse schema for repo meta: %s",
-				ucl_parser_get_error(parser));
-		ucl_parser_free(parser);
-		return (NULL);
-	}
-
-	repo_meta_schema_v2 = ucl_parser_get_object(parser);
-	ucl_parser_free(parser);
+	repo_meta_schema_v2 = ucl_parse_buf(meta_schema_str_v2,
+	    sizeof(meta_schema_str_v2) - 1, "repo meta schema v2");
 
 	return (repo_meta_schema_v2);
 }

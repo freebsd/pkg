@@ -411,7 +411,6 @@ pkg_repo_create_free(struct pkg_repo_create *prc)
 static ucl_object_t*
 ucl_load(int dfd, const char *name, ucl_object_t *schema)
 {
-	struct ucl_parser *p;
 	ucl_object_t *obj = NULL;
 	int fd;
 	struct ucl_schema_error err;
@@ -422,18 +421,8 @@ ucl_load(int dfd, const char *name, ucl_object_t *schema)
 		return (NULL);
 	}
 
-	p = ucl_parser_new(0);
-	if (!ucl_parser_add_fd(p, fd)) {
-		pkg_emit_error("Error parsing UCL file '%s': %s'",
-		    name, ucl_parser_get_error(p));
-		ucl_parser_free(p);
-		close(fd);
-		return (NULL);
-	}
+	obj = ucl_parse_fd(fd, name);
 	close(fd);
-
-	obj = ucl_parser_get_object(p);
-	ucl_parser_free(p);
 	if (obj == NULL)
 		return (NULL);
 
@@ -479,19 +468,7 @@ static const char expired_schema_str[] = ""
 static ucl_object_t *
 open_schema(const char* schema_str, size_t schema_str_len)
 {
-	struct ucl_parser *parser;
-	ucl_object_t *schema;
-	parser = ucl_parser_new(UCL_PARSER_NO_FILEVARS);
-	if (!ucl_parser_add_chunk(parser, schema_str,
-	    schema_str_len - 1)) {
-		pkg_emit_error("Cannot parse schema string: %s",
-		    ucl_parser_get_error(parser));
-		    ucl_parser_free(parser);
-		    return (NULL);
-	}
-	schema = ucl_parser_get_object(parser);
-	ucl_parser_free(parser);
-	return (schema);
+	return (ucl_parse_buf(schema_str, schema_str_len - 1, "schema"));
 }
 
 static void

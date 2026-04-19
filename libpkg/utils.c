@@ -1203,3 +1203,43 @@ pkg_meta_attribute_tostring(enum pkg_meta_attribute attrib)
 
 	return "???";
 }
+
+ucl_object_t *
+ucl_parse_fd(int fd, const char *name)
+{
+	struct ucl_parser *p;
+	ucl_object_t *obj;
+
+	p = ucl_parser_new(0);
+	if (!ucl_parser_add_fd(p, fd)) {
+		pkg_emit_error("Error parsing '%s': %s",
+		    name, ucl_parser_get_error(p));
+		ucl_parser_free(p);
+		return (NULL);
+	}
+
+	obj = ucl_parser_get_object(p);
+	ucl_parser_free(p);
+
+	return (obj);
+}
+
+ucl_object_t *
+ucl_parse_buf(const char *buf, size_t len, const char *name)
+{
+	struct ucl_parser *p;
+	ucl_object_t *obj;
+
+	p = ucl_parser_new(UCL_PARSER_NO_FILEVARS);
+	if (!ucl_parser_add_chunk(p, buf, len)) {
+		pkg_emit_error("Error parsing '%s': %s",
+		    name, ucl_parser_get_error(p));
+		ucl_parser_free(p);
+		return (NULL);
+	}
+
+	obj = ucl_parser_get_object(p);
+	ucl_parser_free(p);
+
+	return (obj);
+}

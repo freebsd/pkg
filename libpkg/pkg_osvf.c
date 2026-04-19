@@ -22,6 +22,7 @@
 #include <xmalloc.h>
 
 #include "private/pkg_osvf.h"
+#include "private/utils.h"
 #include "pkghash.h"
 
 /*
@@ -575,7 +576,6 @@ create_schema_obj(void)
 ucl_object_t *
 pkg_osvf_open(const char *location)
 {
-	struct ucl_parser *uclparser;
 	ucl_object_t *obj = NULL;
 	int fd;
 	ucl_object_t *schema = NULL;
@@ -588,19 +588,8 @@ pkg_osvf_open(const char *location)
 		return (NULL);
 	}
 
-	uclparser = ucl_parser_new(0);
-	if (!ucl_parser_add_fd(uclparser, fd))
-	{
-		pkg_emit_error("Error parsing UCL file '%s': %s'",
-		               location, ucl_parser_get_error(uclparser));
-		ucl_parser_free(uclparser);
-		close(fd);
-		return (NULL);
-	}
+	obj = ucl_parse_fd(fd, location);
 	close(fd);
-
-	obj = ucl_parser_get_object(uclparser);
-	ucl_parser_free(uclparser);
 
 	if (obj == NULL)
 	{

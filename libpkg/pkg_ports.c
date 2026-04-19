@@ -88,7 +88,6 @@ static struct action_cmd {
 static ucl_object_t *
 keyword_open_schema(void)
 {
-	struct ucl_parser *parser;
 	static const char keyword_schema_str[] = ""
 		"{"
 		"  type = object;"
@@ -137,17 +136,8 @@ keyword_open_schema(void)
 	if (keyword_schema != NULL)
 		return (keyword_schema);
 
-	parser = ucl_parser_new(UCL_PARSER_NO_FILEVARS);
-	if (!ucl_parser_add_chunk(parser, keyword_schema_str,
-	    sizeof(keyword_schema_str) -1)) {
-		pkg_emit_error("Cannot parse schema for keywords: %s",
-		    ucl_parser_get_error(parser));
-		ucl_parser_free(parser);
-		return (NULL);
-	}
-
-	keyword_schema = ucl_parser_get_object(parser);
-	ucl_parser_free(parser);
+	keyword_schema = ucl_parse_buf(keyword_schema_str,
+	    sizeof(keyword_schema_str) - 1, "keyword schema");
 
 	return (keyword_schema);
 }
