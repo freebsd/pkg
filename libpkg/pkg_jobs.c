@@ -240,7 +240,7 @@ pkg_jobs_maybe_match_url(struct job_pattern *jp, const char *pattern)
 	jp->flags |= PKG_PATTERN_FLAG_FILE;
 	jp->path = xstrdup(path);
 	/* Use just the filename (without .pkg extension) as the pattern */
-	int len = strlen(name) - 3; /* strip ".pkg" */
+	size_t len = strlen(name) - strlen(".pkg") + 1;
 	jp->pattern = xmalloc(len);
 	strlcpy(jp->pattern, name, len);
 
