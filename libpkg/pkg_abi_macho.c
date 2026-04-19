@@ -24,45 +24,39 @@ cputype_to_pkg_arch(const cpu_type_subtype_t cpu)
 {
 	switch (cpu.type) {
 	case CPU_TYPE_ARM:
-		if (cpu.type_is64_32) {
+		if (cpu.type_is64_32)
 			return (PKG_ARCH_UNKNOWN); /* aarch64-x32 */
-		} else if (cpu.type_is64) {
+		if (cpu.type_is64)
 			return (PKG_ARCH_AARCH64);
-		} else {
-			switch (cpu.subtype_arm) {
-			case CPU_SUBTYPE_ARM_V7:
-			case CPU_SUBTYPE_ARM_V7S:
-			case CPU_SUBTYPE_ARM_V7K:
-			case CPU_SUBTYPE_ARM_V7M:
-			case CPU_SUBTYPE_ARM_V7EM:
-				return (PKG_ARCH_ARMV7);
-			case CPU_SUBTYPE_ARM_V6:
-			case CPU_SUBTYPE_ARM_V6M:
-				return (PKG_ARCH_ARMV6);
-			case CPU_SUBTYPE_ARM_XSCALE:
-			case CPU_SUBTYPE_ARM_V5:
-			case CPU_SUBTYPE_ARM_V4T:
-			case CPU_SUBTYPE_ARM_ALL:
-			default:
-				return (PKG_ARCH_UNKNOWN);
-			}
+		switch (cpu.subtype_arm) {
+		case CPU_SUBTYPE_ARM_V7:
+		case CPU_SUBTYPE_ARM_V7S:
+		case CPU_SUBTYPE_ARM_V7K:
+		case CPU_SUBTYPE_ARM_V7M:
+		case CPU_SUBTYPE_ARM_V7EM:
+			return (PKG_ARCH_ARMV7);
+		case CPU_SUBTYPE_ARM_V6:
+		case CPU_SUBTYPE_ARM_V6M:
+			return (PKG_ARCH_ARMV6);
+		case CPU_SUBTYPE_ARM_XSCALE:
+		case CPU_SUBTYPE_ARM_V5:
+		case CPU_SUBTYPE_ARM_V4T:
+		case CPU_SUBTYPE_ARM_ALL:
+		default:
+			return (PKG_ARCH_UNKNOWN);
 		}
 	case CPU_TYPE_POWERPC:
-		if (cpu.type_is64_32) {
+		if (cpu.type_is64_32)
 			return (PKG_ARCH_UNKNOWN); /* powerpc64-x32 */
-		} else if (cpu.type_is64) {
+		if (cpu.type_is64)
 			return (PKG_ARCH_POWERPC64);
-		} else {
-			return (PKG_ARCH_POWERPC);
-		}
+		return (PKG_ARCH_POWERPC);
 	case CPU_TYPE_X86:
-		if (cpu.type_is64_32) {
+		if (cpu.type_is64_32)
 			return (PKG_ARCH_UNKNOWN); /* amd64-x32 */
-		} else if (cpu.type_is64) {
+		if (cpu.type_is64)
 			return (PKG_ARCH_AMD64);
-		} else {
-			return (PKG_ARCH_I386);
-		}
+		return (PKG_ARCH_I386);
 	default:
 		return (PKG_ARCH_UNKNOWN);
 	}
@@ -177,10 +171,10 @@ match_entry(macho_file_t *mf, enum pkg_arch arch_hint)
 			mf->narch, mf->narch > 1 ? "ies" : "y",
 			pkg_arch_to_string(PKG_OS_DARWIN, arch_hint));
 		return 0;
-	} else if (mf->narch > 1 ) {
+	}
+	if (mf->narch > 1)
 		pkg_debug(1,"Found %"PRIu32" entries in universal binary, picking first",
 			mf->narch);
-	}
 	return p;
 }
 
