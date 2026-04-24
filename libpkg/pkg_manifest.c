@@ -1222,9 +1222,23 @@ pkg_emit_object(struct pkg *pkg, short flags)
 				ucl_object_insert_key(file_attrs,
 						      ucl_object_fromstring(perm_str),
 						      "perm", 0, false);
-				ucl_object_insert_key(file_attrs,
-						      ucl_object_fromint(file->fflags),
-						      "fflags", 0, false);
+#ifdef HAVE_FFLAGSTOSTR
+				if (file->fflags != 0) {
+					char *fflags_str = fflagstostr(file->fflags);
+					if (fflags_str != NULL && *fflags_str != '\0') {
+						ucl_object_insert_key(file_attrs,
+						    ucl_object_fromstring(fflags_str),
+						    "fflags", 0, false);
+					}
+					free(fflags_str);
+				}
+#else
+				if (file->fflags != 0) {
+					ucl_object_insert_key(file_attrs,
+					    ucl_object_fromint(file->fflags),
+					    "fflags", 0, false);
+				}
+#endif
 				if (file->symlink_target != NULL) {
 					ucl_object_insert_key(file_attrs,
 							      ucl_object_fromstring(file->symlink_target),
@@ -1272,9 +1286,23 @@ pkg_emit_object(struct pkg *pkg, short flags)
 				ucl_object_insert_key(dir_attrs,
 						      ucl_object_fromstring(perm_str),
 						      "perm", 0, false);
-				ucl_object_insert_key(dir_attrs,
-						      ucl_object_fromint(dir->fflags),
-						      "fflags", 0, false);
+#ifdef HAVE_FFLAGSTOSTR
+				if (dir->fflags != 0) {
+					char *fflags_str = fflagstostr(dir->fflags);
+					if (fflags_str != NULL && *fflags_str != '\0') {
+						ucl_object_insert_key(dir_attrs,
+						    ucl_object_fromstring(fflags_str),
+						    "fflags", 0, false);
+					}
+					free(fflags_str);
+				}
+#else
+				if (dir->fflags != 0) {
+					ucl_object_insert_key(dir_attrs,
+					    ucl_object_fromint(dir->fflags),
+					    "fflags", 0, false);
+				}
+#endif
 
 				urlencode(dir->path, &tmpsbuf);
 				if (map == NULL)
