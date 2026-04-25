@@ -1415,16 +1415,12 @@ pkg_check_meta(struct stat *st, const char *uname, const char *gname,
 	       char *db_symlink_target, char *fs_symlink_target)
 {
 	unsigned file_status = FILE_OK;
-	uid_t fs_uid;
-	gid_t fs_gid;
 
-	fs_uid = get_uid_from_uname(uname);
-	if (fs_uid != st->st_uid)
+	if (uname != NULL && get_uid_from_uname(uname) != st->st_uid)
 		file_status |= FILE_META_MISMATCH_UNAME;
-	fs_gid = get_gid_from_gname(gname);
-	if (fs_gid != st->st_gid)
+	if (gname != NULL && get_gid_from_gname(gname) != st->st_gid)
 		file_status |= FILE_META_MISMATCH_GNAME;
-	if (perm != (st->st_mode & ~S_IFMT))
+	if (perm != 0 && perm != (st->st_mode & ~S_IFMT))
 		file_status |= FILE_META_MISMATCH_MODE;
 #if defined(HAVE_STRUCT_STAT_ST_FLAGS) && defined(HAVE_FFLAGSTOSTR)
 #ifdef __FreeBSD__
@@ -1437,10 +1433,9 @@ pkg_check_meta(struct stat *st, const char *uname, const char *gname,
 		file_status |= FILE_META_MISMATCH_FFLAGS;
 #endif
 	/* we don't check mtime for directories */
-	if (!S_ISDIR(st->st_mode)) {
-		if (mtime_sec != st->st_mtim.tv_sec)
-			file_status |= FILE_META_MISMATCH_MTIME;
-	}
+	if (mtime_sec > 0 && !S_ISDIR(st->st_mode) &&
+	    mtime_sec != st->st_mtim.tv_sec)
+		file_status |= FILE_META_MISMATCH_MTIME;
 
 	if (S_ISLNK(st->st_mode) != (fs_symlink_target[0] != '\0'))
 		file_status |= FILE_META_MISMATCH_SYMLINK;
