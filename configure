@@ -196,6 +196,8 @@ Usage: configure [options]
 Standard options:
   --prefix=DIR          Installation prefix [/usr/local]
   --exec-prefix=DIR     Executable prefix [PREFIX]
+  --includedir=DIR      Headers [PREFIX/include]
+  --libdir=DIR          Libraries [PREFIX/lib]
   --bindir=DIR          User executables [PREFIX/bin]
   --sbindir=DIR         System executables [PREFIX/sbin]
   --mandir=DIR          Man pages [PREFIX/man]
@@ -244,6 +246,8 @@ apply_args() {
 		case "$_arg" in
 			--prefix=*)      define prefix "${_arg#--prefix=}" ;;
 			--exec-prefix=*) define exec_prefix "${_arg#--exec-prefix=}" ;;
+			--includedir=*)  define includedir "${_arg#--includedir=}" ;;
+			--libdir=*)      define libdir "${_arg#--libdir=}" ;;
 			--bindir=*)      define bindir "${_arg#--bindir=}" ;;
 			--sbindir=*)     define sbindir "${_arg#--sbindir=}" ;;
 			--mandir=*)      define mandir "${_arg#--mandir=}" ;;
@@ -935,6 +939,8 @@ _configure_apply() {
 	define prefix "$_prefix"
 
 	is_defined exec_prefix || define exec_prefix "$_prefix"
+	is_defined includedir  || define includedir "$_prefix/include"
+	is_defined libdir      || define libdir "$_prefix/lib"
 	is_defined bindir      || define bindir "$_prefix/bin"
 	is_defined sbindir     || define sbindir "$_prefix/sbin"
 	is_defined mandir      || define mandir "$_prefix/man"
