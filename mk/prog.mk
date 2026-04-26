@@ -4,6 +4,8 @@ PROGNAME=	$(PROG)$(EXEEXT)
 
 CLEAN_FILES+=	$(PROGNAME) $(OBJS) $(DEPFILES)
 
+.PHONY: all install install-prog distclean
+
 all: $(PROGNAME)
 
 $(PROGNAME): $(OBJS)
