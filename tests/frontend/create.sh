@@ -10,7 +10,8 @@ tests_init \
 	create_from_plist_gather_mode \
 	create_from_plist_set_mode \
 	create_from_plist_mini \
-	create_from_plist_fflags create_from_plist_bad_fflags \
+	create_from_plist_fflags \
+	create_from_plist_bad_fflags \
 	create_from_plist_with_keyword_arguments \
 	create_from_plist_missing_file \
 	create_from_manifest_and_plist \
@@ -457,7 +458,6 @@ files {
         uname = "root";
         gname = "wheel";
         perm = "0644";
-        fflags = 0;
         mtime = ${A_mtime};
     }
 }
@@ -466,7 +466,6 @@ directories {
         uname = "root";
         gname = "wheel";
         perm = "0755";
-        fflags = 0;
     }
 }
 scripts {
@@ -513,7 +512,6 @@ files {
         uname = "root";
         gname = "wheel";
         perm = "0644";
-        fflags = 0;
         mtime = ${testfile_mtime};
     }
 }
@@ -566,7 +564,6 @@ files {
         uname = "root";
         gname = "wheel";
         perm = "0644";
-        fflags = 0;
         symlink_target = "sym-target";
         mtime = ${sym_file_mtime};
     }
@@ -575,7 +572,6 @@ files {
         uname = "root";
         gname = "wheel";
         perm = "0644";
-        fflags = 0;
         mtime = ${test_file_mtime};
     }
 }

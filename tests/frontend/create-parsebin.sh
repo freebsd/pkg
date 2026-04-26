@@ -32,7 +32,6 @@ genmanifest() {
         uname = \"root\";
         gname = \"wheel\";
         perm = \"0644\";
-        fflags = 0;
         mtime = ${file1_mtime};
     }"
 
