@@ -494,7 +494,7 @@ pkg_repo_parse_sigkeys(const char *in, int inlen, pkghash **sc)
 			}
 			if (end - p < sizeof (int)) {
 				pkg_emit_error("truncated reply for signature_fingerprints"
-						"output");
+						" output");
 				free(s);
 				return (EPKG_FATAL);
 			}
@@ -509,7 +509,7 @@ pkg_repo_parse_sigkeys(const char *in, int inlen, pkghash **sc)
 			}
 			if (end - p < len || len <= 0) {
 				pkg_emit_error("truncated reply for signature_fingerprints"
-						"output, wanted %d bytes", len);
+						" output, wanted %d bytes", len);
 				free(s);
 				return (EPKG_FATAL);
 			}
