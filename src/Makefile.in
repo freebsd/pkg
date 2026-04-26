@@ -104,6 +104,9 @@ STATIC_LDFLAGS+=	-lbz2 -lz -llzma @ZSTDLIB@
 
 VPATH=	$(top_srcdir)/src
 
+# These programs go in sbin
+bindir=	$(sbindir)
+
 include $(MK)/prog.mk
 
 @if HAVE_STATIC
@@ -113,6 +116,7 @@ install: install-static
 pkg-static: $(OBJS) $(top_builddir)/libpkg/libpkg_flat.a
 	$(CC) -o $@ $(OBJS) $(STATIC_ARG) $(LDFLAGS) $(STATIC_LDFLAGS)
 
+.PHONY: install-static
 install-static: pkg-static
 	install -d -m 755 $(DESTDIR)$(sbindir)
 	install -m 755 pkg-static $(DESTDIR)$(sbindir)/pkg-static
@@ -121,10 +125,3 @@ install-static: pkg-static
 ${OBJS}: $(top_builddir)/pkg_config.h
 
 $(PROG): $(top_builddir)/libpkg/libpkg_flat.a
-
-install: $(PROG)
-	install -d -m 755 $(DESTDIR)$(sbindir)
-	install -m 755 pkg $(DESTDIR)$(sbindir)/pkg
-	install -d -m 755 $(DESTDIR)$(etcdir)
-	install -m 644 $(top_srcdir)/src/pkg.conf.sample $(DESTDIR)$(etcdir)/
-
