@@ -941,6 +941,7 @@ _configure_apply() {
 	is_defined sysconfdir  || define sysconfdir "$_prefix/etc"
 	is_defined datarootdir || define datarootdir "$_prefix/share"
 	is_defined datadir     || define datadir "$_prefix/share"
+	is_defined pkgconfigdir|| define datadir "$_prefix/libdata/pkgconfig"
 
 	if [ "$_want_help" -eq 1 ]; then
 		show_help

@@ -18,7 +18,7 @@ define PKG_API "$_pkg_api"
 define VERSION "$_version"
 
 options \
-	"pkgconfigdir:WHERE   => path to the directory where to install pc files" \
+	"pkgconfigdir	      => path to the directory where to install pc files" \
 	"with-ldns            => add support for libldns" \
 	"with-libarchive.pc   => build with libarchive via pkg-config" \
 	"with-coverage        => build with llvm coverage support" \
