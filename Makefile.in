@@ -27,10 +27,8 @@ check: all
 @if TESTS
 all: Makefile
 
-$(top_builddir)/Kyuafile: $(top_srcdir)/Kyuafile
+check:
 	test "$(top_srcdir)/Kyuafile" = "$(top_builddir)/Kyuafile" || cp $(top_srcdir)/Kyuafile $(top_builddir)/Kyuafile
-
-check: $(top_builddir)/Kyuafile
 	export UBSAN_OPTIONS=print_stacktrace=1:halt_on_error=1:suppressions=$(top_srcdir)/UndefinedBehaviour.suppress; \
 	export LSAN_OPTIONS=print_suppressions=0:exitcode=0:suppressions=$(top_srcdir)/Leak.suppress; \
 	if [ "$$(uname)" != "FreeBSD" ]; then \
