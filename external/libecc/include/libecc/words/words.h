@@ -55,7 +55,7 @@
  */
 #if defined(__x86_64__) || defined(__i386__) || defined(__ppc64__) || defined(__ppc__) ||\
     defined(__arm__) || defined(__aarch64__) || defined(__mips__) || defined(__s390x__) ||\
-    defined(__SH4__) || defined(__sparc__) || defined(__riscv)
+    defined(__SH4__) || defined(__sparc__) || defined(__riscv) || defined(__powerpc64__)
 #define WORDSIZE 64
 #include "words_64.h"
 #else
