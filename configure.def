@@ -4,9 +4,9 @@
 
 # Version
 _maj_ver=2
-_med_ver=6
+_med_ver=7
 _min_ver=99
-_dev_ver=6
+_dev_ver=1
 _pkg_api=$(( _maj_ver * 1000000 + _med_ver * 1000 + _min_ver ))
 if [ "$_dev_ver" -ne 0 ]; then
 	_version="${_maj_ver}.${_med_ver}.${_min_ver}.${_dev_ver}"

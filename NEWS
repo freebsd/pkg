@@ -1,3 +1,49 @@
+Changes from 2.6.99.6 to 2.7.99.1
+- rcscript: rewrite entirely to be safer
+- triggers: make the per-package trigger per file instead of per directory
+- delete: add -G/--exclude-glob
+- repositories: add enable/disable/reset support
+- vuln: install and upgrade now show if they are about to install vulnerable packages
+- version: add IGNORE_MAJOR to pkg.conf
+- lua: add pkg.exec_capture, a pkg.exec version capturing stdout/stderr
+- autoremove: add -qn for script friendly output
+- fflags: emit in string value and also accept integers
+- info -e: only return 0 if all the packages in the command line exist
+- install: respect -q
+- quiet: do not print messages when quiet is requested
+- query: fix %y/%Y
+- upgrade: don't propose to downgrade to solve a provide/require
+- upgrade: clarify the message when a package is not found
+- upgrade: generalize the more verbose explanation of changes
+- fetch: respect RFC 3986
+- lock: do not error in expected (un)lock state
+- shlibs: also remove ignored shlibs provided from shlibs required
+- backup_libraries: atomic replacement and fully respect rootdir
+- DB: in case of remote db corrupted, destroy it to give a chance to rebuild
+- DB: loudly complain if the DB cannot be opened
+- repo: do not delete repositories in overrides, simply disable them
+- Honor --repository flag for disabled repos as documented
+- rquery: retire %M, it is not in the repository metadata
+- options: remove %Od and %OD, they were never used and populated
+- (r)query: if %{ is encountered, fallback on using directly pkg_printf(3)
+- vital: now explicitly state the SAT solver issues are due to a vital package
+- check: skip missing metadata
+- check: relax privileges requirements
+- check: clarify the error message
+- options: give more explanation on option change
+- search: improve error message and fix multiple JSON formatted results
+- update: show a warning when trying to update a non existent repository
+- fingerprints: fallback on the host to find them when using -r
+- libucl: accept more boolean values
+- Add a periodic script to check for dependencies
+- Declare CheriBSD and CheriABI OS and ABI
+- build: replace autosetup by bbuild
+- update sqlite to 3.53.0
+- libucl: update to latest upstream version
+- libecc: update to latest version
+- plug multiple memory leaks
+- lots of code cleanup
+
 Changes from 2.6.99.5 to 2.6.99.6
 - query: fix empty line output for purely multiline formats breaking poudriere
 - pkg-backup: make the compression configurable
