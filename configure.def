@@ -27,7 +27,7 @@ options \
 	"with-ubsan           => build with Clang UndefinedBehaviorSanitizer (non-prod use)" \
 	"with-tsan            => build with Clang ThreadSanitizer (non-prod use)" \
 	"with-openssl.pc      => build with openssl via pkg-config" \
-	"default-format:txz   => Default compression format: tzst (default), txz, tbz, tar"
+	"default-format:tzst  => Default compression format: tzst (default), txz, tbz, tar"
 
 # Apply command-line arguments now that options are declared
 _configure_apply
