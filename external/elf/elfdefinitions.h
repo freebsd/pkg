@@ -1694,6 +1694,205 @@ _ELF_DEFINE_RELOC(R_MIPS_TLS_TPREL64,		48)	\
 _ELF_DEFINE_RELOC(R_MIPS_TLS_TPREL_HI16,	49)	\
 _ELF_DEFINE_RELOC(R_MIPS_TLS_TPREL_LO16,	50)
 
+#ifdef R_PPC_NONE
+# undef R_PPC_NONE
+#endif
+#ifdef R_PPC_ADDR32
+# undef R_PPC_ADDR32
+#endif
+#ifdef R_PPC_ADDR24
+# undef R_PPC_ADDR24
+#endif
+#ifdef R_PPC_ADDR16
+# undef R_PPC_ADDR16
+#endif
+#ifdef R_PPC_ADDR16_LO
+# undef R_PPC_ADDR16_LO
+#endif
+#ifdef R_PPC_ADDR16_HI
+# undef R_PPC_ADDR16_HI
+#endif
+#ifdef R_PPC_ADDR16_HA
+# undef R_PPC_ADDR16_HA
+#endif
+#ifdef R_PPC_ADDR14
+# undef R_PPC_ADDR14
+#endif
+#ifdef R_PPC_ADDR14_BRTAKEN
+# undef R_PPC_ADDR14_BRTAKEN
+#endif
+#ifdef R_PPC_ADDR14_BRNTAKEN
+# undef R_PPC_ADDR14_BRNTAKEN
+#endif
+#ifdef R_PPC_REL24
+# undef R_PPC_REL24
+#endif
+#ifdef R_PPC_REL14
+# undef R_PPC_REL14
+#endif
+#ifdef R_PPC_REL14_BRTAKEN
+# undef R_PPC_REL14_BRTAKEN
+#endif
+#ifdef R_PPC_REL14_BRNTAKEN
+# undef R_PPC_REL14_BRNTAKEN
+#endif
+#ifdef R_PPC_GOT16
+# undef R_PPC_GOT16
+#endif
+#ifdef R_PPC_GOT16_LO
+# undef R_PPC_GOT16_LO
+#endif
+#ifdef R_PPC_GOT16_HI
+# undef R_PPC_GOT16_HI
+#endif
+#ifdef R_PPC_GOT16_HA
+# undef R_PPC_GOT16_HA
+#endif
+#ifdef R_PPC_PLTREL24
+# undef R_PPC_PLTREL24
+#endif
+#ifdef R_PPC_COPY
+# undef R_PPC_COPY
+#endif
+#ifdef R_PPC_GLOB_DAT
+# undef R_PPC_GLOB_DAT
+#endif
+#ifdef R_PPC_JMP_SLOT
+# undef R_PPC_JMP_SLOT
+#endif
+#ifdef R_PPC_RELATIVE
+# undef R_PPC_RELATIVE
+#endif
+#ifdef R_PPC_LOCAL24PC
+# undef R_PPC_LOCAL24PC
+#endif
+#ifdef R_PPC_UADDR32
+# undef R_PPC_UADDR32
+#endif
+#ifdef R_PPC_UADDR16
+# undef R_PPC_UADDR16
+#endif
+#ifdef R_PPC_REL32
+# undef R_PPC_REL32
+#endif
+#ifdef R_PPC_PLT32
+# undef R_PPC_PLT32
+#endif
+#ifdef R_PPC_PLTREL32
+# undef R_PPC_PLTREL32
+#endif
+#ifdef R_PPC_PLT16_LO
+# undef R_PPC_PLT16_LO
+#endif
+#ifdef R_PPC_PLT16_HI
+# undef R_PPC_PLT16_HI
+#endif
+#ifdef R_PPC_PLT16_HA
+# undef R_PPC_PLT16_HA
+#endif
+#ifdef R_PPC_SDAREL16
+# undef R_PPC_SDAREL16
+#endif
+#ifdef R_PPC_SECTOFF
+# undef R_PPC_SECTOFF
+#endif
+#ifdef R_PPC_SECTOFF_LO
+# undef R_PPC_SECTOFF_LO
+#endif
+#ifdef R_PPC_SECTOFF_HI
+# undef R_PPC_SECTOFF_HI
+#endif
+#ifdef R_PPC_SECTOFF_HA
+# undef R_PPC_SECTOFF_HA
+#endif
+#ifdef R_PPC_TLS
+# undef R_PPC_TLS
+#endif
+#ifdef R_PPC_DTPMOD32
+# undef R_PPC_DTPMOD32
+#endif
+#ifdef R_PPC_TPREL16
+# undef R_PPC_TPREL16
+#endif
+#ifdef R_PPC_TPREL16_LO
+# undef R_PPC_TPREL16_LO
+#endif
+#ifdef R_PPC_TPREL16_HI
+# undef R_PPC_TPREL16_HI
+#endif
+#ifdef R_PPC_TPREL16_HA
+# undef R_PPC_TPREL16_HA
+#endif
+#ifdef R_PPC_TPREL32
+# undef R_PPC_TPREL32
+#endif
+#ifdef R_PPC_DTPREL16
+# undef R_PPC_DTPREL16
+#endif
+#ifdef R_PPC_DTPREL16_LO
+# undef R_PPC_DTPREL16_LO
+#endif
+#ifdef R_PPC_DTPREL16_HI
+# undef R_PPC_DTPREL16_HI
+#endif
+#ifdef R_PPC_DTPREL16_HA
+# undef R_PPC_DTPREL16_HA
+#endif
+#ifdef R_PPC_DTPREL32
+# undef R_PPC_DTPREL32
+#endif
+#ifdef R_PPC_GOT_TLSGD16
+# undef R_PPC_GOT_TLSGD16
+#endif
+#ifdef R_PPC_GOT_TLSGD16_LO
+# undef R_PPC_GOT_TLSGD16_LO
+#endif
+#ifdef R_PPC_GOT_TLSGD16_HI
+# undef R_PPC_GOT_TLSGD16_HI
+#endif
+#ifdef R_PPC_GOT_TLSGD16_HA
+# undef R_PPC_GOT_TLSGD16_HA
+#endif
+#ifdef R_PPC_GOT_TLSLD16
+# undef R_PPC_GOT_TLSLD16
+#endif
+#ifdef R_PPC_GOT_TLSLD16_LO
+# undef R_PPC_GOT_TLSLD16_LO
+#endif
+#ifdef R_PPC_GOT_TLSLD16_HI
+# undef R_PPC_GOT_TLSLD16_HI
+#endif
+#ifdef R_PPC_GOT_TLSLD16_HA
+# undef R_PPC_GOT_TLSLD16_HA
+#endif
+#ifdef R_PPC_GOT_TPREL16
+# undef R_PPC_GOT_TPREL16
+#endif
+#ifdef R_PPC_GOT_TPREL16_LO
+# undef R_PPC_GOT_TPREL16_LO
+#endif
+#ifdef R_PPC_GOT_TPREL16_HI
+# undef R_PPC_GOT_TPREL16_HI
+#endif
+#ifdef R_PPC_GOT_TPREL16_HA
+# undef R_PPC_GOT_TPREL16_HA
+#endif
+#ifdef R_PPC_GOT_DTPREL16
+# undef R_PPC_GOT_DTPREL16
+#endif
+#ifdef R_PPC_GOT_DTPREL16_LO
+# undef R_PPC_GOT_DTPREL16_LO
+#endif
+#ifdef R_PPC_GOT_DTPREL16_HI
+# undef R_PPC_GOT_DTPREL16_HI
+#endif
+#ifdef R_PPC_GOT_DTPREL16_HA
+# undef R_PPC_GOT_DTPREL16_HA
+#endif
+#ifdef R_PPC_NUM
+# undef R_PPC_NUM
+#endif
+
 #define	_ELF_DEFINE_PPC32_RELOCATIONS()		\
 _ELF_DEFINE_RELOC(R_PPC_NONE,		0)	\
 _ELF_DEFINE_RELOC(R_PPC_ADDR32,		1)	\
@@ -1779,6 +1978,355 @@ _ELF_DEFINE_RELOC(R_PPC_EMB_RELST_HI,	113)	\
 _ELF_DEFINE_RELOC(R_PPC_EMB_RELST_HA,	114)	\
 _ELF_DEFINE_RELOC(R_PPC_EMB_BIT_FLD,	115)	\
 _ELF_DEFINE_RELOC(R_PPC_EMB_RELSDA,	116)	\
+
+#ifdef R_PPC64_NONE
+# undef R_PPC64_NONE
+#endif
+#ifdef R_PPC64_ADDR32
+# undef R_PPC64_ADDR32
+#endif
+#ifdef R_PPC64_ADDR24
+# undef R_PPC64_ADDR24
+#endif
+#ifdef R_PPC64_ADDR16
+# undef R_PPC64_ADDR16
+#endif
+#ifdef R_PPC64_ADDR16_LO
+# undef R_PPC64_ADDR16_LO
+#endif
+#ifdef R_PPC64_ADDR16_HI
+# undef R_PPC64_ADDR16_HI
+#endif
+#ifdef R_PPC64_ADDR16_HA
+# undef R_PPC64_ADDR16_HA
+#endif
+#ifdef R_PPC64_ADDR14
+# undef R_PPC64_ADDR14
+#endif
+#ifdef R_PPC64_ADDR14_BRTAKEN
+# undef R_PPC64_ADDR14_BRTAKEN
+#endif
+#ifdef R_PPC64_ADDR14_BRNTAKEN
+# undef R_PPC64_ADDR14_BRNTAKEN
+#endif
+#ifdef R_PPC64_REL24
+# undef R_PPC64_REL24
+#endif
+#ifdef R_PPC64_REL14
+# undef R_PPC64_REL14
+#endif
+#ifdef R_PPC64_REL14_BRTAKEN
+# undef R_PPC64_REL14_BRTAKEN
+#endif
+#ifdef R_PPC64_REL14_BRNTAKEN
+# undef R_PPC64_REL14_BRNTAKEN
+#endif
+#ifdef R_PPC64_GOT16
+# undef R_PPC64_GOT16
+#endif
+#ifdef R_PPC64_GOT16_LO
+# undef R_PPC64_GOT16_LO
+#endif
+#ifdef R_PPC64_GOT16_HI
+# undef R_PPC64_GOT16_HI
+#endif
+#ifdef R_PPC64_GOT16_HA
+# undef R_PPC64_GOT16_HA
+#endif
+#ifdef R_PPC64_COPY
+# undef R_PPC64_COPY
+#endif
+#ifdef R_PPC64_GLOB_DAT
+# undef R_PPC64_GLOB_DAT
+#endif
+#ifdef R_PPC64_JMP_SLOT
+# undef R_PPC64_JMP_SLOT
+#endif
+#ifdef R_PPC64_RELATIVE
+# undef R_PPC64_RELATIVE
+#endif
+#ifdef R_PPC64_UADDR32
+# undef R_PPC64_UADDR32
+#endif
+#ifdef R_PPC64_UADDR16
+# undef R_PPC64_UADDR16
+#endif
+#ifdef R_PPC64_REL32
+# undef R_PPC64_REL32
+#endif
+#ifdef R_PPC64_PLT32
+# undef R_PPC64_PLT32
+#endif
+#ifdef R_PPC64_PLTREL32
+# undef R_PPC64_PLTREL32
+#endif
+#ifdef R_PPC64_PLT16_LO
+# undef R_PPC64_PLT16_LO
+#endif
+#ifdef R_PPC64_PLT16_HI
+# undef R_PPC64_PLT16_HI
+#endif
+#ifdef R_PPC64_PLT16_HA
+# undef R_PPC64_PLT16_HA
+#endif
+#ifdef R_PPC64_SECTOFF
+# undef R_PPC64_SECTOFF
+#endif
+#ifdef R_PPC64_SECTOFF_LO
+# undef R_PPC64_SECTOFF_LO
+#endif
+#ifdef R_PPC64_SECTOFF_HI
+# undef R_PPC64_SECTOFF_HI
+#endif
+#ifdef R_PPC64_SECTOFF_HA
+# undef R_PPC64_SECTOFF_HA
+#endif
+#ifdef R_PPC64_ADDR30
+# undef R_PPC64_ADDR30
+#endif
+#ifdef R_PPC64_ADDR64
+# undef R_PPC64_ADDR64
+#endif
+#ifdef R_PPC64_ADDR16_HIGHER
+# undef R_PPC64_ADDR16_HIGHER
+#endif
+#ifdef R_PPC64_ADDR16_HIGHERA
+# undef R_PPC64_ADDR16_HIGHERA
+#endif
+#ifdef R_PPC64_ADDR16_HIGHEST
+# undef R_PPC64_ADDR16_HIGHEST
+#endif
+#ifdef R_PPC64_ADDR16_HIGHESTA
+# undef R_PPC64_ADDR16_HIGHESTA
+#endif
+#ifdef R_PPC64_UADDR64
+# undef R_PPC64_UADDR64
+#endif
+#ifdef R_PPC64_REL64
+# undef R_PPC64_REL64
+#endif
+#ifdef R_PPC64_PLT64
+# undef R_PPC64_PLT64
+#endif
+#ifdef R_PPC64_PLTREL64
+# undef R_PPC64_PLTREL64
+#endif
+#ifdef R_PPC64_TOC16
+# undef R_PPC64_TOC16
+#endif
+#ifdef R_PPC64_TOC16_LO
+# undef R_PPC64_TOC16_LO
+#endif
+#ifdef R_PPC64_TOC16_HI
+# undef R_PPC64_TOC16_HI
+#endif
+#ifdef R_PPC64_TOC16_HA
+# undef R_PPC64_TOC16_HA
+#endif
+#ifdef R_PPC64_TOC
+# undef R_PPC64_TOC
+#endif
+#ifdef R_PPC64_PLTGOT16
+# undef R_PPC64_PLTGOT16
+#endif
+#ifdef R_PPC64_PLTGOT16_LO
+# undef R_PPC64_PLTGOT16_LO
+#endif
+#ifdef R_PPC64_PLTGOT16_HI
+# undef R_PPC64_PLTGOT16_HI
+#endif
+#ifdef R_PPC64_PLTGOT16_HA
+# undef R_PPC64_PLTGOT16_HA
+#endif
+#ifdef R_PPC64_ADDR16_DS
+# undef R_PPC64_ADDR16_DS
+#endif
+#ifdef R_PPC64_ADDR16_LO_DS
+# undef R_PPC64_ADDR16_LO_DS
+#endif
+#ifdef R_PPC64_GOT16_DS
+# undef R_PPC64_GOT16_DS
+#endif
+#ifdef R_PPC64_GOT16_LO_DS
+# undef R_PPC64_GOT16_LO_DS
+#endif
+#ifdef R_PPC64_PLT16_LO_DS
+# undef R_PPC64_PLT16_LO_DS
+#endif
+#ifdef R_PPC64_SECTOFF_DS
+# undef R_PPC64_SECTOFF_DS
+#endif
+#ifdef R_PPC64_SECTOFF_LO_DS
+# undef R_PPC64_SECTOFF_LO_DS
+#endif
+#ifdef R_PPC64_TOC16_DS
+# undef R_PPC64_TOC16_DS
+#endif
+#ifdef R_PPC64_TOC16_LO_DS
+# undef R_PPC64_TOC16_LO_DS
+#endif
+#ifdef R_PPC64_PLTGOT16_DS
+# undef R_PPC64_PLTGOT16_DS
+#endif
+#ifdef R_PPC64_PLTGOT16_LO_DS
+# undef R_PPC64_PLTGOT16_LO_DS
+#endif
+#ifdef R_PPC64_TLS
+# undef R_PPC64_TLS
+#endif
+#ifdef R_PPC64_DTPMOD64
+# undef R_PPC64_DTPMOD64
+#endif
+#ifdef R_PPC64_TPREL16
+# undef R_PPC64_TPREL16
+#endif
+#ifdef R_PPC64_TPREL16_LO
+# undef R_PPC64_TPREL16_LO
+#endif
+#ifdef R_PPC64_TPREL16_HI
+# undef R_PPC64_TPREL16_HI
+#endif
+#ifdef R_PPC64_TPREL16_HA
+# undef R_PPC64_TPREL16_HA
+#endif
+#ifdef R_PPC64_TPREL64
+# undef R_PPC64_TPREL64
+#endif
+#ifdef R_PPC64_DTPREL16
+# undef R_PPC64_DTPREL16
+#endif
+#ifdef R_PPC64_DTPREL16_LO
+# undef R_PPC64_DTPREL16_LO
+#endif
+#ifdef R_PPC64_DTPREL16_HI
+# undef R_PPC64_DTPREL16_HI
+#endif
+#ifdef R_PPC64_DTPREL16_HA
+# undef R_PPC64_DTPREL16_HA
+#endif
+#ifdef R_PPC64_DTPREL64
+# undef R_PPC64_DTPREL64
+#endif
+#ifdef R_PPC64_GOT_TLSGD16
+# undef R_PPC64_GOT_TLSGD16
+#endif
+#ifdef R_PPC64_GOT_TLSGD16_LO
+# undef R_PPC64_GOT_TLSGD16_LO
+#endif
+#ifdef R_PPC64_GOT_TLSGD16_HI
+# undef R_PPC64_GOT_TLSGD16_HI
+#endif
+#ifdef R_PPC64_GOT_TLSGD16_HA
+# undef R_PPC64_GOT_TLSGD16_HA
+#endif
+#ifdef R_PPC64_GOT_TLSLD16
+# undef R_PPC64_GOT_TLSLD16
+#endif
+#ifdef R_PPC64_GOT_TLSLD16_LO
+# undef R_PPC64_GOT_TLSLD16_LO
+#endif
+#ifdef R_PPC64_GOT_TLSLD16_HI
+# undef R_PPC64_GOT_TLSLD16_HI
+#endif
+#ifdef R_PPC64_GOT_TLSLD16_HA
+# undef R_PPC64_GOT_TLSLD16_HA
+#endif
+#ifdef R_PPC64_GOT_TPREL16_DS
+# undef R_PPC64_GOT_TPREL16_DS
+#endif
+#ifdef R_PPC64_GOT_TPREL16_LO_DS
+# undef R_PPC64_GOT_TPREL16_LO_DS
+#endif
+#ifdef R_PPC64_GOT_TPREL16_HI
+# undef R_PPC64_GOT_TPREL16_HI
+#endif
+#ifdef R_PPC64_GOT_TPREL16_HA
+# undef R_PPC64_GOT_TPREL16_HA
+#endif
+#ifdef R_PPC64_GOT_DTPREL16_DS
+# undef R_PPC64_GOT_DTPREL16_DS
+#endif
+#ifdef R_PPC64_GOT_DTPREL16_LO_DS
+# undef R_PPC64_GOT_DTPREL16_LO_DS
+#endif
+#ifdef R_PPC64_GOT_DTPREL16_HI
+# undef R_PPC64_GOT_DTPREL16_HI
+#endif
+#ifdef R_PPC64_GOT_DTPREL16_HA
+# undef R_PPC64_GOT_DTPREL16_HA
+#endif
+#ifdef R_PPC64_TPREL16_DS
+# undef R_PPC64_TPREL16_DS
+#endif
+#ifdef R_PPC64_TPREL16_LO_DS
+# undef R_PPC64_TPREL16_LO_DS
+#endif
+#ifdef R_PPC64_TPREL16_HIGHER
+# undef R_PPC64_TPREL16_HIGHER
+#endif
+#ifdef R_PPC64_TPREL16_HIGHERA
+# undef R_PPC64_TPREL16_HIGHERA
+#endif
+#ifdef R_PPC64_TPREL16_HIGHEST
+# undef R_PPC64_TPREL16_HIGHEST
+#endif
+#ifdef R_PPC64_TPREL16_HIGHESTA
+# undef R_PPC64_TPREL16_HIGHESTA
+#endif
+#ifdef R_PPC64_DTPREL16_DS
+# undef R_PPC64_DTPREL16_DS
+#endif
+#ifdef R_PPC64_DTPREL16_LO_DS
+# undef R_PPC64_DTPREL16_LO_DS
+#endif
+#ifdef R_PPC64_DTPREL16_HIGHER
+# undef R_PPC64_DTPREL16_HIGHER
+#endif
+#ifdef R_PPC64_DTPREL16_HIGHERA
+# undef R_PPC64_DTPREL16_HIGHERA
+#endif
+#ifdef R_PPC64_DTPREL16_HIGHEST
+# undef R_PPC64_DTPREL16_HIGHEST
+#endif
+#ifdef R_PPC64_DTPREL16_HIGHESTA
+# undef R_PPC64_DTPREL16_HIGHESTA
+#endif
+#ifdef R_PPC64_TLSGD
+# undef R_PPC64_TLSGD
+#endif
+#ifdef R_PPC64_TLSLD
+# undef R_PPC64_TLSLD
+#endif
+#ifdef R_PPC64_TOCSAVE
+# undef R_PPC64_TOCSAVE
+#endif
+#ifdef R_PPC64_REL24_NOTOC
+# undef R_PPC64_REL24_NOTOC
+#endif
+#ifdef R_PPC64_ENTRY
+# undef R_PPC64_ENTRY
+#endif
+#ifdef R_PPC64_PCREL34
+# undef R_PPC64_PCREL34
+#endif
+#ifdef R_PPC64_GOT_PCREL34
+# undef R_PPC64_GOT_PCREL34
+#endif
+#ifdef R_PPC64_REL16
+# undef R_PPC64_REL16
+#endif
+#ifdef R_PPC64_REL16_LO
+# undef R_PPC64_REL16_LO
+#endif
+#ifdef R_PPC64_REL16_HI
+# undef R_PPC64_REL16_HI
+#endif
+#ifdef R_PPC64_REL16_HA
+# undef R_PPC64_REL16_HA
+#endif
+#ifdef R_PPC64_NUM
+# undef R_PPC64_NUM
+#endif
 
 #define	_ELF_DEFINE_PPC64_RELOCATIONS()			\
 _ELF_DEFINE_RELOC(R_PPC64_NONE,			0)	\
