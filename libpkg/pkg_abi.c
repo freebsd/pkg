@@ -539,7 +539,7 @@ pkg_analyse_files(struct pkgdb *db __unused, struct pkg *pkg, const char *stage)
 		struct stat st;
 		if (stage != NULL)
 			snprintf(fpath, sizeof(fpath), "%s/%s", stage,
-			    file->path);
+			    RELATIVE_PATH(file->path));
 		else
 			strlcpy(fpath, file->path, sizeof(fpath));
 
