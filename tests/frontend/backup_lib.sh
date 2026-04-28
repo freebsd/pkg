@@ -9,7 +9,9 @@ tests_init \
 	multiple_upgrade \
 	per_library_packages \
 	per_library_delete \
-	rootdir_default_path
+	rootdir_default_path \
+	missing_library_no_backup \
+	rootdir_check_integrity
 
 basic_body() {
 	atf_skip_on Darwin The macOS linker uses different flags
@@ -588,4 +590,100 @@ EOF
 
 	atf_check -o inline:"${default_path}/libtest.so.1\n" \
 	    pkg -r ${TMPDIR}/target query "%Fp" test-backup-libtest.so.1
+}
+
+# When a library file is listed in the package but has already been removed
+# from the filesystem, no backup package should be created and a notice
+# should be emitted.
+missing_library_no_backup_body()
+{
+	atf_skip_on Darwin The macOS linker uses different flags
+
+	atf_check touch empty.c
+	atf_check cc -shared -Wl,-soname=libgone.so.1 empty.c -o libgone.so.1
+
+	atf_check sh ${RESOURCEDIR}/test_subr.sh new_pkg "test" "test" "1"
+	cat << EOF >> test.ucl
+files: {
+	${TMPDIR}/libgone.so.1: "",
+}
+EOF
+	atf_check pkg create -M test.ucl
+
+	atf_check sh ${RESOURCEDIR}/test_subr.sh new_pkg "test" "test" "2"
+	atf_check pkg create -M test.ucl
+
+	atf_check mkdir ${TMPDIR}/target ${TMPDIR}/reposconf
+
+	atf_check \
+	    pkg -o REPOS_DIR=/dev/null -r ${TMPDIR}/target \
+	        install -qfy ${TMPDIR}/test-1.pkg
+
+	atf_check rm ${TMPDIR}/target/${TMPDIR}/libgone.so.1
+
+	rm test-1.pkg
+	atf_check -o ignore pkg repo .
+	cat <<EOF > ${TMPDIR}/reposconf/repo.conf
+local: {
+	url: file://${TMPDIR},
+	enabled: true
+}
+EOF
+
+	atf_check -o match:"Unable to backup library" \
+	    -e ignore \
+	    pkg -o BACKUP_LIBRARY_PATH=/back/ -o BACKUP_LIBRARIES=true \
+	        -o REPOS_DIR=${TMPDIR}/reposconf -r ${TMPDIR}/target \
+	        upgrade -y
+
+	atf_check -s exit:1 \
+	    pkg -r ${TMPDIR}/target info -e test-backup-libgone.so.1
+}
+
+# Verify that backup libraries created with rootdir pass integrity
+# checks: the path stored in the database must match the actual file
+# location on disk.
+rootdir_check_integrity_body()
+{
+	atf_skip_on Darwin The macOS linker uses different flags
+
+	atf_check touch empty.c
+	atf_check cc -shared -Wl,-soname=libcheck.so.1 empty.c -o libcheck.so.1
+
+	atf_check sh ${RESOURCEDIR}/test_subr.sh new_pkg "test" "test" "1"
+	cat << EOF >> test.ucl
+files: {
+	${TMPDIR}/libcheck.so.1: "",
+}
+EOF
+	atf_check pkg create -M test.ucl
+
+	atf_check sh ${RESOURCEDIR}/test_subr.sh new_pkg "test" "test" "2"
+	atf_check pkg create -M test.ucl
+
+	atf_check mkdir ${TMPDIR}/target ${TMPDIR}/reposconf
+
+	atf_check \
+	    pkg -o REPOS_DIR=/dev/null -r ${TMPDIR}/target \
+	        install -qfy ${TMPDIR}/test-1.pkg
+
+	rm test-1.pkg
+	atf_check -o ignore pkg repo .
+	cat <<EOF > ${TMPDIR}/reposconf/repo.conf
+local: {
+	url: file://${TMPDIR},
+	enabled: true
+}
+EOF
+
+	default_path=$(pkg config BACKUP_LIBRARY_PATH)
+	atf_check -o ignore \
+	    pkg -o BACKUP_LIBRARIES=true \
+	        -o REPOS_DIR=${TMPDIR}/reposconf -r ${TMPDIR}/target \
+	        upgrade -y
+
+	atf_check test -f ${TMPDIR}/target${default_path}/libcheck.so.1
+
+	atf_check \
+	    pkg -r ${TMPDIR}/target check -sq test-backup-libcheck.so.1
 }
