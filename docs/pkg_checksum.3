@@ -1,0 +1,191 @@
+.\"
+.\" SPDX-License-Identifier: BSD-2-Clause
+.\"
+.Dd April 28, 2026
+.Dt PKG_CHECKSUM 3
+.Os
+.Sh NAME
+.Nm pkg_checksum_file ,
+.Nm pkg_checksum_generate_file ,
+.Nm pkg_checksum_validate_file ,
+.Nm pkg_checksum_type_from_string
+.Nd compute and validate file checksums
+.Sh LIBRARY
+.Lb libpkg
+.Sh SYNOPSIS
+.In pkg/checksum.h
+.Ft unsigned char *
+.Fn pkg_checksum_file "const char *path" "pkg_checksum_type_t type"
+.Ft char *
+.Fn pkg_checksum_generate_file "const char *path" "pkg_checksum_type_t type"
+.Ft int
+.Fn pkg_checksum_validate_file "const char *path" "const char *sum"
+.Ft pkg_checksum_type_t
+.Fn pkg_checksum_type_from_string "const char *name"
+.Sh DESCRIPTION
+These functions compute and validate checksums of files.
+Multiple hash algorithms and encodings are supported via the
+.Vt pkg_checksum_type_t
+enumeration.
+.Pp
+.Fn pkg_checksum_file
+computes the checksum of
+.Fa path
+using algorithm
+.Fa type
+and returns the raw encoded hash as a dynamically allocated string.
+The caller must free the returned pointer.
+Returns
+.Dv NULL
+on error.
+.Pp
+.Fn pkg_checksum_generate_file
+is similar to
+.Fn pkg_checksum_file
+but returns the checksum in the portable format
+.Do Ar type_id Ns $ Ns Ar hash Dc ,
+where
+.Ar type_id
+is the numeric value of the
+.Vt pkg_checksum_type_t
+enumeration.
+This format is self-describing: the type can be recovered from the
+string, enabling backward-compatible checksum verification.
+The caller must free the returned pointer.
+Returns
+.Dv NULL
+on error.
+.Pp
+.Fn pkg_checksum_validate_file
+verifies that the checksum of
+.Fa path
+matches
+.Fa sum .
+The
+.Fa sum
+argument may be in the portable format
+.Do Ar type_id Ns $ Ns Ar hash Dc
+or a bare SHA-256 hex string for backward compatibility.
+Returns 0 on success, \-1 on checksum mismatch, or an
+.Xr errno 2
+value if the file cannot be accessed.
+.Pp
+.Fn pkg_checksum_type_from_string
+converts a human-readable type name to the corresponding
+.Vt pkg_checksum_type_t
+value.
+Returns
+.Dv PKG_HASH_TYPE_UNKNOWN
+if the name is not recognized.
+.Sh CHECKSUM TYPES
+The following types are defined in
+.In pkg/checksum.h :
+.Bl -tag -width "PKG_HASH_TYPE_BLAKE2S_BASE32"
+.It Dv PKG_HASH_TYPE_SHA256_HEX
+SHA-256, hexadecimal encoding.
+String name:
+.Qq sha256_hex .
+.It Dv PKG_HASH_TYPE_SHA256_BASE32
+SHA-256, z-base-32 encoding.
+String name:
+.Qq sha256_base32 .
+.It Dv PKG_HASH_TYPE_BLAKE2_BASE32
+BLAKE2b-512, z-base-32 encoding.
+String name:
+.Qq blake2_base32 .
+.It Dv PKG_HASH_TYPE_BLAKE2S_BASE32
+BLAKE2s-256, z-base-32 encoding.
+String name:
+.Qq blake2s_base32 .
+.El
+.Pp
+The raw variants
+.Pq Dv PKG_HASH_TYPE_SHA256_RAW , PKG_HASH_TYPE_BLAKE2_RAW , PKG_HASH_TYPE_BLAKE2S_RAW
+return unencoded binary digests and are intended for internal use.
+.Sh RETURN VALUES
+.Fn pkg_checksum_file
+and
+.Fn pkg_checksum_generate_file
+return a dynamically allocated string on success, or
+.Dv NULL
+on failure.
+.Pp
+.Fn pkg_checksum_validate_file
+returns 0 if the checksum matches, \-1 on mismatch, or a positive
+.Xr errno 2
+value if the file cannot be accessed.
+.Pp
+.Fn pkg_checksum_type_from_string
+returns
+.Dv PKG_HASH_TYPE_UNKNOWN
+if the type name is not recognized.
+.Sh EXAMPLES
+Compute a BLAKE2b checksum with type prefix:
+.Bd -literal -offset indent
+#include <pkg/checksum.h>
+
+char *sum = pkg_checksum_generate_file("/usr/local/bin/curl",
+    PKG_HASH_TYPE_BLAKE2_BASE32);
+/* sum is "2$ybndr..." */
+free(sum);
+.Ed
+.Pp
+Validate a file against a stored checksum:
+.Bd -literal -offset indent
+if (pkg_checksum_validate_file(path, stored_sum) != 0)
+    errx(1, "checksum mismatch");
+.Ed
+.Pp
+Resolve a type name:
+.Bd -literal -offset indent
+pkg_checksum_type_t t = pkg_checksum_type_from_string("blake2_base32");
+.Ed
+.Sh SEE ALSO
+.Xr pkg_create 3 ,
+.Xr pkg_printf 3 ,
+.Xr pkg_repo_create 3 ,
+.Xr pkg_repos 3 ,
+.Xr pkg-keywords 5 ,
+.Xr pkg-lua-script 5 ,
+.Xr pkg-repository 5 ,
+.Xr pkg-script 5 ,
+.Xr pkg-triggers 5 ,
+.Xr pkg.conf 5 ,
+.Xr pkg 8 ,
+.Xr pkg-add 8 ,
+.Xr pkg-alias 8 ,
+.Xr pkg-annotate 8 ,
+.Xr pkg-audit 8 ,
+.Xr pkg-autoremove 8 ,
+.Xr pkg-check 8 ,
+.Xr pkg-checksum 8 ,
+.Xr pkg-clean 8 ,
+.Xr pkg-config 8 ,
+.Xr pkg-create 8 ,
+.Xr pkg-delete 8 ,
+.Xr pkg-fetch 8 ,
+.Xr pkg-help 8 ,
+.Xr pkg-info 8 ,
+.Xr pkg-install 8 ,
+.Xr pkg-key 8 ,
+.Xr pkg-lock 8 ,
+.Xr pkg-plugins 8 ,
+.Xr pkg-query 8 ,
+.Xr pkg-register 8 ,
+.Xr pkg-repo 8 ,
+.Xr pkg-repositories 8 ,
+.Xr pkg-rquery 8 ,
+.Xr pkg-rwhich 8 ,
+.Xr pkg-search 8 ,
+.Xr pkg-set 8 ,
+.Xr pkg-shell 8 ,
+.Xr pkg-shlib 8 ,
+.Xr pkg-ssh 8 ,
+.Xr pkg-stats 8 ,
+.Xr pkg-triggers 8 ,
+.Xr pkg-unregister 8 ,
+.Xr pkg-update 8 ,
+.Xr pkg-updating 8 ,
+.Xr pkg-upgrade 8 ,
+.Xr pkg-version 8 ,
+.Xr pkg-which 8

@@ -1,0 +1,150 @@
+.\"
+.\" SPDX-License-Identifier: BSD-2-Clause
+.\"
+.Dd April 28, 2026
+.Dt PKG-CHECKSUM 8
+.Os
+.Sh NAME
+.Nm "pkg checksum"
+.Nd compute or validate file checksums
+.Sh SYNOPSIS
+.Nm
+.Op Fl q
+.Op Fl t Ar type
+.Ar file ...
+.Nm
+.Op Fl q
+.Fl c Ar hash
+.Ar file ...
+.Sh DESCRIPTION
+.Nm
+computes or validates checksums of files using the same algorithms
+as the
+.Xr pkg 8
+package manager.
+.Pp
+In generation mode (without
+.Fl c ) ,
+a checksum is computed for each
+.Ar file
+and printed to standard output in the format
+.Do Ar type Ns $ Ns Ar hash Dc .
+.Pp
+In validation mode (with
+.Fl c ) ,
+the checksum type is extracted from the provided
+.Ar hash
+and each
+.Ar file
+is verified against it.
+.Sh OPTIONS
+.Bl -tag -width indent
+.It Fl c Ar hash , Fl -check Ar hash
+Validate
+.Ar file
+against the given
+.Ar hash .
+The hash must be in
+.Xr pkg 8
+format
+.Do Ar type Ns $ Ns Ar hash Dc
+or a bare SHA-256 hex string for backward compatibility.
+Reports
+.Dq OK
+or
+.Dq FAILED
+for each file.
+Returns 0 only if all files match.
+.It Fl q , Fl -quiet
+Quiet mode.
+In generation mode, print only the checksum (no filename).
+In validation mode, suppress output; only the exit status indicates
+success or failure.
+.It Fl t Ar type , Fl -type Ar type
+Select the checksum algorithm and encoding.
+The default is
+.Cm blake2_base32 .
+Supported types:
+.Pp
+.Bl -tag -width "blake2s_base32" -compact
+.It Cm sha256_hex
+SHA-256, hexadecimal encoding (64 characters).
+.It Cm sha256_base32
+SHA-256, z-base-32 encoding.
+.It Cm blake2_base32
+BLAKE2b-512, z-base-32 encoding (default).
+.It Cm blake2s_base32
+BLAKE2s-256, z-base-32 encoding.
+.El
+.El
+.Sh EXIT STATUS
+.Ex -std
+In validation mode, a non-zero exit status indicates that at least
+one file did not match the expected checksum.
+.Sh EXAMPLES
+Compute a BLAKE2b checksum:
+.Bd -literal -offset indent
+$ pkg checksum /usr/local/bin/curl
+2$ybndr... (/usr/local/bin/curl)
+.Ed
+.Pp
+Compute a SHA-256 checksum:
+.Bd -literal -offset indent
+$ pkg checksum -t sha256_hex /usr/local/bin/curl
+1$a1b2c3... (/usr/local/bin/curl)
+.Ed
+.Pp
+Validate a file:
+.Bd -literal -offset indent
+$ pkg checksum -c '2$ybndr...' /usr/local/bin/curl
+/usr/local/bin/curl: OK
+.Ed
+.Sh SEE ALSO
+.Xr pkg_checksum 3 ,
+.Xr pkg_create 3 ,
+.Xr pkg_printf 3 ,
+.Xr pkg_repo_create 3 ,
+.Xr pkg_repos 3 ,
+.Xr pkg-keywords 5 ,
+.Xr pkg-lua-script 5 ,
+.Xr pkg-repository 5 ,
+.Xr pkg-script 5 ,
+.Xr pkg-triggers 5 ,
+.Xr pkg.conf 5 ,
+.Xr pkg 8 ,
+.Xr pkg-add 8 ,
+.Xr pkg-alias 8 ,
+.Xr pkg-annotate 8 ,
+.Xr pkg-audit 8 ,
+.Xr pkg-autoremove 8 ,
+.Xr pkg-check 8 ,
+.Xr pkg-clean 8 ,
+.Xr pkg-config 8 ,
+.Xr pkg-create 8 ,
+.Xr pkg-delete 8 ,
+.Xr pkg-fetch 8 ,
+.Xr pkg-help 8 ,
+.Xr pkg-info 8 ,
+.Xr pkg-install 8 ,
+.Xr pkg-key 8 ,
+.Xr pkg-lock 8 ,
+.Xr pkg-plugins 8 ,
+.Xr pkg-query 8 ,
+.Xr pkg-register 8 ,
+.Xr pkg-repo 8 ,
+.Xr pkg-repositories 8 ,
+.Xr pkg-rquery 8 ,
+.Xr pkg-rwhich 8 ,
+.Xr pkg-search 8 ,
+.Xr pkg-set 8 ,
+.Xr pkg-shell 8 ,
+.Xr pkg-shlib 8 ,
+.Xr pkg-ssh 8 ,
+.Xr pkg-stats 8 ,
+.Xr pkg-triggers 8 ,
+.Xr pkg-unregister 8 ,
+.Xr pkg-update 8 ,
+.Xr pkg-updating 8 ,
+.Xr pkg-upgrade 8 ,
+.Xr pkg-version 8 ,
+.Xr pkg-which 8
