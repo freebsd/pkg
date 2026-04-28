@@ -19,6 +19,10 @@ global:
 	pkg_audit_process;
 	pkg_cache_full_clean;
 	pkg_check_files;
+	pkg_checksum_file;
+	pkg_checksum_generate_file;
+	pkg_checksum_type_from_string;
+	pkg_checksum_validate_file;
 	pkg_close_devnull;
 	pkg_compiled_for_same_os_major;
 	pkg_config_dump;
@@ -158,7 +162,6 @@ global:
 	pkg_repo_create_set_output_dir;
 	pkg_repo_create_set_sign;
 	pkg_repo_enabled;
-	pkg_repo_overridden;
 	pkg_repo_fetch_remote_tmp;
 	pkg_repo_find;
 	pkg_repo_fingerprints;
@@ -166,9 +169,10 @@ global:
 	pkg_repo_key;
 	pkg_repo_mirror_type;
 	pkg_repo_name;
+	pkg_repo_overridden;
 	pkg_repo_priority;
-	pkg_repo_ssh_args;
 	pkg_repo_signature_type;
+	pkg_repo_ssh_args;
 	pkg_repo_url;
 	pkg_repos;
 	pkg_repos_activated_count;
@@ -240,12 +244,14 @@ global:
 	pkgdb_query_shlib_require;
 	pkgdb_query_which;
 	pkgdb_release_lock;
+	pkgdb_replace;
 	pkgdb_repo_query;
 	pkgdb_repo_query2;
 	pkgdb_repo_query_cond;
 	pkgdb_repo_query_cond2;
 	pkgdb_repo_search;
 	pkgdb_repo_search2;
+	pkgdb_repo_which;
 	pkgdb_set2;
 	pkgdb_set_case_sensitivity;
 	pkgdb_stats;
