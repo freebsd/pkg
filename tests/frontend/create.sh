@@ -454,7 +454,7 @@ categories [
 ]
 files {
     /A {
-        sum = "1\$e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855";
+        sum = "2\$au4ro5mebesgyd5a7xbmnjj41mr91dbeb8sqwojtgwaxt59dwkgrpxbnt3m7qcpkuenjgnp1qnczrek8e5sebr7siki9gajd69gfq8d";
         uname = "root";
         gname = "wheel";
         perm = "0644";
@@ -508,7 +508,7 @@ categories [
 ]
 files {
     /testfile {
-        sum = "1\$e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855";
+        sum = "2\$au4ro5mebesgyd5a7xbmnjj41mr91dbeb8sqwojtgwaxt59dwkgrpxbnt3m7qcpkuenjgnp1qnczrek8e5sebr7siki9gajd69gfq8d";
         uname = "root";
         gname = "wheel";
         perm = "0644";
@@ -560,7 +560,7 @@ categories [
 ]
 files {
     /sym-file {
-        sum = "1\$a83552cc4e1e92707178239c630b7f05d51124ff2afa7c5595ff4e76cb96cfa4";
+        sum = "2\$4s58ffcfakinh7ahkwx5ksk58ojxubb485btncophmqkh348u4fkomtxh83qbeck4o5qzea5owy9r84m6yn5g5o184s5bgnch1nmkob";
         uname = "root";
         gname = "wheel";
         perm = "0644";
@@ -568,7 +568,7 @@ files {
         mtime = ${sym_file_mtime};
     }
     /testfile {
-        sum = "1\$e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855";
+        sum = "2\$au4ro5mebesgyd5a7xbmnjj41mr91dbeb8sqwojtgwaxt59dwkgrpxbnt3m7qcpkuenjgnp1qnczrek8e5sebr7siki9gajd69gfq8d";
         uname = "root";
         gname = "wheel";
         perm = "0644";

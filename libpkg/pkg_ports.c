@@ -363,7 +363,7 @@ meta_file(struct plist *p, char *line, struct file_attr *a, bool is_config)
 	}
 
 	buf = pkg_checksum_generate_fileat(p->stagefd, RELATIVE_PATH(path),
-	    PKG_HASH_TYPE_SHA256_HEX);
+	    PKG_HASH_TYPE_BLAKE2_BASE32);
 	if (buf == NULL) {
 		return (EPKG_FATAL);
 	}

@@ -121,7 +121,7 @@ pkg_create_from_dir(struct pkg *pkg, const char *root,
 		if (trust_filesystem) {
 			free(file->sum);
 			file->sum = pkg_checksum_generate_file(fpath,
-							       PKG_HASH_TYPE_SHA256_HEX);
+							       PKG_HASH_TYPE_BLAKE2_BASE32);
 			if (file->sum == NULL) {
 				vec_free_and_free(&hardlinks, free);
 				return (EPKG_FATAL);
@@ -388,8 +388,8 @@ hash_file(struct pkg *pkg)
 	/* Find the hash and rename the file and create a symlink */
 	pkg_snprintf(filename, sizeof(filename), "%n-%v.pkg",
 			pkg, pkg);
-	pkg->sum = pkg_checksum_file(filename,
-			PKG_HASH_TYPE_SHA256_HEX);
+	pkg->sum = pkg_checksum_generate_file(filename,
+			PKG_HASH_TYPE_BLAKE2_BASE32);
 	pkg_snprintf(hash_dest, sizeof(hash_dest), "%n-%v-%z.pkg",
 			pkg, pkg, pkg);
 

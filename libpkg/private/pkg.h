@@ -448,16 +448,7 @@ struct pkg_repo_meta_key {
 	char *name;
 };
 
-typedef enum pkg_checksum_type_e {
-	PKG_HASH_TYPE_SHA256_BASE32 = 0,
-	PKG_HASH_TYPE_SHA256_HEX,
-	PKG_HASH_TYPE_BLAKE2_BASE32,
-	PKG_HASH_TYPE_SHA256_RAW,
-	PKG_HASH_TYPE_BLAKE2_RAW,
-	PKG_HASH_TYPE_BLAKE2S_BASE32,
-	PKG_HASH_TYPE_BLAKE2S_RAW,
-	PKG_HASH_TYPE_UNKNOWN
-} pkg_checksum_type_t;
+#include <pkg/checksum.h>
 
 static const char repo_meta_file[] = "meta";
 
@@ -842,25 +833,21 @@ int pkg_checksum_generate(struct pkg *pkg, char *dest, size_t destlen,
 unsigned char * pkg_checksum_data(const unsigned char *in, size_t inlen,
     pkg_checksum_type_t type);
 unsigned char *pkg_checksum_fd(int fd, pkg_checksum_type_t type);
-unsigned char *pkg_checksum_file(const char *path, pkg_checksum_type_t type);
 unsigned char *pkg_checksum_fileat(int fd, const char *path,
     pkg_checksum_type_t type);
 unsigned char *pkg_checksum_symlink(const char *path,
     pkg_checksum_type_t type);
 unsigned char *pkg_checksum_symlinkat(int fd, const char *path,
     pkg_checksum_type_t type);
-int pkg_checksum_validate_file(const char *path, const  char *sum);
 int pkg_checksum_validate_fileat(int fd, const char *path, const  char *sum);
 
 bool pkg_checksum_is_valid(const char *cksum, size_t clen);
 pkg_checksum_type_t pkg_checksum_get_type(const char *cksum, size_t clen);
 pkg_checksum_type_t pkg_checksum_file_get_type(const char *cksum, size_t clen);
-pkg_checksum_type_t pkg_checksum_type_from_string(const char *name);
 const char* pkg_checksum_type_to_string(pkg_checksum_type_t type);
 size_t pkg_checksum_type_size(pkg_checksum_type_t type);
 int pkg_checksum_calculate(struct pkg *pkg, struct pkgdb *db, bool inc_scripts,
     bool inc_version, bool inc_files);
-char *pkg_checksum_generate_file(const char *path, pkg_checksum_type_t type);
 char *pkg_checksum_generate_fileat(int fd, const char *path,
     pkg_checksum_type_t type);
 

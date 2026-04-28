@@ -59,7 +59,7 @@ register_backup(struct pkgdb *db, struct pkg *orig, int fd, const char *libname)
 	int retcode;
 
 	sum = pkg_checksum_generate_fileat(fd, RELATIVE_PATH(libname),
-	    PKG_HASH_TYPE_SHA256_HEX);
+	    PKG_HASH_TYPE_BLAKE2_BASE32);
 
 	(void)xasprintf(&name, "%s-backup-%s", orig->name, libname);
 

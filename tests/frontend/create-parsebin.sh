@@ -10,7 +10,7 @@ genmanifest() {
     shift
     local PKG_FLATSIZE=0
     local PKG_FILES=""
-    local PKG_SHA256=""
+    local PKG_SUM=""
     local NL="
 "
     local hide_provided="$1"
@@ -21,14 +21,14 @@ genmanifest() {
         local file1="${1%#*}"
         local file1_base=$(basename ${file1})
         local file1_size=$(wc -c < ${file1})
-        local file1_sha=$(openssl dgst -sha256 -hex ${file1} | sed -nE 's/.*=[[:space:]]*([[:xdigit:]]+)/\1/p')
+        local file1_sum=$(pkg checksum -q -t blake2_base32 ${file1})
         cp -a ${file1} ${TMPDIR}/${file1_base}
 	file1_mtime=$(q_mtime ${TMPDIR}/${file1_base})
 
         PKG_FILES="${PKG_FILES}/${file1_base}: {perm: 0644}${NL}"
-	PKG_SHA256="${PKG_SHA256}
+	PKG_SUM="${PKG_SUM}
     /${file1_base} {
-        sum = \"1\$${file1_sha}\";
+        sum = \"${file1_sum}\";
         uname = \"root\";
         gname = \"wheel\";
         perm = \"0644\";
@@ -100,7 +100,7 @@ EOF
     fi
 
 	cat << EOF >> ${PKG_NAME}.expected
-files {${PKG_SHA256}
+files {${PKG_SUM}
 }
 EOF
 }

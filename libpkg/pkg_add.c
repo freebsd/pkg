@@ -214,9 +214,20 @@ attempt_to_merge(int rootfd, struct pkg_config_file *rcf, struct pkg *local,
 	lcf_len = strlen(lcf->content);
 	if (sz == lcf_len) {
 		pkg_debug(2, "Ancient vanilla and deployed conf are the same size testing checksum");
-		localsum = pkg_checksum_data(localconf, sz,
-		    PKG_HASH_TYPE_SHA256_HEX);
-		if (localsum != NULL && lf->sum != NULL && STREQ(localsum, lf->sum)) {
+		const char *expected = lf->sum;
+		pkg_checksum_type_t sum_type;
+		sum_type = pkg_checksum_file_get_type(
+		    expected, expected != NULL ? strlen(expected) : 0);
+		if (sum_type == PKG_HASH_TYPE_UNKNOWN) {
+			sum_type = PKG_HASH_TYPE_SHA256_HEX;
+		} else {
+			expected = strchr(expected, '$');
+			if (expected != NULL)
+				expected++;
+		}
+		localsum = pkg_checksum_data(localconf, sz, sum_type);
+		if (localsum != NULL && expected != NULL &&
+		    STREQ(localsum, expected)) {
 			pkg_debug(2, "Checksum are the same %jd", (intmax_t)strlen(localconf));
 			free(localsum);
 			goto ret;
