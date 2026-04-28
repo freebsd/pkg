@@ -173,6 +173,10 @@ void usage_shell(void);
 int exec_version(int, char **);
 void usage_version(void);
 
+/* pkg checksum */
+int exec_checksum(int, char **);
+void usage_checksum(void);
+
 /* pkg which */
 int exec_which(int, char **);
 void usage_which(void);

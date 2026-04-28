@@ -64,6 +64,7 @@ static struct commands {
 	{ "audit", "Reports vulnerable packages", exec_audit, usage_audit},
 	{ "autoremove", "Removes orphan packages", exec_autoremove, usage_autoremove},
 	{ "check", "Checks for missing dependencies and database consistency", exec_check, usage_check},
+	{ "checksum", "Computes or validates file checksums", exec_checksum, usage_checksum},
 	{ "clean", "Cleans old packages from the cache", exec_clean, usage_clean},
 	{ "config", "Display the value of the configuration options", exec_config, usage_config},
 	{ "create", "Creates software package distributions", exec_create, usage_create},

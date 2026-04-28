@@ -210,4 +210,5 @@ install: all pkg.h lib$(LIB)$(LIBSOEXT) lib$(LIB)_flat.a
 	install -m 644 pkg.h $(DESTDIR)$(includedir)/
 	install -m 644 $(top_srcdir)/libpkg/pkg/vec.h $(DESTDIR)$(includedir)/pkg
 	install -m 644 $(top_srcdir)/libpkg/pkg/audit.h $(DESTDIR)$(includedir)/pkg
+	install -m 644 $(top_srcdir)/libpkg/pkg/checksum.h $(DESTDIR)$(includedir)/pkg
 	install -m 644 pkg.pc $(DESTDIR)$(pkgconfigdir)/
