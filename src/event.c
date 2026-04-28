@@ -415,6 +415,8 @@ event_callback(void *data, struct pkg_event *ev)
 	 * we need to add a newline to prevent bad formatting.
 	 */
 	if (progress_started && ev->type != PKG_EVENT_PROGRESS_TICK &&
+	    ev->type != PKG_EVENT_FILE_META_OK &&
+	    ev->type != PKG_EVENT_DIR_META_OK &&
 	    !progress_interrupted) {
 		putchar('\n');
 		progress_interrupted = true;
