@@ -196,6 +196,16 @@
 #define LIBELF_BYTEORDER        ELFDATA2LSB
 #define LIBELF_CLASS            ELFCLASS32
 
+#elif defined(__powerpc64__)
+
+#define LIBELF_ARCH		EM_PPC64
+#if __BYTE_ORDER == __LITTLE_ENDIAN
+#define LIBELF_BYTEORDER	ELFDATA2LSB
+#else
+#define LIBELF_BYTEORDER	ELFDATA2MSB
+#endif
+#define LIBELF_CLASS		ELFCLASS64
+
 #endif
 
 #endif	/* defined(__linux__) */
