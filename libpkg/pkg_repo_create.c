@@ -330,7 +330,7 @@ pkg_create_repo_thread(void *arg)
 		if (pkg_open(&pkg, path, flags) == EPKG_OK) {
 			struct stat st;
 
-			pkg->sum = pkg_checksum_file(path, PKG_HASH_TYPE_SHA256_HEX);
+			pkg->sum = pkg_checksum_generate_file(path, PKG_HASH_TYPE_BLAKE2_BASE32);
 			stat(path, &st);
 			pkg->pkgsize = st.st_size;
 			if (te->meta->hash) {
