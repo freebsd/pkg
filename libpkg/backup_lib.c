@@ -147,7 +147,8 @@ backup_library(struct pkgdb *db, struct pkg *p, const char *path)
 
 	from = openat(p->rootfd, RELATIVE_PATH(path), O_RDONLY);
 	if (from == -1) {
-		pkg_debug(2, "unable to backup %s:%s", path, strerror(errno));
+		pkg_emit_notice("Unable to backup library %s: %s",
+		    path, strerror(errno));
 		return;
 	}
 
