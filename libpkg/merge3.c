@@ -105,7 +105,7 @@ static int sameEdit(
 }
 
 /*
-** Copy N lines of text from from into to.
+** Copy N lines of text from into to.
 ** The return value is the number of characters copied, normally including
 ** the \n and should be used to advance the 'from' pointer.
 **
