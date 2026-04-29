@@ -415,7 +415,7 @@ check_for_hardlink(hardlinks_t *hl, struct stat *st)
  *
  * A package which is valid for installation on any FreeBSD now simply has
  * to define itself as: abi: "FreeBSD" or "FreeBSD:*"
- * A package which is valid for installation on any FreeBSD 15 regarless of
+ * A package which is valid for installation on any FreeBSD 15 regardless of
  * the arch
  * abi: "FreeBSD:15" or "FreeBSD:15:*"
  *

@@ -132,7 +132,7 @@ machoparse_body() {
 			pkg -o IGNORE_OSMAJOR=1 -o ABI_FILE=$(atf_get_srcdir)/${bin} config altabi
 	done
 
-	# explicitely select a fat entry that is not in the ABI_FILE
+	# explicitly select a fat entry that is not in the ABI_FILE
 	_expected="Scanned 2 entries, found none matching selector i386\n"
 	atf_check \
 		-s exit:1 \
@@ -146,7 +146,7 @@ machoparse_body() {
 		-e match:"Unable to determine ABI" \
 		pkg -o IGNORE_OSMAJOR=1 -o ABI_FILE=$(atf_get_srcdir)/macosfat.bin#i386 config altabi
 
-	# explicitely select a fat entry that is not a valid architecture, hence not in the ABI_FILE
+	# explicitly select a fat entry that is not a valid architecture, hence not in the ABI_FILE
 	_expected=""
 	atf_check \
 		-s exit:1 \

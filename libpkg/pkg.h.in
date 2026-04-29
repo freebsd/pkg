@@ -140,8 +140,8 @@ struct pkg_kv {
 typedef vec_t(struct pkg_kv *) pkg_kvl_t;
 
 /**
- * The system-wide pkg(8) status: ie. is it a) installed or otherwise
- * available on the sysem, b) database (local.sqlite) initialised and
+ * The system-wide pkg(8) status: i.e. it is a) installed or otherwise
+ * available on the system, b) database (local.sqlite) initialised and
  * c) has at least one package installed (which should be pkg
  * itself). PKG_STATUS_UNINSTALLED logically cannot be returned by
  * pkg(8) itself, but it can be useful for the pkg bootstrapper
@@ -211,7 +211,7 @@ typedef enum {
 } match_t;
 
 /**
- * Specify on which field the pattern will be matched uppon.
+ * Specify on which field the pattern will be matched upon.
  */
 
 typedef enum {
@@ -249,7 +249,7 @@ typedef enum {
 	 */
 	PKG_REMOTE = (1U << 2),
 	/**
-	 * The pkg refers to a localy installed package.
+	 * The pkg refers to a locally installed package.
 	 */
 	PKG_INSTALLED = (1U << 3),
 	/**
@@ -513,7 +513,7 @@ typedef enum {
 	 */
 	EPKG_UPTODATE,
 	/**
-	 * unkown keyword
+	 * unknown keyword
 	 */
 	EPKG_UNKNOWN,
 	/**
@@ -649,7 +649,7 @@ void pkg_free(struct pkg *);
 int pkg_is_valid(const struct pkg * restrict);
 
 /**
- * Open a package file archive and retrive informations.
+ * Open a package file archive and retrieve informations.
  * @param p A pointer to pkg allocated by pkg_new(), or if it points to a
  * NULL pointer, the function allocate a new pkg using pkg_new().
  * @param path The path to the local package archive.
@@ -936,7 +936,7 @@ void pkgdb_close(struct pkgdb *db);
 void pkgdb_set_case_sensitivity(bool);
 
 /**
- * Query the state of the case sensitity setting.
+ * Query the state of the case sensitivity setting.
  */
 bool pkgdb_case_sensitive(void);
 

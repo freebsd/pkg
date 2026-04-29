@@ -96,7 +96,7 @@ create the package is crontrol activating the reproducible build support.
 
 ## graphviz/dot file visualisation
 
-by running pkg -o DOT\_FILE=something.dot or by exporting the environement
+by running pkg -o DOT\_FILE=something.dot or by exporting the environment
 variable, pkg can generate a dot file allowing to visualise the internal
 dependency tree via graphviz
 
@@ -132,7 +132,7 @@ it may remove during upgrades
 
 It is possible to ask pkg to create a metalog file to keep trace of what files
 are being installed and how they should be packaged (mode, user, group etc)
-usefull when installing in rootdir
+useful when installing in rootdir
 
 ## Provides/Requires
 

@@ -118,7 +118,7 @@ rc_stop(const char *rc_file)
 	if (rc_file == NULL)
 		return (0);
 
-	/* use faststrop to avoid checking if the servie was running */
+	/* use faststop to avoid checking if the service was running */
 	return (service_cmd(rc_file, "faststop"));
 }
 
@@ -128,7 +128,7 @@ rc_stop_with_script(const char *script_path)
 	if (script_path == NULL)
 		return (0);
 
-	/* use faststrop to avoid checking if the servie was running */
+	/* use faststop to avoid checking if the service was running */
 	return (script_cmd(script_path, "faststop"));
 }
 

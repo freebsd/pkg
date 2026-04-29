@@ -1341,8 +1341,8 @@ pkgdb_transaction_rollback(struct pkgdb *db, const char *savepoint)
 
 /* By default, MATCH_EXACT and MATCH_REGEX are case sensitive.  This
  * is modified in many actions according to the value of
- * CASE_SENSITIVE_MATCH in pkg.conf and then possbily reset again in
- * pkg search et al according to command line flags */
+ * CASE_SENSITIVE_MATCH in pkg.conf and then possibly reset again in
+ * pkg search et al. according to command line flags */
 
 void
 pkgdb_set_case_sensitivity(bool case_sensitive)

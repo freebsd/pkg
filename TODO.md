@@ -120,10 +120,10 @@ exec: { type = shell; script: ...}
 
 The exec part is an optional script which could be use to regenerate caches if needed for example
 
-In case pkg 2 pkg have the default symlink then the regular conflict mechanism would be used
-By default pkg priorize user defined default before package defined repo
-if user defined repo to not exists then it switches to the global defaut if in non interactive
-or as the user if in interractives mode
+In case pkg 2 pkg have the default symlink then the regular conflict mechanism would be used.
+By default, pkg prioritizes user-defined defaults before package-defined repos.
+If the user-defined repo do not exist, then it switches to the global default if in non-interactive mode,
+or asks the user if in interactive mode.
 
 # List of "broken builds" in pkg repo metadata
 

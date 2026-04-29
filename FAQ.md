@@ -22,7 +22,7 @@ Table of Contents
 * [How can I use pkgng with portmaster?](#15)
 * [How can I use pkgng with portupgrade?](#16)
 * [pkgng does not work it says: /usr/local/sbin/pkg: Undefined symbol "pkg_event_register"](#17)
-* [Can pkgng cope with parallel installs?  What happpens if I simultaneously (attempt to) install conflicting packages?](#18)
+* [Can pkgng cope with parallel installs?  What happens if I simultaneously (attempt to) install conflicting packages?](#18)
 * [If I use "pkg delete -f", what happens to packages that depended on the forcibly-deleted package?](#19)
 * [What happens if I delete a package where I've modified one of the files managed by the package?](#20)
 * [What facilities does it have for auditing and repairing the package database? (ie checking for inconsistencies between installed files and the content of the package database)?](#21)
@@ -161,7 +161,7 @@ shared library: libpkg.so.0. This has been reverted, this error message means
 that this library is still on your system. Check for and delete /usr/lib/libpkg.so.0.
 
 <a name="18"></a>
-### Q: Can pkgng cope with parallel installs?  What happpens if I simultaneously (attempt to) install conflicting packages?
+### Q: Can pkgng cope with parallel installs?  What happens if I simultaneously (attempt to) install conflicting packages?
 
 No.  Parallel installs will not work -- the first to start will lock the DB, and
 the second won't be able to proceed.

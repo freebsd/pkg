@@ -163,8 +163,8 @@ pkg_script_run(struct pkg * const pkg, pkg_script type, bool upgrade, bool noexe
 			posix_spawn_file_actions_adddup2(&action, cur_pipe[1], 4);
 			posix_spawn_file_actions_addclose(&action, cur_pipe[0]);
 			/*
-			 * consider cur_pipe[1] to probably be the lastest
-			 * opened fd close all unuseful fd up to there
+			 * consider cur_pipe[1] to probably be the latest
+			 * opened fd, close all useless fds up to there
 			 */
 			for (int k = 5; k <= cur_pipe[1]; k++) {
 				if (k != cur_pipe[0] && k != ctx.devnullfd)

@@ -266,7 +266,7 @@ exec_info(int argc, char **argv)
 	argv += optind;
 
 	if (argc == 0 && file == NULL && match != MATCH_ALL) {
-		/* which -O bsd.*.mk always execpt clean output */
+		/* which -O bsd.*.mk always expect clean output */
 		if (origin_search)
 			return (EXIT_SUCCESS);
 		usage_info();

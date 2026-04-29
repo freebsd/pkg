@@ -217,7 +217,7 @@ modifier_opt(const char *optionarg)
 		break;
 	default:
 		usage_search();
-		errx(EXIT_FAILURE, "Unkown modifier option %s", optionarg);
+		errx(EXIT_FAILURE, "Unknown modifier option %s", optionarg);
 		/* NOTREACHED */
 	}
 	return opt;
