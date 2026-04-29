@@ -102,7 +102,7 @@ bool pkg_abi_from_string(struct pkg_abi *abi, const char *string);
 
 /*
  * Return true if the canonical ABI string format for the given OS uses only
- * the major version rather than both the the major and minor version.
+ * the major version rather than both the major and minor version.
  */
 bool pkg_abi_string_only_major_version(enum pkg_os os);
 
