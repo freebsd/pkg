@@ -448,7 +448,7 @@ _pkg_args() {
 			;;
 		(repo)
 			_arguments -A '-*' -s \
-				'(-h --hash)'{-h,--hash}'[Rename repo files with a short hash appeneded]' \
+				'(-h --hash)'{-h,--hash}'[Rename repo files with a short hash appended]' \
 				'(-l --list-files)'{-l,--list-files}'[generate list of all files in repo as filesite.txz archive]' \
 				'(-q --quiet)'{-q,--quiet}'[force quiet output]' \
 				'(-o --output-dir)'{-o+,--output-dir=}'[specify the location of the new repo]:repo location:_files -/' \

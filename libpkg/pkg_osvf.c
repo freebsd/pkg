@@ -1051,7 +1051,7 @@ pkg_osvf_parse_reference(struct pkg_audit_reference *ref, const ucl_object_t *re
 	}
 
 	/*
-	   Parses refrence to struct
+	   Parses reference to struct
 	   {
 	     "type": "ADVISORY",
 	     "url": "https://www.freebsd.org/"
@@ -1077,7 +1077,7 @@ pkg_osvf_parse_references(struct pkg_audit_entry *entry, const ucl_object_t *ref
 	}
 
 	/*
-	   Parses refereces array to linked list
+	   Parses references array to linked list
 	   "references": [
 	     {
 	       "type": "ADVISORY",
@@ -1214,7 +1214,7 @@ pkg_osvf_print_version_type(struct pkg_audit_versions_range *versions)
 		printf("UNKNOWN\n");
 		break;
 	case OSVF_EVENT_VERSION_SEMVER:
-		printf("Sematic Version 2.0\n");
+		printf("Semantic Version 2.0\n");
 		break;
 	case OSVF_EVENT_VERSION_ECOSYSTEM:
 		printf("Ecosystem\n");

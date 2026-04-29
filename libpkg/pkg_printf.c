@@ -2329,7 +2329,7 @@ mode_val(xstring *buf, mode_t mode, struct percent_esc *p)
 {
 	/*
          * Print mode as an octal integer '%o' by default.
-	 * PP_ALTERNATE_FORM2 generates '%#o' pased to regular
+	 * PP_ALTERNATE_FORM2 generates '%#o' passed to regular
 	 * printf(). PP_ALTERNATE_FORM1 will generate 'drwxr-x--- '
 	 * style from strmode(3).
 	 */

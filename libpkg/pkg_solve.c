@@ -452,7 +452,7 @@ pkg_solve_add_conflict_rule(struct pkg_solve_problem *problem,
 	LL_FOREACH(confvar, curvar) {
 		other = curvar->unit->pkg;
 		if (conflict->type == PKG_CONFLICT_REMOTE_LOCAL) {
-			/* Skip unappropriate packages */
+			/* Skip inappropriate packages */
 			if (pkg->type == PKG_INSTALLED) {
 				if (other->type == PKG_INSTALLED)
 					continue;

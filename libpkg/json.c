@@ -33,7 +33,7 @@ jsmntok_nextchild(jsmntok_t *tok, int tokcount, int parent, int me)
 	for (int i = me + 1; i < tokcount; i++) {
 		if ((tok + i)->parent == parent)
 			return (i);
-		/* skip all the objet child, useful if this is an array
+		/* skip all the object children, useful if this is an array
 		 * or an object
 		 */
 		i += (tok + i)->size;

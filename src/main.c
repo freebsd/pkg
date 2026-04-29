@@ -385,7 +385,7 @@ start_process_worker(char *const *save_argv)
 
 	/* Fork off a child process to do the actual package work.
 	 * The child may be jailed or chrooted.  If a restart is required
-	 * (eg. pkg(8) inself was upgraded) the child can exit with
+	 * (eg. pkg(8) itself was upgraded) the child can exit with
 	 * 'EX_NEEDRESTART' and the same forking process will be
 	 * replayed.  This function returns control in the child
 	 * process only. */
@@ -472,7 +472,7 @@ expand_aliases(int argc, char ***argv)
 	/* Estimate how many args alias_value will split into by
 	 * counting the number of whitespace characters in it. This
 	 * will be at minimum one less than the final argc. We'll be
-	 * consuming one of the orginal argv, so that balances
+	 * consuming one of the original argv, so that balances
 	 * out. */
 
 	spaces = pkg_utils_count_spaces(alias_value);

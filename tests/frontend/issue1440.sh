@@ -9,7 +9,7 @@
 #    - pkgC
 #      - pkgD
 #1. Two repos (repoA and repoB) with same set of packages. pkgA for repoA and repoB have different options set.
-#   repoB has prio 100, so all packages must be prefered from this one.
+#   repoB has prio 100, so all packages must be preferred from this one.
 #2. On upgrade pkg wants to reinstall pkgA due options changed from repoA which is wrong.
 
 tests_init \

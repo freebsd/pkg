@@ -444,7 +444,7 @@ _pkg () {
 		'-r[Root directory] -/'
 		'-m[Manifest directory] -/'
 		'-f[format]'
-		'-o[Ouput directory] -/'
+		'-o[Output directory] -/'
 		'(-g -x -X)-a[Process all packages]'
 		'(-x -X -a)-g[Process packages that match the glob pattern]'
 		'(-g -X -a)-x[Process packages that match the regex pattern]'
@@ -530,7 +530,7 @@ _pkg () {
 		'(-g -x -a -F -e)-X[Process packages that match the extended regex pattern]'
 		'(-g -x -X -a -F)-e[Process packages that match the evaluation]'
 		'(-g -x -X -a -e)-F[Process the specified package]'
-		':Ouput format:'
+		':Output format:'
 	    )
 	    return 0 
 	    ;;

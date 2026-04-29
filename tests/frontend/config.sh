@@ -149,8 +149,8 @@ EOF
 
 nameserver_body()
 {
-	atf_skip_on Darwin Not possible to inject a namserver on OSX
-	atf_skip_on Linux Not possible to inject a namserver on OSX
+	atf_skip_on Darwin Not possible to inject a nameserver on OSX
+	atf_skip_on Linux Not possible to inject a nameserver on OSX
 
 	atf_check \
 		-o inline:"\n" \

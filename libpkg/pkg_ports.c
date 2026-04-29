@@ -1010,7 +1010,7 @@ plist_parse_line(struct plist *plist, char *line)
 		buf = line;
 		strlcpy(plist->last_file, buf, sizeof(plist->last_file));
 
-		/* remove spaces at the begining and at the end */
+		/* remove spaces at the beginning and at the end */
 		while (isspace(buf[0]))
 			buf++;
 

@@ -15,7 +15,7 @@
 /**
  * Routines to support pkg_abi.c functions when dealing with Mach-O files.
  * Supports getting struct pkg_abi from the binary's load commands.
- * Supports getting shared libary information (needed, provided & loader).
+ * Supports getting shared library information (needed, provided & loader).
  * Picks right binary in Universal binary based on ABI.
  */
 

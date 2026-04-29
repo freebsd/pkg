@@ -7,9 +7,9 @@
 # - pkgB
 #    - pkgC
 #      - pkgD
-#1. Two repos (repoA and repoB) with same set of packages. repoB last in the list, so all packages must be prefered from this one.
-#2. On upgrade we must stick to same repo
-#3. Two repos (repoA and repoB) with same set of packages. repoA has a higher priority, so all packages must be prefered from this one.
+#1. Two repos (repoA and repoB) with same set of packages. repoB last in the list, so all packages must be preferred from this one.
+#2. On upgrade we must stick to same repo.
+#3. Two repos (repoA and repoB) with same set of packages. repoA has a higher priority, so all packages must be preferred from this one.
 
 tests_init \
         issue1425
