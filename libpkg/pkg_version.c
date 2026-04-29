@@ -57,7 +57,7 @@ split_version(const char *pkgname, const char **endname,
 		return (NULL);
 	}
 
-	/* Look for the last '-' the the pkgname */
+	/* Look for the last '-' in the pkgname */
 	ch = strrchr(pkgname, '-');
 	/* Cheat if we are just passed a version, not a valid package name */
 	versionstr = ch ? ch + 1 : pkgname;
