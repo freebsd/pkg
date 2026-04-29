@@ -1,3 +1,10 @@
+Changes from 2.7.4 to 2.7.5
+- backup lib: loudly complain if a library is not in filesystem but in plist
+- backup lib: fix with rootdir
+- progress: avoid useless newlines
+- config: accept more boolean types
+- fix fflags support
+
 Changes from 2.7.3 to 2.7.4
 - query: fix %y/%Y
 - repo: do not delete repositories in overrides, simply disable them
