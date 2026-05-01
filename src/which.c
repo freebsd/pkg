@@ -139,10 +139,7 @@ exec_which(int argc, char **argv)
 				savedpath=p;
 				for (;;) {
 					res = get_match(&match, &p, argv[0]);
-					if (res == EXIT_FAILURE) {
-						printf("%s was not found in PATH, falling back to non-search behaviour\n", argv[0]);
-						search = false;
-					} else {
+					if (res == EXIT_SUCCESS) {
 						pkg_absolutepath(match, pathabs, sizeof(pathabs), false);
 						/* ensure not not append twice an entry if PATH is messy */
 						if (already_in_list(&patterns, pathabs))
@@ -154,6 +151,12 @@ exec_which(int argc, char **argv)
 					if (p == NULL)
 						break;
 				}
+
+				if (vec_len(&patterns) == 0) {
+					printf("%s was not found in PATH, falling back to non-search behaviour\n", argv[0]);
+					search = false;
+				}
+
 				free(savedpath);
 			}
 		}
@@ -233,7 +236,6 @@ get_match(char **pathabs, char **path, char *filename)
 {
 	char candidate[PATH_MAX];
 	const char *d;
-	int len;
 
 	while ((d = strsep(path, ":")) != NULL) {
 		if (snprintf(candidate, sizeof(candidate), "%s/%s", d,
