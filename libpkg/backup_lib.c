@@ -39,7 +39,8 @@ backup_library_relative_path(void)
 
 	if (ctx.pkg_rootdir != NULL) {
 		size_t rootlen = strlen(ctx.pkg_rootdir);
-		if (strncmp(path, ctx.pkg_rootdir, rootlen) == 0)
+		if (strncmp(path, ctx.pkg_rootdir, rootlen) == 0 &&
+		    (path[rootlen] == '/' || path[rootlen] == '\0'))
 			path += rootlen;
 	}
 	return (path);
@@ -55,7 +56,6 @@ register_backup(struct pkgdb *db, struct pkg *orig, int fd, const char *libname)
 	char *lpath, *name, *sum;
 	struct pkg_file *f;
 	struct stat st;
-	pkghash_entry *e;
 	int retcode;
 
 	sum = pkg_checksum_generate_fileat(fd, RELATIVE_PATH(libname),
@@ -100,10 +100,19 @@ register_backup(struct pkgdb *db, struct pkg *orig, int fd, const char *libname)
 		free(name);
 		name = NULL;
 	}
-	if ((e = pkghash_get(pkg->filehash, libname)) != NULL) {
-		DL_DELETE(pkg->files, (struct pkg_file *)e->value);
-		pkg_file_free(e->value);
-		pkghash_del(pkg->filehash, libname);
+	/* Remove any existing file entry for this library.  The filehash
+	 * is keyed by full path which may differ between pkg versions
+	 * (e.g. older versions included rootdir in the path), so match
+	 * by the trailing library name rather than the full key. */
+	f = NULL;
+	while (pkg_files(pkg, &f) == EPKG_OK) {
+		const char *fname = strrchr(f->path, '/');
+		if (fname != NULL && strcmp(fname + 1, libname) == 0) {
+			pkghash_del(pkg->filehash, f->path);
+			DL_DELETE(pkg->files, f);
+			pkg_file_free(f);
+			break;
+		}
 	}
 	xasprintf(&lpath, "%s/%s", backup_library_relative_path(), libname);
 	pkg_addfile(pkg, lpath, sum, false);

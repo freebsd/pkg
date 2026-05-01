@@ -11,7 +11,9 @@ tests_init \
 	per_library_delete \
 	rootdir_default_path \
 	missing_library_no_backup \
-	rootdir_check_integrity
+	rootdir_check_integrity \
+	rootdir_slash_override_path \
+	re_upgrade_file_cleanup
 
 basic_body() {
 	atf_skip_on Darwin The macOS linker uses different flags
@@ -686,4 +688,167 @@ EOF
 
 	atf_check \
 	    pkg -r ${TMPDIR}/target check -sq test-backup-libcheck.so.1
+}
+
+# Verify that overriding BACKUP_LIBRARY_PATH when using rootdir="/"
+# does not produce broken relative paths.  This is a regression test for
+# a bug where backup_library_relative_path() would strip the leading "/"
+# from a user-supplied absolute path when rootdir was "/", making it
+# relative and causing CWD to leak into the stored file path.
+rootdir_slash_override_path_body()
+{
+	atf_skip_on Darwin The macOS linker uses different flags
+
+	atf_check touch empty.c
+	atf_check cc -shared -Wl,-soname=libslash.so.1 empty.c -o libslash.so.1
+
+	atf_check sh ${RESOURCEDIR}/test_subr.sh new_pkg "test" "test" "1"
+	cat << EOF >> test.ucl
+files: {
+	${TMPDIR}/libslash.so.1: "",
+}
+EOF
+	atf_check pkg create -M test.ucl
+
+	atf_check sh ${RESOURCEDIR}/test_subr.sh new_pkg "test" "test" "2"
+	atf_check pkg create -M test.ucl
+
+	atf_check mkdir ${TMPDIR}/target ${TMPDIR}/reposconf
+
+	atf_check \
+	    pkg -o REPOS_DIR=/dev/null -r ${TMPDIR}/target \
+	        install -qfy ${TMPDIR}/test-1.pkg
+
+	rm test-1.pkg
+	atf_check -o ignore pkg repo .
+	cat <<EOF > ${TMPDIR}/reposconf/repo.conf
+local: {
+	url: file://${TMPDIR},
+	enabled: true
+}
+EOF
+
+	atf_check -o ignore \
+	    pkg -o BACKUP_LIBRARIES=true \
+	        -o BACKUP_LIBRARY_PATH=/back \
+	        -o REPOS_DIR=${TMPDIR}/reposconf -r ${TMPDIR}/target \
+	        upgrade -y
+
+	atf_check test -f ${TMPDIR}/target/back/libslash.so.1
+
+	# The stored file path must be absolute, not relative
+	atf_check -o inline:"/back/libslash.so.1\n" \
+	    pkg -r ${TMPDIR}/target query "%Fp" test-backup-libslash.so.1
+
+	atf_check \
+	    pkg -r ${TMPDIR}/target check -sq test-backup-libslash.so.1
+}
+
+# Verify that upgrading a library multiple times properly cleans up old
+# file entries in the backup package.  Before the fix, the filehash
+# lookup used the bare library name instead of the full path, so old
+# entries were never removed and accumulated across upgrades.
+re_upgrade_file_cleanup_body()
+{
+	atf_skip_on Darwin The macOS linker uses different flags
+
+	atf_check touch empty.c
+	atf_check cc -shared -Wl,-soname=libclean.so.1 empty.c -o libclean.so.1
+
+	# v1: has the library
+	atf_check sh ${RESOURCEDIR}/test_subr.sh new_pkg "test" "test" "1"
+	cat << EOF >> test.ucl
+files: {
+	${TMPDIR}/libclean.so.1: "",
+}
+EOF
+	atf_check pkg create -M test.ucl
+
+	# v2: drops the library (triggers backup on v1->v2)
+	atf_check sh ${RESOURCEDIR}/test_subr.sh new_pkg "test" "test" "2"
+	atf_check pkg create -M test.ucl
+
+	# v3: restores the library
+	atf_check sh ${RESOURCEDIR}/test_subr.sh new_pkg "test" "test" "3"
+	cat << EOF >> test.ucl
+files: {
+	${TMPDIR}/libclean.so.1: "",
+}
+EOF
+	atf_check pkg create -M test.ucl
+
+	# v4: drops the library again (triggers re-backup on v3->v4)
+	atf_check sh ${RESOURCEDIR}/test_subr.sh new_pkg "test" "test" "4"
+	atf_check pkg create -M test.ucl
+
+	atf_check mkdir ${TMPDIR}/target ${TMPDIR}/reposconf
+
+	# Install version 1
+	atf_check \
+	    pkg -o REPOS_DIR=/dev/null -r ${TMPDIR}/target \
+	        install -qfy ${TMPDIR}/test-1.pkg
+
+	# Set up repo with version 2
+	rm test-1.pkg test-3.pkg test-4.pkg
+	atf_check -o ignore pkg repo .
+	cat <<EOF > ${TMPDIR}/reposconf/repo.conf
+local: {
+	url: file://${TMPDIR},
+	enabled: true
+}
+EOF
+
+	# Upgrade 1->2: library gets backed up for the first time
+	atf_check -o ignore \
+	    pkg -o BACKUP_LIBRARY_PATH=/back/ -o BACKUP_LIBRARIES=true \
+	        -o REPOS_DIR=${TMPDIR}/reposconf -r ${TMPDIR}/target \
+	        upgrade -y
+
+	atf_check -o inline:"/back/libclean.so.1\n" \
+	    pkg -r ${TMPDIR}/target query "%Fp" test-backup-libclean.so.1
+
+	# Now set up repo with version 3 (library returns)
+	rm test-2.pkg
+	atf_check sh ${RESOURCEDIR}/test_subr.sh new_pkg "test" "test" "3"
+	cat << EOF >> test.ucl
+files: {
+	${TMPDIR}/libclean.so.1: "",
+}
+EOF
+	atf_check pkg create -M test.ucl
+	atf_check -o ignore pkg repo .
+
+	atf_check -o ignore \
+	    pkg -o BACKUP_LIBRARY_PATH=/back/ -o BACKUP_LIBRARIES=true \
+	        -o REPOS_DIR=${TMPDIR}/reposconf -r ${TMPDIR}/target \
+	        update -f
+
+	# Upgrade 2->3: library returns, no backup needed
+	atf_check -o ignore \
+	    pkg -o BACKUP_LIBRARY_PATH=/back/ -o BACKUP_LIBRARIES=true \
+	        -o REPOS_DIR=${TMPDIR}/reposconf -r ${TMPDIR}/target \
+	        upgrade -y
+
+	# Now set up repo with version 4 (library dropped again)
+	rm test-3.pkg
+	atf_check sh ${RESOURCEDIR}/test_subr.sh new_pkg "test" "test" "4"
+	atf_check pkg create -M test.ucl
+	atf_check -o ignore pkg repo .
+
+	atf_check -o ignore \
+	    pkg -o BACKUP_LIBRARY_PATH=/back/ -o BACKUP_LIBRARIES=true \
+	        -o REPOS_DIR=${TMPDIR}/reposconf -r ${TMPDIR}/target \
+	        update -f
+
+	# Upgrade 3->4: library backed up again; the existing backup
+	# package from the v1->v2 upgrade should have its old file entry
+	# replaced, NOT accumulated.
+	atf_check -o ignore -e ignore \
+	    pkg -o BACKUP_LIBRARY_PATH=/back/ -o BACKUP_LIBRARIES=true \
+	        -o REPOS_DIR=${TMPDIR}/reposconf -r ${TMPDIR}/target \
+	        upgrade -y
+
+	# The backup package must have exactly ONE file, not two
+	atf_check -o inline:"/back/libclean.so.1\n" \
+	    pkg -r ${TMPDIR}/target query "%Fp" test-backup-libclean.so.1
 }
