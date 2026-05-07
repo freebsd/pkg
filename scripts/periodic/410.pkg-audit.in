@@ -50,7 +50,7 @@ fi
 # Compute PKG_DBDIR from the config file.
 pkgcmd=%prefix%/sbin/pkg
 PKG_DBDIR=`${pkgcmd} config PKG_DBDIR`
-auditfile="${PKG_DBDIR}/vuln.xml"
+auditfile="${PKG_DBDIR}/freebsd-osv.json"
 
 audit_pkgs() {
 	local pkgargs="$1"
