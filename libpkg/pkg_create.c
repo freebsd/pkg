@@ -570,6 +570,7 @@ load_metadata(struct pkg *pkg, const char *metadata, const char *plist,
 	}
 
 	if (plist != NULL && ports_parse_plist(pkg, plist, rootdir) != EPKG_OK) {
+		close(fd);
 		return (EPKG_FATAL);
 	}
 	close(fd);
