@@ -238,9 +238,7 @@ query_select(const char *msg, const char **opts, int ncnt, int deft)
 	}
 	i = (int) strtoul(str, &endpntr, 10);
 
-	if (endpntr == NULL || *endpntr == '\0') {
-		i = deft;
-	} else if (*endpntr == '\n' || *endpntr == '\r') {
+	if (*endpntr == '\0' || *endpntr == '\n' || *endpntr == '\r') {
 		if (i > ncnt || i < 1)
 			i = deft;
 	} else
