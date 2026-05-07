@@ -1582,7 +1582,8 @@ pkg_add_common(struct pkgdb *db, const char *path, unsigned flags,
 
 	if (pkg_is_valid(pkg) != EPKG_OK) {
 		pkg_emit_error("the package is not valid");
-		return (EPKG_FATAL);
+		retcode = EPKG_FATAL;
+		goto cleanup;
 	}
 
 	if (flags & PKG_ADD_AUTOMATIC)
