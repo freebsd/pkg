@@ -1929,16 +1929,18 @@ pkg_jobs_solve(struct pkg_jobs *j)
 	}
 
 	if (j->solved && !j->need_fetch && j->type != PKG_JOBS_FETCH) {
-		int rc;
+		int rc, max_attempts = 100;
 		bool has_conflicts = false;
+
 		do {
 			j->conflicts_registered = 0;
 			rc = pkg_jobs_check_conflicts(j);
 			if (rc == EPKG_CONFLICT) {
-				/* Cleanup results */
 				vec_free_and_free(&j->jobs, free);
 				has_conflicts = true;
-				pkg_jobs_solve(j);
+				ret = pkg_jobs_solve(j);
+				if (ret != EPKG_OK || --max_attempts <= 0)
+					break;
 			}
 			else if (rc == EPKG_OK && !has_conflicts) {
 				break;
