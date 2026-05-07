@@ -218,11 +218,9 @@ exec_help(int argc, char **argv)
 
 	for (i = 0; i < cmd_len; i++) {
 		if (STREQ(cmd[i].name, argv[1])) {
-			xasprintf(&manpage, "/usr/bin/man pkg-%s", cmd[i].name);
-			system(manpage);
-			free(manpage);
-
-			return (0);
+			xasprintf(&manpage, "pkg-%s", cmd[i].name);
+			execlp("/usr/bin/man", "man", manpage, NULL);
+			err(EXIT_FAILURE, "execlp(/usr/bin/man)");
 		}
 	}
 
@@ -239,11 +237,11 @@ exec_help(int argc, char **argv)
 	}
 
 	if (STREQ(argv[1], "pkg")) {
-		system("/usr/bin/man 8 pkg");
-		return (0);
+		execlp("/usr/bin/man", "man", "8", "pkg", NULL);
+		err(EXIT_FAILURE, "execlp(/usr/bin/man)");
 	} else if (STREQ(argv[1], "pkg.conf")) {
-		system("/usr/bin/man 5 pkg.conf");
-		return (0);
+		execlp("/usr/bin/man", "man", "5", "pkg.conf", NULL);
+		err(EXIT_FAILURE, "execlp(/usr/bin/man)");
 	}
 
 	/* Try aliases */
