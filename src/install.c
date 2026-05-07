@@ -168,6 +168,7 @@ exec_install(int argc, char **argv)
 			break;
 		default:
 			usage_install();
+			vec_free(&reponames);
 			return (EXIT_FAILURE);
 		}
 	}
@@ -176,6 +177,7 @@ exec_install(int argc, char **argv)
 
 	if (argc < 1) {
 		usage_install();
+		vec_free(&reponames);
 		return (EXIT_FAILURE);
 	}
 
@@ -201,22 +203,31 @@ exec_install(int argc, char **argv)
 
 	if (retcode == EPKG_ENOACCESS) {
 		warnx("Insufficient privileges to install packages");
+		vec_free(&reponames);
 		return (EXIT_FAILURE);
-	} else if (retcode != EPKG_OK)
+	} else if (retcode != EPKG_OK) {
+		vec_free(&reponames);
 		return (EXIT_FAILURE);
+	}
 
 	/* first update the remote repositories if needed */
 	if (auto_update && pkg_repos_total_count() > 0 &&
-	    (updcode = pkgcli_update(false, false, &reponames)) != EPKG_OK)
+	    (updcode = pkgcli_update(false, false, &reponames)) != EPKG_OK) {
+		vec_free(&reponames);
 		return (updcode);
+	}
 
 	if (pkgdb_open_all2(&db,
 	    local_only ? PKGDB_DEFAULT : PKGDB_MAYBE_REMOTE,
-	    &reponames) != EPKG_OK)
+	    &reponames) != EPKG_OK) {
+		vec_free(&reponames);
 		return (EXIT_FAILURE);
+	}
 
-	if (!pkgdb_lock_or_fail(db, lock_type))
+	if (!pkgdb_lock_or_fail(db, lock_type)) {
+		vec_free(&reponames);
 		return (EXIT_FAILURE);
+	}
 
 	status = EXIT_FAILURE;
 	if (pkg_jobs_new(&jobs, PKG_JOBS_INSTALL, db) != EPKG_OK)
