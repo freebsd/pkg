@@ -1270,8 +1270,10 @@ run_transaction(sqlite3 *sqlite, const char *query, const char *savepoint)
 
 	xasprintf(&sql, "%s %s", query, savepoint != NULL ? savepoint : "");
 	stmt = prepare_sql(sqlite, sql);
-	if (stmt == NULL)
+	if (stmt == NULL) {
+		free(sql);
 		return (EPKG_FATAL);
+	}
 	pkgdb_debug(4, stmt);
 
 	PKGDB_SQLITE_RETRY_ON_BUSY(ret)
