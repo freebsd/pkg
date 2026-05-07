@@ -2075,28 +2075,6 @@ cleanup:
 	return (retcode);
 }
 
-/*static bool
-belong_to_self(struct pkg_add_context *context, const char *path)
-{
-	struct pkgdb_it *it = NULL;
-	struct pkg *p = NULL;
-	if (context->db != NULL && (it = pkgdb_query_which(context->db, path, false)) != NULL) {
-		if (pkgdb_it_next(it, &p, PKG_LOAD_BASIC) != EPKG_OK) {
-			pkgdb_it_free(it);
-			fprintf(stderr, "mais non\n");
-			return (false);
-		}
-		pkgdb_it_free(it);
-		if (STREQ(p->uid, context->pkg->uid)) {
-			pkg_free(p);
-			fprintf(stderr, "mais oui\n");
-			return (true);
-		}
-		pkg_free(p);
-	}
-	fprintf(stderr, "mais nope\n");
-	return (false);
-}*/
 
 struct tempdir *
 open_tempdir(struct pkg_add_context *context, const char *path)
