@@ -4,6 +4,8 @@ DIRS=	external compat libpkg/repo libpkg src docs scripts
 DIRS+=	tests
 @endif
 
+DISTNAME=	$(PACKAGE_NAME)-$(VERSION)
+
 include $(MK)/dir.mk
 include $(MK)/common.mk
 
