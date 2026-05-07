@@ -1025,7 +1025,7 @@ pkg_repo_fetch_meta(struct pkg_repo *repo, time_t *t)
 		goto cleanup;
 	}
 
-	map = mmap(NULL, st.st_size, PROT_READ, MAP_SHARED, fd, 0);
+	map = mmap(NULL, st.st_size, PROT_READ, MAP_SHARED, metafd, 0);
 	if (map == MAP_FAILED) {
 		pkg_emit_errno("pkg_repo_fetch_meta", "cannot mmap meta fetched");
 		rc = EPKG_FATAL;
