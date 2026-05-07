@@ -819,6 +819,7 @@ pkg_solve_jobs_to_sat(struct pkg_jobs *j)
 
 	if (problem->sat == NULL) {
 		pkg_emit_errno("picosat_init", "pkg_solve_sat_problem");
+		pkg_solve_problem_free(problem);
 		return (NULL);
 	}
 
@@ -842,6 +843,7 @@ pkg_solve_jobs_to_sat(struct pkg_jobs *j)
 		if (var == NULL) {
 			pkg_emit_error("internal solver error: variable %s is not found",
 			    un->pkg->uid);
+			pkg_solve_problem_free(problem);
 			return (NULL);
 		}
 		pkg_solve_process_universe_variable(problem, var);
