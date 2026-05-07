@@ -1150,19 +1150,6 @@ reiterate:
 			need_reiterate = true;
 		}
 
-#if 0
-		failed = picosat_next_maximal_satisfiable_subset_of_assumptions(problem->sat);
-
-		while (*failed) {
-			struct pkg_solve_variable *lvar = &problem->variables[*failed - 1];
-
-			pkg_emit_notice("lvar: %s", lvar->uid);
-
-			failed ++;
-		}
-
-		return (EPKG_AGAIN);
-#endif
 	}
 	else {
 

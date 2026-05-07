@@ -415,26 +415,6 @@ pkg_conflicts_check_chain_conflict(struct pkg_job_universe_item *it,
 		}
 	}
 	/* XXX: dirs are currently broken terribly */
-#if 0
-	struct pkg_dir *dcur, *dtmp, *df;
-	HASH_ITER(hh, it->pkg->dirs, dcur, dtmp) {
-		memset(&k, 0, sizeof(k));
-		cun = pkg_conflicts_check_all_paths(j, dcur->path, it, &k);
-
-		if (local != NULL) {
-			HASH_FIND_STR(local->pkg->dirs, dcur->path, df);
-			if (df != NULL)
-				continue;
-		}
-		/* Check for local conflict in db */
-		p = pkg_conflicts_check_local_path(dcur->path, uid, j);
-		if (p != NULL) {
-			pkg_jobs_universe_process_item(j->universe, p, &cun);
-			assert(cun != NULL);
-			pkg_conflicts_register_chain(j, it, cun, dcur->path);
-		}
-	}
-#endif
 }
 
 int
