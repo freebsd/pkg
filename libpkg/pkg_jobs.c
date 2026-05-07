@@ -1820,7 +1820,6 @@ solve_with_sat_solver(struct pkg_jobs *j)
 
 	if (ret == EPKG_FATAL) {
 		pkg_emit_error("cannot solve job using SAT solver");
-		pkg_solve_problem_free(problem);
 		j->solved = false;
 	} else {
 		ret = pkg_solve_sat_to_jobs(problem);
