@@ -390,6 +390,10 @@ hash_file(struct pkg *pkg)
 			pkg, pkg);
 	pkg->sum = pkg_checksum_generate_file(filename,
 			PKG_HASH_TYPE_BLAKE2_BASE32);
+	if (pkg->sum == NULL) {
+		pkg_emit_error("cannot generate package checksum");
+		return (EPKG_FATAL);
+	}
 	pkg_snprintf(hash_dest, sizeof(hash_dest), "%n-%v-%z.pkg",
 			pkg, pkg, pkg);
 
