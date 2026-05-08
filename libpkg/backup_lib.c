@@ -72,6 +72,8 @@ register_backup(struct pkgdb *db, struct pkg *orig, int fd, const char *libname)
 		char *origin;
 
 		if (pkg_new(&pkg, PKG_FILE) != EPKG_OK) {
+			free(sum);
+			free(name);
 			return (EPKG_FATAL);
 		}
 		pkg->name = name;
@@ -88,6 +90,8 @@ register_backup(struct pkgdb *db, struct pkg *orig, int fd, const char *libname)
 
 		if (pkgdb_ensure_loaded(db, orig, PKG_LOAD_SHLIBS_PROVIDED_IGNORE |
 		    PKG_LOAD_SHLIBS_REQUIRED_IGNORE) != EPKG_OK) {
+			free(sum);
+			pkg_free(pkg);
 			return (EPKG_FATAL);
 		}
 		vec_foreach(orig->shlibs_provided_ignore, i) {
