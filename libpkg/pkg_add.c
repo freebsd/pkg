@@ -1140,6 +1140,7 @@ append_pkg_if_newer(pkgs_t *localpkgs, struct pkg *p)
 			*lp = p;
 			return (true);
 		}
+		pkg_free(p);
 		return (false);
 	}
 	return (true);

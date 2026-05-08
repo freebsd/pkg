@@ -289,6 +289,10 @@ pkg_jobs_universe_process_deps(struct pkg_jobs_universe *universe,
 
 		if (npkg != NULL) {
 			if (pkg_jobs_universe_process_item(universe, npkg, &unit) != EPKG_OK) {
+				if (rpkgs != NULL) {
+					vec_free(rpkgs);
+					free(rpkgs);
+				}
 				continue;
 			}
 		}
