@@ -992,7 +992,7 @@ display_summary_item(struct pkg_solved_display *it, int64_t dlsize)
 	case PKG_DISPLAY_FETCH:
 		humanize_number(size, sizeof(size), pkgsize, "B",
 		    HN_AUTOSCALE, HN_IEC_PREFIXES);
-		humanize_number(tlsize, sizeof(size), dlsize, "B",
+		humanize_number(tlsize, sizeof(tlsize), dlsize, "B",
 		    HN_AUTOSCALE, HN_IEC_PREFIXES);
 
 		pkg_printf("\t%n: %v ", it->new, it->new);
