@@ -318,7 +318,7 @@ pkg_set_s(struct pkg *pkg, pkg_attr attr, const char *str)
 		break;
 	case PKG_ATTR_FLATSIZE:
 		i = strtoimax(str, &endptr, 10);
-		if (endptr != NULL) {
+		if (*endptr != '\0') {
 			pkg_emit_error("Unable to convert '%s' to int64_t",
 			    str);
 			return (EPKG_FATAL);
@@ -327,7 +327,7 @@ pkg_set_s(struct pkg *pkg, pkg_attr attr, const char *str)
 		break;
 	case PKG_ATTR_OLD_FLATSIZE:
 		i = strtoimax(str, &endptr, 10);
-		if (endptr != NULL) {
+		if (*endptr != '\0') {
 			pkg_emit_error("Unable to convert '%s' to int64_t",
 			    str);
 			return (EPKG_FATAL);
@@ -336,7 +336,7 @@ pkg_set_s(struct pkg *pkg, pkg_attr attr, const char *str)
 		break;
 	case PKG_ATTR_PKGSIZE:
 		i = strtoimax(str, &endptr, 10);
-		if (endptr != NULL) {
+		if (*endptr != '\0') {
 			pkg_emit_error("Unable to convert '%s' to int64_t",
 			    str);
 			return (EPKG_FATAL);
@@ -345,7 +345,7 @@ pkg_set_s(struct pkg *pkg, pkg_attr attr, const char *str)
 		break;
 	case PKG_ATTR_TIME:
 		i = strtoimax(str, &endptr, 10);
-		if (endptr != NULL) {
+		if (*endptr != '\0') {
 			pkg_emit_error("Unable to convert '%s' to int64_t",
 			    str);
 			return (EPKG_FATAL);
