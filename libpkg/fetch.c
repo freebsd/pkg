@@ -310,7 +310,10 @@ cleanup:
 
 	if (repo->fetcher != NULL && repo->fetcher->close != NULL)
 		repo->fetcher->close(repo);
-	free(fakerepo);
+	if (fakerepo != NULL) {
+		free(fakerepo->url);
+		free(fakerepo);
+	}
 
 	if (retcode == EPKG_OK) {
 		struct timespec ts[2] = {
