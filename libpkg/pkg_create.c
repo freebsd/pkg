@@ -609,6 +609,7 @@ fixup_abi(struct pkg *pkg, const char *rootdir, bool testing)
 			char *str_osversion;
 			xasprintf(&str_osversion, "%d", pkg_abi_get_freebsd_osversion(&ctx.abi));
 			pkg_kv_add(&pkg->annotations, "FreeBSD_version", str_osversion, "annotation");
+			free(str_osversion);
 		}
 		pkg->abi = pkg_abi_to_string(&ctx.abi);
 		defaultarch = true;

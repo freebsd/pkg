@@ -335,6 +335,7 @@ cleanup:
 	pkgdb_release_lock(db, lock_type);
 	pkg_jobs_free(jobs);
 	pkgdb_close(db);
+	vec_free(&reponames);
 
 	if (!dry_run)
 		pkg_cache_full_clean();

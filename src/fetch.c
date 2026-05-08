@@ -234,6 +234,7 @@ cleanup:
 	pkg_jobs_free(jobs);
 	pkgdb_release_lock(db, PKGDB_LOCK_READONLY);
 	pkgdb_close(db);
+	vec_free(&reponames);
 
 	return (status);
 }
