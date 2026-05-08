@@ -440,7 +440,7 @@ pkg_emit_notice(const char *fmt, ...)
 	va_end(ap);
 
 	pkg_emit_event(&ev);
-	free(ev.e_pkg_error.msg);
+	free(ev.e_pkg_notice.msg);
 }
 
 void
