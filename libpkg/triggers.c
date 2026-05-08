@@ -350,6 +350,7 @@ trigger_free(struct trigger *t)
 		ucl_object_unref(t->path_glob);
 	if (t->path_regexp)
 		ucl_object_unref(t->path_regexp);
+	pkghash_destroy(t->matched);
 	free(t->cleanup.script);
 	free(t->script.script);
 	free(t);
@@ -594,8 +595,12 @@ triggers_execute(struct triggers *t)
 cleanup:
 	vec_free_and_free(triggers, trigger_free);
 	free(triggers);
+	if (ctx.touched_dir_hash) {
+		pkghash_destroy(ctx.touched_dir_hash);
+		ctx.touched_dir_hash = NULL;
+	}
 
-	return (EPKG_OK);
+	return (ret);
 }
 
 /*
