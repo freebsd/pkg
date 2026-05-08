@@ -382,6 +382,7 @@ pipeevent(struct pkg_event *ev)
 		    "\"cleanup\": %s, \"name\": \"%s\" }}",
 		    ev->e_trigger.cleanup ? "true" : "false",
 		    ev->e_trigger.name);
+		break;
 	case PKG_EVENT_BACKUP:
 	case PKG_EVENT_RESTORE:
 		break;
