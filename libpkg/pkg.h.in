@@ -1829,9 +1829,10 @@ pkg_get_s(struct pkg *p, pkg_attr a, const char **val)
 	case PKG_INTEGER:
 		break;
 	case PKG_KVLIST:
-		free(e->stringlist);
-	case PKG_STRINGLIST:
 		free(e->kvlist);
+		break;
+	case PKG_STRINGLIST:
+		free(e->stringlist);
 		break;
 	}
 	free(e);
