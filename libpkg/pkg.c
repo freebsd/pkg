@@ -1120,7 +1120,7 @@ pkg_list_free(struct pkg *pkg, pkg_list list)  {
 	case PKG_RDEPS:
 		LL_FREE(pkg->rdepends, pkg_dep_free);
 		pkghash_destroy(pkg->rdepshash);
-		pkg->depshash = NULL;
+		pkg->rdepshash = NULL;
 		pkg->flags &= ~PKG_LOAD_RDEPS;
 		break;
 	case PKG_OPTIONS:
