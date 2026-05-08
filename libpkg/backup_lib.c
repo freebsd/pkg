@@ -84,7 +84,7 @@ register_backup(struct pkgdb *db, struct pkg *orig, int fd, const char *libname)
 		pkg->maintainer = xstrdup("root@localhost");
 		pkg->www = xstrdup("N/A");
 		pkg->prefix = xstrdup("/");
-		pkg->abi = xstrdup(orig->abi);
+		pkg->abi = orig->abi ? xstrdup(orig->abi) : NULL;
 
 		if (pkgdb_ensure_loaded(db, orig, PKG_LOAD_SHLIBS_PROVIDED_IGNORE |
 		    PKG_LOAD_SHLIBS_REQUIRED_IGNORE) != EPKG_OK) {
