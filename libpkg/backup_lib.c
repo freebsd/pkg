@@ -117,6 +117,7 @@ register_backup(struct pkgdb *db, struct pkg *orig, int fd, const char *libname)
 	xasprintf(&lpath, "%s/%s", backup_library_relative_path(), libname);
 	pkg_addfile(pkg, lpath, sum, false);
 	free(lpath);
+	free(sum);
 
 	t = time(NULL);
 	strftime(buf, sizeof(buf), "%Y%m%d%H%M%S", localtime(&t));
