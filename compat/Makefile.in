@@ -3,7 +3,8 @@ LIB=	bsd_compat
 SRCS=	closefrom.c \
 	humanize_number.c \
 	strtonum.c \
-	funopen.c
+	funopen.c \
+	reallocf.c
 
 LOCAL_CFLAGS=	-I$(top_srcdir)/compat \
 		-I$(top_srcdir)/libpkg \
