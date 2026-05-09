@@ -1,4 +1,5 @@
 Changes from 2.6.99.6 to 2.7.99.1
+- config: allow VERSION_MAJOR and VERSION_MINOR to be overridden via -o
 - rcscript: rewrite entirely to be safer
 - triggers: make the per-package trigger per file instead of per directory
 - delete: add -G/--exclude-glob

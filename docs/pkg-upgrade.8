@@ -216,6 +216,19 @@ which prevents scripts from both running and being recorded,
 .Cm --script-no-exec
 only suppresses execution.
 .El
+.Sh EXAMPLES
+To upgrade base system packages from 15.0-RELEASE to 15.1-RELEASE using
+the FreeBSD-base repository:
+.Pp
+.Dl pkg -o VERSION_MINOR=1 upgrade -r FreeBSD-base
+.Pp
+This overrides the
+.Va VERSION_MINOR
+variable used in repository URL expansion, allowing the repository URL
+to resolve to the 15.1 package set.
+See
+.Xr pkg.conf 5
+for details on variable expansion in repository configurations.
 .Sh ENVIRONMENT
 The following environment variables affect the execution of
 .Nm .

@@ -8,6 +8,7 @@ tests_init \
 	repo_ssh_args \
 	nameserver \
 	expansion \
+	expansion_override \
 	validate_shlib_provide_paths
 #	duplicate_pkgs_allowed \
 
@@ -188,6 +189,32 @@ expansion_body() {
 	echo "DOT_FILE=\${ARCH}" > pkg.conf
 	atf_check -o inline:"${ARCH}\n" pkg -C ${TMPDIR}/pkg.conf config dot_file
 
+}
+
+expansion_override_body() {
+	atf_skip_on Darwin "N/A"
+	atf_skip_on Linux "N/A"
+
+	# VERSION_MINOR override via -o in config value
+	echo "DOT_FILE=\${VERSION_MINOR}" > pkg.conf
+	atf_check -o inline:"1\n" \
+		pkg -o VERSION_MINOR=1 -C ${TMPDIR}/pkg.conf config dot_file
+
+	# VERSION_MAJOR override via -o in config value
+	echo "DOT_FILE=\${VERSION_MAJOR}" > pkg.conf
+	atf_check -o inline:"99\n" \
+		pkg -o VERSION_MAJOR=99 -C ${TMPDIR}/pkg.conf config dot_file
+
+	# VERSION_MINOR override expands in repo URL
+	mkdir -p reposconf
+	cat > reposconf/test.conf << EOF
+myrepo: {
+    url: "pkg+https://pkg.FreeBSD.org/\${ABI}/base_release_\${VERSION_MINOR}",
+}
+EOF
+	atf_check \
+		-o match:'pkg\+https://pkg.FreeBSD.org/.*/base_release_42' \
+		pkg -o VERSION_MINOR=42 -o REPOS_DIR="${TMPDIR}/reposconf" -vv
 }
 
 validate_shlib_provide_paths_body() {

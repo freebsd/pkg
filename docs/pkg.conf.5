@@ -731,8 +731,18 @@ Expands to the name of the target operating system.
 Expands to the full version of the target operating system.
 .It Va VERSION_MAJOR
 Expands to the major version of the target operating system.
+Can be overridden via
+.Fl o Ar VERSION_MAJOR Ns = Ns Ar value
+or by setting the
+.Ev VERSION_MAJOR
+environment variable.
 .It Va VERSION_MINOR
 Expands to the minor version of the target operating system.
+Can be overridden via
+.Fl o Ar VERSION_MINOR Ns = Ns Ar value
+or by setting the
+.Ev VERSION_MINOR
+environment variable.
 .It Va OSVERSION
 If targeting
 .Fx ,
