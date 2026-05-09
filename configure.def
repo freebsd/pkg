@@ -194,7 +194,7 @@ cc_check_functions strchrnul
 cc_check_functions arc4random arc4random_stir chflagsat \
 	closefrom fopencookie funopen getprogname \
 	strtofflags strtonum utimensat __res_setservers \
-	fflagstostr strchrnul copy_file_range
+	fflagstostr strchrnul copy_file_range reallocf
 
 # humanize_number declaration
 cc_with "-includes libutil.h" cc_check_decls humanize_number

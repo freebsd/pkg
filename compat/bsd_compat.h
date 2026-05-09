@@ -169,4 +169,8 @@ extern char *__progname;
 # endif
 #endif
 
+#if !HAVE_REALLOCF
+void *reallocf(void *, size_t);
+#endif
+
 #endif
