@@ -832,10 +832,18 @@ config_parser_vars_register(struct ucl_parser *p)
 	}
 	ucl_parser_register_variable(p, "RELEASE", vars->release);
 
-	xasprintf(&vars->version_major, "%d", ctx.abi.major);
+	const char *env_version_major = getenv("VERSION_MAJOR");
+	if (env_version_major != NULL)
+		vars->version_major = xstrdup(env_version_major);
+	else
+		xasprintf(&vars->version_major, "%d", ctx.abi.major);
 	ucl_parser_register_variable(p, "VERSION_MAJOR", vars->version_major);
 
-	xasprintf(&vars->version_minor, "%d", ctx.abi.minor);
+	const char *env_version_minor = getenv("VERSION_MINOR");
+	if (env_version_minor != NULL)
+		vars->version_minor = xstrdup(env_version_minor);
+	else
+		xasprintf(&vars->version_minor, "%d", ctx.abi.minor);
 	ucl_parser_register_variable(p, "VERSION_MINOR", vars->version_minor);
 
 	ucl_parser_register_variable(p, "ARCH",
