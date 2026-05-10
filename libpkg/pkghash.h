@@ -33,7 +33,7 @@ bool pkghash_next(pkghash_it *it);
 	else if (pkghash_get(_t, _k) != NULL)         \
 		break;                                \
 	pkghash_add(_t, _k, _v, _free_func);          \
-} while (0);
+} while (0)
 
 bool pkghash_del(pkghash *h, const char *key);
 void *pkghash_delete(pkghash *h, const char *key);
