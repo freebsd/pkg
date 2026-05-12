@@ -8,6 +8,7 @@ tests_init \
 	list_disabled \
 	override_disable \
 	override_enable \
+	override_inherit_enable \
 	override_reset \
 	override_shown_in_vv \
 	override_unknown_repo \
@@ -111,6 +112,34 @@ override_enable_body()
 		-o match:'repo_b' \
 		-s exit:0 \
 		pkg -o REPOS_DIR="${TMPDIR}/reposconf" repositories -le
+}
+
+override_inherit_enable_body()
+{
+
+	# This test isn't very well placed, but we don't currently have an
+	# obvious place for explicit tests for pkg.conf.  We default
+	# repositories to enabled, but that default only really be applied the
+	# first time we encounter a definition.  Later overrides should be
+	# doable without having to re-specify whether the repository should
+	# remain enabled or disabled.
+	mkdir -p reposconf
+	cat > reposconf/base.conf << EOF
+repo_a: {
+    url: "file:///tmp/repo_a",
+    enabled: false
+}
+EOF
+	cat > reposconf/override.conf << EOF
+repo_a: {
+    priority: 5
+}
+EOF
+
+	atf_check \
+		-o match:'repo_a' \
+		-s exit:0 \
+		pkg -o REPOS_DIR="${TMPDIR}/reposconf" repositories -ld
 }
 
 override_reset_body()
