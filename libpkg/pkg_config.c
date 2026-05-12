@@ -619,7 +619,7 @@ add_repo(const ucl_object_t *obj, struct pkg_repo *r, const char *rname, pkg_ini
 	const ucl_object_t *cur, *env;
 	ucl_object_iter_t it = NULL;
 	struct pkg_kv *kv;
-	bool enable = true;
+	bool enable = r != NULL ? r->enable : true;
 	const char *url = NULL, *pubkey = NULL, *mirror_type = NULL;
 	const char *signature_type = NULL, *fingerprints = NULL;
 	const char *ssh_args = NULL;
