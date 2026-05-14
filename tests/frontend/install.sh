@@ -632,26 +632,54 @@ local: {
 }
 EOF
 
-	# Create vuln.xml in PKG_DBDIR (current dir)
-	cat > vuln.xml << 'VULN'
-<?xml version="1.0" encoding="utf-8"?>
-<vuxml xmlns="http://www.vuxml.org/apps/vuxml-1">
-  <vuln vid="test-vuln-001">
-    <topic>Test vulnerability</topic>
-    <affects>
-      <package>
-        <name>vuln</name>
-        <range>
-          <ge>1.0</ge>
-          <lt>2.0</lt>
-        </range>
-      </package>
-    </affects>
-    <references>
-      <cvename>CVE-2024-00001</cvename>
-    </references>
-  </vuln>
-</vuxml>
+	# Create freebsd-osv.json in PKG_DBDIR (current dir)
+	cat > freebsd-osv.json << 'VULN'
+[
+    {
+    "affected": [
+        {
+        "package": {
+            "ecosystem": "FreeBSD:ports",
+            "name": "vuln"
+        },
+        "ranges": [
+            {
+            "events": [
+                {
+                "introduced": "1.0"
+                },
+                {
+                "fixed": "2.0"
+                }
+            ],
+            "type": "ECOSYSTEM"
+            }
+        ]
+        }
+    ],
+    "database_specific": {
+        "discovery": "2024-01-01T00:00:00Z",
+        "references": {
+        "cvename": [
+            "CVE-2024-00001"
+        ]
+        },
+        "vid": "test-vuln-001"
+    },
+    "details": "Example description\n",
+    "id": "FreeBSD-2024-0001",
+    "modified": "2024-01-01T00:00:00Z",
+    "published": "2024-01-01T00:00:00Z",
+    "references": [
+        {
+        "type": "ADVISORY",
+        "url": "https://cveawg.mitre.org/api/cve/CVE-2024-00001"
+        }
+    ],
+    "schema_version": "1.7.0",
+    "summary": "Test vulnerability in test package"
+    }
+]
 VULN
 
 	atf_check \
@@ -685,25 +713,53 @@ local: {
 EOF
 
 	# Vulnerability only affects versions < 2.0
-	cat > vuln.xml << 'VULN'
-<?xml version="1.0" encoding="utf-8"?>
-<vuxml xmlns="http://www.vuxml.org/apps/vuxml-1">
-  <vuln vid="test-vuln-001">
-    <topic>Test vulnerability</topic>
-    <affects>
-      <package>
-        <name>safe</name>
-        <range>
-          <ge>1.0</ge>
-          <lt>2.0</lt>
-        </range>
-      </package>
-    </affects>
-    <references>
-      <cvename>CVE-2024-00001</cvename>
-    </references>
-  </vuln>
-</vuxml>
+	cat > freebsd-osv.json << 'VULN'
+[
+    {
+    "affected": [
+        {
+        "package": {
+            "ecosystem": "FreeBSD:ports",
+            "name": "safe"
+        },
+        "ranges": [
+            {
+            "events": [
+                {
+                "introduced": "1.0"
+                },
+                {
+                "fixed": "2.0"
+                }
+            ],
+            "type": "ECOSYSTEM"
+            }
+        ]
+        }
+    ],
+    "database_specific": {
+        "discovery": "2024-01-01T00:00:00Z",
+        "references": {
+        "cvename": [
+            "CVE-2024-00001"
+        ]
+        },
+        "vid": "test-vuln-001"
+    },
+    "details": "Example description\n",
+    "id": "FreeBSD-2024-0001",
+    "modified": "2024-01-01T00:00:00Z",
+    "published": "2024-01-01T00:00:00Z",
+    "references": [
+        {
+        "type": "ADVISORY",
+        "url": "https://cveawg.mitre.org/api/cve/CVE-2024-00001"
+        }
+    ],
+    "schema_version": "1.7.0",
+    "summary": "Test vulnerability in test package"
+    }
+]
 VULN
 
 	atf_check \
@@ -723,7 +779,7 @@ VULN
 
 install_vulnerable_no_vuln_db_body()
 {
-	# Create a package and repo, but no vuln.xml
+	# Create a package and repo, but no freebsd-osv.json
 	atf_check sh ${RESOURCEDIR}/test_subr.sh new_pkg "test" "test" "1.0"
 	atf_check pkg create -M test.ucl
 	atf_check -o ignore pkg repo .
@@ -742,7 +798,7 @@ EOF
 		pkg -o REPOS_DIR="${TMPDIR}/repoconf" -o PKG_CACHEDIR="${TMPDIR}" \
 		update
 
-	# No vuln.xml -> no vulnerability output, install proceeds normally
+	# No freebsd-osv.json -> no vulnerability output, install proceeds normally
 	atf_check \
 		-o not-match:"\(vulnerable!\)" \
 		-o not-match:"WARNING.*vulnerabilities" \

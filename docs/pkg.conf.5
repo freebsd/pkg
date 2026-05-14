@@ -419,10 +419,16 @@ configuration file.
 Default: pkg+http, pkg+https, https, http, file, ssh, tcp.
 .It Cm VULNXML_SITE: string
 Specifies the URL to fetch the
-.Pa vuln.xml
+.Pa freebsd-osv.json
 vulnerability database from.
 Default:
-.Pa https://vuxml.freebsd.org/freebsd/vuln.xml.xz .
+.Pa https://raw.githubusercontent.com/illuusio/freebsd-osv/refs/heads/main/db/freebsd-osv.json .
+.It Cm VULNXML_SITE: string
+Specifies the URL to fetch the
+.Pa freebsd-osv.json
+vulnerability database from.
+Default:
+.Pa https://raw.githubusercontent.com/illuusio/freebsd-osv/refs/heads/main/db/freebsd-osv.json .
 .It Cm WARN_SIZE_LIMIT: integer
 When download and total change is less than than this option, don't ask
 the user to confirm the desired action.
