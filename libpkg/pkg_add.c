@@ -1543,8 +1543,8 @@ pkg_add_common(struct pkgdb *db, const char *path, unsigned flags,
     const char *reloc, struct pkg *remote,
     struct pkg *local, struct triggers *t, struct deferred_rc *rc)
 {
-	struct archive		*a;
-	struct archive_entry	*ae;
+	struct archive		*a = NULL;
+	struct archive_entry	*ae = NULL;
 	struct pkg		*pkg = NULL;
 	xstring			*message = NULL;
 	struct pkg_message	*msg;
