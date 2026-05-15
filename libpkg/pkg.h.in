@@ -1855,10 +1855,10 @@ pkg_get_i(struct pkg *p, pkg_attr a, int64_t *val)
 		ret = e->integer;
 		break;
 	case PKG_KVLIST:
-		free(e->stringlist);
+		free(e->kvlist);
 		break;
 	case PKG_STRINGLIST:
-		free(e->kvlist);
+		free(e->stringlist);
 		break;
 	}
 	free(e);
@@ -1882,10 +1882,10 @@ pkg_get_b(struct pkg *p, pkg_attr a, bool *val)
 		ret = e->integer > 0;
 		break;
 	case PKG_KVLIST:
-		free(e->stringlist);
+		free(e->kvlist);
 		break;
 	case PKG_STRINGLIST:
-		free(e->kvlist);
+		free(e->stringlist);
 		break;
 	}
 	free(e);
