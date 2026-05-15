@@ -249,6 +249,16 @@ struct pkg {
 typedef vec_t(struct pkg *) pkgs_t;
 
 DEFINE_VEC_INSERT_SORTED_PROTO(pkgs_t, pkgs, struct pkg *);
+
+static inline struct pkg **
+pkgs_insert_or_free(pkgs_t *pkgs, struct pkg *p)
+{
+	struct pkg **res = pkgs_insert_sorted(pkgs, p);
+	if (res != NULL)
+		pkg_free(p);
+	return (res);
+}
+
 struct pkg **pkgs_search(pkgs_t *, char *);
 void pkgs_sort(pkgs_t *);
 bool append_pkg_if_newer(pkgs_t *pkgs, struct pkg *p);
@@ -767,6 +777,13 @@ void pkg_kv_free(struct pkg_kv *);
 struct pkg_kv *pkg_kv_search(kvlist_t *, char *);
 void pkg_kv_sort(kvlist_t *);
 DEFINE_VEC_INSERT_SORTED_PROTO(kvlist_t, pkg_kv, struct pkg_kv *);
+
+static inline void
+pkg_kv_insert_or_free(kvlist_t *v, struct pkg_kv *el)
+{
+	if (pkg_kv_insert_sorted(v, el) != NULL)
+		pkg_kv_free(el);
+}
 
 void pkg_dep_free(struct pkg_dep *);
 void pkg_file_free(struct pkg_file *);

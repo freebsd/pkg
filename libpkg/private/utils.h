@@ -103,6 +103,13 @@ int char_cmp(const void *a, const void *b);
 const char *charv_search(charv_t *, const char *);
 DEFINE_VEC_INSERT_SORTED_PROTO(charv_t, charv, char *);
 
+static inline void
+charv_insert_or_free(charv_t *v, char *el)
+{
+	if (charv_insert_sorted(v, el) != NULL)
+		free(el);
+}
+
 uid_t get_uid_from_uname(const char *);
 gid_t get_gid_from_gname(const char *);
 

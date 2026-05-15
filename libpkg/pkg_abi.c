@@ -463,9 +463,7 @@ pkg_cleanup_shlibs_required(struct pkg *pkg, charv_t *internal_provided)
 			    "is matched by SHLIB_REQUIRE_IGNORE_GLOB/REGEX.",
 			    s, pkg->name);
 			vec_remove(&pkg->shlibs_required, i);
-			if (charv_insert_sorted(&pkg->shlibs_required_ignore, s) != NULL) {
-				free(s);
-			}
+			charv_insert_or_free(&pkg->shlibs_required_ignore, s);
 			i--;
 			continue;
 		}
@@ -587,8 +585,7 @@ pkg_analyse_files(struct pkgdb *db __unused, struct pkg *pkg, const char *stage)
 				}
 			} else {
 				char *ip = pkg_shlib_name_with_flags(provided, provided_flags);
-				if (charv_insert_sorted(&internal_provided, ip) != NULL)
-					free(ip);
+				charv_insert_or_free(&internal_provided, ip);
 			}
 			free(provided);
 		}
@@ -612,9 +609,7 @@ pkg_analyse_files(struct pkgdb *db __unused, struct pkg *pkg, const char *stage)
 	pkg_cleanup_shlibs_required(pkg, &internal_provided);
 	while (internal_provided.len > 0) {
 		char *s = vec_pop(&internal_provided);
-		if (charv_insert_sorted(&pkg->shlibs_provided_ignore, s) != NULL) {
-			free(s);
-		}
+		charv_insert_or_free(&pkg->shlibs_provided_ignore, s);
 	}
 
 	vec_foreach(pkg->shlibs_provided, i) {
@@ -636,9 +631,7 @@ pkg_analyse_files(struct pkgdb *db __unused, struct pkg *pkg, const char *stage)
 			    "is matched by SHLIB_PROVIDE_IGNORE_GLOB/REGEX.",
 			    s, pkg->name);
 			vec_remove(&pkg->shlibs_provided, i);
-			if (charv_insert_sorted(&pkg->shlibs_provided_ignore, s) != NULL) {
-				free(s);
-			}
+			charv_insert_or_free(&pkg->shlibs_provided_ignore, s);
 			i--;
 			continue;
 		}
