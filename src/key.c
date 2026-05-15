@@ -131,9 +131,6 @@ key_sign_data(struct pkg_key *key, const char *name)
 	rc = pkg_key_sign_data(key, (unsigned char *)data, datasz, &sig, &siglen);
 	free(data);
 
-#if 0
-	fprintf(stderr, "SIGNED: %s\n", data);
-#endif
 /*
 +SIGNED: 64628d55add8b281b9868aea00c4829a3ad260cfc4262e9d1244a1ab67584935
 +SIGNED: a2eb46d60cd26657b273ec55a0909e642ef522f35074a9c62c3c4b42608e55e1
