@@ -27,6 +27,21 @@
 #include "private/fetch.h"
 #include "pkghash.h"
 
+/*
+ * GCC/Clang cleanup attribute helpers for automatic resource management.
+ * Variables declared with these qualifiers are automatically freed/closed
+ * when they go out of scope, preventing cleanup-path leaks.
+ */
+#if defined(__GNUC__) || defined(__clang__)
+#define pkg_autofree __attribute__((__cleanup__(pkg_freep)))
+#define fd_autoclose __attribute__((__cleanup__(fd_closep)))
+static inline void pkg_freep(struct pkg **p) { pkg_free(*p); }
+static inline void fd_closep(int *fd) { if (*fd != -1) close(*fd); }
+#else
+#define pkg_autofree
+#define fd_autoclose
+#endif
+
 #define PKG_NUM_SCRIPTS 9
 #define PKG_NUM_LUA_SCRIPTS 5
 
