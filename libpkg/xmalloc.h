@@ -1,6 +1,7 @@
 #ifndef XMALLOC_H
 #define XMALLOC_H
 
+#include <assert.h>
 #include <stdarg.h>
 #include <stdio.h>
 #include <stdlib.h>
@@ -32,6 +33,7 @@ static inline void *xrealloc(void *ptr, size_t size)
 
 static inline char *xstrdup(const char *str)
 {
+	assert(str != NULL);
 	char *s = strdup(str);
 	if (s == NULL)
 		abort();
@@ -40,6 +42,7 @@ static inline char *xstrdup(const char *str)
 
 static inline char *xstrndup(const char *str, size_t n)
 {
+	assert(str != NULL);
 	char *s = strndup(str, n);
 	if (s == NULL)
 		abort();
