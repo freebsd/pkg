@@ -1128,14 +1128,15 @@ pkg_list_free(struct pkg *pkg, pkg_list list)  {
 		pkg->flags &= ~PKG_LOAD_OPTIONS;
 		break;
 	case PKG_FILES:
-	case PKG_CONFIG_FILES:
 		DL_FREE(pkg->files, pkg_file_free);
 		pkghash_destroy(pkg->filehash);
 		pkg->filehash = NULL;
+		pkg->flags &= ~PKG_LOAD_FILES;
+		break;
+	case PKG_CONFIG_FILES:
 		DL_FREE(pkg->config_files, pkg_config_file_free);
 		pkghash_destroy(pkg->config_files_hash);
 		pkg->config_files_hash = NULL;
-		pkg->flags &= ~PKG_LOAD_FILES;
 		break;
 	case PKG_DIRS:
 		DL_FREE(pkg->dirs, pkg_dir_free);

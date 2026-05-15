@@ -439,6 +439,7 @@ pkgdb_load_files(sqlite3 *sqlite, struct pkg *pkg)
 
 	if (ret != SQLITE_DONE) {
 		pkg_list_free(pkg, PKG_FILES);
+		pkg_list_free(pkg, PKG_CONFIG_FILES);
 		ERROR_STMT_SQLITE(sqlite, stmt);
 		sqlite3_finalize(stmt);
 		return (EPKG_FATAL);
