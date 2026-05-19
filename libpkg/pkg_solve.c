@@ -86,20 +86,21 @@ struct pkg_solve_variable {
 	const char *digest;
 	const char *uid;
 	const char *assumed_reponame;
-	struct pkg_solve_variable *next, *prev;
 };
 
+typedef struct {
+    struct pkg_solve_variable *begin;
+    size_t count;
+} solve_var_slice_t;
+
 struct pkg_solve_item {
-	int nitems;
-	int nresolved;
 	struct pkg_solve_variable *var;
 	int inverse;
-	struct pkg_solve_item *prev,*next;
 };
 
 struct pkg_solve_rule {
 	enum pkg_solve_rule_type reason;
-	struct pkg_solve_item *items;
+	vec_t(struct pkg_solve_item) items;
 };
 
 struct pkg_solve_problem {
@@ -111,11 +112,6 @@ struct pkg_solve_problem {
 	size_t nvars;
 };
 
-struct pkg_solve_impl_graph {
-	struct pkg_solve_variable *var;
-	struct pkg_solve_impl_graph *prev, *next;
-};
-
 /*
  * Utilities to convert jobs to SAT rule
  */
@@ -124,13 +120,7 @@ static void
 pkg_solve_item_new(struct pkg_solve_rule *rule, struct pkg_solve_variable *var,
     int inverse)
 {
-	struct pkg_solve_item *it;
-
-	it = xcalloc(1, sizeof(struct pkg_solve_item));
-	it->var = var;
-	it->inverse = inverse;
-	it->nitems = rule->items ? rule->items->nitems + 1 : 1;
-	DL_APPEND(rule->items, it);
+	vec_push(&rule->items, ((struct pkg_solve_item){ .var = var, .inverse = inverse }));
 }
 
 static struct pkg_solve_rule *
@@ -152,17 +142,12 @@ pkg_solve_variable_set(struct pkg_solve_variable *var,
 	/* XXX: Is it safe to save a ptr here ? */
 	var->digest = item->pkg->digest;
 	var->uid = item->pkg->uid;
-	var->prev = var;
 }
 
 static void
 pkg_solve_rule_free(struct pkg_solve_rule *rule)
 {
-	struct pkg_solve_item *it, *tmp;
-
-	LL_FOREACH_SAFE(rule->items, it, tmp) {
-		free(it);
-	}
+	vec_free(&rule->items);
 	free(rule);
 }
 
@@ -170,6 +155,11 @@ void
 pkg_solve_problem_free(struct pkg_solve_problem *problem)
 {
 	vec_free_and_free(&problem->rules, pkg_solve_rule_free);
+	{
+		pkghash_it it = pkghash_iterator(problem->variables_by_uid);
+		while (pkghash_next(&it))
+			free(it.value);
+	}
 	pkghash_destroy(problem->variables_by_uid);
 	picosat_reset(problem->sat);
 	free(problem->variables);
@@ -179,12 +169,13 @@ pkg_solve_problem_free(struct pkg_solve_problem *problem)
 static void
 pkg_print_rule_buf(struct pkg_solve_rule *rule, xstring *sb)
 {
-	struct pkg_solve_item *it = rule->items, *key_elt = NULL;
+	struct pkg_solve_item *it, *key_elt = NULL;
 
 	fprintf(sb->fp, "%s rule: ", rule_reasons[rule->reason]);
 	switch(rule->reason) {
 	case PKG_RULE_DEPEND:
-		LL_FOREACH(rule->items, it) {
+		vec_foreach(rule->items, _ri) {
+			it = &rule->items.d[_ri];
 			if (it->inverse == -1) {
 				key_elt = it;
 				break;
@@ -194,7 +185,8 @@ pkg_print_rule_buf(struct pkg_solve_rule *rule, xstring *sb)
 			fprintf(sb->fp, "package %s%s depends on: ", key_elt->var->uid,
 				(key_elt->var->unit->pkg->type == PKG_INSTALLED) ? "(l)" : "(r)");
 		}
-		LL_FOREACH(rule->items, it) {
+		vec_foreach(rule->items, _rj) {
+			it = &rule->items.d[_rj];
 			if (it != key_elt) {
 				fprintf(sb->fp, "%s%s", it->var->uid,
 					(it->var->unit->pkg->type == PKG_INSTALLED) ? "(l)" : "(r)");
@@ -203,19 +195,21 @@ pkg_print_rule_buf(struct pkg_solve_rule *rule, xstring *sb)
 		break;
 	case PKG_RULE_UPGRADE_CONFLICT:
 		fprintf(sb->fp, "upgrade local %s-%s to remote %s-%s",
-			it->var->uid, it->var->unit->pkg->version,
-			it->next->var->uid, it->next->var->unit->pkg->version);
+			rule->items.d[0].var->uid, rule->items.d[0].var->unit->pkg->version,
+			rule->items.d[1].var->uid, rule->items.d[1].var->unit->pkg->version);
 		break;
 	case PKG_RULE_EXPLICIT_CONFLICT:
 		fprintf(sb->fp, "The following packages conflict with each other: ");
-		LL_FOREACH(rule->items, it) {
+		vec_foreach(rule->items, _ri) {
+			it = &rule->items.d[_ri];
 			fprintf(sb->fp, "%s-%s%s%s", it->var->unit->pkg->uid, it->var->unit->pkg->version,
 				(it->var->unit->pkg->type == PKG_INSTALLED) ? "(l)" : "(r)",
-				it->next ? ", " : "");
+				_ri + 1 < rule->items.len ? ", " : "");
 		}
 		break;
 	case PKG_RULE_REQUIRE:
-		LL_FOREACH(rule->items, it) {
+		vec_foreach(rule->items, _ri) {
+			it = &rule->items.d[_ri];
 			if (it->inverse == -1) {
 				key_elt = it;
 				break;
@@ -226,7 +220,8 @@ pkg_print_rule_buf(struct pkg_solve_rule *rule, xstring *sb)
 				key_elt->var->uid,
 				(key_elt->var->unit->pkg->type == PKG_INSTALLED) ? "(l)" : "(r)");
 		}
-		LL_FOREACH(rule->items, it) {
+		vec_foreach(rule->items, _rj) {
+			it = &rule->items.d[_rj];
 			if (it != key_elt) {
 				fprintf(sb->fp, "%s%s", it->var->uid,
 					(it->var->unit->pkg->type == PKG_INSTALLED) ? "(l)" : "(r)");
@@ -235,16 +230,18 @@ pkg_print_rule_buf(struct pkg_solve_rule *rule, xstring *sb)
 		break;
 	case PKG_RULE_REQUEST_CONFLICT:
 		fprintf(sb->fp, "The following packages in request are candidates for installation: ");
-		LL_FOREACH(rule->items, it) {
+		vec_foreach(rule->items, _ri) {
+			it = &rule->items.d[_ri];
 			fprintf(sb->fp, "%s-%s%s", it->var->uid, it->var->unit->pkg->version,
-					it->next ? ", " : "");
+					_ri + 1 < rule->items.len ? ", " : "");
 		}
 		break;
 	case PKG_RULE_VITAL:
 		fprintf(sb->fp, "The following packages are vital: ");
-		LL_FOREACH(rule->items, it) {
+		vec_foreach(rule->items, _ri) {
+			it = &rule->items.d[_ri];
 			fprintf(sb->fp, "%s-%s%s", it->var->uid, it->var->unit->pkg->version,
-					it->next ? ", " : "");
+					_ri + 1 < rule->items.len ? ", " : "");
 		}
 		break;
 	default:
@@ -274,13 +271,16 @@ pkg_solve_handle_provide(struct pkg_solve_problem *problem,
     struct pkg_job_provide *pr, struct pkg_solve_rule *rule, struct pkg *orig,
     const char *reponame, int *cnt)
 {
-	struct pkg_solve_variable *var, *curvar;
+	struct pkg_solve_variable *curvar;
 	struct pkg *pkg;
 
 	/* Find the corresponding variables chain */
 
-	var = pkghash_get_value(problem->variables_by_uid, pr->un->pkg->uid);
-	LL_FOREACH(var, curvar) {
+	solve_var_slice_t *slice = pkghash_get_value(problem->variables_by_uid, pr->un->pkg->uid);
+	if (slice == NULL)
+		return;
+	for (size_t vi = 0; vi < slice->count; vi++) {
+		curvar = &slice->begin[vi];
 		/*
 		 * For each provide we need to check whether this package
 		 * actually provides this require
@@ -298,14 +298,15 @@ pkg_solve_handle_provide(struct pkg_solve_problem *problem,
 			 */
 			if (charv_search(&pkg->shlibs_provided, pr->provide) ==
 			    NULL) {
-				struct pkg_solve_variable *tmp;
+				bool found_local = false;
 
 				if (!ctx.backup_libraries ||
 				    pkg->type == PKG_INSTALLED ||
 				    (problem->j->type != PKG_JOBS_UPGRADE &&
 				     problem->j->type != PKG_JOBS_INSTALL))
 					continue;
-				LL_FOREACH(var, tmp) {
+				for (size_t vj = 0; vj < slice->count; vj++) {
+					struct pkg_solve_variable *tmp = &slice->begin[vj];
 					struct pkg *tpkg;
 
 					/*
@@ -317,10 +318,12 @@ pkg_solve_handle_provide(struct pkg_solve_problem *problem,
 					tpkg = tmp->unit->pkg;
 					if (tpkg->type == PKG_INSTALLED &&
 					    charv_search(&tpkg->shlibs_provided,
-					    pr->provide) != NULL)
+					    pr->provide) != NULL) {
+						found_local = true;
 						break;
+					}
 				}
-				if (tmp == NULL)
+				if (!found_local)
 					continue;
 			}
 
@@ -384,7 +387,7 @@ pkg_solve_add_depend_rule(struct pkg_solve_problem *problem,
     struct pkg_solve_variable *var, struct pkg_dep *dep, const char *reponame)
 {
 	const char *uid;
-	struct pkg_solve_variable *depvar, *curvar;
+	struct pkg_solve_variable *curvar;
 	struct pkg_solve_rule *rule = NULL;
 	int cnt = 0;
 	struct pkg_dep *cur;
@@ -396,16 +399,16 @@ pkg_solve_add_depend_rule(struct pkg_solve_problem *problem,
 
 	LL_FOREACH2(dep, cur, alt_next) {
 		uid = cur->uid;
-		depvar = NULL;
-		depvar = pkghash_get_value(problem->variables_by_uid, uid);
-		if (depvar == NULL) {
+		solve_var_slice_t *depslice = pkghash_get_value(problem->variables_by_uid, uid);
+		if (depslice == NULL) {
 			dbg(2, "cannot find variable dependency %s", uid);
 			continue;
 		}
 
 		/* B1 | B2 | ... */
 		cnt = 1;
-		LL_FOREACH(depvar, curvar) {
+		for (size_t vi = 0; vi < depslice->count; vi++) {
+			curvar = &depslice->begin[vi];
 			/* Propagate reponame */
 			if (curvar->assumed_reponame == NULL) {
 				curvar->assumed_reponame = reponame;
@@ -430,19 +433,20 @@ pkg_solve_add_conflict_rule(struct pkg_solve_problem *problem,
     struct pkg_conflict *conflict)
 {
 	const char *uid;
-	struct pkg_solve_variable *confvar, *curvar;
+	struct pkg_solve_variable *curvar;
 	struct pkg_solve_rule *rule = NULL;
 	struct pkg *other;
 
 	uid = conflict->uid;
-	confvar = pkghash_get_value(problem->variables_by_uid, uid);
-	if (confvar == NULL) {
+	solve_var_slice_t *confslice = pkghash_get_value(problem->variables_by_uid, uid);
+	if (confslice == NULL) {
 		dbg(2, "cannot find conflict %s", uid);
 		return;
 	}
 
 	/* Add conflict rule from each of the alternative */
-	LL_FOREACH(confvar, curvar) {
+	for (size_t vi = 0; vi < confslice->count; vi++) {
+		curvar = &confslice->begin[vi];
 		other = curvar->unit->pkg;
 		if (conflict->type == PKG_CONFLICT_REMOTE_LOCAL) {
 			/* Skip inappropriate packages */
@@ -529,13 +533,14 @@ pkg_solve_add_require_rule(struct pkg_solve_problem *problem,
 
 static void
 pkg_solve_add_vital_rule(struct pkg_solve_problem *problem,
-    struct pkg_solve_variable *var)
+    solve_var_slice_t *slice)
 {
 	struct pkg_solve_variable *cur_var, *local_var = NULL, *remote_var = NULL;
 	struct pkg_solve_rule *rule = NULL;
 	struct pkg *pkg;
 
-	LL_FOREACH(var, cur_var) {
+	for (size_t vi = 0; vi < slice->count; vi++) {
+		cur_var = &slice->begin[vi];
 		pkg = cur_var->unit->pkg;
 
 		if (pkg->type == PKG_INSTALLED) {
@@ -566,13 +571,12 @@ pkg_solve_add_vital_rule(struct pkg_solve_problem *problem,
 }
 
 static struct pkg_solve_variable *
-pkg_solve_find_var_in_chain(struct pkg_solve_variable *var,
+pkg_solve_find_var_in_chain(solve_var_slice_t *slice,
 	struct pkg_job_universe_item *item)
 {
-	struct pkg_solve_variable *cur;
-
-	assert(var != NULL);
-	LL_FOREACH(var, cur) {
+	assert(slice != NULL);
+	for (size_t vi = 0; vi < slice->count; vi++) {
+		struct pkg_solve_variable *cur = &slice->begin[vi];
 		if (cur->unit == item) {
 			return (cur);
 		}
@@ -596,8 +600,8 @@ pkg_solve_add_request_rule(struct pkg_solve_problem *problem,
 	/*
 	 * Get the suggested item
 	 */
-	var = pkghash_get_value(problem->variables_by_uid, req->item->pkg->uid);
-	var = pkg_solve_find_var_in_chain(var, req->item->unit);
+	solve_var_slice_t *reqslice = pkghash_get_value(problem->variables_by_uid, req->item->pkg->uid);
+	var = pkg_solve_find_var_in_chain(reqslice, req->item->unit);
 	assert(var != NULL);
 	/* Assume the most significant variable */
 	picosat_assume(problem->sat, var->order * inverse);
@@ -611,7 +615,7 @@ pkg_solve_add_request_rule(struct pkg_solve_problem *problem,
 	cnt = 0;
 
 	LL_FOREACH(req->item, item) {
-		curvar = pkg_solve_find_var_in_chain(var, item->unit);
+		curvar = pkg_solve_find_var_in_chain(reqslice, item->unit);
 		assert(curvar != NULL);
 		pkg_solve_item_new(rule, curvar, inverse);
 		/* All request variables are top level */
@@ -628,12 +632,12 @@ pkg_solve_add_request_rule(struct pkg_solve_problem *problem,
 		vec_push(&problem->rules, rule);
 		/* Also need to add pairs of conflicts */
 		LL_FOREACH(req->item, item) {
-			curvar = pkg_solve_find_var_in_chain(var, item->unit);
+			curvar = pkg_solve_find_var_in_chain(reqslice, item->unit);
 			assert(curvar != NULL);
 			if (item->next == NULL)
 				continue;
 			LL_FOREACH(item->next, confitem) {
-				confvar = pkg_solve_find_var_in_chain(var, confitem->unit);
+				confvar = pkg_solve_find_var_in_chain(reqslice, confitem->unit);
 				assert(confvar != NULL && confvar != curvar && confvar != var);
 				/* Conflict rule: (!A | !Bx) must be true */
 				rule = pkg_solve_rule_new(PKG_RULE_REQUEST_CONFLICT);
@@ -661,23 +665,16 @@ pkg_solve_add_request_rule(struct pkg_solve_problem *problem,
 
 static void
 pkg_solve_add_chain_rule(struct pkg_solve_problem *problem,
-    struct pkg_solve_variable *var)
+    solve_var_slice_t *slice)
 {
 	struct pkg_solve_variable *curvar, *confvar;
 	struct pkg_solve_rule *rule;
 
-	/* Rewind to first */
-	while (var->prev->next != NULL) {
-		var = var->prev;
-	}
-
-	LL_FOREACH(var, curvar) {
+	for (size_t vi = 0; vi < slice->count; vi++) {
+		curvar = &slice->begin[vi];
 		/* Conflict rule: (!Ax | !Ay) must be true */
-		if (curvar->next == NULL) {
-			break;
-		}
-
-		LL_FOREACH(curvar->next, confvar) {
+		for (size_t vj = vi + 1; vj < slice->count; vj++) {
+			confvar = &slice->begin[vj];
 			rule = pkg_solve_rule_new(PKG_RULE_UPGRADE_CONFLICT);
 			/* !Ax */
 			pkg_solve_item_new(rule, curvar, -1);
@@ -691,7 +688,7 @@ pkg_solve_add_chain_rule(struct pkg_solve_problem *problem,
 
 static void
 pkg_solve_process_universe_variable(struct pkg_solve_problem *problem,
-    struct pkg_solve_variable *var)
+    solve_var_slice_t *slice)
 {
 	struct pkg_dep *dep;
 	struct pkg_conflict *conflict;
@@ -699,12 +696,12 @@ pkg_solve_process_universe_variable(struct pkg_solve_problem *problem,
 	struct pkg_solve_variable *cur_var;
 	struct pkg_jobs *j = problem->j;
 	struct pkg_job_request *jreq = NULL;
-	bool chain_added = false;
 	bool force = j->flags & PKG_FLAG_FORCE;
 	bool force_overrides_vital = pkg_object_bool(pkg_config_get("FORCE_CAN_REMOVE_VITAL"));
 	bool add_vital = force_overrides_vital ? !force : true;
 
-	LL_FOREACH(var, cur_var) {
+	for (size_t vi = 0; vi < slice->count; vi++) {
+		cur_var = &slice->begin[vi];
 		pkg = cur_var->unit->pkg;
 
 		/* Request */
@@ -753,16 +750,15 @@ pkg_solve_process_universe_variable(struct pkg_solve_problem *problem,
 
 		/* Vital flag */
 		if (pkg->vital && add_vital)
-			pkg_solve_add_vital_rule(problem, cur_var);
+			pkg_solve_add_vital_rule(problem, slice);
 
 		/*
 		 * If this var chain contains mutually conflicting vars
 		 * we need to register conflicts with all following
 		 * vars
 		 */
-		if (!chain_added && (cur_var->next != NULL || cur_var->prev != var)) {
-			pkg_solve_add_chain_rule(problem, cur_var);
-			chain_added = true;
+		if (vi == 0 && slice->count > 1) {
+			pkg_solve_add_chain_rule(problem, slice);
 		}
 	}
 }
@@ -771,26 +767,19 @@ static void
 pkg_solve_add_variable(universe_itemv_t *uv,
     struct pkg_solve_problem *problem, size_t *n)
 {
-	struct pkg_solve_variable *var = NULL, *tvar = NULL;
-
+	solve_var_slice_t *slice = xcalloc(1, sizeof(*slice));
 	vec_foreach(*uv, _i) {
 		struct pkg_job_universe_item *ucur = uv->d[_i];
 		assert(*n < problem->nvars);
-
-		/* Add new variable */
-		var = &problem->variables[*n];
+		struct pkg_solve_variable *var = &problem->variables[*n];
 		pkg_solve_variable_set(var, ucur);
-
-		if (tvar == NULL) {
+		if (slice->begin == NULL) {
+			slice->begin = var;
 			dbg(4, "add variable from universe with uid %s", var->uid);
-			pkghash_safe_add(problem->variables_by_uid, var->uid, var, NULL);
-			tvar = var;
+			pkghash_safe_add(problem->variables_by_uid, var->uid, slice, NULL);
 		}
-		else {
-			/* Insert a variable to a chain */
-			DL_APPEND(tvar, var);
-		}
-		(*n) ++;
+		slice->count++;
+		(*n)++;
 		var->order = *n;
 	}
 }
@@ -829,17 +818,17 @@ pkg_solve_jobs_to_sat(struct pkg_jobs *j)
 	/* Add rules for all conflict chains */
 	it = pkghash_iterator(j->universe->items);
 	while (pkghash_next(&it)) {
-		struct pkg_solve_variable *var;
+		solve_var_slice_t *slice;
 
 		uv = (universe_itemv_t *)it.value;
-		var = pkghash_get_value(problem->variables_by_uid, uv->d[0]->pkg->uid);
-		if (var == NULL) {
+		slice = pkghash_get_value(problem->variables_by_uid, uv->d[0]->pkg->uid);
+		if (slice == NULL) {
 			pkg_emit_error("internal solver error: variable %s is not found",
 			    uv->d[0]->pkg->uid);
 			pkg_solve_problem_free(problem);
 			return (NULL);
 		}
-		pkg_solve_process_universe_variable(problem, var);
+		pkg_solve_process_universe_variable(problem, slice);
 	}
 
 	if (problem->rules.len == 0)
@@ -853,7 +842,7 @@ pkg_solve_picosat_iter(struct pkg_solve_problem *problem, int iter __unused)
 {
 	size_t i;
 	int res;
-	struct pkg_solve_variable *var, *cur;
+	struct pkg_solve_variable *var;
 	bool is_installed = false;
 
 	picosat_reset_phases(problem->sat);
@@ -863,10 +852,13 @@ pkg_solve_picosat_iter(struct pkg_solve_problem *problem, int iter __unused)
 		var = &problem->variables[i];
 		is_installed = false;
 
-		LL_FOREACH(var, cur) {
-			if (cur->unit->pkg->type == PKG_INSTALLED) {
-				is_installed = true;
-				break;
+		solve_var_slice_t *pslice = pkghash_get_value(problem->variables_by_uid, var->uid);
+		if (pslice != NULL) {
+			for (size_t vi = 0; vi < pslice->count; vi++) {
+				if (pslice->begin[vi].unit->pkg->type == PKG_INSTALLED) {
+					is_installed = true;
+					break;
+				}
 			}
 		}
 
@@ -878,7 +870,7 @@ pkg_solve_picosat_iter(struct pkg_solve_problem *problem, int iter __unused)
 				picosat_set_default_phase_lit(problem->sat, i + 1, 1);
 				picosat_set_more_important_lit(problem->sat, i + 1);
 			}
-			else if  (!var->next && var->prev == var) {
+			else if (pslice != NULL && pslice->count == 1) {
 				/* Prefer not to install if have no local version */
 				picosat_set_default_phase_lit(problem->sat, i + 1, -1);
 				picosat_set_less_important_lit(problem->sat, i + 1);
@@ -929,8 +921,8 @@ pkg_solve_set_initial_assumption(struct pkg_solve_problem *problem,
 		 * dependencies. We assume that all deps belong to a single
 		 * upgrade chain.
 		 */
-		assert (rule->items != NULL);
-		item = rule->items;
+		assert (rule->items.len > 0);
+		item = &rule->items.d[0];
 		var = item->var;
 		assumed_reponame = var->assumed_reponame;
 
@@ -950,16 +942,16 @@ pkg_solve_set_initial_assumption(struct pkg_solve_problem *problem,
 		}
 
 
-		item = rule->items->next;
-		assert (item != NULL);
+		item = &rule->items.d[1];
+		assert (rule->items.len > 1);
 		var = item->var;
 
-		/* Rewind var chain to head */
-		while (var->prev->next != NULL) {
-			var = var->prev;
-		}
+		/* Look up slice from hash */
+		solve_var_slice_t *aslice = pkghash_get_value(problem->variables_by_uid, var->uid);
+		assert(aslice != NULL);
 
-		LL_FOREACH(var, cvar) {
+		for (size_t vi = 0; vi < aslice->count; vi++) {
+			cvar = &aslice->begin[vi];
 			if (cvar->flags & PKG_VAR_ASSUMED) {
 				/* Do not reassume packages */
 				return;
@@ -999,7 +991,8 @@ pkg_solve_set_initial_assumption(struct pkg_solve_problem *problem,
 		/* Now we can find the according var */
 		if (selected != NULL) {
 
-			LL_FOREACH(var, cvar) {
+			for (size_t vi = 0; vi < aslice->count; vi++) {
+				cvar = &aslice->begin[vi];
 				if (cvar->unit == selected) {
 					picosat_set_default_phase_lit(problem->sat, cvar->order, 1);
 					dbg(4, "assumed %s-%s(%s) to be installed",
@@ -1043,7 +1036,8 @@ pkg_solve_sat_problem(struct pkg_solve_problem *problem)
 	vec_rforeach(problem->rules, j) {
 		rule = problem->rules.d[j];
 
-		LL_FOREACH(rule->items, item) {
+		vec_foreach(rule->items, _ri) {
+			item = &rule->items.d[_ri];
 			picosat_add(problem->sat, item->var->order * item->inverse);
 		}
 
@@ -1088,7 +1082,8 @@ reiterate:
 					rule = problem->rules.d[j];
 
 					if (rule->reason != PKG_RULE_DEPEND) {
-						LL_FOREACH(rule->items, item) {
+						vec_foreach(rule->items, _ri) {
+							item = &rule->items.d[_ri];
 							if (item->var == var) {
 								pkg_print_rule_buf(rule, sb);
 								fputc('\n', sb->fp);
@@ -1123,7 +1118,8 @@ reiterate:
 				 * dependent package, positive items are its dependencies */
 				struct pkg_solve_item *dep_pkg = NULL;
 				bool depends_on_var = false;
-				LL_FOREACH(vrule->items, item) {
+				vec_foreach(vrule->items, _ri) {
+					item = &vrule->items.d[_ri];
 					if (item->inverse == -1)
 						dep_pkg = item;
 					else if (item->var->uid == var->uid ||
@@ -1171,16 +1167,20 @@ reiterate:
 				problem->j->type == PKG_JOBS_UPGRADE) && iter == 0) {
 			for (i = 0; i < problem->nvars; i ++) {
 				bool failed_var = false;
-				struct pkg_solve_variable *lvar = &problem->variables[i], *cur;
+				struct pkg_solve_variable *lvar = &problem->variables[i];
 
 				if (!(lvar->flags & PKG_VAR_INSTALL)) {
-					LL_FOREACH(lvar, cur) {
-						if (cur->flags & PKG_VAR_INSTALL) {
-							failed_var = false;
-							break;
-						}
-						else if (cur->unit->pkg->type == PKG_INSTALLED) {
-							failed_var = true;
+					solve_var_slice_t *lslice = pkghash_get_value(problem->variables_by_uid, lvar->uid);
+					if (lslice != NULL) {
+						for (size_t vi = 0; vi < lslice->count; vi++) {
+							struct pkg_solve_variable *cur = &lslice->begin[vi];
+							if (cur->flags & PKG_VAR_INSTALL) {
+								failed_var = false;
+								break;
+							}
+							else if (cur->unit->pkg->type == PKG_INSTALLED) {
+								failed_var = true;
+							}
 						}
 					}
 				}
@@ -1190,13 +1190,16 @@ reiterate:
 				 * iteration to ensure that we have no other choices
 				 */
 				if (failed_var) {
+					solve_var_slice_t *lslice = pkghash_get_value(problem->variables_by_uid, lvar->uid);
 					dbg (1, "trying to delete local package %s-%s on install/upgrade,"
 							" reiterate on SAT",
 							lvar->unit->pkg->name, lvar->unit->pkg->version);
 					need_reiterate = true;
 
-					LL_FOREACH(lvar, cur) {
-						cur->flags |= PKG_VAR_FAILED;
+					if (lslice != NULL) {
+						for (size_t vi = 0; vi < lslice->count; vi++) {
+							lslice->begin[vi].flags |= PKG_VAR_FAILED;
+						}
 					}
 				}
 			}
@@ -1232,6 +1235,7 @@ void
 pkg_solve_dot_export(struct pkg_solve_problem *problem, FILE *file)
 {
 	struct pkg_solve_rule *rule;
+	struct pkg_solve_item *it, *key_elt;
 	size_t i;
 
 	fprintf(file, "digraph {\n");
@@ -1248,11 +1252,12 @@ pkg_solve_dot_export(struct pkg_solve_problem *problem, FILE *file)
 
 	vec_rforeach(problem->rules, j) {
 		rule = problem->rules.d[j];
-		struct pkg_solve_item *it = rule->items, *key_elt = NULL;
+		key_elt = NULL;
 
 		switch(rule->reason) {
 		case PKG_RULE_DEPEND:
-			LL_FOREACH(rule->items, it) {
+			vec_foreach(rule->items, _ri) {
+				it = &rule->items.d[_ri];
 				if (it->inverse == -1) {
 					key_elt = it;
 					break;
@@ -1260,7 +1265,8 @@ pkg_solve_dot_export(struct pkg_solve_problem *problem, FILE *file)
 			}
 			assert (key_elt != NULL);
 
-			LL_FOREACH(rule->items, it) {
+			vec_foreach(rule->items, _rj) {
+				it = &rule->items.d[_rj];
 				if (it != key_elt) {
 					fprintf(file, "\tp%d -> p%d;\n", key_elt->var->order,
 							it->var->order);
@@ -1271,10 +1277,11 @@ pkg_solve_dot_export(struct pkg_solve_problem *problem, FILE *file)
 		case PKG_RULE_EXPLICIT_CONFLICT:
 		case PKG_RULE_REQUEST_CONFLICT:
 			fprintf(file, "\tp%d -> p%d [arrowhead=none,color=red];\n",
-					it->var->order, it->next->var->order);
+					rule->items.d[0].var->order, rule->items.d[1].var->order);
 			break;
 		case PKG_RULE_REQUIRE:
-			LL_FOREACH(rule->items, it) {
+			vec_foreach(rule->items, _ri) {
+				it = &rule->items.d[_ri];
 				if (it->inverse == -1) {
 					key_elt = it;
 					break;
@@ -1282,7 +1289,8 @@ pkg_solve_dot_export(struct pkg_solve_problem *problem, FILE *file)
 			}
 			assert (key_elt != NULL);
 
-			LL_FOREACH(rule->items, it) {
+			vec_foreach(rule->items, _rj) {
+				it = &rule->items.d[_rj];
 				if (it != key_elt) {
 					fprintf(file, "\tp%d -> p%d[arrowhead=diamond];\n", key_elt->var->order,
 							it->var->order);
@@ -1307,7 +1315,8 @@ pkg_solve_dimacs_export(struct pkg_solve_problem *problem, FILE *f)
 
 	vec_rforeach(problem->rules, i) {
 		rule = problem->rules.d[i];
-		LL_FOREACH(rule->items, it) {
+		vec_foreach(rule->items, _ri) {
+			it = &rule->items.d[_ri];
 			size_t order = it->var - problem->variables;
 			if (order < problem->nvars)
 				fprintf(f, "%ld ", (long)((order + 1) * it->inverse));
@@ -1335,12 +1344,12 @@ pkg_solve_can_keep(struct pkg_solve_problem *problem,
 
 	/* Check dependencies */
 	while (pkg_deps(pkg, &dep) == EPKG_OK) {
-		struct pkg_solve_variable *depvar;
+		solve_var_slice_t *depslice;
 
-		depvar = pkghash_get_value(problem->variables_by_uid, dep->uid);
-		if (depvar == NULL) {
+		depslice = pkghash_get_value(problem->variables_by_uid, dep->uid);
+		if (depslice == NULL) {
 			/*
-			 * Dep not in the universe at all – it is either
+			 * Dep not in the universe at all -- it is either
 			 * already installed outside the solver scope or
 			 * genuinely missing.  Assume satisfied.
 			 */
@@ -1349,8 +1358,8 @@ pkg_solve_can_keep(struct pkg_solve_problem *problem,
 
 		/* Check if any version of this dep is being installed/kept */
 		bool dep_ok = false;
-		struct pkg_solve_variable *cv;
-		LL_FOREACH(depvar, cv) {
+		for (size_t vi = 0; vi < depslice->count; vi++) {
+			struct pkg_solve_variable *cv = &depslice->begin[vi];
 			if (cv->flags & PKG_VAR_INSTALL) {
 				dep_ok = true;
 				break;
@@ -1367,15 +1376,15 @@ pkg_solve_can_keep(struct pkg_solve_problem *problem,
 	/* Check conflicts: if any conflicting package is being installed,
 	 * this package must be removed */
 	LL_FOREACH(pkg->conflicts, conflict) {
-		struct pkg_solve_variable *confvar;
+		solve_var_slice_t *confslice;
 
-		confvar = pkghash_get_value(problem->variables_by_uid,
+		confslice = pkghash_get_value(problem->variables_by_uid,
 		    conflict->uid);
-		if (confvar == NULL)
+		if (confslice == NULL)
 			continue;
 
-		struct pkg_solve_variable *cv;
-		LL_FOREACH(confvar, cv) {
+		for (size_t vi = 0; vi < confslice->count; vi++) {
+			struct pkg_solve_variable *cv = &confslice->begin[vi];
 			if (cv->flags & PKG_VAR_INSTALL) {
 				dbg(4, "%s-%s conflicts with %s-%s being installed",
 				    pkg->name, pkg->version,
@@ -1390,7 +1399,7 @@ pkg_solve_can_keep(struct pkg_solve_problem *problem,
 }
 
 static void
-pkg_solve_insert_res_job (struct pkg_solve_variable *var,
+pkg_solve_insert_res_job (solve_var_slice_t *slice,
 		struct pkg_solve_problem *problem)
 {
 	struct pkg_solved *res;
@@ -1398,7 +1407,8 @@ pkg_solve_insert_res_job (struct pkg_solve_variable *var,
 	int seen_add = 0, seen_del = 0;
 	struct pkg_jobs *j = problem->j;
 
-	LL_FOREACH(var, cur_var) {
+	for (size_t vi = 0; vi < slice->count; vi++) {
+		cur_var = &slice->begin[vi];
 		if ((cur_var->flags & PKG_VAR_INSTALL) &&
 				cur_var->unit->pkg->type != PKG_INSTALLED) {
 			add_var = cur_var;
@@ -1413,7 +1423,7 @@ pkg_solve_insert_res_job (struct pkg_solve_variable *var,
 
 	if (seen_add > 1) {
 		pkg_emit_error("internal solver error: more than two packages to install(%d) "
-				"from the same uid: %s", seen_add, var->uid);
+				"from the same uid: %s", seen_add, slice->begin[0].uid);
 		return;
 	}
 	else if (seen_add != 0 || seen_del != 0) {
@@ -1443,7 +1453,8 @@ pkg_solve_insert_res_job (struct pkg_solve_variable *var,
 		 * For delete requests there could be multiple delete requests per UID,
 		 * so we need to re-process vars and add all delete jobs required.
 		 */
-		LL_FOREACH(var, cur_var) {
+		for (size_t vi = 0; vi < slice->count; vi++) {
+			cur_var = &slice->begin[vi];
 			if (!(cur_var->flags & PKG_VAR_INSTALL) &&
 					cur_var->unit->pkg->type == PKG_INSTALLED) {
 				/* Skip already added items */
@@ -1481,20 +1492,20 @@ pkg_solve_insert_res_job (struct pkg_solve_variable *var,
 	}
 	else {
 		dbg(2, "ignoring package %s(%s) as its state has not been changed",
-				var->uid, var->digest);
+				slice->begin[0].uid, slice->begin[0].digest);
 	}
 }
 
 int
 pkg_solve_sat_to_jobs(struct pkg_solve_problem *problem)
 {
-	struct pkg_solve_variable *var;
+	solve_var_slice_t *slice;
 	pkghash_it it = pkghash_iterator(problem->variables_by_uid);
 
 	while (pkghash_next(&it)) {
-		var = (struct pkg_solve_variable *)it.value;
-		dbg(4, "check variable with uid %s", var->uid);
-		pkg_solve_insert_res_job(var, problem);
+		slice = (solve_var_slice_t *)it.value;
+		dbg(4, "check variable with uid %s", slice->begin[0].uid);
+		pkg_solve_insert_res_job(slice, problem);
 	}
 
 	return (EPKG_OK);
