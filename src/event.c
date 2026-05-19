@@ -395,25 +395,651 @@ str_or_unknown(const char *str)
 	return str;
 }
 
+typedef int (*event_handler_fn)(struct pkg_event *ev, int *debug);
+
+static int
+event_cb_errno(struct pkg_event *ev, int *debug __unused)
+{
+	warnx("%s(%s): %s", ev->e_errno.func, ev->e_errno.arg,
+	    strerror(ev->e_errno.no));
+	return (0);
+}
+
+static int
+event_cb_error(struct pkg_event *ev, int *debug __unused)
+{
+	warnx("%s", ev->e_pkg_error.msg);
+	return (0);
+}
+
+static int
+event_cb_notice(struct pkg_event *ev, int *debug __unused)
+{
+	if (!quiet)
+		printf("%s\n", ev->e_pkg_notice.msg);
+	return (0);
+}
+
+static int
+event_cb_developer_mode(struct pkg_event *ev, int *debug __unused)
+{
+	warnx("DEVELOPER_MODE: %s", ev->e_pkg_error.msg);
+	return (0);
+}
+
+static int
+event_cb_update_add(struct pkg_event *ev, int *debug __unused)
+{
+	if (quiet || !isatty(STDOUT_FILENO))
+		return (0);
+	printf("\rPushing new entries %d/%d", ev->e_upd_add.done, ev->e_upd_add.total);
+	if (ev->e_upd_add.total == ev->e_upd_add.done)
+	        putchar('\n');
+	return (0);
+}
+
+static int
+event_cb_update_remove(struct pkg_event *ev, int *debug __unused)
+{
+	if (quiet || !isatty(STDOUT_FILENO))
+		return (0);
+	printf("\rRemoving entries %d/%d", ev->e_upd_remove.done, ev->e_upd_remove.total);
+	if (ev->e_upd_remove.total == ev->e_upd_remove.done)
+		putchar('\n');
+	return (0);
+}
+
+static int
+event_cb_fetch_begin(struct pkg_event *ev, int *debug __unused)
+{
+	const char *filename, *tmp;
+
+	if (nbtodl > 0)
+		nbdone++;
+	if (quiet)
+		return (0);
+	filename = strrchr(ev->e_fetching.url, '/');
+	if (filename != NULL) {
+		filename++;
+	} else {
+		/*
+		 * We failed at being smart, so display
+		 * the entire url.
+		 */
+		filename = ev->e_fetching.url;
+	}
+	job_status_begin(msg_buf);
+	progress_debit = true;
+	tmp = strrchr(filename, '~');
+	if (tmp != NULL)
+		fprintf(msg_buf->fp, "Fetching %.*s",
+				(int)(tmp - filename), filename);
+	else {
+		tmp = strrchr(filename, '.');
+		if (tmp != NULL && strcmp(tmp, ".pkg") == 0)
+			fprintf(msg_buf->fp, "Fetching %.*s",
+					(int)(tmp - filename), filename);
+		else
+			fprintf(msg_buf->fp, "Fetching %s",
+					filename);
+	}
+	return (0);
+}
+
+static int
+event_cb_fetch_finished(struct pkg_event *ev __unused, int *debug __unused)
+{
+	progress_debit = false;
+	return (0);
+}
+
+static int
+event_cb_install_begin(struct pkg_event *ev, int *debug __unused)
+{
+	struct pkg *pkg;
+
+	if (quiet)
+		return (0);
+	job_status_begin(msg_buf);
+
+	pkg = ev->e_install_begin.pkg;
+	pkg_fprintf(msg_buf->fp, "Installing %n-%v...\n", pkg,
+	    pkg);
+	fflush(msg_buf->fp);
+	printf("%s", msg_buf->buf);
+	return (0);
+}
+
+static int
+event_cb_extract_begin(struct pkg_event *ev, int *debug __unused)
+{
+	struct pkg *pkg;
+
+	if (quiet)
+		return (0);
+	job_status_begin(msg_buf);
+	pkg = ev->e_install_begin.pkg;
+	pkg_fprintf(msg_buf->fp, "Extracting %n-%v", pkg, pkg);
+	fflush(msg_buf->fp);
+	return (0);
+}
+
+static int
+event_cb_add_deps_begin(struct pkg_event *ev __unused, int *debug __unused)
+{
+	++add_deps_depth;
+	return (0);
+}
+
+static int
+event_cb_add_deps_finished(struct pkg_event *ev __unused, int *debug __unused)
+{
+	--add_deps_depth;
+	return (0);
+}
+
+static int
+event_cb_integritycheck_begin(struct pkg_event *ev __unused, int *debug __unused)
+{
+	if (quiet)
+		return (0);
+	printf("Checking integrity...");
+	return (0);
+}
+
+static int
+event_cb_integritycheck_finished(struct pkg_event *ev, int *debug __unused)
+{
+	if (quiet)
+		return (0);
+	printf(" done (%d conflicting)\n", ev->e_integrity_finished.conflicting);
+	if (conflicts != NULL) {
+		fflush(conflicts->fp);
+		printf("%s", conflicts->buf);
+		xstring_free(conflicts);
+		conflicts = NULL;
+	}
+	return (0);
+}
+
+static int
+event_cb_integritycheck_conflict(struct pkg_event *ev, int *debug)
+{
+	struct pkg_event_conflict *cur_conflict;
+
+	if (*debug == 0)
+		return (0);
+	printf("\nConflict found on path %s between %s and ",
+	    ev->e_integrity_conflict.pkg_path,
+	    ev->e_integrity_conflict.pkg_uid);
+	cur_conflict = ev->e_integrity_conflict.conflicts;
+	while (cur_conflict) {
+		if (cur_conflict->next)
+			printf("%s, ", cur_conflict->uid);
+		else
+			printf("%s", cur_conflict->uid);
+
+		cur_conflict = cur_conflict->next;
+	}
+	printf("\n");
+	return (0);
+}
+
+static int
+event_cb_deinstall_begin(struct pkg_event *ev, int *debug __unused)
+{
+	struct pkg *pkg;
+
+	if (quiet)
+		return (0);
+
+	job_status_begin(msg_buf);
+
+	pkg = ev->e_install_begin.pkg;
+	pkg_fprintf(msg_buf->fp, "Deinstalling %n-%v...\n", pkg, pkg);
+	fflush(msg_buf->fp);
+	printf("%s", msg_buf->buf);
+	return (0);
+}
+
+static int
+event_cb_delete_files_begin(struct pkg_event *ev, int *debug __unused)
+{
+	struct pkg *pkg;
+
+	if (quiet)
+		return (0);
+	job_status_begin(msg_buf);
+	pkg = ev->e_install_begin.pkg;
+	pkg_fprintf(msg_buf->fp, "Deleting files for %n-%v",
+	    pkg, pkg);
+	return (0);
+}
+
+static int
+event_cb_upgrade_begin(struct pkg_event *ev, int *debug __unused)
+{
+	struct pkg *pkg_new, *pkg_old;
+
+	if (quiet)
+		return (0);
+	pkg_new = ev->e_upgrade_begin.n;
+	pkg_old = ev->e_upgrade_begin.o;
+
+	job_status_begin(msg_buf);
+
+	switch (pkg_version_change_between(pkg_new, pkg_old)) {
+	case PKG_DOWNGRADE:
+		pkg_fprintf(msg_buf->fp, "Downgrading %n from %v to %v...\n",
+		    pkg_new, pkg_old, pkg_new);
+		break;
+	case PKG_REINSTALL:
+		pkg_fprintf(msg_buf->fp, "Reinstalling %n-%v...\n",
+	    pkg_old, pkg_old);
+		break;
+	case PKG_UPGRADE:
+		pkg_fprintf(msg_buf->fp, "Upgrading %n from %v to %v...\n",
+		    pkg_new, pkg_old, pkg_new);
+		break;
+	}
+	fflush(msg_buf->fp);
+	printf("%s", msg_buf->buf);
+	return (0);
+}
+
+static int
+event_cb_locked(struct pkg_event *ev, int *debug __unused)
+{
+	struct pkg *pkg;
+
+	pkg = ev->e_locked.pkg;
+	pkg_printf("\n%n-%v is locked and may not be modified\n", pkg, pkg);
+	return (0);
+}
+
+static int
+event_cb_required(struct pkg_event *ev, int *debug __unused)
+{
+	struct pkg *pkg;
+
+	pkg = ev->e_required.pkg;
+	pkg_printf("\n%n-%v is required by: %r%{%rn-%rv%| %}", pkg, pkg, pkg);
+	if (ev->e_required.force == 1)
+		fprintf(stderr, ", deleting anyway\n");
+	else
+		fprintf(stderr, "\n");
+	return (0);
+}
+
+static int
+event_cb_already_installed(struct pkg_event *ev, int *debug __unused)
+{
+	struct pkg *pkg;
+
+	if (quiet)
+		return (0);
+	pkg = ev->e_already_installed.pkg;
+	pkg_printf("the most recent version of %n-%v is already installed\n",
+			pkg, pkg);
+	return (0);
+}
+
+static int
+event_cb_not_found(struct pkg_event *ev, int *debug __unused)
+{
+	printf("Package '%s' was not found in "
+	    "the repositories\n", ev->e_not_found.pkg_name);
+	return (0);
+}
+
+static int
+event_cb_missing_dep(struct pkg_event *ev, int *debug __unused)
+{
+	warnx("Missing dependency '%s'",
+	    pkg_dep_name(ev->e_missing_dep.dep));
+	return (0);
+}
+
+static int
+event_cb_noremotedb(struct pkg_event *ev, int *debug __unused)
+{
+	fprintf(stderr, "Unable to open remote database \"%s\". "
+	    "Try running '%s update' first.\n", ev->e_remotedb.repo,
+	    getprogname());
+	return (0);
+}
+
+static int
+event_cb_nolocaldb(struct pkg_event *ev __unused, int *debug __unused)
+{
+	fprintf(stderr, "Local package database nonexistent!\n");
+	return (0);
+}
+
+static int
+event_cb_newpkgversion(struct pkg_event *ev __unused, int *debug __unused)
+{
+	newpkgversion = true;
+	printf("New version of pkg detected; it needs to be "
+	    "installed first.\n");
+	return (0);
+}
+
+static int
+event_cb_file_mismatch(struct pkg_event *ev, int *debug __unused)
+{
+	struct pkg *pkg;
+
+	pkg = ev->e_file_mismatch.pkg;
+	pkg_fprintf(stderr, "%n-%v: checksum mismatch for %Fn\n", pkg,
+	    pkg, ev->e_file_mismatch.file);
+	return (0);
+}
+
+static int
+event_cb_file_missing(struct pkg_event *ev, int *debug __unused)
+{
+	struct pkg *pkg;
+
+	pkg = ev->e_file_missing.pkg;
+	pkg_fprintf(stderr, "%n-%v: missing file %Fn\n", pkg, pkg,
+	    ev->e_file_missing.file);
+	return (0);
+}
+
+static int
+event_cb_dir_meta_mismatch(struct pkg_event *ev, int *debug __unused)
+{
+	struct pkg *pkg;
+	struct pkg_dir *dir;
+
+	pkg = ev->e_file_meta_mismatch.pkg;
+	dir = ev->e_dir_meta_mismatch.dir;
+	pkg_fprintf(stderr, "%n-%v: %Dn [%S] %S -> %S\n", pkg, pkg, dir,
+		    pkg_meta_attribute_tostring(ev->e_dir_meta_mismatch.attrib),
+		    str_or_unknown(ev->e_dir_meta_mismatch.db_val),
+		    str_or_unknown(ev->e_dir_meta_mismatch.fs_val));
+	return (0);
+}
+
+static int
+event_cb_file_meta_mismatch(struct pkg_event *ev, int *debug __unused)
+{
+	struct pkg *pkg;
+	struct pkg_file *file;
+
+	pkg = ev->e_file_meta_mismatch.pkg;
+	file = ev->e_file_meta_mismatch.file;
+	pkg_fprintf(stderr, "%n-%v: %Fn [%S] %S -> %S\n", pkg, pkg, file,
+		    pkg_meta_attribute_tostring(ev->e_file_meta_mismatch.attrib),
+		    str_or_unknown(ev->e_file_meta_mismatch.db_val),
+		    str_or_unknown(ev->e_file_meta_mismatch.fs_val));
+	return (0);
+}
+
+static int
+event_cb_plugin_errno(struct pkg_event *ev, int *debug __unused)
+{
+	warnx("%s: %s(%s): %s",
+	    pkg_plugin_get(ev->e_plugin_errno.plugin, PKG_PLUGIN_NAME),
+	    ev->e_plugin_errno.func, ev->e_plugin_errno.arg,
+	    strerror(ev->e_plugin_errno.no));
+	return (0);
+}
+
+static int
+event_cb_plugin_error(struct pkg_event *ev, int *debug __unused)
+{
+	warnx("%s: %s",
+	    pkg_plugin_get(ev->e_plugin_error.plugin, PKG_PLUGIN_NAME),
+	    ev->e_plugin_error.msg);
+	return (0);
+}
+
+static int
+event_cb_plugin_info(struct pkg_event *ev, int *debug __unused)
+{
+	if (quiet)
+		return (0);
+	printf("%s: %s\n",
+	    pkg_plugin_get(ev->e_plugin_info.plugin, PKG_PLUGIN_NAME),
+	    ev->e_plugin_info.msg);
+	return (0);
+}
+
+static int
+event_cb_incremental_update(struct pkg_event *ev, int *debug __unused)
+{
+	if (!quiet)
+		printf("%s repository update completed. %d packages processed.\n",
+		    ev->e_incremental_update.reponame,
+		    ev->e_incremental_update.processed);
+	return (0);
+}
+
+static int
+event_cb_debug(struct pkg_event *ev, int *debug __unused)
+{
+	fprintf(stderr, "DBG(%d)[%d]> %s\n", ev->e_debug.level,
+		(int)getpid(), ev->e_debug.msg);
+	return (0);
+}
+
+static int
+event_cb_query_yesno(struct pkg_event *ev, int *debug __unused)
+{
+	return (ev->e_query_yesno.deft ?
+		query_yesno(true, ev->e_query_yesno.msg, "[Y/n]") :
+		query_yesno(false, ev->e_query_yesno.msg, "[y/N]"));
+}
+
+static int
+event_cb_query_select(struct pkg_event *ev, int *debug __unused)
+{
+	return query_select(ev->e_query_select.msg, ev->e_query_select.items,
+		ev->e_query_select.ncnt, ev->e_query_select.deft);
+}
+
+static int
+event_cb_sandbox_call(struct pkg_event *ev, int *debug __unused)
+{
+	return (pkg_handle_sandboxed_call(ev->e_sandbox_call.call,
+			ev->e_sandbox_call.fd,
+			ev->e_sandbox_call.userdata));
+}
+
+static int
+event_cb_sandbox_get_string(struct pkg_event *ev, int *debug __unused)
+{
+	return (pkg_handle_sandboxed_get_string(ev->e_sandbox_call_str.call,
+			ev->e_sandbox_call_str.result,
+			ev->e_sandbox_call_str.len,
+			ev->e_sandbox_call_str.userdata));
+}
+
+static int
+event_cb_progress_start(struct pkg_event *ev, int *debug __unused)
+{
+	progressbar_start(ev->e_progress_start.msg);
+	return (0);
+}
+
+static int
+event_cb_progress_tick(struct pkg_event *ev, int *debug __unused)
+{
+	progressbar_tick(ev->e_progress_tick.current,
+	    ev->e_progress_tick.total);
+	return (0);
+}
+
+static int
+event_cb_backup(struct pkg_event *ev __unused, int *debug __unused)
+{
+	fprintf(msg_buf->fp, "Backing up");
+	return (0);
+}
+
+static int
+event_cb_restore(struct pkg_event *ev __unused, int *debug __unused)
+{
+	fprintf(msg_buf->fp, "Restoring");
+	return (0);
+}
+
+static int
+event_cb_new_action(struct pkg_event *ev, int *debug __unused)
+{
+	nbactions = ev->e_action.total;
+	nbdigits = 0;
+	nbdone = ev->e_action.current;
+	return (0);
+}
+
+static int
+event_cb_message(struct pkg_event *ev, int *debug __unused)
+{
+	if (messages == NULL)
+		messages = xstring_new();
+	fprintf(messages->fp, "%s", ev->e_pkg_message.msg);
+	return (0);
+}
+
+static int
+event_cb_cleanup_callback_register(struct pkg_event *ev, int *debug __unused)
+{
+	struct cleanup *evtmp;
+
+	if (!signal_handler_installed) {
+		signal(SIGINT, cleanup_handler);
+		signal_handler_installed = true;
+	}
+	evtmp = xmalloc(sizeof(struct cleanup));
+	evtmp->cb = ev->e_cleanup_callback.cleanup_cb;
+	evtmp->data = ev->e_cleanup_callback.data;
+	vec_push(&cleanup_list, evtmp);
+	return (0);
+}
+
+static int
+event_cb_cleanup_callback_unregister(struct pkg_event *ev, int *debug __unused)
+{
+	struct cleanup *evtmp;
+
+	if (!signal_handler_installed)
+		return (0);
+	vec_foreach(cleanup_list, i) {
+		evtmp = cleanup_list.d[i];
+		if (evtmp->cb == ev->e_cleanup_callback.cleanup_cb &&
+		    evtmp->data == ev->e_cleanup_callback.data) {
+			vec_remove_and_free(&cleanup_list, i, free);
+			break;
+		}
+	}
+	return (0);
+}
+
+static int
+event_cb_conflicts(struct pkg_event *ev, int *debug __unused)
+{
+	const char *reponame = NULL;
+
+	if (conflicts == NULL) {
+		conflicts = xstring_new();
+	}
+	pkg_fprintf(conflicts->fp, "  - %n-%v",
+	    ev->e_conflicts.p1, ev->e_conflicts.p1);
+	if (pkg_repos_total_count() > 1) {
+		pkg_get(ev->e_conflicts.p1, PKG_ATTR_REPONAME, &reponame);
+		fprintf(conflicts->fp, " [%s]",
+		    reponame == NULL ? "installed" : reponame);
+	}
+	pkg_fprintf(conflicts->fp, " conflicts with %n-%v",
+	    ev->e_conflicts.p2, ev->e_conflicts.p2);
+	if (pkg_repos_total_count() > 1) {
+		pkg_get(ev->e_conflicts.p2, PKG_ATTR_REPONAME, &reponame);
+		fprintf(conflicts->fp, " [%s]",
+		    reponame == NULL ? "installed" : reponame);
+	}
+	fprintf(conflicts->fp, " on %s\n",
+	    ev->e_conflicts.path);
+	return (0);
+}
+
+static int
+event_cb_trigger(struct pkg_event *ev, int *debug __unused)
+{
+	if (!quiet) {
+		if (ev->e_trigger.cleanup)
+			printf("==> Cleaning up trigger: %s\n", ev->e_trigger.name);
+		else
+			printf("==> Running trigger: %s\n", ev->e_trigger.name);
+	}
+	return (0);
+}
+
+static const event_handler_fn event_handlers[PKG_EVENT_LAST] = {
+	[PKG_EVENT_INSTALL_BEGIN]                = event_cb_install_begin,
+	[PKG_EVENT_DEINSTALL_BEGIN]              = event_cb_deinstall_begin,
+	[PKG_EVENT_UPGRADE_BEGIN]                = event_cb_upgrade_begin,
+	[PKG_EVENT_EXTRACT_BEGIN]                = event_cb_extract_begin,
+	[PKG_EVENT_DELETE_FILES_BEGIN]            = event_cb_delete_files_begin,
+	[PKG_EVENT_ADD_DEPS_BEGIN]               = event_cb_add_deps_begin,
+	[PKG_EVENT_ADD_DEPS_FINISHED]            = event_cb_add_deps_finished,
+	[PKG_EVENT_FETCH_BEGIN]                  = event_cb_fetch_begin,
+	[PKG_EVENT_FETCH_FINISHED]               = event_cb_fetch_finished,
+	[PKG_EVENT_UPDATE_ADD]                   = event_cb_update_add,
+	[PKG_EVENT_UPDATE_REMOVE]                = event_cb_update_remove,
+	[PKG_EVENT_INTEGRITYCHECK_BEGIN]         = event_cb_integritycheck_begin,
+	[PKG_EVENT_INTEGRITYCHECK_FINISHED]      = event_cb_integritycheck_finished,
+	[PKG_EVENT_INTEGRITYCHECK_CONFLICT]      = event_cb_integritycheck_conflict,
+	[PKG_EVENT_NEWPKGVERSION]                = event_cb_newpkgversion,
+	[PKG_EVENT_NOTICE]                       = event_cb_notice,
+	[PKG_EVENT_DEBUG]                        = event_cb_debug,
+	[PKG_EVENT_INCREMENTAL_UPDATE]           = event_cb_incremental_update,
+	[PKG_EVENT_QUERY_YESNO]                  = event_cb_query_yesno,
+	[PKG_EVENT_QUERY_SELECT]                 = event_cb_query_select,
+	[PKG_EVENT_SANDBOX_CALL]                 = event_cb_sandbox_call,
+	[PKG_EVENT_SANDBOX_GET_STRING]           = event_cb_sandbox_get_string,
+	[PKG_EVENT_PROGRESS_START]               = event_cb_progress_start,
+	[PKG_EVENT_PROGRESS_TICK]                = event_cb_progress_tick,
+	[PKG_EVENT_BACKUP]                       = event_cb_backup,
+	[PKG_EVENT_RESTORE]                      = event_cb_restore,
+	[PKG_EVENT_ERROR]                        = event_cb_error,
+	[PKG_EVENT_ERRNO]                        = event_cb_errno,
+	[PKG_EVENT_ALREADY_INSTALLED]            = event_cb_already_installed,
+	[PKG_EVENT_LOCKED]                       = event_cb_locked,
+	[PKG_EVENT_REQUIRED]                     = event_cb_required,
+	[PKG_EVENT_MISSING_DEP]                  = event_cb_missing_dep,
+	[PKG_EVENT_NOREMOTEDB]                   = event_cb_noremotedb,
+	[PKG_EVENT_NOLOCALDB]                    = event_cb_nolocaldb,
+	[PKG_EVENT_FILE_MISMATCH]                = event_cb_file_mismatch,
+	[PKG_EVENT_DEVELOPER_MODE]               = event_cb_developer_mode,
+	[PKG_EVENT_PLUGIN_ERRNO]                 = event_cb_plugin_errno,
+	[PKG_EVENT_PLUGIN_ERROR]                 = event_cb_plugin_error,
+	[PKG_EVENT_PLUGIN_INFO]                  = event_cb_plugin_info,
+	[PKG_EVENT_NOT_FOUND]                    = event_cb_not_found,
+	[PKG_EVENT_NEW_ACTION]                   = event_cb_new_action,
+	[PKG_EVENT_MESSAGE]                      = event_cb_message,
+	[PKG_EVENT_FILE_MISSING]                 = event_cb_file_missing,
+	[PKG_EVENT_CLEANUP_CALLBACK_REGISTER]    = event_cb_cleanup_callback_register,
+	[PKG_EVENT_CLEANUP_CALLBACK_UNREGISTER]  = event_cb_cleanup_callback_unregister,
+	[PKG_EVENT_CONFLICTS]                    = event_cb_conflicts,
+	[PKG_EVENT_TRIGGER]                      = event_cb_trigger,
+	[PKG_EVENT_FILE_META_MISMATCH]           = event_cb_file_meta_mismatch,
+	[PKG_EVENT_DIR_META_MISMATCH]            = event_cb_dir_meta_mismatch,
+};
+_Static_assert(NELEM(event_handlers) == PKG_EVENT_LAST,
+    "event_handlers table size does not match pkg_event_t enum");
+
 int
 event_callback(void *data, struct pkg_event *ev)
 {
-	struct pkg *pkg = NULL, *pkg_new, *pkg_old;
-	struct pkg_file *file;
-	struct pkg_dir *dir;
-	struct cleanup *evtmp;
 	int *debug = data;
-	struct pkg_event_conflict *cur_conflict;
-	const char *filename, *reponame = NULL;
 
-	if (msg_buf == NULL) {
+	if (msg_buf == NULL)
 		msg_buf = xstring_new();
-	}
 
-	/*
-	 * If a progressbar has been interrupted by another event, then
-	 * we need to add a newline to prevent bad formatting.
-	 */
+	/* Interrupt progressbar for most event types */
 	if (progress_started && ev->type != PKG_EVENT_PROGRESS_TICK &&
 	    ev->type != PKG_EVENT_FILE_META_OK &&
 	    ev->type != PKG_EVENT_DIR_META_OK &&
@@ -422,368 +1048,8 @@ event_callback(void *data, struct pkg_event *ev)
 		progress_interrupted = true;
 	}
 
-	switch(ev->type) {
-	case PKG_EVENT_ERRNO:
-		warnx("%s(%s): %s", ev->e_errno.func, ev->e_errno.arg,
-		    strerror(ev->e_errno.no));
-		break;
-	case PKG_EVENT_ERROR:
-		warnx("%s", ev->e_pkg_error.msg);
-		break;
-	case PKG_EVENT_NOTICE:
-		if (!quiet)
-			printf("%s\n", ev->e_pkg_notice.msg);
-		break;
-	case PKG_EVENT_DEVELOPER_MODE:
-		warnx("DEVELOPER_MODE: %s", ev->e_pkg_error.msg);
-		break;
-	case PKG_EVENT_UPDATE_ADD:
-		if (quiet || !isatty(STDOUT_FILENO))
-			break;
-		printf("\rPushing new entries %d/%d", ev->e_upd_add.done, ev->e_upd_add.total);
-		if (ev->e_upd_add.total == ev->e_upd_add.done)
-		        putchar('\n');
-		break;
-	case PKG_EVENT_UPDATE_REMOVE:
-		if (quiet || !isatty(STDOUT_FILENO))
-			break;
-		printf("\rRemoving entries %d/%d", ev->e_upd_remove.done, ev->e_upd_remove.total);
-		if (ev->e_upd_remove.total == ev->e_upd_remove.done)
-			putchar('\n');
-		break;
-	case PKG_EVENT_FETCH_BEGIN:
-		if (nbtodl > 0)
-			nbdone++;
-		if (quiet)
-			break;
-		filename = strrchr(ev->e_fetching.url, '/');
-		if (filename != NULL) {
-			filename++;
-		} else {
-			/*
-			 * We failed at being smart, so display
-			 * the entire url.
-			 */
-			filename = ev->e_fetching.url;
-		}
-		job_status_begin(msg_buf);
-		progress_debit = true;
-		const char *tmp = strrchr(filename, '~');
-		if (tmp != NULL)
-			fprintf(msg_buf->fp, "Fetching %.*s",
-					(int)(tmp - filename), filename);
-		else {
-			tmp = strrchr(filename, '.');
-			if (tmp != NULL && strcmp(tmp, ".pkg") == 0)
-				fprintf(msg_buf->fp, "Fetching %.*s",
-						(int)(tmp - filename), filename);
-			else
-				fprintf(msg_buf->fp, "Fetching %s",
-						filename);
-		}
-		break;
-	case PKG_EVENT_FETCH_FINISHED:
-		progress_debit = false;
-		break;
-	case PKG_EVENT_INSTALL_BEGIN:
-		if (quiet)
-			break;
-		job_status_begin(msg_buf);
+	if (ev->type < PKG_EVENT_LAST && event_handlers[ev->type] != NULL)
+		return (event_handlers[ev->type](ev, debug));
 
-		pkg = ev->e_install_begin.pkg;
-		pkg_fprintf(msg_buf->fp, "Installing %n-%v...\n", pkg,
-		    pkg);
-		fflush(msg_buf->fp);
-		printf("%s", msg_buf->buf);
-		break;
-	case PKG_EVENT_INSTALL_FINISHED:
-		break;
-	case PKG_EVENT_EXTRACT_BEGIN:
-		if (quiet)
-			break;
-		job_status_begin(msg_buf);
-		pkg = ev->e_install_begin.pkg;
-		pkg_fprintf(msg_buf->fp, "Extracting %n-%v", pkg, pkg);
-		fflush(msg_buf->fp);
-		break;
-	case PKG_EVENT_EXTRACT_FINISHED:
-		break;
-	case PKG_EVENT_ADD_DEPS_BEGIN:
-		++add_deps_depth;
-		break;
-	case PKG_EVENT_ADD_DEPS_FINISHED:
-		--add_deps_depth;
-		break;
-	case PKG_EVENT_INTEGRITYCHECK_BEGIN:
-		if (quiet)
-			break;
-		printf("Checking integrity...");
-		break;
-	case PKG_EVENT_INTEGRITYCHECK_FINISHED:
-		if (quiet)
-			break;
-		printf(" done (%d conflicting)\n", ev->e_integrity_finished.conflicting);
-		if (conflicts != NULL) {
-			fflush(conflicts->fp);
-			printf("%s", conflicts->buf);
-			xstring_free(conflicts);
-			conflicts = NULL;
-		}
-		break;
-	case PKG_EVENT_INTEGRITYCHECK_CONFLICT:
-		if (*debug == 0)
-			break;
-		printf("\nConflict found on path %s between %s and ",
-		    ev->e_integrity_conflict.pkg_path,
-		    ev->e_integrity_conflict.pkg_uid);
-		cur_conflict = ev->e_integrity_conflict.conflicts;
-		while (cur_conflict) {
-			if (cur_conflict->next)
-				printf("%s, ", cur_conflict->uid);
-			else
-				printf("%s", cur_conflict->uid);
-
-			cur_conflict = cur_conflict->next;
-		}
-		printf("\n");
-		break;
-	case PKG_EVENT_DEINSTALL_BEGIN:
-		if (quiet)
-			break;
-
-		job_status_begin(msg_buf);
-
-		pkg = ev->e_install_begin.pkg;
-		pkg_fprintf(msg_buf->fp, "Deinstalling %n-%v...\n", pkg, pkg);
-		fflush(msg_buf->fp);
-		printf("%s", msg_buf->buf);
-		break;
-	case PKG_EVENT_DEINSTALL_FINISHED:
-		break;
-	case PKG_EVENT_DELETE_FILES_BEGIN:
-		if (quiet)
-			break;
-		job_status_begin(msg_buf);
-		pkg = ev->e_install_begin.pkg;
-		pkg_fprintf(msg_buf->fp, "Deleting files for %n-%v",
-		    pkg, pkg);
-		break;
-	case PKG_EVENT_DELETE_FILES_FINISHED:
-		break;
-	case PKG_EVENT_UPGRADE_BEGIN:
-		if (quiet)
-			break;
-		pkg_new = ev->e_upgrade_begin.n;
-		pkg_old = ev->e_upgrade_begin.o;
-
-		job_status_begin(msg_buf);
-
-		switch (pkg_version_change_between(pkg_new, pkg_old)) {
-		case PKG_DOWNGRADE:
-			pkg_fprintf(msg_buf->fp, "Downgrading %n from %v to %v...\n",
-			    pkg_new, pkg_old, pkg_new);
-			break;
-		case PKG_REINSTALL:
-			pkg_fprintf(msg_buf->fp, "Reinstalling %n-%v...\n",
-		    pkg_old, pkg_old);
-			break;
-		case PKG_UPGRADE:
-			pkg_fprintf(msg_buf->fp, "Upgrading %n from %v to %v...\n",
-			    pkg_new, pkg_old, pkg_new);
-			break;
-		}
-		fflush(msg_buf->fp);
-		printf("%s", msg_buf->buf);
-		break;
-	case PKG_EVENT_UPGRADE_FINISHED:
-		break;
-	case PKG_EVENT_LOCKED:
-		pkg = ev->e_locked.pkg;
-		pkg_printf("\n%n-%v is locked and may not be modified\n", pkg, pkg);
-		break;
-	case PKG_EVENT_REQUIRED:
-		pkg = ev->e_required.pkg;
-		pkg_printf("\n%n-%v is required by: %r%{%rn-%rv%| %}", pkg, pkg, pkg);
-		if (ev->e_required.force == 1)
-			fprintf(stderr, ", deleting anyway\n");
-		else
-			fprintf(stderr, "\n");
-		break;
-	case PKG_EVENT_ALREADY_INSTALLED:
-		if (quiet)
-			break;
-		pkg = ev->e_already_installed.pkg;
-		pkg_printf("the most recent version of %n-%v is already installed\n",
-				pkg, pkg);
-		break;
-	case PKG_EVENT_NOT_FOUND:
-		printf("Package '%s' was not found in "
-		    "the repositories\n", ev->e_not_found.pkg_name);
-		break;
-	case PKG_EVENT_MISSING_DEP:
-		warnx("Missing dependency '%s'",
-		    pkg_dep_name(ev->e_missing_dep.dep));
-		break;
-	case PKG_EVENT_NOREMOTEDB:
-		fprintf(stderr, "Unable to open remote database \"%s\". "
-		    "Try running '%s update' first.\n", ev->e_remotedb.repo,
-		    getprogname());
-		break;
-	case PKG_EVENT_NOLOCALDB:
-		fprintf(stderr, "Local package database nonexistent!\n");
-		break;
-	case PKG_EVENT_NEWPKGVERSION:
-		newpkgversion = true;
-		printf("New version of pkg detected; it needs to be "
-		    "installed first.\n");
-		break;
-	case PKG_EVENT_FILE_MISMATCH:
-		pkg = ev->e_file_mismatch.pkg;
-		pkg_fprintf(stderr, "%n-%v: checksum mismatch for %Fn\n", pkg,
-		    pkg, ev->e_file_mismatch.file);
-		break;
-	case PKG_EVENT_FILE_MISSING:
-		pkg = ev->e_file_missing.pkg;
-		pkg_fprintf(stderr, "%n-%v: missing file %Fn\n", pkg, pkg,
-		    ev->e_file_missing.file);
-		break;
-	case PKG_EVENT_DIR_META_MISMATCH:
-		pkg = ev->e_file_meta_mismatch.pkg;
-		dir = ev->e_dir_meta_mismatch.dir;
-		pkg_fprintf(stderr, "%n-%v: %Dn [%S] %S -> %S\n", pkg, pkg, dir,
-			    pkg_meta_attribute_tostring(ev->e_dir_meta_mismatch.attrib),
-			    str_or_unknown(ev->e_dir_meta_mismatch.db_val),
-			    str_or_unknown(ev->e_dir_meta_mismatch.fs_val));
-		break;
-	case PKG_EVENT_FILE_META_MISMATCH:
-		pkg = ev->e_file_meta_mismatch.pkg;
-		file = ev->e_file_meta_mismatch.file;
-		pkg_fprintf(stderr, "%n-%v: %Fn [%S] %S -> %S\n", pkg, pkg, file,
-			    pkg_meta_attribute_tostring(ev->e_file_meta_mismatch.attrib),
-			    str_or_unknown(ev->e_file_meta_mismatch.db_val),
-			    str_or_unknown(ev->e_file_meta_mismatch.fs_val));
-		break;
-	case PKG_EVENT_PLUGIN_ERRNO:
-		warnx("%s: %s(%s): %s",
-		    pkg_plugin_get(ev->e_plugin_errno.plugin, PKG_PLUGIN_NAME),
-		    ev->e_plugin_errno.func, ev->e_plugin_errno.arg,
-		    strerror(ev->e_plugin_errno.no));
-		break;
-	case PKG_EVENT_PLUGIN_ERROR:
-		warnx("%s: %s",
-		    pkg_plugin_get(ev->e_plugin_error.plugin, PKG_PLUGIN_NAME),
-		    ev->e_plugin_error.msg);
-		break;
-	case PKG_EVENT_PLUGIN_INFO:
-		if (quiet)
-			break;
-		printf("%s: %s\n",
-		    pkg_plugin_get(ev->e_plugin_info.plugin, PKG_PLUGIN_NAME),
-		    ev->e_plugin_info.msg);
-		break;
-	case PKG_EVENT_INCREMENTAL_UPDATE:
-		if (!quiet)
-			printf("%s repository update completed. %d packages processed.\n",
-			    ev->e_incremental_update.reponame,
-			    ev->e_incremental_update.processed);
-		break;
-	case PKG_EVENT_DEBUG:
-		fprintf(stderr, "DBG(%d)[%d]> %s\n", ev->e_debug.level,
-			(int)getpid(), ev->e_debug.msg);
-		break;
-	case PKG_EVENT_QUERY_YESNO:
-		return ( ev->e_query_yesno.deft ?
-			query_yesno(true, ev->e_query_yesno.msg, "[Y/n]") :
-			query_yesno(false, ev->e_query_yesno.msg, "[y/N]") );
-	case PKG_EVENT_QUERY_SELECT:
-		return query_select(ev->e_query_select.msg, ev->e_query_select.items,
-			ev->e_query_select.ncnt, ev->e_query_select.deft);
-	case PKG_EVENT_SANDBOX_CALL:
-		return ( pkg_handle_sandboxed_call(ev->e_sandbox_call.call,
-				ev->e_sandbox_call.fd,
-				ev->e_sandbox_call.userdata) );
-	case PKG_EVENT_SANDBOX_GET_STRING:
-		return ( pkg_handle_sandboxed_get_string(ev->e_sandbox_call_str.call,
-				ev->e_sandbox_call_str.result,
-				ev->e_sandbox_call_str.len,
-				ev->e_sandbox_call_str.userdata) );
-	case PKG_EVENT_PROGRESS_START:
-		progressbar_start(ev->e_progress_start.msg);
-		break;
-	case PKG_EVENT_PROGRESS_TICK:
-		progressbar_tick(ev->e_progress_tick.current,
-		    ev->e_progress_tick.total);
-		break;
-	case PKG_EVENT_BACKUP:
-		fprintf(msg_buf->fp, "Backing up");
-		break;
-	case PKG_EVENT_RESTORE:
-		fprintf(msg_buf->fp, "Restoring");
-		break;
-	case PKG_EVENT_NEW_ACTION:
-		nbactions = ev->e_action.total;
-		nbdigits = 0;
-		nbdone = ev->e_action.current;
-		break;
-	case PKG_EVENT_MESSAGE:
-		if (messages == NULL)
-			messages = xstring_new();
-		fprintf(messages->fp, "%s", ev->e_pkg_message.msg);
-		break;
-	case PKG_EVENT_CLEANUP_CALLBACK_REGISTER:
-		if (!signal_handler_installed) {
-			signal(SIGINT, cleanup_handler);
-			signal_handler_installed = true;
-		}
-		evtmp = xmalloc(sizeof(struct cleanup));
-		evtmp->cb = ev->e_cleanup_callback.cleanup_cb;
-		evtmp->data = ev->e_cleanup_callback.data;
-		vec_push(&cleanup_list, evtmp);
-		break;
-	case PKG_EVENT_CLEANUP_CALLBACK_UNREGISTER:
-		if (!signal_handler_installed)
-			break;
-		vec_foreach(cleanup_list, i) {
-			evtmp = cleanup_list.d[i];
-			if (evtmp->cb == ev->e_cleanup_callback.cleanup_cb &&
-			    evtmp->data == ev->e_cleanup_callback.data) {
-				vec_remove_and_free(&cleanup_list, i, free);
-				break;
-			}
-		}
-		break;
-	case PKG_EVENT_CONFLICTS:
-		if (conflicts == NULL) {
-			conflicts = xstring_new();
-		}
-		pkg_fprintf(conflicts->fp, "  - %n-%v",
-		    ev->e_conflicts.p1, ev->e_conflicts.p1);
-		if (pkg_repos_total_count() > 1) {
-			pkg_get(ev->e_conflicts.p1, PKG_ATTR_REPONAME, &reponame);
-			fprintf(conflicts->fp, " [%s]",
-			    reponame == NULL ? "installed" : reponame);
-		}
-		pkg_fprintf(conflicts->fp, " conflicts with %n-%v",
-		    ev->e_conflicts.p2, ev->e_conflicts.p2);
-		if (pkg_repos_total_count() > 1) {
-			pkg_get(ev->e_conflicts.p2, PKG_ATTR_REPONAME, &reponame);
-			fprintf(conflicts->fp, " [%s]",
-			    reponame == NULL ? "installed" : reponame);
-		}
-		fprintf(conflicts->fp, " on %s\n",
-		    ev->e_conflicts.path);
-		break;
-	case PKG_EVENT_TRIGGER:
-		if (!quiet) {
-			if (ev->e_trigger.cleanup)
-				printf("==> Cleaning up trigger: %s\n", ev->e_trigger.name);
-			else
-				printf("==> Running trigger: %s\n", ev->e_trigger.name);
-		}
-		break;
-	default:
-		break;
-	}
-
-	return 0;
+	return (0);
 }
