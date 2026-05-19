@@ -738,14 +738,9 @@ pkg_audit_version_match(const char *pkgversion, struct pkg_audit_version *v)
 static void
 pkg_audit_add_entry(struct pkg_audit_entry *e, struct pkg_audit_issues **ai)
 {
-	struct pkg_audit_issue *issue;
-
 	if (*ai == NULL)
 		*ai = xcalloc(1, sizeof(**ai));
-	issue = xcalloc(1, sizeof(*issue));
-	issue->audit = e;
-	(*ai)->count++;
-	LL_APPEND((*ai)->issues, issue);
+	vec_push(&(*ai)->issues, ((struct pkg_audit_issue){ .audit = e }));
 }
 
 bool
@@ -898,14 +893,9 @@ pkg_audit_free (struct pkg_audit *audit)
 void
 pkg_audit_issues_free(struct pkg_audit_issues *issues)
 {
-	struct pkg_audit_issue *i, *issue;
-
 	if (issues == NULL)
 		return;
 
-	LL_FOREACH_SAFE(issues->issues, issue, i) {
-		LL_DELETE(issues->issues, issue);
-		free(issue);
-	}
+	vec_free(&issues->issues);
 	free(issues);
 }

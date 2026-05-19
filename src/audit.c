@@ -409,7 +409,7 @@ exec_audit(int argc, char **argv)
 				vuln ++;
 
 				if (top == NULL) {
-					affected += issues->count;
+					affected += issues->issues.len;
 					pkg_get(pkg, PKG_ATTR_VERSION, &version);
 					if (quiet) {
 						if (version != NULL)
@@ -434,12 +434,13 @@ exec_audit(int argc, char **argv)
 					pkg_get(pkg, PKG_ATTR_VERSION, &version);
 					if (version != NULL)
 						ucl_object_insert_key(obj, ucl_object_fromstring(version), "version", 7 , false);
-					ucl_object_insert_key(obj, ucl_object_fromint(issues->count), "issue_count", 11, false);
+					ucl_object_insert_key(obj, ucl_object_fromint(issues->issues.len), "issue_count", 11, false);
 				}
 
 				if (top != NULL)
 					array = ucl_object_typed_new(UCL_ARRAY);
-				ll_foreach(issues->issues, issue) {
+				vec_foreach(issues->issues, _i) {
+					issue = &issues->issues.d[_i];
 					if (top == NULL)
 						print_issue(pkg, issue);
 					else

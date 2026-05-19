@@ -31,6 +31,7 @@ extern "C" {
 
 #include <time.h>
 #include <ucl.h>
+#include <pkg/vec.h>
 
 #define EQ 1
 #define LT 2
@@ -98,12 +99,11 @@ struct pkg_audit_entry {
 
 struct pkg_audit_issue {
 	const struct pkg_audit_entry *audit;
-	struct pkg_audit_issue *next;
 };
+typedef vec_t(struct pkg_audit_issue) pkg_audit_issuev_t;
 
 struct pkg_audit_issues {
-	int count;
-	struct pkg_audit_issue *issues;
+	pkg_audit_issuev_t issues;
 };
 
 struct pkg_audit_cpe {
