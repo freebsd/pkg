@@ -442,7 +442,7 @@ pkg_cleanup_shlibs_required(struct pkg *pkg, charv_t *internal_provided)
 			    "remove %s from required shlibs as the "
 			    "package %s provides this library itself",
 			    s, pkg->name);
-			vec_remove_and_free(&pkg->shlibs_required, i, free);
+			vec_autoremove(&pkg->shlibs_required, i);
 			i--;
 			continue;
 		}
@@ -451,7 +451,7 @@ pkg_cleanup_shlibs_required(struct pkg *pkg, charv_t *internal_provided)
 			    "remove %s from required shlibs for package %s as it "
 			    "is listed in shlibs_required_ignore.",
 			    s, pkg->name);
-			vec_remove_and_free(&pkg->shlibs_required, i, free);
+			vec_autoremove(&pkg->shlibs_required, i);
 			i--;
 			continue;
 		}
@@ -476,8 +476,7 @@ pkg_cleanup_shlibs_required(struct pkg *pkg, charv_t *internal_provided)
 				    "the package %s provides this file itself",
 				    s, pkg->name);
 
-				vec_remove_and_free(&pkg->shlibs_required, i,
-				    free);
+				vec_autoremove(&pkg->shlibs_required, i);
 				i--;
 				break;
 			}
@@ -509,11 +508,11 @@ pkg_analyse_files(struct pkgdb *db __unused, struct pkg *pkg, const char *stage)
 	}
 
 	if (vec_len(&pkg->shlibs_required) != 0) {
-		vec_free_and_free(&pkg->shlibs_required, free);
+		vec_autofree(&pkg->shlibs_required);
 	}
 
 	if (vec_len(&pkg->shlibs_provided) != 0) {
-		vec_free_and_free(&pkg->shlibs_provided, free);
+		vec_autofree(&pkg->shlibs_provided);
 	}
 
 	ret = pkg_analyse_init(stage);
@@ -595,11 +594,11 @@ pkg_analyse_files(struct pkgdb *db __unused, struct pkg *pkg, const char *stage)
 		vec_foreach(internal_provided, j) {
 			if (STREQ(maybe_provided.d[i], internal_provided.d[j])) {
 				pkg_addshlib_provided(pkg, maybe_provided.d[i], PKG_SHLIB_FLAGS_NONE);
-				vec_remove_and_free(&internal_provided, j, free);
+				vec_autoremove(&internal_provided, j);
 				j--;
 			}
 		}
-		vec_remove_and_free(&maybe_provided, i, free);
+		vec_autoremove(&maybe_provided, i);
 		i--;
 	}
 	vec_free(&maybe_provided);
@@ -619,7 +618,7 @@ pkg_analyse_files(struct pkgdb *db __unused, struct pkg *pkg, const char *stage)
 			    "remove %s from provided shlibs for package %s as it "
 			    "is listed in shlibs_provided_ignore.",
 			    s, pkg->name);
-			vec_remove_and_free(&pkg->shlibs_provided, i, free);
+			vec_autoremove(&pkg->shlibs_provided, i);
 			i--;
 			continue;
 		}
@@ -642,7 +641,7 @@ pkg_analyse_files(struct pkgdb *db __unused, struct pkg *pkg, const char *stage)
 	 * drop the provided one
 	 */
 	if (pkg_kv_get(&pkg->annotations, "no_provide_shlib") != NULL) {
-		vec_free_and_free(&pkg->shlibs_provided, free);
+		vec_autofree(&pkg->shlibs_provided);
 	}
 
 	if (failures)

@@ -1216,7 +1216,7 @@ select_provider_from_dir(const char *dirpath, const char *ext)
 		free(selected);
 	}
 
-	vec_free_and_free(&entries, free);
+	vec_autofree(&entries);
 	return (result);
 }
 

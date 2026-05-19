@@ -805,6 +805,7 @@ void pkg_file_free(struct pkg_file *);
 void pkg_dir_free(struct pkg_dir *);
 void pkg_conflict_free(struct pkg_conflict *);
 void pkg_config_file_free(struct pkg_config_file *);
+void pkg_message_free(struct pkg_message *);
 
 struct iovec;
 struct packing;
@@ -990,5 +991,28 @@ char * expand_plist_variables(const char *in, kvlist_t *vars);
 int scan_system_shlibs(charv_t *system_shlibs, const char *rootdir);
 void pkg_lists_sort(struct pkg *p);
 void pkg_cleanup_shlibs_required(struct pkg *pkg, charv_t *internal_provided);
+
+/*
+ * _Generic-based type dispatch for freeing pkg objects.
+ * Automatically selects the correct free function based on pointer type,
+ * providing compile-time type safety.
+ */
+#define pkg_obj_free(p) _Generic((p),              \
+    char *:                   free,                \
+    struct pkg *:             pkg_free,            \
+    struct pkg_dep *:         pkg_dep_free,        \
+    struct pkg_file *:        pkg_file_free,       \
+    struct pkg_dir *:         pkg_dir_free,        \
+    struct pkg_conflict *:    pkg_conflict_free,   \
+    struct pkg_config_file *: pkg_config_file_free,\
+    struct pkg_kv *:          pkg_kv_free,         \
+    struct pkg_message *:     pkg_message_free,    \
+    struct trigger *:         trigger_free)(p)
+
+#define DL_AUTOFREE(head) DL_FREE(head, pkg_obj_free)
+#define LL_AUTOFREE(head) LL_FREE(head, pkg_obj_free)
+#define vec_autofree(v) vec_free_and_free(v, pkg_obj_free)
+#define vec_autoclear(v) vec_clear_and_free(v, pkg_obj_free)
+#define vec_autoremove(v, cnt) vec_remove_and_free(v, cnt, pkg_obj_free)
 
 #endif

@@ -3256,7 +3256,7 @@ pkgdb_begin_solver(struct pkgdb *db)
 		if (rc == EPKG_OK)
 			rc = sql_exec(db->sqlite, solver_sql);
 
-		vec_free_and_free(&pkglist, pkg_free);
+		vec_autofree(&pkglist);
 	} else {
 		rc = sql_exec(db->sqlite, solver_sql);
 	}

@@ -196,7 +196,7 @@ pkg_jobs_free(struct pkg_jobs *j)
 	vec_free_and_free(&j->jobs, free);
 	LL_FREE(j->patterns, pkg_jobs_pattern_free);
 	if (j->triggers.cleanup != NULL) {
-		vec_free_and_free(j->triggers.cleanup, trigger_free);
+		vec_autofree(j->triggers.cleanup);
 		free(j->triggers.cleanup);
 	}
 	if (j->triggers.dfd != -1)
@@ -206,7 +206,7 @@ pkg_jobs_free(struct pkg_jobs *j)
 	pkg_deferred_rc_free(&j->rc);
 	pkghash_destroy(j->orphaned);
 	pkghash_destroy(j->notorphaned);
-	vec_free_and_free(&j->system_shlibs, free);
+	vec_autofree(&j->system_shlibs);
 	free(j);
 }
 

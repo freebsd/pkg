@@ -287,7 +287,7 @@ pkg_checksum_generate(struct pkg *pkg, char *dest, size_t destlen,
 	checksum_types[type].hfunc(entries, &bdigest, &blen);
 	if (blen == 0 || bdigest == NULL) {
 		LL_FREE(entries, free);
-		vec_free_and_free(&tofree, free);
+		vec_autofree(&tofree);
 		return (EPKG_FATAL);
 	}
 
@@ -305,7 +305,7 @@ pkg_checksum_generate(struct pkg *pkg, char *dest, size_t destlen,
 
 	free(bdigest);
 	LL_FREE(entries, free);
-	vec_free_and_free(&tofree, free);
+	vec_autofree(&tofree);
 
 	return (EPKG_OK);
 }

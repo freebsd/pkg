@@ -593,7 +593,7 @@ triggers_execute(struct triggers *t)
 	pkg_emit_triggers_finished();
 
 cleanup:
-	vec_free_and_free(triggers, trigger_free);
+	vec_autofree(triggers);
 	free(triggers);
 	if (ctx.touched_dir_hash) {
 		pkghash_destroy(ctx.touched_dir_hash);
@@ -686,7 +686,7 @@ triggers_execute_perpackage(struct pkg *pkg,
 	triggers = triggers_load_perpackage(phase);
 
 	if (triggers->len == 0) {
-		vec_free_and_free(triggers, trigger_free);
+		vec_autofree(triggers);
 		free(triggers);
 		return (EPKG_OK);
 	}
@@ -708,7 +708,7 @@ triggers_execute_perpackage(struct pkg *pkg,
 	}
 
 	if (pkg_paths_hash == NULL) {
-		vec_free_and_free(triggers, trigger_free);
+		vec_autofree(triggers);
 		free(triggers);
 		return (EPKG_OK);
 	}
@@ -740,7 +740,7 @@ triggers_execute_perpackage(struct pkg *pkg,
 	}
 
 	pkghash_destroy(pkg_paths_hash);
-	vec_free_and_free(triggers, trigger_free);
+	vec_autofree(triggers);
 	free(triggers);
 	return (ret);
 }

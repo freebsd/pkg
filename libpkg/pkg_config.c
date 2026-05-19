@@ -1720,7 +1720,7 @@ pkg_repo_free(struct pkg_repo *r)
 	pkg_repo_meta_free(r->meta);
 	if (r->fetcher != NULL && r->fetcher->cleanup != NULL)
 		r->fetcher->cleanup(r);
-	vec_free_and_free(&r->env, pkg_kv_free);
+	vec_autofree(&r->env);
 	free(r->dbpath);
 	free(r);
 }

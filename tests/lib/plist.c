@@ -319,7 +319,7 @@ ATF_TC_BODY(expand_plist_variables, tc)
 	ATF_REQUIRE_STREQ(plop, "@comment  %F is %%kof a var line %");
 	free(plop);
 
-	vec_free_and_free(&kv, pkg_kv_free);
+	vec_autofree(&kv);
 }
 
 ATF_TP_ADD_TCS(tp)

@@ -59,7 +59,7 @@ ATF_TC_BODY(kv_sort, tc)
 	ATF_REQUIRE_STREQ_MSG(kvl.d[0]->key, "akey", "Invalid first key");
 	ATF_REQUIRE_STREQ_MSG(kvl.d[1]->key, "key", "Invalid first key");
 
-	vec_free_and_free(&kvl, pkg_kv_free);
+	vec_autofree(&kvl);
 }
 
 ATF_TC_BODY(kv_search, tc)
@@ -108,7 +108,7 @@ ATF_TC_BODY(kv_search, tc)
 	kv = pkg_kv_search(&kvl, "bla");
 	ATF_REQUIRE(kv == NULL);
 
-	vec_free_and_free(&kvl, pkg_kv_free);
+	vec_autofree(&kvl);
 }
 
 ATF_TP_ADD_TCS(tp)

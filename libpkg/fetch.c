@@ -301,7 +301,7 @@ pkg_fetch_file_to_fd(struct pkg_repo *repo, int dest, struct fetch_item *fi,
 cleanup:
 	vec_foreach(envtorestore, i) {
 		setenv(envtorestore.d[i]->key, envtorestore.d[i]->value, 1);
-		vec_remove_and_free(&envtorestore, i, pkg_kv_free);
+		vec_autoremove(&envtorestore, i);
 	}
 	vec_free(&envtorestore);
 	while (vec_len(&envtounset) > 0)

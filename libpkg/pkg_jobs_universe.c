@@ -1162,7 +1162,7 @@ pkg_jobs_universe_get_upgrade_candidates(struct pkg_jobs_universe *universe,
 		}
 	}
 	else {
-		vec_free_and_free(&candidates, pkg_free);
+		vec_autofree(&candidates);
 		return (NULL);
 	}
 

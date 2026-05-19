@@ -39,7 +39,7 @@ pkg_new(struct pkg **pkg, pkg_t type)
 	return (EPKG_OK);
 }
 
-static void
+void
 pkg_message_free(struct pkg_message *m)
 {
 	free(m->str);
@@ -80,7 +80,7 @@ pkg_free(struct pkg *pkg)
 	for (int i = 0; i < PKG_NUM_SCRIPTS; i++)
 		xstring_free(pkg->scripts[i]);
 	for (int i = 0; i < PKG_NUM_LUA_SCRIPTS; i++)
-		vec_free_and_free(&pkg->lua_scripts[i], free);
+		vec_autofree(&pkg->lua_scripts[i]);
 
 	pkg_list_free(pkg, PKG_DEPS);
 	pkg_list_free(pkg, PKG_RDEPS);
@@ -89,31 +89,31 @@ pkg_free(struct pkg *pkg)
 	pkg_list_free(pkg, PKG_OPTIONS);
 	pkg_list_free(pkg, PKG_CONFIG_FILES);
 
-	vec_free_and_free(&pkg->users, free);
+	vec_autofree(&pkg->users);
 	pkg->flags &= ~PKG_LOAD_USERS;
-	vec_free_and_free(&pkg->groups, free);
+	vec_autofree(&pkg->groups);
 	pkg->flags &= ~PKG_LOAD_GROUPS;
-	vec_free_and_free(&pkg->shlibs_required, free);
+	vec_autofree(&pkg->shlibs_required);
 	pkg->flags &= ~PKG_LOAD_SHLIBS_REQUIRED;
-	vec_free_and_free(&pkg->shlibs_required_ignore, free);
+	vec_autofree(&pkg->shlibs_required_ignore);
 	pkg->flags &= ~PKG_LOAD_SHLIBS_REQUIRED_IGNORE;
-	vec_free_and_free(&pkg->shlibs_provided, free);
+	vec_autofree(&pkg->shlibs_provided);
 	pkg->flags &= ~PKG_LOAD_SHLIBS_PROVIDED;
-	vec_free_and_free(&pkg->shlibs_provided_ignore, free);
+	vec_autofree(&pkg->shlibs_provided_ignore);
 	pkg->flags &= ~PKG_LOAD_SHLIBS_PROVIDED_IGNORE;
-	vec_free_and_free(&pkg->provides, free);
+	vec_autofree(&pkg->provides);
 	pkg->flags &= ~PKG_LOAD_PROVIDES;
-	vec_free_and_free(&pkg->requires, free);
+	vec_autofree(&pkg->requires);
 	pkg->flags &= ~PKG_LOAD_REQUIRES;
-	vec_free_and_free(&pkg->categories, free);
+	vec_autofree(&pkg->categories);
 	pkg->flags &= ~PKG_LOAD_CATEGORIES;
-	vec_free_and_free(&pkg->licenses, free);
+	vec_autofree(&pkg->licenses);
 	pkg->flags &= ~PKG_LOAD_LICENSES;
 
-	vec_free_and_free(&pkg->message, pkg_message_free);
-	vec_free_and_free(&pkg->annotations, pkg_kv_free);
+	vec_autofree(&pkg->message);
+	vec_autofree(&pkg->annotations);
 
-	vec_free_and_free(&pkg->dir_to_del, free);
+	vec_autofree(&pkg->dir_to_del);
 
 	if (pkg->rootfd != -1)
 		close(pkg->rootfd);
@@ -254,7 +254,7 @@ pkg_set_s(struct pkg *pkg, pkg_attr attr, const char *str)
 		pkg->comment = xstrdup(str);
 		break;
 	case PKG_ATTR_MESSAGE:
-		vec_free_and_free(&pkg->message, pkg_message_free);
+		vec_autofree(&pkg->message);
 		if (*str == '[') {
 			pkg_message_from_str(pkg, str, strlen(str));
 		} else {
@@ -1112,40 +1112,40 @@ pkg_list_free(struct pkg *pkg, pkg_list list)  {
 				DL_FREE2(cur->alt_next, pkg_dep_free, alt_prev, alt_next);
 			}
 		}
-		DL_FREE(pkg->depends, pkg_dep_free);
+		DL_AUTOFREE(pkg->depends);
 		pkghash_destroy(pkg->depshash);
 		pkg->depshash = NULL;
 		pkg->flags &= ~PKG_LOAD_DEPS;
 		break;
 	case PKG_RDEPS:
-		LL_FREE(pkg->rdepends, pkg_dep_free);
+		LL_AUTOFREE(pkg->rdepends);
 		pkghash_destroy(pkg->rdepshash);
 		pkg->rdepshash = NULL;
 		pkg->flags &= ~PKG_LOAD_RDEPS;
 		break;
 	case PKG_OPTIONS:
-		vec_free_and_free(&pkg->options, pkg_kv_free);
+		vec_autofree(&pkg->options);
 		pkg->flags &= ~PKG_LOAD_OPTIONS;
 		break;
 	case PKG_FILES:
-		DL_FREE(pkg->files, pkg_file_free);
+		DL_AUTOFREE(pkg->files);
 		pkghash_destroy(pkg->filehash);
 		pkg->filehash = NULL;
 		pkg->flags &= ~PKG_LOAD_FILES;
 		break;
 	case PKG_CONFIG_FILES:
-		DL_FREE(pkg->config_files, pkg_config_file_free);
+		DL_AUTOFREE(pkg->config_files);
 		pkghash_destroy(pkg->config_files_hash);
 		pkg->config_files_hash = NULL;
 		break;
 	case PKG_DIRS:
-		DL_FREE(pkg->dirs, pkg_dir_free);
+		DL_AUTOFREE(pkg->dirs);
 		pkghash_destroy(pkg->dirhash);
 		pkg->dirhash = NULL;
 		pkg->flags &= ~PKG_LOAD_DIRS;
 		break;
 	case PKG_CONFLICTS:
-		DL_FREE(pkg->conflicts, pkg_conflict_free);
+		DL_AUTOFREE(pkg->conflicts);
 		pkghash_destroy(pkg->conflictshash);
 		pkg->conflictshash = NULL;
 		pkg->flags &= ~PKG_LOAD_CONFLICTS;

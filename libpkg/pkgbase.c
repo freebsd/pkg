@@ -137,8 +137,8 @@ pkgbase_free(struct pkgbase *pb)
 {
 	if (pb == NULL)
 		return;
-	vec_free_and_free(&pb->system_shlibs, free);
-	vec_free_and_free(&pb->provides, free);
+	vec_autofree(&pb->system_shlibs);
+	vec_autofree(&pb->provides);
 	free(pb);
 }
 

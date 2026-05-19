@@ -125,7 +125,7 @@ ATF_TC_BODY(cleanup_shlibs_required_internal_provided_sorted, tc)
 	ATF_REQUIRE_EQ_MSG(vec_len(&p->shlibs_required), 1,
 	    "expecting 1 got %zu", vec_len(&p->shlibs_required));
 	ATF_REQUIRE_STREQ(p->shlibs_required.d[0], "libunrelated.so.1");
-	vec_free_and_free(&internal_provided, free);
+	vec_autofree(&internal_provided);
 }
 
 ATF_TP_ADD_TCS(tp)
