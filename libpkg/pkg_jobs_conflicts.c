@@ -206,15 +206,16 @@ pkg_conflicts_register_one(struct pkg *p, struct pkg *op,
 {
 	struct pkg_conflict c;
 
-	if (pkg_get_conflict(p, op->uid) != NULL)
-		return;
-
 	memset(&c, 0, sizeof(c));
 	c.type = type;
 	c.uid = xstrdup(op->uid);
 	c.digest = xstrdup(op->digest);
 
-	vec_push(&p->conflicts, c);
+	struct pkg_conflict *existing = pkg_conflictv_insert_sorted(&p->conflicts, c);
+	if (existing != NULL) {
+		pkg_conflict_free_content(&c);
+		return;
+	}
 }
 
 /*

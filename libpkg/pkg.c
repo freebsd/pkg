@@ -587,20 +587,6 @@ pkg_addfile_attr(struct pkg *pkg, const char *path, const char *sum,
 	path = pkg_absolutepath(path, abspath, sizeof(abspath), false);
 	dbg(3, "add new file '%s'", path);
 
-	if (check_duplicates) {
-		vec_foreach(pkg->files, i) {
-			if (strcmp(pkg->files.d[i].path, path) == 0) {
-				if (ctx.developer_mode) {
-					pkg_emit_error("duplicate file listing: %s, fatal (developer mode)", path);
-					return (EPKG_FATAL);
-				} else {
-					pkg_emit_error("duplicate file listing: %s, ignoring", path);
-					return (EPKG_OK);
-				}
-			}
-		}
-	}
-
 	memset(&f, 0, sizeof(f));
 	f.path = xstrdup(path);
 
@@ -625,7 +611,19 @@ pkg_addfile_attr(struct pkg *pkg, const char *path, const char *sum,
 	if (mtime > 0)
 		f.time[1].tv_sec = mtime;
 
-	vec_push(&pkg->files, f);
+	struct pkg_file *existing = pkg_filev_insert_sorted(&pkg->files, f);
+	if (existing != NULL) {
+		pkg_file_free_content(&f);
+		if (check_duplicates) {
+			if (ctx.developer_mode) {
+				pkg_emit_error("duplicate file listing: %s, fatal (developer mode)", path);
+				return (EPKG_FATAL);
+			} else {
+				pkg_emit_error("duplicate file listing: %s, ignoring", path);
+			}
+		}
+		return (EPKG_OK);
+	}
 
 	return (EPKG_OK);
 }
@@ -642,20 +640,18 @@ pkg_addconfig_file(struct pkg *pkg, const char *path, const char *content)
 	path = pkg_absolutepath(path, abspath, sizeof(abspath), false);
 	dbg(3, "add new config file '%s'", path);
 
-	vec_foreach(pkg->config_files, i) {
-		if (strcmp(pkg->config_files.d[i].path, path) == 0) {
-			pkg_emit_error("duplicate file listing: %s", path);
-			return (EPKG_FATAL);
-		}
-	}
-
 	memset(&f, 0, sizeof(f));
 	f.path = xstrdup(path);
 
 	if (content != NULL)
 		f.content = xstrdup(content);
 
-	vec_push(&pkg->config_files, f);
+	struct pkg_config_file *existing = pkg_configfilev_insert_sorted(&pkg->config_files, f);
+	if (existing != NULL) {
+		pkg_config_file_free_content(&f);
+		pkg_emit_error("duplicate file listing: %s", path);
+		return (EPKG_FATAL);
+	}
 
 	return (EPKG_OK);
 }
@@ -704,19 +700,6 @@ pkg_adddir_attr(struct pkg *pkg, const char *path, const char *uname,
 	}
 	path = pkg_absolutepath(path, abspath, sizeof(abspath), false);
 	dbg(3, "add new directory '%s'", path);
-	if (check_duplicates) {
-		vec_foreach(pkg->dirs, i) {
-			if (strcmp(pkg->dirs.d[i].path, path) == 0) {
-				if (ctx.developer_mode) {
-					pkg_emit_error("duplicate directory listing: %s, fatal (developer mode)", path);
-					return (EPKG_FATAL);
-				} else {
-					pkg_emit_error("duplicate directory listing: %s, ignoring", path);
-					return (EPKG_OK);
-				}
-			}
-		}
-	}
 
 	memset(&d, 0, sizeof(d));
 	d.path = xstrdup(path);
@@ -733,7 +716,19 @@ pkg_adddir_attr(struct pkg *pkg, const char *path, const char *uname,
 	if (fflags != 0)
 		d.fflags = fflags;
 
-	vec_push(&pkg->dirs, d);
+	struct pkg_dir *existing = pkg_dirv_insert_sorted(&pkg->dirs, d);
+	if (existing != NULL) {
+		pkg_dir_free_content(&d);
+		if (check_duplicates) {
+			if (ctx.developer_mode) {
+				pkg_emit_error("duplicate directory listing: %s, fatal (developer mode)", path);
+				return (EPKG_FATAL);
+			} else {
+				pkg_emit_error("duplicate directory listing: %s, ignoring", path);
+			}
+		}
+		return (EPKG_OK);
+	}
 
 	return (EPKG_OK);
 }
@@ -1039,16 +1034,17 @@ pkg_addconflict(struct pkg *pkg, const char *uniqueid)
 	assert(pkg != NULL);
 	assert(uniqueid != NULL && uniqueid[0] != '\0');
 
-	if (pkg_get_conflict(pkg, uniqueid) != NULL) {
+	memset(&c, 0, sizeof(c));
+	c.uid = xstrdup(uniqueid);
+
+	struct pkg_conflict *existing = pkg_conflictv_insert_sorted(&pkg->conflicts, c);
+	if (existing != NULL) {
 		/* silently ignore duplicates in case of conflicts */
+		pkg_conflict_free_content(&c);
 		return (EPKG_OK);
 	}
 
-	memset(&c, 0, sizeof(c));
-	c.uid = xstrdup(uniqueid);
 	dbg(3, "add a new conflict origin: %s, with %s", pkg->uid, uniqueid);
-
-	vec_push(&pkg->conflicts, c);
 
 	return (EPKG_OK);
 }
@@ -2143,6 +2139,11 @@ pkg_config_file_cmp(const void *a, const void *b)
 	return (strcmp(ca->path, cb->path));
 }
 
+DEFINE_VEC_INSERT_SORTED_FUNC(pkg_filev_t, pkg_filev, struct pkg_file, pkg_file_cmp)
+DEFINE_VEC_INSERT_SORTED_FUNC(pkg_dirv_t, pkg_dirv, struct pkg_dir, pkg_dir_cmp)
+DEFINE_VEC_INSERT_SORTED_FUNC(pkg_conflictv_t, pkg_conflictv, struct pkg_conflict, pkg_conflict_cmp)
+DEFINE_VEC_INSERT_SORTED_FUNC(pkg_configfilev_t, pkg_configfilev, struct pkg_config_file, pkg_config_file_cmp)
+
 void
 pkg_lists_sort(struct pkg *p)
 {
@@ -2151,15 +2152,7 @@ pkg_lists_sort(struct pkg *p)
 	p->list_sorted = true;
 
 	DL_SORT(p->depends, pkg_dep_cmp);
-	if (p->files.len > 0)
-		qsort(p->files.d, p->files.len, sizeof(struct pkg_file), pkg_file_cmp);
-	if (p->dirs.len > 0)
-		qsort(p->dirs.d, p->dirs.len, sizeof(struct pkg_dir), pkg_dir_cmp);
 	pkg_kv_sort(&p->options);
-	if (p->config_files.len > 0)
-		qsort(p->config_files.d, p->config_files.len, sizeof(struct pkg_config_file), pkg_config_file_cmp);
-	if (p->conflicts.len > 0)
-		qsort(p->conflicts.d, p->conflicts.len, sizeof(struct pkg_conflict), pkg_conflict_cmp);
 }
 
 static int
