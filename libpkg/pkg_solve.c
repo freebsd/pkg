@@ -492,14 +492,14 @@ pkg_solve_add_require_rule(struct pkg_solve_problem *problem,
     const char *reponame)
 {
 	struct pkg_solve_rule *rule;
-	struct pkg_job_provide *pr, *prhead;
+	providev_t *provvec;
 	struct pkg *pkg;
 	int cnt;
 
 	pkg = var->unit->pkg;
 
-	prhead = pkghash_get_value(problem->j->universe->provides, requirement);
-	if (prhead != NULL) {
+	provvec = pkghash_get_value(problem->j->universe->provides, requirement);
+	if (provvec != NULL) {
 		dbg(4, "Add require rule: %s-%s(%c) wants %s",
 			pkg->name, pkg->version, pkg->type == PKG_INSTALLED ? 'l' : 'r',
 			requirement);
@@ -509,8 +509,8 @@ pkg_solve_add_require_rule(struct pkg_solve_problem *problem,
 		pkg_solve_item_new(rule, var, -1);
 		/* P1 | P2 | ... */
 		cnt = 1;
-		LL_FOREACH(prhead, pr) {
-			pkg_solve_handle_provide(problem, pr, rule, pkg,
+		vec_foreach(*provvec, _pi) {
+			pkg_solve_handle_provide(problem, &provvec->d[_pi], rule, pkg,
 			    reponame, &cnt);
 		}
 

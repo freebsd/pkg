@@ -382,7 +382,7 @@ pkg_jobs_universe_handle_provide(struct pkg_jobs_universe *universe,
 {
 	struct pkg_job_universe_item *unit;
 	universe_itemv_t *uv;
-	struct pkg_job_provide *pr, *prhead;
+	providev_t *provvec;
 	struct pkg *npkg, *rpkg;
 	int rc;
 	unsigned flags = PKG_LOAD_BASIC|PKG_LOAD_OPTIONS|PKG_LOAD_DEPS|
@@ -392,7 +392,7 @@ pkg_jobs_universe_handle_provide(struct pkg_jobs_universe *universe,
 
 	rpkg = NULL;
 
-	prhead = pkghash_get_value(universe->provides, name);
+	provvec = pkghash_get_value(universe->provides, name);
 	while (pkgdb_it_next(it, &rpkg, flags) == EPKG_OK) {
 		dbg(4, "handle_provide: processing package %s for %s %s",
 		    rpkg->uid, is_shlib ? "shlib" : "provide", name);
@@ -508,26 +508,22 @@ pkg_jobs_universe_handle_provide(struct pkg_jobs_universe *universe,
 		}
 
 provide:
-		pr = xcalloc (1, sizeof (*pr));
-		pr->un = unit;
-		pr->provide = name;
-		pr->is_shlib = is_shlib;
-
-		if (prhead == NULL) {
-			DL_APPEND(prhead, pr);
-			pkghash_safe_add(universe->provides, pr->provide,
-			    prhead, NULL);
+		if (provvec == NULL) {
+			provvec = xcalloc(1, sizeof(*provvec));
+			pkghash_safe_add(universe->provides, name,
+			    provvec, NULL);
 			dbg(4, "add new provide %s-%s(%s) for require %s",
-					pr->un->pkg->name, pr->un->pkg->version,
-					pr->un->pkg->type == PKG_INSTALLED ? "l" : "r",
-					pr->provide);
+					unit->pkg->name, unit->pkg->version,
+					unit->pkg->type == PKG_INSTALLED ? "l" : "r",
+					name);
 		} else {
-			DL_APPEND(prhead, pr);
 			dbg(4, "append provide %s-%s(%s) for require %s",
-					pr->un->pkg->name, pr->un->pkg->version,
-					pr->un->pkg->type == PKG_INSTALLED ? "l" : "r",
-					pr->provide);
+					unit->pkg->name, unit->pkg->version,
+					unit->pkg->type == PKG_INSTALLED ? "l" : "r",
+					name);
 		}
+		vec_push(provvec, ((struct pkg_job_provide){
+		    .un = unit, .provide = name, .is_shlib = is_shlib }));
 	}
 
 	return (EPKG_OK);
@@ -765,13 +761,10 @@ pkg_jobs_universe_process(struct pkg_jobs_universe *universe,
 }
 
 static void
-pkg_jobs_universe_provide_free(struct pkg_job_provide *pr)
+pkg_jobs_universe_provide_free(providev_t *pv)
 {
-	struct pkg_job_provide *cur, *tmp;
-
-	DL_FOREACH_SAFE(pr, cur, tmp) {
-		free (cur);
-	}
+	vec_free(pv);
+	free(pv);
 }
 
 void
