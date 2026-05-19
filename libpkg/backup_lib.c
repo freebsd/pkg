@@ -104,17 +104,13 @@ register_backup(struct pkgdb *db, struct pkg *orig, int fd, const char *libname)
 		free(name);
 		name = NULL;
 	}
-	/* Remove any existing file entry for this library.  The filehash
-	 * is keyed by full path which may differ between pkg versions
-	 * (e.g. older versions included rootdir in the path), so match
+	/* Remove any existing file entry for this library.  Match
 	 * by the trailing library name rather than the full key. */
-	f = NULL;
-	while (pkg_files(pkg, &f) == EPKG_OK) {
-		const char *fname = strrchr(f->path, '/');
+	vec_foreach(pkg->files, _fi) {
+		const char *fname = strrchr(pkg->files.d[_fi].path, '/');
 		if (fname != NULL && strcmp(fname + 1, libname) == 0) {
-			pkghash_del(pkg->filehash, f->path);
-			DL_DELETE(pkg->files, f);
-			pkg_file_free(f);
+			pkg_file_free_content(&pkg->files.d[_fi]);
+			vec_remove(&pkg->files, _fi);
 			break;
 		}
 	}

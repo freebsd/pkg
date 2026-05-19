@@ -194,6 +194,33 @@ struct fetcher;
 struct pkg_message;
 typedef vec_t(struct pkg_message *) messages_t;
 
+typedef enum {
+	PKG_FILE_NONE = 0,
+	PKG_FILE_EXIST,
+	PKG_FILE_SAVE,
+} file_previous_t;
+
+struct pkg_config_file;
+
+struct pkg_file {
+	char		*path;
+	int64_t		 size;
+	char		*sum;
+	char		*uname;
+	char		*gname;
+	mode_t		 perm;
+	uid_t		 uid;
+	gid_t		 gid;
+	char		*temppath;
+	u_long		 fflags;
+	char		*symlink_target;
+	struct pkg_config_file *config;
+	struct timespec	 time[2];
+	file_previous_t	 previous;
+};
+
+typedef vec_t(struct pkg_file) pkg_filev_t;
+
 struct pkg {
 	bool		 direct;
 	bool		 locked;
@@ -236,8 +263,8 @@ struct pkg {
 	struct pkg_dep		*rdepends;
 	charv_t		 categories;
 	charv_t		 licenses;
-	pkghash			*filehash;
-	struct pkg_file		*files;
+	pkg_filev_t		 files;
+	size_t			 files_iter;
 	pkghash			*dirhash;
 	struct pkg_dir		*dirs;
 	kvlist_t		 options;
@@ -385,12 +412,6 @@ struct pkg_dep {
 };
 
 typedef enum {
-	PKG_FILE_NONE = 0,
-	PKG_FILE_EXIST,
-	PKG_FILE_SAVE,
-} file_previous_t;
-
-typedef enum {
 	PKG_MESSAGE_ALWAYS = 0,
 	PKG_MESSAGE_INSTALL,
 	PKG_MESSAGE_REMOVE,
@@ -431,24 +452,6 @@ struct pkg_config_file {
 	char *newcontent;
 	merge_status status;
 	struct pkg_config_file *next, *prev;
-};
-
-struct pkg_file {
-	char		*path;
-	int64_t		 size;
-	char		*sum;
-	char		*uname;
-	char		*gname;
-	mode_t		 perm;
-	uid_t		 uid;
-	gid_t		 gid;
-	char		*temppath;
-	u_long		 fflags;
-	char		*symlink_target;
-	struct pkg_config_file *config;
-	struct timespec	 time[2];
-	struct pkg_file	*next, *prev;
-	file_previous_t	 previous;
 };
 
 struct pkg_dir {
@@ -802,6 +805,8 @@ pkg_kv_insert_or_free(kvlist_t *v, struct pkg_kv *el)
 
 void pkg_dep_free(struct pkg_dep *);
 void pkg_file_free(struct pkg_file *);
+void pkg_file_free_content(struct pkg_file *);
+int pkg_file_cmp(const void *, const void *);
 void pkg_dir_free(struct pkg_dir *);
 void pkg_conflict_free(struct pkg_conflict *);
 void pkg_config_file_free(struct pkg_config_file *);

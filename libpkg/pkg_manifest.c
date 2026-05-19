@@ -778,6 +778,11 @@ parse_manifest(struct pkg *pkg, ucl_object_t *obj)
 		}
 	}
 
+	/* Sort files vec so bsearch lookups work */
+	if (pkg->files.len > 1)
+		qsort(pkg->files.d, pkg->files.len, sizeof(struct pkg_file),
+		    pkg_file_cmp);
+
 	return (EPKG_OK);
 }
 

@@ -446,6 +446,9 @@ pkgdb_load_files(sqlite3 *sqlite, struct pkg *pkg)
 	}
 	sqlite3_finalize(stmt);
 
+	if (pkg->files.len > 1)
+		qsort(pkg->files.d, pkg->files.len, sizeof(struct pkg_file),
+		    pkg_file_cmp);
 	pkg->flags |= PKG_LOAD_FILES;
 	return (EPKG_OK);
 }

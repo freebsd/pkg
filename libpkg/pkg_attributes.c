@@ -61,7 +61,7 @@ pkg_dep_is_locked(struct pkg_dep const * const d)
  * File
  */
 void
-pkg_file_free(struct pkg_file *file)
+pkg_file_free_content(struct pkg_file *file)
 {
 	free(file->path);
 	free(file->uname);
@@ -69,6 +69,12 @@ pkg_file_free(struct pkg_file *file)
 	free(file->symlink_target);
 	free(file->sum);
 	free(file->temppath);
+}
+
+void
+pkg_file_free(struct pkg_file *file)
+{
+	pkg_file_free_content(file);
 	free(file);
 }
 

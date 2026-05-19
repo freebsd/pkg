@@ -187,7 +187,8 @@ pkg_conflicts_need_conflict(struct pkg_jobs *j, struct pkg *p1, struct pkg *p2)
 	/*
 	 * We need to check all files and dirs and find the similar ones
 	 */
-	LL_FOREACH(p1->files, fcur) {
+	vec_foreach(p1->files, _fi) {
+		fcur = &p1->files.d[_fi];
 		if (pkg_has_file(p2, fcur->path))
 			return (true);
 		if (pkg_has_dir(p2, fcur->path))
@@ -403,7 +404,8 @@ pkg_conflicts_check_chain_conflict(struct pkg_job_universe_item *it,
 	struct pkg_job_universe_item *cun;
 	struct sipkey *k;
 
-	LL_FOREACH(it->pkg->files, fcur) {
+	vec_foreach(it->pkg->files, _fi) {
+		fcur = &it->pkg->files.d[_fi];
 		k = pkg_conflicts_sipkey_init();
 		/* Check in hash tree */
 		cun = pkg_conflicts_check_all_paths(j, fcur->path, it, k);

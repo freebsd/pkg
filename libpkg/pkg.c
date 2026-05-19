@@ -403,7 +403,21 @@ pkg_##name(const struct pkg *p, type **t) {	\
 }
 
 pkg_each(dirs, struct pkg_dir, dirs);
-pkg_each(files, struct pkg_file, files);
+
+int
+pkg_files(const struct pkg *p, struct pkg_file **t) {
+	struct pkg *mp = __DECONST(struct pkg *, p);
+	assert(p != NULL);
+	if ((*t) == NULL)
+		mp->files_iter = 0;
+	if (mp->files_iter >= p->files.len) {
+		(*t) = NULL;
+		return (EPKG_END);
+	}
+	(*t) = &mp->files.d[mp->files_iter++];
+	return (EPKG_OK);
+}
+
 pkg_each(deps, struct pkg_dep, depends);
 pkg_each(rdeps, struct pkg_dep, rdepends);
 pkg_each(conflicts, struct pkg_conflict, conflicts);
@@ -527,7 +541,7 @@ pkg_addfile_attr(struct pkg *pkg, const char *path, const char *sum,
 		 u_long fflags, time_t mtime,
 		 const char *symlink_target, bool check_duplicates)
 {
-	struct pkg_file *f = NULL;
+	struct pkg_file f;
 	char abspath[MAXPATHLEN];
 
 	assert(pkg != NULL);
@@ -536,42 +550,45 @@ pkg_addfile_attr(struct pkg *pkg, const char *path, const char *sum,
 	path = pkg_absolutepath(path, abspath, sizeof(abspath), false);
 	dbg(3, "add new file '%s'", path);
 
-	if (check_duplicates && pkghash_get(pkg->filehash, path) != NULL) {
-		if (ctx.developer_mode) {
-			pkg_emit_error("duplicate file listing: %s, fatal (developer mode)", path);
-			return (EPKG_FATAL);
-		} else {
-			pkg_emit_error("duplicate file listing: %s, ignoring", path);
-			return (EPKG_OK);
+	if (check_duplicates) {
+		vec_foreach(pkg->files, i) {
+			if (strcmp(pkg->files.d[i].path, path) == 0) {
+				if (ctx.developer_mode) {
+					pkg_emit_error("duplicate file listing: %s, fatal (developer mode)", path);
+					return (EPKG_FATAL);
+				} else {
+					pkg_emit_error("duplicate file listing: %s, ignoring", path);
+					return (EPKG_OK);
+				}
+			}
 		}
 	}
 
-	f = xcalloc(1, sizeof(*f));
-	f->path = xstrdup(path);
+	memset(&f, 0, sizeof(f));
+	f.path = xstrdup(path);
 
 	if (sum != NULL)
-		f->sum = xstrdup(sum);
+		f.sum = xstrdup(sum);
 
 	if (uname != NULL)
-		f->uname = xstrdup(uname);
+		f.uname = xstrdup(uname);
 
 	if (gname != NULL)
-		f->gname = xstrdup(gname);
+		f.gname = xstrdup(gname);
 
 	if (perm != 0)
-		f->perm = perm;
+		f.perm = perm;
 
 	if (fflags != 0)
-		f->fflags = fflags;
+		f.fflags = fflags;
 
 	if (symlink_target != NULL)
-		f->symlink_target = xstrdup(symlink_target);
+		f.symlink_target = xstrdup(symlink_target);
 
 	if (mtime > 0)
-		f->time[1].tv_sec = mtime;
+		f.time[1].tv_sec = mtime;
 
-	pkghash_safe_add(pkg->filehash, f->path, f, NULL);
-	DL_APPEND(pkg->files, f);
+	vec_push(&pkg->files, f);
 
 	return (EPKG_OK);
 }
@@ -1077,7 +1094,7 @@ pkg_list_count(const struct pkg *pkg, pkg_list list)
 	case PKG_OPTIONS:
 		return (vec_len(&pkg->options));
 	case PKG_FILES:
-		return (pkghash_count(pkg->filehash));
+		return (pkg->files.len);
 	case PKG_DIRS:
 		return (pkghash_count(pkg->dirhash));
 	case PKG_CONFLICTS:
@@ -1128,9 +1145,11 @@ pkg_list_free(struct pkg *pkg, pkg_list list)  {
 		pkg->flags &= ~PKG_LOAD_OPTIONS;
 		break;
 	case PKG_FILES:
-		DL_AUTOFREE(pkg->files);
-		pkghash_destroy(pkg->filehash);
-		pkg->filehash = NULL;
+		vec_foreach(pkg->files, _fi) {
+			pkg_file_free_content(&pkg->files.d[_fi]);
+		}
+		vec_free(&pkg->files);
+		pkg->files_iter = 0;
 		pkg->flags &= ~PKG_LOAD_FILES;
 		break;
 	case PKG_CONFIG_FILES:
@@ -1740,7 +1759,7 @@ pkg_is_config_file(struct pkg *p, const char *path,
 	if (pkghash_count(p->config_files_hash) == 0)
 		return (false);
 
-	*file = pkghash_get_value(p->filehash, path);
+	*file = pkg_get_file(p, path);
 	if (*file == NULL)
 		return (false);
 	*cfile = pkghash_get_value(p->config_files_hash, path);
@@ -1758,16 +1777,27 @@ pkg_get_dir(struct pkg *p, const char *path)
 	return (pkghash_get_value(p->dirhash, path));
 }
 
+static int
+pkg_file_path_cmp(const void *key, const void *elem)
+{
+	const char *path = key;
+	const struct pkg_file *f = elem;
+	return (strcmp(path, f->path));
+}
+
 struct pkg_file *
 pkg_get_file(struct pkg *p, const char *path)
 {
-	return (pkghash_get_value(p->filehash, path));
+	if (p->files.len == 0)
+		return (NULL);
+	return (bsearch(path, p->files.d, p->files.len,
+	    sizeof(struct pkg_file), pkg_file_path_cmp));
 }
 
 bool
 pkg_has_file(struct pkg *p, const char *path)
 {
-	return (pkghash_get(p->filehash, path) != NULL);
+	return (pkg_get_file(p, path) != NULL);
 }
 
 bool
@@ -1989,10 +2019,12 @@ pkg_dep_cmp(struct pkg_dep *a, struct pkg_dep *b)
 	return (strcmp(a->name, b->name));
 }
 
-static int
-pkg_file_cmp(struct pkg_file *a, struct pkg_file *b)
+int
+pkg_file_cmp(const void *a, const void *b)
 {
-	return (strcmp(a->path, b->path));
+	const struct pkg_file *fa = a;
+	const struct pkg_file *fb = b;
+	return (strcmp(fa->path, fb->path));
 }
 
 static int
@@ -2015,7 +2047,8 @@ pkg_lists_sort(struct pkg *p)
 	p->list_sorted = true;
 
 	DL_SORT(p->depends, pkg_dep_cmp);
-	DL_SORT(p->files, pkg_file_cmp);
+	if (p->files.len > 0)
+		qsort(p->files.d, p->files.len, sizeof(struct pkg_file), pkg_file_cmp);
 	DL_SORT(p->dirs, pkg_dir_cmp);
 	pkg_kv_sort(&p->options);
 	DL_SORT(p->config_files, pkg_cf_cmp);

@@ -1666,7 +1666,7 @@ pkg_add_common(struct pkgdb *db, const char *path, unsigned flags,
 
 	/* add the user and group if necessary */
 
-	nfiles = pkghash_count(pkg->filehash) + pkghash_count(pkg->dirhash);
+	nfiles = pkg->files.len + pkghash_count(pkg->dirhash);
 	/*
 	 * Extract the files on disk.
 	 */
@@ -2120,7 +2120,7 @@ open_tempdir(struct pkg_add_context *context, const char *path)
 			}
 			if (S_ISLNK(st.st_mode) &&
 			    localpkg != NULL &&
-			    pkghash_get(localpkg->filehash, walk) == NULL &&
+			    !pkg_has_file(localpkg, walk) &&
 			    fstatat(rootfd, RELATIVE_PATH(walk), &st, 0) == -1)
 				continue;
 			if (S_ISDIR(st.st_mode) && cnt == 1)

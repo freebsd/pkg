@@ -1172,7 +1172,6 @@ format_files(xstring *buf, const void *data, struct percent_esc *p)
 	if (p->flags & (PP_ALTERNATE_FORM1|PP_ALTERNATE_FORM2))
 		return (list_count(buf, pkg_list_count(pkg, PKG_FILES), p));
 	else {
-		struct pkg_file	*file = NULL;
 		int		 count;
 
 		set_list_defaults(p, "%Fn\n", "");
@@ -1180,7 +1179,8 @@ format_files(xstring *buf, const void *data, struct percent_esc *p)
 		count = 1;
 		fflush(p->sep_fmt->fp);
 		fflush(p->item_fmt->fp);
-		LL_FOREACH(pkg->files, file) {
+		vec_foreach(pkg->files, _fi) {
+			struct pkg_file *file = &pkg->files.d[_fi];
 			if (count > 1)
 				iterate_item(buf, pkg, p->sep_fmt->buf,
 					     file, count, PP_F);

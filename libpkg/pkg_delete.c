@@ -380,7 +380,7 @@ pkg_delete_files(struct pkgdb *db, struct pkg *pkg, struct pkg *rpkg, int flags,
 	int		nfiles, cur_file = 0;
 	int		retcode = EPKG_OK;
 
-	nfiles = pkghash_count(pkg->filehash);
+	nfiles = pkg->files.len;
 	if (nfiles == 0)
 		return (EPKG_OK);
 

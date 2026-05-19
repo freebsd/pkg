@@ -87,7 +87,7 @@ pkg_create_from_dir(struct pkg *pkg, const char *root,
 	 * Get / compute size / checksum if not provided in the manifest
 	 */
 
-	nfiles = pkghash_count(pkg->filehash);
+	nfiles = pkg->files.len;
 	counter_init("file sizes/checksums", nfiles);
 
 	while (pkg_files(pkg, &file) == EPKG_OK) {
