@@ -115,7 +115,7 @@ pkg_conflicts_request_resolve(struct pkg_jobs *j)
 {
 	struct pkg_job_request *req, *found;
 	struct pkg_conflict *c;
-	struct pkg_job_universe_item *unit;
+	universe_itemv_t *uv;
 	pkghash_it it;
 
 	it = pkghash_iterator(j->request_add);
@@ -126,9 +126,9 @@ pkg_conflicts_request_resolve(struct pkg_jobs *j)
 			continue;
 
 		LL_FOREACH(req->item->pkg->conflicts, c) {
-			unit = pkg_jobs_universe_find(j->universe, c->uid);
-			if (unit != NULL) {
-				found = pkghash_get_value(j->request_add, unit->pkg->uid);
+			uv = pkg_jobs_universe_find(j->universe, c->uid);
+			if (uv != NULL) {
+				found = pkghash_get_value(j->request_add, uv->d[0]->pkg->uid);
 				if (found != NULL && !found->skip) {
 					vec_push(&chain, found);
 				}
@@ -237,18 +237,16 @@ pkg_conflicts_register(struct pkg *p1, struct pkg *p2, const char *path,
  * Register conflicts between packages in the universe chains
  */
 static bool
-pkg_conflicts_register_chain(struct pkg_jobs *j, struct pkg_job_universe_item *u1,
-	struct pkg_job_universe_item *u2, const char *path)
+pkg_conflicts_register_chain(struct pkg_jobs *j, universe_itemv_t *uv1,
+	universe_itemv_t *uv2, const char *path)
 {
-	struct pkg_job_universe_item *cur1, *cur2;
 	enum pkg_conflict_type type;
 	bool ret = false;
 
-	cur1 = u1;
-	do {
-		cur2 = u2;
-		do {
-			struct pkg *p1 = cur1->pkg, *p2 = cur2->pkg;
+	vec_foreach(*uv1, _i1) {
+		struct pkg *p1 = uv1->d[_i1]->pkg;
+		vec_foreach(*uv2, _i2) {
+			struct pkg *p2 = uv2->d[_i2]->pkg;
 
 			if (p1->type == PKG_INSTALLED && p2->type == PKG_INSTALLED)
 				type = PKG_CONFLICT_LOCAL_LOCAL;
@@ -265,10 +263,8 @@ pkg_conflicts_register_chain(struct pkg_jobs *j, struct pkg_job_universe_item *u
 				j->conflicts_registered++;
 				ret = true;
 			}
-			cur2 = cur2->prev;
-		} while (cur2 != u2);
-		cur1 = cur1->prev;
-	} while (cur1 != u1);
+		}
+	}
 
 	return (ret);
 }
@@ -362,11 +358,26 @@ pkg_conflicts_check_all_paths(struct pkg_jobs *j, const char *path,
 
 		/* Here we can have either collision or a real conflict */
 		c = pkghash_get_value(it->pkg->conflictshash, uid2);
-		if (c != NULL || !pkg_conflicts_register_chain(j, it, cit->item, path)) {
+		if (c != NULL) {
 			/*
 			 * Collision found, change the key following the
 			 * Cuckoo principle
 			 */
+			struct sipkey nk;
+
+			pkg_debug(2, "found a collision on path %s between %s and %s, key: %lu",
+				path, uid1, uid2, (unsigned long)k->k[0]);
+
+			nk = *k;
+			nk.k[0] ++;
+			return (pkg_conflicts_check_all_paths(j, path, it, &nk));
+		}
+
+		/* Look up the universe vecs for both items */
+		universe_itemv_t *uv1 = pkg_jobs_universe_find(j->universe, uid1);
+		universe_itemv_t *uv2 = pkg_jobs_universe_find(j->universe, uid2);
+		if (uv1 == NULL || uv2 == NULL ||
+		    !pkg_conflicts_register_chain(j, uv1, uv2, path)) {
 			struct sipkey nk;
 
 			pkg_debug(2, "found a collision on path %s between %s and %s, key: %lu",
@@ -411,14 +422,17 @@ pkg_conflicts_check_chain_conflict(struct pkg_job_universe_item *it,
 			if (pkg_jobs_universe_process_item(j->universe, p, &cun))
 				continue;
 			assert(cun != NULL);
-			pkg_conflicts_register_chain(j, it, cun, fcur->path);
+			universe_itemv_t *uv_it = pkg_jobs_universe_find(j->universe, it->pkg->uid);
+			universe_itemv_t *uv_cun = pkg_jobs_universe_find(j->universe, cun->pkg->uid);
+			if (uv_it != NULL && uv_cun != NULL)
+				pkg_conflicts_register_chain(j, uv_it, uv_cun, fcur->path);
 		}
 	}
 	/* XXX: dirs are currently broken terribly */
 }
 
 int
-pkg_conflicts_append_chain(struct pkg_job_universe_item *it,
+pkg_conflicts_append_chain(universe_itemv_t *uv,
 	struct pkg_jobs *j)
 {
 	struct pkg_job_universe_item *lp = NULL, *cur;
@@ -430,8 +444,8 @@ pkg_conflicts_append_chain(struct pkg_job_universe_item *it,
 	}
 
 	/* Find local package */
-	cur = it->prev;
-	while (cur != it) {
+	vec_foreach(*uv, _i) {
+		cur = uv->d[_i];
 		if (cur->pkg->type == PKG_INSTALLED) {
 			lp = cur;
 			if (pkgdb_ensure_loaded(j->db, cur->pkg, PKG_LOAD_FILES|PKG_LOAD_DIRS)
@@ -441,15 +455,14 @@ pkg_conflicts_append_chain(struct pkg_job_universe_item *it,
 			/* Local package is found */
 			break;
 		}
-		cur = cur->prev;
 	}
 
 	/*
 	 * Now we go through the all packages in the chain and check them against
 	 * conflicts with the locally installed files
 	 */
-	cur = it;
-	do {
+	vec_foreach(*uv, _i) {
+		cur = uv->d[_i];
 		if (cur != lp) {
 			if (pkgdb_ensure_loaded(j->db, cur->pkg, PKG_LOAD_FILES|PKG_LOAD_DIRS)
 							!= EPKG_OK) {
@@ -465,9 +478,7 @@ pkg_conflicts_append_chain(struct pkg_job_universe_item *it,
 				pkg_conflicts_check_chain_conflict(cur, lp, j);
 			}
 		}
-
-		cur = cur->prev;
-	} while (cur != it);
+	}
 
 	return (EPKG_OK);
 }

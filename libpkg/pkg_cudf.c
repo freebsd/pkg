@@ -108,13 +108,13 @@ cudf_print_conflict(FILE *f, const char *uid, int ver, bool has_next, size_t *co
 
 static int
 cudf_emit_pkg(struct pkg *pkg, int version, FILE *f,
-		struct pkg_job_universe_item *conflicts_chain)
+		universe_itemv_t *conflicts_chain)
 {
 	struct pkg_dep *dep;
 	struct pkg_conflict *conflict;
-	struct pkg_job_universe_item *u;
 	size_t column = 0;
 	int ver;
+	bool has_chain_conflict = false;
 
 	if (fprintf(f, "package: ") < 0)
 		return (EPKG_FATAL);
@@ -148,10 +148,17 @@ cudf_emit_pkg(struct pkg *pkg, int version, FILE *f,
 		}
 	}
 
+	/* Check if any other item in the chain is a conflict candidate */
+	vec_foreach(*conflicts_chain, _ci) {
+		if (conflicts_chain->d[_ci]->pkg != pkg &&
+		    !conflicts_chain->d[_ci]->cudf_emit_skip) {
+			has_chain_conflict = true;
+			break;
+		}
+	}
+
 	column = 0;
-	if (pkghash_count(pkg->conflictshash) > 0 ||
-			(conflicts_chain->next != NULL &&
-			!conflicts_chain->next->cudf_emit_skip)) {
+	if (pkghash_count(pkg->conflictshash) > 0 || has_chain_conflict) {
 		if (fprintf(f, "conflicts: ") < 0)
 			return (EPKG_FATAL);
 		LL_FOREACH(pkg->conflicts, conflict) {
@@ -161,10 +168,19 @@ cudf_emit_pkg(struct pkg *pkg, int version, FILE *f,
 			}
 		}
 		ver = 1;
-		LL_FOREACH(conflicts_chain, u) {
+		vec_foreach(*conflicts_chain, _ci) {
+			struct pkg_job_universe_item *u = conflicts_chain->d[_ci];
+			bool has_next = false;
+			/* Check if there's a next non-self non-skipped item */
+			for (size_t _nci = _ci + 1; _nci < conflicts_chain->len; _nci++) {
+				if (conflicts_chain->d[_nci]->pkg != pkg) {
+					has_next = true;
+					break;
+				}
+			}
 			if (u->pkg != pkg && !u->cudf_emit_skip) {
 				if (cudf_print_conflict(f, pkg->uid, ver,
-				   (u->next != NULL && u->next->pkg != pkg), &column) < 0) {
+				   has_next, &column) < 0) {
 					return (EPKG_FATAL);
 				}
 			}
@@ -233,8 +249,10 @@ cudf_emit_request_packages(const char *op, struct pkg_jobs *j, FILE *f)
 }
 
 static int
-pkg_cudf_version_cmp(struct pkg_job_universe_item *a, struct pkg_job_universe_item *b)
+pkg_cudf_version_cmp(const void *pa, const void *pb)
 {
+	struct pkg_job_universe_item *a = *(struct pkg_job_universe_item *const *)pa;
+	struct pkg_job_universe_item *b = *(struct pkg_job_universe_item *const *)pb;
 	int ret;
 
 	ret = pkg_version_cmp(a->pkg->version, b->pkg->version);
@@ -254,7 +272,7 @@ int
 pkg_jobs_cudf_emit_file(struct pkg_jobs *j, pkg_jobs_t t, FILE *f)
 {
 	struct pkg *pkg;
-	struct pkg_job_universe_item *it, *icur;
+	universe_itemv_t *uv;
 	int version;
 	pkghash_it hit;
 
@@ -263,29 +281,17 @@ pkg_jobs_cudf_emit_file(struct pkg_jobs *j, pkg_jobs_t t, FILE *f)
 
 	hit = pkghash_iterator(j->universe->items);
 	while (pkghash_next(&hit)) {
-		it = (struct pkg_job_universe_item *)hit.value;
-		/* XXX
-		 * Here are dragons:
-		 * after sorting it we actually modify the head of the list, but there is
-		 * no simple way to update a pointer in uthash, therefore universe hash
-		 * contains not a head of list but a random elt of the conflicts chain:
-		 * before:
-		 * head -> elt1 -> elt2 -> elt3
-		 * after:
-		 * elt1 -> elt3 -> head -> elt2
-		 *
-		 * But hash would still point to head whilst the real head is elt1.
-		 * So after sorting we need to rotate conflicts chain back to find the new
-		 * head.
-		 */
-		DL_SORT(it, pkg_cudf_version_cmp);
+		uv = (universe_itemv_t *)hit.value;
+		/* Sort the vec by version */
+		qsort(uv->d, uv->len, sizeof(uv->d[0]), pkg_cudf_version_cmp);
 
 		version = 1;
-		LL_FOREACH(it, icur) {
+		vec_foreach(*uv, _i) {
+			struct pkg_job_universe_item *icur = uv->d[_i];
 			if (!icur->cudf_emit_skip) {
 				pkg = icur->pkg;
 
-				if (cudf_emit_pkg(pkg, version ++, f, it) != EPKG_OK)
+				if (cudf_emit_pkg(pkg, version ++, f, uv) != EPKG_OK)
 					return (EPKG_FATAL);
 			}
 		}
@@ -364,11 +370,12 @@ struct pkg_cudf_entry {
 static int
 pkg_jobs_cudf_add_package(struct pkg_jobs *j, struct pkg_cudf_entry *entry)
 {
-	struct pkg_job_universe_item *it, *cur, *selected = NULL, *old = NULL, *head;
+	universe_itemv_t *uv;
+	struct pkg_job_universe_item *selected = NULL, *old = NULL;
 	int ver, n;
 
-	it = pkg_jobs_universe_find(j->universe, entry->uid);
-	if (it == NULL) {
+	uv = pkg_jobs_universe_find(j->universe, entry->uid);
+	if (uv == NULL) {
 		pkg_emit_error("package %s is found in CUDF output but not in the universe",
 				entry->uid);
 		return (EPKG_FATAL);
@@ -381,17 +388,10 @@ pkg_jobs_cudf_add_package(struct pkg_jobs *j, struct pkg_cudf_entry *entry)
 	 */
 	ver = strtoul(entry->version, NULL, 10);
 
-	/* Find the old head, see the comment in `pkg_jobs_cudf_emit_file` */
-	cur = it;
-	do {
-		head = cur;
-		cur = cur->prev;
-	} while (cur->next != NULL);
-
 	n = 1;
-	LL_FOREACH(head, cur) {
+	vec_foreach(*uv, _i) {
 		if (n == ver) {
-			selected = cur;
+			selected = uv->d[_i];
 			break;
 		}
 		n ++;
@@ -418,9 +418,9 @@ pkg_jobs_cudf_add_package(struct pkg_jobs *j, struct pkg_cudf_entry *entry)
 	}
 	else {
 		/* Define upgrade */
-		LL_FOREACH(head, cur) {
-			if (cur != selected) {
-				old = cur;
+		vec_foreach(*uv, _i) {
+			if (uv->d[_i] != selected) {
+				old = uv->d[_i];
 				break;
 			}
 		}

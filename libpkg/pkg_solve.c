@@ -275,18 +275,11 @@ pkg_solve_handle_provide(struct pkg_solve_problem *problem,
     const char *reponame, int *cnt)
 {
 	struct pkg_solve_variable *var, *curvar;
-	struct pkg_job_universe_item *un;
 	struct pkg *pkg;
-
-	/* Find the first package in the universe list */
-	un = pr->un;
-	while (un->prev->next != NULL) {
-		un = un->prev;
-	}
 
 	/* Find the corresponding variables chain */
 
-	var = pkghash_get_value(problem->variables_by_uid, un->pkg->uid);
+	var = pkghash_get_value(problem->variables_by_uid, pr->un->pkg->uid);
 	LL_FOREACH(var, curvar) {
 		/*
 		 * For each provide we need to check whether this package
@@ -631,7 +624,7 @@ pkg_solve_add_request_rule(struct pkg_solve_problem *problem,
 		cnt++;
 	}
 
-	if (cnt > 1 && var->unit->inhash != 0) {
+	if (cnt > 1) {
 		vec_push(&problem->rules, rule);
 		/* Also need to add pairs of conflicts */
 		LL_FOREACH(req->item, item) {
@@ -775,13 +768,13 @@ pkg_solve_process_universe_variable(struct pkg_solve_problem *problem,
 }
 
 static void
-pkg_solve_add_variable(struct pkg_job_universe_item *un,
+pkg_solve_add_variable(universe_itemv_t *uv,
     struct pkg_solve_problem *problem, size_t *n)
 {
-	struct pkg_job_universe_item *ucur;
 	struct pkg_solve_variable *var = NULL, *tvar = NULL;
 
-	LL_FOREACH(un, ucur) {
+	vec_foreach(*uv, _i) {
+		struct pkg_job_universe_item *ucur = uv->d[_i];
 		assert(*n < problem->nvars);
 
 		/* Add new variable */
@@ -806,7 +799,7 @@ struct pkg_solve_problem *
 pkg_solve_jobs_to_sat(struct pkg_jobs *j)
 {
 	struct pkg_solve_problem *problem;
-	struct pkg_job_universe_item *un;
+	universe_itemv_t *uv;
 	size_t i = 0;
 	pkghash_it it;
 
@@ -828,9 +821,9 @@ pkg_solve_jobs_to_sat(struct pkg_jobs *j)
 	/* Parse universe */
 	it = pkghash_iterator(j->universe->items);
 	while (pkghash_next(&it)) {
-		un = (struct pkg_job_universe_item *)it.value;
+		uv = (universe_itemv_t *)it.value;
 		/* Add corresponding variables */
-		pkg_solve_add_variable(un, problem, &i);
+		pkg_solve_add_variable(uv, problem, &i);
 	}
 
 	/* Add rules for all conflict chains */
@@ -838,11 +831,11 @@ pkg_solve_jobs_to_sat(struct pkg_jobs *j)
 	while (pkghash_next(&it)) {
 		struct pkg_solve_variable *var;
 
-		un = (struct pkg_job_universe_item *)it.value;
-		var = pkghash_get_value(problem->variables_by_uid, un->pkg->uid);
+		uv = (universe_itemv_t *)it.value;
+		var = pkghash_get_value(problem->variables_by_uid, uv->d[0]->pkg->uid);
 		if (var == NULL) {
 			pkg_emit_error("internal solver error: variable %s is not found",
-			    un->pkg->uid);
+			    uv->d[0]->pkg->uid);
 			pkg_solve_problem_free(problem);
 			return (NULL);
 		}
@@ -914,7 +907,7 @@ static void
 pkg_solve_set_initial_assumption(struct pkg_solve_problem *problem,
 		struct pkg_solve_rule *rule)
 {
-	struct pkg_job_universe_item *selected, *cur, *local, *first;
+	struct pkg_job_universe_item *selected, *local;
 	struct pkg_solve_item *item;
 	struct pkg_solve_variable *var, *cvar;
 	bool conservative = false, prefer_local = false;
@@ -960,12 +953,8 @@ pkg_solve_set_initial_assumption(struct pkg_solve_problem *problem,
 		item = rule->items->next;
 		assert (item != NULL);
 		var = item->var;
-		first = var->unit;
 
-		/* Rewind chains */
-		while (first->prev->next != NULL) {
-			first = first->prev;
-		}
+		/* Rewind var chain to head */
 		while (var->prev->next != NULL) {
 			var = var->prev;
 		}
@@ -976,13 +965,19 @@ pkg_solve_set_initial_assumption(struct pkg_solve_problem *problem,
 				return;
 			}
 		}
-		/* Forward chain to find local package */
-		local = NULL;
 
-		DL_FOREACH (first, cur) {
-			if (cur->pkg->type == PKG_INSTALLED) {
-				local = cur;
-				break;
+		/* Look up the universe vec to find local package */
+		local = NULL;
+		{
+			universe_itemv_t *uv = pkg_jobs_universe_find(
+			    problem->j->universe, var->unit->pkg->uid);
+			if (uv != NULL) {
+				vec_foreach(*uv, _i) {
+					if (uv->d[_i]->pkg->type == PKG_INSTALLED) {
+						local = uv->d[_i];
+						break;
+					}
+				}
 			}
 		}
 
@@ -990,7 +985,9 @@ pkg_solve_set_initial_assumption(struct pkg_solve_problem *problem,
 			selected = local;
 		}
 		else {
-			selected = pkg_jobs_universe_select_candidate(first, local,
+			universe_itemv_t *uv = pkg_jobs_universe_find(
+			    problem->j->universe, var->unit->pkg->uid);
+			selected = pkg_jobs_universe_select_candidate(uv, local,
 			    conservative, assumed_reponame, true);
 
 			if (local && (STREQ(selected->pkg->digest, local->pkg->digest) ||

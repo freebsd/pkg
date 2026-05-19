@@ -365,31 +365,29 @@ pkg_jobs_iter(struct pkg_jobs *j, void **iter,
 }
 
 static struct pkg_job_request_item*
-pkg_jobs_add_req_from_universe(pkghash **head, struct pkg_job_universe_item *un,
+pkg_jobs_add_req_from_universe(pkghash **head, universe_itemv_t *uv,
     bool local, bool automatic)
 {
 	struct pkg_job_request *req;
 	struct pkg_job_request_item *nit;
-	struct pkg_job_universe_item *uit;
 	bool new_req = false;
 
-	assert(un != NULL);
-	req = pkghash_get_value(*head, un->pkg->uid);
+	assert(uv != NULL && uv->len > 0);
+	req = pkghash_get_value(*head, uv->d[0]->pkg->uid);
 
 	if (req == NULL) {
 		req = xcalloc(1, sizeof(*req));
 		new_req = true;
 		req->automatic = automatic;
-		dbg(4, "add new uid %s to the request", un->pkg->uid);
+		dbg(4, "add new uid %s to the request", uv->d[0]->pkg->uid);
 	}
 	else {
-		if (req->item->unit == un) {
-			/* We have exactly the same request, skip it */
-			return (req->item);
-		}
+		/* Request already exists for this uid, skip adding duplicates */
+		return (req->item);
 	}
 
-	DL_FOREACH(un, uit) {
+	vec_foreach(*uv, _i) {
+		struct pkg_job_universe_item *uit = uv->d[_i];
 		if ((uit->pkg->type == PKG_INSTALLED && local) ||
 				(uit->pkg->type != PKG_INSTALLED && !local)) {
 			nit = xcalloc(1, sizeof(*nit));
@@ -401,7 +399,7 @@ pkg_jobs_add_req_from_universe(pkghash **head, struct pkg_job_universe_item *un,
 
 	if (new_req) {
 		if (req->item != NULL) {
-			pkghash_safe_add(*head, un->pkg->uid, req, NULL);
+			pkghash_safe_add(*head, uv->d[0]->pkg->uid, req, NULL);
 		}
 		else {
 			free(req);
@@ -453,7 +451,9 @@ pkg_jobs_add_req(struct pkg_jobs *j, struct pkg *pkg)
 			/*
 			 * We need to add request chain from the universe chain
 			 */
-			return (pkg_jobs_add_req_from_universe(head, un, IS_DELETE(j), false));
+			universe_itemv_t *uv = pkg_jobs_universe_find(j->universe, pkg->uid);
+			if (uv != NULL)
+				return (pkg_jobs_add_req_from_universe(head, uv, IS_DELETE(j), false));
 		}
 
 		return (NULL);
@@ -632,16 +632,16 @@ static bool pkg_jobs_test_automatic(struct pkg_jobs *j, struct pkg *p);
 static bool
 _is_orphaned(struct pkg_jobs *j, const char *uid)
 {
-	struct pkg_job_universe_item *unit;
+	universe_itemv_t *uv;
 	struct pkg *npkg;
 
 	if (pkghash_get(j->notorphaned, uid) != NULL)
 		return (false);
-	unit = pkg_jobs_universe_find(j->universe, uid);
-	if (unit != NULL) {
-		if (!unit->pkg->automatic || unit->pkg->vital)
+	uv = pkg_jobs_universe_find(j->universe, uid);
+	if (uv != NULL) {
+		if (!uv->d[0]->pkg->automatic || uv->d[0]->pkg->vital)
 			return (false);
-		npkg = unit->pkg;
+		npkg = uv->d[0]->pkg;
 	} else {
 		npkg = pkg_jobs_universe_get_local(j->universe, uid,
 		    PKG_LOAD_BASIC|PKG_LOAD_RDEPS|PKG_LOAD_ANNOTATIONS|
@@ -745,7 +745,7 @@ new_pkg_version(struct pkg_jobs *j)
 	const char *uid = "pkg";
 	pkg_flags old_flags;
 	bool ret = false;
-	struct pkg_job_universe_item *nit, *cit;
+	universe_itemv_t *uv;
 
 	/* Disable -f for pkg self-check, and restore at end. */
 	old_flags = j->flags;
@@ -771,10 +771,11 @@ new_pkg_version(struct pkg_jobs *j)
 		 * Now we can have *potential* upgrades, but we can have a situation,
 		 * when our upgrade candidate comes from another repo
 		 */
-		nit = pkg_jobs_universe_find(j->universe, uid);
+		uv = pkg_jobs_universe_find(j->universe, uid);
 
-		if (nit) {
-			DL_FOREACH(nit, cit) {
+		if (uv) {
+			vec_foreach(*uv, _i) {
+				struct pkg_job_universe_item *cit = uv->d[_i];
 				if (pkg_version_change_between (cit->pkg, p) == PKG_UPGRADE) {
 					/* We really have newer version which is not installed */
 					ret = true;
@@ -794,7 +795,7 @@ static int
 pkg_jobs_process_remote_pkg(struct pkg_jobs *j, struct pkg *rp,
 	struct pkg_job_request_item **req, int with_version)
 {
-	struct pkg_job_universe_item *nit, *cur;
+	universe_itemv_t *uv;
 	struct pkg_job_request_item *nrit = NULL;
 	struct pkg *lp = NULL;
 	struct pkg_dep *rdep = NULL;
@@ -812,19 +813,20 @@ pkg_jobs_process_remote_pkg(struct pkg_jobs *j, struct pkg *rp,
 		}
 	}
 
-	nit = pkg_jobs_universe_get_upgrade_candidates(j->universe, rp->uid, lp,
+	uv = pkg_jobs_universe_get_upgrade_candidates(j->universe, rp->uid, lp,
 		j->flags & PKG_FLAG_FORCE,
 		with_version != 0 ? rp->version : NULL);
 
-	if (nit != NULL) {
-		nrit = pkg_jobs_add_req_from_universe(&j->request_add, nit, false, false);
+	if (uv != NULL) {
+		nrit = pkg_jobs_add_req_from_universe(&j->request_add, uv, false, false);
 
 		if (req != NULL)
 			*req = nrit;
 
 		if (j->flags & PKG_FLAG_UPGRADE_VULNERABLE) {
 			/* Set the proper reason */
-			DL_FOREACH(nit, cur) {
+			vec_foreach(*uv, _i) {
+				struct pkg_job_universe_item *cur = uv->d[_i];
 				if (cur->pkg->type != PKG_INSTALLED) {
 					free(cur->pkg->reason);
 					xasprintf(&cur->pkg->reason, "vulnerability found");
@@ -1269,29 +1271,30 @@ pkg_jobs_need_upgrade(charv_t *system_shlibs, struct pkg *rp, struct pkg *lp)
 static void
 pkg_jobs_propagate_automatic(struct pkg_jobs *j)
 {
-	struct pkg_job_universe_item *unit, *cur, *local;
+	universe_itemv_t *uv;
+	struct pkg_job_universe_item *cur, *local;
 	struct pkg_job_request *req;
 	bool automatic;
 	pkghash_it it;
 
 	it = pkghash_iterator(j->universe->items);
 	while (pkghash_next(&it)) {
-		unit = (struct pkg_job_universe_item *)it.value;
-		if (unit->next == NULL) {
+		uv = (universe_itemv_t *)it.value;
+		if (uv->len == 1) {
 			/*
 			 * For packages that are alone in the installation list
 			 * we search them in the corresponding request
 			 */
-			req = pkghash_get_value(j->request_add, unit->pkg->uid);
+			req = pkghash_get_value(j->request_add, uv->d[0]->pkg->uid);
 			if ((req == NULL || req->automatic) &&
-			    unit->pkg->type != PKG_INSTALLED) {
+			    uv->d[0]->pkg->type != PKG_INSTALLED) {
 				automatic = true;
-				dbg(2, "set automatic flag for %s", unit->pkg->uid);
-				unit->pkg->automatic = automatic;
+				dbg(2, "set automatic flag for %s", uv->d[0]->pkg->uid);
+				uv->d[0]->pkg->automatic = automatic;
 			}
 			else {
 				if (j->type == PKG_JOBS_INSTALL) {
-					unit->pkg->automatic = false;
+					uv->d[0]->pkg->automatic = false;
 				}
 			}
 		}
@@ -1302,7 +1305,8 @@ pkg_jobs_propagate_automatic(struct pkg_jobs *j)
 			 */
 			local = NULL;
 			automatic = false;
-			LL_FOREACH(unit, cur) {
+			vec_foreach(*uv, _i) {
+				cur = uv->d[_i];
 				if (cur->pkg->type == PKG_INSTALLED) {
 					local = cur;
 					automatic = local->pkg->automatic;
@@ -1310,7 +1314,8 @@ pkg_jobs_propagate_automatic(struct pkg_jobs *j)
 				}
 			}
 			if (local != NULL) {
-				LL_FOREACH(unit, cur) {
+				vec_foreach(*uv, _i) {
+					cur = uv->d[_i];
 					/*
 					 * Propagate automatic from local package
 					 */
@@ -1327,12 +1332,12 @@ pkg_jobs_propagate_automatic(struct pkg_jobs *j)
 				 *
 				 * See #1374
 				 */
-				req = pkghash_get_value(j->request_add, unit->pkg->uid);
+				req = pkghash_get_value(j->request_add, uv->d[0]->pkg->uid);
 				if ((req == NULL || req->automatic)) {
 					automatic = true;
-					dbg(2, "set automatic flag for %s", unit->pkg->uid);
-					LL_FOREACH(unit, cur) {
-						cur->pkg->automatic = automatic;
+					dbg(2, "set automatic flag for %s", uv->d[0]->pkg->uid);
+					vec_foreach(*uv, _j) {
+						uv->d[_j]->pkg->automatic = automatic;
 					}
 				}
 			}
@@ -1345,7 +1350,7 @@ pkg_jobs_find_deinstall_request(struct pkg_job_universe_item *item,
 		struct pkg_jobs *j, int rec_level)
 {
 	struct pkg_job_request *found;
-	struct pkg_job_universe_item *dep_item;
+	universe_itemv_t *dep_uv;
 	struct pkg_dep *d = NULL;
 	struct pkg *pkg = item->pkg;
 
@@ -1358,9 +1363,9 @@ pkg_jobs_find_deinstall_request(struct pkg_job_universe_item *item,
 	found = pkghash_get_value(j->request_delete, pkg->uid);
 	if (found == NULL) {
 		while (pkg_deps(pkg, &d) == EPKG_OK) {
-			dep_item = pkg_jobs_universe_find(j->universe, d->uid);
-			if (dep_item) {
-				found = pkg_jobs_find_deinstall_request(dep_item, j, rec_level + 1);
+			dep_uv = pkg_jobs_universe_find(j->universe, d->uid);
+			if (dep_uv) {
+				found = pkg_jobs_find_deinstall_request(dep_uv->d[0], j, rec_level + 1);
 				if (found)
 					return (found);
 			}
@@ -2459,6 +2464,7 @@ pkg_jobs_check_conflicts(struct pkg_jobs *j)
 
 	vec_foreach(j->jobs, i) {
 		struct pkg_solved *ps = j->jobs.d[i];
+		universe_itemv_t *uv;
 		if (ps->type == PKG_SOLVED_DELETE || ps->type == PKG_SOLVED_UPGRADE_REMOVE) {
 			continue;
 		}
@@ -2468,7 +2474,8 @@ pkg_jobs_check_conflicts(struct pkg_jobs *j)
 			if (p->type == PKG_REMOTE)
 				pkgdb_ensure_loaded(j->db, p, PKG_LOAD_FILES|PKG_LOAD_DIRS);
 		}
-		if ((res = pkg_conflicts_append_chain(ps->items[0], j)) != EPKG_OK)
+		uv = pkg_jobs_universe_find(j->universe, ps->items[0]->pkg->uid);
+		if ((res = pkg_conflicts_append_chain(uv, j)) != EPKG_OK)
 			ret = res;
 		else
 			added ++;

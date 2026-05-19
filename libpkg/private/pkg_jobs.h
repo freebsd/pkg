@@ -38,17 +38,16 @@ struct pkg_jobs;
 struct job_pattern;
 
 /*
- * Each item in pkg_jobs_universe->items is the head of a doubly linked list
- * and has inhash set to true. Other items with the same uid are added to
- * this doubly linked list and have inhash set to false.
+ * Each item in pkg_jobs_universe->items is part of a universe_itemv_t vec
+ * keyed by the package uid. All items sharing the same uid are stored
+ * together in the same vec.
  */
 struct pkg_job_universe_item {
 	struct pkg *pkg;
 	bool processed;
-	bool inhash;
 	bool cudf_emit_skip;
-	struct pkg_job_universe_item *next, *prev;
 };
+typedef vec_t(struct pkg_job_universe_item *) universe_itemv_t;
 
 struct pkg_job_request_item {
 	struct pkg *pkg;
@@ -105,8 +104,8 @@ struct pkg_job_provide {
 };
 
 struct pkg_jobs_universe {
-	pkghash *items;		/* package uid, pkg_job_universe_item */
-	pkghash *seen;		/* package digest, pkg_job_universe_item */
+	pkghash *items;		/* package uid -> universe_itemv_t * */
+	pkghash *seen;		/* package digest -> universe_itemv_t * */
 	pkghash *provides;	/* shlibs, pkg_job_provide */
 	struct pkg_jobs *j;
 	size_t nitems;
@@ -200,7 +199,7 @@ int pkg_jobs_universe_process_item(struct pkg_jobs_universe *universe,
 /*
  * Search for an entry corresponding to the uid in the universe
  */
-struct pkg_job_universe_item* pkg_jobs_universe_find(struct pkg_jobs_universe
+universe_itemv_t* pkg_jobs_universe_find(struct pkg_jobs_universe
 	*universe, const char *uid);
 
 /*
@@ -223,7 +222,7 @@ int pkg_conflicts_request_resolve(struct pkg_jobs *j);
 /*
  * Append conflicts to a package
  */
-int pkg_conflicts_append_chain(struct pkg_job_universe_item *it,
+int pkg_conflicts_append_chain(universe_itemv_t *uv,
 	struct pkg_jobs *j);
 
 /*
@@ -247,7 +246,7 @@ void pkg_jobs_universe_process_upgrade_chains(struct pkg_jobs *j);
  * - if `version` is not null then ensure we are only adding to the universe
  * packages that match the given version
  */
-struct pkg_job_universe_item*
+universe_itemv_t*
 pkg_jobs_universe_get_upgrade_candidates(struct pkg_jobs_universe *universe,
 	const char *uid, struct pkg *lp, bool force, const char *version);
 
@@ -256,7 +255,7 @@ pkg_jobs_universe_get_upgrade_candidates(struct pkg_jobs_universe *universe,
  * type, repos priorities and other stuff
  */
 struct pkg_job_universe_item *
-pkg_jobs_universe_select_candidate(struct pkg_job_universe_item *chain,
+pkg_jobs_universe_select_candidate(universe_itemv_t *chain,
 	struct pkg_job_universe_item *local, bool conservative,
 	const char *reponame, bool pinning);
 
