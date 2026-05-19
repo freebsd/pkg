@@ -125,12 +125,13 @@ cudf_emit_pkg(struct pkg *pkg, int version, FILE *f,
 	if (fprintf(f, "\nversion: %d\n", version) < 0)
 		return (EPKG_FATAL);
 
-	if (pkghash_count(pkg->depshash) > 0) {
+	if (pkg->depends.len > 0) {
 		if (fprintf(f, "depends: ") < 0)
 			return (EPKG_FATAL);
-		LL_FOREACH(pkg->depends, dep) {
+		vec_foreach(pkg->depends, _di) {
+			dep = &pkg->depends.d[_di];
 			if (cudf_print_element(f, dep->name,
-			    column + 1 == pkghash_count(pkg->depshash), &column) < 0) {
+			    _di + 1 < pkg->depends.len, &column) < 0) {
 				return (EPKG_FATAL);
 			}
 		}

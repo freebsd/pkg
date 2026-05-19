@@ -201,7 +201,7 @@ pkgdb_load_deps(sqlite3 *sqlite, struct pkg *pkg)
 {
 	sqlite3_stmt	*stmt = NULL, *opt_stmt = NULL;
 	int		 ret = EPKG_OK;
-	struct pkg_dep *chain = NULL;
+	const char *chain = NULL;
 	struct pkg_dep_formula *f;
 	struct pkg_dep_formula_item *fit;
 	struct pkg_dep_option_item *optit;

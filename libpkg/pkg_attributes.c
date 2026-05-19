@@ -16,7 +16,7 @@
  * Dep
  */
 void
-pkg_dep_free(struct pkg_dep *d)
+pkg_dep_free_content(struct pkg_dep *d)
 {
 	if (d == NULL)
 		return;
@@ -25,6 +25,19 @@ pkg_dep_free(struct pkg_dep *d)
 	free(d->name);
 	free(d->version);
 	free(d->uid);
+	vec_foreach(d->alternatives, _ai) {
+		pkg_dep_free_content(&d->alternatives.d[_ai]);
+	}
+	vec_free(&d->alternatives);
+}
+
+void
+pkg_dep_free(struct pkg_dep *d)
+{
+	if (d == NULL)
+		return;
+
+	pkg_dep_free_content(d);
 	free(d);
 }
 

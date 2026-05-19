@@ -264,6 +264,17 @@ struct pkg_file {
 
 typedef vec_t(struct pkg_file) pkg_filev_t;
 
+struct pkg_dep {
+	char		*origin;
+	char		*name;
+	char		*version;
+	char		*uid;
+	bool		 locked;
+	vec_t(struct pkg_dep)	 alternatives;
+};
+
+typedef vec_t(struct pkg_dep) pkg_depv_t;
+
 struct pkg {
 	bool		 direct;
 	bool		 locked;
@@ -300,10 +311,10 @@ struct pkg {
 	int64_t			 flatsize;
 	int64_t			 old_flatsize;
 	int64_t			 timestamp;
-	pkghash			*depshash;
-	struct pkg_dep		*depends;
-	pkghash			*rdepshash;
-	struct pkg_dep		*rdepends;
+	pkg_depv_t		 depends;
+	size_t			 depends_iter;
+	pkg_depv_t		 rdepends;
+	size_t			 rdepends_iter;
 	charv_t		 categories;
 	charv_t		 licenses;
 	pkg_filev_t		 files;
@@ -442,16 +453,6 @@ struct pkg_repo_create {
 		int argc;
 		pkg_password_cb *cb;
 	} sign;
-};
-
-struct pkg_dep {
-	char		*origin;
-	char		*name;
-	char		*version;
-	char		*uid;
-	bool		 locked;
-	struct pkg_dep		*alt_next, *alt_prev; /* Chain of alternatives */
-	struct pkg_dep	*next, *prev;
 };
 
 typedef enum {
@@ -805,6 +806,9 @@ pkg_kv_insert_or_free(kvlist_t *v, struct pkg_kv *el)
 }
 
 void pkg_dep_free(struct pkg_dep *);
+void pkg_dep_free_content(struct pkg_dep *);
+int pkg_dep_cmp(const void *, const void *);
+DEFINE_VEC_INSERT_SORTED_PROTO(pkg_depv_t, pkg_depv, struct pkg_dep);
 void pkg_file_free(struct pkg_file *);
 void pkg_file_free_content(struct pkg_file *);
 int pkg_file_cmp(const void *, const void *);
@@ -986,7 +990,7 @@ int pkg_set_from_fileat(int fd, struct pkg *pkg, pkg_attr attr, const char *file
 void pkg_rollback_cb(void *);
 void pkg_rollback_pkg(struct pkg *);
 int pkg_add_fromdir(struct pkg *, const char *, struct pkgdb *db);
-struct pkg_dep* pkg_adddep_chain(struct pkg_dep *chain,
+const char *pkg_adddep_chain(const char *chain_name,
 		struct pkg *pkg, const char *name, const char *origin, const
 		char *version, bool locked);
 void pkg_maybe_backup_library(struct pkgdb *db, struct pkg *pkg,
@@ -1018,7 +1022,6 @@ void pkg_cleanup_shlibs_required(struct pkg *pkg, charv_t *internal_provided);
 #define pkg_obj_free(p) _Generic((p),              \
     char *:                   free,                \
     struct pkg *:             pkg_free,            \
-    struct pkg_dep *:         pkg_dep_free,        \
     struct pkg_file *:        pkg_file_free,       \
     struct pkg_dir *:         pkg_dir_free,        \
     struct pkg_conflict *:    pkg_conflict_free,   \

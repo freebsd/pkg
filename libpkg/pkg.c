@@ -430,8 +430,33 @@ pkg_files(const struct pkg *p, struct pkg_file **t) {
 	return (EPKG_OK);
 }
 
-pkg_each(deps, struct pkg_dep, depends);
-pkg_each(rdeps, struct pkg_dep, rdepends);
+int
+pkg_deps(const struct pkg *p, struct pkg_dep **t) {
+	struct pkg *mp = __DECONST(struct pkg *, p);
+	assert(p != NULL);
+	if ((*t) == NULL)
+		mp->depends_iter = 0;
+	if (mp->depends_iter >= p->depends.len) {
+		(*t) = NULL;
+		return (EPKG_END);
+	}
+	(*t) = &mp->depends.d[mp->depends_iter++];
+	return (EPKG_OK);
+}
+
+int
+pkg_rdeps(const struct pkg *p, struct pkg_dep **t) {
+	struct pkg *mp = __DECONST(struct pkg *, p);
+	assert(p != NULL);
+	if ((*t) == NULL)
+		mp->rdepends_iter = 0;
+	if (mp->rdepends_iter >= p->rdepends.len) {
+		(*t) = NULL;
+		return (EPKG_END);
+	}
+	(*t) = &mp->rdepends.d[mp->rdepends_iter++];
+	return (EPKG_OK);
+}
 int
 pkg_conflicts(const struct pkg *p, struct pkg_conflict **t) {
 	struct pkg *mp = __DECONST(struct pkg *, p);
@@ -491,6 +516,14 @@ pkg_addgroup(struct pkg *pkg, const char *name)
 	return (pkg_addstring(&pkg->groups, name, "group"));
 }
 
+static int
+pkg_dep_name_cmp(const void *key, const void *elem)
+{
+	const char *name = key;
+	const struct pkg_dep *d = elem;
+	return (strcmp(name, d->name));
+}
+
 int
 pkg_adddep(struct pkg *pkg, const char *name, const char *origin, const char *version, bool locked)
 {
@@ -501,67 +534,89 @@ pkg_adddep(struct pkg *pkg, const char *name, const char *origin, const char *ve
 	return (EPKG_OK);
 }
 
-struct pkg_dep *
-pkg_adddep_chain(struct pkg_dep *chain,
+const char *
+pkg_adddep_chain(const char *chain_name,
 		struct pkg *pkg,
 		const char *name,
 		const char *origin,
 		const char *version, bool locked)
 {
-	struct pkg_dep *d = NULL;
+	struct pkg_dep d;
 
 	assert(pkg != NULL);
 	assert(name != NULL && name[0] != '\0');
 
 	dbg(3, "add a new dependency origin: %s, name: %s", origin ? origin : "", name);
-	if (pkghash_get(pkg->depshash, name) != NULL) {
-		pkg_emit_error("%s: duplicate dependency listing: %s",
-		    pkg->name, name);
-		return (NULL);
-	}
 
-	d = xcalloc(1, sizeof(*d));
-	if (origin != NULL && origin[0] != '\0')
-		d->origin = xstrdup(origin);
-	d->name = xstrdup(name);
-	if (version != NULL && version[0] != '\0')
-		d->version = xstrdup(version);
-	d->uid = xstrdup(name);
-	d->locked = locked;
+	if (chain_name == NULL) {
+		/* New primary dep: insert_sorted into depends vec */
+		memset(&d, 0, sizeof(d));
+		if (origin != NULL && origin[0] != '\0')
+			d.origin = xstrdup(origin);
+		d.name = xstrdup(name);
+		if (version != NULL && version[0] != '\0')
+			d.version = xstrdup(version);
+		d.uid = xstrdup(name);
+		d.locked = locked;
 
-	pkghash_safe_add(pkg->depshash, d->name, d, NULL);
-	if (chain == NULL) {
-		DL_APPEND(pkg->depends, d);
-		chain = pkg->depends;
-	}
-	else {
-		DL_APPEND2(chain, d, alt_prev, alt_next);
-	}
+		struct pkg_dep *existing = pkg_depv_insert_sorted(&pkg->depends, d);
+		if (existing != NULL) {
+			pkg_dep_free_content(&d);
+			pkg_emit_error("%s: duplicate dependency listing: %s",
+			    pkg->name, name);
+			return (NULL);
+		}
+		/* Return the name from the inserted element (stable across reallocs) */
+		struct pkg_dep *inserted = bsearch(name, pkg->depends.d,
+		    pkg->depends.len, sizeof(struct pkg_dep), pkg_dep_name_cmp);
+		return (inserted->name);
+	} else {
+		/* Alternative: find primary by bsearch, push into alternatives */
+		struct pkg_dep *primary = bsearch(chain_name, pkg->depends.d,
+		    pkg->depends.len, sizeof(struct pkg_dep), pkg_dep_name_cmp);
+		if (primary == NULL) {
+			pkg_emit_error("%s: cannot find primary dep %s for alternative %s",
+			    pkg->name, chain_name, name);
+			return (NULL);
+		}
+		memset(&d, 0, sizeof(d));
+		if (origin != NULL && origin[0] != '\0')
+			d.origin = xstrdup(origin);
+		d.name = xstrdup(name);
+		if (version != NULL && version[0] != '\0')
+			d.version = xstrdup(version);
+		d.uid = xstrdup(name);
+		d.locked = locked;
 
-	return (chain);
+		vec_push(&primary->alternatives, d);
+		return (primary->name);
+	}
 }
 
 int
 pkg_addrdep(struct pkg *pkg, const char *name, const char *origin, const char *version, bool locked)
 {
-	struct pkg_dep *d;
+	struct pkg_dep d;
 
 	assert(pkg != NULL);
 	assert(name != NULL && name[0] != '\0');
 
 	dbg(3, "add a new reverse dependency origin: %s, name: %s", origin ? origin : "", name);
 
-	d = xcalloc(1, sizeof(*d));
+	memset(&d, 0, sizeof(d));
 	if (origin != NULL && origin[0] != '\0')
-		d->origin = xstrdup(origin);
-	d->name = xstrdup(name);
+		d.origin = xstrdup(origin);
+	d.name = xstrdup(name);
 	if (version != NULL && version[0] != '\0')
-		d->version = xstrdup(version);
-	d->uid = xstrdup(name);
-	d->locked = locked;
+		d.version = xstrdup(version);
+	d.uid = xstrdup(name);
+	d.locked = locked;
 
-	pkghash_safe_add(pkg->rdepshash, d->name, d, NULL);
-	LL_PREPEND(pkg->rdepends, d);
+	struct pkg_dep *existing = pkg_depv_insert_sorted(&pkg->rdepends, d);
+	if (existing != NULL) {
+		/* silently ignore duplicates for rdeps */
+		pkg_dep_free_content(&d);
+	}
 
 	return (EPKG_OK);
 }
@@ -1125,9 +1180,9 @@ pkg_list_count(const struct pkg *pkg, pkg_list list)
 {
 	switch (list) {
 	case PKG_DEPS:
-		return (pkghash_count(pkg->depshash));
+		return (pkg->depends.len);
 	case PKG_RDEPS:
-		return (pkghash_count(pkg->rdepshash));
+		return (pkg->rdepends.len);
 	case PKG_OPTIONS:
 		return (vec_len(&pkg->options));
 	case PKG_FILES:
@@ -1157,24 +1212,22 @@ pkg_list_count(const struct pkg *pkg, pkg_list list)
 
 void
 pkg_list_free(struct pkg *pkg, pkg_list list)  {
-	struct pkg_dep *cur;
 
 	switch (list) {
 	case PKG_DEPS:
-		DL_FOREACH (pkg->depends, cur) {
-			if (cur->alt_next) {
-				DL_FREE2(cur->alt_next, pkg_dep_free, alt_prev, alt_next);
-			}
+		vec_foreach(pkg->depends, _di) {
+			pkg_dep_free_content(&pkg->depends.d[_di]);
 		}
-		DL_AUTOFREE(pkg->depends);
-		pkghash_destroy(pkg->depshash);
-		pkg->depshash = NULL;
+		vec_free(&pkg->depends);
+		pkg->depends_iter = 0;
 		pkg->flags &= ~PKG_LOAD_DEPS;
 		break;
 	case PKG_RDEPS:
-		LL_AUTOFREE(pkg->rdepends);
-		pkghash_destroy(pkg->rdepshash);
-		pkg->rdepshash = NULL;
+		vec_foreach(pkg->rdepends, _ri) {
+			pkg_dep_free_content(&pkg->rdepends.d[_ri]);
+		}
+		vec_free(&pkg->rdepends);
+		pkg->rdepends_iter = 0;
 		pkg->flags &= ~PKG_LOAD_RDEPS;
 		break;
 	case PKG_OPTIONS:
@@ -2101,11 +2154,15 @@ pkg_message_to_str(struct pkg *pkg)
 	return (ret);
 }
 
-static int
-pkg_dep_cmp(struct pkg_dep *a, struct pkg_dep *b)
+int
+pkg_dep_cmp(const void *a, const void *b)
 {
-	return (strcmp(a->name, b->name));
+	const struct pkg_dep *da = a;
+	const struct pkg_dep *db = b;
+	return (strcmp(da->name, db->name));
 }
+
+DEFINE_VEC_INSERT_SORTED_FUNC(pkg_depv_t, pkg_depv, struct pkg_dep, pkg_dep_cmp)
 
 int
 pkg_file_cmp(const void *a, const void *b)
@@ -2151,7 +2208,7 @@ pkg_lists_sort(struct pkg *p)
 		return;
 	p->list_sorted = true;
 
-	DL_SORT(p->depends, pkg_dep_cmp);
+	/* depends is kept sorted by insert_sorted */
 	pkg_kv_sort(&p->options);
 }
 

@@ -397,7 +397,16 @@ pkg_solve_add_depend_rule(struct pkg_solve_problem *problem,
 	/* !A */
 	pkg_solve_item_new(rule, var, -1);
 
-	LL_FOREACH2(dep, cur, alt_next) {
+	/* Process the primary dep and its alternatives */
+	for (size_t _dalt = 0; ; _dalt++) {
+		struct pkg_dep *cur;
+		if (_dalt == 0) {
+			cur = dep;
+		} else {
+			if (_dalt - 1 >= dep->alternatives.len)
+				break;
+			cur = &dep->alternatives.d[_dalt - 1];
+		}
 		uid = cur->uid;
 		solve_var_slice_t *depslice = pkghash_get_value(problem->variables_by_uid, uid);
 		if (depslice == NULL) {
@@ -721,7 +730,8 @@ pkg_solve_process_universe_variable(struct pkg_solve_problem *problem,
 		}
 
 		/* Depends */
-		LL_FOREACH(pkg->depends, dep) {
+		vec_foreach(pkg->depends, _di) {
+			dep = &pkg->depends.d[_di];
 			pkg_solve_add_depend_rule(problem, cur_var, dep,
 			    cur_var->assumed_reponame);
 		}
