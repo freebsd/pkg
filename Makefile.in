@@ -61,6 +61,9 @@ report-coverage:
 	llvm-cov report ./src/pkg -instr-profile=pkg.profdata --use-color -ignore-filename-regex=external -ignore-filename-regex=compat
 @endif
 
+fuzz: all
+	$(MAKE) -C tests/fuzz run
+
 COCCI_ARGS=	-I ${top_srcdir} \
 		-I /usr/include \
 		-I /usr/local/include \

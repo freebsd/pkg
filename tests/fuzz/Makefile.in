@@ -1,0 +1,56 @@
+# Fuzz harness build rules for pkg
+# Uses libFuzzer (requires Clang/LLVM)
+
+include @builddir@/mk/defs.mk
+
+LOCAL_CFLAGS=	-I$(top_srcdir)/compat \
+		-I$(top_srcdir)/external/libucl/include \
+		-I$(top_srcdir)/external/uthash \
+		-I$(top_srcdir)/external/include \
+		-I$(top_srcdir)/external/sqlite \
+		-I$(top_srcdir)/external/lua/src \
+		-I$(top_srcdir)/libpkg \
+		-I$(top_builddir)/ \
+		-I$(top_builddir)/libpkg \
+		-I/usr/local/include \
+		-DTESTING \
+		-DTESTING_TOP_DIR="\"/home/bapt/dev/pkg/tests\""
+
+LIBS=	\
+	-L$(top_builddir)/libpkg -lpkg_flat \
+	-lm \
+	-lelf -ljail
+
+LIBS+=	-L/usr/lib -larchive -lbz2 -lz -llzma
+OTHER_LIBS=	-pthread
+OTHER_LIBS+=	-lutil
+OTHER_LIBS+=	-lssl -lcrypto
+
+LOCAL_LDFLAGS=	$(LIBS) $(OTHER_LIBS)
+LOCAL_LDFLAGS+=	-L/usr/local/lib -latf-c
+
+FUZZ_CFLAGS=	-O2 -pipe -fsanitize=fuzzer,address,undefined
+
+FUZZ_TARGETS=	fuzz_manifest fuzz_osvf fuzz_meta fuzz_keyword fuzz_trigger \
+		fuzz_deps fuzz_printf fuzz_plist fuzz_elf fuzz_pkg_open \
+		fuzz_abi fuzz_version fuzz_shlib \
+		fuzz_checksum fuzz_message fuzz_lua_script \
+		fuzz_url fuzz_cpe \
+		fuzz_path fuzz_mode fuzz_filelist fuzz_annotation
+
+VPATH=	$(top_srcdir)/tests/fuzz
+
+all: $(FUZZ_TARGETS)
+
+$(FUZZ_TARGETS): $(top_builddir)/libpkg/libpkg_flat.a
+	$(CC) $(FUZZ_CFLAGS) $(LOCAL_CFLAGS) -o $@ $(VPATH)/$@.c $(LDFLAGS) $(LOCAL_LDFLAGS)
+
+clean:
+	rm -f $(FUZZ_TARGETS)
+
+run: all
+	@for t in $(FUZZ_TARGETS); do \
+		echo "=== Running $$t (30s) ==="; \
+		./$$t -max_total_time=30 2>&1 || exit 1; \
+	done
+	@echo "All fuzzers completed successfully."

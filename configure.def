@@ -384,7 +384,7 @@ define_append CONF_GEN_FILES Makefile.in
 for _dir in external/libblake2 external/libpicosat \
 	external/liblinenoise external/libsqlite external/libfetch \
 	external compat libpkg libpkg/repo libpkg/repo/binary src \
-	external/libucl external/libelf tests docs \
+	external/libucl external/libelf tests docs tests/fuzz \
 	external/liblua external/libyxml scripts external/libder \
 	external/libecc; do
 	make_template "$_dir/Makefile.in"
