@@ -155,7 +155,6 @@ pkg_jobs_pattern_free(struct job_pattern *jp)
 {
 	free(jp->pattern);
 	free(jp->path);
-	free(jp);
 }
 
 void
@@ -194,7 +193,9 @@ pkg_jobs_free(struct pkg_jobs *j)
 
 	pkg_jobs_universe_free(j->universe);
 	vec_free_and_free(&j->jobs, free);
-	LL_FREE(j->patterns, pkg_jobs_pattern_free);
+	vec_foreach(j->patterns, _i)
+		pkg_jobs_pattern_free(&j->patterns.d[_i]);
+	vec_free(&j->patterns);
 	if (j->triggers.cleanup != NULL) {
 		vec_autofree(j->triggers.cleanup);
 		free(j->triggers.cleanup);
@@ -302,7 +303,6 @@ pkg_jobs_maybe_match_file(struct job_pattern *jp, const char *pattern)
 int
 pkg_jobs_add(struct pkg_jobs *j, match_t match, char **argv, int argc)
 {
-	struct job_pattern *jp;
 	int i = 0;
 
 	if (j->solved) {
@@ -312,20 +312,18 @@ pkg_jobs_add(struct pkg_jobs *j, match_t match, char **argv, int argc)
 	}
 
 	for (i = 0; i < argc; i++) {
-		jp = xcalloc(1, sizeof(struct job_pattern));
+		struct job_pattern jp = { 0 };
 		if (j->type == PKG_JOBS_DEINSTALL ||
-		    !pkg_jobs_maybe_match_file(jp, argv[i])) {
-			jp->pattern = xstrdup(argv[i]);
-			jp->match = match;
+		    !pkg_jobs_maybe_match_file(&jp, argv[i])) {
+			jp.pattern = xstrdup(argv[i]);
+			jp.match = match;
 		}
-		LL_APPEND(j->patterns, jp);
+		vec_push(&j->patterns, jp);
 	}
 
 	if (argc == 0 && match == MATCH_ALL) {
-		jp = xcalloc(1, sizeof(struct job_pattern));
-		jp->pattern = NULL;
-		jp->match = match;
-		LL_APPEND(j->patterns, jp);
+		struct job_pattern jp = { .match = match };
+		vec_push(&j->patterns, jp);
 	}
 
 	return (EPKG_OK);
@@ -1407,11 +1405,11 @@ comp(const void *a, const void *b)
 static int
 jobs_solve_deinstall(struct pkg_jobs *j)
 {
-	struct job_pattern *jp;
 	struct pkg *pkg = NULL;
 	struct pkgdb_it *it;
 	bool force = (j->flags & PKG_FLAG_FORCE);
-	LL_FOREACH(j->patterns, jp) {
+	vec_foreach(j->patterns, pi) {
+		struct job_pattern *jp = &j->patterns.d[pi];
 		if ((it = pkgdb_query(j->db, jp->pattern, jp->match)) == NULL)
 			return (EPKG_FATAL);
 
@@ -1590,7 +1588,6 @@ jobs_solve_full_upgrade(struct pkg_jobs *j)
 static int
 jobs_solve_partial_upgrade(struct pkg_jobs *j)
 {
-	struct job_pattern *jp;
 	struct pkg_job_request *req;
 	bool error_found = false;
 	int retcode;
@@ -1598,7 +1595,8 @@ jobs_solve_partial_upgrade(struct pkg_jobs *j)
 
 	assert(!j->solved);
 
-	LL_FOREACH(j->patterns, jp) {
+	vec_foreach(j->patterns, pi) {
+		struct job_pattern *jp = &j->patterns.d[pi];
 		retcode = pkg_jobs_find_remote_pattern(j, jp);
 		if (retcode == EPKG_FATAL) {
 			pkg_emit_error("No packages available to %s matching '%s' "
@@ -1656,13 +1654,13 @@ jobs_solve_install_upgrade(struct pkg_jobs *j)
 			goto order;
 		}
 
-	if (j->patterns == NULL && j->type == PKG_JOBS_INSTALL) {
+	if (j->patterns.len == 0 && j->type == PKG_JOBS_INSTALL) {
 		pkg_emit_error("no patterns are specified for install job");
 		return (EPKG_FATAL);
 	}
 
 	if (!j->solved) {
-		if (j->patterns == NULL) {
+		if (j->patterns.len == 0) {
 			retcode = jobs_solve_full_upgrade(j);
 			if (retcode != EPKG_OK)
 				return (retcode);
@@ -1701,7 +1699,6 @@ order:
 static int
 jobs_solve_fetch(struct pkg_jobs *j)
 {
-	struct job_pattern *jp;
 	struct pkg *pkg = NULL;
 	struct pkgdb_it *it;
 	struct pkg_job_request *req;
@@ -1726,7 +1723,8 @@ jobs_solve_fetch(struct pkg_jobs *j)
 		}
 		pkgdb_it_free(it);
 	} else {
-		LL_FOREACH(j->patterns, jp) {
+		vec_foreach(j->patterns, pi) {
+			struct job_pattern *jp = &j->patterns.d[pi];
 			/* TODO: use repository priority here */
 			if (pkg_jobs_find_upgrade(j, jp->pattern, jp->match) == EPKG_FATAL)
 				pkg_emit_error("No packages matching '%s' have been found in the "
@@ -2138,8 +2136,8 @@ pkg_jobs_execute(struct pkg_jobs *j)
 				}
 				if (STREQ(p->name, "pkg") ||
 				    STREQ(p->name, "pkg-devel")) {
-					if (j->patterns == NULL ||
-					    j->patterns->match == MATCH_ALL)
+					if (j->patterns.len == 0 ||
+					    j->patterns.d[0].match == MATCH_ALL)
 						continue;
 					pkg_emit_error(
 					    "Cannot delete pkg itself without force flag");

@@ -119,6 +119,14 @@ struct pkg_jobs_conflict_item {
 	TREE_ENTRY(pkg_jobs_conflict_item) entry;
 };
 
+struct job_pattern {
+	char		*pattern;
+	char		*path;
+	match_t		 match;
+	int		 flags;
+};
+typedef vec_t(struct job_pattern) job_patternv_t;
+
 struct pkg_jobs {
 	struct pkg_jobs_universe *universe;
 	pkghash	*request_add;
@@ -134,7 +142,7 @@ struct pkg_jobs {
 	c_charv_t *reponames;
 	const char *destdir;
 	TREE_HEAD(, pkg_jobs_conflict_item) *conflict_items;
-	struct job_pattern *patterns;
+	job_patternv_t patterns;
 	bool conservative;
 	bool pinning;
 	bool ignore_compat32;
@@ -148,14 +156,6 @@ struct pkg_jobs {
 
 #define PKG_PATTERN_FLAG_FILE (1 << 0)
 #define PKG_PATTERN_FLAG_VULN (1 << 1)
-
-struct job_pattern {
-	char		*pattern;
-	char		*path;
-	match_t		 match;
-	int		 flags;
-	struct job_pattern *next;
-};
 
 enum pkg_priority_update_type {
 	PKG_PRIORITY_UPDATE_REQUEST = 0,
