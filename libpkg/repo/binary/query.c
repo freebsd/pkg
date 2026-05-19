@@ -766,13 +766,9 @@ pkg_repo_binary_ensure_loaded(struct pkg_repo *repo,
 	pkg->files = cached->files;
 	memset(&cached->files, 0, sizeof(cached->files));
 	pkg->config_files = cached->config_files;
-	pkg->config_files_hash = cached->config_files_hash;
+	memset(&cached->config_files, 0, sizeof(cached->config_files));
 	pkg->dirs = cached->dirs;
-	pkg->dirhash = cached->dirhash;
-	cached->config_files = NULL;
-	cached->config_files_hash = NULL;
-	cached->dirs = NULL;
-	cached->dirhash = NULL;
+	memset(&cached->dirs, 0, sizeof(cached->dirs));
 
 	pkg_free(cached);
 	pkg->flags |= flags;

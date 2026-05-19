@@ -365,9 +365,9 @@ pkg_delete_skip_config(struct pkg *pkg, struct pkg *rpkg, struct pkg_file *file,
 {
 	if ((flags & PKG_DELETE_UPGRADE) == 0)
 		return (false);
-	if (pkghash_get(pkg->config_files_hash, file->path) == NULL)
+	if (pkg_get_config_file(pkg, file->path) == NULL)
 		return (false);
-	if (pkghash_get(rpkg->config_files_hash, file->path) == NULL)
+	if (pkg_get_config_file(rpkg, file->path) == NULL)
 		return (false);
 	return (true);
 }

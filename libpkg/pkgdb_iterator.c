@@ -449,6 +449,9 @@ pkgdb_load_files(sqlite3 *sqlite, struct pkg *pkg)
 	if (pkg->files.len > 1)
 		qsort(pkg->files.d, pkg->files.len, sizeof(struct pkg_file),
 		    pkg_file_cmp);
+	if (pkg->config_files.len > 1)
+		qsort(pkg->config_files.d, pkg->config_files.len,
+		    sizeof(struct pkg_config_file), pkg_config_file_cmp);
 	pkg->flags |= PKG_LOAD_FILES;
 	return (EPKG_OK);
 }
@@ -495,6 +498,9 @@ pkgdb_load_dirs(sqlite3 *sqlite, struct pkg *pkg)
 	}
 	sqlite3_finalize(stmt);
 
+	if (pkg->dirs.len > 1)
+		qsort(pkg->dirs.d, pkg->dirs.len, sizeof(struct pkg_dir),
+		    pkg_dir_cmp);
 	pkg->flags |= PKG_LOAD_DIRS;
 
 	return (EPKG_OK);
@@ -815,11 +821,16 @@ pkgdb_load_conflicts(sqlite3 *sqlite, struct pkg *pkg)
 		"    LEFT JOIN packages ON"
 		"    (packages.id = pkg_conflicts.conflict_id)"
 		"  WHERE package_id = ?1";
+	int ret;
 
 	assert(pkg != NULL);
 
-	return (load_val(sqlite, pkg, sql, PKG_LOAD_CONFLICTS,
-			pkg_addconflict, PKG_ATTR_CONFLICTS));
+	ret = load_val(sqlite, pkg, sql, PKG_LOAD_CONFLICTS,
+			pkg_addconflict, PKG_ATTR_CONFLICTS);
+	if (ret == EPKG_OK && pkg->conflicts.len > 1)
+		qsort(pkg->conflicts.d, pkg->conflicts.len,
+		    sizeof(struct pkg_conflict), pkg_conflict_cmp);
+	return (ret);
 }
 
 static int

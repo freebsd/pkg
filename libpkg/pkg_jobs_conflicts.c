@@ -125,7 +125,7 @@ pkg_conflicts_request_resolve(struct pkg_jobs *j)
 		if (req->skip)
 			continue;
 
-		LL_FOREACH(req->items.d[0].pkg->conflicts, c) {
+		vec_foreach(req->items.d[0].pkg->conflicts, _ci) { struct pkg_conflict *c = &req->items.d[0].pkg->conflicts.d[_ci];
 			uv = pkg_jobs_universe_find(j->universe, c->uid);
 			if (uv != NULL) {
 				found = pkghash_get_value(j->request_add, uv->d[0]->pkg->uid);
@@ -180,8 +180,8 @@ pkg_conflicts_need_conflict(struct pkg_jobs *j, struct pkg *p1, struct pkg *p2)
 	/*
 	 * Check if we already have this conflict registered
 	 */
-	if (pkghash_get(p1->conflictshash, p2->uid) != NULL &&
-	    pkghash_get(p2->conflictshash, p1->uid) != NULL)
+	if (pkg_get_conflict(p1, p2->uid) != NULL &&
+	    pkg_get_conflict(p2, p1->uid) != NULL)
 		return false;
 
 	/*
@@ -204,19 +204,17 @@ static void
 pkg_conflicts_register_one(struct pkg *p, struct pkg *op,
     enum pkg_conflict_type type)
 {
-	struct pkg_conflict *conflict;
+	struct pkg_conflict c;
 
-	conflict = pkghash_get_value(p->conflictshash, op->uid);
-	if (conflict != NULL)
+	if (pkg_get_conflict(p, op->uid) != NULL)
 		return;
 
-	conflict = xcalloc(1, sizeof(*conflict));
-	conflict->type = type;
-	conflict->uid = xstrdup(op->uid);
-	conflict->digest = xstrdup(op->digest);
+	memset(&c, 0, sizeof(c));
+	c.type = type;
+	c.uid = xstrdup(op->uid);
+	c.digest = xstrdup(op->digest);
 
-	pkghash_safe_add(p->conflictshash, op->uid, conflict, NULL);
-	DL_APPEND(p->conflicts, conflict);
+	vec_push(&p->conflicts, c);
 }
 
 /*
@@ -313,7 +311,7 @@ pkg_conflicts_check_local_path(const char *path, const char *uid,
 
 		assert(!STREQ(uid, p->uid));
 
-		if (pkghash_get(p->conflictshash, uid) == NULL) {
+		if (pkg_get_conflict(p, uid) == NULL) {
 			/* We need to register the conflict between two universe chains */
 			sqlite3_finalize(stmt);
 			return (p);
@@ -358,7 +356,7 @@ pkg_conflicts_check_all_paths(struct pkg_jobs *j, const char *path,
 		}
 
 		/* Here we can have either collision or a real conflict */
-		c = pkghash_get_value(it->pkg->conflictshash, uid2);
+		c = pkg_get_conflict(it->pkg, uid2);
 		if (c != NULL) {
 			/*
 			 * Collision found, change the key following the

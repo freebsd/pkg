@@ -158,12 +158,13 @@ cudf_emit_pkg(struct pkg *pkg, int version, FILE *f,
 	}
 
 	column = 0;
-	if (pkghash_count(pkg->conflictshash) > 0 || has_chain_conflict) {
+	if (pkg->conflicts.len > 0 || has_chain_conflict) {
 		if (fprintf(f, "conflicts: ") < 0)
 			return (EPKG_FATAL);
-		LL_FOREACH(pkg->conflicts, conflict) {
+		vec_foreach(pkg->conflicts, _ci) {
+			conflict = &pkg->conflicts.d[_ci];
 			if (cudf_print_element(f, conflict->uid,
-					(conflict->next != NULL), &column) < 0) {
+					(_ci + 1 < pkg->conflicts.len), &column) < 0) {
 				return (EPKG_FATAL);
 			}
 		}

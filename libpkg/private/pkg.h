@@ -200,7 +200,50 @@ typedef enum {
 	PKG_FILE_SAVE,
 } file_previous_t;
 
-struct pkg_config_file;
+enum pkg_conflict_type {
+	PKG_CONFLICT_ALL = 0,
+	PKG_CONFLICT_REMOTE_LOCAL,
+	PKG_CONFLICT_REMOTE_REMOTE,
+	PKG_CONFLICT_LOCAL_LOCAL
+};
+
+struct pkg_conflict {
+	char *uid;
+	char *digest;
+	enum pkg_conflict_type type;
+};
+
+typedef vec_t(struct pkg_conflict) pkg_conflictv_t;
+
+typedef enum {
+	MERGE_NOTNEEDED = 0,
+	MERGE_FAILED,
+	MERGE_SUCCESS,
+	MERGE_NOT_LOCAL,
+} merge_status;
+
+struct pkg_config_file {
+	char *path;
+	char *content;
+	char *newcontent;
+	merge_status status;
+};
+
+typedef vec_t(struct pkg_config_file) pkg_configfilev_t;
+
+struct pkg_dir {
+	char		*path;
+	char		*uname;
+	char		*gname;
+	mode_t		 perm;
+	u_long		 fflags;
+	uid_t		 uid;
+	gid_t		 gid;
+	bool		 noattrs;
+	struct timespec	 time[2];
+};
+
+typedef vec_t(struct pkg_dir) pkg_dirv_t;
 
 struct pkg_file {
 	char		*path;
@@ -265,8 +308,8 @@ struct pkg {
 	charv_t		 licenses;
 	pkg_filev_t		 files;
 	size_t			 files_iter;
-	pkghash			*dirhash;
-	struct pkg_dir		*dirs;
+	pkg_dirv_t		 dirs;
+	size_t			 dirs_iter;
 	kvlist_t		 options;
 	charv_t		 users;
 	charv_t		 groups;
@@ -274,12 +317,12 @@ struct pkg {
 	charv_t		 shlibs_required_ignore;
 	charv_t		 shlibs_provided;
 	charv_t		 shlibs_provided_ignore;
-	pkghash			*conflictshash;
-	struct pkg_conflict	*conflicts;
+	pkg_conflictv_t		 conflicts;
+	size_t			 conflicts_iter;
 	charv_t		 provides;
 	charv_t		 requires;
-	pkghash			*config_files_hash;
-	struct pkg_config_file	*config_files;
+	pkg_configfilev_t	 config_files;
+	size_t			 config_files_iter;
 	kvlist_t		 annotations;
 	unsigned			flags;
 	int		rootfd;
@@ -423,48 +466,6 @@ struct pkg_message {
 	char			*minimum_version;
 	char			*maximum_version;
 	pkg_message_t		 type;
-};
-
-enum pkg_conflict_type {
-	PKG_CONFLICT_ALL = 0,
-	PKG_CONFLICT_REMOTE_LOCAL,
-	PKG_CONFLICT_REMOTE_REMOTE,
-	PKG_CONFLICT_LOCAL_LOCAL
-};
-
-struct pkg_conflict {
-	char *uid;
-	char *digest;
-	enum pkg_conflict_type type;
-	struct pkg_conflict *next, *prev;
-};
-
-typedef enum {
-	MERGE_NOTNEEDED = 0,
-	MERGE_FAILED,
-	MERGE_SUCCESS,
-	MERGE_NOT_LOCAL,
-} merge_status;
-
-struct pkg_config_file {
-	char *path;
-	char *content;
-	char *newcontent;
-	merge_status status;
-	struct pkg_config_file *next, *prev;
-};
-
-struct pkg_dir {
-	char		*path;
-	char		*uname;
-	char		*gname;
-	mode_t		 perm;
-	u_long		 fflags;
-	uid_t		 uid;
-	gid_t		 gid;
-	bool		 noattrs;
-	struct timespec	 time[2];
-	struct pkg_dir	*next, *prev;
 };
 
 
@@ -808,8 +809,14 @@ void pkg_file_free(struct pkg_file *);
 void pkg_file_free_content(struct pkg_file *);
 int pkg_file_cmp(const void *, const void *);
 void pkg_dir_free(struct pkg_dir *);
+void pkg_dir_free_content(struct pkg_dir *);
+int pkg_dir_cmp(const void *, const void *);
 void pkg_conflict_free(struct pkg_conflict *);
+void pkg_conflict_free_content(struct pkg_conflict *);
+int pkg_conflict_cmp(const void *, const void *);
 void pkg_config_file_free(struct pkg_config_file *);
+void pkg_config_file_free_content(struct pkg_config_file *);
+int pkg_config_file_cmp(const void *, const void *);
 void pkg_message_free(struct pkg_message *);
 
 struct iovec;
@@ -953,6 +960,8 @@ int pkg_addoption(struct pkg *pkg, const char *name, const char *value);
 
 int pkg_arch_to_legacy(const char *arch, char *dest, size_t sz);
 bool pkg_is_config_file(struct pkg *p, const char *path, const struct pkg_file **file, struct pkg_config_file **cfile);
+struct pkg_config_file *pkg_get_config_file(struct pkg *p, const char *path);
+struct pkg_conflict *pkg_get_conflict(struct pkg *p, const char *uid);
 int pkg_message_from_ucl(struct pkg *pkg, const ucl_object_t *obj);
 int pkg_message_from_str(struct pkg *pkg, const char *str, size_t len);
 ucl_object_t* pkg_message_to_ucl(const struct pkg *pkg);

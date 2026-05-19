@@ -79,11 +79,17 @@ pkg_file_free(struct pkg_file *file)
 }
 
 void
-pkg_dir_free(struct pkg_dir *dir)
+pkg_dir_free_content(struct pkg_dir *dir)
 {
 	free(dir->path);
 	free(dir->uname);
 	free(dir->gname);
+}
+
+void
+pkg_dir_free(struct pkg_dir *dir)
+{
+	pkg_dir_free_content(dir);
 	free(dir);
 }
 
@@ -105,13 +111,19 @@ pkg_script_get(struct pkg const * const p, pkg_script i)
  * Conflicts
  */
 void
+pkg_conflict_free_content(struct pkg_conflict *c)
+{
+	free(c->uid);
+	free(c->digest);
+}
+
+void
 pkg_conflict_free(struct pkg_conflict *c)
 {
 	if (c == NULL)
 		return;
 
-	free(c->uid);
-	free(c->digest);
+	pkg_conflict_free_content(c);
 	free(c);
 }
 
@@ -119,13 +131,19 @@ pkg_conflict_free(struct pkg_conflict *c)
  * Config files
  */
 void
+pkg_config_file_free_content(struct pkg_config_file *c)
+{
+	free(c->path);
+	free(c->content);
+}
+
+void
 pkg_config_file_free(struct pkg_config_file *c)
 {
 	if (c == NULL)
 		return;
 
-	free(c->path);
-	free(c->content);
+	pkg_config_file_free_content(c);
 	free(c);
 }
 

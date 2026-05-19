@@ -223,7 +223,7 @@ pkg_create_from_dir(struct pkg *pkg, const char *root,
 
 	counter_end();
 
-	nfiles = pkghash_count(pkg->dirhash);
+	nfiles = pkg->dirs.len;
 	counter_init("packing directories", nfiles);
 
 	while (pkg_dirs(pkg, &dir) == EPKG_OK) {

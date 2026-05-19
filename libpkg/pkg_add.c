@@ -776,7 +776,7 @@ create_regfile(struct pkg_add_context *context, struct pkg_file *f, struct archi
 
 	if (fromfd == -1) {
 		/* check if this is a config file */
-		f->config = pkghash_get_value(context->pkg->config_files_hash, f->path);
+		f->config = pkg_get_config_file(context->pkg, f->path);
 		if (f->config) {
 			const char *cfdata;
 			bool merge = pkg_object_bool(pkg_config_get("AUTOMERGE"));
@@ -1514,7 +1514,7 @@ populate_config_file_contents(struct archive *a, struct archive_entry *ae,
 
 		pkg_absolutepath(archive_entry_pathname(ae), path, sizeof(path), true);
 
-		struct pkg_config_file *config = pkghash_get_value(pkg->config_files_hash, path);
+		struct pkg_config_file *config = pkg_get_config_file(pkg, path);
 		if (config == NULL) {
 			continue;
 		}
@@ -1666,7 +1666,7 @@ pkg_add_common(struct pkgdb *db, const char *path, unsigned flags,
 
 	/* add the user and group if necessary */
 
-	nfiles = pkg->files.len + pkghash_count(pkg->dirhash);
+	nfiles = pkg->files.len + pkg->dirs.len;
 	/*
 	 * Extract the files on disk.
 	 */

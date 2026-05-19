@@ -727,7 +727,8 @@ pkg_solve_process_universe_variable(struct pkg_solve_problem *problem,
 		}
 
 		/* Conflicts */
-		LL_FOREACH(pkg->conflicts, conflict) {
+		vec_foreach(pkg->conflicts, _ci) {
+			conflict = &pkg->conflicts.d[_ci];
 			pkg_solve_add_conflict_rule(problem, pkg, cur_var,
 			    conflict);
 		}
@@ -1377,9 +1378,10 @@ pkg_solve_can_keep(struct pkg_solve_problem *problem,
 
 	/* Check conflicts: if any conflicting package is being installed,
 	 * this package must be removed */
-	LL_FOREACH(pkg->conflicts, conflict) {
+	vec_foreach(pkg->conflicts, _ci) {
 		solve_var_slice_t *confslice;
 
+		conflict = &pkg->conflicts.d[_ci];
 		confslice = pkghash_get_value(problem->variables_by_uid,
 		    conflict->uid);
 		if (confslice == NULL)
