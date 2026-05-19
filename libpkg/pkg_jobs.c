@@ -160,13 +160,8 @@ pkg_jobs_pattern_free(struct job_pattern *jp)
 void
 pkg_jobs_request_free(struct pkg_job_request *req)
 {
-	struct pkg_job_request_item *it, *tmp;
-
 	if (req != NULL) {
-		DL_FOREACH_SAFE(req->item, it, tmp) {
-			free(it);
-		}
-
+		vec_free(&req->items);
 		free(req);
 	}
 }
@@ -369,7 +364,6 @@ pkg_jobs_add_req_from_universe(pkghash **head, universe_itemv_t *uv,
     bool local, bool automatic)
 {
 	struct pkg_job_request *req;
-	struct pkg_job_request_item *nit;
 	bool new_req = false;
 
 	assert(uv != NULL && uv->len > 0);
@@ -383,22 +377,20 @@ pkg_jobs_add_req_from_universe(pkghash **head, universe_itemv_t *uv,
 	}
 	else {
 		/* Request already exists for this uid, skip adding duplicates */
-		return (req->item);
+		return (&req->items.d[0]);
 	}
 
 	vec_foreach(*uv, _i) {
 		struct pkg_job_universe_item *uit = uv->d[_i];
 		if ((uit->pkg->type == PKG_INSTALLED && local) ||
 				(uit->pkg->type != PKG_INSTALLED && !local)) {
-			nit = xcalloc(1, sizeof(*nit));
-			nit->pkg = uit->pkg;
-			nit->unit = uit;
-			DL_APPEND(req->item, nit);
+			vec_push(&req->items, ((struct pkg_job_request_item){
+			    .pkg = uit->pkg, .unit = uit }));
 		}
 	}
 
 	if (new_req) {
-		if (req->item != NULL) {
+		if (req->items.len > 0) {
 			pkghash_safe_add(*head, uv->d[0]->pkg->uid, req, NULL);
 		}
 		else {
@@ -407,7 +399,7 @@ pkg_jobs_add_req_from_universe(pkghash **head, universe_itemv_t *uv,
 		}
 	}
 
-	return (req->item);
+	return (&req->items.d[0]);
 }
 
 static struct pkg_job_request_item*
@@ -415,7 +407,6 @@ pkg_jobs_add_req(struct pkg_jobs *j, struct pkg *pkg)
 {
 	pkghash **head;
 	struct pkg_job_request *req;
-	struct pkg_job_request_item *nit;
 	struct pkg_job_universe_item *un;
 	int rc;
 
@@ -442,9 +433,9 @@ pkg_jobs_add_req(struct pkg_jobs *j, struct pkg *pkg)
 		 */
 		req = pkghash_get_value(*head, pkg->uid);
 		if (req != NULL) {
-			DL_FOREACH(req->item, nit) {
-				if (nit->unit == un)
-					return (nit);
+			vec_foreach(req->items, _ri) {
+				if (req->items.d[_ri].unit == un)
+					return (&req->items.d[_ri]);
 			}
 		}
 		else {
@@ -472,10 +463,6 @@ pkg_jobs_add_req(struct pkg_jobs *j, struct pkg *pkg)
 
 	req = pkghash_get_value(*head, pkg->uid);
 
-	nit = xcalloc(1, sizeof(*nit));
-	nit->pkg = pkg;
-	nit->unit = un;
-
 	if (req == NULL) {
 		/* Allocate new unique request item */
 		req = xcalloc(1, sizeof(*req));
@@ -483,9 +470,10 @@ pkg_jobs_add_req(struct pkg_jobs *j, struct pkg *pkg)
 	}
 
 	/* Append candidate to the list of candidates */
-	DL_APPEND(req->item, nit);
+	vec_push(&req->items, ((struct pkg_job_request_item){
+	    .pkg = pkg, .unit = un }));
 
-	return (nit);
+	return (&req->items.d[req->items.len - 1]);
 }
 
 static bool
@@ -586,7 +574,7 @@ pkg_jobs_process_delete_request(struct pkg_jobs *j)
 		if (req->processed)
 			continue;
 		req->processed = true;
-		lp = req->item->pkg;
+		lp = req->items.d[0].pkg;
 		d = NULL;
 		while (pkg_rdeps(lp, &d) == EPKG_OK) {
 			if (!append_to_del_request(j, &to_process, d->uid,
@@ -991,7 +979,7 @@ pkg_jobs_find_remote_pattern(struct pkg_jobs *j, struct job_pattern *jp)
 
 		req = pkghash_get_value(j->request_add, pkg->uid);
 		if (req != NULL)
-			req->item->jp = jp;
+			req->items.d[0].jp = jp;
 	} else {
 		pkg_emit_error("cannot load %s: invalid format", jp->pattern);
 		rc = EPKG_FATAL;
@@ -1388,8 +1376,8 @@ pkg_jobs_set_deinstall_reasons(struct pkg_jobs *j)
 	vec_foreach(j->jobs, i) {
 		sit = j->jobs.d[i];
 		jreq = pkg_jobs_find_deinstall_request(sit->items[0], j, 0);
-		if (jreq != NULL && jreq->item->unit != sit->items[0]) {
-			req_pkg = jreq->item->pkg;
+		if (jreq != NULL && jreq->items.d[0].unit != sit->items[0]) {
+			req_pkg = jreq->items.d[0].pkg;
 			pkg = sit->items[0]->pkg;
 			/* Set the reason */
 			free(pkg->reason);
@@ -1581,7 +1569,7 @@ jobs_solve_full_upgrade(struct pkg_jobs *j)
 	while (pkghash_next(&hit)) {
 		req = hit.value;
 		pkg_emit_progress_tick(++elt_num, jcount);
-		pkg_jobs_universe_process(j->universe, req->item->pkg);
+		pkg_jobs_universe_process(j->universe, req->items.d[0].pkg);
 	}
 	pkg_emit_progress_tick(jcount, jcount);
 
@@ -1633,7 +1621,7 @@ jobs_solve_partial_upgrade(struct pkg_jobs *j)
 	it = pkghash_iterator(j->request_add);
 	while (pkghash_next(&it)) {
 		req = it.value;
-		retcode = pkg_jobs_universe_process(j->universe, req->item->pkg);
+		retcode = pkg_jobs_universe_process(j->universe, req->items.d[0].pkg);
 		if (retcode != EPKG_OK)
 			return (retcode);
 	}
@@ -1683,7 +1671,7 @@ jobs_solve_install_upgrade(struct pkg_jobs *j)
 		it = pkghash_iterator(j->request_add);
 		while (pkghash_next(&it)) {
 			req = it.value;
-			pkg_jobs_universe_process(j->universe, req->item->pkg);
+			pkg_jobs_universe_process(j->universe, req->items.d[0].pkg);
 		}
 	}
 
@@ -1738,7 +1726,7 @@ jobs_solve_fetch(struct pkg_jobs *j)
 		hit = pkghash_iterator(j->request_add);
 		while (pkghash_next(&hit)) {
 			req = hit.value;
-			rc = pkg_jobs_universe_process(j->universe, req->item->pkg);
+			rc = pkg_jobs_universe_process(j->universe, req->items.d[0].pkg);
 			if (rc != EPKG_OK && rc != EPKG_END)
 				return (rc);
 		}
@@ -2001,12 +1989,12 @@ pkg_jobs_handle_install(struct pkg_solved *ps, struct pkg_jobs *j)
 		old = ps->xlink->items[0]->pkg;
 
 	req = pkghash_get_value(j->request_add, new->uid);
-	if (req != NULL && req->item->jp != NULL &&
-			(req->item->jp->flags & PKG_PATTERN_FLAG_FILE)) {
+	if (req != NULL && req->items.d[0].jp != NULL &&
+			(req->items.d[0].jp->flags & PKG_PATTERN_FLAG_FILE)) {
 		/*
 		 * We have package as a file, set special repository name
 		 */
-		target = req->item->jp->path;
+		target = req->items.d[0].jp->path;
 		free(new->reponame);
 		new->reponame = xstrdup("local file");
 	}

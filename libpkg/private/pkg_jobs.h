@@ -53,11 +53,11 @@ struct pkg_job_request_item {
 	struct pkg *pkg;
 	struct pkg_job_universe_item *unit;
 	struct job_pattern *jp;
-	struct pkg_job_request_item *prev, *next;
 };
+typedef vec_t(struct pkg_job_request_item) request_itemv_t;
 
 struct pkg_job_request {
-	struct pkg_job_request_item *item;
+	request_itemv_t items;
 	bool skip;
 	bool processed;
 	bool automatic;

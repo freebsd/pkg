@@ -65,8 +65,8 @@ pkg_conflicts_chain_cmp(const void *jra, const void *jrb)
 		return (a->skip - b->skip);
 	}
 
-	vera = a->item->pkg->version;
-	verb = b->item->pkg->version;
+	vera = a->items.d[0].pkg->version;
+	verb = b->items.d[0].pkg->version;
 
 	/* Inverse sort to get the maximum version as the first element */
 	return (pkg_version_cmp(vera, verb));
@@ -83,7 +83,7 @@ pkg_conflicts_request_resolve_chain(struct pkg *req, conflict_chain_t *chain)
 	 * an origin is pkg name
 	 */
 	vec_foreach(*chain, i) {
-		slash_pos = strrchr(chain->d[i]->item->pkg->origin, '/');
+		slash_pos = strrchr(chain->d[i]->items.d[0].pkg->origin, '/');
 		if (slash_pos != NULL) {
 			if (STREQ(slash_pos + 1, req->name)) {
 				selected = chain->d[i];
@@ -100,7 +100,7 @@ pkg_conflicts_request_resolve_chain(struct pkg *req, conflict_chain_t *chain)
 	}
 
 	pkg_debug(2, "select %s in the chain of conflicts for %s",
-	    selected->item->pkg->name, req->name);
+	    selected->items.d[0].pkg->name, req->name);
 	/* Disable conflicts from a request */
 	vec_foreach(*chain, i) {
 		if (chain->d[i] != selected)
@@ -125,7 +125,7 @@ pkg_conflicts_request_resolve(struct pkg_jobs *j)
 		if (req->skip)
 			continue;
 
-		LL_FOREACH(req->item->pkg->conflicts, c) {
+		LL_FOREACH(req->items.d[0].pkg->conflicts, c) {
 			uv = pkg_jobs_universe_find(j->universe, c->uid);
 			if (uv != NULL) {
 				found = pkghash_get_value(j->request_add, uv->d[0]->pkg->uid);
@@ -138,7 +138,7 @@ pkg_conflicts_request_resolve(struct pkg_jobs *j)
 			/* Add package itself */
 			vec_push(&chain, req);
 
-			if (pkg_conflicts_request_resolve_chain(req->item->pkg, &chain) != EPKG_OK) {
+			if (pkg_conflicts_request_resolve_chain(req->items.d[0].pkg, &chain) != EPKG_OK) {
 				vec_free(&chain);
 				return (EPKG_FATAL);
 			}

@@ -590,7 +590,6 @@ pkg_solve_add_request_rule(struct pkg_solve_problem *problem,
 	struct pkg_solve_variable *var, struct pkg_job_request *req, int inverse)
 {
 	struct pkg_solve_rule *rule;
-	struct pkg_job_request_item *item, *confitem;
 	struct pkg_solve_variable *confvar, *curvar;
 	int cnt;
 
@@ -600,8 +599,8 @@ pkg_solve_add_request_rule(struct pkg_solve_problem *problem,
 	/*
 	 * Get the suggested item
 	 */
-	solve_var_slice_t *reqslice = pkghash_get_value(problem->variables_by_uid, req->item->pkg->uid);
-	var = pkg_solve_find_var_in_chain(reqslice, req->item->unit);
+	solve_var_slice_t *reqslice = pkghash_get_value(problem->variables_by_uid, req->items.d[0].pkg->uid);
+	var = pkg_solve_find_var_in_chain(reqslice, req->items.d[0].unit);
 	assert(var != NULL);
 	/* Assume the most significant variable */
 	picosat_assume(problem->sat, var->order * inverse);
@@ -614,7 +613,8 @@ pkg_solve_add_request_rule(struct pkg_solve_problem *problem,
 
 	cnt = 0;
 
-	LL_FOREACH(req->item, item) {
+	vec_foreach(req->items, _ri) {
+		struct pkg_job_request_item *item = &req->items.d[_ri];
 		curvar = pkg_solve_find_var_in_chain(reqslice, item->unit);
 		assert(curvar != NULL);
 		pkg_solve_item_new(rule, curvar, inverse);
@@ -631,12 +631,14 @@ pkg_solve_add_request_rule(struct pkg_solve_problem *problem,
 	if (cnt > 1) {
 		vec_push(&problem->rules, rule);
 		/* Also need to add pairs of conflicts */
-		LL_FOREACH(req->item, item) {
+		vec_foreach(req->items, _ri) {
+			struct pkg_job_request_item *item = &req->items.d[_ri];
 			curvar = pkg_solve_find_var_in_chain(reqslice, item->unit);
 			assert(curvar != NULL);
-			if (item->next == NULL)
+			if (_ri + 1 >= req->items.len)
 				continue;
-			LL_FOREACH(item->next, confitem) {
+			for (size_t _rj = _ri + 1; _rj < req->items.len; _rj++) {
+				struct pkg_job_request_item *confitem = &req->items.d[_rj];
 				confvar = pkg_solve_find_var_in_chain(reqslice, confitem->unit);
 				assert(confvar != NULL && confvar != curvar && confvar != var);
 				/* Conflict rule: (!A | !Bx) must be true */

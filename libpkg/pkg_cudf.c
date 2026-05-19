@@ -212,7 +212,7 @@ cudf_emit_request_packages(const char *op, struct pkg_jobs *j, FILE *f)
 		cnt++;
 		if (req->skip)
 			continue;
-		if (cudf_print_element(f, req->item->pkg->uid,
+		if (cudf_print_element(f, req->items.d[0].pkg->uid,
 		    (max > cnt), &column) < 0) {
 			return (EPKG_FATAL);
 		}
@@ -234,7 +234,7 @@ cudf_emit_request_packages(const char *op, struct pkg_jobs *j, FILE *f)
 		cnt++;
 		if (req->skip)
 			continue;
-		if (cudf_print_element(f, req->item->pkg->uid,
+		if (cudf_print_element(f, req->items.d[0].pkg->uid,
 		    (max > cnt), &column) < 0) {
 			return (EPKG_FATAL);
 		}

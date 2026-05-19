@@ -1010,7 +1010,6 @@ pkg_jobs_universe_process_upgrade_chains(struct pkg_jobs *j)
 {
 	struct pkg_job_universe_item *cur, *local;
 	struct pkg_job_request *req;
-	struct pkg_job_request_item *rit, *rtmp;
 	universe_itemv_t *uv;
 	pkghash_it it;
 
@@ -1036,7 +1035,7 @@ pkg_jobs_universe_process_upgrade_chains(struct pkg_jobs *j)
 		if (local != NULL && local->pkg->locked) {
 			dbg(1, "removing %s from the request as it is locked",
 				local->pkg->uid);
-			pkghash_del(j->request_add, req->item->pkg->uid);
+			pkghash_del(j->request_add, req->items.d[0].pkg->uid);
 			pkg_jobs_request_free(req);
 			continue;
 		}
@@ -1061,7 +1060,7 @@ pkg_jobs_universe_process_upgrade_chains(struct pkg_jobs *j)
 			 * candidates
 			 */
 			assert(selected != NULL);
-			pkghash_del(j->request_add, req->item->pkg->uid);
+			pkghash_del(j->request_add, req->items.d[0].pkg->uid);
 
 			/*
 			 * We also check if the selected package has different digest,
@@ -1080,18 +1079,15 @@ pkg_jobs_universe_process_upgrade_chains(struct pkg_jobs *j)
 				if (cur == selected)
 					continue;
 
-				DL_FOREACH_SAFE(req->item, rit, rtmp) {
-					if (rit->unit == cur) {
-						DL_DELETE(req->item, rit);
-						free(rit);
+				for (size_t _ri = req->items.len; _ri > 0; _ri--) {
+					if (req->items.d[_ri - 1].unit == cur) {
+						vec_remove(&req->items, _ri - 1);
 					}
 				}
 			}
-			if (req->item == NULL) {
-				rit = xcalloc(1, sizeof(*rit));
-				rit->pkg = selected->pkg;
-				rit->unit = selected;
-				DL_APPEND(req->item, rit);
+			if (req->items.len == 0) {
+				vec_push(&req->items, ((struct pkg_job_request_item){
+				    .pkg = selected->pkg, .unit = selected }));
 			}
 			pkghash_safe_add(j->request_add, selected->pkg->uid, req, NULL);
 		}
