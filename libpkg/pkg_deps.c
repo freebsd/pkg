@@ -221,7 +221,10 @@ pkg_deps_parse_formula(const char *in)
 					cur_ver.ver = xmalloc(p - c + 1);
 					strlcpy(cur_ver.ver, c, p - c + 1);
 					cur_ver.op = cur_op;
-					assert(cur_item.name != NULL);
+					if (cur_item.name == NULL) {
+				state = st_error;
+				break;
+			}
 					vec_push(&cur_item.versions, cur_ver);
 					state = st_skip_spaces;
 					next_state = st_parse_after_version;
@@ -254,7 +257,10 @@ pkg_deps_parse_formula(const char *in)
 				if (p - c > 0) {
 					cur_opt.opt = xmalloc(p - c + 1);
 					strlcpy(cur_opt.opt, c, p - c + 1);
-					assert(cur_item.name != NULL);
+					if (cur_item.name == NULL) {
+				state = st_error;
+				break;
+			}
 					vec_push(&cur_item.options, cur_opt);
 					state = st_skip_spaces;
 					next_state = st_parse_after_option;
@@ -266,7 +272,10 @@ pkg_deps_parse_formula(const char *in)
 			break;
 
 		case st_parse_comma:
-			assert(cur_item.name != NULL);
+			if (cur_item.name == NULL) {
+				state = st_error;
+				break;
+			}
 
 			vec_push(&cur_formula.items, cur_item);
 			memset(&cur_item, 0, sizeof(cur_item));
@@ -278,7 +287,10 @@ pkg_deps_parse_formula(const char *in)
 			break;
 
 		case st_parse_or:
-			assert(cur_item.name != NULL);
+			if (cur_item.name == NULL) {
+				state = st_error;
+				break;
+			}
 
 			vec_push(&cur_formula.items, cur_item);
 			memset(&cur_item, 0, sizeof(cur_item));

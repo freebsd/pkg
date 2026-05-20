@@ -1007,7 +1007,8 @@ pkg_addshlib_required(struct pkg *pkg, const char *name,
     enum pkg_shlib_flags flags)
 {
 	assert(pkg != NULL);
-	assert(name != NULL && name[0] != '\0');
+	if (name == NULL || name[0] == '\0')
+		return (EPKG_OK);
 
 	char *full_name = pkg_shlib_name_with_flags(name, flags);
 

@@ -196,7 +196,7 @@ pkg_abi_from_string(struct pkg_abi *abi, const char *string)
 	}
 
 	char *version = strsep(&iter, ":");
-	if (version == NULL) {
+	if (version == NULL || version[0] == '\0') {
 		if (abi->os == PKG_OS_ANY) {
 			abi->major = 0;
 			abi->minor = 0;
