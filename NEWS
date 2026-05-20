@@ -1,3 +1,30 @@
+Changes from 2.7.99.1 to 2.7.99.2
+- extract: prefer mtime from manifest over archive
+- db: fix some concurrency issues
+- which: always show the matched path
+- checksum: new pkg-checksum(8) command to generate and validate checksums
+- checksum: use blake2b everywhere we can
+- repo: use blake2 instead of sha256
+- rwhich: implement file tracking and search for remote repositories
+- backup_lib: prevent accumulating old libs and badly match them
+- backup_lib: fix backup_library with rootdir
+- pkg-which: fix spurious warning message with -p
+- progress: don't add new line for file_meta and dir_meta event
+- fix: replace system() with execlp() for man page display
+- fix: query_select discards valid input on EOF without newline
+- fix: harden input validation found by fuzzing
+- fix: handle trailing %% in printf format strings
+- fix: handle empty string in pkg_deps_parse_formula()
+- refactor: convert all internal linked lists (utlist.h) to vec
+- libelf: fix Linux/powerpc64 build
+- libecc: support Linux/ppc64
+- manpages: add documentation for pkg-checksum(8) and pkg_checksum(3)
+- plug multiple memory leaks and fix resource leaks
+- lots of code cleanup
+- update sqlite to 3.53.1
+- update lua to 5.4.8
+- update libucl to 0.9.4
+
 Changes from 2.6.99.6 to 2.7.99.1
 - config: allow VERSION_MAJOR and VERSION_MINOR to be overridden via -o
 - rcscript: rewrite entirely to be safer
