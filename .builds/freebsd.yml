@@ -2,7 +2,6 @@ image: freebsd/latest
 packages:
   - pkgconf
   - python3
-  - kyua
 sources:
   - https://github.com/freebsd/pkg
 tasks:
