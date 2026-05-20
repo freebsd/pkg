@@ -202,7 +202,7 @@ pkgdb_load_deps(sqlite3 *sqlite, struct pkg *pkg)
 	sqlite3_stmt	*stmt = NULL, *opt_stmt = NULL;
 	int		 ret = EPKG_OK;
 	const char *chain = NULL;
-	struct pkg_dep_formula *f;
+	dep_formulav_t *f;
 	struct pkg_dep_formula_item *fit;
 	struct pkg_dep_option_item *optit;
 	bool options_match;
@@ -258,8 +258,10 @@ pkgdb_load_deps(sqlite3 *sqlite, struct pkg *pkg)
 		f = pkg_deps_parse_formula (pkg->dep_formula);
 
 		if (f != NULL) {
-			DL_FOREACH(f->items, fit) {
-				clause = pkg_deps_formula_tosql(fit);
+			vec_foreach(*f, ffi) {
+			    vec_foreach(f->d[ffi].items, fi) {
+				fit = &f->d[ffi].items.d[fi];
+				clause = pkg_deps_formula_tosql(&f->d[ffi].items);
 
 				if (clause) {
 					xasprintf(&formula_sql, "%s%s", formula_preamble, clause);
@@ -282,7 +284,7 @@ pkgdb_load_deps(sqlite3 *sqlite, struct pkg *pkg)
 						 */
 						options_match = true;
 
-						if (fit->options) {
+						if (fit->options.len > 0) {
 							opt_stmt = prepare_sql(sqlite, options_sql);
 							if (opt_stmt == NULL) {
 								sqlite3_finalize(stmt);
@@ -297,7 +299,8 @@ pkgdb_load_deps(sqlite3 *sqlite, struct pkg *pkg)
 									sqlite3_column_int64(stmt, 0));
 
 							while (sqlite3_step(opt_stmt) == SQLITE_ROW) {
-								DL_FOREACH(fit->options, optit) {
+								vec_foreach(fit->options, oi) {
+									optit = &fit->options.d[oi];
 									if(STREQ(optit->opt, sqlite3_column_text(opt_stmt, 0))) {
 										if ((!STREQ(sqlite3_column_text(opt_stmt, 1), "on") && !optit->on)
 											|| (!STREQ(sqlite3_column_text(opt_stmt, 1), "off") && optit->on)) {
@@ -329,6 +332,7 @@ pkgdb_load_deps(sqlite3 *sqlite, struct pkg *pkg)
 					sqlite3_finalize(stmt);
 				}
 
+			    }
 			}
 
 			pkg_deps_formula_free(f);

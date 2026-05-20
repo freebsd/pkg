@@ -38,15 +38,15 @@
 #include "private/event.h"
 #include "private/pkg_deps.h"
 #include "xmalloc.h"
-#include "utlist.h"
 
-struct pkg_dep_formula *
+dep_formulav_t *
 pkg_deps_parse_formula(const char *in)
 {
-	struct pkg_dep_formula *res = NULL, *cur = NULL;
-	struct pkg_dep_formula_item *cur_item = NULL;
-	struct pkg_dep_version_item *cur_ver = NULL;
-	struct pkg_dep_option_item *cur_opt = NULL;
+	dep_formulav_t *res = NULL;
+	struct pkg_dep_formula cur_formula;
+	struct pkg_dep_formula_item cur_item;
+	struct pkg_dep_version_item cur_ver;
+	struct pkg_dep_option_item cur_opt;
 	const char *p, *c, *end;
 	enum pkg_dep_version_op cur_op = VERSION_ANY;
 	enum {
@@ -73,6 +73,12 @@ pkg_deps_parse_formula(const char *in)
 
 	end = p + strlen(p);
 
+	res = xcalloc(1, sizeof(*res));
+	memset(&cur_formula, 0, sizeof(cur_formula));
+	memset(&cur_item, 0, sizeof(cur_item));
+	memset(&cur_ver, 0, sizeof(cur_ver));
+	memset(&cur_opt, 0, sizeof(cur_opt));
+
 	while (p <= end) {
 		switch (state) {
 		case st_parse_dep_name:
@@ -85,9 +91,8 @@ pkg_deps_parse_formula(const char *in)
 				}
 				else {
 					/* Spaces after the name */
-					cur_item = xcalloc(1, sizeof(*cur_item));
-					cur_item->name = xmalloc(p - c + 1);
-					strlcpy(cur_item->name, c, p - c + 1);
+					cur_item.name = xmalloc(p - c + 1);
+					strlcpy(cur_item.name, c, p - c + 1);
 					next_state = st_parse_after_name;
 				}
 			}
@@ -96,9 +101,8 @@ pkg_deps_parse_formula(const char *in)
 					state = st_error;
 				}
 				else {
-					cur_item = xcalloc(1, sizeof(*cur_item));
-					cur_item->name = xmalloc(p - c + 1);
-					strlcpy(cur_item->name, c, p - c + 1);
+					cur_item.name = xmalloc(p - c + 1);
+					strlcpy(cur_item.name, c, p - c + 1);
 					state = st_parse_after_name;
 				}
 			}
@@ -213,12 +217,12 @@ pkg_deps_parse_formula(const char *in)
 			}
 			else {
 				if (p - c > 0) {
-					cur_ver = xcalloc(1, sizeof(*cur_ver));
-					cur_ver->ver = xmalloc(p - c + 1);
-					strlcpy(cur_ver->ver, c, p - c + 1);
-					cur_ver->op = cur_op;
-					assert(cur_item != NULL);
-					DL_APPEND(cur_item->versions, cur_ver);
+					memset(&cur_ver, 0, sizeof(cur_ver));
+					cur_ver.ver = xmalloc(p - c + 1);
+					strlcpy(cur_ver.ver, c, p - c + 1);
+					cur_ver.op = cur_op;
+					assert(cur_item.name != NULL);
+					vec_push(&cur_item.versions, cur_ver);
 					state = st_skip_spaces;
 					next_state = st_parse_after_version;
 				}
@@ -229,12 +233,12 @@ pkg_deps_parse_formula(const char *in)
 			break;
 
 		case st_parse_option_start:
-			cur_opt = xcalloc(1, sizeof(*cur_opt));
+			memset(&cur_opt, 0, sizeof(cur_opt));
 			if (*p == '+') {
-				cur_opt->on = true;
+				cur_opt.on = true;
 			}
 			else {
-				cur_opt->on = false;
+				cur_opt.on = false;
 			}
 
 			p ++;
@@ -248,10 +252,10 @@ pkg_deps_parse_formula(const char *in)
 			}
 			else {
 				if (p - c > 0) {
-					cur_opt->opt = xmalloc(p - c + 1);
-					strlcpy(cur_opt->opt, c, p - c + 1);
-					assert(cur_item != NULL);
-					DL_APPEND(cur_item->options, cur_opt);
+					cur_opt.opt = xmalloc(p - c + 1);
+					strlcpy(cur_opt.opt, c, p - c + 1);
+					assert(cur_item.name != NULL);
+					vec_push(&cur_item.options, cur_opt);
 					state = st_skip_spaces;
 					next_state = st_parse_after_option;
 				}
@@ -262,30 +266,22 @@ pkg_deps_parse_formula(const char *in)
 			break;
 
 		case st_parse_comma:
-			assert(cur_item != NULL);
+			assert(cur_item.name != NULL);
 
-			if (cur == NULL) {
-				cur = xcalloc(1, sizeof(*cur));
-			}
-
-			DL_APPEND(cur->items, cur_item);
-			DL_APPEND(res, cur);
-			cur_item = NULL;
-			cur = NULL;
+			vec_push(&cur_formula.items, cur_item);
+			memset(&cur_item, 0, sizeof(cur_item));
+			vec_push(res, cur_formula);
+			memset(&cur_formula, 0, sizeof(cur_formula));
 			p ++;
 			state = st_skip_spaces;
 			next_state = st_parse_dep_name;
 			break;
 
 		case st_parse_or:
-			assert(cur_item != NULL);
+			assert(cur_item.name != NULL);
 
-			if (cur == NULL) {
-				cur = xcalloc(1, sizeof(*cur));
-			}
-
-			DL_APPEND(cur->items, cur_item);
-			cur_item = NULL;
+			vec_push(&cur_formula.items, cur_item);
+			memset(&cur_item, 0, sizeof(cur_item));
 			p ++;
 			state = st_skip_spaces;
 			next_state = st_parse_dep_name;
@@ -307,11 +303,26 @@ pkg_deps_parse_formula(const char *in)
 		case st_error:
 		default:
 			pkg_emit_error("cannot parse pkg formula: %s", in);
-			pkg_deps_formula_free(res);
-			if (cur_item != NULL) {
-				free(cur_item->name);
-				free(cur_item);
+			free(cur_item.name);
+			vec_foreach(cur_item.versions, vi)
+				free(cur_item.versions.d[vi].ver);
+			vec_free(&cur_item.versions);
+			vec_foreach(cur_item.options, oi)
+				free(cur_item.options.d[oi].opt);
+			vec_free(&cur_item.options);
+			/* Free any accumulated items in cur_formula */
+			vec_foreach(cur_formula.items, ii) {
+				struct pkg_dep_formula_item *it = &cur_formula.items.d[ii];
+				free(it->name);
+				vec_foreach(it->versions, vi)
+					free(it->versions.d[vi].ver);
+				vec_free(&it->versions);
+				vec_foreach(it->options, oi)
+					free(it->options.d[oi].opt);
+				vec_free(&it->options);
 			}
+			vec_free(&cur_formula.items);
+			pkg_deps_formula_free(res);
 
 			return (NULL);
 
@@ -321,11 +332,25 @@ pkg_deps_parse_formula(const char *in)
 
 	if (state != st_skip_spaces && state != st_parse_comma) {
 		pkg_emit_error("cannot parse pkg formula: %s", in);
-		pkg_deps_formula_free(res);
-		if (cur_item != NULL)  {
-			free(cur_item->name);
-			free(cur_item);
+		free(cur_item.name);
+		vec_foreach(cur_item.versions, vi)
+			free(cur_item.versions.d[vi].ver);
+		vec_free(&cur_item.versions);
+		vec_foreach(cur_item.options, oi)
+			free(cur_item.options.d[oi].opt);
+		vec_free(&cur_item.options);
+		vec_foreach(cur_formula.items, ii) {
+			struct pkg_dep_formula_item *it = &cur_formula.items.d[ii];
+			free(it->name);
+			vec_foreach(it->versions, vi)
+				free(it->versions.d[vi].ver);
+			vec_free(&it->versions);
+			vec_foreach(it->options, oi)
+				free(it->options.d[oi].opt);
+			vec_free(&it->options);
 		}
+		vec_free(&cur_formula.items);
+		pkg_deps_formula_free(res);
 
 		return (NULL);
 	}
@@ -334,32 +359,26 @@ pkg_deps_parse_formula(const char *in)
 }
 
 void
-pkg_deps_formula_free(struct pkg_dep_formula *f)
+pkg_deps_formula_free(dep_formulav_t *f)
 {
-	struct pkg_dep_formula *cf, *cftmp;
-	struct pkg_dep_formula_item *cit, *cittmp;
-	struct pkg_dep_version_item *cver, *cvertmp;
-	struct pkg_dep_option_item *copt, *copttmp;
+	if (f == NULL)
+		return;
 
-	DL_FOREACH_SAFE(f, cf, cftmp) {
-		DL_FOREACH_SAFE(cf->items, cit, cittmp) {
-			free(cit->name);
-
-			DL_FOREACH_SAFE(cit->versions, cver, cvertmp) {
-				free(cver->ver);
-				free(cver);
-			}
-
-			DL_FOREACH_SAFE(cit->options, copt, copttmp) {
-				free(copt->opt);
-				free(copt);
-			}
-
-			free(cit);
+	vec_foreach(*f, fi) {
+		vec_foreach(f->d[fi].items, ii) {
+			struct pkg_dep_formula_item *it = &f->d[fi].items.d[ii];
+			free(it->name);
+			vec_foreach(it->versions, vi)
+				free(it->versions.d[vi].ver);
+			vec_free(&it->versions);
+			vec_foreach(it->options, oi)
+				free(it->options.d[oi].opt);
+			vec_free(&it->options);
 		}
-
-		free(cf);
+		vec_free(&f->d[fi].items);
 	}
+	vec_free(f);
+	free(f);
 }
 
 static const char*
@@ -396,27 +415,24 @@ pkg_deps_op_tostring(enum pkg_dep_version_op op)
 }
 
 char*
-pkg_deps_formula_tostring(struct pkg_dep_formula *f)
+pkg_deps_formula_tostring(dep_formulav_t *f)
 {
-	struct pkg_dep_formula *cf, *cftmp;
-	struct pkg_dep_formula_item *cit, *cittmp;
-	struct pkg_dep_version_item *cver, *cvertmp;
-	struct pkg_dep_option_item *copt, *copttmp;
 	char *res = NULL, *p;
 
 	int rlen = 0, r;
 
-	DL_FOREACH_SAFE(f, cf, cftmp) {
-		DL_FOREACH_SAFE(cf->items, cit, cittmp) {
+	vec_foreach(*f, fi) {
+		vec_foreach(f->d[fi].items, ii) {
+			struct pkg_dep_formula_item *cit = &f->d[fi].items.d[ii];
 			rlen += strlen(cit->name);
 
-			DL_FOREACH_SAFE(cit->versions, cver, cvertmp) {
-				rlen += strlen(cver->ver);
+			vec_foreach(cit->versions, vi) {
+				rlen += strlen(cit->versions.d[vi].ver);
 				rlen += 4; /* <OP><SP><VER><SP> */
 			}
 
-			DL_FOREACH_SAFE(cit->options, copt, copttmp) {
-				rlen += strlen(copt->opt);
+			vec_foreach(cit->options, oi) {
+				rlen += strlen(cit->options.d[oi].opt);
 				rlen += 2; /* <+-><OPT><SP> */
 			}
 
@@ -434,31 +450,36 @@ pkg_deps_formula_tostring(struct pkg_dep_formula *f)
 
 	p = res;
 
-	DL_FOREACH_SAFE(f, cf, cftmp) {
-		DL_FOREACH_SAFE(cf->items, cit, cittmp) {
+	vec_foreach(*f, fi) {
+		vec_foreach(f->d[fi].items, ii) {
+			struct pkg_dep_formula_item *cit = &f->d[fi].items.d[ii];
 			r = snprintf(p, rlen, "%s", cit->name);
 			p += r;
 			rlen -= r;
 
-			DL_FOREACH_SAFE(cit->versions, cver, cvertmp) {
-				r = snprintf(p, rlen, " %s %s", pkg_deps_op_tostring(cver->op),
-						cver->ver);
+			vec_foreach(cit->versions, vi) {
+				r = snprintf(p, rlen, " %s %s",
+						pkg_deps_op_tostring(cit->versions.d[vi].op),
+						cit->versions.d[vi].ver);
 				p += r;
 				rlen -= r;
 			}
 
-			DL_FOREACH_SAFE(cit->options, copt, copttmp) {
-				r = snprintf(p, rlen, " %c%s", copt->on ? '+' : '-', copt->opt);
+			vec_foreach(cit->options, oi) {
+				r = snprintf(p, rlen, " %c%s",
+						cit->options.d[oi].on ? '+' : '-',
+						cit->options.d[oi].opt);
 				p += r;
 				rlen -= r;
 			}
 
-			r = snprintf(p, rlen, "%s", cit->next ? " | " : "");
+			r = snprintf(p, rlen, "%s",
+					ii + 1 < f->d[fi].items.len ? " | " : "");
 			p += r;
 			rlen -= r;
 		}
 
-		r = snprintf(p, rlen, "%s", cf->next ? ", " : "");
+		r = snprintf(p, rlen, "%s", fi + 1 < f->len ? ", " : "");
 		p += r;
 		rlen -= r;
 	}
@@ -467,21 +488,21 @@ pkg_deps_formula_tostring(struct pkg_dep_formula *f)
 }
 
 char*
-pkg_deps_formula_tosql(struct pkg_dep_formula_item *f)
+pkg_deps_formula_tosql(dep_itemv_t *f)
 {
-	struct pkg_dep_formula_item *cit, *cittmp;
-	struct pkg_dep_version_item *cver, *cvertmp;
+	struct pkg_dep_formula_item *cit;
 	char *res = NULL, *p;
 
 	int rlen = 0, r;
 
-	DL_FOREACH_SAFE(f, cit, cittmp) {
+	vec_foreach(*f, ii) {
+		cit = &f->d[ii];
 		rlen += sizeof("AND (name='' )");
 		rlen += strlen(cit->name);
 
-		DL_FOREACH_SAFE(cit->versions, cver, cvertmp) {
+		vec_foreach(cit->versions, vi) {
 			rlen += sizeof(" AND vercmp(>=, version,'') ");
-			rlen += strlen(cver->ver);
+			rlen += strlen(cit->versions.d[vi].ver);
 		}
 
 		rlen += sizeof(" OR ");
@@ -495,19 +516,20 @@ pkg_deps_formula_tosql(struct pkg_dep_formula_item *f)
 
 	p = res;
 
-	DL_FOREACH_SAFE(f, cit, cittmp) {
+	vec_foreach(*f, ii) {
+		cit = &f->d[ii];
 		r = snprintf(p, rlen, "(name='%s'", cit->name);
 		p += r;
 		rlen -= r;
 
-		DL_FOREACH_SAFE(cit->versions, cver, cvertmp) {
+		vec_foreach(cit->versions, vi) {
 			r = snprintf(p, rlen, " AND vercmp('%s',version,'%s')",
-					pkg_deps_op_tostring(cver->op),
-					cver->ver);
+					pkg_deps_op_tostring(cit->versions.d[vi].op),
+					cit->versions.d[vi].ver);
 			p += r;
 			rlen -= r;
 		}
-		r = snprintf(p, rlen, ")%s", cit->next ? " OR " : "");
+		r = snprintf(p, rlen, ")%s", ii + 1 < f->len ? " OR " : "");
 		p += r;
 		rlen -= r;
 	}

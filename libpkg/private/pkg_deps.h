@@ -28,6 +28,8 @@
 
 #include <stdbool.h>
 
+#include <pkg/vec.h>
+
 enum pkg_dep_version_op {
 	VERSION_ANY = 0,
 	VERSION_EQ,
@@ -48,41 +50,40 @@ enum pkg_dep_flag {
 struct pkg_dep_version_item {
 	char *ver;
 	enum pkg_dep_version_op op;
-	struct pkg_dep_version_item *prev, *next;
 };
+typedef vec_t(struct pkg_dep_version_item) dep_versionv_t;
 
 struct pkg_dep_option_item {
 	char *opt;
 	bool on;
-	struct pkg_dep_option_item *prev, *next;
 };
+typedef vec_t(struct pkg_dep_option_item) dep_optionv_t;
 
 struct pkg_dep_formula_item {
 	char *name;
 	unsigned flags;
-	struct pkg_dep_version_item *versions;
-	struct pkg_dep_option_item *options;
-
-	struct pkg_dep_formula_item *prev, *next;
+	dep_versionv_t versions;
+	dep_optionv_t options;
 };
+typedef vec_t(struct pkg_dep_formula_item) dep_itemv_t;
 
 struct pkg_dep_formula {
-	struct pkg_dep_formula_item *items;
-	struct pkg_dep_formula *prev, *next;
+	dep_itemv_t items;
 };
+typedef vec_t(struct pkg_dep_formula) dep_formulav_t;
 
 
 /*
- * Convert pkg formula string to the pkg_dep_formula linked list
+ * Convert pkg formula string to a vec of pkg_dep_formula
  */
-struct pkg_dep_formula* pkg_deps_parse_formula(const char *in);
+dep_formulav_t* pkg_deps_parse_formula(const char *in);
 
-void pkg_deps_formula_free(struct pkg_dep_formula *f);
+void pkg_deps_formula_free(dep_formulav_t *f);
 
-char* pkg_deps_formula_tostring(struct pkg_dep_formula *f);
+char* pkg_deps_formula_tostring(dep_formulav_t *f);
 
 enum pkg_dep_version_op pkg_deps_string_toop(const char *in);
 
-char* pkg_deps_formula_tosql(struct pkg_dep_formula_item *f);
+char* pkg_deps_formula_tosql(dep_itemv_t *f);
 
 #endif /* LIBPKG_PRIVATE_PKG_DEPS_H_ */

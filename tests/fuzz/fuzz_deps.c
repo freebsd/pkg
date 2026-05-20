@@ -18,7 +18,7 @@ int
 LLVMFuzzerTestOneInput(const uint8_t *data, size_t size)
 {
 	char *str;
-	struct pkg_dep_formula *f;
+	dep_formulav_t *f;
 
 	str = strndup((const char *)data, size);
 	if (str == NULL)

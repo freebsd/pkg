@@ -36,7 +36,7 @@ ATF_TC_WITHOUT_HEAD(check_op_parsing);
 
 ATF_TC_BODY(check_parsing, tc)
 {
-	struct pkg_dep_formula *f;
+	dep_formulav_t *f;
 	const char *cases[] = {
 		"name",
 		"name = 1.0",
@@ -66,7 +66,7 @@ ATF_TC_HEAD(check_sql, tc)
 
 ATF_TC_BODY(check_sql, tc)
 {
-	struct pkg_dep_formula *f;
+	dep_formulav_t *f;
 	const char *cases[] = {
 		"name", "(name='name')",
 		"name = 1.0", "(name='name' AND vercmp('=',version,'1.0'))",
@@ -80,7 +80,7 @@ ATF_TC_BODY(check_sql, tc)
 	for (i = 0; i < sizeof(cases) / sizeof(cases[0]) / 2; i ++) {
 		f = pkg_deps_parse_formula(cases[i * 2]);
 		ATF_REQUIRE(f != NULL);
-		r = pkg_deps_formula_tosql(f->items);
+		r = pkg_deps_formula_tosql(&f->d[0].items);
 		ATF_REQUIRE_STREQ(r, cases[i * 2 + 1]);
 		free(r);
 		pkg_deps_formula_free(f);
