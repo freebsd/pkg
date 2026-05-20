@@ -1028,8 +1028,6 @@ void pkg_cleanup_shlibs_required(struct pkg *pkg, charv_t *internal_provided);
     struct pkg_message *:     pkg_message_free,    \
     struct trigger *:         trigger_free)(p)
 
-#define DL_AUTOFREE(head) DL_FREE(head, pkg_obj_free)
-#define LL_AUTOFREE(head) LL_FREE(head, pkg_obj_free)
 #define vec_autofree(v) vec_free_and_free(v, pkg_obj_free)
 #define vec_autoclear(v) vec_clear_and_free(v, pkg_obj_free)
 #define vec_autoremove(v, cnt) vec_remove_and_free(v, cnt, pkg_obj_free)
