@@ -2951,6 +2951,13 @@ process_format_trailer(xstring *buf, struct percent_esc *p,
 	xstring		*s;
 
 	fstart = f;
+
+	/* Trailing % at end of format string: emit literal % */
+	if (f[1] == '\0') {
+		fputc('%', buf->fp);
+		return (f + 1);
+	}
+
 	f = parse_format(f, context, p);
 
 	if (p->fmt_code == PP_ROW_COUNTER)
