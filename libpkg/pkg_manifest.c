@@ -310,6 +310,7 @@ pkg_string(struct pkg *pkg, const ucl_object_t *obj, uint32_t offset)
 		/* Remove flags from the offset */
 		offset &= STRING_FLAG_MASK;
 		dest = (char **) ((unsigned char *)pkg + offset);
+		free(*dest);
 		*dest = xstrdup(str);
 
 		free(tofree);

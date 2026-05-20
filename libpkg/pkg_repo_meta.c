@@ -315,7 +315,9 @@ pkg_repo_meta_dump_fd(struct pkg_repo_meta *meta, const int fd)
 		pkg_emit_error("Cannot dump file");
 		return (EPKG_FATAL);
 	}
-	ucl_object_emit_file(pkg_repo_meta_to_ucl(meta), UCL_EMIT_JSON_COMPACT, f);
+	ucl_object_t *obj = pkg_repo_meta_to_ucl(meta);
+	ucl_object_emit_file(obj, UCL_EMIT_JSON_COMPACT, f);
+	ucl_object_unref(obj);
 	fclose(f);
 	return (EPKG_OK);
 }

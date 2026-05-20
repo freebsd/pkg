@@ -839,6 +839,7 @@ pkg_repo_binary_update_proceed(const char *name, struct pkg_repo *repo,
 				}
 			}
 		}
+		free(tok);
 	}
 	if (f != NULL) {
 		while ((linelen = getline(&line, &linecap, f)) > 0) {
