@@ -432,6 +432,26 @@ pkg_conflicts_check_chain_conflict(struct pkg_job_universe_item *it,
 	/* XXX: dirs are currently broken terribly */
 }
 
+static void
+pkg_conflicts_item_free_recurse(struct pkg_jobs_conflict_item *node)
+{
+	if (node == NULL)
+		return;
+	pkg_conflicts_item_free_recurse(node->entry.avl_left);
+	pkg_conflicts_item_free_recurse(node->entry.avl_right);
+	free(node);
+}
+
+void
+pkg_conflicts_free(struct pkg_jobs *j)
+{
+	if (j->conflict_items != NULL) {
+		pkg_conflicts_item_free_recurse(j->conflict_items->th_root);
+		free(j->conflict_items);
+		j->conflict_items = NULL;
+	}
+}
+
 int
 pkg_conflicts_append_chain(universe_itemv_t *uv,
 	struct pkg_jobs *j)

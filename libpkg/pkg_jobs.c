@@ -203,6 +203,7 @@ pkg_jobs_free(struct pkg_jobs *j)
 	pkghash_destroy(j->orphaned);
 	pkghash_destroy(j->notorphaned);
 	vec_autofree(&j->system_shlibs);
+	pkg_conflicts_free(j);
 	free(j);
 }
 

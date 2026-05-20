@@ -223,6 +223,7 @@ int pkg_conflicts_request_resolve(struct pkg_jobs *j);
  */
 int pkg_conflicts_append_chain(universe_itemv_t *uv,
 	struct pkg_jobs *j);
+void pkg_conflicts_free(struct pkg_jobs *j);
 
 /*
  * Check whether `rp` is an upgrade for `lp`
