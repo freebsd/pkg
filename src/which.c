@@ -58,7 +58,6 @@ exec_which(int argc, char **argv)
 	bool		 glob = false;
 	bool		 search = false;
 	bool		 search_s = false;
-	bool		 show_match = false;
 	charv_t		 patterns = vec_init();
 
 	struct option longopts[] = {
@@ -87,7 +86,6 @@ exec_which(int argc, char **argv)
 			quiet = true;
 			break;
 		case 'm':
-			show_match = true;
 			break;
 		default:
 			usage_which();
@@ -180,25 +178,32 @@ exec_which(int argc, char **argv)
 			}
 
 			pkg = NULL;
-			while (pkgdb_it_next(it, &pkg, (glob && show_match) ? PKG_LOAD_FILES : PKG_LOAD_BASIC) == EPKG_OK) {
+			while (pkgdb_it_next(it, &pkg, glob ? PKG_LOAD_FILES : PKG_LOAD_BASIC) == EPKG_OK) {
 				retcode = EXIT_SUCCESS;
-				if (quiet && orig && !show_match)
-					pkg_printf("%o\n", pkg);
-				else if (quiet && !orig && !show_match)
-					pkg_printf("%n-%v\n", pkg, pkg);
-				else if (!quiet && orig && !show_match)
-					pkg_printf("%S was installed by package %o\n", patterns.d[i], pkg);
-				else if (!quiet && !orig && !show_match)
-					pkg_printf("%S was installed by package %n-%v\n", patterns.d[i], pkg, pkg);
-				else if (glob && show_match) {
-					if (!quiet)
-						pkg_printf("%S was glob searched and found in package %n-%v\n", patterns.d[i], pkg, pkg, pkg);
-					while(pkg_files(pkg, &file) == EPKG_OK) {
+				if (!glob) {
+					if (quiet && orig)
+						pkg_printf("%o\n", pkg);
+					else if (quiet && !orig)
+						pkg_printf("%n-%v\n", pkg, pkg);
+					else if (!quiet && orig)
+						pkg_printf("%S was installed by package %o\n", patterns.d[i], pkg);
+					else
+						pkg_printf("%S was installed by package %n-%v\n", patterns.d[i], pkg, pkg);
+				} else {
+					while (pkg_files(pkg, &file) == EPKG_OK) {
 						pkg_asprintf(&match, "%Fn", file);
 						if (match == NULL)
 							err(EXIT_FAILURE, "pkg_asprintf");
-						if(!fnmatch(patterns.d[i], match, 0))
-							printf("%s\n", match);
+						if (fnmatch(patterns.d[i], match, 0) == 0) {
+							if (quiet && orig)
+								pkg_printf("%o\n", pkg);
+							else if (quiet && !orig)
+								pkg_printf("%n-%v\n", pkg, pkg);
+							else if (!quiet && orig)
+								pkg_printf("%S was installed by package %o\n", match, pkg);
+							else
+								pkg_printf("%S was installed by package %n-%v\n", match, pkg, pkg);
+						}
 						free(match);
 					}
 				}
