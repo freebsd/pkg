@@ -149,26 +149,6 @@ void ucl_elt_string_write_squoted(const char *str, size_t size,
 	size_t len = 0;
 	const struct ucl_emitter_functions *func = ctx->func;
 
-	/*
-	 * Check if the string contains a backslash followed by a single quote.
-	 * The squoted parser treats \' as an escape sequence, but there is no
-	 * way to escape a literal backslash in squoted strings (the parser's
-	 * default case for \<other> preserves both characters). Fall back to
-	 * double-quoted output to avoid roundtrip corruption.
-	 */
-	{
-		const char *scan = str;
-		size_t remaining = size;
-		while (remaining > 1) {
-			if (scan[0] == '\\' && scan[1] == '\'') {
-				ucl_elt_string_write_json(str, size, ctx);
-				return;
-			}
-			scan++;
-			remaining--;
-		}
-	}
-
 	func->ucl_emitter_append_character('\'', 1, func->ud);
 
 	while (size) {
@@ -178,8 +158,8 @@ void ucl_elt_string_write_squoted(const char *str, size_t size,
 			}
 
 			len = 0;
-			func->ucl_emitter_append_len("\\\'", 2, func->ud);
 			c = ++p;
+			func->ucl_emitter_append_len("\\\'", 2, func->ud);
 		}
 		else {
 			p++;
@@ -199,27 +179,6 @@ void ucl_elt_string_write_multiline(const char *str, size_t size,
 									struct ucl_emitter_context *ctx)
 {
 	const struct ucl_emitter_functions *func = ctx->func;
-
-	/*
-	 * If the string contains "\nEOD\n", the heredoc would be prematurely
-	 * closed on re-parse.  Fall back to JSON-style escaping in that case.
-	 */
-	if (size >= 4) {
-		const char *found = str;
-		const char *send = str + size - 4;
-		while (found <= send) {
-			found = memchr(found, '\n', send - found + 1);
-			if (found == NULL) {
-				break;
-			}
-			if (memcmp(found + 1, "EOD", 3) == 0 &&
-				(found + 4 >= str + size || found[4] == '\n')) {
-				ucl_elt_string_write_json(str, size, ctx);
-				return;
-			}
-			found++;
-		}
-	}
 
 	func->ucl_emitter_append_len("<<EOD\n", sizeof("<<EOD\n") - 1, func->ud);
 	func->ucl_emitter_append_len(str, size, func->ud);
