@@ -1,9 +1,9 @@
 /*-
  * SPDX-License-Identifier: BSD-2-Clause
  *
- *​ Copyright (c) 2025 The FreeBSD Foundation
- *​
- *​ Portions of this software were developed by
+ * Copyright (c) 2025 The FreeBSD Foundation
+ *
+ * Portions of this software were developed by
  * Tuukka Pasanen <tuukka.pasanen@ilmi.fi> under sponsorship from
  * the FreeBSD Foundation
  */
@@ -619,57 +619,6 @@ pkg_osvf_open(const char *location)
 	return (obj);
 }
 
-static struct pkg_audit_entry *
-pkg_osvf_new_entry(void)
-{
-	struct pkg_audit_entry *entry = xcalloc(1, sizeof(struct pkg_audit_entry));
-
-	entry->packages = xcalloc(1, sizeof(struct pkg_audit_package));
-	entry->names = xcalloc(1, sizeof(struct pkg_audit_pkgname));
-	entry->versions = xcalloc(1, sizeof(struct pkg_audit_versions_range));
-	entry->cve = xcalloc(1, sizeof(struct pkg_audit_cve));
-	entry->references = xcalloc(1, sizeof(struct pkg_audit_reference));
-
-	return entry;
-}
-
-static void
-pkg_osvf_free_pkgname(struct pkg_audit_pkgname *pkgname)
-{
-	if(!pkgname)
-	{
-		return;
-	}
-
-	free(pkgname->pkgname);
-	pkgname->pkgname = NULL;
-
-	pkg_osvf_free_pkgname(pkgname->next);
-	pkgname->next = NULL;
-
-	free(pkgname);
-}
-
-static void
-pkg_osvf_free_version(struct pkg_audit_version *ver)
-{
-	if(!ver)
-	{
-		return;
-	}
-
-	free(ver->version);
-	ver->version = NULL;
-
-	free(ver);
-}
-
-static void
-pkg_osvf_free_range(struct pkg_audit_versions_range *range)
-{
-	free(range);
-}
-
 void
 pkg_osvf_free_ecosystem(struct pkg_audit_ecosystem *ecosystem)
 {
@@ -692,47 +641,7 @@ pkg_osvf_free_ecosystem(struct pkg_audit_ecosystem *ecosystem)
 }
 
 static void
-pkg_osvf_free_package(struct pkg_audit_package *package)
-{
-	if(!package)
-	{
-		return;
-	}
-
-	pkg_osvf_free_pkgname(package->names);
-	package->names = NULL;
-
-	pkg_osvf_free_range(package->versions);
-	package->versions = NULL;
-
-	pkg_osvf_free_ecosystem(package->ecosystem);
-	package->ecosystem = NULL;
-
-	pkg_osvf_free_package(package->next);
-	package->next = NULL;
-
-	free(package);
-}
-
-static void
-pkg_osvf_free_cve(struct pkg_audit_cve *cve)
-{
-	if(!cve)
-	{
-		return;
-	}
-
-	free(cve->cvename);
-	cve->cvename = NULL;
-
-	pkg_osvf_free_cve(cve->next);
-	cve->next = NULL;
-
-	free(cve);
-}
-
-static void
-pkg_osvf_free_reference(struct pkg_audit_reference *reference)
+pkg_osvf_free_reference(struct pkg_osvf_reference *reference)
 {
 	if(!reference)
 	{
@@ -748,56 +657,40 @@ pkg_osvf_free_reference(struct pkg_audit_reference *reference)
 	free(reference);
 }
 
-void
-pkg_osvf_free_entry(struct pkg_audit_entry *entry)
+static void
+pkg_osvf_free_audit_entry(struct pkg_audit_entry *e)
 {
-	struct pkg_audit_versions_range *versions = NULL;
-	struct pkg_audit_versions_range *next_versions = NULL;
+	vec_foreach(e->packages, pi) {
+		struct pkg_audit_package *p = &e->packages.d[pi];
+		vec_foreach(p->names, ni)
+			free(p->names.d[ni].pkgname);
+		vec_free(&p->names);
+		vec_foreach(p->versions, vi) {
+			free(p->versions.d[vi].v1.version);
+			free(p->versions.d[vi].v2.version);
+		}
+		vec_free(&p->versions);
+		pkg_osvf_free_ecosystem(p->ecosystem);
+	}
+	vec_free(&e->packages);
+	vec_foreach(e->cve, ci)
+		free(e->cve.d[ci].cvename);
+	vec_free(&e->cve);
+	free(e->url);
+	free(e->desc);
+	free(e->id);
+}
 
-	struct pkg_audit_pkgname *names = NULL;
-	struct pkg_audit_pkgname *next_names = NULL;
-
+void
+pkg_osvf_free_entry(struct pkg_osvf_entry *entry)
+{
 	if(!entry)
 	{
 		return;
 	}
 
-	versions = entry->versions;
-	names = entry->names;
-
-	if(entry->id)
-	{
-		free(entry->id);
-		entry->id = NULL;
-	}
-	if(entry->desc)
-	{
-		free(entry->desc);
-		entry->desc = NULL;
-	}
-
-	while(versions)
-	{
-		next_versions = versions->next;
-		free(versions);
-		versions = next_versions;
-	}
-
-	while(names)
-	{
-		next_names = names->next;
-		free(names);
-		names = next_names;
-	}
-
-	pkg_osvf_free_package(entry->packages);
-	entry->packages = NULL;
-
-	pkg_osvf_free_cve(entry->cve);
-	entry->cve = NULL;
-
+	pkg_osvf_free_audit_entry(&entry->audit);
 	pkg_osvf_free_reference(entry->references);
-	entry->references = NULL;
 
 	free(entry);
 }
@@ -949,7 +842,8 @@ pkg_osvf_parse_package(struct pkg_audit_package *package, const ucl_object_t *pa
 		return;
 	}
 
-	package->names->pkgname = xstrdup(pkg_osvf_ucl_string(package_obj, "name"));
+	vec_push(&package->names,
+	    ((struct pkg_audit_pkgname){ .pkgname = xstrdup(pkg_osvf_ucl_string(package_obj, "name")) }));
 	package->ecosystem = pkg_osvf_get_ecosystem(pkg_osvf_ucl_string(package_obj, "ecosystem"));
 }
 
@@ -996,13 +890,11 @@ pkg_osvf_parse_events(struct pkg_audit_versions_range *range, const ucl_object_t
 
 
 static void
-pkg_osvf_parse_ranges(struct pkg_audit_versions_range *range, const ucl_object_t *range_array)
+pkg_osvf_parse_ranges(audit_versv_t *versions, const ucl_object_t *range_array)
 {
 	ucl_object_iter_t it = NULL;
 	const ucl_object_t *cur = NULL;
-	struct pkg_audit_versions_range *next_range = NULL;
 	const ucl_object_t *sub_obj = NULL;
-	bool is_first = true;
 
 	if(!range_array || ucl_object_type(range_array) != UCL_ARRAY)
 	{
@@ -1024,12 +916,9 @@ pkg_osvf_parse_ranges(struct pkg_audit_versions_range *range, const ucl_object_t
 
 	while ((cur = ucl_iterate_object(range_array, &it, true)))
 	{
-		if (!is_first)
-		{
-			next_range = xcalloc(1, sizeof(struct pkg_audit_versions_range));
-			range->next = next_range;
-			range = next_range;
-		}
+		vec_push(versions, ((struct pkg_audit_versions_range){0}));
+		struct pkg_audit_versions_range *range =
+		    &versions->d[versions->len - 1];
 
 		sub_obj = ucl_object_find_key(cur, "events");
 
@@ -1037,13 +926,11 @@ pkg_osvf_parse_ranges(struct pkg_audit_versions_range *range, const ucl_object_t
 		{
 			pkg_osvf_parse_events(range, ucl_object_find_key(cur, "events"), pkg_osvf_ucl_string(cur, "type"));
 		}
-
-		is_first = false;
 	}
 }
 
 static void
-pkg_osvf_parse_reference(struct pkg_audit_reference *ref, const ucl_object_t *ref_obj)
+pkg_osvf_parse_reference(struct pkg_osvf_reference *ref, const ucl_object_t *ref_obj)
 {
 	if(!ref_obj || ucl_object_type(ref_obj) != UCL_OBJECT)
 	{
@@ -1062,13 +949,13 @@ pkg_osvf_parse_reference(struct pkg_audit_reference *ref, const ucl_object_t *re
 }
 
 static void
-pkg_osvf_parse_references(struct pkg_audit_entry *entry, const ucl_object_t *ref_obj)
+pkg_osvf_parse_references(struct pkg_osvf_entry *oentry, const ucl_object_t *ref_obj)
 {
 	ucl_object_iter_t it = NULL;
 	const ucl_object_t *cur = NULL;
 	bool is_first = true;
-	struct pkg_audit_reference *reference = entry->references;
-	struct pkg_audit_reference *next_package = NULL;
+	struct pkg_osvf_reference *reference = oentry->references;
+	struct pkg_osvf_reference *next_ref = NULL;
 
 
 	if(!ref_obj || ucl_object_type(ref_obj) != UCL_ARRAY)
@@ -1090,9 +977,9 @@ pkg_osvf_parse_references(struct pkg_audit_entry *entry, const ucl_object_t *ref
 	{
 		if (!is_first)
 		{
-			next_package = xcalloc(1, sizeof(struct pkg_audit_reference));
-			reference->next = next_package;
-			reference = next_package;
+			next_ref = xcalloc(1, sizeof(struct pkg_osvf_reference));
+			reference->next = next_ref;
+			reference = next_ref;
 		}
 
 		if(ucl_object_type(cur) == UCL_OBJECT)
@@ -1111,9 +998,6 @@ pkg_osvf_parse_affected(struct pkg_audit_entry *entry, const ucl_object_t *aff_o
 	ucl_object_iter_t it = NULL;
 	const ucl_object_t *cur = NULL;
 	const ucl_object_t *array_obj = NULL;
-	bool is_first = true;
-	struct pkg_audit_package *package = entry->packages;
-	struct pkg_audit_package *next_package = NULL;
 
 	if(!aff_obj || ucl_object_type(aff_obj) != UCL_ARRAY)
 	{
@@ -1145,18 +1029,14 @@ pkg_osvf_parse_affected(struct pkg_audit_entry *entry, const ucl_object_t *aff_o
 	*/
 	while ((cur = ucl_iterate_object(aff_obj, &it, true)))
 	{
-		if (!is_first)
-		{
-			next_package = xcalloc(1, sizeof(struct pkg_audit_package));
-			package->next = next_package;
-			package = next_package;
-		}
+		vec_push(&entry->packages, ((struct pkg_audit_package){0}));
+		struct pkg_audit_package *package =
+		    &entry->packages.d[entry->packages.len - 1];
 
 		array_obj = ucl_object_find_key(cur, "package");
 
 		if(array_obj && ucl_object_type(aff_obj) == UCL_ARRAY)
 		{
-			package->names = xcalloc(1, sizeof(struct pkg_audit_pkgname));
 			pkg_osvf_parse_package(package, array_obj);
 		}
 
@@ -1164,38 +1044,8 @@ pkg_osvf_parse_affected(struct pkg_audit_entry *entry, const ucl_object_t *aff_o
 
 		if(array_obj && ucl_object_type(array_obj) == UCL_ARRAY)
 		{
-			package->versions = xcalloc(1, sizeof(struct pkg_audit_versions_range));
-			pkg_osvf_parse_ranges(package->versions, array_obj);
+			pkg_osvf_parse_ranges(&package->versions, array_obj);
 		}
-
-		is_first = false;
-	}
-}
-
-static void
-pkg_osvf_append_version_range(struct pkg_audit_versions_range *to, struct pkg_audit_versions_range *from)
-{
-	struct pkg_audit_versions_range *ptr_from = from;
-	struct pkg_audit_versions_range *ptr_to = to;
-
-	to->v1.type = from->v1.type;
-	to->v1.version = from->v1.version;
-	to->v2.type = from->v2.type;
-	to->v2.version = from->v2.version;
-	to->type = from->type;
-
-	while(ptr_from->next)
-	{
-		ptr_to->next = xcalloc(1, sizeof(struct pkg_audit_versions_range));
-
-		ptr_to = ptr_to->next;
-		ptr_from = ptr_from->next;
-
-		ptr_to->v1.type = ptr_from->v1.type;
-		ptr_to->v1.version = ptr_from->v1.version;
-		ptr_to->v2.type = ptr_from->v2.type;
-		ptr_to->v2.version = ptr_from->v2.version;
-		ptr_to->type = ptr_from->type;
 	}
 }
 
@@ -1293,34 +1143,36 @@ pkg_osvf_print_ecosystem(struct pkg_audit_ecosystem *ecosystem)
 }
 
 void
-pkg_osvf_print_entry(struct pkg_audit_entry *entry)
+pkg_osvf_print_entry(struct pkg_osvf_entry *oentry)
 {
 	char buf[255];
-	struct pkg_audit_package *packages = NULL;
-	struct pkg_audit_versions_range *versions = NULL;
-	struct pkg_audit_reference *references;
-	struct pkg_audit_pkgname *names = NULL;
-	bool is_first = true;
+	struct pkg_audit_entry *entry = &oentry->audit;
+	struct pkg_osvf_reference *references;
 
-	if(!entry)
+	if(!oentry)
 	{
 		return;
 	}
 
-	names = entry->names;
-
 	printf("OSVF Vulnerability information:\n");
-	printf("\tPackage name: %s\n", entry->pkgname);
+
+	/* Print first package name as the primary name */
+	if (entry->packages.len > 0 && entry->packages.d[0].names.len > 0)
+		printf("\tPackage name: %s\n", entry->packages.d[0].names.d[0].pkgname);
+
+	/* Print all package names */
 	printf("\tPackage names: ");
-	while(names)
 	{
-		if (!is_first)
-		{
-			printf(", ");
+		bool is_first = true;
+		vec_foreach(entry->packages, pi) {
+			struct pkg_audit_package *p = &entry->packages.d[pi];
+			vec_foreach(p->names, ni) {
+				if (!is_first)
+					printf(", ");
+				printf("%s", p->names.d[ni].pkgname);
+				is_first = false;
+			}
 		}
-		printf("%s", names->pkgname);
-		names = names->next;
-		is_first = false;
 	}
 
 	printf("\n");
@@ -1340,40 +1192,35 @@ pkg_osvf_print_entry(struct pkg_audit_entry *entry)
 
 	printf("Vulnerable versions:\n");
 
-	versions = entry->versions;
-
-	while(versions)
-	{
-		pkg_osvf_print_version_type(versions);
-		pkg_osvf_print_version(&versions->v1);
-		pkg_osvf_print_version(&versions->v2);
-		versions = versions->next;
+	/* Print all versions from all packages */
+	vec_foreach(entry->packages, pi) {
+		struct pkg_audit_package *p = &entry->packages.d[pi];
+		vec_foreach(p->versions, vi) {
+			struct pkg_audit_versions_range *vers = &p->versions.d[vi];
+			pkg_osvf_print_version_type(vers);
+			pkg_osvf_print_version(&vers->v1);
+			pkg_osvf_print_version(&vers->v2);
+		}
 	}
 
 	printf("Vulnerable packages:\n");
 
-	packages = entry->packages;
-
-	while(packages)
-	{
-		printf("\tPackage name: %s\n", packages->names->pkgname);
-		pkg_osvf_print_ecosystem(packages->ecosystem);
-		versions = packages->versions;
-
-		while(versions)
-		{
-			pkg_osvf_print_version_type(versions);
-			pkg_osvf_print_version(&versions->v1);
-			pkg_osvf_print_version(&versions->v2);
-			versions = versions->next;
+	vec_foreach(entry->packages, pi) {
+		struct pkg_audit_package *p = &entry->packages.d[pi];
+		if (p->names.len > 0)
+			printf("\tPackage name: %s\n", p->names.d[0].pkgname);
+		pkg_osvf_print_ecosystem(p->ecosystem);
+		vec_foreach(p->versions, vi) {
+			struct pkg_audit_versions_range *vers = &p->versions.d[vi];
+			pkg_osvf_print_version_type(vers);
+			pkg_osvf_print_version(&vers->v1);
+			pkg_osvf_print_version(&vers->v2);
 		}
-
-		packages = packages->next;
 	}
 
 	printf("Vulnerability references:\n");
 
-	references = entry->references;
+	references = oentry->references;
 
 	while(references)
 	{
@@ -1417,24 +1264,24 @@ pkg_osvf_print_entry(struct pkg_audit_entry *entry)
 	}
 }
 
-struct pkg_audit_entry *
+struct pkg_osvf_entry *
 pkg_osvf_create_entry(ucl_object_t *osvf_obj)
 {
+	struct pkg_osvf_entry *oentry = NULL;
 	struct pkg_audit_entry *entry = NULL;
-	struct pkg_audit_package *packages = NULL;
-	struct pkg_audit_pkgname *names = NULL;
-	struct pkg_audit_versions_range *versions = NULL;
 	const ucl_object_t *sub_obj = NULL;
 	/* Date format is in RFC3339 */
 	const char *date_time_str = "%Y-%m-%dT%H:%M:%SZ";
 
-	entry = pkg_osvf_new_entry();
-
 	/* We are probably out of memory or JSON does not exist */
-	if(osvf_obj == NULL || entry == NULL)
+	if(osvf_obj == NULL)
 	{
 		return NULL;
 	}
+
+	oentry = xcalloc(1, sizeof(struct pkg_osvf_entry));
+	entry = &oentry->audit;
+	oentry->references = xcalloc(1, sizeof(struct pkg_osvf_reference));
 
 	memset(&entry->modified, 0, sizeof(struct tm));
 	memset(&entry->published, 0, sizeof(struct tm));
@@ -1454,6 +1301,7 @@ pkg_osvf_create_entry(ucl_object_t *osvf_obj)
 	}
 	else
 	{
+		pkg_osvf_free_entry(oentry);
 		return NULL;
 	}
 
@@ -1461,34 +1309,17 @@ pkg_osvf_create_entry(ucl_object_t *osvf_obj)
 
 	if(sub_obj && ucl_object_type(sub_obj) == UCL_ARRAY)
 	{
-		pkg_osvf_parse_references(entry, ucl_object_find_key(osvf_obj, "references"));
+		pkg_osvf_parse_references(oentry, ucl_object_find_key(osvf_obj, "references"));
 	}
 	else
 	{
+		pkg_osvf_free_entry(oentry);
 		return NULL;
 	}
 
-	entry->url = entry->references->url;
-
-	packages = entry->packages;
-	names = entry->names;
-	versions = entry->versions;
-
-	names->pkgname = packages->names->pkgname;
-	pkg_osvf_append_version_range(versions, packages->versions);
-
-	while(packages->next)
-	{
-		packages = packages->next;
-		names->next = xcalloc(1, sizeof(struct pkg_audit_pkgname));
-		names = names->next;
-		names->pkgname = packages->names->pkgname;
-		versions->next = xcalloc(1, sizeof(struct pkg_audit_versions_range));
-		versions = versions->next;
-		pkg_osvf_append_version_range(versions, packages->versions);
-	}
-
-	entry->pkgname = entry->names->pkgname;
+	/* Set entry->url from first reference */
+	if (oentry->references != NULL && oentry->references->url != NULL)
+		entry->url = xstrdup(oentry->references->url);
 
 	if(ucl_object_find_key(osvf_obj, "modified"))
 	{
@@ -1509,5 +1340,5 @@ pkg_osvf_create_entry(ucl_object_t *osvf_obj)
 		}
 	}
 
-	return entry;
+	return oentry;
 }

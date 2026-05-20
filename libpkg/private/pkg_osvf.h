@@ -1,9 +1,9 @@
 /*-
  * SPDX-License-Identifier: BSD-2-Clause
  *
- *​ Copyright (c) 2025 The FreeBSD Foundation
- *​
- *​ Portions of this software were developed by
+ * Copyright (c) 2025 The FreeBSD Foundation
+ *
+ * Portions of this software were developed by
  * Tuukka Pasanen <tuukka.pasanen@ilmi.fi> under sponsorship from
  * the FreeBSD Foundation
  */
@@ -38,7 +38,7 @@ enum event_types
  *            defined by SemVer 2.0.0,
  * ECOSYSTEM: The versions introduced and fixed are arbitrary,
  *            uninterpreted stringsspecific to the package ecosystem,
- *            which does not conform to SemVer 2.0’s version ordering
+ *            which does not conform to SemVer 2.0's version ordering
  * GIT:       The versions introduced and fixed are full-length Git
  *            commit hashes
  */
@@ -82,14 +82,25 @@ enum references_types
 	OSVF_REFERENCE_WEB
 };
 
+struct pkg_osvf_reference {
+	char *url;
+	int type;
+	struct pkg_osvf_reference *next;
+};
+
+struct pkg_osvf_entry {
+	struct pkg_audit_entry audit;
+	struct pkg_osvf_reference *references;
+};
+
 ucl_object_t *
 pkg_osvf_open(const char *location);
 
-struct pkg_audit_entry *
+struct pkg_osvf_entry *
 pkg_osvf_create_entry(ucl_object_t *osvf_obj);
 
 void
-pkg_osvf_free_entry(struct pkg_audit_entry *entry);
+pkg_osvf_free_entry(struct pkg_osvf_entry *entry);
 
 void
 pkg_osvf_free_ecosystem(struct pkg_audit_ecosystem *ecosystem);
@@ -104,6 +115,6 @@ unsigned int
 pkg_osvf_get_event(const char *reference_type);
 
 void
-pkg_osvf_print_entry(struct pkg_audit_entry *entry);
+pkg_osvf_print_entry(struct pkg_osvf_entry *entry);
 
 #endif

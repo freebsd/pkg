@@ -97,16 +97,18 @@ static void
 print_issue(struct pkg *p, struct pkg_audit_issue *issue)
 {
 	const char *version = NULL;
-	struct pkg_audit_versions_range *vers;
 	const struct pkg_audit_entry *e;
-	struct pkg_audit_cve *cve;
 
 	pkg_get(p, PKG_ATTR_VERSION, &version);
 
 	e = issue->audit;
 	if (version == NULL) {
+		const audit_versv_t *versions =
+		    &e->packages.d[issue->pkg_idx].versions;
 		printf("  Affected versions:\n");
-		ll_foreach(e->versions, vers) {
+		vec_foreach(*versions, _vi) {
+			const struct pkg_audit_versions_range *vers =
+			    &versions->d[_vi];
 			if (vers->v1.type > 0 && vers->v2.type > 0)
 				printf("  %s %s : %s %s\n",
 				    vop_names[vers->v1.type], vers->v1.version,
@@ -120,8 +122,8 @@ print_issue(struct pkg *p, struct pkg_audit_issue *issue)
 		}
 	}
 	printf("  %s\n", e->desc);
-	ll_foreach(e->cve, cve) {
-		printf("  CVE: %s\n", cve->cvename);
+	vec_foreach(e->cve, _ci) {
+		printf("  CVE: %s\n", e->cve.d[_ci].cvename);
 	}
 	if (e->url)
 		printf("  WWW: %s\n\n", e->url);
@@ -132,9 +134,7 @@ print_issue(struct pkg *p, struct pkg_audit_issue *issue)
 static void
 format_issue(struct pkg_audit_issue *issue, ucl_object_t *array)
 {
-	struct pkg_audit_versions_range *vers;
 	const struct pkg_audit_entry *e;
-	struct pkg_audit_cve *cve;
 	ucl_object_t *o = ucl_object_typed_new(UCL_OBJECT);
 	ucl_object_t *affected_versions = ucl_object_typed_new(UCL_ARRAY);
 
@@ -142,7 +142,9 @@ format_issue(struct pkg_audit_issue *issue, ucl_object_t *array)
 
 	e = issue->audit;
 	ucl_object_insert_key(o, affected_versions, "Affected versions", 17, false);
-	ll_foreach(e->versions, vers) {
+	const audit_versv_t *versions = &e->packages.d[issue->pkg_idx].versions;
+	vec_foreach(*versions, _vi) {
+		const struct pkg_audit_versions_range *vers = &versions->d[_vi];
 		char *ver;
 		if (vers->v1.type > 0 && vers->v2.type > 0)
 			xasprintf(&ver, "%s %s : %s %s",
@@ -158,10 +160,10 @@ format_issue(struct pkg_audit_issue *issue, ucl_object_t *array)
 		free(ver);
 	}
 	ucl_object_insert_key(o, ucl_object_fromstring(e->desc), "description", 11, false);
-	if (e->cve) {
+	if (e->cve.len > 0) {
 		ucl_object_t *acve = ucl_object_typed_new(UCL_ARRAY);
-		ll_foreach(e->cve, cve) {
-			ucl_array_append(acve, ucl_object_fromstring(cve->cvename));
+		vec_foreach(e->cve, _ci) {
+			ucl_array_append(acve, ucl_object_fromstring(e->cve.d[_ci].cvename));
 		}
 		ucl_object_insert_key(o, acve, "cve", 3, false);
 	}

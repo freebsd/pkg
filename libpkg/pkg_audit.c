@@ -35,7 +35,6 @@
 #include <fnmatch.h>
 #include <stdio.h>
 #include <string.h>
-#include <utlist.h>
 #include <xstring.h>
 
 #include <yxml.h>
@@ -80,13 +79,15 @@
  */
 struct pkg_audit_item {
 	struct pkg_audit_entry *e;	/* Entry itself */
-	size_t noglob_len;	/* Prefix without glob characters */
-	size_t next_pfx_incr;	/* Index increment for the entry with
-				   different prefix */
+	size_t pkg_idx;			/* Index into e->packages */
+	size_t name_idx;		/* Index into e->packages.d[pkg_idx].names */
+	size_t noglob_len;		/* Prefix without glob characters */
+	size_t next_pfx_incr;		/* Index increment for the entry with
+					   different prefix */
 };
 
 struct pkg_audit {
-	struct pkg_audit_entry *entries;
+	audit_entryv_t entries;
 	struct pkg_audit_item *items;
 	bool parsed;
 	bool loaded;
@@ -112,46 +113,32 @@ static size_t audit_entry_first_byte_idx[256];
 static void
 pkg_audit_free_entry(struct pkg_audit_entry *e)
 {
-	struct pkg_audit_package *ppkg, *ppkg_tmp;
-	struct pkg_audit_versions_range *vers, *vers_tmp;
-	struct pkg_audit_cve *cve, *cve_tmp;
-	struct pkg_audit_pkgname *pname, *pname_tmp;
-
-	if (!e->ref) {
-		LL_FOREACH_SAFE(e->packages, ppkg, ppkg_tmp) {
-			LL_FOREACH_SAFE(ppkg->versions, vers, vers_tmp) {
-				free(vers->v1.version);
-				free(vers->v2.version);
-				free(vers);
-			}
-
-			LL_FOREACH_SAFE(ppkg->names, pname, pname_tmp) {
-				free(pname->pkgname);
-				free(pname);
-			}
-			free(ppkg);
+	vec_foreach(e->packages, pi) {
+		struct pkg_audit_package *p = &e->packages.d[pi];
+		vec_foreach(p->names, ni)
+			free(p->names.d[ni].pkgname);
+		vec_free(&p->names);
+		vec_foreach(p->versions, vi) {
+			free(p->versions.d[vi].v1.version);
+			free(p->versions.d[vi].v2.version);
 		}
-		LL_FOREACH_SAFE(e->cve, cve, cve_tmp) {
-			free(cve->cvename);
-			free(cve);
-		}
-			free(e->url);
-			free(e->desc);
-			free(e->id);
+		vec_free(&p->versions);
 	}
-	free(e);
+	vec_free(&e->packages);
+	vec_foreach(e->cve, ci)
+		free(e->cve.d[ci].cvename);
+	vec_free(&e->cve);
+	free(e->url);
+	free(e->desc);
+	free(e->id);
 }
 
 static void
-pkg_audit_free_list(struct pkg_audit_entry *h)
+pkg_audit_free_entries(audit_entryv_t *entries)
 {
-	struct pkg_audit_entry *e;
-
-	while (h) {
-		e = h;
-		h = h->next;
-		pkg_audit_free_entry(e);
-	}
+	vec_foreach(*entries, i)
+		pkg_audit_free_entry(&entries->d[i]);
+	vec_free(entries);
 }
 
 struct pkg_audit_extract_cbdata {
@@ -281,39 +268,6 @@ cleanup:
 	return (retcode);
 }
 
-/*
- * Expand multiple names to a set of audit entries
- */
-static void
-pkg_audit_expand_entry(struct pkg_audit_entry *entry, struct pkg_audit_entry **head)
-{
-	struct pkg_audit_entry *n;
-	struct pkg_audit_pkgname *ncur;
-	struct pkg_audit_package *pcur;
-
-	/* Set the name of the current entry */
-	if (entry->packages == NULL || entry->packages->names == NULL) {
-		pkg_audit_free_entry(entry);
-		return;
-	}
-
-	LL_FOREACH(entry->packages, pcur) {
-		LL_FOREACH(pcur->names, ncur) {
-			n = xcalloc(1, sizeof(struct pkg_audit_entry));
-			n->pkgname = ncur->pkgname;
-			/* Set new entry as reference entry */
-			n->ref = true;
-			n->cve = entry->cve;
-			n->desc = entry->desc;
-			n->versions = pcur->versions;
-			n->url = entry->url;
-			n->id = entry->id;
-			LL_PREPEND(*head, n);
-		}
-	}
-	LL_PREPEND(*head, entry);
-}
-
 enum vulnxml_parse_state {
 	VULNXML_PARSE_INIT = 0,
 	VULNXML_PARSE_VULN,
@@ -346,21 +300,16 @@ struct vulnxml_userdata {
 static void
 vulnxml_start_element(struct vulnxml_userdata *ud, yxml_t *xml)
 {
-	struct pkg_audit_versions_range *vers;
-	struct pkg_audit_pkgname *name_entry;
-	struct pkg_audit_package *pkg_entry;
-
 	if (ud->state == VULNXML_PARSE_INIT && STRIEQ(xml->elem, "vuln")) {
-		ud->cur_entry = xcalloc(1, sizeof(struct pkg_audit_entry));
-		ud->cur_entry->next = ud->audit->entries;
+		vec_push(&ud->audit->entries, ((struct pkg_audit_entry){0}));
+		ud->cur_entry = &ud->audit->entries.d[ud->audit->entries.len - 1];
 		ud->state = VULNXML_PARSE_VULN;
 	}
 	else if (ud->state == VULNXML_PARSE_VULN && STRIEQ(xml->elem, "topic")) {
 		ud->state = VULNXML_PARSE_TOPIC;
 	}
 	else if (ud->state == VULNXML_PARSE_VULN && STRIEQ(xml->elem, "package")) {
-		pkg_entry = xcalloc(1, sizeof(struct pkg_audit_package));
-		LL_PREPEND(ud->cur_entry->packages, pkg_entry);
+		vec_push(&ud->cur_entry->packages, ((struct pkg_audit_package){0}));
 		ud->state = VULNXML_PARSE_PACKAGE;
 	}
 	else if (ud->state == VULNXML_PARSE_VULN && STRIEQ(xml->elem, "cvename")) {
@@ -368,13 +317,15 @@ vulnxml_start_element(struct vulnxml_userdata *ud, yxml_t *xml)
 	}
 	else if (ud->state == VULNXML_PARSE_PACKAGE && STRIEQ(xml->elem, "name")) {
 		ud->state = VULNXML_PARSE_PACKAGE_NAME;
-		name_entry = xcalloc(1, sizeof(struct pkg_audit_pkgname));
-		LL_PREPEND(ud->cur_entry->packages->names, name_entry);
+		struct pkg_audit_package *cur_pkg =
+		    &ud->cur_entry->packages.d[ud->cur_entry->packages.len - 1];
+		vec_push(&cur_pkg->names, ((struct pkg_audit_pkgname){0}));
 	}
 	else if (ud->state == VULNXML_PARSE_PACKAGE && STRIEQ(xml->elem, "range")) {
 		ud->state = VULNXML_PARSE_RANGE;
-		vers = xcalloc(1, sizeof(struct pkg_audit_versions_range));
-		LL_PREPEND(ud->cur_entry->packages->versions, vers);
+		struct pkg_audit_package *cur_pkg =
+		    &ud->cur_entry->packages.d[ud->cur_entry->packages.len - 1];
+		vec_push(&cur_pkg->versions, ((struct pkg_audit_versions_range){0}));
 		ud->range_num = 0;
 	}
 	else if (ud->state == VULNXML_PARSE_RANGE && STRIEQ(xml->elem, "gt")) {
@@ -402,14 +353,19 @@ vulnxml_start_element(struct vulnxml_userdata *ud, yxml_t *xml)
 static void
 vulnxml_end_element(struct vulnxml_userdata *ud, yxml_t *xml)
 {
-	struct pkg_audit_cve *cve;
-	struct pkg_audit_entry *entry;
 	struct pkg_audit_versions_range *vers;
 	int range_type = -1;
 
 	fflush(ud->content->fp);
 	if (ud->state == VULNXML_PARSE_VULN && STRIEQ(xml->elem, "vuxml")) {
-		pkg_audit_expand_entry(ud->cur_entry, &ud->audit->entries);
+		/* Entry is already in the vec, just validate it */
+		struct pkg_audit_entry *e = ud->cur_entry;
+		if (e->packages.len == 0 ||
+		    (e->packages.len > 0 && e->packages.d[0].names.len == 0)) {
+			/* Invalid entry: remove from vec and free */
+			pkg_audit_free_entry(e);
+			ud->audit->entries.len--;
+		}
 		ud->state = VULNXML_PARSE_INIT;
 	}
 	else if (ud->state == VULNXML_PARSE_TOPIC && STRIEQ(xml->elem, "vuln")) {
@@ -417,17 +373,19 @@ vulnxml_end_element(struct vulnxml_userdata *ud, yxml_t *xml)
 		ud->state = VULNXML_PARSE_VULN;
 	}
 	else if (ud->state == VULNXML_PARSE_CVE && STRIEQ(xml->elem, "references")) {
-		entry = ud->cur_entry;
-		cve = xmalloc(sizeof(struct pkg_audit_cve));
-		cve->cvename = xstrdup(ud->content->buf);
-		LL_PREPEND(entry->cve, cve);
+		vec_push(&ud->cur_entry->cve,
+		    ((struct pkg_audit_cve){ .cvename = xstrdup(ud->content->buf) }));
 		ud->state = VULNXML_PARSE_VULN;
 	}
 	else if (ud->state == VULNXML_PARSE_PACKAGE && STRIEQ(xml->elem, "affects")) {
 		ud->state = VULNXML_PARSE_VULN;
 	}
 	else if (ud->state == VULNXML_PARSE_PACKAGE_NAME && STRIEQ(xml->elem, "package")) {
-		ud->cur_entry->packages->names->pkgname = xstrdup(ud->content->buf);
+		struct pkg_audit_package *cur_pkg =
+		    &ud->cur_entry->packages.d[ud->cur_entry->packages.len - 1];
+		struct pkg_audit_pkgname *cur_name =
+		    &cur_pkg->names.d[cur_pkg->names.len - 1];
+		cur_name->pkgname = xstrdup(ud->content->buf);
 		ud->state = VULNXML_PARSE_PACKAGE;
 	}
 	else if (ud->state == VULNXML_PARSE_RANGE && STRIEQ(xml->elem, "package")) {
@@ -455,7 +413,9 @@ vulnxml_end_element(struct vulnxml_userdata *ud, yxml_t *xml)
 	}
 
 	if (range_type > 0) {
-		vers = ud->cur_entry->packages->versions;
+		struct pkg_audit_package *cur_pkg =
+		    &ud->cur_entry->packages.d[ud->cur_entry->packages.len - 1];
+		vers = &cur_pkg->versions.d[cur_pkg->versions.len - 1];
 		if (ud->range_num == 1) {
 			vers->v1.version = xstrdup(ud->content->buf);
 			vers->v1.type = range_type;
@@ -608,6 +568,15 @@ pkg_audit_str_noglob_len(const char *s)
 }
 
 /*
+ * Helper to get pkgname from an audit item.
+ */
+static const char *
+pkg_audit_item_pkgname(const struct pkg_audit_item *item)
+{
+	return item->e->packages.d[item->pkg_idx].names.d[item->name_idx].pkgname;
+}
+
+/*
  * Helper for quicksort that lexicographically orders prefixes.
  */
 static int
@@ -622,7 +591,8 @@ pkg_audit_entry_cmp(const void *a, const void *b)
 
 	min_len = (e1->noglob_len < e2->noglob_len ?
 	    e1->noglob_len : e2->noglob_len);
-	result = strncmp(e1->e->pkgname, e2->e->pkgname, min_len);
+	result = strncmp(pkg_audit_item_pkgname(e1),
+	    pkg_audit_item_pkgname(e2), min_len);
 	/*
 	 * Additional check to see if some word is a prefix of an
 	 * another one and, thus, should go before the former.
@@ -642,24 +612,38 @@ pkg_audit_entry_cmp(const void *a, const void *b)
  * next distinct prefix.
  */
 static struct pkg_audit_item *
-pkg_audit_preprocess(struct pkg_audit_entry *h)
+pkg_audit_preprocess(audit_entryv_t *entries)
 {
-	struct pkg_audit_entry *e;
 	struct pkg_audit_item *ret;
 	size_t i, n, tofill;
 
+	/* Count total items (entry x package x name) */
 	n = 0;
-	LL_FOREACH(h, e)
-		n++;
+	vec_foreach(*entries, ei) {
+		struct pkg_audit_entry *e = &entries->d[ei];
+		vec_foreach(e->packages, pi) {
+			n += e->packages.d[pi].names.len;
+		}
+	}
 
 	ret = xcalloc(n + 1, sizeof(ret[0]));
 	n = 0;
-	LL_FOREACH(h, e) {
-		if (e->pkgname != NULL) {
-			ret[n].e = e;
-			ret[n].noglob_len = pkg_audit_str_noglob_len(e->pkgname);
-			ret[n].next_pfx_incr = 1;
-			n++;
+
+	vec_foreach(*entries, ei) {
+		struct pkg_audit_entry *e = &entries->d[ei];
+		vec_foreach(e->packages, pi) {
+			struct pkg_audit_package *p = &e->packages.d[pi];
+			vec_foreach(p->names, ni) {
+				const char *pkgname = p->names.d[ni].pkgname;
+				if (pkgname != NULL) {
+					ret[n].e = e;
+					ret[n].pkg_idx = pi;
+					ret[n].name_idx = ni;
+					ret[n].noglob_len = pkg_audit_str_noglob_len(pkgname);
+					ret[n].next_pfx_incr = 1;
+					n++;
+				}
+			}
 		}
 	}
 
@@ -686,7 +670,8 @@ pkg_audit_preprocess(struct pkg_audit_entry *h)
 			for (i = 0; tofill > 1; i++, tofill--)
 				base[i].next_pfx_incr = tofill;
 			tofill = 1;
-		} else if (STREQ(ret[n - 1].e->pkgname, ret[n].e->pkgname)) {
+		} else if (STREQ(pkg_audit_item_pkgname(&ret[n - 1]),
+		    pkg_audit_item_pkgname(&ret[n]))) {
 			tofill++;
 		} else {
 			tofill = 1;
@@ -698,7 +683,7 @@ first_byte_idx:
 	memset(audit_entry_first_byte_idx, '\0', sizeof(audit_entry_first_byte_idx));
 	for (n = 1, i = 0; n < 256; n++) {
 		while (ret[i].e != NULL &&
-		    (size_t)(ret[i].e->pkgname[0]) < n)
+		    (size_t)(pkg_audit_item_pkgname(&ret[i])[0]) < n)
 			i++;
 		audit_entry_first_byte_idx[n] = i;
 	}
@@ -736,11 +721,13 @@ pkg_audit_version_match(const char *pkgversion, struct pkg_audit_version *v)
 }
 
 static void
-pkg_audit_add_entry(struct pkg_audit_entry *e, struct pkg_audit_issues **ai)
+pkg_audit_add_entry(struct pkg_audit_entry *e, size_t pkg_idx,
+    struct pkg_audit_issues **ai)
 {
 	if (*ai == NULL)
 		*ai = xcalloc(1, sizeof(**ai));
-	vec_push(&(*ai)->issues, ((struct pkg_audit_issue){ .audit = e }));
+	vec_push(&(*ai)->issues,
+	    ((struct pkg_audit_issue){ .audit = e, .pkg_idx = pkg_idx }));
 }
 
 bool
@@ -748,7 +735,6 @@ pkg_audit_is_vulnerable(struct pkg_audit *audit, struct pkg *pkg,
     struct pkg_audit_issues **ai, bool stop_quick)
 {
 	struct pkg_audit_entry *e;
-	struct pkg_audit_versions_range *vers;
 	struct pkg_audit_item *a;
 	bool res = false, res1, res2;
 
@@ -767,13 +753,15 @@ pkg_audit_is_vulnerable(struct pkg_audit *audit, struct pkg *pkg,
 	for (; (e = a->e) != NULL; a += a->next_pfx_incr) {
 		int cmp;
 		size_t i;
+		const char *pkgname;
 
 		/*
 		 * Audit entries are sorted, so if we had found one
 		 * that is lexicographically greater than our name,
 		 * it and the rest won't match our name.
 		 */
-		cmp = strncmp(pkg->name, e->pkgname, a->noglob_len);
+		pkgname = pkg_audit_item_pkgname(a);
+		cmp = strncmp(pkg->name, pkgname, a->noglob_len);
 		if (cmp > 0)
 			continue;
 		else if (cmp < 0)
@@ -781,7 +769,8 @@ pkg_audit_is_vulnerable(struct pkg_audit *audit, struct pkg *pkg,
 
 		for (i = 0; i < a->next_pfx_incr; i++) {
 			e = a[i].e;
-			if (fnmatch(e->pkgname, pkg->name, 0) != 0)
+			pkgname = pkg_audit_item_pkgname(&a[i]);
+			if (fnmatch(pkgname, pkg->name, 0) != 0)
 				continue;
 
 			if (pkg->version == NULL) {
@@ -789,16 +778,23 @@ pkg_audit_is_vulnerable(struct pkg_audit *audit, struct pkg *pkg,
 				 * Assume that all versions should be checked
 				 */
 				res = true;
-				pkg_audit_add_entry(e, ai);
+				pkg_audit_add_entry(e, a[i].pkg_idx, ai);
 			}
 			else {
-				LL_FOREACH(e->versions, vers) {
-					res1 = pkg_audit_version_match(pkg->version, &vers->v1);
-					res2 = pkg_audit_version_match(pkg->version, &vers->v2);
+				audit_versv_t *versions =
+				    &e->packages.d[a[i].pkg_idx].versions;
+				vec_foreach(*versions, vi) {
+					struct pkg_audit_versions_range *vers =
+					    &versions->d[vi];
+					res1 = pkg_audit_version_match(
+					    pkg->version, &vers->v1);
+					res2 = pkg_audit_version_match(
+					    pkg->version, &vers->v2);
 
 					if (res1 && res2) {
 						res = true;
-						pkg_audit_add_entry(e, ai);
+						pkg_audit_add_entry(e,
+						    a[i].pkg_idx, ai);
 						break;
 					}
 				}
@@ -869,7 +865,7 @@ pkg_audit_process(struct pkg_audit *audit)
 	if (pkg_audit_parse_vulnxml(audit) == EPKG_FATAL)
 		return (EPKG_FATAL);
 
-	audit->items = pkg_audit_preprocess(audit->entries);
+	audit->items = pkg_audit_preprocess(&audit->entries);
 	audit->parsed = true;
 
 	return (EPKG_OK);
@@ -880,7 +876,7 @@ pkg_audit_free (struct pkg_audit *audit)
 {
 	if (audit != NULL) {
 		if (audit->parsed) {
-			pkg_audit_free_list(audit->entries);
+			pkg_audit_free_entries(&audit->entries);
 			free(audit->items);
 		}
 		if (audit->loaded) {

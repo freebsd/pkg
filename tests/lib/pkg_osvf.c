@@ -1,9 +1,9 @@
 /*-
  * SPDX-License-Identifier: BSD-2-Clause
  *
- *​ Copyright (c) 2025 The FreeBSD Foundation
- *​
- *​ Portions of this software were developed by
+ * Copyright (c) 2025 The FreeBSD Foundation
+ *
+ * Portions of this software were developed by
  * Tuukka Pasanen <tuukka.pasanen@ilmi.fi> under sponsorship from
  * the FreeBSD Foundation
  */
@@ -199,10 +199,7 @@ ATF_TC_BODY(osvfparse, tc)
 		OSVF_REFERENCE_EVIDENCE,
 		OSVF_REFERENCE_WEB
 	};
-	struct pkg_audit_versions_range *versions = NULL;
-	struct pkg_audit_pkgname *names = NULL;
-	struct pkg_audit_reference *references = NULL;
-	struct pkg_audit_package *packages = NULL;
+	struct pkg_osvf_reference *references = NULL;
 	int pos = 0;
 	int subpos = 0;
 	int otherpos = 0;
@@ -210,20 +207,19 @@ ATF_TC_BODY(osvfparse, tc)
 	obj = pkg_osvf_open(osvf_json_path);
 	ATF_REQUIRE(obj != NULL);
 
-	struct pkg_audit_entry *entry = pkg_osvf_create_entry(obj);
+	struct pkg_osvf_entry *oentry = pkg_osvf_create_entry(obj);
 	ucl_object_unref(obj);
 
-	ATF_REQUIRE(entry != NULL);
+	ATF_REQUIRE(oentry != NULL);
+	struct pkg_audit_entry *entry = &oentry->audit;
 
-	ATF_CHECK_STREQ(entry->pkgname, "osvf-test-package10");
+	/* First package's first name is the primary name */
+	ATF_CHECK_STREQ(entry->packages.d[0].names.d[0].pkgname, "osvf-test-package10");
 	ATF_CHECK_STREQ(entry->desc, "OSVF test");
 	ATF_CHECK_STREQ(entry->url, "https://www.freebsd.org/");
 	ATF_CHECK_STREQ(entry->id, "FBSD-2025-05-28");
 
-	versions = entry->versions;
-	names = entry->names;
-	references = entry->references;
-	packages = entry->packages;
+	references = oentry->references;
 
 	while(references)
 	{
@@ -232,49 +228,50 @@ ATF_TC_BODY(osvfparse, tc)
 		references = references->next;
 	}
 
+	/* Check all versions across all packages (flat iteration) */
 	pos = 0;
 	otherpos = 0;
 
-	while(versions)
-	{
-		ATF_CHECK_INTEQ(versions->type, version_types[otherpos++]);
-		ATF_CHECK_STREQ(versions->v2.version, version_strs[pos++]);
-		ATF_CHECK_INTEQ(versions->v2.type, OSVF_EVENT_FIXED);
-		ATF_CHECK_STREQ(versions->v1.version, version_strs[pos++]);
-		ATF_CHECK_INTEQ(versions->v1.type, OSVF_EVENT_INTRODUCED);
-		versions = versions->next;
+	vec_foreach(entry->packages, pi) {
+		struct pkg_audit_package *p = &entry->packages.d[pi];
+		vec_foreach(p->versions, vi) {
+			struct pkg_audit_versions_range *vers = &p->versions.d[vi];
+			ATF_CHECK_INTEQ(vers->type, version_types[otherpos++]);
+			ATF_CHECK_STREQ(vers->v2.version, version_strs[pos++]);
+			ATF_CHECK_INTEQ(vers->v2.type, OSVF_EVENT_FIXED);
+			ATF_CHECK_STREQ(vers->v1.version, version_strs[pos++]);
+			ATF_CHECK_INTEQ(vers->v1.type, OSVF_EVENT_INTRODUCED);
+		}
 	}
 
+	/* Check names across all packages */
 	pos = 0;
 
-	while(names)
-	{
-		ATF_CHECK_STREQ(names->pkgname, name_strs[pos++]);
-		names = names->next;
+	vec_foreach(entry->packages, pi) {
+		struct pkg_audit_package *p = &entry->packages.d[pi];
+		vec_foreach(p->names, ni) {
+			ATF_CHECK_STREQ(p->names.d[ni].pkgname, name_strs[pos++]);
+		}
 	}
 
+	/* Check packages individually */
 	pos = 0;
 	subpos = 0;
 	otherpos = 0;
 
-	while(packages)
-	{
-		ATF_CHECK_STREQ(packages->ecosystem->name, "FreeBSD");
-		ATF_CHECK_STREQ(packages->names->pkgname, name_strs[pos++]);
+	vec_foreach(entry->packages, pi) {
+		struct pkg_audit_package *p = &entry->packages.d[pi];
+		ATF_CHECK_STREQ(p->ecosystem->name, "FreeBSD");
+		ATF_CHECK_STREQ(p->names.d[0].pkgname, name_strs[pos++]);
 
-		versions = packages->versions;
-
-		while(versions)
-		{
-			ATF_CHECK_INTEQ(versions->type, version_types[otherpos++]);
-			ATF_CHECK_STREQ(versions->v2.version, version_strs[subpos++]);
-			ATF_CHECK_INTEQ(versions->v2.type, OSVF_EVENT_FIXED);
-			ATF_CHECK_STREQ(versions->v1.version, version_strs[subpos++]);
-			ATF_CHECK_INTEQ(versions->v1.type, OSVF_EVENT_INTRODUCED);
-			versions = versions->next;
+		vec_foreach(p->versions, vi) {
+			struct pkg_audit_versions_range *vers = &p->versions.d[vi];
+			ATF_CHECK_INTEQ(vers->type, version_types[otherpos++]);
+			ATF_CHECK_STREQ(vers->v2.version, version_strs[subpos++]);
+			ATF_CHECK_INTEQ(vers->v2.type, OSVF_EVENT_FIXED);
+			ATF_CHECK_STREQ(vers->v1.version, version_strs[subpos++]);
+			ATF_CHECK_INTEQ(vers->v1.type, OSVF_EVENT_INTRODUCED);
 		}
-
-		packages = packages->next;
 	}
 
 	strftime(buf, 1024, "%Y-%m-%dT%H:%M:%SZ", &entry->modified);
@@ -286,7 +283,7 @@ ATF_TC_BODY(osvfparse, tc)
 	strftime(buf, 1024, "%Y-%m-%dT%H:%M:%SZ", &entry->discovery);
 	ATF_CHECK_STREQ(buf, "2025-05-20T09:10:00Z");
 
-	pkg_osvf_free_entry(entry);
+	pkg_osvf_free_entry(oentry);
 
 }
 

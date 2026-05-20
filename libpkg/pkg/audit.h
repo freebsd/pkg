@@ -48,24 +48,18 @@ struct pkg_audit_versions_range {
 	struct pkg_audit_version v1;
 	struct pkg_audit_version v2;
 	int type;
-	struct pkg_audit_versions_range *next;
 };
+typedef vec_t(struct pkg_audit_versions_range) audit_versv_t;
 
 struct pkg_audit_cve {
 	char *cvename;
-	struct pkg_audit_cve *next;
 };
+typedef vec_t(struct pkg_audit_cve) audit_cvev_t;
 
 struct pkg_audit_pkgname {
 	char *pkgname;
-	struct pkg_audit_pkgname *next;
 };
-
-struct pkg_audit_reference {
-	char *url;
-	int type;
-	struct pkg_audit_reference *next;
-};
+typedef vec_t(struct pkg_audit_pkgname) audit_namev_t;
 
 struct pkg_audit_ecosystem {
 	char *original;
@@ -74,31 +68,27 @@ struct pkg_audit_ecosystem {
 };
 
 struct pkg_audit_package {
-	struct pkg_audit_pkgname *names;
-	struct pkg_audit_versions_range *versions;
+	audit_namev_t names;
+	audit_versv_t versions;
 	struct pkg_audit_ecosystem *ecosystem;
-	struct pkg_audit_package *next;
 };
+typedef vec_t(struct pkg_audit_package) audit_pkgv_t;
 
 struct pkg_audit_entry {
-	const char *pkgname;
-	struct pkg_audit_package *packages;
-	struct pkg_audit_pkgname *names;
-	struct pkg_audit_versions_range *versions;
-	struct pkg_audit_cve *cve;
-	struct pkg_audit_reference *references;
-	struct tm modified;
-	struct tm published;
-	struct tm discovery;
+	audit_pkgv_t packages;
+	audit_cvev_t cve;
 	char *url;
 	char *desc;
 	char *id;
-	bool ref;
-	struct pkg_audit_entry *next;
+	struct tm modified;
+	struct tm published;
+	struct tm discovery;
 };
+typedef vec_t(struct pkg_audit_entry) audit_entryv_t;
 
 struct pkg_audit_issue {
 	const struct pkg_audit_entry *audit;
+	size_t pkg_idx;
 };
 typedef vec_t(struct pkg_audit_issue) pkg_audit_issuev_t;
 
