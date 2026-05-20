@@ -43,6 +43,7 @@
 #include "private/event.h"
 #include "private/pkg.h"
 #include "private/fetch.h"
+#include <utlist.h>
 #include "private/utils.h"
 
 struct http_mirror {

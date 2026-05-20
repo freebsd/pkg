@@ -18,7 +18,6 @@
 #include <archive.h>
 #include <sqlite3.h>
 #include <stdbool.h>
-#include <utlist.h>
 #include <ucl.h>
 
 #include "xmalloc.h"
@@ -95,27 +94,6 @@ static inline void fd_closep(int *fd) { if (*fd != -1) close(*fd); }
 #define EXTRACT_ARCHIVE_FLAGS  (ARCHIVE_EXTRACT_OWNER |ARCHIVE_EXTRACT_PERM | \
 		ARCHIVE_EXTRACT_TIME | ARCHIVE_EXTRACT_ACL | \
 		ARCHIVE_EXTRACT_FFLAGS|ARCHIVE_EXTRACT_XATTR)
-
-
-#define LL_FREE2(head, free_func, next) do {   \
-	__typeof(head) l1, l2;                 \
-	LL_FOREACH_SAFE2(head, l1, l2, next) {       \
-		LL_DELETE2(head, l1, next);          \
-		free_func(l1);                \
-	}                                     \
-	head = NULL;                          \
-} while (0)
-#define LL_FREE(head, free_func) LL_FREE2(head, free_func, next)
-
-#define DL_FREE2(head, free_func, prev, next) do {   \
-	__typeof(head) l1, l2;                 \
-	DL_FOREACH_SAFE2(head, l1, l2, next) {       \
-		DL_DELETE2(head, l1, prev, next);          \
-		free_func(l1);                \
-	}                                     \
-	head = NULL;                          \
-} while (0)
-#define DL_FREE(head, free_func) DL_FREE2(head, free_func, prev, next)
 
 typedef vec_t(struct pkg_kv *) kvlist_t;
 
