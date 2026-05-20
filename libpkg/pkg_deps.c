@@ -68,6 +68,9 @@ pkg_deps_parse_formula(const char *in)
 	c = in;
 	p = in;
 
+	if (in == NULL || *in == '\0')
+		return (NULL);
+
 	end = p + strlen(p);
 
 	while (p <= end) {
