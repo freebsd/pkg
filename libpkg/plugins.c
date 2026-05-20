@@ -56,10 +56,10 @@ struct pkg_plugin {
 	bool parsed;
 	struct plugin_hook *hooks[PKG_PLUGIN_HOOK_LAST];
 	pkg_object *conf;
-	struct pkg_plugin *next;
 };
 
-static struct pkg_plugin *plugins = NULL;
+static vec_t(struct pkg_plugin *) plugins = vec_init();
+static size_t plugins_iter = 0;
 
 static int pkg_plugin_free(void);
 static void pkg_plugin_hook_free(struct pkg_plugin *p);
@@ -99,7 +99,9 @@ plug_free(struct pkg_plugin *p)
 static int
 pkg_plugin_free(void)
 {
-	LL_FREE(plugins, plug_free);
+	vec_foreach(plugins, _i)
+		plug_free(plugins.d[_i]);
+	vec_free(&plugins);
 
 	return (EPKG_OK);
 }
@@ -258,15 +260,14 @@ pkg_plugin_conf_add(struct pkg_plugin *p, pkg_object_t type, const char *key,
 int
 pkg_plugins(struct pkg_plugin **plugin)
 {
-	if ((*plugin) == NULL)
-		(*plugin) = plugins;
-	else
-		(*plugin) = (*plugin)->next;
-
-	if ((*plugin) == NULL)
+	if (*plugin == NULL)
+		plugins_iter = 0;
+	if (plugins_iter >= plugins.len) {
+		*plugin = NULL;
 		return (EPKG_END);
-	else
-		return (EPKG_OK);
+	}
+	*plugin = plugins.d[plugins_iter++];
+	return (EPKG_OK);
 }
 
 int
@@ -317,7 +318,7 @@ pkg_plugins_init(void)
 		p->conf = ucl_object_typed_new(UCL_OBJECT);
 		pkg_plugin_set(p, PKG_PLUGIN_PLUGINFILE, pluginfile);
 		if (init_func(p) == EPKG_OK) {
-			LL_APPEND(plugins, p);
+			vec_push(&plugins, p);
 		} else {
 			ucl_object_unref(p->conf);
 			dlclose(p->lh);

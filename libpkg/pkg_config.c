@@ -98,7 +98,8 @@ struct config_entry {
 	const char *def;
 };
 
-static struct pkg_repo *repos = NULL;
+static vec_t(struct pkg_repo *) repos = vec_init();
+static size_t repos_iter = 0;
 ucl_object_t *config = NULL;
 
 static struct config_entry c[] = {
@@ -1690,7 +1691,7 @@ pkg_repo_new(const char *name, const char *url, const char *type)
 	r->enable = true;
 	r->meta = pkg_repo_meta_default();
 	r->name = xstrdup(name);
-	DL_APPEND(repos, r);
+	vec_push(&repos, r);
 
 	return (r);
 }
@@ -1736,7 +1737,9 @@ pkg_shutdown(void)
 
 	metalog_close();
 	ucl_object_unref(config);
-	LL_FREE(repos, pkg_repo_free);
+	vec_foreach(repos, _i)
+		pkg_repo_free(repos.d[_i]);
+	vec_free(&repos);
 
 	if (ctx.rootfd != -1) {
 		close(ctx.rootfd);
@@ -1759,21 +1762,16 @@ pkg_shutdown(void)
 int
 pkg_repos_total_count(void)
 {
-	int cnt = 0;
-	struct pkg_repo *r;
-
-	LL_COUNT(repos, r, cnt);
-	return (cnt);
+	return (repos.len);
 }
 
 int
 pkg_repos_activated_count(void)
 {
-	struct pkg_repo *r = NULL;
 	int count = 0;
 
-	LL_FOREACH(repos, r) {
-		if (r->enable)
+	vec_foreach(repos, _i) {
+		if (repos.d[_i]->enable)
 			count++;
 	}
 
@@ -1784,11 +1782,12 @@ int
 pkg_repos(struct pkg_repo **r)
 {
 	if (*r == NULL)
-		*r = repos;
-	else
-		*r = (*r)->next;
-	if (*r == NULL)
+		repos_iter = 0;
+	if (repos_iter >= repos.len) {
+		*r = NULL;
 		return (EPKG_END);
+	}
+	*r = repos.d[repos_iter++];
 	return (EPKG_OK);
 }
 
@@ -1867,11 +1866,9 @@ pkg_repo_ip_version(struct pkg_repo *r)
 struct pkg_repo *
 pkg_repo_find(const char *reponame)
 {
-	struct pkg_repo *r;
-
-	LL_FOREACH(repos, r) {
-		if (STREQ(r->name, reponame))
-			return (r);
+	vec_foreach(repos, _i) {
+		if (STREQ(repos.d[_i]->name, reponame))
+			return (repos.d[_i]);
 	}
 	return (NULL);
 }

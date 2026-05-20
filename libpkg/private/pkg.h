@@ -627,7 +627,6 @@ struct pkg_repo {
 
 	/* Opaque repository data */
 	void *priv;
-	struct pkg_repo *next, *prev;
 };
 
 typedef vec_t(struct action *) actions_t;
