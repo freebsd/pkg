@@ -21219,17 +21219,38 @@ static void recoverFinalize(sqlite3_recover *p, sqlite3_stmt *pStmt){
 }
 
 /*
+** Run a single SQL statement in zSql.  If zSql contains two or more
+** SQL statements separated by ';', only the first is run.
+**
+** Return the sqlite3_finalizer() or sqlite3_prepare() result code
+** from running the zSql statement.
+*/
+static int recoverOneStmt(sqlite3 *db, const char *zSql){
+  sqlite3_stmt *pStmt = 0;
+  int rc;
+  if( zSql==0 ) return SQLITE_OK;
+  rc = sqlite3_prepare_v2(db, zSql, -1, &pStmt, 0);
+  if( rc ){
+    sqlite3_finalize(pStmt);
+    return rc;
+  }
+  while( SQLITE_ROW==sqlite3_step(pStmt) ){}
+  return sqlite3_finalize(pStmt);
+}
+
+/*
 ** This function is a no-op if recover handle p already contains an error
 ** (if p->errCode!=SQLITE_OK). A copy of p->errCode is returned in this 
 ** case.
 **
-** Otherwise, execute SQL script zSql. If successful, return SQLITE_OK.
-** Or, if an error occurs, leave an error code and message in the recover
-** handle and return a copy of the error code.
+** Otherwise, execute a single SQL statment in zSql.  Even if zSql contains
+** two or more SQL statements separated by ';', only execute the first one.
+** If successful, return SQLITE_OK.  Or, if an error occurs, leave an error
+** code and message in the recover handle and return a copy of the error code.
 */
 static int recoverExec(sqlite3_recover *p, sqlite3 *db, const char *zSql){
   if( p->errCode==SQLITE_OK ){
-    int rc = sqlite3_exec(db, zSql, 0, 0, 0);
+    int rc = recoverOneStmt(db, zSql);
     if( rc ){
       recoverDbError(p, db);
     }
@@ -21629,7 +21650,8 @@ static void recoverTransferSettings(sqlite3_recover *p){
       }
       recoverFinalize(p, p1);
     }
-    recoverExec(p, db2, "CREATE TABLE t1(a); DROP TABLE t1;");
+    recoverExec(p, db2, "CREATE TABLE t1(a)");
+    recoverExec(p, db2, "DROP TABLE t1");
 
     if( p->errCode==SQLITE_OK ){
       sqlite3 *db = p->dbOut;
@@ -21711,12 +21733,12 @@ static int recoverOpenOutput(sqlite3_recover *p){
 static void recoverOpenRecovery(sqlite3_recover *p){
   char *zSql = recoverMPrintf(p, "ATTACH %Q AS recovery;", p->zStateDb);
   recoverExec(p, p->dbOut, zSql);
-  recoverExec(p, p->dbOut,
-      "PRAGMA writable_schema = 1;"
-      "CREATE TABLE recovery.map(pgno INTEGER PRIMARY KEY, parent INT);" 
-      "CREATE TABLE recovery.schema(type, name, tbl_name, rootpage, sql);"
-  );
   sqlite3_free(zSql);
+  recoverExec(p, p->dbOut, "PRAGMA writable_schema = 1");
+  recoverExec(p, p->dbOut,
+      "CREATE TABLE recovery.map(pgno INTEGER PRIMARY KEY, parent INT)");
+  recoverExec(p, p->dbOut,
+      "CREATE TABLE recovery.schema(type, name, tbl_name, rootpage, sql)");
 }
 
 
@@ -21856,7 +21878,7 @@ static int recoverWriteSchema1(sqlite3_recover *p){
       ")"
       "SELECT rootpage, tbl, isVirtual, name, sql"
       " FROM dbschema "
-      "  WHERE tbl OR isIndex"
+      "  WHERE (tbl OR isIndex) AND sql GLOB 'CREATE *'"
       "  ORDER BY tbl DESC, name=='sqlite_sequence' DESC"
   );
 
@@ -21882,7 +21904,7 @@ static int recoverWriteSchema1(sqlite3_recover *p){
             zName, zName, zSql
         ));
       }
-      rc = sqlite3_exec(p->dbOut, zSql, 0, 0, 0);
+      rc = recoverOneStmt(p->dbOut, zSql);
       if( rc==SQLITE_OK ){
         recoverSqlCallback(p, zSql);
         if( bTable && !bVirtual ){
@@ -21924,15 +21946,17 @@ static int recoverWriteSchema2(sqlite3_recover *p){
       p->bSlowIndexes ?
       "SELECT rootpage, sql FROM recovery.schema "
       "  WHERE type!='table' AND type!='index'"
+      "    AND sql GLOB 'CREATE *'"
       :
       "SELECT rootpage, sql FROM recovery.schema "
       "  WHERE type!='table' AND (type!='index' OR sql NOT LIKE '%unique%')"
+      "    AND sql GLOB 'CREATE *'"
   );
 
   if( pSelect ){
     while( sqlite3_step(pSelect)==SQLITE_ROW ){
       const char *zSql = (const char*)sqlite3_column_text(pSelect, 1);
-      int rc = sqlite3_exec(p->dbOut, zSql, 0, 0, 0);
+      int rc = recoverOneStmt(p->dbOut, zSql);
       if( rc==SQLITE_OK ){
         recoverSqlCallback(p, zSql);
       }else if( rc!=SQLITE_ERROR ){
@@ -23310,7 +23334,7 @@ static void recoverStep(sqlite3_recover *p){
           if( bUseWrapper ) recoverUninstallWrapper(p);
         }while( p->errCode==SQLITE_NOTADB 
              && (bUseWrapper--) 
-             && SQLITE_OK==sqlite3_exec(p->dbIn, "ROLLBACK", 0, 0, 0)
+             && SQLITE_OK==recoverOneStmt(p->dbIn, "ROLLBACK")
         );
       }
 
@@ -23375,7 +23399,7 @@ static void recoverStep(sqlite3_recover *p){
       ** database. Regardless of whether or not an error has occurred, make
       ** an attempt to end the read transaction on the input database.  */
       recoverExec(p, p->dbOut, "COMMIT");
-      rc = sqlite3_exec(p->dbIn, "END", 0, 0, 0);
+      rc = recoverOneStmt(p->dbIn, "END");
       if( p->errCode==SQLITE_OK ) p->errCode = rc;
 
       recoverSqlCallback(p, "PRAGMA writable_schema = off");
@@ -23571,7 +23595,7 @@ int sqlite3_recover_finish(sqlite3_recover *p){
   }else{
     recoverFinalCleanup(p);
     if( p->bCloseTransaction && sqlite3_get_autocommit(p->dbIn)==0 ){
-      rc = sqlite3_exec(p->dbIn, "END", 0, 0, 0);
+      rc = recoverOneStmt(p->dbIn, "END");
       if( p->errCode==SQLITE_OK ) p->errCode = rc;
     }
     rc = p->errCode;
@@ -27064,7 +27088,7 @@ static const char *(azHelp[]) = {
   "   --schema SCHEMA         Use SCHEMA instead of \"main\"",
   "   --help                  Show CMD details",
   ".fullschema ?--indent?   Show schema and the content of sqlite_stat tables",
-  ",headers on|off          Turn display of headers on or off",
+  ".headers on|off          Turn display of headers on or off",
   ".help ?-all? ?PATTERN?   Show help text for PATTERN",
 #ifndef SQLITE_SHELL_FIDDLE
   ".import FILE TABLE       Import data from FILE into TABLE",
@@ -32032,8 +32056,7 @@ static int dotCmdOutput(ShellState *p){
         zBom = zBomUtf8;
       }else if( cli_strcmp(z,"-plain")==0 ){
         bPlain = 1;
-      }else if( c=='o' && z[0]=='1' && z[1]!=0 && z[2]==0
-             && (z[1]=='x' || z[1]=='e' || z[1]=='w') ){
+      }else if( c=='o' && sqlite3_strglob("-[ewx]",z)==0 ){
         if( bKeep || eMode ){
           dotCmdError(p, i, "incompatible with prior options",0);
           goto dotCmdOutput_error;
@@ -35778,7 +35801,9 @@ static int runOneSqlLine(
   rc = shell_exec(p, zSql, &zErrMsg);
   END_TIMER(p);
   if( rc || zErrMsg ){
-    char zPrefix[100];
+    char zPrefix[2048
+                 /* must be relatively large:
+                 ** https://sqlite.org/forum/forumpost/205f73db1b2806f5 */];
     const char *zErrorTail;
     const char *zErrorType;
     if( zErrMsg==0 ){
@@ -36750,7 +36775,7 @@ int SQLITE_CDECL main(int argc, char **argv){
 #ifndef SQLITE_SHELL_FIDDLE
   sqlite3_appendvfs_init(0,0,0);
 #ifdef SQLITE_DEBUG
-  sqlite3_auto_extension( (void (*)())auto_ext_leak_tester );
+  sqlite3_auto_extension( (void (*)(void))auto_ext_leak_tester );
 #endif
 #endif
   modeDefault(&data);
@@ -37017,6 +37042,10 @@ int SQLITE_CDECL main(int argc, char **argv){
           modePop(&data);
           data.nPopMode = 0;
         }
+        if( rc ){
+          goto shell_main_exit;
+        }
+
       }
       if( data.nPopOutput && azCmd[i][0]!='.' ){
         output_reset(&data);
