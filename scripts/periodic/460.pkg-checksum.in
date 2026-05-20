@@ -10,7 +10,9 @@ fi
 
 . /etc/periodic/security/security.functions
 
-: ${security_status_pkg_checksum_enable:=YES}
+# WARNING: This script can take several hours on systems with many packages
+# as it computes checksums for every installed file.
+: ${security_status_pkg_checksum_enable:=NO}
 : ${security_status_pkg_checksum_period:=daily}
 : ${security_status_pkg_checksum_chroots=$pkg_chroots}
 : ${security_status_pkg_checksum_jails=$pkg_jails}
