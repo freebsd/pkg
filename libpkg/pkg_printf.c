@@ -41,7 +41,6 @@
 #include <stdio.h>
 #include <string.h>
 #include <time.h>
-#include <utlist.h>
 
 #include "pkg.h"
 #include <xstring.h>

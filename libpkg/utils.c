@@ -42,7 +42,6 @@
 #include <unistd.h>
 #include <string.h>
 #include <ucl.h>
-#include <utlist.h>
 #include <ctype.h>
 #include <fnmatch.h>
 #include <paths.h>

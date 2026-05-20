@@ -26,7 +26,6 @@
 #include <sys/types.h>
 
 #include <stdbool.h>
-#include <utlist.h>
 #include <ucl.h>
 
 #include "private/utils.h"
