@@ -34,7 +34,6 @@ pkg_new(struct pkg **pkg, pkg_t type)
 	*pkg = xcalloc(1, sizeof(struct pkg));
 	(*pkg)->type = type;
 	(*pkg)->rootfd = -1;
-	(*pkg)->list_sorted = false;
 
 	return (EPKG_OK);
 }
@@ -2200,17 +2199,6 @@ DEFINE_VEC_INSERT_SORTED_FUNC(pkg_filev_t, pkg_filev, struct pkg_file, pkg_file_
 DEFINE_VEC_INSERT_SORTED_FUNC(pkg_dirv_t, pkg_dirv, struct pkg_dir, pkg_dir_cmp)
 DEFINE_VEC_INSERT_SORTED_FUNC(pkg_conflictv_t, pkg_conflictv, struct pkg_conflict, pkg_conflict_cmp)
 DEFINE_VEC_INSERT_SORTED_FUNC(pkg_configfilev_t, pkg_configfilev, struct pkg_config_file, pkg_config_file_cmp)
-
-void
-pkg_lists_sort(struct pkg *p)
-{
-	if (p->list_sorted)
-		return;
-	p->list_sorted = true;
-
-	/* depends is kept sorted by insert_sorted */
-	pkg_kv_sort(&p->options);
-}
 
 static int
 pkgs_cmp(const void *a, const void *b)

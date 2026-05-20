@@ -280,7 +280,6 @@ struct pkg {
 	bool		 locked;
 	bool		 automatic;
 	bool		 vital;
-	bool		 list_sorted;
 	int64_t		 id;
 	xstring		*scripts[PKG_NUM_SCRIPTS];
 	charv_t	 lua_scripts[PKG_NUM_LUA_SCRIPTS];
@@ -1011,7 +1010,6 @@ int pkg_get_reposdirfd(void);
 char * expand_plist_variables(const char *in, kvlist_t *vars);
 
 int scan_system_shlibs(charv_t *system_shlibs, const char *rootdir);
-void pkg_lists_sort(struct pkg *p);
 void pkg_cleanup_shlibs_required(struct pkg *pkg, charv_t *internal_provided);
 
 /*

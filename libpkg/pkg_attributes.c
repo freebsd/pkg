@@ -211,14 +211,6 @@ pkg_kv_search(kvlist_t *kv, char *el)
 
 DEFINE_VEC_INSERT_SORTED_FUNC(kvlist_t, pkg_kv, struct pkg_kv *, kv_cmp)
 
-void
-pkg_kv_sort(kvlist_t *kv)
-{
-	if (kv->len == 0)
-		return;
-	qsort(kv->d, kv->len, sizeof(kv->d[0]), kv_cmp);
-}
-
 struct pkg_kvlist_iterator *
 pkg_kvlist_iterator(struct pkg_kvlist *l)
 {

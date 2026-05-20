@@ -1185,9 +1185,6 @@ pkg_jobs_need_upgrade(charv_t *system_shlibs, struct pkg *rp, struct pkg *lp)
 			break;
 	}
 
-	pkg_lists_sort(lp);
-	pkg_lists_sort(rp);
-
 	if (charv_diff(&lp->provides, &rp->provides,
 	    "provides changed", &rp->reason))
 		return (true);
