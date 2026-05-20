@@ -588,7 +588,8 @@ do_extract_symlink(struct pkg_add_context *context, struct archive *a __unused,
 	free(f->gname);
 	f->gname = xstrdup(archive_entry_gname(ae));
 	f->perm = aest->st_mode;
-	fill_timespec_buf(aest, f->time);
+	if (f->time[1].tv_sec == 0)
+		fill_timespec_buf(aest, f->time);
 	archive_entry_fflags(ae, &f->fflags, &clear);
 
 	if (create_symlinks(context, f, archive_entry_symlink(ae), tempdirs) == EPKG_FATAL)
@@ -863,7 +864,12 @@ do_extract_regfile(struct pkg_add_context *context, struct archive *a, struct ar
 	f->uname = xstrdup(archive_entry_uname(ae));
 	free(f->gname);
 	f->gname = xstrdup(archive_entry_gname(ae));
-	fill_timespec_buf(aest, f->time);
+	/* Only use the archive entry times if the manifest did not
+	 * already provide an mtime.  The manifest is the source of truth;
+	 * the archive entry may carry a different timestamp (e.g. when
+	 * staged files were copied without preserving mtime). */
+	if (f->time[1].tv_sec == 0)
+		fill_timespec_buf(aest, f->time);
 	archive_entry_fflags(ae, &f->fflags, &clear);
 
 	if (create_regfile(context, f, a, ae, -1, local, tempdirs) == EPKG_FATAL)
