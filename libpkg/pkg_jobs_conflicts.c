@@ -39,39 +39,42 @@
 
 typedef vec_t(struct pkg_job_request *) conflict_chain_t;
 
-static struct pkg_jobs_conflict_item *
-conflict_items_find(conflict_itemv_t *v, uint64_t hash)
+static size_t
+conflict_items_lower_bound(const conflict_itemv_t *v, uint64_t hash)
 {
 	size_t lo = 0, hi = v->len;
+
 	while (lo < hi) {
 		size_t mid = lo + (hi - lo) / 2;
 		if (v->d[mid].hash < hash)
 			lo = mid + 1;
-		else if (v->d[mid].hash > hash)
-			hi = mid;
 		else
-			return (&v->d[mid]);
+			hi = mid;
 	}
+
+	return (lo);
+}
+
+static struct pkg_jobs_conflict_item *
+conflict_items_find(const conflict_itemv_t *v, uint64_t hash)
+{
+	size_t pos = conflict_items_lower_bound(v, hash);
+
+	if (pos < v->len && v->d[pos].hash == hash)
+		return (&v->d[pos]);
 	return (NULL);
 }
 
 static void
 conflict_items_insert(conflict_itemv_t *v, struct pkg_jobs_conflict_item item)
 {
-	size_t lo = 0, hi = v->len;
-	while (lo < hi) {
-		size_t mid = lo + (hi - lo) / 2;
-		if (v->d[mid].hash < item.hash)
-			lo = mid + 1;
-		else
-			hi = mid;
-	}
-	/* Make room at position lo */
+	size_t pos = conflict_items_lower_bound(v, item.hash);
+
 	vec_push(v, item);
-	if (lo < v->len - 1) {
-		memmove(&v->d[lo + 1], &v->d[lo],
-		    (v->len - 1 - lo) * sizeof(*v->d));
-		v->d[lo] = item;
+	if (pos < v->len - 1) {
+		memmove(&v->d[pos + 1], &v->d[pos],
+		    (v->len - 1 - pos) * sizeof(*v->d));
+		v->d[pos] = item;
 	}
 }
 
