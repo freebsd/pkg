@@ -156,6 +156,8 @@ pkg_repo_binary_open(struct pkg_repo *repo, unsigned mode)
 
 	/* Open metafile */
 	if ((fd = openat(thisrepofd, "meta", O_RDONLY)) != -1) {
+		pkg_repo_meta_free(repo->meta);
+		repo->meta = NULL;
 		if (pkg_repo_meta_load(fd, &repo->meta) != EPKG_OK) {
 			pkg_emit_error("Repository %s load error: "
 			    "meta file cannot be loaded", repo->name);
