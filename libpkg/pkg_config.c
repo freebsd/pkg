@@ -1731,11 +1731,8 @@ pkg_repo_free(struct pkg_repo *r)
 void
 pkg_shutdown(void)
 {
-	if (!parsed) {
-		pkg_emit_error("pkg_shutdown() must be called after pkg_init()");
-		_exit(EXIT_FAILURE);
-		/* NOTREACHED */
-	}
+	if (!parsed)
+		return;
 
 	metalog_close();
 	ucl_object_unref(config);

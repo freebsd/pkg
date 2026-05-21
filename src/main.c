@@ -822,6 +822,7 @@ main(int argc, char **argv)
 		free(argv);
 
 	pkg_close_devnull();
+	pkg_shutdown();
 
 	if (ret == EXIT_SUCCESS && newpkgversion)
 		return (EX_NEEDRESTART);

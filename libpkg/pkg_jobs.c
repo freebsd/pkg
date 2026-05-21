@@ -204,6 +204,8 @@ pkg_jobs_free(struct pkg_jobs *j)
 	pkghash_destroy(j->notorphaned);
 	vec_autofree(&j->system_shlibs);
 	pkg_conflicts_free(j);
+	if (j->lockedpkgs != NULL)
+		tdestroy(j->lockedpkgs, (void (*)(void *))pkg_free);
 	free(j);
 }
 
