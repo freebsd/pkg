@@ -48,7 +48,6 @@
 #if __has_include(<libutil.h>)
 #include <libutil.h>
 #endif
-#include <search.h>
 #include <stdbool.h>
 #include <stdlib.h>
 #include <string.h>
@@ -70,11 +69,6 @@ static int pkg_jobs_find_upgrade(struct pkg_jobs *j, const char *pattern, match_
 static int pkg_jobs_fetch(struct pkg_jobs *j);
 static bool new_pkg_version(struct pkg_jobs *j);
 static int pkg_jobs_check_conflicts(struct pkg_jobs *j);
-struct pkg_jobs_locked {
-	int (*locked_pkg_cb)(struct pkg *, void *);
-	void *context;
-};
-static __thread struct pkg_jobs_locked *pkgs_job_lockedpkg;
 typedef vec_t(int64_t) candidates_t;
 
 #define IS_DELETE(j) ((j)->type == PKG_JOBS_DEINSTALL || (j)->type == PKG_JOBS_AUTOREMOVE)
@@ -204,8 +198,7 @@ pkg_jobs_free(struct pkg_jobs *j)
 	pkghash_destroy(j->notorphaned);
 	vec_autofree(&j->system_shlibs);
 	pkg_conflicts_free(j);
-	if (j->lockedpkgs != NULL)
-		tdestroy(j->lockedpkgs, (void (*)(void *))pkg_free);
+	vec_free_and_free(&j->lockedpkgs, pkg_free);
 	free(j);
 }
 
@@ -1388,15 +1381,6 @@ pkg_jobs_set_deinstall_reasons(struct pkg_jobs *j)
 }
 
 static int
-comp(const void *a, const void *b)
-{
-	const struct pkg *pa = a;
-	const struct pkg *pb = b;
-
-	return strcmp(pa->name, pb->name);
-}
-
-static int
 jobs_solve_deinstall(struct pkg_jobs *j)
 {
 	struct pkg *pkg = NULL;
@@ -1415,10 +1399,7 @@ jobs_solve_deinstall(struct pkg_jobs *j)
 		    PKG_LOAD_DEPS|PKG_LOAD_ANNOTATIONS|PKG_LOAD_PROVIDES|
 		    PKG_LOAD_SHLIBS_PROVIDED) == EPKG_OK) {
 			if(pkg->locked || (pkg->vital && !force)) {
-				if (tsearch(pkg, &j->lockedpkgs, comp) == NULL) {
-					pkgdb_it_free(it);
-					return (EPKG_FATAL);
-				}
+				vec_push(&j->lockedpkgs, pkg);
 			}
 			else {
 				pkg_jobs_add_req(j, pkg);
@@ -2489,28 +2470,13 @@ pkg_jobs_check_conflicts(struct pkg_jobs *j)
 bool
 pkg_jobs_has_lockedpkgs(struct pkg_jobs *j)
 {
-
-	return j->lockedpkgs ? true : false;
-}
-
-static void
-pkg_jobs_visit_lockedpkgs(const void * node, VISIT v, int i __unused)
-{
-
-	if (v == postorder || v == leaf) {
-		pkgs_job_lockedpkg->locked_pkg_cb(*(struct pkg **)node,
-		    pkgs_job_lockedpkg->context);
-	}
+	return (vec_len(&j->lockedpkgs) > 0);
 }
 
 void
 pkg_jobs_iter_lockedpkgs(struct pkg_jobs *j, locked_pkgs_cb cb, void * ctx)
 {
-	struct pkg_jobs_locked foo;
-
-	foo.locked_pkg_cb = cb;
-	foo.context = ctx;
-	pkgs_job_lockedpkg = &foo;
-
-	twalk(j->lockedpkgs, pkg_jobs_visit_lockedpkgs);
+	vec_foreach(j->lockedpkgs, _i) {
+		cb(j->lockedpkgs.d[_i], ctx);
+	}
 }

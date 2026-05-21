@@ -143,7 +143,7 @@ struct pkg_jobs {
 	bool conservative;
 	bool pinning;
 	bool ignore_compat32;
-	void		*lockedpkgs;
+	vec_t(struct pkg *)	lockedpkgs;
 	struct triggers triggers;
 	struct deferred_rc rc;
 	struct pkghash *orphaned;
