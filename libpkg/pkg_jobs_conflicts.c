@@ -158,17 +158,18 @@ pkg_conflicts_request_resolve(struct pkg_jobs *j)
 	it = pkghash_iterator(j->request_add);
 	while (pkghash_next(&it)) {
 		req = it.value;
-		conflict_chain_t  chain = vec_init();
+		conflict_chain_t chain = vec_init();
 		if (req->skip)
 			continue;
 
-		vec_foreach(req->items.d[0].pkg->conflicts, _ci) { struct pkg_conflict *c = &req->items.d[0].pkg->conflicts.d[_ci];
+		vec_foreach(req->items.d[0].pkg->conflicts, _ci) {
+			c = &req->items.d[0].pkg->conflicts.d[_ci];
 			uv = pkg_jobs_universe_find(j->universe, c->uid);
 			if (uv != NULL) {
-				found = pkghash_get_value(j->request_add, uv->d[0]->pkg->uid);
-				if (found != NULL && !found->skip) {
+				found = pkghash_get_value(j->request_add,
+				    uv->d[0]->pkg->uid);
+				if (found != NULL && !found->skip)
 					vec_push(&chain, found);
-				}
 			}
 		}
 		if (chain.len > 0) {
