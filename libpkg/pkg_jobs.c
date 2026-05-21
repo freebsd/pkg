@@ -885,6 +885,7 @@ pkg_jobs_find_upgrade(struct pkg_jobs *j, const char *pattern, match_t m)
 			found = true;
 	}
 
+	pkg_free(p);
 	pkgdb_it_free(it);
 
 	if (!found && rc != EPKG_INSTALLED && rc != EPKG_LOCKED) {
@@ -1507,6 +1508,7 @@ pkg_jobs_find_upgrade_candidates(struct pkg_jobs *j)
 		if (is_upgrade_candidate(j, pkg))
 			vec_push(candidates, pkg->id);
 	}
+	pkg_free(pkg);
 	pkgdb_it_free(it);
 
 	return (candidates);
