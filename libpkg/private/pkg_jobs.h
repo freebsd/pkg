@@ -32,6 +32,8 @@
 #include "private/pkg.h"
 #include "pkg.h"
 
+#define IS_DELETE(j) ((j)->type == PKG_JOBS_DEINSTALL || (j)->type == PKG_JOBS_AUTOREMOVE)
+
 struct pkg_jobs;
 struct job_pattern;
 
