@@ -922,59 +922,30 @@ pkg_jobs_universe_select_candidate(universe_itemv_t *chain,
 {
 	struct pkg_job_universe_item *res = NULL;
 
-	if (local == NULL) {
-		/* New package selection */
-		if (conservative) {
-			/* Check same repo */
-			if (reponame && pinning) {
-				res =  pkg_jobs_universe_select_same_repo(chain, NULL, reponame);
-			}
+	/*
+	 * Try heuristics in a fixed priority order:
+	 *  1. Same repository as the local package (if pinning is enabled).
+	 *  2 & 3. Priority and version heuristics, ordered according to
+	 *         conservative mode: conservative prefers priority first,
+	 *         non-conservative prefers version first.
+	 */
 
-			if (res == NULL) {
-				/* Priority -> version */
-				res = pkg_jobs_universe_select_max_prio(chain);
-				if (res == NULL) {
-					res = pkg_jobs_universe_select_max_ver(chain);
-				}
-			}
-		}
-		else {
-			if (reponame && pinning) {
-				res =  pkg_jobs_universe_select_same_repo(chain, NULL, reponame);
-			}
-
-			if (res == NULL) {
-				/* Version -> priority */
-				res = pkg_jobs_universe_select_max_ver(chain);
-				if (res == NULL) {
-					res = pkg_jobs_universe_select_max_prio(chain);
-				}
-			}
-		}
+	if (pinning && (local != NULL || reponame != NULL)) {
+		res = pkg_jobs_universe_select_same_repo(chain, local, reponame);
 	}
-	else {
-		if (conservative) {
-			/* same -> prio -> version */
-			if (pinning)
-				res = pkg_jobs_universe_select_same_repo(chain, local, reponame);
-			if (res == NULL) {
-				res = pkg_jobs_universe_select_max_prio(chain);
-			}
-			if (res == NULL) {
-				res = pkg_jobs_universe_select_max_ver(chain);
-			}
-		}
-		else {
-			/* same -> version -> prio */
-			if (pinning)
-				res = pkg_jobs_universe_select_same_repo(chain, local, reponame);
-			if (res == NULL) {
-				res = pkg_jobs_universe_select_max_ver(chain);
-			}
-			if (res == NULL) {
-				res = pkg_jobs_universe_select_max_prio(chain);
-			}
-		}
+
+	if (res == NULL) {
+		if (conservative)
+			res = pkg_jobs_universe_select_max_prio(chain);
+		else
+			res = pkg_jobs_universe_select_max_ver(chain);
+	}
+
+	if (res == NULL) {
+		if (conservative)
+			res = pkg_jobs_universe_select_max_ver(chain);
+		else
+			res = pkg_jobs_universe_select_max_prio(chain);
 	}
 
 	/*
