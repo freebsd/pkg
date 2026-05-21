@@ -1122,6 +1122,7 @@ config_parse_abi_options(int conffd)
 
 		}
 	}
+	xstring_free(ukey);
 
 	ucl_object_unref(obj);
 	ucl_parser_free(p);
@@ -1397,8 +1398,9 @@ pkg_ini(const char *path, const char *reposdir, pkg_init_flags flags)
 		it = NULL;
 		while (( cur = ucl_iterate_object(ncfg, &it, true))) {
 			key = ucl_object_key(cur);
-			ucl_object_replace_key(config, ucl_object_ref(cur), key, strlen(key), true);
+			ucl_object_replace_key(config, ucl_object_copy(cur), key, strlen(key), true);
 		}
+		ucl_object_unref(ncfg);
 	}
 	ncfg = NULL;
 	it = NULL;

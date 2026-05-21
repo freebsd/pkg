@@ -135,6 +135,7 @@ register_backup(struct pkgdb *db, struct pkg *orig, int fd, const char *libname)
 	retcode = pkgdb_register_pkg(db, pkg, 1, "backuplib");
 	if (retcode == EPKG_OK)
 		retcode = pkgdb_register_finale(db, EPKG_OK, "backuplib");
+	pkg_free(pkg);
 	return (retcode);
 }
 
