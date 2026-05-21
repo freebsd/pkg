@@ -39,7 +39,41 @@
 
 typedef vec_t(struct pkg_job_request *) conflict_chain_t;
 
-TREE_DEFINE(pkg_jobs_conflict_item, entry);
+static struct pkg_jobs_conflict_item *
+conflict_items_find(conflict_itemv_t *v, uint64_t hash)
+{
+	size_t lo = 0, hi = v->len;
+	while (lo < hi) {
+		size_t mid = lo + (hi - lo) / 2;
+		if (v->d[mid].hash < hash)
+			lo = mid + 1;
+		else if (v->d[mid].hash > hash)
+			hi = mid;
+		else
+			return (&v->d[mid]);
+	}
+	return (NULL);
+}
+
+static void
+conflict_items_insert(conflict_itemv_t *v, struct pkg_jobs_conflict_item item)
+{
+	size_t lo = 0, hi = v->len;
+	while (lo < hi) {
+		size_t mid = lo + (hi - lo) / 2;
+		if (v->d[mid].hash < item.hash)
+			lo = mid + 1;
+		else
+			hi = mid;
+	}
+	/* Make room at position lo */
+	vec_push(v, item);
+	if (lo < v->len - 1) {
+		memmove(&v->d[lo + 1], &v->d[lo],
+		    (v->len - 1 - lo) * sizeof(*v->d));
+		v->d[lo] = item;
+	}
+}
 
 static struct sipkey *
 pkg_conflicts_sipkey_init(void)
@@ -149,12 +183,7 @@ pkg_conflicts_request_resolve(struct pkg_jobs *j)
 	return (EPKG_OK);
 }
 
-static int
-pkg_conflicts_item_cmp(struct pkg_jobs_conflict_item *a,
-	struct pkg_jobs_conflict_item *b)
-{
-	return (b->hash - a->hash);
-}
+
 
 /*
  * Checks whether we need to add a conflict between two packages
@@ -328,20 +357,17 @@ pkg_conflicts_check_all_paths(struct pkg_jobs *j, const char *path,
 	struct pkg_job_universe_item *it, struct sipkey *k)
 {
 	const char *uid1, *uid2;
-	struct pkg_jobs_conflict_item *cit, test;
+	struct pkg_jobs_conflict_item *cit;
 	struct pkg_conflict *c;
 	uint64_t hv;
 
 	hv = siphash24(path, strlen(path), k);
-	test.hash = hv;
-	cit = TREE_FIND(j->conflict_items, pkg_jobs_conflict_item, entry, &test);
+	cit = conflict_items_find(&j->conflict_items, hv);
 
 	if (cit == NULL) {
 		/* New entry */
-		cit = xcalloc(1, sizeof(*cit));
-		cit->hash = hv;
-		cit->item = it;
-		TREE_INSERT(j->conflict_items, pkg_jobs_conflict_item, entry, cit);
+		struct pkg_jobs_conflict_item new_item = { .hash = hv, .item = it };
+		conflict_items_insert(&j->conflict_items, new_item);
 	}
 	else {
 		/* Check the same package */
@@ -432,24 +458,10 @@ pkg_conflicts_check_chain_conflict(struct pkg_job_universe_item *it,
 	/* XXX: dirs are currently broken terribly */
 }
 
-static void
-pkg_conflicts_item_free_recurse(struct pkg_jobs_conflict_item *node)
-{
-	if (node == NULL)
-		return;
-	pkg_conflicts_item_free_recurse(node->entry.avl_left);
-	pkg_conflicts_item_free_recurse(node->entry.avl_right);
-	free(node);
-}
-
 void
 pkg_conflicts_free(struct pkg_jobs *j)
 {
-	if (j->conflict_items != NULL) {
-		pkg_conflicts_item_free_recurse(j->conflict_items->th_root);
-		free(j->conflict_items);
-		j->conflict_items = NULL;
-	}
+	vec_free(&j->conflict_items);
 }
 
 int
@@ -458,11 +470,7 @@ pkg_conflicts_append_chain(universe_itemv_t *uv,
 {
 	struct pkg_job_universe_item *lp = NULL, *cur;
 
-	/* Ensure that we have a tree initialized */
-	if (j->conflict_items == NULL) {
-		j->conflict_items = xmalloc(sizeof(*j->conflict_items));
-		TREE_INIT(j->conflict_items, pkg_conflicts_item_cmp);
-	}
+	/* conflict_items vec is zero-initialized by pkg_jobs_new */
 
 	/* Find local package */
 	vec_foreach(*uv, _i) {

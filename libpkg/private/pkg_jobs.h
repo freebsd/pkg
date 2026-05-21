@@ -31,7 +31,6 @@
 #include "private/utils.h"
 #include "private/pkg.h"
 #include "pkg.h"
-#include "tree.h"
 
 struct pkg_jobs;
 struct job_pattern;
@@ -114,8 +113,8 @@ struct pkg_jobs_universe {
 struct pkg_jobs_conflict_item {
 	uint64_t hash;
 	struct pkg_job_universe_item *item;
-	TREE_ENTRY(pkg_jobs_conflict_item) entry;
 };
+typedef vec_t(struct pkg_jobs_conflict_item) conflict_itemv_t;
 
 struct job_pattern {
 	char		*pattern;
@@ -139,7 +138,7 @@ struct pkg_jobs {
 	bool need_fetch;
 	c_charv_t *reponames;
 	const char *destdir;
-	TREE_HEAD(, pkg_jobs_conflict_item) *conflict_items;
+	conflict_itemv_t conflict_items;
 	job_patternv_t patterns;
 	bool conservative;
 	bool pinning;
