@@ -852,10 +852,7 @@ pkg_jobs_find_upgrade(struct pkg_jobs *j, const char *pattern, match_t m)
 	int rc = EPKG_FATAL;
 	int with_version;
 	struct pkg_dep *rdep = NULL;
-	unsigned flags = PKG_LOAD_BASIC|PKG_LOAD_OPTIONS|PKG_LOAD_DEPS|
-			PKG_LOAD_REQUIRES|PKG_LOAD_PROVIDES|
-			PKG_LOAD_SHLIBS_REQUIRED|PKG_LOAD_SHLIBS_PROVIDED|
-			PKG_LOAD_ANNOTATIONS|PKG_LOAD_CONFLICTS;
+	unsigned flags = PKG_LOAD_COMMON;
 	struct pkg_job_universe_item *unit = NULL;
 
 	if ((it = pkgdb_repo_query2(j->db, pattern, m, j->reponames)) == NULL)

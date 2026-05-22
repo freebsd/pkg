@@ -56,10 +56,7 @@ pkg_jobs_universe_get_local(struct pkg_jobs_universe *universe,
 	struct pkg_job_universe_item *found;
 
 	if (flag == 0) {
-		flag = PKG_LOAD_BASIC|PKG_LOAD_DEPS|PKG_LOAD_RDEPS|PKG_LOAD_OPTIONS|
-			PKG_LOAD_REQUIRES|PKG_LOAD_PROVIDES|
-			PKG_LOAD_SHLIBS_REQUIRED|PKG_LOAD_SHLIBS_PROVIDED|PKG_LOAD_ANNOTATIONS|
-			PKG_LOAD_CONFLICTS;
+		flag = PKG_LOAD_ALL;
 	}
 
 	uv = pkghash_get_value(universe->items, uid);
@@ -102,10 +99,7 @@ pkg_jobs_universe_get_remote(struct pkg_jobs_universe *universe,
 	universe_itemv_t *uv;
 
 	if (flag == 0) {
-		flag = PKG_LOAD_BASIC|PKG_LOAD_DEPS|PKG_LOAD_OPTIONS|
-			PKG_LOAD_PROVIDES|PKG_LOAD_REQUIRES|
-				PKG_LOAD_SHLIBS_REQUIRED|PKG_LOAD_SHLIBS_PROVIDED|
-				PKG_LOAD_ANNOTATIONS|PKG_LOAD_CONFLICTS;
+		flag = PKG_LOAD_COMMON;
 	}
 
 	uv = pkghash_get_value(universe->items, uid);
@@ -395,10 +389,7 @@ pkg_jobs_universe_handle_provide(struct pkg_jobs_universe *universe,
 	providev_t *provvec;
 	struct pkg *npkg, *rpkg;
 	int rc;
-	unsigned flags = PKG_LOAD_BASIC|PKG_LOAD_OPTIONS|PKG_LOAD_DEPS|
-				PKG_LOAD_REQUIRES|PKG_LOAD_PROVIDES|
-				PKG_LOAD_SHLIBS_REQUIRED|PKG_LOAD_SHLIBS_PROVIDED|
-				PKG_LOAD_ANNOTATIONS|PKG_LOAD_CONFLICTS;
+	unsigned flags = PKG_LOAD_COMMON;
 
 	rpkg = NULL;
 
@@ -1034,10 +1025,7 @@ pkg_jobs_universe_get_upgrade_candidates(struct pkg_jobs_universe *universe,
 	struct pkg *pkg = NULL, *selected = lp;
 	struct pkgdb_it *it;
 	universe_itemv_t *uv;
-	int flag = PKG_LOAD_BASIC|PKG_LOAD_DEPS|PKG_LOAD_OPTIONS|
-					PKG_LOAD_REQUIRES|PKG_LOAD_PROVIDES|
-					PKG_LOAD_SHLIBS_REQUIRED|PKG_LOAD_SHLIBS_PROVIDED|
-					PKG_LOAD_ANNOTATIONS|PKG_LOAD_CONFLICTS;
+	int flag = PKG_LOAD_COMMON;
 	pkgs_t candidates = vec_init();
 
 	uv = pkghash_get_value(universe->items, uid);
