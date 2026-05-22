@@ -83,6 +83,33 @@ enum pkg_jobs_schedule_graph_edge_type {
 };
 
 /*
+ * Extract old and new pkg pointers from a solved job.
+ */
+static void
+pkg_solved_extract_pkg(struct pkg_solved *s, struct pkg **out_new,
+    struct pkg **out_old)
+{
+	*out_new = NULL;
+	*out_old = NULL;
+	switch (s->type) {
+	case PKG_SOLVED_INSTALL:
+	case PKG_SOLVED_UPGRADE_INSTALL:
+		*out_new = s->items[0]->pkg;
+		break;
+	case PKG_SOLVED_DELETE:
+	case PKG_SOLVED_UPGRADE_REMOVE:
+		*out_old = s->items[0]->pkg;
+		break;
+	case PKG_SOLVED_UPGRADE:
+		*out_new = s->items[0]->pkg;
+		*out_old = s->items[1]->pkg;
+		break;
+	default:
+		assert(false);
+	}
+}
+
+/*
  * Jobs are nodes in a directed graph. Edges represent job scheduling order
  * requirements. The existence of an edge from node A to node B indicates
  * that job A must be executed before job B.
@@ -121,46 +148,10 @@ pkg_jobs_schedule_graph_edge(struct pkg_solved *a, struct pkg_solved *b)
 		return (PKG_SCHEDULE_EDGE_NONE);
 	}
 
-	/* TODO: These switches would be unnecessary if delete jobs used
-	 * items[1] rather than items[0]. I suspect other cleanups could
-	 * be made as well. */
-	struct pkg *a_new = NULL;
-	struct pkg *a_old = NULL;
-	switch (a->type) {
-	case PKG_SOLVED_INSTALL:
-	case PKG_SOLVED_UPGRADE_INSTALL:
-		a_new = a->items[0]->pkg;
-		break;
-	case PKG_SOLVED_DELETE:
-	case PKG_SOLVED_UPGRADE_REMOVE:
-		a_old = a->items[0]->pkg;
-		break;
-	case PKG_SOLVED_UPGRADE:
-		a_new = a->items[0]->pkg;
-		a_old = a->items[1]->pkg;
-		break;
-	default:
-		assert(false);
-	}
-
-	struct pkg *b_new = NULL;
-	struct pkg *b_old = NULL;
-	switch (b->type) {
-	case PKG_SOLVED_INSTALL:
-	case PKG_SOLVED_UPGRADE_INSTALL:
-		b_new = b->items[0]->pkg;
-		break;
-	case PKG_SOLVED_DELETE:
-	case PKG_SOLVED_UPGRADE_REMOVE:
-		b_old = b->items[0]->pkg;
-		break;
-	case PKG_SOLVED_UPGRADE:
-		b_new = b->items[0]->pkg;
-		b_old = b->items[1]->pkg;
-		break;
-	default:
-		assert(false);
-	}
+	struct pkg *a_new = NULL, *a_old = NULL;
+	struct pkg *b_new = NULL, *b_old = NULL;
+	pkg_solved_extract_pkg(a, &a_new, &a_old);
+	pkg_solved_extract_pkg(b, &b_new, &b_old);
 
 	if (a_new != NULL && b_new != NULL &&
 	    pkg_jobs_schedule_direct_depends(b_new, a_new)) {
