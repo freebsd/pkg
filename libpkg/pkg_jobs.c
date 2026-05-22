@@ -508,8 +508,11 @@ delete_process_provides(struct pkg_jobs *j, struct pkg *lp, const char *provide,
 	pkg = NULL;
 	while (pkgdb_it_next(lit, &pkg, PKG_LOAD_BASIC) == EPKG_OK) {
 		/* skip myself */
-		if (STREQ(pkg->uid, lp->uid))
+		if (STREQ(pkg->uid, lp->uid)) {
+			pkg_free(pkg);
+			pkg = NULL;
 			continue;
+		}
 		req = pkghash_get_value(j->request_delete, pkg->uid);
 		/*
 		 * skip already processed provides
@@ -520,10 +523,14 @@ delete_process_provides(struct pkg_jobs *j, struct pkg *lp, const char *provide,
 		 * left after the removal of those packages
 		 * cascade.
 		 */
-		if (req != NULL && req->processed)
+		if (req != NULL && req->processed) {
+			pkg_free(pkg);
+			pkg = NULL;
 			continue;
+		}
 
-		pkgdb_it_free (lit);
+		pkgdb_it_free(lit);
+		pkg_free(pkg);
 		return (ret);
 	}
 	pkgdb_it_free(lit);
@@ -536,6 +543,8 @@ delete_process_provides(struct pkg_jobs *j, struct pkg *lp, const char *provide,
 		if (!append_to_del_request(j, to_process,
 		    pkg->uid, lp->name))
 			ret = false;
+		pkg_free(pkg);
+		pkg = NULL;
 	}
 	pkgdb_it_free(rit);
 	return (ret);
