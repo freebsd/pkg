@@ -769,6 +769,7 @@ new_pkg_version(struct pkg_jobs *j)
 
 end:
 	j->flags = old_flags;
+	pkg_free(p);
 
 	return (ret);
 }
