@@ -655,12 +655,14 @@ pkg_repo_archive_extract_check_archive(int fd, const char *file,
 		if (rkey == NULL) {
 			pkg_emit_error("No PUBKEY defined. Removing "
 			    "repository.");
-		        return (EPKG_FATAL);
+			ret = EPKG_FATAL;
+			goto cleanup;
 		}
 		if (sc == NULL) {
 			pkg_emit_error("No signature found in the repository.  "
 					"Can not validate against %s key.", rkey);
-		        return (EPKG_FATAL);
+			ret = EPKG_FATAL;
+			goto cleanup;
 		}
 		it = pkghash_iterator(sc);
 		pkghash_next(&it); /* check that there is content is already above */
@@ -669,7 +671,7 @@ pkg_repo_archive_extract_check_archive(int fd, const char *file,
 		ret = pkgsign_new_verify(s->type, &sctx);
 		if (ret != EPKG_OK) {
 			pkg_emit_error("'%s' signer not found", s->type);
-		        return (EPKG_FATAL);
+			goto cleanup;
 		}
 
 		/*
@@ -691,7 +693,7 @@ pkg_repo_archive_extract_check_archive(int fd, const char *file,
 		if (ret != EPKG_OK) {
 			pkg_emit_error("Invalid signature, "
 					"removing repository.");
-		        return (EPKG_FATAL);
+			goto cleanup;
 		}
 	}
 	else if (pkg_repo_signature_type(repo) == SIG_FINGERPRINT) {
@@ -710,7 +712,7 @@ pkg_repo_archive_extract_check_archive(int fd, const char *file,
 				ret = pkgsign_new_verify(s->type, &sctx);
 				if (ret != EPKG_OK) {
 					pkg_emit_error("'%s' signer not found", s->type);
-				        return (EPKG_FATAL);
+					goto cleanup;
 				}
 
 				signer_name = pkgsign_impl_name(sctx);
@@ -726,11 +728,13 @@ pkg_repo_archive_extract_check_archive(int fd, const char *file,
 		if (ret != EPKG_OK) {
 			pkg_emit_error("No trusted certificate has been used "
 			    "to sign the repository");
-		        return (EPKG_FATAL);
+			goto cleanup;
 		}
 	}
 
-	return (EPKG_OK);
+cleanup:
+	pkg_repo_signatures_free(sc);
+	return (ret);
 }
 
 static int
