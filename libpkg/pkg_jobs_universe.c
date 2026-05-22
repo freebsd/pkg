@@ -1086,6 +1086,7 @@ pkg_jobs_universe_get_upgrade_candidates(struct pkg_jobs_universe *universe,
 		pkg = NULL;
 	}
 
+	pkg_free(pkg);
 	pkgdb_it_free(it);
 
 	if (lp != NULL) {
