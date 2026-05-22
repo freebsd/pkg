@@ -1438,6 +1438,8 @@ jobs_solve_autoremove(struct pkg_jobs *j)
 			== EPKG_OK) {
 		if (pkg_jobs_test_automatic(j, pkg)) {
 			assert(pkg_jobs_add_req(j, pkg));
+		} else {
+			pkg_free(pkg);
 		}
 		pkg = NULL;
 	}
