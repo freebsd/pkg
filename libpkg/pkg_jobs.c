@@ -1341,9 +1341,9 @@ pkg_jobs_find_deinstall_request(struct pkg_job_universe_item *item,
 	struct pkg_dep *d = NULL;
 	struct pkg *pkg = item->pkg;
 
-	if (rec_level > 128) {
-		dbg(2, "cannot find deinstall request after 128 iterations for %s,"
-		    "circular dependency maybe", pkg->uid);
+	if (rec_level > PKG_MAX_DEINSTALL_RECURSION) {
+		dbg(2, "cannot find deinstall request after %d iterations for %s,"
+		    " circular dependency maybe", PKG_MAX_DEINSTALL_RECURSION, pkg->uid);
 		return (NULL);
 	}
 

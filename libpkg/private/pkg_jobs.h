@@ -34,6 +34,9 @@
 
 #define IS_DELETE(j) ((j)->type == PKG_JOBS_DEINSTALL || (j)->type == PKG_JOBS_AUTOREMOVE)
 
+/* Prevent runaway recursion in the deinstall graph solver */
+#define PKG_MAX_DEINSTALL_RECURSION 128
+
 struct pkg_jobs;
 struct job_pattern;
 
