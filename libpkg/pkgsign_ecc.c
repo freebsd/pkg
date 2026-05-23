@@ -586,7 +586,7 @@ ecc_extract_key_params(const uint8_t *oid, size_t oidlen,
 	int ret;
 
 	if (oidlen >= sizeof(oid_secp) &&
-	    memcmp(oid, oid_secp, sizeof(oid_secp)) >= 0) {
+	    memcmp(oid, oid_secp, sizeof(oid_secp)) == 0) {
 		oid += sizeof(oid_secp);
 		oidlen -= sizeof(oid_secp);
 
@@ -614,7 +614,7 @@ ecc_extract_key_params(const uint8_t *oid, size_t oidlen,
 	}
 
 	if (oidlen >= sizeof(oid_brainpoolP) &&
-	    memcmp(oid, oid_brainpoolP, sizeof(oid_brainpoolP)) >= 0) {
+	    memcmp(oid, oid_brainpoolP, sizeof(oid_brainpoolP)) == 0) {
 		oid += sizeof(oid_brainpoolP);
 		oidlen -= sizeof(oid_brainpoolP);
 
