@@ -1076,6 +1076,7 @@ plist_free(struct plist *p)
 	free(p->uname);
 	free(p->gname);
 	vec_free_and_free(&p->hardlinks, free);
+	vec_free_and_free(&p->variables, pkg_kv_free);
 
 	xstring_free(p->post_deinstall_buf);
 	xstring_free(p->post_install_buf);

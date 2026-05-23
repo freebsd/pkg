@@ -46,6 +46,23 @@
 #include "private/pkgdb.h"
 #include "private/pkg_jobs.h"
 
+bool
+pkg_in_universe(struct pkg_jobs_universe *universe, struct pkg *pkg)
+{
+	universe_itemv_t *uv;
+
+	if (pkg == NULL)
+		return (false);
+	uv = pkghash_get_value(universe->items, pkg->uid);
+	if (uv == NULL)
+		return (false);
+	vec_foreach(*uv, _i) {
+		if (uv->d[_i]->pkg == pkg)
+			return (true);
+	}
+	return (false);
+}
+
 struct pkg *
 pkg_jobs_universe_get_local(struct pkg_jobs_universe *universe,
 	const char *uid, unsigned flag)
@@ -238,8 +255,12 @@ pkg_jobs_universe_process_deps(struct pkg_jobs_universe *universe,
 		dbg(4, "Processing rdeps for %s (%s)", pkg->uid, pkg->type == PKG_INSTALLED ? "installed" : "remote");
 		if (pkg->type != PKG_INSTALLED) {
 			lpkg = pkg_jobs_universe_get_local(universe, pkg->uid, 0);
-			if (lpkg != NULL && lpkg != pkg)
-				return (pkg_jobs_universe_process_deps(universe, lpkg, flags));
+			if (lpkg != NULL && lpkg != pkg) {
+				rc = pkg_jobs_universe_process_deps(universe, lpkg, flags);
+				if (!pkg_in_universe(universe, lpkg))
+					pkg_free(lpkg);
+				return (rc);
+			}
 		}
 		deps_func = pkg_rdeps;
 	}

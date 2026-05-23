@@ -610,6 +610,7 @@ pkg_analyse_files(struct pkgdb *db __unused, struct pkg *pkg, const char *stage)
 		char *s = vec_pop(&internal_provided);
 		charv_insert_or_free(&pkg->shlibs_provided_ignore, s);
 	}
+	vec_free(&internal_provided);
 
 	vec_foreach(pkg->shlibs_provided, i) {
 		char *s = pkg->shlibs_provided.d[i];

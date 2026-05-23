@@ -1476,6 +1476,7 @@ is_upgrade_candidate(struct pkg_jobs *j, struct pkg *pkg)
 				return (true);
 			}
 		}
+		pkg_free(p);
 		pkgdb_it_free(it);
 		return (false);
 	}
@@ -2018,8 +2019,10 @@ pkg_jobs_handle_install(struct pkg_solved *ps, struct pkg_jobs *j)
 
 	// Treat installs where there is already a local package (e.g. a forced install)
 	// like an upgrade to handle config merging properly.
+	struct pkg *local_old = NULL;
 	if (old == NULL) {
 		old = pkg_jobs_universe_get_local(j->universe, new->uid, 0);
+		local_old = old;
 	}
 
 	if (new->type == PKG_GROUP_REMOTE)
@@ -2028,6 +2031,9 @@ pkg_jobs_handle_install(struct pkg_solved *ps, struct pkg_jobs *j)
 		retcode = pkg_add_upgrade(j->db, target, flags, NULL, new, old, &j->triggers, &j->rc);
 	else
 		retcode = pkg_add_from_remote(j->db, target, flags, NULL, new, &j->triggers, &j->rc);
+
+	if (local_old != NULL && !pkg_in_universe(j->universe, local_old))
+		pkg_free(local_old);
 
 	dbg(2, "end %s:", __func__);
 	return (retcode);

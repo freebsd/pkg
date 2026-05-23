@@ -217,6 +217,8 @@ int pkg_jobs_universe_add_pkg(struct pkg_jobs_universe *universe,
 struct pkg* pkg_jobs_universe_get_local(struct pkg_jobs_universe *universe,
 	const char *uid, unsigned flag);
 
+bool pkg_in_universe(struct pkg_jobs_universe *universe, struct pkg *pkg);
+
 /*
  * Resolve conflicts in request
  */

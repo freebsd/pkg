@@ -209,6 +209,7 @@ libfetch_open(struct pkg_repo *repo, struct fetch_item *fi)
 		    opts);
 
 		repo->fh = fetchXGet(u, &st, opts);
+		free(opts);
 		if (repo->fh == NULL) {
 			if (fetchLastErrCode == FETCH_OK) {
 				fetchFreeURL(u);

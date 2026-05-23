@@ -286,6 +286,8 @@ pkg_repo_meta_parse(ucl_object_t *top, struct pkg_repo_meta **target, int versio
 
 	*target = meta;
 
+	ucl_object_unref(top);
+
 	return (EPKG_OK);
 }
 
