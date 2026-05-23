@@ -174,6 +174,7 @@ pkg_repo_check_fingerprint(struct pkg_repo *repo, pkghash *sc, bool fatal)
 		hash = pkg_checksum_data(s->cert, s->certlen,
 		    PKG_HASH_TYPE_SHA256_HEX);
 		if (pkghash_get(repo->revoked_fp, hash) != NULL) {
+			pkg_debug(1, "Fingerprint '%s' has been revoked", hash);
 			if (fatal)
 				pkg_emit_error("At least one of the "
 					"certificates has been revoked");
@@ -185,6 +186,7 @@ pkg_repo_check_fingerprint(struct pkg_repo *repo, pkghash *sc, bool fatal)
 		if (pkghash_get(repo->trusted_fp, hash) != NULL) {
 			nbgood++;
 			s->trusted = true;
+			pkg_debug(1, "Fingerprint '%s' is trusted", hash);
 		}
 		free(hash);
 	}
@@ -695,6 +697,8 @@ pkg_repo_archive_extract_check_archive(int fd, const char *file,
 					"removing repository.");
 			goto cleanup;
 		}
+
+		pkg_debug(1, "Signature verified with key '%s'", rkey);
 	}
 	else if (pkg_repo_signature_type(repo) == SIG_FINGERPRINT) {
 		const char *signer_name = NULL;
@@ -721,6 +725,7 @@ pkg_repo_archive_extract_check_archive(int fd, const char *file,
 			ret = pkgsign_verify_cert(sctx, s->cert, s->certlen, s->sig,
 			     s->siglen, dest_fd);
 			if (ret == EPKG_OK && s->trusted) {
+				pkg_debug(1, "Signature verified with trusted fingerprint");
 				break;
 			}
 			ret = EPKG_FATAL;
@@ -1085,8 +1090,10 @@ pkg_repo_fetch_meta(struct pkg_repo *repo, time_t *t)
 
 			ret = pkgsign_verify_cert(sctx, s->cert, s->certlen, s->sig, s->siglen,
 				metafd);
-			if (ret == EPKG_OK && s->trusted)
+			if (ret == EPKG_OK && s->trusted) {
+				pkg_debug(1, "Signature verified with trusted fingerprint");
 				break;
+			}
 			ret = EPKG_FATAL;
 		}
 		if (ret != EPKG_OK) {
