@@ -985,6 +985,7 @@ ecc_verify_cert_cb(int fd, void *ud)
 		return (EPKG_FATAL);
 
 	ret = ecc_verify_internal(cbdata, sha256, strlen(sha256));
+	free(sha256);
 	if (ret != 0) {
 		pkg_emit_error("ecc signature verification failure");
 		return (EPKG_FATAL);
