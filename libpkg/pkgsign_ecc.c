@@ -509,17 +509,22 @@ ecc_extract_signature(const uint8_t *sig, size_t siglen, uint8_t *rawsig,
 			goto out;
 
 		sigdata = libder_obj_data(obj, &datasz);
-		if (datasz < 2 || datasz > compsz + 1)
-			goto out;
 
 		/*
 		 * We may see an extra lead byte if our high bit of the first
 		 * byte was set, since these numbers are positive by definition.
+		 *
+		 * We clip off the leading sign byte if necessary so that we can
+		 * do the exactly-right size check, rather than having to do an
+		 * off-by-one to account for this.
 		 */
-		if (sigdata[0] == 0 && (sigdata[1] & 0x80) != 0) {
+		if (datasz > 1 && sigdata[0] == 0 && (sigdata[1] & 0x80) != 0) {
 			sigdata++;
 			datasz--;
 		}
+
+		if (datasz == 0 || datasz > compsz)
+			goto out;
 
 		/* Sanity check: don't overflow the output. */
 		if (sigoff + datasz > rawlen)
