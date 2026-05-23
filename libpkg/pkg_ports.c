@@ -822,6 +822,7 @@ external_keyword(struct plist *plist, char *keyword, char *line, struct file_att
 		pkg_emit_error("Failed to apply keyword '%s'", keyword);
 	}
 
+	ucl_object_unref(o);
 	return (ret);
 }
 
