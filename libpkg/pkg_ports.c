@@ -981,6 +981,9 @@ plist_parse_line(struct plist *plist, char *line)
 	if (line[0] == '\0')
 		return (EPKG_OK);
 
+	if ((line[0] == '#' || line[0] == '\0'))
+		return (EPKG_OK);
+
 	pkg_debug(1, "Parsing plist line: '%s'", line);
 	bkpline = xstrdup(line);
 

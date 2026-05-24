@@ -1,6 +1,5 @@
 /*-
- * Copyright (c) 2013-2020 Baptiste Daroussin <bapt@FreeBSD.org>
- * All rights reserved.
+ * Copyright (c) 2013-2026 Baptiste Daroussin <bapt@FreeBSD.org>
  *~
  * Redistribution and use in source and binary forms, with or without
  * modification, are permitted provided that the following conditions
@@ -255,6 +254,9 @@ ATF_TC_BODY(parse_plist, tc)
 	strlcpy(buf, "@mode", BUFSIZ);
 	ATF_REQUIRE_EQ(EPKG_OK, plist_parse_line(plist, buf));
 	ATF_REQUIRE_EQ(0, plist->perm);
+
+	strlcpy(buf, "# test", BUFSIZ);
+	ATF_REQUIRE_EQ(EPKG_OK, plist_parse_line(plist, buf));
 
 	strlcpy(buf, "@blabla", BUFSIZ);
 	ATF_REQUIRE_EQ(EPKG_FATAL, plist_parse_line(plist, buf));
