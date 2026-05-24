@@ -67,6 +67,8 @@ pkg_repo_meta_set_default(struct pkg_repo_meta *meta)
 	 */
 	meta->digests = xstrdup("digests");
 	meta->digests_archive = xstrdup("digests");
+
+	meta->extra_fields = NULL;
 }
 
 void
@@ -103,6 +105,7 @@ pkg_repo_meta_free(struct pkg_repo_meta *meta)
 			free(k);
 		}
 		pkghash_destroy(meta->keys);
+		ucl_object_unref(meta->extra_fields);
 		free(meta);
 	}
 }
@@ -187,6 +190,9 @@ pkg_repo_meta_open_schema_v2(void)
 			"    name = {type = string};\n"
 			"  }"
 			"  required = [type, data, name];\n"
+			"};\n"
+			"extra = {"
+			"  type = object;\n"
 			"};\n"
 
 			"}\n"
@@ -284,6 +290,11 @@ pkg_repo_meta_parse(ucl_object_t *top, struct pkg_repo_meta **target, int versio
 			pkghash_safe_add(meta->keys, cert->name, cert, NULL);
 	}
 
+	obj = ucl_object_find_key(top, "extra");
+	if (obj != NULL && obj->type == UCL_OBJECT) {
+		meta->extra_fields = ucl_object_copy(obj);
+	}
+
 	*target = meta;
 
 	ucl_object_unref(top);
@@ -334,7 +345,7 @@ pkg_repo_meta_load(const int fd, struct pkg_repo_meta **target)
 
 	parser = ucl_parser_new(UCL_PARSER_KEY_LOWERCASE);
 
-	if (!ucl_parser_add_fd(parser, fd)) {
+	if (!ucl_parser_add_fd_full(parser, fd, 0, UCL_DUPLICATE_MERGE, UCL_PARSE_UCL)) {
 		pkg_emit_error("cannot parse repository meta: %s",
 				ucl_parser_get_error(parser));
 		ucl_parser_free(parser);
@@ -430,6 +441,12 @@ pkg_repo_meta_to_ucl(struct pkg_repo_meta *meta)
 	META_EXPORT_FIELD(result, meta, source_identifier, string);
 	META_EXPORT_FIELD(result, meta, revision, int);
 	META_EXPORT_FIELD(result, meta, eol, int);
+
+	if (meta->extra_fields != NULL) {
+		ucl_object_insert_key(result,
+				      ucl_object_copy(meta->extra_fields),
+				      "extra", 5, false);
+	}
 
 	/* TODO: export keys */
 
