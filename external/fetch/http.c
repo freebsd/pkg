@@ -105,7 +105,7 @@
 /* Persistent connection cache */
 static conn_t *http_cached_conn;
 
-static void
+void
 http_cache_flush(void)
 {
 	if (http_cached_conn != NULL) {

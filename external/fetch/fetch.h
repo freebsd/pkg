@@ -100,6 +100,7 @@ int		 fetchStatFile(struct url *, struct url_stat *, const char *);
 struct url_ent	*fetchListFile(struct url *, const char *);
 
 /* HTTP-specific functions */
+void		 http_cache_flush(void);
 FILE		*fetchXGetHTTP(struct url *, struct url_stat *, const char *);
 FILE		*fetchGetHTTP(struct url *, const char *);
 FILE		*fetchPutHTTP(struct url *, const char *);
