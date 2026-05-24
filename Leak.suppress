@@ -35,6 +35,10 @@ leak:atf_utils_wait
 # more from atf --HEAD
 leak:atf_tc_run
 
+# LSAN false positive: SQLite's internal allocator (pcache, lookaside)
+# is not traced by LSAN; the handles are freed via sqlite3_close in pkgdb_close
+leak:pkgdb_open_all2
+
 # Leak during signature (external libder)
 leak:ecc_sign
 

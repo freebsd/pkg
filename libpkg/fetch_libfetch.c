@@ -300,4 +300,5 @@ libfetch_cleanup(struct pkg_repo *repo)
 		repo->srv = NULL;
 	}
 	fh_close(repo);
+	http_cache_flush();
 }

@@ -382,6 +382,10 @@ pkg_jobs_universe_process_deps(struct pkg_jobs_universe *universe,
 			}
 		}
 
+		vec_foreach(*rpkgs, _i) {
+			if (!pkg_in_universe(universe, rpkgs->d[_i]))
+				pkg_free(rpkgs->d[_i]);
+		}
 		vec_free(rpkgs);
 		free(rpkgs);
 	}
