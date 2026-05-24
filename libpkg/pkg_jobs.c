@@ -801,6 +801,8 @@ pkg_jobs_process_remote_pkg(struct pkg_jobs *j, struct pkg *rp,
 		lp = pkg_jobs_universe_get_local(j->universe, rp->uid, 0);
 		if (lp && lp->locked) {
 			pkg_emit_locked(lp);
+			if (!pkg_in_universe(j->universe, lp))
+				pkg_free(lp);
 			return (EPKG_LOCKED);
 		}
 	}
@@ -826,19 +828,28 @@ pkg_jobs_process_remote_pkg(struct pkg_jobs *j, struct pkg *rp,
 			}
 			/* Also process all rdeps recursively */
 			if (nrit != NULL) {
+				struct pkg *rdep_lp;
 				while (pkg_rdeps(nrit->pkg, &rdep) == EPKG_OK) {
-					lp = pkg_jobs_universe_get_local(j->universe, rdep->uid, 0);
+					rdep_lp = pkg_jobs_universe_get_local(j->universe, rdep->uid, 0);
 
-					if (lp) {
-						(void)pkg_jobs_process_remote_pkg(j, lp, NULL, 0);
+					if (rdep_lp) {
+						(void)pkg_jobs_process_remote_pkg(j, rdep_lp, NULL, 0);
+						if (!pkg_in_universe(j->universe, rdep_lp))
+							pkg_free(rdep_lp);
 					}
 				}
 			}
 		}
 	}
 
-	if (nrit == NULL && lp)
+	if (nrit == NULL && lp) {
+		if (!pkg_in_universe(j->universe, lp))
+			pkg_free(lp);
 		return (EPKG_INSTALLED);
+	}
+
+	if (lp != NULL && !pkg_in_universe(j->universe, lp))
+		pkg_free(lp);
 
 	return (nrit != NULL ? EPKG_OK : EPKG_FATAL);
 }
@@ -903,13 +914,22 @@ pkg_jobs_find_upgrade(struct pkg_jobs *j, const char *pattern, match_t m)
 
 			rdep_package = pkg_jobs_universe_get_local(j->universe, rdep->uid,
 					PKG_LOAD_BASIC);
-			if (rdep_package != NULL)
+			if (rdep_package != NULL) {
+				if (!pkg_in_universe(j->universe, rdep_package))
+					pkg_free(rdep_package);
+				if (!pkg_in_universe(j->universe, p))
+					pkg_free(p);
 				return (EPKG_END);
+			}
 		}
 
 		dbg(2, "non-automatic package with pattern %s has not been found in "
 				"remote repo", pattern);
 		rc = pkg_jobs_universe_add_pkg(j->universe, p, &unit);
+		if (rc == EPKG_END) {
+			pkg_free(p);
+			rc = EPKG_OK;
+		}
 	}
 
 	return (rc);
