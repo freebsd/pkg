@@ -7,7 +7,8 @@ tests_init \
 	repo_multiversion \
 	repo_multiformat \
 	repo_symlinks \
-	repo_content
+	repo_content \
+	repo_extra_fields
 
 repo_v2_body() {
 	touch plop
@@ -184,4 +185,30 @@ repo_content_body() {
 	atf_check -o ignore pkg repo .
 	nb=$(tar -xf packagesite.pkg -O - packagesite.yaml | wc -l)
 	[ $nb -eq 1 ] || atf_fail "packagesite has $nb entries instead of 1"
+}
+
+repo_extra_fields_body() {
+	atf_check -s exit:0 sh ${RESOURCEDIR}/test_subr.sh new_pkg test test 1 "${TMPDIR}"
+
+	atf_check \
+		-s exit:0 \
+		pkg create -M test.ucl
+
+	cat > meta.ucl << EOF
+version = 2;
+extra = { foo = "yes"; };
+extra = { bar = 123; };
+EOF
+
+	atf_check \
+		-o ignore \
+		-s exit:0 \
+		pkg repo --meta-file meta.ucl .
+
+	atf_check -s exit:0 \
+		-o match:'extra \{' \
+		-o match:'foo = "yes";' \
+		-o match:'bar = 123;' \
+		-o match:'\}' \
+		cat meta.conf
 }

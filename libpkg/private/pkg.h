@@ -491,6 +491,8 @@ struct pkg_repo_meta {
 	char *repopath;
 	bool hash;
 	bool hash_symlink;
+
+	ucl_object_t* extra_fields;
 };
 
 struct pkg_repo_it_ops {
