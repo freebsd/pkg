@@ -467,6 +467,40 @@ will be opened relatively to the main plist file being parsed.
 Note: only one level of
 .Cm @include
 is allowed
+.It Cm @for Ar VAR Ar val1 Ar val2 ...
+.It Cm @end
+Begin and end a loop construct.
+All lines between
+.Cm @for
+and
+.Cm @end
+are repeated once for each value listed after
+.Ar VAR .
+Inside the loop body, occurrences of
+.Cm %%VAR%%
+are substituted with the current value.
+.Pp
+For example:
+.Bd -literal -offset indent
+@for COLOR red blue green
+share/myapp/%%COLOR%%.conf
+@end
+.Ed
+.Pp
+expands to:
+.Bd -literal -offset indent
+share/myapp/red.conf
+share/myapp/blue.conf
+share/myapp/green.conf
+.Ed
+.Pp
+The loop body may contain any valid plist line, including other keywords.
+Loops can be nested: an inner
+.Cm @for
+/
+.Cm @end
+block inside an outer loop body will be expanded for every
+combination of outer and inner values.
 .El
 .Sh ESCAPE SEQUENCES
 .\" ---------------------------------------------------------------------------

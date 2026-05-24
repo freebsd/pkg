@@ -65,6 +65,12 @@ static int config(struct plist *, char *, struct file_attr *);
 static int name_key(struct plist *, char *, struct file_attr *);
 static int include_plist(struct plist *, char *, struct file_attr *);
 static int add_variable(struct plist *, char *, struct file_attr *);
+/* @for VAR val1 val2 ... @end */
+static int for_handler(struct plist *, char *, struct file_attr *);
+static int forloop_execute(struct plist *);
+static char *forloop_substitute_var(const char *, const char *, const char *);
+static void forloop_frame_free(forloop_frame_t *);
+static void forloop_free_stack(struct plist *);
 
 static struct action_cmd {
 	const char *name;
@@ -483,6 +489,7 @@ static struct keyact {
 	{ "group", setgroup },
 	{ "override_prefix", override_prefix },
 	{ "var", add_variable },
+	{ "for", for_handler },
 	/* old pkg compat */
 	{ "name", name_key },
 	{ NULL, NULL },
@@ -984,6 +991,18 @@ plist_parse_line(struct plist *plist, char *line)
 	if ((line[0] == '#' || line[0] == '\0'))
 		return (EPKG_OK);
 
+	/* Inside a @for body: accumulate lines or close with @end */
+	if (plist->in_for_loop) {
+		if (line[0] == '@' && line[1] == 'e' && line[2] == 'n' &&
+		    line[3] == 'd' &&
+		    (line[4] == '\0' || isspace((unsigned char)line[4]))) {
+			return (forloop_execute(plist));
+		}
+		fprintf(plist->forloop_stack->body->fp, "%s\n", line);
+		fflush(plist->forloop_stack->body->fp);
+		return (EPKG_OK);
+	}
+
 	pkg_debug(1, "Parsing plist line: '%s'", line);
 	bkpline = xstrdup(line);
 
@@ -1087,6 +1106,7 @@ plist_free(struct plist *p)
 	xstring_free(p->pre_deinstall_buf);
 	xstring_free(p->pre_install_buf);
 
+	forloop_free_stack(p);
 	free(p);
 }
 
@@ -1163,7 +1183,10 @@ plist_parse(struct plist *pplist, FILE *f)
 	while ((linelen = getline(&line, &linecap, f)) > 0) {
 		if (line[linelen - 1] == '\n')
 			line[linelen - 1] = '\0';
-		l = expand_plist_variables(line, &pplist->variables);
+		if (pplist->in_for_loop)
+			l = xstrdup(line);
+		else
+			l = expand_plist_variables(line, &pplist->variables);
 		ret = plist_parse_line(pplist, l);
 		free(l);
 		if (ret != EPKG_OK && rc == EPKG_OK)
@@ -1191,6 +1214,220 @@ open_directory_of(const char *file)
 	walk = strrchr(path, '/');
 	*walk = '\0';
 	return (open(path, O_DIRECTORY));
+}
+
+/*
+ * Substitute %%varname%% with varval in a line, handling multiple
+ * occurrences.  Only exact variable name matches are replaced.
+ */
+static char *
+forloop_substitute_var(const char *in, const char *varname, const char *varval)
+{
+	xstring *buf;
+	const char *cp, *pct;
+	size_t vlen;
+
+	vlen = strlen(varname);
+	buf = xstring_new();
+
+	for (cp = in; *cp != '\0'; cp++) {
+		if (cp[0] == '%' && cp[1] == '%') {
+			cp += 2;
+			/* find end marker %% */
+			pct = strstr(cp, "%%");
+			if (pct != NULL && (size_t)(pct - cp) == vlen &&
+			    strncmp(cp, varname, vlen) == 0) {
+				/* exact variable match */
+				fprintf(buf->fp, "%s", varval);
+				cp = pct + 1;
+				continue;
+			}
+		}
+		fputc(*cp, buf->fp);
+	}
+
+	return (xstring_get(buf));
+}
+
+static void
+forloop_frame_free(forloop_frame_t *f)
+{
+	if (f == NULL)
+		return;
+	free(f->var);
+	vec_free_and_free(&f->values, free);
+	xstring_free(f->body);
+	free(f);
+}
+
+static void
+forloop_free_stack(struct plist *p)
+{
+	forloop_frame_t *f, *nxt;
+
+	for (f = p->forloop_stack; f != NULL; f = nxt) {
+		nxt = f->next;
+		forloop_frame_free(f);
+	}
+	p->forloop_stack = NULL;
+	p->in_for_loop = false;
+}
+
+/*
+ * Execute the innermost for loop when @end is reached.
+ * For each loop value, substitute %%VAR%% in the accumulated body,
+ * then either append to the parent's body (nested) or parse directly.
+ */
+static int
+forloop_execute(struct plist *p)
+{
+	forloop_frame_t *f;
+	int rc = EPKG_OK;
+	size_t i;
+
+	f = p->forloop_stack;
+	if (f == NULL) {
+		pkg_emit_error("@end without @for");
+		return (EPKG_FATAL);
+	}
+
+	p->forloop_stack = f->next;
+	p->in_for_loop = p->forloop_stack != NULL;
+
+	/* flush body buffer so buf is complete */
+	fflush(f->body->fp);
+
+	for (i = 0; i < f->values.len; i++) {
+		char *expanded;
+		const char *nl_start, *nl_end;
+		int inner_rc;
+
+		expanded = forloop_substitute_var(
+		    f->body->buf, f->var, f->values.d[i]);
+		if (expanded == NULL) {
+			forloop_frame_free(f);
+			return (EPKG_FATAL);
+		}
+
+		if (p->in_for_loop) {
+			/* Nested: append each expanded line to parent body */
+			nl_start = expanded;
+			while (*nl_start != '\0') {
+				nl_end = strchr(nl_start, '\n');
+				if (nl_end != NULL) {
+					if ((size_t)(nl_end - nl_start) > 0)
+						fprintf(p->forloop_stack->body->fp,
+						    "%.*s\n",
+						    (int)(nl_end - nl_start),
+						    nl_start);
+					else
+						fprintf(p->forloop_stack->body->fp,
+						    "\n");
+					nl_start = nl_end + 1;
+				} else {
+					/* last segment without trailing \n */
+					fprintf(p->forloop_stack->body->fp,
+					    "%s", nl_start);
+					break;
+				}
+			}
+			if (p->forloop_stack->body->fp != NULL)
+				fflush(p->forloop_stack->body->fp);
+		} else {
+			/* Top-level: parse each line */
+			nl_start = expanded;
+			while (*nl_start != '\0') {
+				char *line, *l;
+
+				nl_end = strchr(nl_start, '\n');
+				line = xstrndup(nl_start,
+				    nl_end ? (size_t)(nl_end - nl_start) :
+				    strlen(nl_start));
+
+				l = expand_plist_variables(
+				    line, &p->variables);
+				inner_rc = plist_parse_line(p, l);
+				free(l);
+				if (inner_rc != EPKG_OK && rc == EPKG_OK)
+					rc = inner_rc;
+				free(line);
+
+				if (nl_end != NULL)
+					nl_start = nl_end + 1;
+				else
+					break;
+			}
+		}
+		free(expanded);
+	}
+
+	forloop_frame_free(f);
+	return (rc);
+}
+
+/*
+ * Parse @for VAR val1 val2 val3 ...
+ */
+static int
+for_handler(struct plist *p, char *line, struct file_attr *a __unused)
+{
+	forloop_frame_t *f;
+	char *var, *values;
+	char *sep, *val;
+
+	/* Extract variable name */
+	var = line;
+	while (*var != '\0' && !isspace((unsigned char)*var))
+		var++;
+
+	if (*var == '\0') {
+		pkg_emit_error("@for: missing variable name and values");
+		return (EPKG_FATAL);
+	}
+	*var = '\0';
+	var++;
+	while (*var != '\0' && isspace((unsigned char)*var))
+		var++;
+
+	if (*var == '\0') {
+		pkg_emit_error("@for: missing loop values");
+		return (EPKG_FATAL);
+	}
+
+	values = var;
+
+	f = xcalloc(1, sizeof(*f));
+	f->var = xstrdup(line);
+	f->body = xstring_new();
+	f->next = p->forloop_stack;
+
+	/* Parse space-separated values */
+	sep = values;
+	while (*sep != '\0') {
+		while (isspace((unsigned char)*sep))
+			sep++;
+		if (*sep == '\0')
+			break;
+		val = sep;
+		while (*sep != '\0' && !isspace((unsigned char)*sep))
+			sep++;
+		if (*sep != '\0') {
+			*sep = '\0';
+			sep++;
+		}
+		vec_push(&f->values, xstrdup(val));
+	}
+
+	if (f->values.len == 0) {
+		pkg_emit_error("@for: no loop values");
+		forloop_frame_free(f);
+		return (EPKG_FATAL);
+	}
+
+	p->forloop_stack = f;
+	p->in_for_loop = true;
+
+	return (EPKG_OK);
 }
 
 int

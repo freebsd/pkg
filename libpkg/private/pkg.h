@@ -608,6 +608,9 @@ struct pkg_repo {
 };
 
 typedef vec_t(struct action *) actions_t;
+
+typedef struct forloop_frame forloop_frame_t;
+
 struct keyword {
 	char *keyword;
 	actions_t actions;
@@ -633,6 +636,15 @@ struct plist {
 	mode_t perm;
 	pkghash *keywords;
 	kvlist_t variables;
+	bool in_for_loop;
+	forloop_frame_t *forloop_stack;
+};
+
+struct forloop_frame {
+	char *var;
+	charv_t values;
+	xstring *body;
+	struct forloop_frame *next;
 };
 
 struct file_attr {

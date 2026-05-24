@@ -324,6 +324,85 @@ ATF_TC_BODY(expand_plist_variables, tc)
 	vec_autofree(&kv);
 }
 
+ATF_TC(forloop);
+
+ATF_TC_HEAD(forloop, tc)
+{
+	atf_tc_set_md_var(tc, "descr",
+	    "for loop @for VAR val1 val2 ... @end");
+}
+
+ATF_TC_BODY(forloop, tc)
+{
+	struct pkg *p;
+	struct plist *plist;
+	struct pkg_file *file;
+	int rc;
+	char stage[BUFSIZ];
+	char path[BUFSIZ];
+	char buf[BUFSIZ];
+	FILE *f;
+	size_t nfiles;
+
+	ATF_REQUIRE_EQ(EPKG_OK, pkg_new(&p, PKG_INSTALLED));
+
+	/* Create a temporary staging directory with real files */
+	strlcpy(stage, "/tmp/pkg-forloop-test-XXXXXXXX", BUFSIZ);
+	ATF_REQUIRE(mkdtemp(stage) != NULL);
+
+	/* Create files: red.txt, blue.txt, green.txt */
+	snprintf(path, sizeof(path), "%s/red.txt", stage);
+	ATF_REQUIRE((f = fopen(path, "w")) != NULL);
+	ATF_REQUIRE(fclose(f) == 0);
+
+	snprintf(path, sizeof(path), "%s/blue.txt", stage);
+	ATF_REQUIRE((f = fopen(path, "w")) != NULL);
+	ATF_REQUIRE(fclose(f) == 0);
+
+	snprintf(path, sizeof(path), "%s/green.txt", stage);
+	ATF_REQUIRE((f = fopen(path, "w")) != NULL);
+	ATF_REQUIRE(fclose(f) == 0);
+
+	plist = plist_new(p, stage);
+	ATF_REQUIRE(plist != NULL);
+
+	/* Simple @for loop expanding 3 files */
+	strlcpy(buf, "@for COLOR red blue green", BUFSIZ);
+	ATF_REQUIRE_EQ(EPKG_OK, plist_parse_line(plist, buf));
+
+	/* %%COLOR%%.txt expands to red.txt, blue.txt, green.txt */
+	strlcpy(buf, "%%COLOR%%.txt", BUFSIZ);
+	ATF_REQUIRE_EQ(EPKG_OK, plist_parse_line(plist, buf));
+
+	/* @end closes the loop and executes */
+	strlcpy(buf, "@end", BUFSIZ);
+	ATF_REQUIRE_EQ(EPKG_OK, plist_parse_line(plist, buf));
+
+	/* Verify the 3 files were added */
+	ATF_REQUIRE(pkg_get_file(p, "/red.txt") != NULL);
+	ATF_REQUIRE(pkg_get_file(p, "/blue.txt") != NULL);
+	ATF_REQUIRE(pkg_get_file(p, "/green.txt") != NULL);
+
+	/* Count total files */
+	nfiles = 0;
+	file = NULL;
+	while ((rc = pkg_files(p, &file)) == EPKG_OK)
+		nfiles++;
+	ATF_REQUIRE_EQ(nfiles, 3U);
+
+	pkg_free(p);
+	plist_free(plist);
+
+	/* Cleanup */
+	snprintf(path, sizeof(path), "%s/red.txt", stage);
+	unlink(path);
+	snprintf(path, sizeof(path), "%s/blue.txt", stage);
+	unlink(path);
+	snprintf(path, sizeof(path), "%s/green.txt", stage);
+	unlink(path);
+	rmdir(stage);
+}
+
 ATF_TP_ADD_TCS(tp)
 {
 	ATF_TP_ADD_TC(tp, parse_mode);
@@ -331,6 +410,7 @@ ATF_TP_ADD_TCS(tp)
 	ATF_TP_ADD_TC(tp, parse_keyword_attributes);
 	ATF_TP_ADD_TC(tp, parse_keyword);
 	ATF_TP_ADD_TC(tp, expand_plist_variables);
+	ATF_TP_ADD_TC(tp, forloop);
 
 	return (atf_no_error());
 }
