@@ -454,6 +454,7 @@ add_remote:
 				dbg(4, "handle_provide: found local package %s", npkg->uid);
 				if (pkg_jobs_universe_process_item(universe, npkg,
 						&unit) != EPKG_OK) {
+					pkg_free(rpkg);
 					return (EPKG_FATAL);
 				}
 				if (pkg_jobs_remote_should_skip(npkg, rpkg)) {
@@ -478,6 +479,7 @@ add_remote:
 				dbg(3, "no digest found for package %s", rpkg->uid);
 				if (pkg_checksum_calculate(rpkg,
 				    universe->j->db, false, true, false) != EPKG_OK) {
+					pkg_free(rpkg);
 					return (EPKG_FATAL);
 				}
 			}
@@ -485,6 +487,7 @@ add_remote:
 					&unit);
 
 			if (rc != EPKG_OK) {
+				pkg_free(rpkg);
 				return (rc);
 			}
 
@@ -510,6 +513,7 @@ provide:
 		vec_push(provvec, ((struct pkg_job_provide){
 		    .un = unit, .provide = name, .is_shlib = is_shlib }));
 	}
+	pkg_free(rpkg);
 
 	return (EPKG_OK);
 }
