@@ -445,6 +445,8 @@ add_remote:
 				continue;
 			}
 
+			if (unit == NULL || unit->pkg != rpkg)
+				pkg_free(rpkg);
 			rpkg = NULL;
 		}
 		else {
@@ -468,8 +470,11 @@ add_remote:
 						&unit) != EPKG_OK) {
 					continue;
 				}
-				if (unit != NULL)
+				if (unit != NULL) {
+					if (unit->pkg != rpkg)
+						pkg_free(rpkg);
 					rpkg = NULL;
+				}
 			}
 		}
 
@@ -491,7 +496,9 @@ add_remote:
 				return (rc);
 			}
 
-			/* Reset package to avoid freeing */
+			/* Reset package to avoid freeing if universe took ownership */
+			if (unit == NULL || unit->pkg != rpkg)
+				pkg_free(rpkg);
 			rpkg = NULL;
 		}
 
