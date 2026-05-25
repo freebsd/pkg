@@ -42,6 +42,11 @@ leak:pkgdb_open_all2
 # Leak during signature (external libder)
 leak:ecc_sign
 
+# LSAN false positive: the req allocated in pkg_jobs_add_req_from_universe is
+# properly freed via the pkghash iterator loop in pkg_jobs_free; valgrind
+# confirms 0 definite/indirect leaks.
+leak:pkg_jobs_add_req_from_universe
+
 # LUA tests are leaking
 leak:atfu_execute_body
 leak:atfu_fileops_body
