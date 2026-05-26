@@ -14,7 +14,7 @@
 .\"
 .\"     @(#)pkg.8
 .\"
-.Dd December 13, 2025
+.Dd May 26, 2026
 .Dt PKG-SEARCH 8
 .Os
 .Sh NAME
@@ -52,14 +52,14 @@
 .Ar pattern
 .Sh DESCRIPTION
 .Nm
-is used for searching package repository catalogues.
-Packages available for installation can be matched by name, by name
-and version, by origin, or by text in the package comments or package
-descriptions.
-The output defaults to displaying the field matched by the search
-term, but any of the searchable fields may be displayed.
-The output may be modified to additionally show many other package
-data available from the repository catalogues.
+searches the catalogue of packages available for installation.
+By default,
+.Nm Ns es
+for case-sensitive package names from all enabled repos.
+Available packages can also be matched by comment, description, origin,
+or version.
+It returns the name, version, and comment by default,
+but any data available from the catalogue may be displayed.
 .Pp
 Package repository catalogues will be automatically updated whenever
 .Nm
