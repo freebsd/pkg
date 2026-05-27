@@ -336,6 +336,46 @@ set_attrsat(int fd, const char *path, mode_t perm, uid_t uid, gid_t gid,
 	return (EPKG_OK);
 }
 
+/*
+ * Set file attributes using fd-based syscalls (fchown, fchmod, futimens)
+ * rather than the *at variants (fchownat, fchmodat, utimensat).
+ * This avoids relying on a directory fd which ZFS can sporadically report
+ * as invalid under certain conditions (see bug 281749).
+ */
+static int
+set_attr_tofd(int fd, const char *path, mode_t perm, uid_t uid, gid_t gid,
+    const struct timespec *ats, const struct timespec *mts, u_long fflags)
+{
+	struct timespec times[2];
+
+	times[0] = *ats;
+	times[1] = *mts;
+	if (futimens(fd, times) == -1 && errno != EOPNOTSUPP) {
+		pkg_fatal_errno("Failed to set time on %s", path);
+	}
+
+	if (getenv("INSTALL_AS_USER") == NULL) {
+		if (fchown(fd, uid, gid) == -1) {
+			pkg_fatal_errno("Failed to chown %s", path);
+		}
+	}
+
+	/* zfs drops the setuid on fchownat */
+	if (fchmod(fd, perm) == -1) {
+		pkg_fatal_errno("Failed to chmod %s", path);
+	}
+
+#ifdef HAVE_CHFLAGSAT
+	if (getenv("INSTALL_AS_USER") == NULL && fflags != 0) {
+		if (fchflags(fd, fflags) == -1) {
+			pkg_fatal_errno("Failed to chflags %s", path);
+		}
+	}
+#endif
+
+	return (EPKG_OK);
+}
+
 static void
 fill_timespec_buf(const struct stat *aest, struct timespec tspec[2])
 {
@@ -744,7 +784,6 @@ create_regfile(struct pkg_add_context *context, struct pkg_file *f, struct archi
 	int fd = -1;
 	size_t len;
 	char buf[32768];
-	char *path;
 	struct tempdir *tmpdir = NULL;
 
 	tmpdir = get_tempdir(context, f->path, tempdirs);
@@ -820,23 +859,16 @@ create_regfile(struct pkg_add_context *context, struct pkg_file *f, struct archi
 				pkg_errno("Failed to write file: %s", f->temppath);
 			}
 	}
-	if (fd != -1)
+	if (fd != -1) {
+		if (set_attr_tofd(fd, f->path, f->perm, f->uid, f->gid,
+		    &f->time[0], &f->time[1],
+		    tmpdir != NULL ? f->fflags : 0) != EPKG_OK) {
+			close(fd);
+			close_tempdir(tmpdir);
+			return (EPKG_FATAL);
+		}
 		close(fd);
-	if (tmpdir == NULL) {
-		fd = context->rootfd;
-		path = f->temppath;
-	} else {
-		fd = tmpdir->fd;
-		path = f->path + tmpdir->len;
 	}
-
-	if (set_attrsat(fd, path, f->perm, f->uid, f->gid,
-	    &f->time[0], &f->time[1]) != EPKG_OK) {
-		close_tempdir(tmpdir);
-		return (EPKG_FATAL);
-	}
-	if (tmpdir != NULL)
-		set_chflags(fd, path, f->fflags);
 
 	close_tempdir(tmpdir);
 	return (EPKG_OK);
