@@ -27,7 +27,7 @@
 .\"
 .\"     @(#)pkg.1
 .\"
-.Dd March 11, 2026
+.Dd May 28, 2026
 .Dt PKG.CONF 5
 .Os
 .Sh NAME
@@ -205,7 +205,7 @@ Default: 3.
 .It Cm FETCH_TIMEOUT: integer
 Maximum number of seconds to wait for any one file to download from the
 network, either by SSH or any of the protocols supported by
-.Xr libcurl 3
+.Xr fetch 3
 functions.
 Default: 30.
 .It Cm HANDLE_RC_SCRIPTS: boolean
