@@ -159,6 +159,7 @@ uint8_t			*libder_write(struct libder_ctx *, struct libder_object *, uint8_t *,
 	    (var) = (tvar))
 
 struct libder_object	*libder_obj_alloc(struct libder_ctx *, struct libder_tag *, const uint8_t *, size_t);
+struct libder_object	*libder_obj_alloc_oid(struct libder_ctx *, const char *);
 struct libder_object	*libder_obj_alloc_simple(struct libder_ctx *, uint8_t, const uint8_t *,
 		    size_t);
 void		 libder_obj_free(struct libder_object *);

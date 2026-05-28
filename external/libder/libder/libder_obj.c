@@ -1,5 +1,5 @@
 /*-
- * Copyright (c) 2024 Kyle Evans <kevans@FreeBSD.org>
+ * Copyright (c) 2024, 2026 Kyle Evans <kevans@FreeBSD.org>
  *
  * SPDX-License-Identifier: BSD-2-Clause
  */
@@ -79,6 +79,34 @@ libder_obj_alloc(struct libder_ctx *ctx, struct libder_tag *type,
 			free(payload);
 		}
 
+		libder_set_error(ctx, LDE_NOMEM);
+	}
+
+	return (obj);
+}
+
+struct libder_object *
+libder_obj_alloc_oid(struct libder_ctx *ctx, const char *oidstr)
+{
+	struct libder_object *obj;
+	struct libder_tag *type;
+	uint8_t *payload;
+	size_t payloadsz;
+
+	type = libder_type_alloc_simple(ctx, BT_OID);
+	if (type == NULL)
+		return (NULL);
+
+	payload = libder_oid_parse(oidstr, &payloadsz);
+	if (payload == NULL) {
+		libder_type_free(type);
+		return (NULL);
+	}
+
+	obj = libder_obj_alloc_internal(ctx, type, payload, payloadsz, LDO_OWNTAG);
+	if (obj == NULL) {
+		libder_bzero(payload, payloadsz);
+		libder_type_free(type);
 		libder_set_error(ctx, LDE_NOMEM);
 	}
 
@@ -472,6 +500,16 @@ libder_obj_dump_internal(const struct libder_object *obj, FILE *fp, int lvl)
 					printb = obj->payload[i];
 
 				col += fprintf(fp, "%.02x ", printb);
+			}
+
+			if (libder_type_is(obj->type, BT_OID)) {
+				char *oidstr;
+
+				fprintf(fp, "\n%.*s    ", lvl, spacer);
+
+				oidstr = libder_oid_stringify(obj->payload, obj->length);
+				fprintf(fp, "\"%s\"", oidstr != NULL ? oidstr : "<INVALID>");
+				free(oidstr);
 			}
 		}
 
