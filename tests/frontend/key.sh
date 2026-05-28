@@ -55,6 +55,19 @@ key_pubout_body() {
 	# Make sure it's functional.
 	atf_check -o save:msg.sign openssl dgst -sign repo -sha256 -binary msg
 	atf_check -o ignore openssl dgst -sha256 -verify repo.pub -signature msg.sign msg
+
+	# Check all of our ECC curves as well.
+	for curve in secp256k1 secp384r1 secp521r1 \
+	    brainpoolP256r1 brainpoolP256t1 brainpoolP320r1 brainpoolP320t1 \
+	    brainpoolP384r1 brainpoolP384t1 brainpoolP512r1 brainpoolP512t1; do
+		rm -f repo repo.pub
+
+		atf_check openssl ecparam -genkey -name "$curve" -out repo -outform DER
+		atf_check -o match:":$curve" openssl asn1parse -inform DER -in repo
+
+		atf_check -o save:repo.pub pkg key --public -t ecdsa repo
+		atf_check -o match:":$curve" openssl asn1parse -inform DER -in repo.pub
+	done
 }
 
 key_sign_head() {
@@ -69,7 +82,7 @@ key_sign_body() {
 		# Generate a key with pkg
 		atf_check -o save:repo.pub -e ignore \
 		    pkg key --create -t "$signer" repo.key
-		
+
 		atf_check -o save:msg.sig \
 		    pkg key --sign -t "$signer" repo.key < msg
 
