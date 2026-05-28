@@ -173,6 +173,9 @@ bool			 libder_obj_may_coalesce_children(const struct libder_object *);
 bool			 libder_obj_coalesce_children(struct libder_object *, struct libder_ctx *);
 bool			 libder_obj_normalize(struct libder_object *, struct libder_ctx *);
 
+uint8_t			*libder_oid_parse(const char *, size_t *);
+char			*libder_oid_stringify(const uint8_t *, size_t);
+
 struct libder_tag	*libder_type_alloc(void);
 void			 libder_type_release(struct libder_tag *);
 void			 libder_normalize_type(struct libder_ctx *, struct libder_tag *);

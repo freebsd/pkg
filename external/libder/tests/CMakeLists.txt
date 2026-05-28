@@ -1,4 +1,4 @@
-set(FUZZERS fuzz_parallel fuzz_stream fuzz_write)
+set(FUZZERS fuzz_oidparser fuzz_parallel fuzz_stream fuzz_write)
 set(UTILS )
 set(TESTS test_privkey test_pubkey)
 
