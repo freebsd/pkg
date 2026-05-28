@@ -67,8 +67,6 @@ static const uint8_t oid_ecpubkey[] = \
 
 static const uint8_t oid_secp[] = \
     { 0x2b, 0x81, 0x04, 0x00 };
-static const uint8_t oid_secp256k1[] = \
-    { 0x2b, 0x81, 0x04, 0x00, 0x0a };
 static const uint8_t oid_brainpoolP[] = \
     { 0x2b, 0x24, 0x03, 0x03, 0x02, 0x08, 0x01, 0x01 };
 
@@ -124,10 +122,9 @@ ecc_pkgkey_params(const uint8_t *curve, size_t curvesz)
  *      }
  *
  */
-/* XXX Should eventually support other kinds of keys. */
 static int
-ecc_pubkey_write_pkcs8(const uint8_t *keydata, size_t keysz,
-    uint8_t **buf, size_t *buflen)
+ecc_pubkey_write_pkcs8(const ec_params *ecparams, const uint8_t *keydata,
+    size_t keysz, uint8_t **buf, size_t *buflen)
 {
 	uint8_t keybuf[EC_PUB_KEY_MAX_SIZE + 2], *outbuf;
 	struct libder_ctx *ctx;
@@ -162,12 +159,7 @@ ecc_pubkey_write_pkcs8(const uint8_t *keydata, size_t keysz,
 	ok = libder_obj_append(params, oid);
 	assert(ok);
 
-	/*
-	 * secp256k1, we should eventually allow other curves and actually
-	 * construct the OID.
-	 */
-	oid = libder_obj_alloc_simple(ctx, BT_OID, oid_secp256k1,
-	    sizeof(oid_secp256k1));
+	oid = libder_obj_alloc_oid(ctx, ecparams->curve_oid);
 	if (oid == NULL)
 		goto out;
 	ok = libder_obj_append(params, oid);
@@ -1234,7 +1226,7 @@ ecc_pubkey(struct pkgsign_ctx *sctx, char **pubkey, size_t *pubkeylen)
 			    sctx->path);
 			return (EPKG_FATAL);
 		}
-	} else if (ecc_pubkey_write_pkcs8(keybuf, keylen,
+	} else if (ecc_pubkey_write_pkcs8(&keyinfo->params, keybuf, keylen,
 	    (uint8_t **)pubkey, pubkeylen) != EPKG_OK) {
 		pkg_emit_error("%s: failed to write DER-encoded key", sctx->path);
 		return (EPKG_FATAL);
