@@ -1142,17 +1142,28 @@ charv_search(charv_t *v, const char *el)
 uid_t
 get_uid_from_uname(const char *uname)
 {
-	static char user_buffer[1024];
 	static struct passwd pwent;
 	struct passwd *result;
+	static char *user_buffer = NULL;
+	size_t bufsize;
 	int err;
 	const char *testuname = uname ? uname : "";
 
 	if (pwent.pw_name != NULL && STREQ(testuname, pwent.pw_name))
 		goto out;
 	pwent.pw_name = NULL;
-	err = getpwnam_r(testuname, &pwent, user_buffer, sizeof(user_buffer),
-	    &result);
+	bufsize = 1024;
+	for (;;) {
+		free(user_buffer);
+		user_buffer = xcalloc(1, bufsize);
+		err = getpwnam_r(testuname, &pwent, user_buffer, bufsize,
+		    &result);
+		if (err == ERANGE) {
+			bufsize *= 2;
+			continue;
+		}
+		break;
+	}
 	if (err != 0) {
 		pkg_emit_error("getpwnam_r(%s): %s", testuname, strerror(err));
 		return (0);
@@ -1166,17 +1177,28 @@ out:
 gid_t
 get_gid_from_gname(const char *gname)
 {
-	static char group_buffer[1024];
 	static struct group grent;
 	struct group *result;
+	static char *group_buffer = NULL;
+	size_t bufsize;
 	int err;
 	const char *testgname = gname ? gname : "";
 
 	if (grent.gr_name != NULL && STREQ(testgname, grent.gr_name))
 		goto out;
 	grent.gr_name = NULL;
-	err = getgrnam_r(testgname, &grent, group_buffer, sizeof(group_buffer),
-	    &result);
+	bufsize = 1024;
+	for (;;) {
+		free(group_buffer);
+		group_buffer = xcalloc(1, bufsize);
+		err = getgrnam_r(testgname, &grent, group_buffer, bufsize,
+		    &result);
+		if (err == ERANGE) {
+			bufsize *= 2;
+			continue;
+		}
+		break;
+	}
 	if (err != 0) {
 		pkg_emit_error("getgrnam_r(%s): %s", testgname, strerror(err));
 		return (0);

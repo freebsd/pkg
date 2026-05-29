@@ -1923,8 +1923,8 @@ pkg_add_fromdir(struct pkg *pkg, const char *src, struct pkgdb *db __unused)
 	int retcode;
 	hardlinks_t hardlinks = vec_init();
 	const char *path;
-	char buffer[1024];
-	size_t link_len;
+	char *buffer = NULL;
+	size_t link_len, bufsize;
 	bool install_as_user;
 	tempdirs_t tempdirs = vec_init();
 	struct pkg_add_context context;
@@ -1949,8 +1949,18 @@ pkg_add_fromdir(struct pkg *pkg, const char *src, struct pkgdb *db __unused)
 		if (d->perm == 0)
 			d->perm = st.st_mode & ~S_IFMT;
 		if (d->uname != NULL) {
-			err = getpwnam_r(d->uname, &pwent, buffer,
-			    sizeof(buffer), &pw);
+			bufsize = 1024;
+			for (;;) {
+				free(buffer);
+				buffer = xcalloc(1, bufsize);
+				err = getpwnam_r(d->uname, &pwent, buffer,
+				    bufsize, &pw);
+				if (err == ERANGE) {
+					bufsize *= 2;
+					continue;
+				}
+				break;
+			}
 			if (err != 0) {
 				pkg_emit_error("getpwnam_r(%s): %s", d->uname, strerror(err));
 				retcode = EPKG_FATAL;
@@ -1961,8 +1971,18 @@ pkg_add_fromdir(struct pkg *pkg, const char *src, struct pkgdb *db __unused)
 			d->uid = install_as_user ? st.st_uid : 0;
 		}
 		if (d->gname != NULL) {
-			err = getgrnam_r(d->gname, &grent, buffer,
-			    sizeof(buffer), &gr);
+			bufsize = 1024;
+			for (;;) {
+				free(buffer);
+				buffer = xcalloc(1, bufsize);
+				err = getgrnam_r(d->gname, &grent, buffer,
+				    bufsize, &gr);
+				if (err == ERANGE) {
+					bufsize *= 2;
+					continue;
+				}
+				break;
+			}
 			if (err != 0) {
 				pkg_emit_error("getgrnam_r(%s): %s", d->gname, strerror(err));
 				retcode = EPKG_FATAL;
@@ -2005,8 +2025,18 @@ pkg_add_fromdir(struct pkg *pkg, const char *src, struct pkgdb *db __unused)
 			pkg_fatal_errno("%s%s", src, f->path);
 		}
 		if (f->uname != NULL) {
-			err = getpwnam_r(f->uname, &pwent, buffer,
-			    sizeof(buffer), &pw);
+			bufsize = 1024;
+			for (;;) {
+				free(buffer);
+				buffer = xcalloc(1, bufsize);
+				err = getpwnam_r(f->uname, &pwent, buffer,
+				    bufsize, &pw);
+				if (err == ERANGE) {
+					bufsize *= 2;
+					continue;
+				}
+				break;
+			}
 			if (err != 0) {
 				pkg_emit_error("getpwnam_r(%s): %s", f->uname, strerror(err));
 				retcode = EPKG_FATAL;
@@ -2018,8 +2048,18 @@ pkg_add_fromdir(struct pkg *pkg, const char *src, struct pkgdb *db __unused)
 		}
 
 		if (f->gname != NULL) {
-			err = getgrnam_r(f->gname, &grent, buffer,
-			    sizeof(buffer), &gr);
+			bufsize = 1024;
+			for (;;) {
+				free(buffer);
+				buffer = xcalloc(1, bufsize);
+				err = getgrnam_r(f->gname, &grent, buffer,
+				    bufsize, &gr);
+				if (err == ERANGE) {
+					bufsize *= 2;
+					continue;
+				}
+				break;
+			}
 			if (err != 0) {
 				pkg_emit_error("getgrnam_r(%s): %s", f->gname, strerror(err));
 				retcode = EPKG_FATAL;
@@ -2110,6 +2150,7 @@ pkg_add_fromdir(struct pkg *pkg, const char *src, struct pkgdb *db __unused)
 
 cleanup:
 	vec_free_and_free(&hardlinks, free);
+	free(buffer);
 	close(fromfd);
 	return (retcode);
 }
