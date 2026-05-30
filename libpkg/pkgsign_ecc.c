@@ -79,7 +79,7 @@ static const struct pkgkey_map_entry {
 	ENTRY(WEI25519, &wei25519_str_params),
 	ENTRY(SECP256K1, &secp256k1_str_params),
 	ENTRY(SECP384R1, &secp384r1_str_params),
-	ENTRY(SECP512R1, &secp521r1_str_params),
+	ENTRY(SECP521R1, &secp521r1_str_params),
 	ENTRY(BRAINPOOLP256R1, &brainpoolp256r1_str_params),
 	ENTRY(BRAINPOOLP256T1, &brainpoolp256t1_str_params),
 	ENTRY(BRAINPOOLP320R1, &brainpoolp320r1_str_params),
