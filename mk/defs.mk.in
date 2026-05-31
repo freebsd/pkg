@@ -42,6 +42,7 @@ bindir=		@bindir@
 sbindir=	@sbindir@
 includedir=	@includedir@
 mandir=		@mandir@
+datadir=		@datadir@
 sysconfdir=	@sysconfdir@
 pkgconfigdir=	@pkgconfigdir@
 MK=	$(top_srcdir)/mk
@@ -51,3 +52,8 @@ all:
 clean:
 
 install:
+
+check:
+
+distclean: clean
+	rm -f config.h config.log mk/defs.mk
