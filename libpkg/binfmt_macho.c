@@ -1,4 +1,6 @@
 /*-
+ * SPDX-License-Identifier: LicenseRef-scancode-bsd-unchanged
+ *
  * Copyright (c) 2024 Keve Müller <kevemueller@users.github.com>
  *
  * Redistribution and use in source and binary forms, with or without

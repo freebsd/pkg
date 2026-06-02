@@ -1,4 +1,6 @@
 /*-
+ * SPDX-License-Identifier: LicenseRef-scancode-bsd-unchanged
+ *
  * Copyright (c) 2015 Lars Engels <lme@FreeBSD.org>
  * All rights reserved.
  * 

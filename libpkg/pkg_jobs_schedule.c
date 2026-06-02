@@ -1,4 +1,6 @@
 /*-
+ * SPDX-License-Identifier: LicenseRef-scancode-bsd-unchanged
+ *
  * Copyright (c) 2024 The FreeBSD Foundation
  *
  * This software was developed by Isaac Freund <ifreund@freebsdfoundation.org>

@@ -1,4 +1,6 @@
 /*-
+ * SPDX-License-Identifier: LicenseRef-scancode-bsd-unchanged
+ *
  * Copyright (c) 2012 Baptiste Daroussin <bapt@FreeBSD.org>
  * Copyright (c) 2014 Matthew Seaman <matthew@FreeBSD.org>
  * Copyright (c) 2014 Vsevolod Stakhov <vsevolod@FreeBSD.org>
