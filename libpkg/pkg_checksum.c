@@ -1,4 +1,6 @@
-/* Copyright (c) 2014, Vsevolod Stakhov <vsevolod@FreeBSD.org>
+/* SPDX-License-Identifier: BSD-2-Clause
+ *
+ * Copyright (c) 2014, Vsevolod Stakhov <vsevolod@FreeBSD.org>
  * Copyright (c) 2014, Google Inc.
  * All rights reserved.
  *
