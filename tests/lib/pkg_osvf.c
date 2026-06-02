@@ -217,7 +217,7 @@ ATF_TC_BODY(osvfparse, tc)
 	ATF_CHECK_STREQ(entry->packages.d[0].names.d[0].pkgname, "osvf-test-package10");
 	ATF_CHECK_STREQ(entry->desc, "OSVF test");
 	ATF_CHECK_STREQ(entry->url, "https://www.freebsd.org/");
-	ATF_CHECK_STREQ(entry->id, "FBSD-2025-05-28");
+	ATF_CHECK_STREQ(entry->id, "FreeBSD-2025-05-28");
 
 	references = oentry->references;
 
