@@ -27,6 +27,10 @@ typedef struct {
 pkghash_entry *pkghash_get(pkghash *table, const char *key);
 pkghash_it pkghash_iterator(pkghash *table);
 bool pkghash_next(pkghash_it *it);
+
+#define pkghash_foreach(table, it) \
+	for (pkghash_it it = pkghash_iterator(table); pkghash_next(&it); )
+
 #define pkghash_safe_add(_t, _k, _v, _free_func) do { \
 	if (_t == NULL)                               \
 		_t = pkghash_new();                   \
