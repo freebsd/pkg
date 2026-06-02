@@ -125,6 +125,12 @@
     }
   ],
   "database_specific": {
-    "discovery": "2025-05-20T09:10:00Z"
+    "discovery": "2025-05-20T09:10:00Z",
+    "references": {
+      "cvename": [
+        "CVE-2003-0031",
+        "CVE-2003-0032"
+      ]
+    }
   }
 }
