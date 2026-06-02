@@ -1,4 +1,6 @@
 /*-
+ * SPDX-License-Identifier: LicenseRef-scancode-bsd-unchanged
+ *
  * Copyright (c) 2020 Baptiste Daroussin <bapt@FreeBSD.org>
  * Copyright (c) 2023 Serenity Cyber Security, LLC <license@futurecrew.ru>
  *                    Author: Gleb Popov <arrowd@FreeBSD.org>

@@ -1,4 +1,6 @@
 /*-
+ * SPDX-License-Identifier: LicenseRef-scancode-bsd-unchanged
+ *
  * Copyright (c) 2014 Landon Fuller <landon@landonf.org>
  * All rights reserved.
  *
