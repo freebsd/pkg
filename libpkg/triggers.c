@@ -379,7 +379,6 @@ static void
 save_trigger(const char *script, bool sandbox, pkghash *args)
 {
 	int db = ctx.pkg_dbdirfd;
-	pkghash_it it;
 
 	if (!mkdirat_p(db, "triggers"))
 		return;
@@ -416,8 +415,7 @@ save_trigger(const char *script, bool sandbox, pkghash *args)
 	if (sandbox)
 		fputs("--sandbox\n", f);
 	fputs("--begin args\n", f);
-	it = pkghash_iterator(args);
-	while (pkghash_next(&it)) {
+	pkghash_foreach(args, it) {
 		fprintf(f, "-- %s\n", (char *)it.value);
 	}
 	fputs("--end args\n--\n", f);
@@ -431,7 +429,6 @@ trigger_execute_lua_common(const char *script, bool sandbox, pkghash *args,
 {
 	lua_State *L;
 	int pstat;
-	pkghash_it it;
 
 	if (defer && !sandbox && ctx.defer_triggers) {
 		save_trigger(script, sandbox, args);
@@ -472,8 +469,7 @@ trigger_execute_lua_common(const char *script, bool sandbox, pkghash *args,
 		int i = 0;
 		if (args != NULL) {
 			arguments = xcalloc(pkghash_count(args), sizeof(char*));
-			it = pkghash_iterator(args);
-			while (pkghash_next(&it)) {
+			pkghash_foreach(args, it) {
 				arguments[i++] = it.key;
 			}
 		}
@@ -572,8 +568,7 @@ triggers_execute(struct triggers *t)
 	}
 
 	if (ctx.touched_dir_hash) {
-		pkghash_it it = pkghash_iterator(ctx.touched_dir_hash);
-		while (pkghash_next(&it)) {
+		pkghash_foreach(ctx.touched_dir_hash, it) {
 			vec_foreach(*triggers, i)
 				trigger_check_match(triggers->d[i], it.key);
 		}
@@ -717,9 +712,7 @@ triggers_execute_perpackage(struct pkg *pkg,
 	vec_foreach(*triggers, i) {
 		struct trigger *trig = triggers->d[i];
 		pkghash *local_matched = NULL;
-		pkghash_it it = pkghash_iterator(pkg_paths_hash);
-
-		while (pkghash_next(&it))
+		pkghash_foreach(pkg_paths_hash, it)
 			trigger_check_match_local(trig, it.key, &local_matched);
 
 		if (local_matched == NULL)

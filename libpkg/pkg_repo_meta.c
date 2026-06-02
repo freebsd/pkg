@@ -75,7 +75,6 @@ void
 pkg_repo_meta_free(struct pkg_repo_meta *meta)
 {
 	struct pkg_repo_meta_key *k;
-	pkghash_it it;
 
 	/*
 	 * It is safe to free NULL pointer by standard
@@ -96,8 +95,7 @@ pkg_repo_meta_free(struct pkg_repo_meta *meta)
 		free(meta->maintainer);
 		free(meta->source);
 		free(meta->source_identifier);
-		it = pkghash_iterator(meta->keys);
-		while (pkghash_next(&it)) {
+		pkghash_foreach(meta->keys, it) {
 			k = (struct pkg_repo_meta_key *)it.value;
 			free(k->name);
 			free(k->pubkey);

@@ -766,10 +766,8 @@ pkg_jobs_universe_provide_free(providev_t *pv)
 void
 pkg_jobs_universe_free(struct pkg_jobs_universe *universe)
 {
-	pkghash_it it;
 
-	it = pkghash_iterator(universe->items);
-	while (pkghash_next(&it)) {
+	pkghash_foreach(universe->items, it) {
 		universe_itemv_t *uv = it.value;
 		vec_foreach(*uv, _i) {
 			pkg_free(uv->d[_i]->pkg);
@@ -782,8 +780,7 @@ pkg_jobs_universe_free(struct pkg_jobs_universe *universe)
 	universe->items = NULL;
 	pkghash_destroy(universe->seen);
 	universe->seen = NULL;
-	it = pkghash_iterator(universe->provides);
-	while (pkghash_next(&it))
+	pkghash_foreach(universe->provides, it)
 		pkg_jobs_universe_provide_free(it.value);
 	pkghash_destroy(universe->provides);
 	free(universe);
@@ -971,10 +968,7 @@ pkg_jobs_universe_process_upgrade_chains(struct pkg_jobs *j)
 	struct pkg_job_universe_item *cur, *local;
 	struct pkg_job_request *req;
 	universe_itemv_t *uv;
-	pkghash_it it;
-
-	it = pkghash_iterator(j->universe->items);
-	while (pkghash_next(&it)) {
+	pkghash_foreach(j->universe->items, it) {
 		unsigned vercnt = 0;
 		uv = (universe_itemv_t *)it.value;
 

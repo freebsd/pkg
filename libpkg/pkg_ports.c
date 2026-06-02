@@ -1090,8 +1090,7 @@ plist_free(struct plist *p)
 	if (p->plistdirfd != -1)
 		close(p->plistdirfd);
 
-	pkghash_it it = pkghash_iterator(p->keywords);
-	while (pkghash_next(&it))
+	pkghash_foreach(p->keywords, it)
 		keyword_free((struct keyword *)it.value);
 	pkghash_destroy(p->keywords);
 	p->keywords = NULL;

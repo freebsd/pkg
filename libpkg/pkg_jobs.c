@@ -161,19 +161,16 @@ pkg_jobs_request_free(struct pkg_job_request *req)
 void
 pkg_jobs_free(struct pkg_jobs *j)
 {
-	pkghash_it it;
 
 	if (j == NULL)
 		return;
 
-	it = pkghash_iterator(j->request_add);
-	while (pkghash_next(&it))
+	pkghash_foreach(j->request_add, it)
 		pkg_jobs_request_free(it.value);
 	pkghash_destroy(j->request_add);
 	j->request_add = NULL;
 
-	it = pkghash_iterator(j->request_delete);
-	while (pkghash_next(&it))
+	pkghash_foreach(j->request_delete, it)
 		pkg_jobs_request_free(it.value);
 	pkghash_destroy(j->request_delete);
 	j->request_delete = NULL;
@@ -562,7 +559,6 @@ pkg_jobs_process_delete_request(struct pkg_jobs *j)
 	struct pkg *lp;
 	int rc = EPKG_OK;
 	pkgs_t to_process = vec_init();
-	pkghash_it it;
 
 	if (j->type == PKG_JOBS_DEINSTALL && force &&
 	    (j->flags & PKG_FLAG_RECURSIVE) == 0)
@@ -571,8 +567,7 @@ pkg_jobs_process_delete_request(struct pkg_jobs *j)
 	/*
 	 * Need to add also all reverse deps here
 	 */
-	it = pkghash_iterator(j->request_delete);
-	while (pkghash_next(&it)) {
+	pkghash_foreach(j->request_delete, it) {
 		req = it.value;
 		if (req->processed)
 			continue;
@@ -1282,10 +1277,7 @@ pkg_jobs_propagate_automatic(struct pkg_jobs *j)
 	struct pkg_job_universe_item *cur, *local;
 	struct pkg_job_request *req;
 	bool automatic;
-	pkghash_it it;
-
-	it = pkghash_iterator(j->universe->items);
-	while (pkghash_next(&it)) {
+	pkghash_foreach(j->universe->items, it) {
 		uv = (universe_itemv_t *)it.value;
 		if (uv->len == 1) {
 			/*
@@ -1535,7 +1527,6 @@ jobs_solve_full_upgrade(struct pkg_jobs *j)
 	candidates_t *candidates;
 	struct pkg_job_request *req;
 	struct pkgdb_it *it;
-	pkghash_it hit;
 	unsigned flags = PKG_LOAD_BASIC|PKG_LOAD_OPTIONS|PKG_LOAD_DEPS|PKG_LOAD_REQUIRES|
 			PKG_LOAD_SHLIBS_REQUIRED|PKG_LOAD_ANNOTATIONS|PKG_LOAD_CONFLICTS;
 
@@ -1576,8 +1567,7 @@ jobs_solve_full_upgrade(struct pkg_jobs *j)
 			jcount);
 	elt_num = 0;
 
-	hit = pkghash_iterator(j->request_add);
-	while (pkghash_next(&hit)) {
+	pkghash_foreach(j->request_add, hit) {
 		req = hit.value;
 		pkg_emit_progress_tick(++elt_num, jcount);
 		pkg_jobs_universe_process(j->universe, req->items.d[0].pkg);
@@ -1595,7 +1585,6 @@ jobs_solve_partial_upgrade(struct pkg_jobs *j)
 	struct pkg_job_request *req;
 	bool error_found = false;
 	int retcode;
-	pkghash_it it;
 
 	assert(!j->solved);
 
@@ -1629,8 +1618,7 @@ jobs_solve_partial_upgrade(struct pkg_jobs *j)
 	 * Need to iterate request one more time to recurse depends
 	 */
 
-	it = pkghash_iterator(j->request_add);
-	while (pkghash_next(&it)) {
+	pkghash_foreach(j->request_add, it) {
 		req = it.value;
 		retcode = pkg_jobs_universe_process(j->universe, req->items.d[0].pkg);
 		if (retcode != EPKG_OK)
@@ -1644,7 +1632,6 @@ jobs_solve_install_upgrade(struct pkg_jobs *j)
 {
 	struct pkg_job_request *req;
 	int retcode = 0;
-	pkghash_it it;
 
 	/* Check for new pkg. Skip for 'upgrade -F'. */
 	if ((j->flags & PKG_FLAG_SKIP_INSTALL) == 0 &&
@@ -1679,8 +1666,7 @@ jobs_solve_install_upgrade(struct pkg_jobs *j)
 		 * If we have tried to solve request, then we just want to re-add all
 		 * request packages to the universe to find out any potential conflicts
 		 */
-		it = pkghash_iterator(j->request_add);
-		while (pkghash_next(&it)) {
+		pkghash_foreach(j->request_add, it) {
 			req = it.value;
 			pkg_jobs_universe_process(j->universe, req->items.d[0].pkg);
 		}
@@ -1706,7 +1692,6 @@ jobs_solve_fetch(struct pkg_jobs *j)
 	struct pkg *pkg = NULL;
 	struct pkgdb_it *it;
 	struct pkg_job_request *req;
-	pkghash_it hit;
 	pkg_error_t rc;
 
 	assert(!j->solved);
@@ -1734,8 +1719,7 @@ jobs_solve_fetch(struct pkg_jobs *j)
 				pkg_emit_error("No packages matching '%s' have been found in the "
 						"repositories", jp->pattern);
 		}
-		hit = pkghash_iterator(j->request_add);
-		while (pkghash_next(&hit)) {
+		pkghash_foreach(j->request_add, hit) {
 			req = hit.value;
 			rc = pkg_jobs_universe_process(j->universe, req->items.d[0].pkg);
 			if (rc != EPKG_OK && rc != EPKG_END)

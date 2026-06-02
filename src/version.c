@@ -338,10 +338,7 @@ static void
 free_categories(void)
 {
 	struct category *cat;
-	pkghash_it it;
-
-	it = pkghash_iterator(categories);
-	while (pkghash_next(&it)) {
+	pkghash_foreach(categories, it) {
 		cat = (struct category *) it.value;
 		free(cat->name);
 		pkghash_destroy(cat->ports);
@@ -353,11 +350,7 @@ free_categories(void)
 static void
 free_index(pkghash *index)
 {
-	pkghash_it it;
-	struct index_entry *entry;
-
-	it = pkghash_iterator(index);
-	while (pkghash_next(&it)) {
+	pkghash_foreach(index, it) {
 		entry = (struct index_entry *)it.value;
 		free(entry->version);
 		free(entry->name);

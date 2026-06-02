@@ -153,10 +153,8 @@ pkg_conflicts_request_resolve(struct pkg_jobs *j)
 	struct pkg_job_request *req, *found;
 	struct pkg_conflict *c;
 	universe_itemv_t *uv;
-	pkghash_it it;
 
-	it = pkghash_iterator(j->request_add);
-	while (pkghash_next(&it)) {
+	pkghash_foreach(j->request_add, it) {
 		req = it.value;
 		conflict_chain_t chain = vec_init();
 		if (req->skip)

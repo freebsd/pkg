@@ -903,8 +903,7 @@ pkg_repo_create(struct pkg_repo_create *prc, char *path)
 			 */
 			struct dir_entry *dirs = xcalloc(te.nfile_dirs,
 			    sizeof(struct dir_entry));
-			pkghash_it hit = pkghash_iterator(te.file_dirs);
-			while (pkghash_next(&hit)) {
+			pkghash_foreach(te.file_dirs, hit) {
 				int idx = (int)(intptr_t)hit.value;
 				dirs[idx].path = hit.key;
 				dirs[idx].old_idx = idx;

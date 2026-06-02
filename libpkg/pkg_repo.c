@@ -129,7 +129,6 @@ pkg_repo_check_fingerprint(struct pkg_repo *repo, pkghash *sc, bool fatal)
 	int nbgood = 0;
 	struct sig_cert *s = NULL;
 	struct pkg_repo_meta_key *mk = NULL;
-	pkghash_it it;
 
 	if (pkghash_count(sc) == 0) {
 		if (fatal)
@@ -143,8 +142,7 @@ pkg_repo_check_fingerprint(struct pkg_repo *repo, pkghash *sc, bool fatal)
 			return (false);
 	}
 
-	it = pkghash_iterator(sc);
-	while (pkghash_next(&it)) {
+	pkghash_foreach(sc, it) {
 		s = (struct sig_cert *) it.value;
 		if (s->sig != NULL && s->cert == NULL) {
 			/*
@@ -205,12 +203,10 @@ static void
 pkg_repo_signatures_free(pkghash *sc)
 {
 	struct sig_cert *s;
-	pkghash_it it;
 
 	if (sc == NULL)
 		return;
-	it = pkghash_iterator(sc);
-	while (pkghash_next(&it)) {
+	pkghash_foreach(sc, it) {
 		s = (struct sig_cert *)it.value;
 		free(s->sig);
 		free(s->type);
@@ -701,8 +697,7 @@ pkg_repo_archive_extract_check_archive(int fd, const char *file,
 	else if (pkg_repo_signature_type(repo) == SIG_FINGERPRINT) {
 		const char *signer_name = NULL;
 
-		it = pkghash_iterator(sc);
-		while (pkghash_next(&it)) {
+		pkghash_foreach(sc, it) {
 			s = (struct sig_cert *)it.value;
 
 			/*
@@ -957,7 +952,6 @@ pkg_repo_fetch_meta(struct pkg_repo *repo, time_t *t)
 	struct sig_cert *s;
 	struct pkg_repo_check_cbdata cbdata;
 	bool newscheme = false;
-	pkghash_it it;
 
 	dbdirfd = pkg_get_dbdirfd();
 	sctx = NULL;
@@ -1044,8 +1038,7 @@ pkg_repo_fetch_meta(struct pkg_repo *repo, time_t *t)
 
 		cbdata.len = st.st_size;
 		cbdata.map = map;
-		it = pkghash_iterator(sc);
-		while (pkghash_next(&it)) {
+		pkghash_foreach(sc, it) {
 			s = (struct sig_cert *) it.value;
 			if (s->siglen != 0 && s->certlen == 0) {
 				/*
@@ -1067,8 +1060,7 @@ pkg_repo_fetch_meta(struct pkg_repo *repo, time_t *t)
 		}
 
 		ret = EPKG_FATAL;
-		it = pkghash_iterator(sc);
-		while (pkghash_next(&it)) {
+		pkghash_foreach(sc, it) {
 			s = (struct sig_cert *) it.value;
 
 			/*

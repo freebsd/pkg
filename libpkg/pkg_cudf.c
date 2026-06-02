@@ -203,13 +203,11 @@ cudf_emit_request_packages(const char *op, struct pkg_jobs *j, FILE *f)
 	struct pkg_job_request *req;
 	size_t column = 0, cnt = 0, max;
 	bool printed = false;
-	pkghash_it it;
 
 	max = pkghash_count(j->request_add);
 	if (fprintf(f, "%s: ", op) < 0)
 		return (EPKG_FATAL);
-	it = pkghash_iterator(j->request_add);
-	while (pkghash_next(&it)) {
+	pkghash_foreach(j->request_add, it) {
 		req = it.value;
 		cnt++;
 		if (req->skip)
@@ -230,8 +228,7 @@ cudf_emit_request_packages(const char *op, struct pkg_jobs *j, FILE *f)
 	if (fprintf(f, "remove: ") < 0)
 		return (EPKG_FATAL);
 	max = pkghash_count(j->request_delete);
-	it = pkghash_iterator(j->request_delete);
-	while (pkghash_next(&it)) {
+	pkghash_foreach(j->request_delete, it) {
 		req = it.value;
 		cnt++;
 		if (req->skip)
@@ -276,13 +273,11 @@ pkg_jobs_cudf_emit_file(struct pkg_jobs *j, pkg_jobs_t t, FILE *f)
 	struct pkg *pkg;
 	universe_itemv_t *uv;
 	int version;
-	pkghash_it hit;
 
 	if (fprintf(f, "preamble: \n\n") < 0)
 		return (EPKG_FATAL);
 
-	hit = pkghash_iterator(j->universe->items);
-	while (pkghash_next(&hit)) {
+	pkghash_foreach(j->universe->items, hit) {
 		uv = (universe_itemv_t *)hit.value;
 		/* Sort the vec by version */
 		qsort(uv->d, uv->len, sizeof(uv->d[0]), pkg_cudf_version_cmp);

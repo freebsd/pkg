@@ -73,7 +73,6 @@ check_vulnerable(struct pkg_audit *audit, struct pkgdb *db, int sock)
 	struct pkgdb_it	*it = NULL;
 	struct pkg		*pkg = NULL;
 	pkghash			*check = NULL;
-	pkghash_it		hit;
 	const char		*uid;
 	FILE			*out;
 
@@ -121,8 +120,7 @@ check_vulnerable(struct pkg_audit *audit, struct pkgdb *db, int sock)
 #endif
 
 	if (pkg_audit_process(audit) == EPKG_OK) {
-		hit = pkghash_iterator(check);
-		while (pkghash_next(&hit)) {
+		pkghash_foreach(check, hit) {
 				issues = NULL;
 				pkg = (struct pkg *)hit.value;
 				if (pkg_audit_is_vulnerable(audit, pkg, &issues, true)) {

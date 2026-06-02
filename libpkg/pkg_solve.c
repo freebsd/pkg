@@ -156,8 +156,7 @@ pkg_solve_problem_free(struct pkg_solve_problem *problem)
 {
 	vec_free_and_free(&problem->rules, pkg_solve_rule_free);
 	{
-		pkghash_it it = pkghash_iterator(problem->variables_by_uid);
-		while (pkghash_next(&it))
+		pkghash_foreach(problem->variables_by_uid, it)
 			free(it.value);
 	}
 	pkghash_destroy(problem->variables_by_uid);
@@ -803,9 +802,7 @@ pkg_solve_jobs_to_sat(struct pkg_jobs *j)
 	struct pkg_solve_problem *problem;
 	universe_itemv_t *uv;
 	size_t i = 0;
-	pkghash_it it;
-
-	problem = xcalloc(1, sizeof(struct pkg_solve_problem));
+		problem = xcalloc(1, sizeof(struct pkg_solve_problem));
 
 	problem->j = j;
 	problem->nvars = j->universe->nitems;
@@ -821,16 +818,14 @@ pkg_solve_jobs_to_sat(struct pkg_jobs *j)
 	picosat_adjust(problem->sat, problem->nvars);
 
 	/* Parse universe */
-	it = pkghash_iterator(j->universe->items);
-	while (pkghash_next(&it)) {
+	pkghash_foreach(j->universe->items, it) {
 		uv = (universe_itemv_t *)it.value;
 		/* Add corresponding variables */
 		pkg_solve_add_variable(uv, problem, &i);
 	}
 
 	/* Add rules for all conflict chains */
-	it = pkghash_iterator(j->universe->items);
-	while (pkghash_next(&it)) {
+	pkghash_foreach(j->universe->items, it) {
 		solve_var_slice_t *slice;
 
 		uv = (universe_itemv_t *)it.value;
@@ -1514,9 +1509,7 @@ int
 pkg_solve_sat_to_jobs(struct pkg_solve_problem *problem)
 {
 	solve_var_slice_t *slice;
-	pkghash_it it = pkghash_iterator(problem->variables_by_uid);
-
-	while (pkghash_next(&it)) {
+	pkghash_foreach(problem->variables_by_uid, it) {
 		slice = (solve_var_slice_t *)it.value;
 		dbg(4, "check variable with uid %s", slice->begin[0].uid);
 		pkg_solve_insert_res_job(slice, problem);
