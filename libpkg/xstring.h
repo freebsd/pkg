@@ -56,6 +56,9 @@ do {                          \
    }                          \
 } while(0)
 
+#define xprintf(s, fmt, ...)  fprintf((s)->fp, fmt, ##__VA_ARGS__)
+#define xputs(s, str)         fputs(str, (s)->fp)
+
 static inline char *
 xstring_get(xstring *str)
 {
