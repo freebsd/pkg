@@ -993,6 +993,43 @@ pkg_osvf_parse_references(struct pkg_osvf_entry *oentry, const ucl_object_t *ref
 }
 
 static void
+pkg_osvf_parse_cvename(audit_cvev_t *cves, const ucl_object_t *cvename_obj)
+{
+	ucl_object_iter_t it = NULL;
+	const ucl_object_t *cur = NULL;
+
+	if(!cvename_obj || ucl_object_type(cvename_obj) != UCL_ARRAY)
+	{
+		return;
+	}
+
+	/*
+	   Parses database_spefic CVE entries to linked list
+	   "references": {
+	     "cvename": [
+	       "CVE-2003-0031",
+	       "CVE-2003-0032"
+	     ]
+	   }
+	 */
+
+	while ((cur = ucl_iterate_object(cvename_obj, &it, true)))
+	{
+		vec_push(cves, ((struct pkg_audit_cve){0}));
+		struct pkg_audit_cve *cve = &cves->d[cves->len - 1];
+
+		if(ucl_object_type(cur) == UCL_STRING)
+		{
+			cve->cvename = xstrdup(ucl_object_tostring(cur));
+		}
+		else
+		{
+			cve->cvename = xstrdup("Malformed CVE");
+		}
+	}
+}
+
+static void
 pkg_osvf_parse_affected(struct pkg_audit_entry *entry, const ucl_object_t *aff_obj)
 {
 	ucl_object_iter_t it = NULL;
@@ -1218,6 +1255,13 @@ pkg_osvf_print_entry(struct pkg_osvf_entry *oentry)
 		}
 	}
 
+	printf("CVE Names:\n");
+
+	vec_foreach(entry->cve, pi) {
+		struct pkg_audit_cve *cve = &entry->cve.d[pi];
+		printf("\t%s\n", cve->cvename);
+	}
+
 	printf("Vulnerability references:\n");
 
 	references = oentry->references;
@@ -1270,6 +1314,7 @@ pkg_osvf_create_entry(ucl_object_t *osvf_obj)
 	struct pkg_osvf_entry *oentry = NULL;
 	struct pkg_audit_entry *entry = NULL;
 	const ucl_object_t *sub_obj = NULL;
+	const ucl_object_t *sub_sub_obj = NULL;
 	/* Date format is in RFC3339 */
 	const char *date_time_str = "%Y-%m-%dT%H:%M:%SZ";
 
@@ -1337,6 +1382,13 @@ pkg_osvf_create_entry(ucl_object_t *osvf_obj)
 		if(ucl_object_find_key(sub_obj, "discovery"))
 		{
 			strptime(ucl_object_tostring(ucl_object_find_key(sub_obj, "discovery")), date_time_str, &entry->discovery);
+		}
+
+		sub_sub_obj = ucl_object_find_key(sub_obj, "references");
+		if(sub_sub_obj && ucl_object_type(sub_sub_obj) == UCL_OBJECT)
+		{
+			sub_obj = ucl_object_find_key(sub_sub_obj, "cvename");
+			pkg_osvf_parse_cvename(&oentry->audit.cve, sub_obj);
 		}
 	}
 
