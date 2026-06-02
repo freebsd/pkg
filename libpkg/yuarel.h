@@ -1,4 +1,6 @@
 /**
+ * SPDX-License-Identifier: MIT
+ *
  * Copyright (C) 2016 Jack Engqvist Johansson
  *
  * Permission is hereby granted, free of charge, to any person obtaining a copy
