@@ -1,4 +1,6 @@
 /*
+** SPDX-License-Identifier: BSD-2-Clause
+**
 ** Copyright (c) 2007 D. Richard Hipp
 **
 ** This program is free software; you can redistribute it and/or
