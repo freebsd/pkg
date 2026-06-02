@@ -146,7 +146,7 @@ pkg_delete(struct pkg *pkg, struct pkg *rpkg, struct pkgdb *db, int flags,
 				pkg_fprintf(message->fp, "Message from "
 				    "%n-%v:\n", pkg, pkg);
 			}
-			fprintf(message->fp, "%s\n", pkg->message.d[i]->str);
+			xprintf(message, "%s\n", pkg->message.d[i]->str);
 		}
 	}
 	if (pkg_has_message(pkg) && message != NULL) {

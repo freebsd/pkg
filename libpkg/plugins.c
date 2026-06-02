@@ -159,7 +159,7 @@ pkg_plugin_set(struct pkg_plugin *p, pkg_plugin_key key, const char *str)
 	assert(p != NULL);
 
 	xstring_renew(p->fields[key]);
-	fputs(str, p->fields[key]->fp);
+	xputs(p->fields[key], str);
 	fflush(p->fields[key]->fp);
 	return (EPKG_OK);
 }

@@ -211,7 +211,7 @@ urlencode(const char *src, xstring **dest)
 	len = strlen(src);
 	for (i = 0; i < len; i++) {
 		if (!isascii(src[i]) || src[i] == '%')
-			fprintf((*dest)->fp, "%%%.2x", (unsigned char)src[i]);
+			xprintf((*dest), "%%%.2x", (unsigned char)src[i]);
 		else
 			fputc(src[i], (*dest)->fp);
 	}

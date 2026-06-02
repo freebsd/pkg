@@ -189,14 +189,14 @@ libfetch_open(struct pkg_repo *repo, struct fetch_item *fi)
 			u->port = http_current->url->port;
 		}
 		fetchOpts = xstring_new();
-		fputs("i", fetchOpts->fp);
+		xputs(fetchOpts, "i");
 		if (repo->ip == IPV4)
-			fputs("4", fetchOpts->fp);
+			xputs(fetchOpts, "4");
 		else if (repo->ip == IPV6)
-			fputs("6", fetchOpts->fp);
+			xputs(fetchOpts, "6");
 
 		if (ctx.debug_level >= 4)
-			fputs("v", fetchOpts->fp);
+			xputs(fetchOpts, "v");
 
 		opts = xstring_get(fetchOpts);
 		pkg_dbg(PKG_DBG_FETCH, 1,

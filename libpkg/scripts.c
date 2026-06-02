@@ -123,15 +123,15 @@ pkg_script_run(struct pkg * const pkg, pkg_script type, bool upgrade, bool noexe
 				setenv("PKG_CHROOTED", "true", 1);
 			debug = pkg_object_bool(pkg_config_get("DEBUG_SCRIPTS"));
 			if (debug)
-				fprintf(script_cmd->fp, "set -x\n");
+				xprintf(script_cmd, "set -x\n");
 			pkg_fprintf(script_cmd->fp, "set -- %n-%v", pkg, pkg);
 
 			if (j == map[i].b) {
 				/* add arg **/
-				fprintf(script_cmd->fp, " %s", map[i].arg);
+				xprintf(script_cmd, " %s", map[i].arg);
 			}
 
-			fprintf(script_cmd->fp, "\n%s", pkg->scripts[j]->buf);
+			xprintf(script_cmd, "\n%s", pkg->scripts[j]->buf);
 
 			/* Determine the maximum argument length for the given
 			   script to determine if /bin/sh -c can be used, or

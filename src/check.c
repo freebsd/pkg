@@ -380,7 +380,7 @@ exec_check(int argc, char **argv)
 				if (match == MATCH_ALL)
 					progressbar_start("Checking all packages");
 				else {
-					fprintf(msg->fp, "Checking %s", argv[i]);
+					xprintf(msg, "Checking %s", argv[i]);
 					fflush(msg->fp);
 					progressbar_start(msg->buf);
 				}

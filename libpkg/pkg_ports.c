@@ -199,9 +199,9 @@ setprefix(struct plist *p, char *line, struct file_attr *a __unused)
 
 	p->slash = p->prefix[strlen(p->prefix) -1] == '/' ? "" : "/";
 
-	fprintf(p->post_install_buf->fp, "cd %s\n", p->prefix);
-	fprintf(p->pre_deinstall_buf->fp, "cd %s\n", p->prefix);
-	fprintf(p->post_deinstall_buf->fp, "cd %s\n", p->prefix);
+	xprintf(p->post_install_buf, "cd %s\n", p->prefix);
+	xprintf(p->pre_deinstall_buf, "cd %s\n", p->prefix);
+	xprintf(p->post_deinstall_buf, "cd %s\n", p->prefix);
 
 	return (EPKG_OK);
 }
@@ -631,16 +631,16 @@ append_script(struct plist *p, pkg_script t, const char *cmd)
 {
 	switch (t) {
 	case PKG_SCRIPT_PRE_INSTALL:
-		fprintf(p->pre_install_buf->fp, "%s\n", cmd);
+		xprintf(p->pre_install_buf, "%s\n", cmd);
 		break;
 	case PKG_SCRIPT_POST_INSTALL:
-		fprintf(p->post_install_buf->fp, "%s\n", cmd);
+		xprintf(p->post_install_buf, "%s\n", cmd);
 		break;
 	case PKG_SCRIPT_PRE_DEINSTALL:
-		fprintf(p->pre_deinstall_buf->fp, "%s\n", cmd);
+		xprintf(p->pre_deinstall_buf, "%s\n", cmd);
 		break;
 	case PKG_SCRIPT_POST_DEINSTALL:
-		fprintf(p->post_deinstall_buf->fp, "%s\n", cmd);
+		xprintf(p->post_deinstall_buf, "%s\n", cmd);
 		break;
 	}
 }
@@ -998,7 +998,7 @@ plist_parse_line(struct plist *plist, char *line)
 		    (line[4] == '\0' || isspace((unsigned char)line[4]))) {
 			return (forloop_execute(plist));
 		}
-		fprintf(plist->forloop_stack->body->fp, "%s\n", line);
+		xprintf(plist->forloop_stack->body, "%s\n", line);
 		fflush(plist->forloop_stack->body->fp);
 		return (EPKG_OK);
 	}
@@ -1149,7 +1149,7 @@ expand_plist_variables(const char *in, kvlist_t *vars)
 			in++;
 		}
 		if (in[0] != '%') {
-			fprintf(buf->fp, "%%%%%.*s", (int)(in - cp), cp);
+			xprintf(buf, "%%%%%.*s", (int)(in - cp), cp);
 			continue;
 		}
 		len = in - cp -1;
@@ -1158,14 +1158,14 @@ expand_plist_variables(const char *in, kvlist_t *vars)
 		vec_foreach(*vars, i) {
 			if (strncmp(cp, vars->d[i]->key, len) != 0)
 				continue;
-			fputs(vars->d[i]->value, buf->fp);
+			xputs(buf, vars->d[i]->value);
 			found = true;
 			in++;
 			break;
 		}
 		if (found)
 			continue;
-		fprintf(buf->fp, "%%%%%.*s%%", (int)(in - cp), cp);
+		xprintf(buf, "%%%%%.*s%%", (int)(in - cp), cp);
 		in++;
 	}
 	return (xstring_get(buf));
@@ -1238,7 +1238,7 @@ forloop_substitute_var(const char *in, const char *varname, const char *varval)
 			if (pct != NULL && (size_t)(pct - cp) == vlen &&
 			    strncmp(cp, varname, vlen) == 0) {
 				/* exact variable match */
-				fprintf(buf->fp, "%s", varval);
+				xprintf(buf, "%s", varval);
 				cp = pct + 1;
 				continue;
 			}
@@ -1316,17 +1316,17 @@ forloop_execute(struct plist *p)
 				nl_end = strchr(nl_start, '\n');
 				if (nl_end != NULL) {
 					if ((size_t)(nl_end - nl_start) > 0)
-						fprintf(p->forloop_stack->body->fp,
+						xprintf(p->forloop_stack->body,
 						    "%.*s\n",
 						    (int)(nl_end - nl_start),
 						    nl_start);
 					else
-						fprintf(p->forloop_stack->body->fp,
+						xprintf(p->forloop_stack->body,
 						    "\n");
 					nl_start = nl_end + 1;
 				} else {
 					/* last segment without trailing \n */
-					fprintf(p->forloop_stack->body->fp,
+					xprintf(p->forloop_stack->body,
 					    "%s", nl_start);
 					break;
 				}
@@ -1607,7 +1607,7 @@ pkg_add_port(struct pkgdb *db, struct pkg *pkg, const char *input_path,
 		vec_foreach(pkg->message, i) {
 			if (pkg->message.d[i]->type == PKG_MESSAGE_ALWAYS ||
 			    pkg->message.d[i]->type == PKG_MESSAGE_INSTALL) {
-				fprintf(message->fp, "%s\n", pkg->message.d[i]->str);
+				xprintf(message, "%s\n", pkg->message.d[i]->str);
 			}
 		}
 		if (pkg_has_message(pkg)) {

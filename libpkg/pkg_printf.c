@@ -905,7 +905,7 @@ format_time_t(xstring *buf, time_t timestamp, struct percent_esc *p)
 		tsv = timestamp;
 		strftime(buffer, sizeof(buffer), p->item_fmt->buf,
 			 localtime(&tsv));
-		fprintf(buf->fp, "%s", buffer);
+		xprintf(buf, "%s", buffer);
 	}
 	return (buf);
 }
@@ -1397,30 +1397,30 @@ format_message(xstring *buffer, const void *data, struct percent_esc *p)
 		}
 		switch(msg->type) {
 		case PKG_MESSAGE_ALWAYS:
-			fprintf(bufmsg->fp, "Always:\n");
+			xprintf(bufmsg, "Always:\n");
 			break;
 		case PKG_MESSAGE_UPGRADE:
-			fprintf(bufmsg->fp, "On upgrade");
+			xprintf(bufmsg, "On upgrade");
 			if (msg->minimum_version != NULL ||
 			    msg->maximum_version != NULL) {
-				fprintf(bufmsg->fp, " from %s", pkg->name);
+				xprintf(bufmsg, " from %s", pkg->name);
 			}
 			if (msg->minimum_version != NULL) {
-				fprintf(bufmsg->fp, ">%s", msg->minimum_version);
+				xprintf(bufmsg, ">%s", msg->minimum_version);
 			}
 			if (msg->maximum_version != NULL) {
-				fprintf(bufmsg->fp, "<%s", msg->maximum_version);
+				xprintf(bufmsg, "<%s", msg->maximum_version);
 			}
-			fprintf(bufmsg->fp, ":\n");
+			xprintf(bufmsg, ":\n");
 			break;
 		case PKG_MESSAGE_INSTALL:
-			fprintf(bufmsg->fp, "On install:\n");
+			xprintf(bufmsg, "On install:\n");
 			break;
 		case PKG_MESSAGE_REMOVE:
-			fprintf(bufmsg->fp, "On remove:\n");
+			xprintf(bufmsg, "On remove:\n");
 			break;
 		}
-		fprintf(bufmsg->fp, "%s\n", msg->str);
+		xprintf(bufmsg, "%s\n", msg->str);
 	}
 	if (bufmsg == NULL)
 		message = NULL;
@@ -2254,10 +2254,10 @@ human_number(xstring *buf, int64_t number, struct percent_esc *p)
 			precision = 0;
 	}
 
-	fprintf(buf->fp, format, width, precision, num * sign);
+	xprintf(buf, format, width, precision, num * sign);
 
 	if (scale > 0)
-		fprintf(buf->fp, "%s",
+		xprintf(buf, "%s",
 		    bin_scale ? bin_pfx[scale] : si_pfx[scale]);
 
 	return (buf);
@@ -2281,7 +2281,7 @@ string_val(xstring *buf, const char *str, struct percent_esc *p)
 	if (gen_format(format, sizeof(format), p->flags, "s") == NULL)
 		return (NULL);
 
-	fprintf(buf->fp, format, p->width, str == NULL ? "" : str);
+	xprintf(buf, format, p->width, str == NULL ? "" : str);
 	return (buf);
 }
 
@@ -2297,7 +2297,7 @@ int_val(xstring *buf, int64_t value, struct percent_esc *p)
 		    == NULL)
 			return (NULL);
 
-		fprintf(buf->fp, format, p->width, value);
+		xprintf(buf, format, p->width, value);
 	}
 	return (buf);
 }
@@ -2360,7 +2360,7 @@ mode_val(xstring *buf, mode_t mode, struct percent_esc *p)
 		    == NULL)
 			return (NULL);
 
-		fprintf(buf->fp, format, p->width, mode);
+		xprintf(buf, format, p->width, mode);
 	}
 	return (buf);
 }
@@ -2419,11 +2419,11 @@ set_list_defaults(struct percent_esc *p, const char *item_fmt,
 		  const char *sep_fmt)
 {
 	if ((p->trailer_status & ITEM_FMT_SET) != ITEM_FMT_SET) {
-		fprintf(p->item_fmt->fp, "%s", item_fmt);
+		xprintf(p->item_fmt, "%s", item_fmt);
 		p->trailer_status |= ITEM_FMT_SET;
 	}
 	if ((p->trailer_status & SEP_FMT_SET) != SEP_FMT_SET) {
-		fprintf(p->sep_fmt->fp, "%s", sep_fmt);
+		xprintf(p->sep_fmt, "%s", sep_fmt);
 		p->trailer_status |= SEP_FMT_SET;
 	}
 	return (p);
@@ -2455,7 +2455,7 @@ iterate_item(xstring *buf, const struct pkg *pkg, const char *format,
 			f = process_escape(buf, f);
 			break;
 		default:
-			fprintf(buf->fp, "%c", *f);
+			xprintf(buf, "%c", *f);
 			f++;
 			break;
 		}

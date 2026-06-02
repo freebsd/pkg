@@ -271,9 +271,9 @@ format_exec_cmd(char **dest, const char *in, const char *prefix,
 
 	if (line != NULL && argv != NULL) {
 		if (lua) {
-			fprintf(buf->fp, "-- args: %s\n", line);
+			xprintf(buf, "-- args: %s\n", line);
 		} else {
-			fprintf(buf->fp, "# args: %s\n", line);
+			xprintf(buf, "# args: %s\n", line);
 		}
 	}
 
@@ -286,7 +286,7 @@ format_exec_cmd(char **dest, const char *in, const char *prefix,
 		in++;
 		switch(in[0]) {
 		case 'D':
-			fprintf(buf->fp, "%s", prefix);
+			xprintf(buf, "%s", prefix);
 			break;
 		case 'F':
 			if (plist_file == NULL || plist_file[0] == '\0') {
@@ -295,7 +295,7 @@ format_exec_cmd(char **dest, const char *in, const char *prefix,
 				xstring_free(buf);
 				return (EPKG_FATAL);
 			}
-			fprintf(buf->fp, "%s", plist_file);
+			xprintf(buf, "%s", plist_file);
 			break;
 		case 'f':
 			if (plist_file == NULL || plist_file[0] == '\0') {
@@ -309,7 +309,7 @@ format_exec_cmd(char **dest, const char *in, const char *prefix,
 				ptr++;
 			else
 				ptr = plist_file;
-			fprintf(buf->fp, "%s", ptr);
+			xprintf(buf, "%s", ptr);
 			break;
 		case 'B':
 			if (plist_file == NULL || plist_file[0] == '\0') {
@@ -326,14 +326,14 @@ format_exec_cmd(char **dest, const char *in, const char *prefix,
 				    plist_file);
 			cp = strrchr(path, '/');
 			cp[0] = '\0';
-			fprintf(buf->fp, "%s", path);
+			xprintf(buf, "%s", path);
 			break;
 		case '%':
 			fputc('%', buf->fp);
 			break;
 		case '@':
 			if (line != NULL) {
-				fprintf(buf->fp, "%s", line);
+				xprintf(buf, "%s", line);
 				break;
 			}
 
@@ -344,7 +344,7 @@ format_exec_cmd(char **dest, const char *in, const char *prefix,
 			 */
 			/* FALLTHRU */
 		case '#':
-			fprintf(buf->fp, "%d", argc);
+			xprintf(buf, "%d", argc);
 			break;
 		default:
 			if ((sz = strspn(in, "0123456789")) > 0) {
@@ -356,11 +356,11 @@ format_exec_cmd(char **dest, const char *in, const char *prefix,
 					xstring_free(buf);
 					return (EPKG_FATAL);
 				}
-				fprintf(buf->fp, "%s", argv[pos -1]);
+				xprintf(buf, "%s", argv[pos -1]);
 				in += sz -1;
 				break;
 			}
-			fprintf(buf->fp, "%c%c", '%', in[0]);
+			xprintf(buf, "%c%c", '%', in[0]);
 			break;
 		}
 
@@ -585,7 +585,7 @@ ucl_buf_append_character(unsigned char c, size_t len, void *data)
 	size_t i;
 
 	for (i = 0; i < len; i++)
-		fprintf(buf->fp, "%c", c);
+		xprintf(buf, "%c", c);
 
 	return (0);
 }
@@ -595,7 +595,7 @@ ucl_buf_append_len(const unsigned char *str, size_t len, void *data)
 {
 	xstring *buf = data;
 
-	fprintf(buf->fp, "%.*s", (int)len, str);
+	xprintf(buf, "%.*s", (int)len, str);
 
 	return (0);
 }
@@ -605,7 +605,7 @@ ucl_buf_append_int(int64_t val, void *data)
 {
 	xstring *buf = data;
 
-	fprintf(buf->fp, "%"PRId64, val);
+	xprintf(buf, "%"PRId64, val);
 
 	return (0);
 }
@@ -617,11 +617,11 @@ ucl_buf_append_double(double val, void *data)
 	const double delta = 0.0000001;
 
 	if (val == (double)(int)val) {
-		fprintf(buf->fp, "%.1lf", val);
+		xprintf(buf, "%.1lf", val);
 	} else if (fabs(val - (double)(int)val) < delta) {
-		fprintf(buf->fp, "%.*lg", DBL_DIG, val);
+		xprintf(buf, "%.*lg", DBL_DIG, val);
 	} else {
-		fprintf(buf->fp, "%lf", val);
+		xprintf(buf, "%lf", val);
 	}
 
 	return (0);

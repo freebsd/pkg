@@ -70,19 +70,19 @@ stack_dump(lua_State *L)
 
 	for (i = 1; i <= top; i++) {  /* repeat for each level */
 		int t = lua_type(L, i);
-		fprintf(stack->fp, "%i", i);
+		xprintf(stack, "%i", i);
 		switch (t) {
 		case LUA_TSTRING:  /* strings */
-			fprintf(stack->fp, "\tString: `%s'\n", lua_tostring(L, i));
+			xprintf(stack, "\tString: `%s'\n", lua_tostring(L, i));
 			break;
 		case LUA_TBOOLEAN:  /* booleans */
-			fprintf(stack->fp, "\tBoolean: %s", lua_toboolean(L, i) ? "\ttrue\n" : "\tfalse\n");
+			xprintf(stack, "\tBoolean: %s", lua_toboolean(L, i) ? "\ttrue\n" : "\tfalse\n");
 			break;
 		case LUA_TNUMBER:  /* numbers */
-			fprintf(stack->fp, "\tNumber: %g\n", lua_tonumber(L, i));
+			xprintf(stack, "\tNumber: %g\n", lua_tonumber(L, i));
 			break;
 		default:  /* other values */
-			fprintf(stack->fp, "\tOther: %s\n", lua_typename(L, t));
+			xprintf(stack, "\tOther: %s\n", lua_typename(L, t));
 			break;
 		}
 	}

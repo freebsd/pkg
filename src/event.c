@@ -173,7 +173,7 @@ job_status_begin(xstring *msg)
 		if (hostname[0] == '\0')
 			gethostname(hostname, sizeof(hostname));
 
-		fprintf(msg->fp, "[%s] ", hostname);
+		xprintf(msg, "[%s] ", hostname);
 	}
 #endif
 
@@ -182,18 +182,18 @@ job_status_begin(xstring *msg)
 		if (add_deps_depth > 1) {
 			for (n = 0; n < (2 * add_deps_depth); ++n) {
 				if (n % 4 == 0 && n < (2 * add_deps_depth))
-					fprintf(msg->fp, "|");
+					xprintf(msg, "|");
 				else
-					fprintf(msg->fp, " ");
+					xprintf(msg, " ");
 			}
 		}
-		fprintf(msg->fp, "`-- ");
+		xprintf(msg, "`-- ");
 	}
 
 	if ((nbtodl > 0 || nbactions > 0) && nbdone > 0) {
 		if (nbdigits == 0)
 			nbdigits = count_digits(nbtodl ? nbtodl : nbactions);
-		fprintf(msg->fp, "[%*zu/%zu] ", nbdigits, nbdone, (nbtodl) ? nbtodl : nbactions);
+		xprintf(msg, "[%*zu/%zu] ", nbdigits, nbdone, (nbtodl) ? nbtodl : nbactions);
 	}
 	if (nbtodl > 0 && nbtodl == nbdone) {
 		nbtodl = 0;
@@ -472,15 +472,15 @@ event_cb_fetch_begin(struct pkg_event *ev, int *debug __unused)
 	progress_debit = true;
 	tmp = strrchr(filename, '~');
 	if (tmp != NULL)
-		fprintf(msg_buf->fp, "Fetching %.*s",
+		xprintf(msg_buf, "Fetching %.*s",
 				(int)(tmp - filename), filename);
 	else {
 		tmp = strrchr(filename, '.');
 		if (tmp != NULL && strcmp(tmp, ".pkg") == 0)
-			fprintf(msg_buf->fp, "Fetching %.*s",
+			xprintf(msg_buf, "Fetching %.*s",
 					(int)(tmp - filename), filename);
 		else
-			fprintf(msg_buf->fp, "Fetching %s",
+			xprintf(msg_buf, "Fetching %s",
 					filename);
 	}
 	return (0);
@@ -875,14 +875,14 @@ event_cb_progress_tick(struct pkg_event *ev, int *debug __unused)
 static int
 event_cb_backup(struct pkg_event *ev __unused, int *debug __unused)
 {
-	fprintf(msg_buf->fp, "Backing up");
+	xprintf(msg_buf, "Backing up");
 	return (0);
 }
 
 static int
 event_cb_restore(struct pkg_event *ev __unused, int *debug __unused)
 {
-	fprintf(msg_buf->fp, "Restoring");
+	xprintf(msg_buf, "Restoring");
 	return (0);
 }
 
@@ -900,7 +900,7 @@ event_cb_message(struct pkg_event *ev, int *debug __unused)
 {
 	if (messages == NULL)
 		messages = xstring_new();
-	fprintf(messages->fp, "%s", ev->e_pkg_message.msg);
+	xprintf(messages, "%s", ev->e_pkg_message.msg);
 	return (0);
 }
 
@@ -950,17 +950,17 @@ event_cb_conflicts(struct pkg_event *ev, int *debug __unused)
 	    ev->e_conflicts.p1, ev->e_conflicts.p1);
 	if (pkg_repos_total_count() > 1) {
 		pkg_get(ev->e_conflicts.p1, PKG_ATTR_REPONAME, &reponame);
-		fprintf(conflicts->fp, " [%s]",
+		xprintf(conflicts, " [%s]",
 		    reponame == NULL ? "installed" : reponame);
 	}
 	pkg_fprintf(conflicts->fp, " conflicts with %n-%v",
 	    ev->e_conflicts.p2, ev->e_conflicts.p2);
 	if (pkg_repos_total_count() > 1) {
 		pkg_get(ev->e_conflicts.p2, PKG_ATTR_REPONAME, &reponame);
-		fprintf(conflicts->fp, " [%s]",
+		xprintf(conflicts, " [%s]",
 		    reponame == NULL ? "installed" : reponame);
 	}
-	fprintf(conflicts->fp, " on %s\n",
+	xprintf(conflicts, " on %s\n",
 	    ev->e_conflicts.path);
 	return (0);
 }

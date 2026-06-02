@@ -1027,12 +1027,12 @@ charv_diff(const charv_t *local, const charv_t *remote,
 		else cmp = strcmp(local->d[li], remote->d[ri]);
 		if (cmp < 0) {
 			if (diff == NULL) diff = xstring_new();
-			fprintf(diff->fp, "%s%s (removed)",
+			xprintf(diff, "%s%s (removed)",
 			    nd ? ", " : "", local->d[li]);
 			nd++; li++;
 		} else if (cmp > 0) {
 			if (diff == NULL) diff = xstring_new();
-			fprintf(diff->fp, "%s%s (added)",
+			xprintf(diff, "%s%s (added)",
 			    nd ? ", " : "", remote->d[ri]);
 			nd++; ri++;
 		} else {
@@ -1108,10 +1108,10 @@ pkg_jobs_need_upgrade(charv_t *system_shlibs, struct pkg *rp, struct pkg *lp)
 				if (optdiff == NULL)
 					optdiff = xstring_new();
 				if (ro == NULL) {
-					fprintf(optdiff->fp, "%s%s (removed)",
+					xprintf(optdiff, "%s%s (removed)",
 					    ndiffs ? ", " : "", lo->key);
 				} else if (lo == NULL) {
-					fprintf(optdiff->fp, "%s%s (added)",
+					xprintf(optdiff, "%s%s (added)",
 					    ndiffs ? ", " : "", ro->key);
 				}
 				ndiffs++;
@@ -1123,13 +1123,13 @@ pkg_jobs_need_upgrade(charv_t *system_shlibs, struct pkg *rp, struct pkg *lp)
 			if (!STREQ(lo->key, ro->key)) {
 				if (optdiff == NULL)
 					optdiff = xstring_new();
-				fprintf(optdiff->fp, "%s%s (removed), %s (added)",
+				xprintf(optdiff, "%s%s (removed), %s (added)",
 				    ndiffs ? ", " : "", lo->key, ro->key);
 				ndiffs++;
 			} else if (!STREQ(lo->value, ro->value)) {
 				if (optdiff == NULL)
 					optdiff = xstring_new();
-				fprintf(optdiff->fp, "%s%s (%s -> %s)",
+				xprintf(optdiff, "%s%s (%s -> %s)",
 				    ndiffs ? ", " : "", lo->key,
 				    lo->value, ro->value);
 				ndiffs++;
@@ -1155,10 +1155,10 @@ pkg_jobs_need_upgrade(charv_t *system_shlibs, struct pkg *rp, struct pkg *lp)
 		if (ret1 != ret2) {
 			if (diff == NULL) diff = xstring_new();
 			if (rd == NULL) {
-				fprintf(diff->fp, "%s%s (removed)",
+				xprintf(diff, "%s%s (removed)",
 				    nd ? ", " : "", ld->name);
 			} else if (ld == NULL) {
-				fprintf(diff->fp, "%s%s (added)",
+				xprintf(diff, "%s%s (added)",
 				    nd ? ", " : "", rd->name);
 			}
 			nd++;
@@ -1168,12 +1168,12 @@ pkg_jobs_need_upgrade(charv_t *system_shlibs, struct pkg *rp, struct pkg *lp)
 			break;
 		if (!STREQ(rd->name, ld->name)) {
 			if (diff == NULL) diff = xstring_new();
-			fprintf(diff->fp, "%s%s (removed), %s (added)",
+			xprintf(diff, "%s%s (removed), %s (added)",
 			    nd ? ", " : "", ld->name, rd->name);
 			nd++;
 		} else if (!STREQ(rd->origin, ld->origin)) {
 			if (diff == NULL) diff = xstring_new();
-			fprintf(diff->fp, "%s%s (origin changed)",
+			xprintf(diff, "%s%s (origin changed)",
 			    nd ? ", " : "", rd->name);
 			nd++;
 		}
@@ -1247,13 +1247,13 @@ pkg_jobs_need_upgrade(charv_t *system_shlibs, struct pkg *rp, struct pkg *lp)
 			    rp->shlibs_required.d[j]);
 			if (cmp < 0) {
 				if (diff == NULL) diff = xstring_new();
-				fprintf(diff->fp, "%s%s (removed)",
+				xprintf(diff, "%s%s (removed)",
 				    nd ? ", " : "",
 				    lp->shlibs_required.d[i]);
 				nd++; i++;
 			} else if (cmp > 0) {
 				if (diff == NULL) diff = xstring_new();
-				fprintf(diff->fp, "%s%s (added)",
+				xprintf(diff, "%s%s (added)",
 				    nd ? ", " : "",
 				    rp->shlibs_required.d[j]);
 				nd++; j++;

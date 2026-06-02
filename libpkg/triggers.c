@@ -813,7 +813,7 @@ exec_deferred(int dfd, const char *name)
 			pkghash_safe_add(args, walk, NULL, NULL);
 		}
 		if (script != NULL)
-			fputs(line, script->fp);
+			xputs(script, line);
 	}
 	free(line);
 	fclose(f);

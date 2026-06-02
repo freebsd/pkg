@@ -1042,9 +1042,9 @@ pkg_repo_sign(const char *path, char **argv, int argc, char **sig, size_t *sigle
 
 	for (i = 0; i < argc; i++) {
 		if (strspn(argv[i], " \t\n") > 0)
-			fprintf(cmd->fp, " \"%s\" ", argv[i]);
+			xprintf(cmd, " \"%s\" ", argv[i]);
 		else
-			fprintf(cmd->fp, " %s ", argv[i]);
+			xprintf(cmd, " %s ", argv[i]);
 	}
 
 	fflush(cmd->fp);

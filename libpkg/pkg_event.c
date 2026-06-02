@@ -43,7 +43,7 @@ static void *_data = NULL;
 static void
 pipe_errno(struct pkg_event *ev, xstring *msg)
 {
-	fprintf(msg->fp, "{ \"type\": \"ERROR\", "
+	xprintf(msg, "{ \"type\": \"ERROR\", "
 	    "\"data\": {"
 	    "\"msg\": \"%s(%s): %s\","
 	    "\"errno\": %d}}",
@@ -56,7 +56,7 @@ pipe_errno(struct pkg_event *ev, xstring *msg)
 static void
 pipe_error(struct pkg_event *ev, xstring *msg)
 {
-	fprintf(msg->fp, "{ \"type\": \"ERROR\", "
+	xprintf(msg, "{ \"type\": \"ERROR\", "
 	    "\"data\": {\"msg\": \"%s\"}}",
 	    json_escape(ev->e_pkg_error.msg));
 }
@@ -64,7 +64,7 @@ pipe_error(struct pkg_event *ev, xstring *msg)
 static void
 pipe_notice(struct pkg_event *ev, xstring *msg)
 {
-	fprintf(msg->fp, "{ \"type\": \"NOTICE\", "
+	xprintf(msg, "{ \"type\": \"NOTICE\", "
 	    "\"data\": {\"msg\": \"%s\"}}",
 	    json_escape(ev->e_pkg_notice.msg));
 }
@@ -72,7 +72,7 @@ pipe_notice(struct pkg_event *ev, xstring *msg)
 static void
 pipe_developer_mode(struct pkg_event *ev, xstring *msg)
 {
-	fprintf(msg->fp, "{ \"type\": \"ERROR\", "
+	xprintf(msg, "{ \"type\": \"ERROR\", "
 	    "\"data\": {\"msg\": \"DEVELOPER_MODE: %s\"}}",
 	    json_escape(ev->e_pkg_error.msg));
 }
@@ -80,7 +80,7 @@ pipe_developer_mode(struct pkg_event *ev, xstring *msg)
 static void
 pipe_update_add(struct pkg_event *ev, xstring *msg)
 {
-	fprintf(msg->fp, "{ \"type\": \"INFO_UPDATE_ADD\", "
+	xprintf(msg, "{ \"type\": \"INFO_UPDATE_ADD\", "
 	    "\"data\": { "
 	    "\"fetched\": %d, "
 	    "\"total\": %d"
@@ -93,7 +93,7 @@ pipe_update_add(struct pkg_event *ev, xstring *msg)
 static void
 pipe_update_remove(struct pkg_event *ev, xstring *msg)
 {
-	fprintf(msg->fp, "{ \"type\": \"INFO_UPDATE_REMOVE\", "
+	xprintf(msg, "{ \"type\": \"INFO_UPDATE_REMOVE\", "
 	    "\"data\": { "
 	    "\"fetched\": %d, "
 	    "\"total\": %d"
@@ -106,7 +106,7 @@ pipe_update_remove(struct pkg_event *ev, xstring *msg)
 static void
 pipe_fetch_begin(struct pkg_event *ev, xstring *msg)
 {
-	fprintf(msg->fp, "{ \"type\": \"INFO_FETCH_BEGIN\", "
+	xprintf(msg, "{ \"type\": \"INFO_FETCH_BEGIN\", "
 	    "\"data\": { "
 	    "\"url\": \"%s\" "
 	    "}}",
@@ -117,7 +117,7 @@ pipe_fetch_begin(struct pkg_event *ev, xstring *msg)
 static void
 pipe_fetch_finished(struct pkg_event *ev, xstring *msg)
 {
-	fprintf(msg->fp, "{ \"type\": \"INFO_FETCH_FINISHED\", "
+	xprintf(msg, "{ \"type\": \"INFO_FETCH_FINISHED\", "
 	    "\"data\": { "
 	    "\"url\": \"%s\" "
 	    "}}",
@@ -184,7 +184,7 @@ pipe_integritycheck_conflict(struct pkg_event *ev, xstring *msg)
 {
 	struct pkg_event_conflict *cur_conflict;
 
-	fprintf(msg->fp, "{ \"type\": \"INFO_INTEGRITYCHECK_CONFLICT\","
+	xprintf(msg, "{ \"type\": \"INFO_INTEGRITYCHECK_CONFLICT\","
 		"\"data\": { "
 		"\"pkguid\": \"%s\", "
 		"\"pkgpath\": \"%s\", "
@@ -194,23 +194,23 @@ pipe_integritycheck_conflict(struct pkg_event *ev, xstring *msg)
 	cur_conflict = ev->e_integrity_conflict.conflicts;
 	while (cur_conflict != NULL) {
 		if (cur_conflict->next != NULL) {
-			fprintf(msg->fp, "{\"uid\":\"%s\"},",
+			xprintf(msg, "{\"uid\":\"%s\"},",
 					cur_conflict->uid);
 		}
 		else {
-			fprintf(msg->fp, "{\"uid\":\"%s\"}",
+			xprintf(msg, "{\"uid\":\"%s\"}",
 					cur_conflict->uid);
 			break;
 		}
 		cur_conflict = cur_conflict->next;
 	}
-	fputs("]}}", msg->fp);
+	xputs(msg, "]}}");
 }
 
 static void
 pipe_integritycheck_finished(struct pkg_event *ev, xstring *msg)
 {
-	fprintf(msg->fp, "{ \"type\": \"INFO_INTEGRITYCHECK_FINISHED\", "
+	xprintf(msg, "{ \"type\": \"INFO_INTEGRITYCHECK_FINISHED\", "
 	    "\"data\": {\"conflicting\": %d}}",
 	    ev->e_integrity_finished.conflicting);
 }
@@ -295,12 +295,12 @@ pipe_required(struct pkg_event *ev, xstring *msg)
 	    ev->e_required.pkg,
 	    ev->e_required.force == 1 ? "true": "false");
 	while (pkg_rdeps(ev->e_required.pkg, &dep) == EPKG_OK)
-		fprintf(msg->fp, "{ \"pkgname\": \"%s\", "
+		xprintf(msg, "{ \"pkgname\": \"%s\", "
 		    "\"pkgversion\": \"%s\" }, ",
 		    dep->name, dep->version);
 	ungetc(c, msg->fp);
 	ungetc(c, msg->fp);
-	fputs("]}}", msg->fp);
+	xputs(msg, "]}}");
 }
 
 static void
@@ -318,7 +318,7 @@ pipe_already_installed(struct pkg_event *ev, xstring *msg)
 static void
 pipe_missing_dep(struct pkg_event *ev, xstring *msg)
 {
-	fprintf(msg->fp, "{ \"type\": \"ERROR_MISSING_DEP\", "
+	xprintf(msg, "{ \"type\": \"ERROR_MISSING_DEP\", "
 	    "\"data\": { "
 	    "\"depname\": \"%s\", "
 	    "\"depversion\": \"%s\""
@@ -330,7 +330,7 @@ pipe_missing_dep(struct pkg_event *ev, xstring *msg)
 static void
 pipe_noremotedb(struct pkg_event *ev, xstring *msg)
 {
-	fprintf(msg->fp, "{ \"type\": \"ERROR_NOREMOTEDB\", "
+	xprintf(msg, "{ \"type\": \"ERROR_NOREMOTEDB\", "
 	    "\"data\": { "
 	    "\"url\": \"%s\" "
 	    "}}" ,
@@ -368,7 +368,7 @@ pipe_file_mismatch(struct pkg_event *ev, xstring *msg)
 static void
 pipe_plugin_errno(struct pkg_event *ev, xstring *msg)
 {
-	fprintf(msg->fp, "{ \"type\": \"ERROR_PLUGIN\", "
+	xprintf(msg, "{ \"type\": \"ERROR_PLUGIN\", "
 	    "\"data\": {"
 	    "\"plugin\": \"%s\", "
 	    "\"msg\": \"%s(%s): %s\","
@@ -384,7 +384,7 @@ pipe_plugin_errno(struct pkg_event *ev, xstring *msg)
 static void
 pipe_plugin_error(struct pkg_event *ev, xstring *msg)
 {
-	fprintf(msg->fp, "{ \"type\": \"ERROR_PLUGIN\", "
+	xprintf(msg, "{ \"type\": \"ERROR_PLUGIN\", "
 	    "\"data\": {"
 	    "\"plugin\": \"%s\", "
 	    "\"msg\": \"%s\""
@@ -396,7 +396,7 @@ pipe_plugin_error(struct pkg_event *ev, xstring *msg)
 static void
 pipe_plugin_info(struct pkg_event *ev, xstring *msg)
 {
-	fprintf(msg->fp, "{ \"type\": \"INFO_PLUGIN\", "
+	xprintf(msg, "{ \"type\": \"INFO_PLUGIN\", "
 	    "\"data\": {"
 	    "\"plugin\": \"%s\", "
 	    "\"msg\": \"%s\""
@@ -408,7 +408,7 @@ pipe_plugin_info(struct pkg_event *ev, xstring *msg)
 static void
 pipe_incremental_update(struct pkg_event *ev, xstring *msg)
 {
-	fprintf(msg->fp, "{ \"type\": \"INFO_INCREMENTAL_UPDATE\", "
+	xprintf(msg, "{ \"type\": \"INFO_INCREMENTAL_UPDATE\", "
 	    "\"data\": {"
 	        "\"name\": \"%s\", "
 		"\"processed\": %d"
@@ -419,7 +419,7 @@ pipe_incremental_update(struct pkg_event *ev, xstring *msg)
 static void
 pipe_query_yesno(struct pkg_event *ev, xstring *msg)
 {
-	fprintf(msg->fp, "{ \"type\": \"QUERY_YESNO\", "
+	xprintf(msg, "{ \"type\": \"QUERY_YESNO\", "
 	    "\"data\": {"
 		"\"msg\": \"%s\","
 		"\"default\": \"%d\""
@@ -432,7 +432,7 @@ pipe_query_select(struct pkg_event *ev, xstring *msg)
 {
 	int i;
 
-	fprintf(msg->fp, "{ \"type\": \"QUERY_SELECT\", "
+	xprintf(msg, "{ \"type\": \"QUERY_SELECT\", "
 	    "\"data\": {"
 		"\"msg\": \"%s\","
 		"\"ncnt\": \"%d\","
@@ -443,10 +443,10 @@ pipe_query_select(struct pkg_event *ev, xstring *msg)
 		ev->e_query_select.deft);
 	for (i = 0; i < ev->e_query_select.ncnt - 1; i++)
 	{
-		fprintf(msg->fp, "{ \"text\": \"%s\" },",
+		xprintf(msg, "{ \"text\": \"%s\" },",
 			ev->e_query_select.items[i]);
 	}
-	fprintf(msg->fp, "{ \"text\": \"%s\" } ] }}",
+	xprintf(msg, "{ \"text\": \"%s\" } ] }}",
 		ev->e_query_select.items[i]);
 }
 
@@ -460,7 +460,7 @@ pipe_progress_start(struct pkg_event *ev __unused, xstring *msg)
 static void
 pipe_progress_tick(struct pkg_event *ev, xstring *msg)
 {
-	fprintf(msg->fp, "{ \"type\": \"INFO_PROGRESS_TICK\", "
+	xprintf(msg, "{ \"type\": \"INFO_PROGRESS_TICK\", "
 	  "\"data\": { \"current\": %jd, \"total\" : %jd}}",
 	  (intmax_t)ev->e_progress_tick.current,
 	  (intmax_t)ev->e_progress_tick.total);
@@ -483,7 +483,7 @@ pipe_triggers_finished(struct pkg_event *ev __unused, xstring *msg)
 static void
 pipe_trigger(struct pkg_event *ev, xstring *msg)
 {
-	fprintf(msg->fp, "{ \"type\": \"INFO_TRIGGER\", \"data\": { "
+	xprintf(msg, "{ \"type\": \"INFO_TRIGGER\", \"data\": { "
 	    "\"cleanup\": %s, \"name\": \"%s\" }}",
 	    ev->e_trigger.cleanup ? "true" : "false",
 	    ev->e_trigger.name);
@@ -1245,14 +1245,14 @@ pkg_dbg(uint64_t flags, int level, const char *fmt, ...)
 	for (size_t i = 0; i < NELEM(debug_flags); i++) {
 		if (flags & debug_flags[i].flag) {
 			if (string_fmt->size == 0) {
-				fprintf(string_fmt->fp, "(%s", debug_flags[i].name);
+				xprintf(string_fmt, "(%s", debug_flags[i].name);
 				fflush(string_fmt->fp);
 			} else {
-				fprintf(string_fmt->fp, "|%s", debug_flags[i].name);
+				xprintf(string_fmt, "|%s", debug_flags[i].name);
 			}
 		}
 	}
-	fprintf(string_fmt->fp, ") %s", fmt);
+	xprintf(string_fmt, ") %s", fmt);
 	nfmt = xstring_get(string_fmt);
 	va_start(ap, fmt);
 	vasprintf(&ev.e_debug.msg, nfmt, ap);
