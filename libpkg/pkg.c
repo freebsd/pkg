@@ -1341,6 +1341,12 @@ pkg_open2(struct pkg **pkg_p, struct archive **a, struct archive_entry **ae,
 	archive_read_support_filter_all(*a);
 	archive_read_support_format_tar(*a);
 
+	if (ctx.compression_threads >= 0) {
+		char buf[16];
+		snprintf(buf, sizeof(buf), "%d", ctx.compression_threads);
+		archive_read_set_filter_option(*a, NULL, "threads", buf);
+	}
+
 	/* archive_read_open_filename() treats a path of NULL as
 	 * meaning "read from stdin," but we want this behaviour if
 	 * path is exactly "-". In the unlikely event of wanting to
