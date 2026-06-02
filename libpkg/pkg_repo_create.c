@@ -1047,7 +1047,7 @@ pkg_repo_sign(const char *path, char **argv, int argc, char **sig, size_t *sigle
 			xprintf(cmd, " %s ", argv[i]);
 	}
 
-	fflush(cmd->fp);
+	xflush(cmd);
 	if ((spid = process_spawn_pipe(fps, cmd->buf)) < 0) {
 		ret = EPKG_FATAL;
 		goto done;
@@ -1075,7 +1075,7 @@ pkg_repo_sign(const char *path, char **argv, int argc, char **sig, size_t *sigle
 			break;
 		}
 		if (buf != NULL) {
-			fwrite(line, linelen, 1, buf->fp);
+			xwrite(buf, line, linelen, 1);
 		}
 	}
 	free(line);

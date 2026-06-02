@@ -547,7 +547,7 @@ pipeevent(struct pkg_event *ev)
 	if (ev->type < PKG_EVENT_LAST && pipe_handlers[ev->type] != NULL)
 		pipe_handlers[ev->type](ev, msg);
 
-	fflush(msg->fp);
+	xflush(msg);
 	dprintf(ctx.eventpipe, "%s\n", msg->buf);
 	xstring_free(msg);
 }
@@ -1246,7 +1246,7 @@ pkg_dbg(uint64_t flags, int level, const char *fmt, ...)
 		if (flags & debug_flags[i].flag) {
 			if (string_fmt->size == 0) {
 				xprintf(string_fmt, "(%s", debug_flags[i].name);
-				fflush(string_fmt->fp);
+				xflush(string_fmt);
 			} else {
 				xprintf(string_fmt, "|%s", debug_flags[i].name);
 			}

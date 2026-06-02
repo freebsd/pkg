@@ -121,7 +121,7 @@ key_sign_data(struct pkg_key *key, const char *name)
 			goto out;
 		}
 
-		fwrite(buf, readsz, 1, datastr->fp);
+		xwrite(datastr, buf, readsz, 1);
 	}
 
 	data = xstring_get_binary(datastr, &datasz);

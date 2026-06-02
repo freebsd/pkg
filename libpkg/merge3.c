@@ -132,7 +132,7 @@ buf_copy_lines(xstring *to, const char *from, int N)
 		i++;
 	}
 	if (to)
-		fwrite(from, i, 1, to->fp);
+		xwrite(to, from, i, 1);
 	return (i);
 }
 

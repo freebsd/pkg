@@ -279,7 +279,7 @@ format_exec_cmd(char **dest, const char *in, const char *prefix,
 
 	while (in[0] != '\0') {
 		if (in[0] != '%') {
-			fputc(in[0], buf->fp);
+			xputc(buf, in[0]);
 			in++;
 			continue;
 		}
@@ -329,7 +329,7 @@ format_exec_cmd(char **dest, const char *in, const char *prefix,
 			xprintf(buf, "%s", path);
 			break;
 		case '%':
-			fputc('%', buf->fp);
+			xputc(buf, '%');
 			break;
 		case '@':
 			if (line != NULL) {
@@ -1043,8 +1043,8 @@ json_escape(const char *str)
 
 	while (str != NULL && *str != '\0') {
 		if (*str == '"' || *str == '\\')
-			fputc('\\', buf->fp);
-		fputc(*str, buf->fp);
+			xputc(buf, '\\');
+		xputc(buf, *str);
 		str++;
 	}
 

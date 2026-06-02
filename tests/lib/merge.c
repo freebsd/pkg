@@ -39,7 +39,7 @@ ATF_TC_BODY(merge, tc)
 	char *new = "test1\ntest2\ntest3\n";
 
 	ATF_REQUIRE_EQ(merge_3way(pivot, modified, new, b), 0);
-	fflush(b->fp);
+	xflush(b);
 	ATF_REQUIRE_STREQ(b->buf, "test1\n#test2\ntest3\n");
 
 	xstring_reset(b);
@@ -48,7 +48,7 @@ ATF_TC_BODY(merge, tc)
 	new = "test1\ntest2\ntest3";
 
 	ATF_REQUIRE_EQ(merge_3way(pivot, modified, new, b), 0);
-	fflush(b->fp);
+	xflush(b);
 	ATF_REQUIRE_STREQ(b->buf, "test1\n#test2test3");
 
 	xstring_reset(b);
@@ -57,7 +57,7 @@ ATF_TC_BODY(merge, tc)
 	new = "test1\ntest2\ntest3";
 
 	ATF_REQUIRE_EQ(merge_3way(pivot, modified, new, b), 0);
-	fflush(b->fp);
+	xflush(b);
 	ATF_REQUIRE_STREQ(b->buf, "test1\ntest3");
 
 	xstring_reset(b);
@@ -66,7 +66,7 @@ ATF_TC_BODY(merge, tc)
 	new = "test1\ntest2\ntest3";
 
 	ATF_REQUIRE_EQ(merge_3way(pivot, modified, new, b), 0);
-	fflush(b->fp);
+	xflush(b);
 	ATF_REQUIRE_STREQ(b->buf, "test1\na\ntest2\ntest3");
 
 	xstring_free(b);

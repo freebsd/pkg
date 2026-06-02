@@ -144,7 +144,7 @@ pkg_script_run(struct pkg * const pkg, pkg_script type, bool upgrade, bool noexe
 				argmax -= strlen(*ep) + 1 + sizeof(*ep);
 			argmax -= 1 + sizeof(*ep);
 
-			fflush(script_cmd->fp);
+			xflush(script_cmd);
 			script_len = strlen(script_cmd->buf);
 			pkg_debug(3, "Scripts: executing\n--- BEGIN ---\n%s\nScripts: --- END ---", script_cmd->buf);
 			posix_spawn_file_actions_init(&action);

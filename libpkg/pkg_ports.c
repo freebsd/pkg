@@ -974,7 +974,7 @@ extract_keywords(char *line, char **keyword, struct file_attr **attr)
 static void
 flush_script_buffer(xstring *buf, struct pkg *p, int type)
 {
-	fflush(buf->fp);
+	xflush(buf);
 	if (buf->buf[0] != '\0') {
 		pkg_appendscript(p, buf->buf, type);
 	}
@@ -999,7 +999,7 @@ plist_parse_line(struct plist *plist, char *line)
 			return (forloop_execute(plist));
 		}
 		xprintf(plist->forloop_stack->body, "%s\n", line);
-		fflush(plist->forloop_stack->body->fp);
+		xflush(plist->forloop_stack->body);
 		return (EPKG_OK);
 	}
 
@@ -1124,18 +1124,18 @@ expand_plist_variables(const char *in, kvlist_t *vars)
 	cp = NULL;
 	while (in[0] != '\0') {
 		if (in[0] != '%') {
-			fputc(in[0], buf->fp);
+			xputc(buf, in[0]);
 			in++;
 			continue;
 		}
 		in++;
 		if (in[0] == '\0') {
-			fputc('%', buf->fp);
+			xputc(buf, '%');
 			break;
 		}
 		if (in[0] != '%') {
-			fputc('%', buf->fp);
-			fputc(in[0], buf->fp);
+			xputc(buf, '%');
+			xputc(buf, in[0]);
 			in++;
 			continue;
 		}
@@ -1243,7 +1243,7 @@ forloop_substitute_var(const char *in, const char *varname, const char *varval)
 				continue;
 			}
 		}
-		fputc(*cp, buf->fp);
+		xputc(buf, *cp);
 	}
 
 	return (xstring_get(buf));
@@ -1295,7 +1295,7 @@ forloop_execute(struct plist *p)
 	p->in_for_loop = p->forloop_stack != NULL;
 
 	/* flush body buffer so buf is complete */
-	fflush(f->body->fp);
+	xflush(f->body);
 
 	for (i = 0; i < f->values.len; i++) {
 		char *expanded;
@@ -1332,7 +1332,7 @@ forloop_execute(struct plist *p)
 				}
 			}
 			if (p->forloop_stack->body->fp != NULL)
-				fflush(p->forloop_stack->body->fp);
+				xflush(p->forloop_stack->body);
 		} else {
 			/* Top-level: parse each line */
 			nl_start = expanded;
@@ -1611,7 +1611,7 @@ pkg_add_port(struct pkgdb *db, struct pkg *pkg, const char *input_path,
 			}
 		}
 		if (pkg_has_message(pkg)) {
-			fflush(message->fp);
+			xflush(message);
 			if (message->buf[0] != '\0') {
 				pkg_emit_message(message->buf);
 			}

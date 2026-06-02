@@ -381,7 +381,7 @@ exec_check(int argc, char **argv)
 					progressbar_start("Checking all packages");
 				else {
 					xprintf(msg, "Checking %s", argv[i]);
-					fflush(msg->fp);
+					xflush(msg);
 					progressbar_start(msg->buf);
 				}
 			}
@@ -398,7 +398,7 @@ exec_check(int argc, char **argv)
 					job_status_begin(msg);
 					pkg_fprintf(msg->fp, "Checking %n-%v:",
 					    pkg, pkg);
-					fflush(msg->fp);
+					xflush(msg);
 					printf("%s", msg->buf);
 					xstring_reset(msg);
 				}
@@ -434,7 +434,7 @@ exec_check(int argc, char **argv)
 
 		if (!quiet && !verbose)
 			progressbar_tick(processed, total);
-		fflush(out->fp);
+		xflush(out);
 		if (out->buf[0] != '\0') {
 			printf("%s", out->buf);
 		}

@@ -356,7 +356,7 @@ vulnxml_end_element(struct vulnxml_userdata *ud, yxml_t *xml)
 	struct pkg_audit_versions_range *vers;
 	int range_type = -1;
 
-	fflush(ud->content->fp);
+	xflush(ud->content);
 	if (ud->state == VULNXML_PARSE_VULN && STRIEQ(xml->elem, "vuxml")) {
 		/* Entry is already in the vec, just validate it */
 		struct pkg_audit_entry *e = ud->cur_entry;
@@ -441,7 +441,7 @@ vulnxml_start_attribute(struct vulnxml_userdata *ud, yxml_t *xml)
 static void
 vulnxml_end_attribute(struct vulnxml_userdata *ud, yxml_t *xml __unused)
 {
-	fflush(ud->content->fp);
+	xflush(ud->content);
 	if (ud->state == VULNXML_PARSE_VULN && ud->attr == VULNXML_ATTR_VID) {
 		ud->cur_entry->id = xstrdup(ud->content->buf);
 		ud->attr = VULNXML_ATTR_NONE;

@@ -261,7 +261,7 @@ pkg_debug_print_rule(struct pkg_solve_rule *rule)
 
 	pkg_print_rule_buf(rule, sb);
 
-	fflush(sb->fp);
+	xflush(sb);
 	dbg(2, "rule: %s", sb->buf);
 	xstring_free(sb);
 }
@@ -1099,7 +1099,7 @@ reiterate:
 							item = &rule->items.d[_ri];
 							if (item->var == var) {
 								pkg_print_rule_buf(rule, sb);
-								fputc('\n', sb->fp);
+								xputc(sb, '\n');
 								break;
 							}
 						}
@@ -1109,7 +1109,7 @@ reiterate:
 				xprintf(sb, "cannot %s package %s, remove it from request? ",
 						var->flags & PKG_VAR_INSTALL ? "install" : "remove", var->uid);
 
-				fflush(sb->fp);
+				xflush(sb);
 				if (pkg_emit_query_yesno(true, sb->buf)) {
 					var->flags |= PKG_VAR_FAILED;
 				}

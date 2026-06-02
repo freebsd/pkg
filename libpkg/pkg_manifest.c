@@ -213,10 +213,10 @@ urlencode(const char *src, xstring **dest)
 		if (!isascii(src[i]) || src[i] == '%')
 			xprintf((*dest), "%%%.2x", (unsigned char)src[i]);
 		else
-			fputc(src[i], (*dest)->fp);
+			xputc((*dest), src[i]);
 	}
 
-	fflush((*dest)->fp);
+	xflush((*dest));
 	return (EPKG_OK);
 }
 

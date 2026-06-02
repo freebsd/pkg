@@ -233,7 +233,7 @@ exec_unregister(int argc, char **argv)
 		goto cleanup;
 
 	if (messages != NULL && !quiet) {
-		fflush(messages->fp);
+		xflush(messages);
 		printf("%s", messages->buf);
 	}
 	pkgdb_compact(db);

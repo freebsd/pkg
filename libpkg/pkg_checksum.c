@@ -260,7 +260,7 @@ pkg_checksum_generate(struct pkg *pkg, char *dest, size_t destlen,
 	if (inc_scripts) {
 		for (int i = 0; i < PKG_NUM_SCRIPTS; i++) {
 			if (pkg->scripts[i] != NULL) {
-				fflush(pkg->scripts[i]->fp);
+				xflush(pkg->scripts[i]);
 				vec_push(&entries, ((struct kv){ "script", pkg->scripts[i]->buf }));
 			}
 		}

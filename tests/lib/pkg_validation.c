@@ -66,42 +66,42 @@ check_valid(struct pkg *p)
 	msg = xstring_new();
 
 	ATF_REQUIRE_EQ(EPKG_FATAL, pkg_is_valid(p));
-	fflush(msg->fp);
+	xflush(msg);
 	ATF_REQUIRE_STREQ(msg->buf, "Invalid package: object has missing property origin");
 
 	ATF_REQUIRE_EQ(EPKG_OK, pkg_set(p, PKG_ATTR_ORIGIN, "test/bla"));
 	ATF_REQUIRE_EQ(EPKG_FATAL, pkg_is_valid(p));
-	fflush(msg->fp);
+	xflush(msg);
 	ATF_REQUIRE_STREQ(msg->buf, "Invalid package: object has missing property name");
 
 	ATF_REQUIRE_EQ(EPKG_OK, pkg_set(p, PKG_ATTR_NAME, "test"));
 	ATF_REQUIRE_EQ(EPKG_FATAL, pkg_is_valid(p));
-	fflush(msg->fp);
+	xflush(msg);
 	ATF_REQUIRE_STREQ(msg->buf, "Invalid package: object has missing property comment");
 
 	ATF_REQUIRE_EQ(EPKG_OK, pkg_set(p, PKG_ATTR_COMMENT, "test comment"));
 	ATF_REQUIRE_EQ(EPKG_FATAL, pkg_is_valid(p));
-	fflush(msg->fp);
+	xflush(msg);
 	ATF_REQUIRE_STREQ(msg->buf, "Invalid package: object has missing property version");
 
 	ATF_REQUIRE_EQ(EPKG_OK, pkg_set(p, PKG_ATTR_VERSION, "1.1.0"));
 	ATF_REQUIRE_EQ(EPKG_FATAL, pkg_is_valid(p));
-	fflush(msg->fp);
+	xflush(msg);
 	ATF_REQUIRE_STREQ(msg->buf, "Invalid package: object has missing property desc");
 
 	ATF_REQUIRE_EQ(EPKG_OK, pkg_set(p, PKG_ATTR_DESC, "test description"));
 	ATF_REQUIRE_EQ(EPKG_FATAL, pkg_is_valid(p));
-	fflush(msg->fp);
+	xflush(msg);
 	ATF_REQUIRE_STREQ(msg->buf, "Invalid package: object has missing property maintainer");
 
 	ATF_REQUIRE_EQ(EPKG_OK, pkg_set(p, PKG_ATTR_MAINTAINER, "tester"));
 	ATF_REQUIRE_EQ(EPKG_FATAL, pkg_is_valid(p));
-	fflush(msg->fp);
+	xflush(msg);
 	ATF_REQUIRE_STREQ(msg->buf, "Invalid package: object has missing property www");
 
 	ATF_REQUIRE_EQ(EPKG_OK, pkg_set(p, PKG_ATTR_WWW, "test website"));
 	ATF_REQUIRE_EQ(EPKG_FATAL, pkg_is_valid(p));
-	fflush(msg->fp);
+	xflush(msg);
 	ATF_REQUIRE_STREQ(msg->buf, "Invalid package: object has missing property prefix");
 
 	ATF_REQUIRE_EQ(EPKG_OK, pkg_set(p, PKG_ATTR_PREFIX, "/usr/local"));

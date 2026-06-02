@@ -313,7 +313,7 @@ ATF_TC_BODY(human_number, tc)
 		p->width = hn_test_vals[i].width;
 		p->flags = hn_test_vals[i].flags;
 		buf = human_number(buf, hn_test_vals[i].in, p);
-		fflush(buf->fp);
+		xflush(buf);
 		ATF_CHECK_STREQ(buf->buf, hn_test_vals[i].out);
 	}
 
@@ -396,7 +396,7 @@ ATF_TC_BODY(string_val, tc)
 		p->width = sv_test_vals[i].width;
 		p->flags = sv_test_vals[i].flags;
 		buf = string_val(buf, sv_test_vals[i].in, p);
-		fflush(buf->fp);
+		xflush(buf);
 		ATF_CHECK_STREQ(buf->buf, sv_test_vals[i].out);
 	}
 
@@ -635,7 +635,7 @@ ATF_TC_BODY(int_val, tc)
 		p->width = iv_test_vals[i].width;
 		p->flags = iv_test_vals[i].flags;
 		buf = int_val(buf, iv_test_vals[i].in, p);
-		fflush(buf->fp);
+		xflush(buf);
 		ATF_CHECK_STREQ(buf->buf, iv_test_vals[i].out);
 	}
 
@@ -687,7 +687,7 @@ ATF_TC_BODY(bool_val, tc)
 		p->width = bv_test_vals[i].width;
 		p->flags = bv_test_vals[i].flags;
 		buf = bool_val(buf, bv_test_vals[i].in, p);
-		fflush(buf->fp);
+		xflush(buf);
 		ATF_CHECK_STREQ(buf->buf, bv_test_vals[i].out);
 	}
 
@@ -805,7 +805,7 @@ ATF_TC_BODY(mode_val, tc)
 		p->width = mv_test_vals[i].width;
 		p->flags = mv_test_vals[i].flags;
 		buf = mode_val(buf, mv_test_vals[i].in, p);
-		fflush(buf->fp);
+		xflush(buf);
 		ATF_CHECK_STREQ(buf->buf, mv_test_vals[i].out);
 	}
 
@@ -860,7 +860,7 @@ ATF_TC_BODY(liclog_val, tc)
 		p->width = lv_test_vals[i].width;
 		p->flags = lv_test_vals[i].flags;
 		buf = liclog_val(buf, lv_test_vals[i].in, p);
-		fflush(buf->fp);
+		xflush(buf);
 		ATF_CHECK_STREQ(buf->buf, lv_test_vals[i].out);
 	}
 
@@ -907,7 +907,7 @@ ATF_TC_BODY(list_count, tc)
 		p->width = lc_test_vals[i].width;
 		p->flags = lc_test_vals[i].flags;
 		buf = list_count(buf, lc_test_vals[i].in, p);
-		fflush(buf->fp);
+		xflush(buf);
 		ATF_CHECK_STREQ(buf->buf, lc_test_vals[i].out);
 	}
 
@@ -995,7 +995,7 @@ ATF_TC_BODY(maybe_read_hex_byte, tc)
 	for (i = 0; mrhb_test_vals[i].in != NULL; i++) {
 		xstring_renew(buf);
 		f = maybe_read_hex_byte(buf, mrhb_test_vals[i].in);
-		fflush(buf->fp);
+		xflush(buf);
 
 		ATF_CHECK_STREQ_MSG(buf->buf, mrhb_test_vals[i].out,
 				    "(test %d)", i);
@@ -1097,7 +1097,7 @@ ATF_TC_BODY(read_oct_byte, tc)
 	for (i = 0; rob_test_vals[i].in != NULL; i++) {
 		xstring_renew(buf);
 		f = read_oct_byte(buf, rob_test_vals[i].in);
-		fflush(buf->fp);
+		xflush(buf);
 
 		ATF_CHECK_STREQ_MSG(buf->buf, rob_test_vals[i].out,
 				    "(test %d)", i);
@@ -1159,7 +1159,7 @@ ATF_TC_BODY(process_escape, tc)
 	for (i = 0; pe_test_vals[i].in != NULL; i++) {
 		xstring_renew(buf);
 		f = process_escape(buf, pe_test_vals[i].in);
-		fflush(buf->fp);
+		xflush(buf);
 
 		ATF_CHECK_STREQ_MSG(buf->buf, pe_test_vals[i].out,
 				    "(test %d)", i);
@@ -2187,8 +2187,8 @@ ATF_TC_BODY(format_trailer, tc)
 		clear_percent_esc(p);
 
 		f = format_trailer(ft_test_vals[i].in, p);
-		fflush(p->item_fmt->fp);
-		fflush(p->sep_fmt->fp);
+		xflush(p->item_fmt);
+		xflush(p->sep_fmt);
 
 		ATF_CHECK_STREQ_MSG(p->item_fmt->buf,
 				    ft_test_vals[i].item,
@@ -2264,8 +2264,8 @@ ATF_TC_BODY(parse_format, tc)
 		ATF_CHECK_EQ_MSG(p->fmt_code, pf_test_vals[i].fmt_code,
 				    "(test %d)", i);
 
-		fflush(p->item_fmt->fp);
-		fflush(p->sep_fmt->fp);
+		xflush(p->item_fmt);
+		xflush(p->sep_fmt);
 		ATF_CHECK_STREQ_MSG(p->item_fmt->buf,
 				    pf_test_vals[i].item,
 				    "(test %d)", i);

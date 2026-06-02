@@ -422,7 +422,7 @@ exec_upgrade(int argc, char **argv)
 		}
 
 		if (messages != NULL && !quiet) {
-			fflush(messages->fp);
+			xflush(messages);
 			printf("%s", messages->buf);
 		}
 		break;

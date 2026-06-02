@@ -592,7 +592,7 @@ exec_buf(xstring *res, char **argv) {
 
 	xstring_reset(res);
 	while ((r = read(pfd[0], buf, BUFSIZ)) > 0)
-		fwrite(buf, sizeof(char), r, res->fp);
+		xwrite(res, buf, sizeof(char), r);
 
 	close(pfd[0]);
 	while (waitpid(pid, &pstat, 0) == -1) {
@@ -602,7 +602,7 @@ exec_buf(xstring *res, char **argv) {
 	if (WEXITSTATUS(pstat) != 0)
 		return (-1);
 
-	fflush(res->fp);
+	xflush(res);
 	return (strlen(res->buf));
 }
 
@@ -626,7 +626,7 @@ category_new(int portsfd, const char *category)
 	if (exec_buf(makecmd, argv) <= 0)
 		goto cleanup;
 
-	fflush(makecmd->fp);
+	xflush(makecmd);
 	results = makecmd->buf;
 
 	if (categories == NULL)
@@ -695,7 +695,7 @@ port_version(xstring *cmd, int portsfd, const char *origin, const char *pkgname)
 		argv[4] = NULL;
 
 		if (exec_buf(cmd, argv) > 0) {
-			fflush(cmd->fp);
+			xflush(cmd);
 			output = cmd->buf;
 			while ((walk = strsep(&output, "\n")) != NULL) {
 				name = walk;

@@ -277,7 +277,7 @@ exec_rquery(int argc, char **argv)
 		query_flags = PKG_LOAD_BASIC|PKG_LOAD_CATEGORIES|PKG_LOAD_DEPS;
 
 	if (sqlcond) {
-		fflush(sqlcond->fp);
+		xflush(sqlcond);
 		condition_sql = sqlcond->buf;
 	}
 	if (match == MATCH_ALL) {

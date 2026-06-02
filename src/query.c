@@ -343,40 +343,40 @@ format_str(struct pkg *pkg, xstring *dest, const char *qstr, const void *data)
 				pkg_fprintf(dest->fp, "%X", pkg);
 				break;
 			case '%':
-				fputc('%', dest->fp);
+				xputc(dest, '%');
 				break;
 			}
 		} else  if (qstr[0] == '\\') {
 			qstr++;
 			switch (qstr[0]) {
 			case 'n':
-				fputc('\n', dest->fp);
+				xputc(dest, '\n');
 				break;
 			case 'a':
-				fputc('\a', dest->fp);
+				xputc(dest, '\a');
 				break;
 			case 'b':
-				fputc('\b', dest->fp);
+				xputc(dest, '\b');
 				break;
 			case 'f':
-				fputc('\f', dest->fp);
+				xputc(dest, '\f');
 				break;
 			case 'r':
-				fputc('\r', dest->fp);
+				xputc(dest, '\r');
 				break;
 			case '\\':
-				fputc('\\', dest->fp);
+				xputc(dest, '\\');
 				break;
 			case 't':
-				fputc('\t', dest->fp);
+				xputc(dest, '\t');
 				break;
 			}
 		} else {
-			fputc(qstr[0], dest->fp);
+			xputc(dest, qstr[0]);
 		}
 		qstr++;
 	}
-	fflush(dest->fp);
+	xflush(dest);
 }
 
 static bool
@@ -1248,7 +1248,7 @@ exec_query(int argc, char **argv)
 	}
 
 	if (sqlcond) {
-		fflush(sqlcond->fp);
+		xflush(sqlcond);
 		condition_sql = sqlcond->buf;
 	}
         i = 1;

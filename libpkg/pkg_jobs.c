@@ -1040,7 +1040,7 @@ charv_diff(const charv_t *local, const charv_t *remote,
 		}
 	}
 	if (nd > 0) {
-		fflush(diff->fp);
+		xflush(diff);
 		free(*reason);
 		xasprintf(reason, "%s: %s", label, diff->buf);
 		xstring_free(diff);
@@ -1136,7 +1136,7 @@ pkg_jobs_need_upgrade(charv_t *system_shlibs, struct pkg *rp, struct pkg *lp)
 			}
 		}
 		if (ndiffs > 0) {
-			fflush(optdiff->fp);
+			xflush(optdiff);
 			free(rp->reason);
 			xasprintf(&rp->reason, "option changed: %s",
 			    optdiff->buf);
@@ -1179,7 +1179,7 @@ pkg_jobs_need_upgrade(charv_t *system_shlibs, struct pkg *rp, struct pkg *lp)
 		}
 	}
 	if (nd > 0) {
-		fflush(diff->fp);
+		xflush(diff);
 		free(rp->reason);
 		xasprintf(&rp->reason, "direct dependency changed: %s",
 		    diff->buf);
@@ -1262,7 +1262,7 @@ pkg_jobs_need_upgrade(charv_t *system_shlibs, struct pkg *rp, struct pkg *lp)
 			}
 		}
 		if (nd > 0) {
-			fflush(diff->fp);
+			xflush(diff);
 			free(rp->reason);
 			xasprintf(&rp->reason,
 			    "required shared library changed: %s",

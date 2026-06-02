@@ -132,7 +132,7 @@ format_rate_SI(char *buf, int size, off_t bytes)
 void
 job_status_end(xstring *msg)
 {
-	fflush(msg->fp);
+	xflush(msg);
 	printf("%s\n", msg->buf);
 	xstring_reset(msg);
 }
@@ -214,7 +214,7 @@ progressbar_start(const char *pmsg)
 	if (pmsg != NULL)
 		progress_message = xstrdup(pmsg);
 	else {
-		fflush(msg_buf->fp);
+		xflush(msg_buf);
 		progress_message = xstrdup(msg_buf->buf);
 	}
 	last_progress_percent = -1;
@@ -505,7 +505,7 @@ event_cb_install_begin(struct pkg_event *ev, int *debug __unused)
 	pkg = ev->e_install_begin.pkg;
 	pkg_fprintf(msg_buf->fp, "Installing %n-%v...\n", pkg,
 	    pkg);
-	fflush(msg_buf->fp);
+	xflush(msg_buf);
 	printf("%s", msg_buf->buf);
 	return (0);
 }
@@ -520,7 +520,7 @@ event_cb_extract_begin(struct pkg_event *ev, int *debug __unused)
 	job_status_begin(msg_buf);
 	pkg = ev->e_install_begin.pkg;
 	pkg_fprintf(msg_buf->fp, "Extracting %n-%v", pkg, pkg);
-	fflush(msg_buf->fp);
+	xflush(msg_buf);
 	return (0);
 }
 
@@ -554,7 +554,7 @@ event_cb_integritycheck_finished(struct pkg_event *ev, int *debug __unused)
 		return (0);
 	printf(" done (%d conflicting)\n", ev->e_integrity_finished.conflicting);
 	if (conflicts != NULL) {
-		fflush(conflicts->fp);
+		xflush(conflicts);
 		printf("%s", conflicts->buf);
 		xstring_free(conflicts);
 		conflicts = NULL;
@@ -597,7 +597,7 @@ event_cb_deinstall_begin(struct pkg_event *ev, int *debug __unused)
 
 	pkg = ev->e_install_begin.pkg;
 	pkg_fprintf(msg_buf->fp, "Deinstalling %n-%v...\n", pkg, pkg);
-	fflush(msg_buf->fp);
+	xflush(msg_buf);
 	printf("%s", msg_buf->buf);
 	return (0);
 }
@@ -642,7 +642,7 @@ event_cb_upgrade_begin(struct pkg_event *ev, int *debug __unused)
 		    pkg_new, pkg_old, pkg_new);
 		break;
 	}
-	fflush(msg_buf->fp);
+	xflush(msg_buf);
 	printf("%s", msg_buf->buf);
 	return (0);
 }

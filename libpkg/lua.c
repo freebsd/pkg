@@ -254,7 +254,7 @@ lua_exec_capture(lua_State *L)
 				continue;
 			break;
 		}
-		fwrite(buf, 1, nread, out->fp);
+		xwrite(out, buf, 1, nread);
 	}
 	close(stdout_pipe[0]);
 
@@ -265,7 +265,7 @@ lua_exec_capture(lua_State *L)
 				continue;
 			break;
 		}
-		fwrite(buf, 1, nread, err->fp);
+		xwrite(err, buf, 1, nread);
 	}
 	close(stderr_pipe[0]);
 
@@ -280,8 +280,8 @@ lua_exec_capture(lua_State *L)
 		}
 	}
 
-	fflush(out->fp);
-	fflush(err->fp);
+	xflush(out);
+	xflush(err);
 	lua_pushstring(L, out->buf);
 	lua_pushstring(L, err->buf);
 	lua_pushinteger(L, WEXITSTATUS(pstat));

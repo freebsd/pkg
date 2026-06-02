@@ -1822,7 +1822,7 @@ pkg_add_common(struct pkgdb *db, const char *path, unsigned flags,
 		}
 	}
 	if (pkg_has_message(pkg) && message != NULL) {
-		fflush(message->fp);
+		xflush(message);
 		pkg_emit_message(message->buf);
 		xstring_free(message);
 	}
