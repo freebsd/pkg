@@ -802,7 +802,8 @@ pkg_solve_jobs_to_sat(struct pkg_jobs *j)
 	struct pkg_solve_problem *problem;
 	universe_itemv_t *uv;
 	size_t i = 0;
-		problem = xcalloc(1, sizeof(struct pkg_solve_problem));
+
+	problem = xcalloc(1, sizeof(struct pkg_solve_problem));
 
 	problem->j = j;
 	problem->nvars = j->universe->nitems;
