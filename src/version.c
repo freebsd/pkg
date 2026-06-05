@@ -350,6 +350,8 @@ free_categories(void)
 static void
 free_index(pkghash *index)
 {
+	struct index_entry *entry;
+
 	pkghash_foreach(index, it) {
 		entry = (struct index_entry *)it.value;
 		free(entry->version);
