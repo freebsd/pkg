@@ -15,6 +15,7 @@
 #include <assert.h>
 #include <errno.h>
 #include <fcntl.h>
+#include <stddef.h>
 #include <string.h>
 #include <pwd.h>
 #include <grp.h>
@@ -132,49 +133,34 @@ pkg_type(const struct pkg * restrict pkg)
 int
 pkg_is_valid(const struct pkg * restrict pkg)
 {
+	static const struct {
+		size_t offset;
+		const char *name;
+	} required[] = {
+		{ offsetof(struct pkg, origin), "origin" },
+		{ offsetof(struct pkg, name), "name" },
+		{ offsetof(struct pkg, comment), "comment" },
+		{ offsetof(struct pkg, version), "version" },
+		{ offsetof(struct pkg, desc), "desc" },
+		{ offsetof(struct pkg, maintainer), "maintainer" },
+		{ offsetof(struct pkg, www), "www" },
+		{ offsetof(struct pkg, prefix), "prefix" },
+	};
+
 	if (pkg == NULL) {
 		pkg_emit_error("Invalid package: not allocated");
 		return (EPKG_FATAL);
 	}
 
-	if (pkg->origin == NULL) {
-		pkg_emit_error("Invalid package: object has missing property origin");
-		return (EPKG_FATAL);
-	}
-
-	if (pkg->name == NULL) {
-		pkg_emit_error("Invalid package: object has missing property name");
-		return (EPKG_FATAL);
-	}
-
-	if (pkg->comment == NULL) {
-		pkg_emit_error("Invalid package: object has missing property comment");
-		return (EPKG_FATAL);
-	}
-
-	if (pkg->version == NULL) {
-		pkg_emit_error("Invalid package: object has missing property version");
-		return (EPKG_FATAL);
-	}
-
-	if (pkg->desc == NULL) {
-		pkg_emit_error("Invalid package: object has missing property desc");
-		return (EPKG_FATAL);
-	}
-
-	if (pkg->maintainer == NULL) {
-		pkg_emit_error("Invalid package: object has missing property maintainer");
-		return (EPKG_FATAL);
-	}
-
-	if (pkg->www == NULL) {
-		pkg_emit_error("Invalid package: object has missing property www");
-		return (EPKG_FATAL);
-	}
-
-	if (pkg->prefix == NULL) {
-		pkg_emit_error("Invalid package: object has missing property prefix");
-		return (EPKG_FATAL);
+	for (size_t i = 0; i < NELEM(required); i++) {
+		const char * const *field = (const char * const *)
+		    ((const unsigned char *)pkg + required[i].offset);
+		if (*field == NULL) {
+			pkg_emit_error(
+			    "Invalid package: object has missing property %s",
+			    required[i].name);
+			return (EPKG_FATAL);
+		}
 	}
 
 	return (EPKG_OK);
