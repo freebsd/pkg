@@ -39,7 +39,7 @@
 static void
 rm_rf(int basefd, const char *path)
 {
-	int dirfd;
+	int dfd;
 	DIR *d;
 	struct dirent *e;
 	struct stat st;
@@ -48,31 +48,31 @@ rm_rf(int basefd, const char *path)
 		while (*path == '/')
 			path++;
 
-		dirfd = openat(basefd, path, O_DIRECTORY|O_CLOEXEC);
-		if (dirfd == -1) {
+		dfd = openat(basefd, path, O_DIRECTORY|O_CLOEXEC);
+		if (dfd == -1) {
 			pkg_emit_errno("openat", path);
 			return;
 		}
 	} else {
-		dirfd = dup(pkg_get_cachedirfd());
-		if (dirfd == -1) {
+		dfd = dup(pkg_get_cachedirfd());
+		if (dfd == -1) {
 			pkg_emit_error("Cannot open the cache directory");
 			return;
 		}
 	}
 
-	d = fdopendir(dirfd);
+	d = fdopendir(dfd);
 	while ((e = readdir(d)) != NULL) {
 		if (STREQ(e->d_name, ".") || STREQ(e->d_name, ".."))
 			continue;
-		if (fstatat(dirfd, e->d_name, &st, AT_SYMLINK_NOFOLLOW) != 0) {
+		if (fstatat(dirfd(d), e->d_name, &st, AT_SYMLINK_NOFOLLOW) != 0) {
 			pkg_emit_errno("fstatat", path);
 			continue;
 		}
 		if (S_ISDIR(st.st_mode))
-			rm_rf(dirfd, e->d_name);
+			rm_rf(dirfd(d), e->d_name);
 		else
-			unlinkat(dirfd, e->d_name, 0);
+			unlinkat(dirfd(d), e->d_name, 0);
 	}
 	closedir(d);
 	if (basefd == -1)

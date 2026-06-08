@@ -507,13 +507,13 @@ read_ucl_dir(struct pkg_repo_create *prc, const char *path, ucl_object_t *schema
 		if (strcmp(ext, ".ucl") != 0)
 			continue;
 		/* only regular files are considered */
-		if (fstatat(dfd, e->d_name, &st, AT_SYMLINK_NOFOLLOW) != 0) {
+		if (fstatat(dirfd(d), e->d_name, &st, AT_SYMLINK_NOFOLLOW) != 0) {
 			pkg_emit_errno("fstatat", e->d_name);
 			goto cleanup;
 		}
 		if (!S_ISREG(st.st_mode))
 			continue;
-		parsed_obj = ucl_load(dfd, e->d_name, schema);
+		parsed_obj = ucl_load(dirfd(d), e->d_name, schema);
 		if (parsed_obj)
 			callback (prc, parsed_obj);
 	}

@@ -300,13 +300,13 @@ triggers_load_from(trigger_t *triggers, bool cleanup_only, const char *dir)
 		if (!STREQ(ext, ".ucl"))
 			continue;
 		/* only regular files are considered */
-		if (fstatat(dfd, e->d_name, &st, AT_SYMLINK_NOFOLLOW) != 0) {
+		if (fstatat(dirfd(d), e->d_name, &st, AT_SYMLINK_NOFOLLOW) != 0) {
 			pkg_emit_errno("fstatat", e->d_name);
 			continue;
 		}
 		if (!S_ISREG(st.st_mode))
 			continue;
-		t = trigger_load(dfd, e->d_name, cleanup_only, schema);
+		t = trigger_load(dirfd(d), e->d_name, cleanup_only, schema);
 		if (t != NULL)
 			vec_push(triggers, t);
 	}
@@ -845,7 +845,7 @@ pkg_execute_deferred_triggers(void)
 		if (e->d_name[0] == '.')
 			continue;
 		/* only regular files are considered */
-		if (fstatat(trigfd, e->d_name, &st, AT_SYMLINK_NOFOLLOW) != 0) {
+		if (fstatat(dirfd(d), e->d_name, &st, AT_SYMLINK_NOFOLLOW) != 0) {
 			pkg_emit_errno("fstatat", e->d_name);
 			return (EPKG_FATAL);
 		}
