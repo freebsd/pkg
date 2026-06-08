@@ -248,32 +248,42 @@ url_decode(const char* src, size_t len)
 static int
 lua_script_type_str(const char *str)
 {
-	if (STREQ(str, "pre-install"))
-		return (PKG_LUA_PRE_INSTALL);
-	if (STREQ(str, "post-install"))
-		return (PKG_LUA_POST_INSTALL);
-	if (STREQ(str, "pre-deinstall"))
-		return (PKG_LUA_PRE_DEINSTALL);
-	if (STREQ(str, "post-deinstall"))
-		return (PKG_LUA_POST_DEINSTALL);
+	static const struct lua_script_type {
+		const char *name;
+		int type;
+	} lua_types[] = {
+		{ "post-deinstall", PKG_LUA_POST_DEINSTALL },
+		{ "post-install",   PKG_LUA_POST_INSTALL },
+		{ "pre-deinstall",  PKG_LUA_PRE_DEINSTALL },
+		{ "pre-install",    PKG_LUA_PRE_INSTALL },
+	};
+
+	for (size_t i = 0; i < NELEM(lua_types); i++) {
+		if (STREQ(str, lua_types[i].name))
+			return (lua_types[i].type);
+	}
 	return (PKG_LUA_UNKNOWN);
 }
 
 static int
 script_type_str(const char *str)
 {
-	if (STREQ(str, "pre-install"))
-		return (PKG_SCRIPT_PRE_INSTALL);
-	if (STREQ(str, "install"))
-		return (PKG_SCRIPT_INSTALL);
-	if (STREQ(str, "post-install"))
-		return (PKG_SCRIPT_POST_INSTALL);
-	if (STREQ(str, "pre-deinstall"))
-		return (PKG_SCRIPT_PRE_DEINSTALL);
-	if (STREQ(str, "deinstall"))
-		return (PKG_SCRIPT_DEINSTALL);
-	if (STREQ(str, "post-deinstall"))
-		return (PKG_SCRIPT_POST_DEINSTALL);
+	static const struct script_type {
+		const char *name;
+		int type;
+	} scr_types[] = {
+		{ "deinstall",     PKG_SCRIPT_DEINSTALL },
+		{ "install",       PKG_SCRIPT_INSTALL },
+		{ "post-deinstall", PKG_SCRIPT_POST_DEINSTALL },
+		{ "post-install",  PKG_SCRIPT_POST_INSTALL },
+		{ "pre-deinstall", PKG_SCRIPT_PRE_DEINSTALL },
+		{ "pre-install",   PKG_SCRIPT_PRE_INSTALL },
+	};
+
+	for (size_t i = 0; i < NELEM(scr_types); i++) {
+		if (STREQ(str, scr_types[i].name))
+			return (scr_types[i].type);
+	}
 	return (PKG_SCRIPT_UNKNOWN);
 }
 
