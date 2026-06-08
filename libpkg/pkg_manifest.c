@@ -220,6 +220,16 @@ urlencode(const char *src, xstring **dest)
 	return (EPKG_OK);
 }
 
+static inline unsigned char
+hexval(unsigned char c)
+{
+	if (c <= '9')
+		return (c - '0');
+	if (c >= 'a')
+		return (c - 'a' + 10);
+	return (c - 'A' + 10);
+}
+
 static char*
 url_decode(const char* src, size_t len)
 {
@@ -232,9 +242,9 @@ url_decode(const char* src, size_t len)
 		if (src[i] == '%' && i + 2 < len &&
 		    isxdigit((unsigned char)src[i + 1]) &&
 		    isxdigit((unsigned char)src[i + 2])) {
-			int value;
-			sscanf(src + i + 1, "%2x", &value);
-			*p++ = (char)value;
+			unsigned char c1 = src[i + 1];
+			unsigned char c2 = src[i + 2];
+			*p++ = (hexval(c1) << 4) | hexval(c2);
 			i += 2;
 		} else {
 			*p++ = src[i];
