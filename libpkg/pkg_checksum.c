@@ -586,14 +586,17 @@ pkg_checksum_encode_hex(unsigned char *in, size_t inlen,
 				char *out, size_t outlen)
 {
 	size_t i;
+	static const char hex[] = "0123456789abcdef";
 
 	if (outlen < inlen * 2) {
 		pkg_emit_error("cannot encode hex as outlen is not sufficient");
 		return;
 	}
 
-	for (i = 0; i < inlen; i++)
-		sprintf(out + (i * 2), "%02x", in[i]);
+	for (i = 0; i < inlen; i++) {
+		out[i * 2] = hex[in[i] >> 4];
+		out[i * 2 + 1] = hex[in[i] & 0xf];
+	}
 
 	out[inlen * 2] = '\0';
 }
