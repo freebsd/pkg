@@ -72,12 +72,20 @@ conflict_items_insert(conflict_itemv_t *v, struct pkg_jobs_conflict_item item)
 {
 	size_t pos = conflict_items_lower_bound(v, item.hash);
 
-	vec_push(v, item);
-	if (pos < v->len - 1) {
-		memmove(&v->d[pos + 1], &v->d[pos],
-		    (v->len - 1 - pos) * sizeof(*v->d));
-		v->d[pos] = item;
+	/* Grow the array if needed before inserting */
+	if (v->len >= v->cap) {
+		v->cap = (v->cap == 0) ? 1 : v->cap * 2;
+		v->d = realloc(v->d, v->cap * sizeof(*v->d));
+		if (v->d == NULL)
+			abort();
 	}
+	/* Shift elements right to make room at pos */
+	if (pos < v->len) {
+		memmove(&v->d[pos + 1], &v->d[pos],
+		    (v->len - pos) * sizeof(*v->d));
+	}
+	v->d[pos] = item;
+	v->len++;
 }
 
 static struct sipkey *
