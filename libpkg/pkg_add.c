@@ -85,11 +85,13 @@ merge_with_external_tool(const char *merge_tool, struct pkg_config_file *lcf,
 		int copied = strlcpy(tmp_files[i].path, tmpdir, sizeof(tmp_files[i].path));
 		if (copied >= sizeof(tmp_files[i].path)) {
 			pkg_emit_error("Temporary path too long: %s", tmp_files[i].path);
+			unlink(output_path);
 			return MERGE_FAILED;
 		}
 		copied = strlcat(tmp_files[i].path, tmp_files[i].template, sizeof(tmp_files[i].path));
 		if (copied >= sizeof(tmp_files[i].path)) {
 			pkg_emit_error("Temporary path too long: %s", tmp_files[i].path);
+			unlink(output_path);
 			return MERGE_FAILED;
 		}
 
@@ -114,6 +116,7 @@ merge_with_external_tool(const char *merge_tool, struct pkg_config_file *lcf,
 			if (strlen(tmp_files[i].path))
 				unlink(tmp_files[i].path);
 		}
+		unlink(output_path);
 		return MERGE_FAILED;
 	}
 
@@ -136,18 +139,32 @@ merge_with_external_tool(const char *merge_tool, struct pkg_config_file *lcf,
 		case 'r':
 			tmp_files_index = 2;
 			break;
-		case 'n':
-			i += strlcpy(&command[i], RELATIVE_PATH(rcf->path), sizeof(command) - i) - 1;
+		case 'n': {
+			int nlen = strlcpy(&command[i], RELATIVE_PATH(rcf->path),
+			    sizeof(command) - i);
+			i += (nlen < (int)sizeof(command) - i - 1 ? nlen :
+			    (int)sizeof(command) - i - 1) - 1;
 			continue;
-		case 'o':
-			i += strlcpy(&command[i], output_path, sizeof(command) - i) - 1;
+		}
+		case 'o': {
+			int nlen = strlcpy(&command[i], output_path,
+			    sizeof(command) - i);
+			i += (nlen < (int)sizeof(command) - i - 1 ? nlen :
+			    (int)sizeof(command) - i - 1) - 1;
 			continue;
+		}
 		default:
 			pkg_emit_error("Unknown format string in the MERGETOOL command");
 			merge_tool--;
 			continue;
 		}
-		i += strlcpy(&command[i], tmp_files[tmp_files_index].path, sizeof(command) - i) - 1;
+		{
+			int nlen = strlcpy(&command[i],
+			    tmp_files[tmp_files_index].path,
+			    sizeof(command) - i);
+			i += (nlen < (int)sizeof(command) - i - 1 ? nlen :
+			    (int)sizeof(command) - i - 1) - 1;
+		}
 	}
 	command[i] = '\0';
 
