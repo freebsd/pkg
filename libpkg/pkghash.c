@@ -41,7 +41,7 @@ struct pkghash {
 	pkghash_entry *entries;
 	size_t capacity;
 	size_t count;
-	size_t index;
+	size_t tombstones;
 };
 
 pkghash *
@@ -49,6 +49,7 @@ pkghash_new(void)
 {
 	pkghash *table = xmalloc(sizeof(pkghash));
 	table->count = 0;
+	table->tombstones = 0;
 	table->capacity = 128;
 
 	table->entries = xcalloc(table->capacity, sizeof(pkghash_entry));
@@ -62,6 +63,8 @@ pkghash_destroy(pkghash *table)
 		return;
 
 	for (size_t i = 0; i < table->capacity; i++) {
+		if (table->entries[i].tombstone)
+			continue;
 		if (table->entries[i].key != NULL)
 			free(table->entries[i].key);
 		if (table->entries[i].free_func != NULL)
@@ -79,8 +82,12 @@ pkghash_get(pkghash *table, const char *key)
 	uint64_t hash = mum_hash(key, strlen(key), 0);
 	size_t index = (size_t)(hash & (uint64_t)(table->capacity -1));
 
-	while (table->entries[index].key != NULL) {
-		if (STREQ(key, table->entries[index].key))
+	for (size_t i = 0; i < table->capacity; i++) {
+		if (table->entries[index].key == NULL &&
+		    !table->entries[index].tombstone)
+			return (NULL);
+		if (table->entries[index].key != NULL &&
+		    STREQ(key, table->entries[index].key))
 			return (&table->entries[index]);
 		index++;
 		if (index >= table->capacity)
@@ -105,22 +112,25 @@ pkghash_set_entry(pkghash_entry *entries, size_t capacity,
 	uint64_t hash = mum_hash(key, strlen(key), 0);
 	size_t index = (size_t)(hash & (uint64_t)(capacity - 1));
 
-	while (entries[index].key != NULL) {
+	for (size_t i = 0; i < capacity; i++) {
+		if (entries[index].key == NULL) {
+			if (pcount != NULL) {
+				key = xstrdup(key);
+				(*pcount)++;
+			}
+			entries[index].key = (char *)key;
+			entries[index].value = value;
+			entries[index].free_func = free_func;
+			entries[index].tombstone = false;
+			return (true);
+		}
 		if (STREQ(key, entries[index].key))
 			return (false);
 		index++;
 		if (index >= capacity)
 			index = 0;
 	}
-
-	if (pcount != NULL) {
-		key = xstrdup(key);
-		(*pcount)++;
-	}
-	entries[index].key = (char *)key;
-	entries[index].value = value;
-	entries[index].free_func = free_func;
-	return (true);
+	return (false);
 }
 
 static bool
@@ -141,13 +151,16 @@ pkghash_expand(pkghash *table)
 	free(table->entries);
 	table->entries = new_entries;
 	table->capacity = new_capacity;
+	table->tombstones = 0;
 	return (true);
 }
 
 bool
 pkghash_add(pkghash *table, const char *key, void *value, void (*free_func)(void *))
 {
-	if (table->count * 2 >= table->capacity && !pkghash_expand(table))
+	if ((table->tombstones > table->capacity / 4 ||
+	    table->count * 2 >= table->capacity) &&
+	    !pkghash_expand(table))
 		return (false);
 
 	return (pkghash_set_entry(table->entries, table->capacity, key, value,
@@ -199,8 +212,10 @@ pkghash_del(pkghash *h, const char *key)
 		return (false);
 	free(e->key);
 	e->key = NULL;
+	h->tombstones++;
 	if (e->free_func != NULL)
 		e->free_func(e->value);
+	e->tombstone = true;
 	h->count--;
 	return (true);
 }
@@ -213,6 +228,8 @@ pkghash_delete(pkghash *h, const char *key)
 		return (NULL);
 	free(e->key);
 	e->key = NULL;
+	h->tombstones++;
+	e->tombstone = true;
 	h->count--;
 	return (e->value);
 }

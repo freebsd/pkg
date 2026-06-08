@@ -22,6 +22,7 @@ typedef struct {
 	char *key;
 	void *value;
 	void (*free_func)(void*);
+	bool tombstone;
 } pkghash_entry;
 
 pkghash_entry *pkghash_get(pkghash *table, const char *key);
