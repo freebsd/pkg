@@ -1,5 +1,5 @@
 /*-
- * Copyright (c) 2011-2025 Baptiste Daroussin <bapt@FreeBSD.org>
+ * Copyright (c) 2011-2026 Baptiste Daroussin <bapt@FreeBSD.org>
  * Copyright (c) 2011-2012 Julien Laffaye <jlaffaye@FreeBSD.org>
  * Copyright (c) 2011 Will Andrews <will@FreeBSD.org>
  * Copyright (c) 2011 Philippe Pepiot <phil@philpep.org>
@@ -75,7 +75,7 @@ extern struct pkg_ctx ctx;
 */
 
 #define DB_SCHEMA_MAJOR        0
-#define DB_SCHEMA_MINOR	39
+#define DB_SCHEMA_MINOR	40
 
 #define DBVERSION (DB_SCHEMA_MAJOR * 1000 + DB_SCHEMA_MINOR)
 
@@ -352,8 +352,8 @@ static int
 pkgdb_init(sqlite3 *sdb)
 {
 	const char	sql[] = ""
-	"PRAGMA journal_mode = TRUNCATE;"
-	"PRAGMA synchronous = FULL;"
+	"PRAGMA journal_mode = WAL;"
+	"PRAGMA synchronous = NORMAL;"
 	"BEGIN;"
 	"CREATE TABLE packages ("
 		"id INTEGER PRIMARY KEY,"
@@ -564,24 +564,11 @@ pkgdb_init(sqlite3 *sdb)
 	/* Mark the end of the array */
 
 	"CREATE INDEX deporigini on deps(origin);"
-	"CREATE INDEX pkg_script_package_id ON pkg_script(package_id);"
 	"CREATE INDEX deps_package_id ON deps (package_id);"
 	"CREATE INDEX files_package_id ON files (package_id);"
-	"CREATE INDEX pkg_directories_package_id ON pkg_directories (package_id);"
-	"CREATE INDEX pkg_categories_package_id ON pkg_categories (package_id);"
-	"CREATE INDEX pkg_licenses_package_id ON pkg_licenses (package_id);"
-	"CREATE INDEX pkg_users_package_id ON pkg_users (package_id);"
-	"CREATE INDEX pkg_groups_package_id ON pkg_groups (package_id);"
-	"CREATE INDEX pkg_shlibs_required_package_id ON pkg_shlibs_required (package_id);"
-	"CREATE INDEX pkg_shlibs_required_ignore_package_id ON pkg_shlibs_required_ignore (package_id);"
-	"CREATE INDEX pkg_shlibs_provided_package_id ON pkg_shlibs_provided (package_id);"
-	"CREATE INDEX pkg_shlibs_provided_ignore_package_id ON pkg_shlibs_provided_ignore (package_id);"
 	"CREATE INDEX pkg_directories_directory_id ON pkg_directories (directory_id);"
-	"CREATE INDEX pkg_annotation_package_id ON pkg_annotation(package_id);"
 	"CREATE INDEX pkg_digest_id ON packages(origin, manifestdigest);"
-	"CREATE INDEX pkg_conflicts_pid ON pkg_conflicts(package_id);"
 	"CREATE INDEX pkg_conflicts_cid ON pkg_conflicts(conflict_id);"
-	"CREATE INDEX pkg_provides_id ON pkg_provides(package_id);"
 	"CREATE INDEX provides_provide ON provides(provide);"
 	"CREATE INDEX pkg_provides_provide_id ON pkg_provides(provide_id);"
 	"CREATE INDEX packages_origin ON packages(origin COLLATE NOCASE);"

@@ -1,7 +1,7 @@
 /*-
  * SPDX-License-Identifier: LicenseRef-scancode-bsd-unchanged
  *
- * Copyright (c) 2011-2019 Baptiste Daroussin <bapt@FreeBSD.org>
+ * Copyright (c) 2011-2026 Baptiste Daroussin <bapt@FreeBSD.org>
  * Copyright (c) 2011-2012 Julien Laffaye <jlaffaye@FreeBSD.org>
  * Copyright (c) 2013 Matthew Seaman <matthew@FreeBSD.org>
  * Copyright (c) 2013-2014 Vsevolod Stakhov <vsevolod@FreeBSD.org>
@@ -766,6 +766,24 @@ static struct db_upgrades {
 	"CREATE INDEX pkg_requires_package_id ON pkg_requires(package_id);"
 	"CREATE INDEX config_files_package_id ON config_files(package_id);"
 	"CREATE INDEX pkg_lua_script_package_id ON pkg_lua_script(package_id);"
+	}, { 40,
+	"DROP INDEX IF EXISTS pkg_script_package_id;"
+	"DROP INDEX IF EXISTS pkg_directories_package_id;"
+	"DROP INDEX IF EXISTS pkg_categories_package_id;"
+	"DROP INDEX IF EXISTS pkg_licenses_package_id;"
+	"DROP INDEX IF EXISTS pkg_users_package_id;"
+	"DROP INDEX IF EXISTS pkg_groups_package_id;"
+	"DROP INDEX IF EXISTS pkg_shlibs_required_package_id;"
+	"DROP INDEX IF EXISTS pkg_shlibs_required_ignore_package_id;"
+	"DROP INDEX IF EXISTS pkg_shlibs_provided_package_id;"
+	"DROP INDEX IF EXISTS pkg_shlibs_provided_ignore_package_id;"
+	"DROP INDEX IF EXISTS pkg_annotation_package_id;"
+	"DROP INDEX IF EXISTS pkg_conflicts_pid;"
+	"DROP INDEX IF EXISTS pkg_provides_id;"
+	"DROP INDEX IF EXISTS pkg_requires_package_id;"
+	"DROP INDEX IF EXISTS pkg_lua_script_package_id;"
+	"PRAGMA journal_mode = WAL;"
+	"PRAGMA synchronous = NORMAL;"
 	},
 	/* Mark the end of the array */
 	{ -1, NULL }
