@@ -586,6 +586,7 @@ pkg_repo_binary_add_from_filelist(FILE *f, sqlite3 *sqlite)
 	char **dir_table = NULL;
 	int dir_count = 0;
 	int dir_cap = 0;
+	pkghash *dir_map = NULL;
 
 	/*
 	 * Phase 1: Read front-compressed directory dictionary.
@@ -626,6 +627,21 @@ pkg_repo_binary_add_from_filelist(FILE *f, sqlite3 *sqlite)
 			goto cleanup;
 		}
 	}
+
+	/* Build in-memory hashmap path → dir_id to avoid subqueries */
+	dir_map = pkghash_new();
+	stmt = prepare_sql(sqlite, "SELECT id, path FROM file_dirs");
+	if (stmt == NULL) {
+		rc = EPKG_FATAL;
+		goto cleanup;
+	}
+	while (sqlite3_step(stmt) == SQLITE_ROW) {
+		int64_t id = sqlite3_column_int64(stmt, 0);
+		const char *path = (const char *)sqlite3_column_text(stmt, 1);
+		pkghash_add(dir_map, path, (void *)(intptr_t)id, NULL);
+	}
+	sqlite3_finalize(stmt);
+	stmt = NULL;
 
 	/* Phase 2: Read package blocks */
 	while ((linelen = getline(&line, &linecap, f)) > 0) {
@@ -669,9 +685,12 @@ pkg_repo_binary_add_from_filelist(FILE *f, sqlite3 *sqlite)
 		if (cur_dir_idx < 0 || cur_dir_idx >= dir_count)
 			continue;
 
+		/* Look up dir_id in O(1) from hashmap instead of SQL subquery */
+		int64_t dir_id = (intptr_t)pkghash_get_value(dir_map,
+		    dir_table[cur_dir_idx]);
 		sql_arg_t file_arg[] = {
 			SQL_ARG(package_id),
-			SQL_ARG(dir_table[cur_dir_idx]),
+			SQL_ARG(dir_id),
 			SQL_ARG(line),
 		};
 		if (pkg_repo_binary_run_prstatement(FILEDIR2,
@@ -686,6 +705,7 @@ pkg_repo_binary_add_from_filelist(FILE *f, sqlite3 *sqlite)
 	}
 
 cleanup:
+	pkghash_destroy(dir_map);
 	for (int i = 0; i < dir_count; i++)
 		free(dir_table[i]);
 	free(dir_table);

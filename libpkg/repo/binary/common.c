@@ -141,7 +141,7 @@ static sql_prstmt sql_prepared_statements[PRSTMT_LAST] = {
 	[FILEDIR2] = {
 		NULL,
 		"INSERT OR IGNORE INTO pkg_files(package_id, dir_id, name) "
-		"VALUES (?1, (SELECT id FROM file_dirs WHERE path = ?2), ?3)",
+		"VALUES (?1, ?2, ?3)",
 	},
 	[PKGID] = {
 		NULL,
