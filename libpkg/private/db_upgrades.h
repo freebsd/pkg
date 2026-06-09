@@ -790,6 +790,11 @@ static struct db_upgrades {
 	    "LEFT JOIN annotation tag ON pkg_annotation.tag_id = tag.annotation_id "
 	    "LEFT JOIN annotation value ON pkg_annotation.value_id = value.annotation_id "
 	    "WHERE tag.annotation = 'flavor';"
+	}, { 42,
+	"CREATE INDEX IF NOT EXISTS pkg_shlibs_required_shlib_id ON pkg_shlibs_required(shlib_id);"
+	"CREATE INDEX IF NOT EXISTS pkg_shlibs_required_ignore_shlib_id ON pkg_shlibs_required_ignore(shlib_id);"
+	"CREATE INDEX IF NOT EXISTS pkg_shlibs_provided_shlib_id ON pkg_shlibs_provided(shlib_id);"
+	"CREATE INDEX IF NOT EXISTS pkg_shlibs_provided_ignore_shlib_id ON pkg_shlibs_provided_ignore(shlib_id);"
 	},
 	/* Mark the end of the array */
 	{ -1, NULL }

@@ -75,7 +75,7 @@ extern struct pkg_ctx ctx;
 */
 
 #define DB_SCHEMA_MAJOR        0
-#define DB_SCHEMA_MINOR	41
+#define DB_SCHEMA_MINOR	42
 
 #define DBVERSION (DB_SCHEMA_MAJOR * 1000 + DB_SCHEMA_MINOR)
 
@@ -573,6 +573,10 @@ pkgdb_init(sqlite3 *sdb)
 	"CREATE INDEX pkg_provides_provide_id ON pkg_provides(provide_id);"
 	"CREATE INDEX packages_origin ON packages(origin COLLATE NOCASE);"
 	"CREATE INDEX packages_name ON packages(name COLLATE NOCASE);"
+	"CREATE INDEX pkg_shlibs_required_shlib_id ON pkg_shlibs_required(shlib_id);"
+	"CREATE INDEX pkg_shlibs_required_ignore_shlib_id ON pkg_shlibs_required_ignore(shlib_id);"
+	"CREATE INDEX pkg_shlibs_provided_shlib_id ON pkg_shlibs_provided(shlib_id);"
+	"CREATE INDEX pkg_shlibs_provided_ignore_shlib_id ON pkg_shlibs_provided_ignore(shlib_id);"
 
 	"CREATE VIEW IF NOT EXISTS flavors AS "
 	    "SELECT package_id, value.annotation AS flavor FROM pkg_annotation "
