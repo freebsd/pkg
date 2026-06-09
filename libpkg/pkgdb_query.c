@@ -1,5 +1,5 @@
 /*-
- * Copyright (c) 2011-2025 Baptiste Daroussin <bapt@FreeBSD.org>
+ * Copyright (c) 2011-2026 Baptiste Daroussin <bapt@FreeBSD.org>
  * Copyright (c) 2011-2012 Julien Laffaye <jlaffaye@FreeBSD.org>
  * Copyright (c) 2011 Will Andrews <will@FreeBSD.org>
  * Copyright (c) 2011 Philippe Pepiot <phil@philpep.org>
@@ -115,7 +115,7 @@ pkgdb_get_pattern_query(const char *pattern, match_t match)
 struct pkgdb_it *
 pkgdb_query_cond(struct pkgdb *db, const char *cond, const char *pattern, match_t match)
 {
-	char		 sql[BUFSIZ];
+	char		*sql = NULL;
 	sqlite3_stmt	*stmt;
 	const char	*comp = NULL;
 
@@ -127,7 +127,7 @@ pkgdb_query_cond(struct pkgdb *db, const char *cond, const char *pattern, match_
 	comp = pkgdb_get_pattern_query(pattern, match);
 
 	if (cond) {
-		sqlite3_snprintf(sizeof(sql), sql,
+		xasprintf(&sql,
 				"WITH flavors AS "
 				"  (SELECT package_id, value.annotation AS flavor FROM pkg_annotation "
 				"   LEFT JOIN annotation tag ON pkg_annotation.tag_id = tag.annotation_id "
@@ -145,7 +145,7 @@ pkgdb_query_cond(struct pkgdb *db, const char *cond, const char *pattern, match_
 				"    %s %s (%s) ORDER BY p.name;",
 					comp, pattern == NULL ? "WHERE" : "AND", cond + 7);
 	} else if (match == MATCH_INTERNAL) {
-		sqlite3_snprintf(sizeof(sql), sql,
+		xasprintf(&sql,
 				"SELECT DISTINCT(p.id), origin, p.name, p.name as uniqueid, "
 					"version, comment, desc, "
 					"message, arch, maintainer, www, "
@@ -155,7 +155,7 @@ pkgdb_query_cond(struct pkgdb *db, const char *cond, const char *pattern, match_
 				"%s"
 				" ORDER BY p.name", comp);
 	} else {
-		sqlite3_snprintf(sizeof(sql), sql,
+		xasprintf(&sql,
 				"WITH flavors AS "
 				"  (SELECT package_id, value.annotation AS flavor FROM pkg_annotation "
 				"   LEFT JOIN annotation tag ON pkg_annotation.tag_id = tag.annotation_id "
@@ -174,12 +174,15 @@ pkgdb_query_cond(struct pkgdb *db, const char *cond, const char *pattern, match_
 				" ORDER BY p.name", comp);
 	}
 
-	if ((stmt = prepare_sql(db->sqlite, sql)) == NULL)
+	if ((stmt = prepare_sql(db->sqlite, sql)) == NULL) {
+		free(sql);
 		return (NULL);
+	}
 
 	if (match != MATCH_ALL)
 		sqlite3_bind_text(stmt, 1, pattern, -1, SQLITE_TRANSIENT);
 	pkgdb_debug(4, stmt);
+	free(sql);
 
 	return (pkgdb_it_new_sqlite(db, stmt, PKG_INSTALLED, PKGDB_IT_FLAG_ONCE));
 }
@@ -194,16 +197,13 @@ bool
 pkgdb_file_exists(struct pkgdb *db, const char *path)
 {
 	sqlite3_stmt	*stmt;
-	char	sql[BUFSIZ];
+	const char	sql[] = "SELECT path FROM files WHERE path = ?1;";
 	bool	ret = false;
 
 	assert(db != NULL);
 
 	if (path == NULL)
 		return (false);
-
-	sqlite3_snprintf(sizeof(sql), sql,
-	    "select path from files where path = ?1;");
 
 	if ((stmt = prepare_sql(db->sqlite, sql)) == NULL)
 		return (ret);
@@ -223,27 +223,31 @@ struct pkgdb_it *
 pkgdb_query_which(struct pkgdb *db, const char *path, bool glob)
 {
 	sqlite3_stmt	*stmt;
-	char	sql[BUFSIZ];
+	char	*sql = NULL;
 
 	assert(db != NULL);
 
 	if (path == NULL)
 		return (NULL);
 
-	sqlite3_snprintf(sizeof(sql), sql,
+	xasprintf(&sql,
 			"SELECT p.id, p.origin, p.name, p.name as uniqueid, "
 			"p.version, p.comment, p.desc, "
 			"p.message, p.arch, p.maintainer, p.www, "
 			"p.prefix, p.flatsize, p.time "
 			"FROM packages AS p "
-			"LEFT JOIN files AS f ON p.id = f.package_id "
-			"WHERE f.path %s ?1 GROUP BY p.id;", glob ? "GLOB" : "=");
+			"INNER JOIN files AS f ON p.id = f.package_id "
+			"WHERE f.path %s ?1%s;", glob ? "GLOB" : "=",
+			glob ? " GROUP BY p.id" : "");
 
-	if ((stmt = prepare_sql(db->sqlite, sql)) == NULL)
+	if ((stmt = prepare_sql(db->sqlite, sql)) == NULL) {
+		free(sql);
 		return (NULL);
+	}
 
 	sqlite3_bind_text(stmt, 1, path, -1, SQLITE_TRANSIENT);
 	pkgdb_debug(4, stmt);
+	free(sql);
 
 	return (pkgdb_it_new_sqlite(db, stmt, PKG_INSTALLED, PKGDB_IT_FLAG_ONCE));
 }
