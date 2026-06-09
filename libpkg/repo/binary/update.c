@@ -1,6 +1,6 @@
 /*
  * Copyright (c) 2014, Vsevolod Stakhov
- * Copyright (c) 2012-2025 Baptiste Daroussin <bapt@FreeBSD.org>
+ * Copyright (c) 2012-2026 Baptiste Daroussin <bapt@FreeBSD.org>
  * Copyright (c) 2012 Julien Laffaye <jlaffaye@FreeBSD.org>
  * Copyright (c) 2024 Serenity Cyber Security, LLC
  *                    Author: Gleb Popov <arrowd@FreeBSD.org>
@@ -799,10 +799,10 @@ pkg_repo_binary_update_proceed(const char *name, struct pkg_repo *repo,
 
 	/* 200MB should be enough */
 	sql_exec(sqlite, "PRAGMA mmap_size = 209715200;");
-	sql_exec(sqlite, "PRAGMA page_size = %d;", getpagesize());
+	sql_exec(sqlite, "PRAGMA page_size = 16384;");
 	sql_exec(sqlite, "PRAGMA foreign_keys = OFF;");
 	sql_exec(sqlite, "PRAGMA journal_mode = TRUNCATE;");
-	sql_exec(sqlite, "PRAGMA synchronous = FULL;");
+	sql_exec(sqlite, "PRAGMA synchronous = OFF;");
 
 	rc = pkgdb_transaction_begin_sqlite(sqlite, "REPO");
 	if (rc != EPKG_OK)
