@@ -128,11 +128,6 @@ pkgdb_query_cond(struct pkgdb *db, const char *cond, const char *pattern, match_
 
 	if (cond) {
 		xasprintf(&sql,
-				"WITH flavors AS "
-				"  (SELECT package_id, value.annotation AS flavor FROM pkg_annotation "
-				"   LEFT JOIN annotation tag ON pkg_annotation.tag_id = tag.annotation_id "
-				"   LEFT JOIN annotation value ON pkg_annotation.value_id = value.annotation_id "
-				"   WHERE tag.annotation = 'flavor') "
 				"SELECT DISTINCT(p.id), origin, p.name, p.name as uniqueid, "
 				"   version, comment, desc, "
 				"   message, arch, maintainer, www, "
@@ -156,11 +151,6 @@ pkgdb_query_cond(struct pkgdb *db, const char *cond, const char *pattern, match_
 				" ORDER BY p.name", comp);
 	} else {
 		xasprintf(&sql,
-				"WITH flavors AS "
-				"  (SELECT package_id, value.annotation AS flavor FROM pkg_annotation "
-				"   LEFT JOIN annotation tag ON pkg_annotation.tag_id = tag.annotation_id "
-				"   LEFT JOIN annotation value ON pkg_annotation.value_id = value.annotation_id "
-				"   WHERE tag.annotation = 'flavor') "
 				"SELECT DISTINCT(p.id), origin, p.name, p.name as uniqueid, "
 					"version, comment, desc, "
 					"message, arch, maintainer, www, "

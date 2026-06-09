@@ -202,12 +202,6 @@ pkg_repo_binary_query(struct pkg_repo *repo, const char *cond, const char *patte
 		"%s%s%s "
 		"ORDER BY p.name;";
 	const char basesql[] = ""
-		"WITH flavors AS "
-		"  (SELECT package_id, value.annotation AS flavor FROM pkg_annotation "
-		"   LEFT JOIN annotation tag ON pkg_annotation.tag_id = tag.annotation_id "
-		"   LEFT JOIN annotation value ON pkg_annotation.value_id = value.annotation_id "
-		"   WHERE tag.annotation = 'flavor') "
-
 		"SELECT DISTINCT(p.id), origin, p.name, p.name as uniqueid, version, comment, "
 		"prefix, desc, arch, maintainer, www, "
 		"licenselogic, flatsize, pkgsize, "
@@ -552,11 +546,6 @@ pkg_repo_binary_search(struct pkg_repo *repo, const char *pattern, match_t match
 	xstring	*sql = NULL;
 	char *sqlcmd = NULL;
 	const char	*multireposql = ""
-		"WITH flavors AS "
-		"  (SELECT package_id, value.annotation AS flavor FROM pkg_annotation "
-		"   LEFT JOIN annotation tag ON pkg_annotation.tag_id = tag.annotation_id "
-		"   LEFT JOIN annotation value ON pkg_annotation.value_id = value.annotation_id "
-		"   WHERE tag.annotation = 'flavor') "
 		"SELECT DISTINCT p.id, origin, p.name, version, comment, "
 		"prefix, desc, arch, maintainer, www, "
 		"licenselogic, flatsize, pkgsize, "

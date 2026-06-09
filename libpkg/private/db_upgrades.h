@@ -784,6 +784,12 @@ static struct db_upgrades {
 	"DROP INDEX IF EXISTS pkg_lua_script_package_id;"
 	"PRAGMA journal_mode = WAL;"
 	"PRAGMA synchronous = NORMAL;"
+	}, { 41,
+	"CREATE VIEW IF NOT EXISTS flavors AS "
+	    "SELECT package_id, value.annotation AS flavor FROM pkg_annotation "
+	    "LEFT JOIN annotation tag ON pkg_annotation.tag_id = tag.annotation_id "
+	    "LEFT JOIN annotation value ON pkg_annotation.value_id = value.annotation_id "
+	    "WHERE tag.annotation = 'flavor';"
 	},
 	/* Mark the end of the array */
 	{ -1, NULL }

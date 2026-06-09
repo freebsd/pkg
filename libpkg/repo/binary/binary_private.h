@@ -174,6 +174,11 @@ static const char binary_repo_initsql[] = ""
 	"CREATE INDEX packages_version ON packages(name, version);"
 	"CREATE UNIQUE INDEX packages_digest ON packages(manifestdigest);"*/
 
+	"CREATE VIEW IF NOT EXISTS flavors AS "
+	    "SELECT package_id, value.annotation AS flavor FROM pkg_annotation "
+	    "LEFT JOIN annotation tag ON pkg_annotation.tag_id = tag.annotation_id "
+	    "LEFT JOIN annotation value ON pkg_annotation.value_id = value.annotation_id "
+	    "WHERE tag.annotation = 'flavor';"
 	"PRAGMA user_version=%d;"
 	;
 
