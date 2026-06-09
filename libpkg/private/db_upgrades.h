@@ -782,8 +782,6 @@ static struct db_upgrades {
 	"DROP INDEX IF EXISTS pkg_provides_id;"
 	"DROP INDEX IF EXISTS pkg_requires_package_id;"
 	"DROP INDEX IF EXISTS pkg_lua_script_package_id;"
-	"PRAGMA journal_mode = WAL;"
-	"PRAGMA synchronous = NORMAL;"
 	}, { 41,
 	"CREATE VIEW IF NOT EXISTS flavors AS "
 	    "SELECT package_id, value.annotation AS flavor FROM pkg_annotation "
