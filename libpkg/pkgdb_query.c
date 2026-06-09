@@ -251,10 +251,10 @@ pkgdb_query_shlib_require(struct pkgdb *db, const char *shlib)
 			"p.version, p.comment, p.desc, "
 			"p.message, p.arch, p.maintainer, p.www, "
 			"p.prefix, p.flatsize, p.time "
-			"FROM packages AS p, pkg_shlibs_required AS ps, shlibs AS s "
-			"WHERE p.id = ps.package_id "
-				"AND ps.shlib_id = s.id "
-				"AND s.name = ?1;";
+			"FROM packages AS p "
+			"JOIN pkg_shlibs_required AS ps ON p.id = ps.package_id "
+			"JOIN shlibs AS s ON ps.shlib_id = s.id "
+			"WHERE s.name = ?1;";
 
 	assert(db != NULL);
 
@@ -276,10 +276,10 @@ pkgdb_query_shlib_provide(struct pkgdb *db, const char *shlib)
 			"p.version, p.comment, p.desc, "
 			"p.message, p.arch, p.maintainer, p.www, "
 			"p.prefix, p.flatsize, p.manifestdigest, p.time "
-			"FROM packages AS p, pkg_shlibs_provided AS ps, shlibs AS s "
-			"WHERE p.id = ps.package_id "
-				"AND ps.shlib_id = s.id "
-				"AND s.name = ?1;";
+			"FROM packages AS p "
+			"JOIN pkg_shlibs_provided AS ps ON p.id = ps.package_id "
+			"JOIN shlibs AS s ON ps.shlib_id = s.id "
+			"WHERE s.name = ?1;";
 
 	assert(db != NULL);
 
@@ -301,10 +301,10 @@ pkgdb_query_require(struct pkgdb *db, const char *req)
 			"p.version, p.comment, p.desc, "
 			"p.message, p.arch, p.maintainer, p.www, "
 			"p.prefix, p.flatsize, p.time "
-			"FROM packages AS p, pkg_requires AS ps, requires AS s "
-			"WHERE p.id = ps.package_id "
-				"AND ps.require_id = s.id "
-				"AND s.require = ?1;";
+			"FROM packages AS p "
+			"JOIN pkg_requires AS ps ON p.id = ps.package_id "
+			"JOIN requires AS s ON ps.require_id = s.id "
+			"WHERE s.require = ?1;";
 
 	assert(db != NULL);
 
@@ -326,10 +326,10 @@ pkgdb_query_provide(struct pkgdb *db, const char *req)
 			"p.version, p.comment, p.desc, "
 			"p.message, p.arch, p.maintainer, p.www, "
 			"p.prefix, p.flatsize, p.time "
-			"FROM packages AS p, pkg_provides AS ps, provides AS s "
-			"WHERE p.id = ps.package_id "
-				"AND ps.provide_id = s.id "
-				"AND s.provide = ?1;";
+			"FROM packages AS p "
+			"JOIN pkg_provides AS ps ON p.id = ps.package_id "
+			"JOIN provides AS s ON ps.provide_id = s.id "
+			"WHERE s.provide = ?1;";
 
 	assert(db != NULL);
 

@@ -3285,8 +3285,9 @@ pkgdb_is_dir_used(struct pkgdb *db, struct pkg *p, const char *dir, int64_t *res
 	int ret;
 
 	const char sql[] = ""
-		"SELECT count(package_id) FROM pkg_directories, directories "
-		"WHERE directory_id = directories.id AND directories.path = ?1 "
+		"SELECT count(package_id) FROM pkg_directories "
+		"JOIN directories ON directories.id = pkg_directories.directory_id "
+		"WHERE directories.path = ?1 "
 		"AND package_id != ?2;";
 
 	stmt = prepare_sql(db->sqlite, sql);
