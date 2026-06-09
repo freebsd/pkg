@@ -775,7 +775,8 @@ new_pkg_version(struct pkg_jobs *j)
 
 end:
 	j->flags = old_flags;
-	pkg_free(p);
+	if (!pkg_in_universe(j->universe, p))
+		pkg_free(p);
 
 	return (ret);
 }
