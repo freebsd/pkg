@@ -1680,9 +1680,11 @@ run_prstmt(sql_prstmt_index s, const sql_arg_t *args, size_t nargs)
 		}
 	}
 
-	char *debug_sql = sqlite3_expanded_sql(stmt);
-	dbg(4, "running '%s'", debug_sql);
-	sqlite3_free(debug_sql);
+	if (ctx.debug_level >= 4) {
+		char *debug_sql = sqlite3_expanded_sql(stmt);
+		dbg(4, "running '%s'", debug_sql);
+		sqlite3_free(debug_sql);
+	}
 
 	retcode = sqlite3_step(stmt);
 	return (retcode);
