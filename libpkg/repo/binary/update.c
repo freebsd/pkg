@@ -903,9 +903,7 @@ pkg_repo_binary_update_proceed(const char *name, struct pkg_repo *repo,
 				fclose(ff);
 
 				sql_exec(sqlite, ""
-				    "CREATE INDEX pkg_files_package_id ON pkg_files(package_id);"
 				    "CREATE INDEX pkg_files_dir_name ON pkg_files(dir_id, name);"
-				    "CREATE INDEX pkg_files_name ON pkg_files(name);"
 				);
 			} else {
 				close(fprc.filesite_fd);
