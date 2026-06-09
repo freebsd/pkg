@@ -1,5 +1,5 @@
 /*-
- * Copyright (c) 2011-2025 Baptiste Daroussin <bapt@FreeBSD.org>
+ * Copyright (c) 2011-2026 Baptiste Daroussin <bapt@FreeBSD.org>
  * Copyright (c) 2011-2012 Julien Laffaye <jlaffaye@FreeBSD.org>
  * Copyright (c) 2011 Will Andrews <will@FreeBSD.org>
  * Copyright (c) 2011 Philippe Pepiot <phil@philpep.org>
@@ -459,9 +459,9 @@ pkgdb_load_dirs(sqlite3 *sqlite, struct pkg *pkg)
 {
 	const char	 sql[] = ""
 		"SELECT path, uname, gname, perm, fflags, try"
-		"  FROM pkg_directories, directories"
+		"  FROM pkg_directories"
+		"    JOIN directories ON directories.id = pkg_directories.directory_id"
 		"  WHERE package_id = ?1"
-		"    AND directory_id = directories.id"
 		"  ORDER by path DESC";
 	sqlite3_stmt	*stmt;
 	int		 ret;
@@ -506,9 +506,9 @@ pkgdb_load_license(sqlite3 *sqlite, struct pkg *pkg)
 {
 	const char	 sql[] = ""
 		"SELECT ifnull(group_concat(name, ', '), '') AS name"
-		"  FROM pkg_licenses, licenses AS l"
+		"  FROM pkg_licenses"
+		"    JOIN licenses AS l ON l.id = pkg_licenses.license_id"
 		"  WHERE package_id = ?1"
-		"    AND license_id = l.id"
 		"  ORDER by name DESC";
 
 	assert(pkg != NULL);
@@ -522,9 +522,9 @@ pkgdb_load_category(sqlite3 *sqlite, struct pkg *pkg)
 {
 	const char	 sql[] = ""
 		"SELECT name"
-		"  FROM pkg_categories, categories AS c"
+		"  FROM pkg_categories"
+		"    JOIN categories AS c ON c.id = pkg_categories.category_id"
 		"  WHERE package_id = ?1"
-		"    AND category_id = c.id"
 		"  ORDER by name DESC";
 
 	assert(pkg != NULL);
@@ -539,9 +539,9 @@ pkgdb_load_user(sqlite3 *sqlite, struct pkg *pkg)
 	int		ret;
 	const char	sql[] = ""
 		"SELECT users.name"
-		"  FROM pkg_users, users"
+		"  FROM pkg_users"
+		"    JOIN users ON users.id = pkg_users.user_id"
 		"  WHERE package_id = ?1"
-		"    AND user_id = users.id"
 		"  ORDER by name DESC";
 
 	assert(pkg != NULL);
@@ -559,9 +559,9 @@ pkgdb_load_group(sqlite3 *sqlite, struct pkg *pkg)
 	int			 ret;
 	const char		 sql[] = ""
 		"SELECT groups.name"
-		"  FROM pkg_groups, groups"
+		"  FROM pkg_groups"
+		"    JOIN groups ON groups.id = pkg_groups.group_id"
 		"  WHERE package_id = ?1"
-		"    AND group_id = groups.id"
 		"  ORDER by name DESC";
 
 	assert(pkg != NULL);
@@ -585,9 +585,9 @@ pkgdb_load_shlib_required(sqlite3 *sqlite, struct pkg *pkg)
 {
 	const char	sql[] = ""
 		"SELECT name"
-		"  FROM pkg_shlibs_required, shlibs AS s"
+		"  FROM pkg_shlibs_required"
+		"    JOIN shlibs AS s ON s.id = pkg_shlibs_required.shlib_id"
 		"  WHERE package_id = ?1"
-		"    AND shlib_id = s.id"
 		"  ORDER by name ASC";
 
 	assert(pkg != NULL);
@@ -608,9 +608,9 @@ pkgdb_load_shlib_required_ignore(sqlite3 *sqlite, struct pkg *pkg)
 {
 	const char	sql[] = ""
 		"SELECT name"
-		"  FROM pkg_shlibs_required_ignore, shlibs AS s"
+		"  FROM pkg_shlibs_required_ignore"
+		"    JOIN shlibs AS s ON s.id = pkg_shlibs_required_ignore.shlib_id"
 		"  WHERE package_id = ?1"
-		"    AND shlib_id = s.id"
 		"  ORDER by name ASC";
 
 	assert(pkg != NULL);
@@ -631,9 +631,9 @@ pkgdb_load_shlib_provided(sqlite3 *sqlite, struct pkg *pkg)
 {
 	const char	sql[] = ""
 		"SELECT name"
-		"  FROM pkg_shlibs_provided, shlibs AS s"
+		"  FROM pkg_shlibs_provided"
+		"    JOIN shlibs AS s ON s.id = pkg_shlibs_provided.shlib_id"
 		"  WHERE package_id = ?1"
-		"    AND shlib_id = s.id"
 		"  ORDER by name ASC";
 
 	assert(pkg != NULL);
@@ -654,9 +654,9 @@ pkgdb_load_shlib_provided_ignore(sqlite3 *sqlite, struct pkg *pkg)
 {
 	const char	sql[] = ""
 		"SELECT name"
-		"  FROM pkg_shlibs_provided_ignore, shlibs AS s"
+		"  FROM pkg_shlibs_provided_ignore"
+		"    JOIN shlibs AS s ON s.id = pkg_shlibs_provided_ignore.shlib_id"
 		"  WHERE package_id = ?1"
-		"    AND shlib_id = s.id"
 		"  ORDER by name ASC";
 
 	assert(pkg != NULL);
@@ -828,9 +828,9 @@ pkgdb_load_provides(sqlite3 *sqlite, struct pkg *pkg)
 {
 	const char	sql[] = ""
 		"SELECT provide"
-		"  FROM pkg_provides, provides AS s"
+		"  FROM pkg_provides"
+		"    JOIN provides AS s ON s.id = pkg_provides.provide_id"
 		"  WHERE package_id = ?1"
-		"    AND provide_id = s.id"
 		"  ORDER by provide DESC";
 
 	assert(pkg != NULL);
@@ -844,9 +844,9 @@ pkgdb_load_requires(sqlite3 *sqlite, struct pkg *pkg)
 {
 	const char	sql[] = ""
 		"SELECT require"
-		"  FROM pkg_requires, requires AS s"
+		"  FROM pkg_requires"
+		"    JOIN requires AS s ON s.id = pkg_requires.require_id"
 		"  WHERE package_id = ?1"
-		"    AND require_id = s.id"
 		"  ORDER by require DESC";
 
 	assert(pkg != NULL);
