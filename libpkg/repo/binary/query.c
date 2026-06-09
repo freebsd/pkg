@@ -415,8 +415,7 @@ pkg_repo_binary_file_which(struct pkg_repo *repo, const char *path, bool glob)
 		    "FROM packages AS p "
 		    "INNER JOIN pkg_files AS pf ON p.id = pf.package_id "
 		    "INNER JOIN file_dirs AS fd ON pf.dir_id = fd.id "
-		    "WHERE fd.path = ?1 AND pf.name = ?2 "
-		    "GROUP BY p.id;";
+		    "WHERE fd.path = ?1 AND pf.name = ?2;";
 
 		xasprintf(&sql, basesql, repo->name);
 		stmt = prepare_sql(sqlite, sql);
