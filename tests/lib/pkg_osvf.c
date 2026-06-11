@@ -238,9 +238,11 @@ ATF_TC_BODY(osvfparse, tc)
 			struct pkg_audit_versions_range *vers = &p->versions.d[vi];
 			ATF_CHECK_INTEQ(vers->type, version_types[otherpos++]);
 			ATF_CHECK_STREQ(vers->v2.version, version_strs[pos++]);
-			ATF_CHECK_INTEQ(vers->v2.type, OSVF_EVENT_FIXED);
+			ATF_CHECK_INTEQ(vers->v2.type, LTE);
+			ATF_CHECK_INTEQ(vers->v2.osv_type, OSVF_EVENT_FIXED);
 			ATF_CHECK_STREQ(vers->v1.version, version_strs[pos++]);
-			ATF_CHECK_INTEQ(vers->v1.type, OSVF_EVENT_INTRODUCED);
+			ATF_CHECK_INTEQ(vers->v1.type, GTE);
+			ATF_CHECK_INTEQ(vers->v1.osv_type, OSVF_EVENT_INTRODUCED);
 		}
 	}
 
@@ -268,9 +270,11 @@ ATF_TC_BODY(osvfparse, tc)
 			struct pkg_audit_versions_range *vers = &p->versions.d[vi];
 			ATF_CHECK_INTEQ(vers->type, version_types[otherpos++]);
 			ATF_CHECK_STREQ(vers->v2.version, version_strs[subpos++]);
-			ATF_CHECK_INTEQ(vers->v2.type, OSVF_EVENT_FIXED);
+			ATF_CHECK_INTEQ(vers->v2.type, LTE);
+			ATF_CHECK_INTEQ(vers->v2.osv_type, OSVF_EVENT_FIXED);
 			ATF_CHECK_STREQ(vers->v1.version, version_strs[subpos++]);
-			ATF_CHECK_INTEQ(vers->v1.type, OSVF_EVENT_INTRODUCED);
+			ATF_CHECK_INTEQ(vers->v1.type, GTE);
+			ATF_CHECK_INTEQ(vers->v1.osv_type, OSVF_EVENT_INTRODUCED);
 		}
 	}
 
