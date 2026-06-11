@@ -886,14 +886,14 @@ pkg_osvf_parse_events(struct pkg_audit_versions_range *range, const ucl_object_t
 		if(ucl_object_find_key(cur, "fixed"))
 		{
 			range->v2.version = xstrdup(pkg_osvf_ucl_string(cur, "fixed"));
-			printf("Fixed: %s\n", range->v2.version);
-			range->v2.type = OSVF_EVENT_FIXED;
+			range->v2.type = LTE;
+			range->v2.osv_type = OSVF_EVENT_FIXED;
 		}
 		else if(ucl_object_find_key(cur, "introduced"))
 		{
 			range->v1.version = xstrdup(pkg_osvf_ucl_string(cur, "introduced"));
-			printf("Intro: %s\n", range->v1.version);
-			range->v1.type = OSVF_EVENT_INTRODUCED;
+			range->v1.type = GTE;
+			range->v1.osv_type = OSVF_EVENT_INTRODUCED;
 		}
 	}
 }
@@ -1130,23 +1130,42 @@ pkg_osvf_print_version(struct pkg_audit_version *version)
 		return;
 	}
 
+	switch(version->osv_type)
+	{
+		case OSVF_EVENT_UNKNOWN:
+			printf("\t\tUnknown type ");
+			break;
+		case OSVF_EVENT_INTRODUCED:
+			printf("\t\tIntroduced ");
+			break;
+		case OSVF_EVENT_FIXED:
+			printf("\t\tFixed ");
+			break;
+		case OSVF_EVENT_LAST_AFFECTED:
+			printf("\t\tAffected ");
+			break;
+		case OSVF_EVENT_LIMIT:
+			printf("\t\tLimit ");
+			break;
+	}
+
 	switch(version->type)
 	{
-	case OSVF_EVENT_UNKNOWN:
-		printf("\t\tUnknown type: ");
-		break;
-	case OSVF_EVENT_INTRODUCED:
-		printf("\t\tIntroduced: ");
-		break;
-	case OSVF_EVENT_FIXED:
-		printf("\t\tFixed: ");
-		break;
-	case OSVF_EVENT_LAST_AFFECTED:
-		printf("\t\tAffected: ");
-		break;
-	case OSVF_EVENT_LIMIT:
-		printf("\t\tLimit: ");
-		break;
+		case EQ:
+			printf("(=): ");
+			break;
+		case LT:
+			printf("(<) ");
+			break;
+		case LTE:
+			printf("(<=): ");
+			break;
+		case GT:
+			printf("(>): ");
+			break;
+		case GTE:
+			printf("(>=): ");
+			break;
 	}
 
 	printf("%s\n", version->version);
