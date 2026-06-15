@@ -103,7 +103,7 @@ exec_install(int argc, char **argv)
 		quiet = true;
 	}
 
-	while ((ch = getopt_long(argc, argv, "+ACfFgiIlMnqr:RUxy", longopts, NULL)) != -1) {
+	while ((ch = getopt_long(argc, argv, "+ACfFgiIlMnqr:RUXxy", longopts, NULL)) != -1) {
 		switch (ch) {
 		case 'A':
 			f |= PKG_FLAG_AUTOMATIC;
