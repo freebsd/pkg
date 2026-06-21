@@ -75,6 +75,7 @@
 struct pkg_ctx ctx = {
 	.eventpipe = -1,
 	.debug_level = 0,
+	.debug_flags = ~0UL,
 	.developer_mode = false,
 	.pkg_rootdir = NULL,
 	.metalog = NULL,
@@ -1211,6 +1212,7 @@ pkg_ini(const char *path, const char *reposdir, pkg_init_flags flags)
 	char *tmp = NULL;
 	size_t ukeylen;
 	int err = EPKG_OK;
+	int64_t num;
 
 	k = NULL;
 	o = NULL;
@@ -1539,10 +1541,20 @@ pkg_ini(const char *path, const char *reposdir, pkg_init_flags flags)
 	if (evpipe != NULL)
 		connect_evpipe(evpipe);
 
-	ctx.debug_level = pkg_object_int(pkg_config_get("DEBUG_LEVEL"));
+	/* The debug level may already have been set by the application,
+	   so don't lower it. */
+	num = pkg_object_int(pkg_config_get("DEBUG_LEVEL"));
+	if (num > ctx.debug_level)
+		ctx.debug_level = num;
+
+	/* Reset debug_flags to zero before applying the configuration, as
+	   it is initially all-bits-one to avoid suppressing debugging
+	   messages from early initialization. */
+	ctx.debug_flags = 0;
 	err = config_validate_debug_flags(ucl_object_find_key(config, "PKG_DEBUG_FLAGS"));
 	if (err != EPKG_OK)
 		goto out;
+
 	ctx.developer_mode = pkg_object_bool(pkg_config_get("DEVELOPER_MODE"));
 	ctx.metalog = pkg_object_string(pkg_config_get("METALOG"));
 	ctx.dbdir = pkg_object_string(pkg_config_get("PKG_DBDIR"));
