@@ -67,7 +67,7 @@ file_open(struct pkg_repo *repo, struct fetch_item *fi)
 					"file:///<path> or file://localhost/<path> expected.", fi->url);
 			return (EPKG_FATAL);
 		}
-		strncat(fqdn, u, MIN(255, path-u));
+		snprintf(fqdn, sizeof(fqdn), "%.*s", (int)(path - u), u);
 		if (0 != strncmp("localhost", fqdn, sizeof(fqdn))) {
 			pkg_emit_error("Invalid URL: '%s'\n"
 					"file:///<path> or file://localhost/<path> expected.", fi->url);
