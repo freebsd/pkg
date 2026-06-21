@@ -689,9 +689,6 @@ main(int argc, char **argv)
 	if (pkg_ini(conffile, reposdir, init_flags) != EPKG_OK)
 		errx(EXIT_FAILURE, "Cannot parse configuration file!");
 
-	if (debug > 0)
-		pkg_set_debug_level(debug);
-
 	if (atexit(&pkg_shutdown) != 0)
 		errx(EXIT_FAILURE, "register pkg_shutdown() to run at exit");
 
