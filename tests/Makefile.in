@@ -21,7 +21,8 @@ TESTS=	\
 	hash \
 	shlibs \
 	kv \
-	rcscripts
+	rcscripts \
+	fetch_file
 
 TESTS_SH= \
 	frontend/audit.sh \
@@ -135,6 +136,7 @@ kv_OBJS=	lib/kv.o
 pkg_OBJS=	lib/pkg.o
 pkg_osvf_OBJS=	lib/pkg_osvf.o
 rcscripts_OBJS=	lib/rcscripts.o
+fetch_file_OBJS=	lib/fetch_file.o
 
 SRCS=	\
 	$(packing_OBJS:.o=.c) \
@@ -157,7 +159,8 @@ SRCS=	\
 	$(shlibs_OBJS:.o=.c) \
 	$(kv_OBJS:.o=.c) \
 	$(pkg_OBJS:.o=.c) \
-	$(rcscripts_OBJS:.o=.c)
+	$(rcscripts_OBJS:.o=.c) \
+	$(fetch_file_OBJS:.o=.c)
 
 include $(MK)/common.mk
 

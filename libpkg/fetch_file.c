@@ -60,19 +60,32 @@ file_open(struct pkg_repo *repo, struct fetch_item *fi)
 	/* we can fetch local files only, so we accept the localhost FQDN */
 	/* TODO: consider accepting gethostname/getdomainname and combinations of these. */
 	if (*u != '/') {
-		char fqdn[256]="";
+		char fqdn[256];
 		char *path = strchr(u+1, '/');
+		size_t fqdn_len;
+
 		if (path == NULL) {
 			pkg_emit_error("Invalid URL: '%s',\n"
 					"file:///<path> or file://localhost/<path> expected.", fi->url);
 			return (EPKG_FATAL);
 		}
-		strncat(fqdn, u, MIN(255, path-u));
+
+		/* Calculate the length of the hostname component safely */
+		fqdn_len = path - u;
+		if (fqdn_len >= sizeof(fqdn)) {
+			pkg_emit_error("Invalid URL: hostname component too long\n"
+					"file:///<path> or file://localhost/<path> expected.", fi->url);
+			return (EPKG_FATAL);
+		}
+
+		/* Use snprintf for safe bounded copy with guaranteed null-termination */
+		snprintf(fqdn, sizeof(fqdn), "%.*s", (int)fqdn_len, u);
+
 		if (0 != strncmp("localhost", fqdn, sizeof(fqdn))) {
 			pkg_emit_error("Invalid URL: '%s'\n"
 					"file:///<path> or file://localhost/<path> expected.", fi->url);
 			return (EPKG_FATAL);
-			}
+		}
 		u = path;
 	}
 	if (stat(u, &st) == -1) {
