@@ -1339,9 +1339,7 @@ print_repository(struct pkg_repo *repo, bool pad)
 	if (pkg_repo_mirror_type(repo) != NOMIRROR)
 		printf(",\n    %-16s: \"%s\"",
 				"mirror_type", mirror);
-	if (pkg_repo_signature_type(repo) != SIG_NONE)
-		printf(",\n    %-16s: \"%s\"",
-				"signature_type", sig);
+	printf(",\n    %-16s: \"%s\"", "signature_type", sig);
 	if (pkg_repo_fingerprints(repo) != NULL)
 		printf(",\n    %-16s: \"%s\"",
 				"fingerprints", pkg_repo_fingerprints(repo));
