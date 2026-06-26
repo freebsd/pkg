@@ -1,3 +1,30 @@
+Changes from 2.7.99.2 to 2.7.99.3
+- db: switch the local database to WAL journal mode with synchronous=NORMAL for better read concurrency and faster writes
+- db: bump schema to v42; drop 15 redundant single-column indexes, add a flavors VIEW and shlib_id indexes
+- db: open read-only databases with SQLITE_OPEN_READONLY, falling back to immutable=1 when WAL sidecar files are inaccessible
+- binary repo: use 16K pages and synchronous=OFF during bulk catalog updates
+- pkgdb: convert implicit SQL-89 JOINs to explicit JOIN syntax and optimize several queries
+- osvf: update to the official OSVf JSON schema 1.7.5, parse CVE names, add osv_type for VuXML version-checking compatibility
+- install: add -X as an alias for --register-only
+- plist: support @for ... @end loops and # comments
+- compression: respect DECOMPRESSION_THREADS when decompressing
+- repo: support storing arbitrary data in the repository meta file
+- security: fix a potential stack buffer overflow in file:// URL parsing
+- security: fix a temp file leak and buffer overflow in merge_with_external_tool
+- fix: data corruption in conflict_items insertion
+- fix: deletion bug in the open-addressing pkghash
+- fix: undefined behavior in fdopendir; use dirfd() instead
+- fix: use-after-free in the pkg_jobs universe lookup
+- fix: ECC signer curve OID encoding and key parameter extraction
+- fix: handle getgrnam_r/getpwnam_r upon ERANGE
+- security: heap OOB read and dangling pointer in version parsing of "snap" suffixes (#2691)
+- fix: heap OOB read and infinite loop on malformed pkg_printf format strings
+- refactor: replace the AVL tree and tsearch with a sorted vec for conflict items
+- refactor: add pkghash_foreach and xstring_printf/xstring_puts/xstring_write convenience macros
+- refactor: add SPDX license identifier tags to source files
+- plug additional memory leaks and fix resource leaks
+- update sqlite to 3.53.2
+
 Changes from 2.7.99.1 to 2.7.99.2
 - periodic: daily checksum is now off by default
 - extract: prefer mtime from manifest over archive
