@@ -195,7 +195,7 @@ job_status_begin(xstring *msg)
 	if ((nbtodl > 0 || nbactions > 0) && nbdone > 0) {
 		if (nbdigits == 0)
 			nbdigits = count_digits(nbtodl ? nbtodl : nbactions);
-		xstring_printf(msg, "[%*zu/%zu] ", nbdigits, nbdone, (nbtodl) ? nbtodl : nbactions);
+		xstring_printf(msg, "[%*zu/%zu] ", (int)nbdigits, nbdone, (nbtodl) ? nbtodl : nbactions);
 	}
 	if (nbtodl > 0 && nbtodl == nbdone) {
 		nbtodl = 0;

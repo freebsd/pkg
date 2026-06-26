@@ -2641,6 +2641,10 @@ format_code(const char *f, unsigned context, struct percent_esc *p)
 	   context.  This could be optimized since the format codes
 	   are arranged alphabetically in the fmt[] array. */
 
+	/* Nothing left to parse: stop before peeking past f[0]. */
+	if (f[0] == '\0')
+		return (f);
+
 	for (fmt_code = 0; fmt_code < PP_END_MARKER; fmt_code++) {
 		if ((fmt[fmt_code].context & context) != context)
 			continue;
@@ -3323,7 +3327,15 @@ pkg_xstring_printf_set(xstring * restrict buf,
 		switch(*f) {
 		case '%':
 			fend = parse_format(f, PP_PKG, p);
-			f = process_format_main(buf, p, f, fend, pkg);
+			fend = process_format_main(buf, p, f, fend, pkg);
+			if (fend == f) {
+				/* No valid format code followed '%': emit it
+				   literally and advance to avoid spinning. */
+				xstring_putc(buf, '%');
+				f++;
+			} else {
+				f = fend;
+			}
 			break;
 		case '\\':
 			f = process_escape(buf, f);

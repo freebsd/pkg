@@ -73,7 +73,7 @@ file_open(struct pkg_repo *repo, struct fetch_item *fi)
 		/* Calculate the length of the hostname component safely */
 		fqdn_len = path - u;
 		if (fqdn_len >= sizeof(fqdn)) {
-			pkg_emit_error("Invalid URL: hostname component too long\n"
+			pkg_emit_error("Invalid URL: '%s', hostname component too long\n"
 					"file:///<path> or file://localhost/<path> expected.", fi->url);
 			return (EPKG_FATAL);
 		}
