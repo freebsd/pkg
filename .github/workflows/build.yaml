@@ -10,6 +10,8 @@
 #  * upload installed binaries if tests succeed as well as kyua reports and log as build artefact
 #
 # We run in a matrix with os/sanitize flags.
+# On macOS the sanitized variants are excluded: ThreadSanitizer and ASan/LSan are
+# not reliably supported on the macOS runners.
 
 name: build
 
@@ -73,6 +75,8 @@ jobs:
         exclude:
           - build-os: macos-latest
             sanitize: ["asan", "lsan"]
+          - build-os: macos-latest
+            sanitize: ["ubsan", "tsan"]
     steps:
       - name: install packages (macOS)
         if: runner.os == 'macOS'
