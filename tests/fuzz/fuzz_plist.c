@@ -22,7 +22,9 @@ LLVMFuzzerTestOneInput(const uint8_t *data, size_t size)
 	struct pkg *p = NULL;
 	struct plist *pl;
 	FILE *f;
-	int rc;
+	char *line = NULL;
+	size_t linecap = 0;
+	ssize_t linelen;
 
 	if (pkg_new(&p, PKG_FILE) != EPKG_OK)
 		return (0);
@@ -35,17 +37,23 @@ LLVMFuzzerTestOneInput(const uint8_t *data, size_t size)
 	}
 
 	/* Multi-line parsing via a pipe */
-	rc = fmemopen(NULL, 0, "w+");
-	if (rc == NULL) {
+	f = fmemopen(NULL, 0, "w+");
+	if (f == NULL) {
 		plist_free(pl);
 		pkg_free(p);
 		return (0);
 	}
-	fwrite(data, 1, size, rc);
-	rewind(rc);
+	fwrite(data, 1, size, f);
+	rewind(f);
 
-	plist_parse(pl, rc);
-	fclose(rc);
+	/* Multi-line parsing via the exported per-line API */
+	while ((linelen = getline(&line, &linecap, f)) > 0) {
+		if (line[linelen - 1] == '\n')
+			line[linelen - 1] = '\0';
+		plist_parse_line(pl, line);
+	}
+	free(line);
+	fclose(f);
 
 	plist_free(pl);
 	pkg_free(p);
