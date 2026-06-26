@@ -211,12 +211,12 @@ urlencode(const char *src, xstring **dest)
 	len = strlen(src);
 	for (i = 0; i < len; i++) {
 		if (!isascii(src[i]) || src[i] == '%')
-			xprintf((*dest), "%%%.2x", (unsigned char)src[i]);
+			xstring_printf((*dest), "%%%.2x", (unsigned char)src[i]);
 		else
-			xputc((*dest), src[i]);
+			xstring_putc((*dest), src[i]);
 	}
 
-	xflush((*dest));
+	xstring_flush((*dest));
 	return (EPKG_OK);
 }
 

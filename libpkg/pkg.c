@@ -780,7 +780,7 @@ pkg_addscript(struct pkg *pkg, const char *data, pkg_script type)
 
 	assert(pkg != NULL);
 	xstring_renew(pkg->scripts[type]);
-	xprintf(pkg->scripts[type], "%s", data);
+	xstring_printf(pkg->scripts[type], "%s", data);
 
 	return (EPKG_OK);
 }
@@ -890,7 +890,7 @@ pkg_appendscript(struct pkg *pkg, const char *cmd, pkg_script type)
 	if (pkg->scripts[type] == NULL)
 		pkg->scripts[type] = xstring_new();
 
-	xprintf(pkg->scripts[type], "%s", cmd);
+	xstring_printf(pkg->scripts[type], "%s", cmd);
 
 	return (EPKG_OK);
 }

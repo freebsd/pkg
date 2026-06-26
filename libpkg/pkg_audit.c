@@ -358,7 +358,7 @@ vulnxml_end_element(struct vulnxml_userdata *ud, yxml_t *xml)
 	struct pkg_audit_versions_range *vers;
 	int range_type = -1;
 
-	xflush(ud->content);
+	xstring_flush(ud->content);
 	if (ud->state == VULNXML_PARSE_VULN && STRIEQ(xml->elem, "vuxml")) {
 		/* Entry is already in the vec, just validate it */
 		struct pkg_audit_entry *e = ud->cur_entry;
@@ -443,7 +443,7 @@ vulnxml_start_attribute(struct vulnxml_userdata *ud, yxml_t *xml)
 static void
 vulnxml_end_attribute(struct vulnxml_userdata *ud, yxml_t *xml __unused)
 {
-	xflush(ud->content);
+	xstring_flush(ud->content);
 	if (ud->state == VULNXML_PARSE_VULN && ud->attr == VULNXML_ATTR_VID) {
 		ud->cur_entry->id = xstrdup(ud->content->buf);
 		ud->attr = VULNXML_ATTR_NONE;
@@ -455,7 +455,7 @@ static void
 vulnxml_val_attribute(struct vulnxml_userdata *ud, yxml_t *xml)
 {
 	if (ud->state == VULNXML_PARSE_VULN && ud->attr == VULNXML_ATTR_VID) {
-		xputs(ud->content, xml->data);
+		xstring_puts(ud->content, xml->data);
 	}
 }
 
@@ -478,7 +478,7 @@ vulnxml_handle_data(struct vulnxml_userdata *ud, yxml_t *xml)
 	case VULNXML_PARSE_RANGE_LT:
 	case VULNXML_PARSE_RANGE_LE:
 	case VULNXML_PARSE_RANGE_EQ:
-		xputs(ud->content, xml->data);
+		xstring_puts(ud->content, xml->data);
 		break;
 	}
 }

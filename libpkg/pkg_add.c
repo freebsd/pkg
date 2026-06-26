@@ -1835,11 +1835,11 @@ pkg_add_common(struct pkgdb *db, const char *path, unsigned flags,
 				pkg_fprintf(message->fp, "=====\nMessage from "
 				    "%n-%v:\n\n", pkg, pkg);
 			}
-			xprintf(message, "--\n%s\n", msgstr);
+			xstring_printf(message, "--\n%s\n", msgstr);
 		}
 	}
 	if (pkg_has_message(pkg) && message != NULL) {
-		xflush(message);
+		xstring_flush(message);
 		pkg_emit_message(message->buf);
 		xstring_free(message);
 	}

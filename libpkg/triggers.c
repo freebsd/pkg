@@ -806,7 +806,7 @@ exec_deferred(int dfd, const char *name)
 			pkghash_safe_add(args, walk, NULL, NULL);
 		}
 		if (script != NULL)
-			xputs(script, line);
+			xstring_puts(script, line);
 	}
 	free(line);
 	fclose(f);

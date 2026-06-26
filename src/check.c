@@ -380,8 +380,8 @@ exec_check(int argc, char **argv)
 				if (match == MATCH_ALL)
 					progressbar_start("Checking all packages");
 				else {
-					xprintf(msg, "Checking %s", argv[i]);
-					xflush(msg);
+					xstring_printf(msg, "Checking %s", argv[i]);
+					xstring_flush(msg);
 					progressbar_start(msg->buf);
 				}
 			}
@@ -398,7 +398,7 @@ exec_check(int argc, char **argv)
 					job_status_begin(msg);
 					pkg_fprintf(msg->fp, "Checking %n-%v:",
 					    pkg, pkg);
-					xflush(msg);
+					xstring_flush(msg);
 					printf("%s", msg->buf);
 					xstring_reset(msg);
 				}
@@ -434,7 +434,7 @@ exec_check(int argc, char **argv)
 
 		if (!quiet && !verbose)
 			progressbar_tick(processed, total);
-		xflush(out);
+		xstring_flush(out);
 		if (out->buf[0] != '\0') {
 			printf("%s", out->buf);
 		}

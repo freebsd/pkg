@@ -201,9 +201,9 @@ setprefix(struct plist *p, char *line, struct file_attr *a __unused)
 
 	p->slash = p->prefix[strlen(p->prefix) -1] == '/' ? "" : "/";
 
-	xprintf(p->post_install_buf, "cd %s\n", p->prefix);
-	xprintf(p->pre_deinstall_buf, "cd %s\n", p->prefix);
-	xprintf(p->post_deinstall_buf, "cd %s\n", p->prefix);
+	xstring_printf(p->post_install_buf, "cd %s\n", p->prefix);
+	xstring_printf(p->pre_deinstall_buf, "cd %s\n", p->prefix);
+	xstring_printf(p->post_deinstall_buf, "cd %s\n", p->prefix);
 
 	return (EPKG_OK);
 }
@@ -633,16 +633,16 @@ append_script(struct plist *p, pkg_script t, const char *cmd)
 {
 	switch (t) {
 	case PKG_SCRIPT_PRE_INSTALL:
-		xprintf(p->pre_install_buf, "%s\n", cmd);
+		xstring_printf(p->pre_install_buf, "%s\n", cmd);
 		break;
 	case PKG_SCRIPT_POST_INSTALL:
-		xprintf(p->post_install_buf, "%s\n", cmd);
+		xstring_printf(p->post_install_buf, "%s\n", cmd);
 		break;
 	case PKG_SCRIPT_PRE_DEINSTALL:
-		xprintf(p->pre_deinstall_buf, "%s\n", cmd);
+		xstring_printf(p->pre_deinstall_buf, "%s\n", cmd);
 		break;
 	case PKG_SCRIPT_POST_DEINSTALL:
-		xprintf(p->post_deinstall_buf, "%s\n", cmd);
+		xstring_printf(p->post_deinstall_buf, "%s\n", cmd);
 		break;
 	}
 }
@@ -976,7 +976,7 @@ extract_keywords(char *line, char **keyword, struct file_attr **attr)
 static void
 flush_script_buffer(xstring *buf, struct pkg *p, int type)
 {
-	xflush(buf);
+	xstring_flush(buf);
 	if (buf->buf[0] != '\0') {
 		pkg_appendscript(p, buf->buf, type);
 	}
@@ -1000,8 +1000,8 @@ plist_parse_line(struct plist *plist, char *line)
 		    (line[4] == '\0' || isspace((unsigned char)line[4]))) {
 			return (forloop_execute(plist));
 		}
-		xprintf(plist->forloop_stack->body, "%s\n", line);
-		xflush(plist->forloop_stack->body);
+		xstring_printf(plist->forloop_stack->body, "%s\n", line);
+		xstring_flush(plist->forloop_stack->body);
 		return (EPKG_OK);
 	}
 
@@ -1125,18 +1125,18 @@ expand_plist_variables(const char *in, kvlist_t *vars)
 	cp = NULL;
 	while (in[0] != '\0') {
 		if (in[0] != '%') {
-			xputc(buf, in[0]);
+			xstring_putc(buf, in[0]);
 			in++;
 			continue;
 		}
 		in++;
 		if (in[0] == '\0') {
-			xputc(buf, '%');
+			xstring_putc(buf, '%');
 			break;
 		}
 		if (in[0] != '%') {
-			xputc(buf, '%');
-			xputc(buf, in[0]);
+			xstring_putc(buf, '%');
+			xstring_putc(buf, in[0]);
 			in++;
 			continue;
 		}
@@ -1150,7 +1150,7 @@ expand_plist_variables(const char *in, kvlist_t *vars)
 			in++;
 		}
 		if (in[0] != '%') {
-			xprintf(buf, "%%%%%.*s", (int)(in - cp), cp);
+			xstring_printf(buf, "%%%%%.*s", (int)(in - cp), cp);
 			continue;
 		}
 		len = in - cp -1;
@@ -1159,14 +1159,14 @@ expand_plist_variables(const char *in, kvlist_t *vars)
 		vec_foreach(*vars, i) {
 			if (strncmp(cp, vars->d[i]->key, len) != 0)
 				continue;
-			xputs(buf, vars->d[i]->value);
+			xstring_puts(buf, vars->d[i]->value);
 			found = true;
 			in++;
 			break;
 		}
 		if (found)
 			continue;
-		xprintf(buf, "%%%%%.*s%%", (int)(in - cp), cp);
+		xstring_printf(buf, "%%%%%.*s%%", (int)(in - cp), cp);
 		in++;
 	}
 	return (xstring_get(buf));
@@ -1239,12 +1239,12 @@ forloop_substitute_var(const char *in, const char *varname, const char *varval)
 			if (pct != NULL && (size_t)(pct - cp) == vlen &&
 			    strncmp(cp, varname, vlen) == 0) {
 				/* exact variable match */
-				xprintf(buf, "%s", varval);
+				xstring_printf(buf, "%s", varval);
 				cp = pct + 1;
 				continue;
 			}
 		}
-		xputc(buf, *cp);
+		xstring_putc(buf, *cp);
 	}
 
 	return (xstring_get(buf));
@@ -1296,7 +1296,7 @@ forloop_execute(struct plist *p)
 	p->in_for_loop = p->forloop_stack != NULL;
 
 	/* flush body buffer so buf is complete */
-	xflush(f->body);
+	xstring_flush(f->body);
 
 	for (i = 0; i < f->values.len; i++) {
 		char *expanded;
@@ -1317,23 +1317,23 @@ forloop_execute(struct plist *p)
 				nl_end = strchr(nl_start, '\n');
 				if (nl_end != NULL) {
 					if ((size_t)(nl_end - nl_start) > 0)
-						xprintf(p->forloop_stack->body,
+						xstring_printf(p->forloop_stack->body,
 						    "%.*s\n",
 						    (int)(nl_end - nl_start),
 						    nl_start);
 					else
-						xprintf(p->forloop_stack->body,
+						xstring_printf(p->forloop_stack->body,
 						    "\n");
 					nl_start = nl_end + 1;
 				} else {
 					/* last segment without trailing \n */
-					xprintf(p->forloop_stack->body,
+					xstring_printf(p->forloop_stack->body,
 					    "%s", nl_start);
 					break;
 				}
 			}
 			if (p->forloop_stack->body->fp != NULL)
-				xflush(p->forloop_stack->body);
+				xstring_flush(p->forloop_stack->body);
 		} else {
 			/* Top-level: parse each line */
 			nl_start = expanded;
@@ -1608,11 +1608,11 @@ pkg_add_port(struct pkgdb *db, struct pkg *pkg, const char *input_path,
 		vec_foreach(pkg->message, i) {
 			if (pkg->message.d[i]->type == PKG_MESSAGE_ALWAYS ||
 			    pkg->message.d[i]->type == PKG_MESSAGE_INSTALL) {
-				xprintf(message, "%s\n", pkg->message.d[i]->str);
+				xstring_printf(message, "%s\n", pkg->message.d[i]->str);
 			}
 		}
 		if (pkg_has_message(pkg)) {
-			xflush(message);
+			xstring_flush(message);
 			if (message->buf[0] != '\0') {
 				pkg_emit_message(message->buf);
 			}

@@ -184,7 +184,7 @@ read_input(void)
 			if (ferror(stdin))
 				err(EXIT_FAILURE, "Failed to read stdin");
 		}
-		xputc(input, ch);
+		xstring_putc(input, ch);
 	}
 
 	return (xstring_get(input));

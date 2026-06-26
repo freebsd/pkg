@@ -196,7 +196,7 @@ exec_register(int argc, char **argv)
 	retcode = pkg_add_port(db, pkg, input_path, location, testing_mode);
 
 	if (retcode == EPKG_OK && messages != NULL && !quiet) {
-		xflush(messages);
+		xstring_flush(messages);
 		printf("%s\n", messages->buf);
 	}
 

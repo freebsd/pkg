@@ -56,11 +56,11 @@ do {                          \
    }                          \
 } while(0)
 
-#define xprintf(s, fmt, ...)  fprintf((s)->fp, fmt, ##__VA_ARGS__)
-#define xputs(s, str)         fputs(str, (s)->fp)
-#define xflush(s)             fflush((s)->fp)
-#define xputc(s, c)           fputc(c, (s)->fp)
-#define xwrite(s, buf, size, nmemb) fwrite(buf, size, nmemb, (s)->fp)
+#define xstring_printf(s, fmt, ...)        fprintf((s)->fp, fmt, ##__VA_ARGS__)
+#define xstring_puts(s, str)               fputs(str, (s)->fp)
+#define xstring_flush(s)                   fflush((s)->fp)
+#define xstring_putc(s, c)                 fputc(c, (s)->fp)
+#define xstring_write(s, buf, size, nmemb) fwrite(buf, size, nmemb, (s)->fp)
 
 static inline char *
 xstring_get(xstring *str)

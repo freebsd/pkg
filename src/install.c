@@ -280,7 +280,7 @@ exec_install(int argc, char **argv)
 		}
 
 		if (messages != NULL && !quiet) {
-			xflush(messages);
+			xstring_flush(messages);
 			printf("%s", messages->buf);
 		}
 		break;

@@ -125,15 +125,15 @@ pkg_script_run(struct pkg * const pkg, pkg_script type, bool upgrade, bool noexe
 				setenv("PKG_CHROOTED", "true", 1);
 			debug = pkg_object_bool(pkg_config_get("DEBUG_SCRIPTS"));
 			if (debug)
-				xprintf(script_cmd, "set -x\n");
+				xstring_printf(script_cmd, "set -x\n");
 			pkg_fprintf(script_cmd->fp, "set -- %n-%v", pkg, pkg);
 
 			if (j == map[i].b) {
 				/* add arg **/
-				xprintf(script_cmd, " %s", map[i].arg);
+				xstring_printf(script_cmd, " %s", map[i].arg);
 			}
 
-			xprintf(script_cmd, "\n%s", pkg->scripts[j]->buf);
+			xstring_printf(script_cmd, "\n%s", pkg->scripts[j]->buf);
 
 			/* Determine the maximum argument length for the given
 			   script to determine if /bin/sh -c can be used, or
@@ -146,7 +146,7 @@ pkg_script_run(struct pkg * const pkg, pkg_script type, bool upgrade, bool noexe
 				argmax -= strlen(*ep) + 1 + sizeof(*ep);
 			argmax -= 1 + sizeof(*ep);
 
-			xflush(script_cmd);
+			xstring_flush(script_cmd);
 			script_len = strlen(script_cmd->buf);
 			pkg_debug(3, "Scripts: executing\n--- BEGIN ---\n%s\nScripts: --- END ---", script_cmd->buf);
 			posix_spawn_file_actions_init(&action);

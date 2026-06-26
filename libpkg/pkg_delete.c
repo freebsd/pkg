@@ -148,11 +148,11 @@ pkg_delete(struct pkg *pkg, struct pkg *rpkg, struct pkgdb *db, int flags,
 				pkg_fprintf(message->fp, "Message from "
 				    "%n-%v:\n", pkg, pkg);
 			}
-			xprintf(message, "%s\n", pkg->message.d[i]->str);
+			xstring_printf(message, "%s\n", pkg->message.d[i]->str);
 		}
 	}
 	if (pkg_has_message(pkg) && message != NULL) {
-		xflush(message);
+		xstring_flush(message);
 		pkg_emit_message(message->buf);
 		xstring_free(message);
 	}

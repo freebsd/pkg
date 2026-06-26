@@ -172,9 +172,9 @@ exec_add(int argc, char **argv)
 				warn("%s", file);
 				if (saved_errno == ENOENT)
 					warnx("Was 'pkg install %s' meant?", file);
-				xprintf(failedpkgs, "%s", argv[i]);
+				xstring_printf(failedpkgs, "%s", argv[i]);
 				if (i != argc - 1)
-					xprintf(failedpkgs, ", ");
+					xstring_printf(failedpkgs, ", ");
 				failedpkgcount++;
 				continue;
 			}
@@ -182,9 +182,9 @@ exec_add(int argc, char **argv)
 		}
 
 		if ((retcode = pkg_add(db, file, f, location)) != EPKG_OK) {
-			xprintf(failedpkgs, "%s", argv[i]);
+			xstring_printf(failedpkgs, "%s", argv[i]);
 			if (i != argc - 1)
-				xprintf(failedpkgs, ", ");
+				xstring_printf(failedpkgs, ", ");
 			failedpkgcount++;
 		}
 
@@ -196,7 +196,7 @@ exec_add(int argc, char **argv)
 	pkgdb_close(db);
 
 	if(failedpkgcount > 0) {
-		xflush(failedpkgs);
+		xstring_flush(failedpkgs);
 		printf("\nFailed to install the following %d package(s): %s\n", failedpkgcount, failedpkgs->buf);
 		retcode = EPKG_FATAL;
 	}
@@ -204,7 +204,7 @@ exec_add(int argc, char **argv)
 
 	pkg_add_triggers();
 	if (messages != NULL && !quiet) {
-		xflush(messages);
+		xstring_flush(messages);
 		printf("%s", messages->buf);
 	}
 

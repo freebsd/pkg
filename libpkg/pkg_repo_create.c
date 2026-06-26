@@ -1041,12 +1041,12 @@ pkg_repo_sign(const char *path, char **argv, int argc, char **sig, size_t *sigle
 
 	for (i = 0; i < argc; i++) {
 		if (strspn(argv[i], " \t\n") > 0)
-			xprintf(cmd, " \"%s\" ", argv[i]);
+			xstring_printf(cmd, " \"%s\" ", argv[i]);
 		else
-			xprintf(cmd, " %s ", argv[i]);
+			xstring_printf(cmd, " %s ", argv[i]);
 	}
 
-	xflush(cmd);
+	xstring_flush(cmd);
 	if ((spid = process_spawn_pipe(fps, cmd->buf)) < 0) {
 		ret = EPKG_FATAL;
 		goto done;
@@ -1074,7 +1074,7 @@ pkg_repo_sign(const char *path, char **argv, int argc, char **sig, size_t *sigle
 			break;
 		}
 		if (buf != NULL) {
-			xwrite(buf, line, linelen, 1);
+			xstring_write(buf, line, linelen, 1);
 		}
 	}
 	free(line);

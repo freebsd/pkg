@@ -72,19 +72,19 @@ stack_dump(lua_State *L)
 
 	for (i = 1; i <= top; i++) {  /* repeat for each level */
 		int t = lua_type(L, i);
-		xprintf(stack, "%i", i);
+		xstring_printf(stack, "%i", i);
 		switch (t) {
 		case LUA_TSTRING:  /* strings */
-			xprintf(stack, "\tString: `%s'\n", lua_tostring(L, i));
+			xstring_printf(stack, "\tString: `%s'\n", lua_tostring(L, i));
 			break;
 		case LUA_TBOOLEAN:  /* booleans */
-			xprintf(stack, "\tBoolean: %s", lua_toboolean(L, i) ? "\ttrue\n" : "\tfalse\n");
+			xstring_printf(stack, "\tBoolean: %s", lua_toboolean(L, i) ? "\ttrue\n" : "\tfalse\n");
 			break;
 		case LUA_TNUMBER:  /* numbers */
-			xprintf(stack, "\tNumber: %g\n", lua_tonumber(L, i));
+			xstring_printf(stack, "\tNumber: %g\n", lua_tonumber(L, i));
 			break;
 		default:  /* other values */
-			xprintf(stack, "\tOther: %s\n", lua_typename(L, t));
+			xstring_printf(stack, "\tOther: %s\n", lua_typename(L, t));
 			break;
 		}
 	}
@@ -256,7 +256,7 @@ lua_exec_capture(lua_State *L)
 				continue;
 			break;
 		}
-		xwrite(out, buf, 1, nread);
+		xstring_write(out, buf, 1, nread);
 	}
 	close(stdout_pipe[0]);
 
@@ -267,7 +267,7 @@ lua_exec_capture(lua_State *L)
 				continue;
 			break;
 		}
-		xwrite(err, buf, 1, nread);
+		xstring_write(err, buf, 1, nread);
 	}
 	close(stderr_pipe[0]);
 
@@ -282,8 +282,8 @@ lua_exec_capture(lua_State *L)
 		}
 	}
 
-	xflush(out);
-	xflush(err);
+	xstring_flush(out);
+	xstring_flush(err);
 	lua_pushstring(L, out->buf);
 	lua_pushstring(L, err->buf);
 	lua_pushinteger(L, WEXITSTATUS(pstat));

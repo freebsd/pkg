@@ -897,7 +897,7 @@ format_fflags(xstring *buf, u_long fflags, struct percent_esc *p)
 static xstring *
 format_time_t(xstring *buf, time_t timestamp, struct percent_esc *p)
 {
-	xflush(p->item_fmt);
+	xstring_flush(p->item_fmt);
 	if (strlen(p->item_fmt->buf) == 0)
 		return (int_val(buf, timestamp, p));
 	else {
@@ -907,7 +907,7 @@ format_time_t(xstring *buf, time_t timestamp, struct percent_esc *p)
 		tsv = timestamp;
 		strftime(buffer, sizeof(buffer), p->item_fmt->buf,
 			 localtime(&tsv));
-		xprintf(buf, "%s", buffer);
+		xstring_printf(buf, "%s", buffer);
 	}
 	return (buf);
 }
@@ -940,8 +940,8 @@ format_annotations(xstring *buf, const void *data, struct percent_esc *p)
 		set_list_defaults(p, "%An: %Av\n", "");
 
 		count = 1;
-		xflush(p->sep_fmt);
-		xflush(p->item_fmt);
+		xstring_flush(p->sep_fmt);
+		xstring_flush(p->item_fmt);
 		vec_foreach(pkg->annotations, i) {
 			if (count > 1)
 				iterate_item(buf, pkg, p->sep_fmt->buf,
@@ -995,8 +995,8 @@ format_shlibs_required(xstring *buf, const void *data, struct percent_esc *p)
 		set_list_defaults(p, "%Bn\n", "");
 
 		count = 1;
-		xflush(p->sep_fmt);
-		xflush(p->item_fmt);
+		xstring_flush(p->sep_fmt);
+		xstring_flush(p->item_fmt);
 		vec_foreach(pkg->shlibs_required, i) {
 			if (count > 1)
 				iterate_item(buf, pkg, p->sep_fmt->buf,
@@ -1040,8 +1040,8 @@ format_categories(xstring *buf, const void *data, struct percent_esc *p)
 		set_list_defaults(p, "%Cn", ", ");
 
 		count = 1;
-		xflush(p->sep_fmt);
-		xflush(p->item_fmt);
+		xstring_flush(p->sep_fmt);
+		xstring_flush(p->item_fmt);
 		vec_foreach(pkg->categories, i) {
 			if (count > 1)
 				iterate_item(buf, pkg, p->sep_fmt->buf,
@@ -1086,8 +1086,8 @@ format_directories(xstring *buf, const void *data, struct percent_esc *p)
 		set_list_defaults(p, "%Dn\n", "");
 
 		count = 1;
-		xflush(p->sep_fmt);
-		xflush(p->item_fmt);
+		xstring_flush(p->sep_fmt);
+		xstring_flush(p->item_fmt);
 		while (pkg_dirs(pkg, &dir) == EPKG_OK) {
 			if (count > 1)
 				iterate_item(buf, pkg, p->sep_fmt->buf,
@@ -1178,8 +1178,8 @@ format_files(xstring *buf, const void *data, struct percent_esc *p)
 		set_list_defaults(p, "%Fn\n", "");
 
 		count = 1;
-		xflush(p->sep_fmt);
-		xflush(p->item_fmt);
+		xstring_flush(p->sep_fmt);
+		xstring_flush(p->item_fmt);
 		vec_foreach(pkg->files, _fi) {
 			struct pkg_file *file = &pkg->files.d[_fi];
 			if (count > 1)
@@ -1299,8 +1299,8 @@ format_groups(xstring *buf, const void *data, struct percent_esc *p)
 		set_list_defaults(p, "%Gn\n", "");
 
 		count = 1;
-		xflush(p->sep_fmt);
-		xflush(p->item_fmt);
+		xstring_flush(p->sep_fmt);
+		xstring_flush(p->item_fmt);
 		vec_foreach(pkg->groups, i) {
 			if (count > 1)
 				iterate_item(buf, pkg, p->sep_fmt->buf,
@@ -1353,8 +1353,8 @@ format_licenses(xstring *buf, const void *data, struct percent_esc *p)
 		set_list_defaults(p, "%Ln", " %l ");
 
 		count = 1;
-		xflush(p->sep_fmt);
-		xflush(p->item_fmt);
+		xstring_flush(p->sep_fmt);
+		xstring_flush(p->item_fmt);
 		vec_foreach(pkg->licenses, i) {
 			if (count > 1)
 				iterate_item(buf, pkg, p->sep_fmt->buf,
@@ -1395,39 +1395,39 @@ format_message(xstring *buffer, const void *data, struct percent_esc *p)
 		if (bufmsg == NULL) {
 			bufmsg = xstring_new();
 		} else {
-			xputc(bufmsg, '\n');
+			xstring_putc(bufmsg, '\n');
 		}
 		switch(msg->type) {
 		case PKG_MESSAGE_ALWAYS:
-			xprintf(bufmsg, "Always:\n");
+			xstring_printf(bufmsg, "Always:\n");
 			break;
 		case PKG_MESSAGE_UPGRADE:
-			xprintf(bufmsg, "On upgrade");
+			xstring_printf(bufmsg, "On upgrade");
 			if (msg->minimum_version != NULL ||
 			    msg->maximum_version != NULL) {
-				xprintf(bufmsg, " from %s", pkg->name);
+				xstring_printf(bufmsg, " from %s", pkg->name);
 			}
 			if (msg->minimum_version != NULL) {
-				xprintf(bufmsg, ">%s", msg->minimum_version);
+				xstring_printf(bufmsg, ">%s", msg->minimum_version);
 			}
 			if (msg->maximum_version != NULL) {
-				xprintf(bufmsg, "<%s", msg->maximum_version);
+				xstring_printf(bufmsg, "<%s", msg->maximum_version);
 			}
-			xprintf(bufmsg, ":\n");
+			xstring_printf(bufmsg, ":\n");
 			break;
 		case PKG_MESSAGE_INSTALL:
-			xprintf(bufmsg, "On install:\n");
+			xstring_printf(bufmsg, "On install:\n");
 			break;
 		case PKG_MESSAGE_REMOVE:
-			xprintf(bufmsg, "On remove:\n");
+			xstring_printf(bufmsg, "On remove:\n");
 			break;
 		}
-		xprintf(bufmsg, "%s\n", msg->str);
+		xstring_printf(bufmsg, "%s\n", msg->str);
 	}
 	if (bufmsg == NULL)
 		message = NULL;
 	else {
-		xflush(bufmsg);
+		xstring_flush(bufmsg);
 		message = bufmsg->buf;
 	}
 
@@ -1473,8 +1473,8 @@ format_options(xstring *buf, const void *data, struct percent_esc *p)
 		set_list_defaults(p, "%On %Ov\n", "");
 
 		count = 1;
-		xflush(p->sep_fmt);
-		xflush(p->item_fmt);
+		xstring_flush(p->sep_fmt);
+		xstring_flush(p->item_fmt);
 		vec_foreach(pkg->options, i) {
 			if (count > 1)
 				iterate_item(buf, pkg, p->sep_fmt->buf,
@@ -1562,8 +1562,8 @@ format_users(xstring *buf, const void *data, struct percent_esc *p)
 		set_list_defaults(p, "%Un\n", "");
 
 		count = 1;
-		xflush(p->sep_fmt);
-		xflush(p->item_fmt);
+		xstring_flush(p->sep_fmt);
+		xstring_flush(p->item_fmt);
 		vec_foreach(pkg->users, i) {
 			if (count > 1)
 				iterate_item(buf, pkg, p->sep_fmt->buf,
@@ -1628,8 +1628,8 @@ format_required(xstring *buf, const void *data, struct percent_esc *p)
 		set_list_defaults(p, "%Yn\n", "");
 
 		count = 1;
-		xflush(p->sep_fmt);
-		xflush(p->item_fmt);
+		xstring_flush(p->sep_fmt);
+		xstring_flush(p->item_fmt);
 		vec_foreach(pkg->requires, i) {
 			if (count > 1)
 				iterate_item(buf, pkg, p->sep_fmt->buf,
@@ -1685,8 +1685,8 @@ format_shlibs_provided(xstring *buf, const void *data, struct percent_esc *p)
 		set_list_defaults(p, "%bn\n", "");
 
 		count = 1;
-		xflush(p->sep_fmt);
-		xflush(p->item_fmt);
+		xstring_flush(p->sep_fmt);
+		xstring_flush(p->item_fmt);
 		vec_foreach(pkg->shlibs_provided, i) {
 			if (count > 1)
 				iterate_item(buf, pkg, p->sep_fmt->buf,
@@ -1730,8 +1730,8 @@ format_dependencies(xstring *buf, const void *data, struct percent_esc *p)
 		set_list_defaults(p, "%dn-%dv\n", "");
 
 		count = 1;
-		xflush(p->sep_fmt);
-		xflush(p->item_fmt);
+		xstring_flush(p->sep_fmt);
+		xstring_flush(p->item_fmt);
 		while (pkg_deps(pkg, &dep) == EPKG_OK) {
 			if (count > 1)
 				iterate_item(buf, pkg, p->sep_fmt->buf,
@@ -1904,8 +1904,8 @@ format_requirements(xstring *buf, const void *data, struct percent_esc *p)
 		set_list_defaults(p, "%rn-%rv\n", "");
 
 		count = 1;
-		xflush(p->sep_fmt);
-		xflush(p->item_fmt);
+		xstring_flush(p->sep_fmt);
+		xstring_flush(p->item_fmt);
 		while (pkg_rdeps(pkg, &req) == EPKG_OK) {
 			if (count > 1)
 				iterate_item(buf, pkg, p->sep_fmt->buf,
@@ -2014,8 +2014,8 @@ format_provided(xstring *buf, const void *data, struct percent_esc *p)
 		set_list_defaults(p, "%yn\n", "");
 
 		count = 1;
-		xflush(p->sep_fmt);
-		xflush(p->item_fmt);
+		xstring_flush(p->sep_fmt);
+		xstring_flush(p->item_fmt);
 		vec_foreach(pkg->provides, i) {
 			if (count > 1)
 				iterate_item(buf, pkg, p->sep_fmt->buf,
@@ -2055,7 +2055,7 @@ xstring *
 format_literal_percent(xstring *buf, __unused const void *data,
 		       __unused struct percent_esc *p)
 {
-	xputc(buf, '%');
+	xstring_putc(buf, '%');
 	return (buf);
 }
 
@@ -2067,7 +2067,7 @@ xstring *
 format_unknown(xstring *buf, __unused const void *data,
 		       __unused struct percent_esc *p)
 {
-	xputc(buf, '%');
+	xstring_putc(buf, '%');
 	return (NULL);
 }
 
@@ -2256,10 +2256,10 @@ human_number(xstring *buf, int64_t number, struct percent_esc *p)
 			precision = 0;
 	}
 
-	xprintf(buf, format, width, precision, num * sign);
+	xstring_printf(buf, format, width, precision, num * sign);
 
 	if (scale > 0)
-		xprintf(buf, "%s",
+		xstring_printf(buf, "%s",
 		    bin_scale ? bin_pfx[scale] : si_pfx[scale]);
 
 	return (buf);
@@ -2283,7 +2283,7 @@ string_val(xstring *buf, const char *str, struct percent_esc *p)
 	if (gen_format(format, sizeof(format), p->flags, "s") == NULL)
 		return (NULL);
 
-	xprintf(buf, format, p->width, str == NULL ? "" : str);
+	xstring_printf(buf, format, p->width, str == NULL ? "" : str);
 	return (buf);
 }
 
@@ -2299,7 +2299,7 @@ int_val(xstring *buf, int64_t value, struct percent_esc *p)
 		    == NULL)
 			return (NULL);
 
-		xprintf(buf, format, p->width, value);
+		xstring_printf(buf, format, p->width, value);
 	}
 	return (buf);
 }
@@ -2362,7 +2362,7 @@ mode_val(xstring *buf, mode_t mode, struct percent_esc *p)
 		    == NULL)
 			return (NULL);
 
-		xprintf(buf, format, p->width, mode);
+		xstring_printf(buf, format, p->width, mode);
 	}
 	return (buf);
 }
@@ -2421,11 +2421,11 @@ set_list_defaults(struct percent_esc *p, const char *item_fmt,
 		  const char *sep_fmt)
 {
 	if ((p->trailer_status & ITEM_FMT_SET) != ITEM_FMT_SET) {
-		xprintf(p->item_fmt, "%s", item_fmt);
+		xstring_printf(p->item_fmt, "%s", item_fmt);
 		p->trailer_status |= ITEM_FMT_SET;
 	}
 	if ((p->trailer_status & SEP_FMT_SET) != SEP_FMT_SET) {
-		xprintf(p->sep_fmt, "%s", sep_fmt);
+		xstring_printf(p->sep_fmt, "%s", sep_fmt);
 		p->trailer_status |= SEP_FMT_SET;
 	}
 	return (p);
@@ -2457,7 +2457,7 @@ iterate_item(xstring *buf, const struct pkg *pkg, const char *format,
 			f = process_escape(buf, f);
 			break;
 		default:
-			xprintf(buf, "%c", *f);
+			xstring_printf(buf, "%c", *f);
 			f++;
 			break;
 		}
@@ -2597,8 +2597,8 @@ format_trailer(const char *f, struct percent_esc *p)
 				f1 = f2 + 2;
 				break;
 			}
-			xputc(p->item_fmt, *f2);
-			xflush(p->item_fmt);
+			xstring_putc(p->item_fmt, *f2);
+			xstring_flush(p->item_fmt);
 		}
 
 
@@ -2612,8 +2612,8 @@ format_trailer(const char *f, struct percent_esc *p)
 					f1 = f2 + 2;
 					break;
 				}
-				xputc(p->sep_fmt, *f2);
-				xflush(p->sep_fmt);
+				xstring_putc(p->sep_fmt, *f2);
+				xstring_flush(p->sep_fmt);
 			}
 
 		}
@@ -2819,13 +2819,13 @@ maybe_read_hex_byte(xstring *buf, const char *f)
 			break;
 		}
 
-		xputc(buf, val);
+		xstring_putc(buf, val);
 		f++;
 	} else {
 		/* Pass through unchanged if it's not a recognizable
 		   hex byte. */
-		xputc(buf, '\\');
-		xputc(buf, 'x');
+		xstring_putc(buf, '\\');
+		xstring_putc(buf, 'x');
 	}
 	return (f);
 }
@@ -2873,7 +2873,7 @@ read_oct_byte(xstring *buf, const char *f)
 		f++;
 	}
 done:
-	xputc(buf, val);
+	xstring_putc(buf, val);
 
 	return (f);
 }
@@ -2885,39 +2885,39 @@ process_escape(xstring *buf, const char *f)
 
 	switch (*f) {
 	case 'a':
-		xputc(buf, '\a');
+		xstring_putc(buf, '\a');
 		f++;
 		break;
 	case 'b':
-		xputc(buf, '\b');
+		xstring_putc(buf, '\b');
 		f++;
 		break;
 	case 'f':
-		xputc(buf, '\f');
+		xstring_putc(buf, '\f');
 		f++;
 		break;
 	case 'n':
-		xputc(buf, '\n');
+		xstring_putc(buf, '\n');
 		f++;
 		break;
 	case 't':
-		xputc(buf, '\t');
+		xstring_putc(buf, '\t');
 		f++;
 		break;
 	case 'v':
-		xputc(buf, '\v');
+		xstring_putc(buf, '\v');
 		f++;
 		break;
 	case '\'':
-		xputc(buf, '\'');
+		xstring_putc(buf, '\'');
 		f++;
 		break;
 	case '"':
-		xputc(buf, '"');
+		xstring_putc(buf, '"');
 		f++;
 		break;
 	case '\\':
-		xputc(buf, '\\');
+		xstring_putc(buf, '\\');
 		f++;
 		break;
 	case 'x':		/* Hex escape: \xNN */
@@ -2936,7 +2936,7 @@ process_escape(xstring *buf, const char *f)
 	default:		/* If it's not a recognised escape,
 				   leave f pointing at the escaped
 				   character */
-		xputc(buf, '\\');
+		xstring_putc(buf, '\\');
 		break;
 	}
 
@@ -2955,7 +2955,7 @@ process_format_trailer(xstring *buf, struct percent_esc *p,
 
 	/* Trailing % at end of format string: emit literal % */
 	if (f[1] == '\0') {
-		xputc(buf, '%');
+		xstring_putc(buf, '%');
 		return (f + 1);
 	}
 
@@ -3029,7 +3029,7 @@ pkg_vprintf(const char * restrict format, va_list ap)
 
 	if (buf)
 		buf = pkg_xstring_vprintf(buf, format, ap);
-	xflush(buf);
+	xstring_flush(buf);
 	if (buf && strlen(buf->buf) > 0) {
 		count = printf("%s", buf->buf);
 	} else
@@ -3074,7 +3074,7 @@ pkg_vfprintf(FILE * restrict stream, const char * restrict format, va_list ap)
 
 	if (buf)
 		buf = pkg_xstring_vprintf(buf, format, ap);
-	xflush(buf);
+	xstring_flush(buf);
 	if (buf && strlen(buf->buf) > 0) {
 		count = fprintf(stream, "%s", buf->buf);
 	} else
@@ -3123,7 +3123,7 @@ pkg_vdprintf(int fd, const char * restrict format, va_list ap)
 
 	if (buf)
 		buf = pkg_xstring_vprintf(buf, format, ap);
-	xflush(buf);
+	xstring_flush(buf);
 	if (buf && strlen(buf->buf) > 0) {
 		count = dprintf(fd, "%s", buf->buf);
 	} else
@@ -3177,7 +3177,7 @@ pkg_vsnprintf(char * restrict str, size_t size, const char * restrict format,
 
 	if (buf)
 		buf = pkg_xstring_vprintf(buf, format, ap);
-	xflush(buf);
+	xstring_flush(buf);
 	if (buf && strlen(buf->buf) > 0) {
 		count = snprintf(str, size, "%s", buf->buf);
 	} else
@@ -3229,7 +3229,7 @@ pkg_vasprintf(char **ret, const char * restrict format, va_list ap)
 
 	if (buf)
 		buf = pkg_xstring_vprintf(buf, format, ap);
-	xflush(buf);
+	xstring_flush(buf);
 	if (buf && strlen(buf->buf) > 0) {
 		count = xasprintf(ret, "%s", buf->buf);
 	} else {
@@ -3283,7 +3283,7 @@ pkg_xstring_vprintf(xstring * restrict buf, const char * restrict format,
 			f = process_escape(buf, f);
 			break;
 		default:
-			xputc(buf, *f);
+			xstring_putc(buf, *f);
 			f++;
 			break;
 		}
@@ -3329,7 +3329,7 @@ pkg_xstring_printf_set(xstring * restrict buf,
 			f = process_escape(buf, f);
 			break;
 		default:
-			xputc(buf, *f);
+			xstring_putc(buf, *f);
 			f++;
 			break;
 		}
@@ -3354,7 +3354,7 @@ pkg_fprintf_pkg(FILE * restrict stream, const char * restrict format,
 
 	if (buf)
 		buf = pkg_xstring_printf_set(buf, format, pkg);
-	xflush(buf);
+	xstring_flush(buf);
 	if (buf && strlen(buf->buf) > 0) {
 		count = fprintf(stream, "%s", buf->buf);
 	} else

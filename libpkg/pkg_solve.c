@@ -172,7 +172,7 @@ pkg_print_rule_buf(struct pkg_solve_rule *rule, xstring *sb)
 {
 	struct pkg_solve_item *it, *key_elt = NULL;
 
-	xprintf(sb, "%s rule: ", rule_reasons[rule->reason]);
+	xstring_printf(sb, "%s rule: ", rule_reasons[rule->reason]);
 	switch(rule->reason) {
 	case PKG_RULE_DEPEND:
 		vec_foreach(rule->items, _ri) {
@@ -183,27 +183,27 @@ pkg_print_rule_buf(struct pkg_solve_rule *rule, xstring *sb)
 			}
 		}
 		if (key_elt) {
-			xprintf(sb, "package %s%s depends on: ", key_elt->var->uid,
+			xstring_printf(sb, "package %s%s depends on: ", key_elt->var->uid,
 				(key_elt->var->unit->pkg->type == PKG_INSTALLED) ? "(l)" : "(r)");
 		}
 		vec_foreach(rule->items, _rj) {
 			it = &rule->items.d[_rj];
 			if (it != key_elt) {
-				xprintf(sb, "%s%s", it->var->uid,
+				xstring_printf(sb, "%s%s", it->var->uid,
 					(it->var->unit->pkg->type == PKG_INSTALLED) ? "(l)" : "(r)");
 			}
 		}
 		break;
 	case PKG_RULE_UPGRADE_CONFLICT:
-		xprintf(sb, "upgrade local %s-%s to remote %s-%s",
+		xstring_printf(sb, "upgrade local %s-%s to remote %s-%s",
 			rule->items.d[0].var->uid, rule->items.d[0].var->unit->pkg->version,
 			rule->items.d[1].var->uid, rule->items.d[1].var->unit->pkg->version);
 		break;
 	case PKG_RULE_EXPLICIT_CONFLICT:
-		xprintf(sb, "The following packages conflict with each other: ");
+		xstring_printf(sb, "The following packages conflict with each other: ");
 		vec_foreach(rule->items, _ri) {
 			it = &rule->items.d[_ri];
-			xprintf(sb, "%s-%s%s%s", it->var->unit->pkg->uid, it->var->unit->pkg->version,
+			xstring_printf(sb, "%s-%s%s%s", it->var->unit->pkg->uid, it->var->unit->pkg->version,
 				(it->var->unit->pkg->type == PKG_INSTALLED) ? "(l)" : "(r)",
 				_ri + 1 < rule->items.len ? ", " : "");
 		}
@@ -217,31 +217,31 @@ pkg_print_rule_buf(struct pkg_solve_rule *rule, xstring *sb)
 			}
 		}
 		if (key_elt) {
-			xprintf(sb, "package %s%s depends on a requirement provided by: ",
+			xstring_printf(sb, "package %s%s depends on a requirement provided by: ",
 				key_elt->var->uid,
 				(key_elt->var->unit->pkg->type == PKG_INSTALLED) ? "(l)" : "(r)");
 		}
 		vec_foreach(rule->items, _rj) {
 			it = &rule->items.d[_rj];
 			if (it != key_elt) {
-				xprintf(sb, "%s%s", it->var->uid,
+				xstring_printf(sb, "%s%s", it->var->uid,
 					(it->var->unit->pkg->type == PKG_INSTALLED) ? "(l)" : "(r)");
 			}
 		}
 		break;
 	case PKG_RULE_REQUEST_CONFLICT:
-		xprintf(sb, "The following packages in request are candidates for installation: ");
+		xstring_printf(sb, "The following packages in request are candidates for installation: ");
 		vec_foreach(rule->items, _ri) {
 			it = &rule->items.d[_ri];
-			xprintf(sb, "%s-%s%s", it->var->uid, it->var->unit->pkg->version,
+			xstring_printf(sb, "%s-%s%s", it->var->uid, it->var->unit->pkg->version,
 					_ri + 1 < rule->items.len ? ", " : "");
 		}
 		break;
 	case PKG_RULE_VITAL:
-		xprintf(sb, "The following packages are vital: ");
+		xstring_printf(sb, "The following packages are vital: ");
 		vec_foreach(rule->items, _ri) {
 			it = &rule->items.d[_ri];
-			xprintf(sb, "%s-%s%s", it->var->uid, it->var->unit->pkg->version,
+			xstring_printf(sb, "%s-%s%s", it->var->uid, it->var->unit->pkg->version,
 					_ri + 1 < rule->items.len ? ", " : "");
 		}
 		break;
@@ -262,7 +262,7 @@ pkg_debug_print_rule(struct pkg_solve_rule *rule)
 
 	pkg_print_rule_buf(rule, sb);
 
-	xflush(sb);
+	xstring_flush(sb);
 	dbg(2, "rule: %s", sb->buf);
 	xstring_free(sb);
 }
@@ -1097,17 +1097,17 @@ reiterate:
 							item = &rule->items.d[_ri];
 							if (item->var == var) {
 								pkg_print_rule_buf(rule, sb);
-								xputc(sb, '\n');
+								xstring_putc(sb, '\n');
 								break;
 							}
 						}
 					}
 				}
 
-				xprintf(sb, "cannot %s package %s, remove it from request? ",
+				xstring_printf(sb, "cannot %s package %s, remove it from request? ",
 						var->flags & PKG_VAR_INSTALL ? "install" : "remove", var->uid);
 
-				xflush(sb);
+				xstring_flush(sb);
 				if (pkg_emit_query_yesno(true, sb->buf)) {
 					var->flags |= PKG_VAR_FAILED;
 				}

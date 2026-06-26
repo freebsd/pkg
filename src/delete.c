@@ -299,7 +299,7 @@ exec_delete(int argc, char **argv)
 		goto cleanup;
 
 	if (messages != NULL && !quiet) {
-		xflush(messages);
+		xstring_flush(messages);
 		printf("%s", messages->buf);
 	}
 	pkgdb_compact(db);

@@ -497,13 +497,13 @@ pkg_repo_binary_build_search_query(xstring *sql, match_t match,
 	}
 
 	if (field == FIELD_COMMENT_DESC && how != NULL) {
-		xprintf(sql, "(");
-		xprintf(sql, how, "comment");
-		xprintf(sql, " OR ");
-		xprintf(sql, how, "desc");
-		xprintf(sql, ")");
+		xstring_printf(sql, "(");
+		xstring_printf(sql, how, "comment");
+		xstring_printf(sql, " OR ");
+		xstring_printf(sql, how, "desc");
+		xstring_printf(sql, ")");
 	} else if (what != NULL && how != NULL)
-		xprintf(sql, how, what);
+		xstring_printf(sql, how, what);
 
 	switch (sort) {
 	case FIELD_NONE:
@@ -532,7 +532,7 @@ pkg_repo_binary_build_search_query(xstring *sql, match_t match,
 	}
 
 	if (orderby != NULL)
-		xprintf(sql, "%s", orderby);
+		xstring_printf(sql, "%s", orderby);
 
 	return (EPKG_OK);
 }
@@ -559,13 +559,13 @@ pkg_repo_binary_search(struct pkg_repo *repo, const char *pattern, match_t match
 		return (NULL);
 
 	sql = xstring_new();
-	xprintf(sql, multireposql, repo->name, repo->url);
+	xstring_printf(sql, multireposql, repo->name, repo->url);
 
 	/* close the UNIONs and build the search query */
-	xprintf(sql, "%s", "WHERE ");
+	xstring_printf(sql, "%s", "WHERE ");
 
 	pkg_repo_binary_build_search_query(sql, match, field, sort);
-	xprintf(sql, "%s", ";");
+	xstring_printf(sql, "%s", ";");
 	sqlcmd = xstring_get(sql);
 
 	stmt = prepare_sql(sqlite, sqlcmd);

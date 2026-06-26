@@ -1092,8 +1092,8 @@ config_parse_abi_options(int conffd)
 		xstring_renew(ukey);
 		const char *key = ucl_object_key(cur);
 		for (size_t i = 0; key[i] != '\0'; i++)
-			xputc(ukey, toupper(key[i]));
-		xflush(ukey);
+			xstring_putc(ukey, toupper(key[i]));
+		xstring_flush(ukey);
 
 		if (STREQ(ukey->buf, "ABI_FILE") ||
 		    STREQ(ukey->buf, "ABI") ||
@@ -1350,8 +1350,8 @@ pkg_ini(const char *path, const char *reposdir, pkg_init_flags flags)
 		xstring_renew(ukey);
 		key = ucl_object_key(cur);
 		for (i = 0; key[i] != '\0'; i++)
-			xputc(ukey, toupper(key[i]));
-		xflush(ukey);
+			xstring_putc(ukey, toupper(key[i]));
+		xstring_flush(ukey);
 		ukeylen = strlen(ukey->buf);
 		object = ucl_object_find_keyl(config, ukey->buf, ukeylen);
 

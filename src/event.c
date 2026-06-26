@@ -134,7 +134,7 @@ format_rate_SI(char *buf, int size, off_t bytes)
 void
 job_status_end(xstring *msg)
 {
-	xflush(msg);
+	xstring_flush(msg);
 	printf("%s\n", msg->buf);
 	xstring_reset(msg);
 }
@@ -175,7 +175,7 @@ job_status_begin(xstring *msg)
 		if (hostname[0] == '\0')
 			gethostname(hostname, sizeof(hostname));
 
-		xprintf(msg, "[%s] ", hostname);
+		xstring_printf(msg, "[%s] ", hostname);
 	}
 #endif
 
@@ -184,18 +184,18 @@ job_status_begin(xstring *msg)
 		if (add_deps_depth > 1) {
 			for (n = 0; n < (2 * add_deps_depth); ++n) {
 				if (n % 4 == 0 && n < (2 * add_deps_depth))
-					xprintf(msg, "|");
+					xstring_printf(msg, "|");
 				else
-					xprintf(msg, " ");
+					xstring_printf(msg, " ");
 			}
 		}
-		xprintf(msg, "`-- ");
+		xstring_printf(msg, "`-- ");
 	}
 
 	if ((nbtodl > 0 || nbactions > 0) && nbdone > 0) {
 		if (nbdigits == 0)
 			nbdigits = count_digits(nbtodl ? nbtodl : nbactions);
-		xprintf(msg, "[%*zu/%zu] ", nbdigits, nbdone, (nbtodl) ? nbtodl : nbactions);
+		xstring_printf(msg, "[%*zu/%zu] ", nbdigits, nbdone, (nbtodl) ? nbtodl : nbactions);
 	}
 	if (nbtodl > 0 && nbtodl == nbdone) {
 		nbtodl = 0;
@@ -216,7 +216,7 @@ progressbar_start(const char *pmsg)
 	if (pmsg != NULL)
 		progress_message = xstrdup(pmsg);
 	else {
-		xflush(msg_buf);
+		xstring_flush(msg_buf);
 		progress_message = xstrdup(msg_buf->buf);
 	}
 	last_progress_percent = -1;
@@ -474,15 +474,15 @@ event_cb_fetch_begin(struct pkg_event *ev, int *debug __unused)
 	progress_debit = true;
 	tmp = strrchr(filename, '~');
 	if (tmp != NULL)
-		xprintf(msg_buf, "Fetching %.*s",
+		xstring_printf(msg_buf, "Fetching %.*s",
 				(int)(tmp - filename), filename);
 	else {
 		tmp = strrchr(filename, '.');
 		if (tmp != NULL && strcmp(tmp, ".pkg") == 0)
-			xprintf(msg_buf, "Fetching %.*s",
+			xstring_printf(msg_buf, "Fetching %.*s",
 					(int)(tmp - filename), filename);
 		else
-			xprintf(msg_buf, "Fetching %s",
+			xstring_printf(msg_buf, "Fetching %s",
 					filename);
 	}
 	return (0);
@@ -507,7 +507,7 @@ event_cb_install_begin(struct pkg_event *ev, int *debug __unused)
 	pkg = ev->e_install_begin.pkg;
 	pkg_fprintf(msg_buf->fp, "Installing %n-%v...\n", pkg,
 	    pkg);
-	xflush(msg_buf);
+	xstring_flush(msg_buf);
 	printf("%s", msg_buf->buf);
 	return (0);
 }
@@ -522,7 +522,7 @@ event_cb_extract_begin(struct pkg_event *ev, int *debug __unused)
 	job_status_begin(msg_buf);
 	pkg = ev->e_install_begin.pkg;
 	pkg_fprintf(msg_buf->fp, "Extracting %n-%v", pkg, pkg);
-	xflush(msg_buf);
+	xstring_flush(msg_buf);
 	return (0);
 }
 
@@ -556,7 +556,7 @@ event_cb_integritycheck_finished(struct pkg_event *ev, int *debug __unused)
 		return (0);
 	printf(" done (%d conflicting)\n", ev->e_integrity_finished.conflicting);
 	if (conflicts != NULL) {
-		xflush(conflicts);
+		xstring_flush(conflicts);
 		printf("%s", conflicts->buf);
 		xstring_free(conflicts);
 		conflicts = NULL;
@@ -599,7 +599,7 @@ event_cb_deinstall_begin(struct pkg_event *ev, int *debug __unused)
 
 	pkg = ev->e_install_begin.pkg;
 	pkg_fprintf(msg_buf->fp, "Deinstalling %n-%v...\n", pkg, pkg);
-	xflush(msg_buf);
+	xstring_flush(msg_buf);
 	printf("%s", msg_buf->buf);
 	return (0);
 }
@@ -644,7 +644,7 @@ event_cb_upgrade_begin(struct pkg_event *ev, int *debug __unused)
 		    pkg_new, pkg_old, pkg_new);
 		break;
 	}
-	xflush(msg_buf);
+	xstring_flush(msg_buf);
 	printf("%s", msg_buf->buf);
 	return (0);
 }
@@ -877,14 +877,14 @@ event_cb_progress_tick(struct pkg_event *ev, int *debug __unused)
 static int
 event_cb_backup(struct pkg_event *ev __unused, int *debug __unused)
 {
-	xprintf(msg_buf, "Backing up");
+	xstring_printf(msg_buf, "Backing up");
 	return (0);
 }
 
 static int
 event_cb_restore(struct pkg_event *ev __unused, int *debug __unused)
 {
-	xprintf(msg_buf, "Restoring");
+	xstring_printf(msg_buf, "Restoring");
 	return (0);
 }
 
@@ -902,7 +902,7 @@ event_cb_message(struct pkg_event *ev, int *debug __unused)
 {
 	if (messages == NULL)
 		messages = xstring_new();
-	xprintf(messages, "%s", ev->e_pkg_message.msg);
+	xstring_printf(messages, "%s", ev->e_pkg_message.msg);
 	return (0);
 }
 
@@ -952,17 +952,17 @@ event_cb_conflicts(struct pkg_event *ev, int *debug __unused)
 	    ev->e_conflicts.p1, ev->e_conflicts.p1);
 	if (pkg_repos_total_count() > 1) {
 		pkg_get(ev->e_conflicts.p1, PKG_ATTR_REPONAME, &reponame);
-		xprintf(conflicts, " [%s]",
+		xstring_printf(conflicts, " [%s]",
 		    reponame == NULL ? "installed" : reponame);
 	}
 	pkg_fprintf(conflicts->fp, " conflicts with %n-%v",
 	    ev->e_conflicts.p2, ev->e_conflicts.p2);
 	if (pkg_repos_total_count() > 1) {
 		pkg_get(ev->e_conflicts.p2, PKG_ATTR_REPONAME, &reponame);
-		xprintf(conflicts, " [%s]",
+		xstring_printf(conflicts, " [%s]",
 		    reponame == NULL ? "installed" : reponame);
 	}
-	xprintf(conflicts, " on %s\n",
+	xstring_printf(conflicts, " on %s\n",
 	    ev->e_conflicts.path);
 	return (0);
 }

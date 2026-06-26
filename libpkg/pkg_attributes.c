@@ -116,7 +116,7 @@ pkg_script_get(struct pkg const * const p, pkg_script i)
 	if (p->scripts[i] == NULL)
 		return (NULL);
 
-	xflush(p->scripts[i]);
+	xstring_flush(p->scripts[i]);
 	return (p->scripts[i]->buf);
 }
 

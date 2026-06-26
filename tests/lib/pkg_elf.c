@@ -33,7 +33,7 @@ event_callback(void *data __unused, struct pkg_event *ev)
 	switch (ev->type) {
 	case PKG_EVENT_ERROR:
 		xstring_reset(msg);
-		xprintf(msg, "%s", ev->e_pkg_error.msg);
+		xstring_printf(msg, "%s", ev->e_pkg_error.msg);
 		break;
 	default:
 		/* IGNORE */

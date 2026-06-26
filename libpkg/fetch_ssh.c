@@ -188,23 +188,23 @@ ssh_connect(struct pkg_repo *repo, struct yuarel *u)
 		}
 
 		cmd = xstring_new();
-		xputs(cmd, "/usr/bin/ssh -e none -T ");
+		xstring_puts(cmd, "/usr/bin/ssh -e none -T ");
 
 		ssh_args = repo->ssh_args;
 		if (ssh_args == NULL)
 			ssh_args = pkg_object_string(
 			    pkg_config_get("PKG_SSH_ARGS"));
 		if (ssh_args != NULL)
-			xprintf(cmd, "%s ", ssh_args);
+			xstring_printf(cmd, "%s ", ssh_args);
 		if (repo->ip == IPV4)
-			xputs(cmd, "-4 ");
+			xstring_puts(cmd, "-4 ");
 		else if (repo->ip == IPV6)
-			xputs(cmd, "-6 ");
+			xstring_puts(cmd, "-6 ");
 		if (u->port > 0)
-			xprintf(cmd, "-p %d ", u->port);
+			xstring_printf(cmd, "-p %d ", u->port);
 		if (u->username != NULL)
-			xprintf(cmd, "%s@", u->username);
-		xprintf(cmd, "%s pkg ssh", u->host);
+			xstring_printf(cmd, "%s@", u->username);
+		xstring_printf(cmd, "%s pkg ssh", u->host);
 		cmdline = xstring_get(cmd);
 		pkg_dbg(PKG_DBG_FETCH, 1, "Fetch: running '%s'", cmdline);
 		argv[0] = _PATH_BSHELL;
