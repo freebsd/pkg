@@ -49,16 +49,12 @@ pkg_dep_get(struct pkg_dep const * const d, const pkg_dep_attr attr)
 	switch (attr) {
 	case PKG_DEP_NAME:
 		return (d->name);
-		break;
 	case PKG_DEP_ORIGIN:
 		return (d->origin);
-		break;
 	case PKG_DEP_VERSION:
 		return (d->version);
-		break;
 	default:
 		return (NULL);
-		break;
 	}
 }
 
