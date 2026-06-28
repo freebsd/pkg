@@ -1548,11 +1548,27 @@ pkg_solve_parse_sat_output_store(struct pkg_solve_problem *problem, const char *
 	return (false);
 }
 
-int
+static bool
+pkg_solve_parse_sat_output_line(struct pkg_solve_problem *problem, char *line)
+{
+	char *var_str, *begin = line;
+	bool done = false;
+
+	do {
+		var_str = strsep(&begin, " \t");
+		/* Skip unexpected lines */
+		if (var_str == NULL || (!isdigit(*var_str) && *var_str != '-'))
+			continue;
+		if (pkg_solve_parse_sat_output_store(problem, var_str))
+			done = true;
+	} while (begin != NULL);
+	return (done);
+}
+
 pkg_solve_parse_sat_output(FILE *f, struct pkg_solve_problem *problem)
 {
 	int ret = EPKG_OK;
-	char *line = NULL, *var_str, *begin;
+	char *line = NULL;
 	size_t linecap = 0;
 	bool got_sat = false, done = false;
 
@@ -1561,26 +1577,12 @@ pkg_solve_parse_sat_output(FILE *f, struct pkg_solve_problem *problem)
 			got_sat = true;
 		}
 		else if (got_sat) {
-			begin = line;
-			do {
-				var_str = strsep(&begin, " \t");
-				/* Skip unexpected lines */
-				if (var_str == NULL || (!isdigit(*var_str) && *var_str != '-'))
-					continue;
-				if (pkg_solve_parse_sat_output_store(problem, var_str))
-					done = true;
-			} while (begin != NULL);
+			if (pkg_solve_parse_sat_output_line(problem, line))
+				done = true;
 		}
 		else if (strncmp(line, "v ", 2) == 0) {
-			begin = line + 2;
-			do {
-				var_str = strsep(&begin, " \t");
-				/* Skip unexpected lines */
-				if (var_str == NULL || (!isdigit(*var_str) && *var_str != '-'))
-					continue;
-				if (pkg_solve_parse_sat_output_store(problem, var_str))
-					done = true;
-			} while (begin != NULL);
+			if (pkg_solve_parse_sat_output_line(problem, line + 2))
+				done = true;
 		}
 		else {
 			/* Slightly ignore anything from solver */
