@@ -29,12 +29,7 @@ pkg_lua_script_run(struct pkg * const pkg, pkg_lua_script type, bool upgrade)
 {
 	int ret = EPKG_OK;
 	int pstat;
-#ifdef PROC_REAP_KILL
-	bool do_reap;
-	pid_t mypid;
-	struct procctl_reaper_status info;
-	struct procctl_reaper_kill killemall;
-#endif
+	struct pkg_reaper reaper;
 	int cur_pipe[2];
 	char *line = NULL;
 
@@ -45,10 +40,7 @@ pkg_lua_script_run(struct pkg * const pkg, pkg_lua_script type, bool upgrade)
 		return (EPKG_OK);
 	}
 
-#ifdef PROC_REAP_KILL
-	mypid = getpid();
-	do_reap = procctl(P_PID, mypid, PROC_REAP_ACQUIRE, NULL) == 0;
-#endif
+	pkg_reaper_acquire(&reaper);
 
 	vec_foreach(pkg->lua_scripts[type], i) {
 		char *script = pkg->lua_scripts[type].d[i];
@@ -144,24 +136,7 @@ pkg_lua_script_run(struct pkg * const pkg, pkg_lua_script type, bool upgrade)
 
 
 cleanup:
-#ifdef PROC_REAP_KILL
-	/*
-	 * If the prior PROCCTL_REAP_ACQUIRE call failed, the kernel
-	 * probably doesn't support this, so don't try.
-	 */
-	if (!do_reap)
-		return (ret);
-
-	procctl(P_PID, mypid, PROC_REAP_STATUS, &info);
-	if (info.rs_children != 0) {
-		killemall.rk_sig = SIGKILL;
-		killemall.rk_flags = 0;
-		if (procctl(P_PID, mypid, PROC_REAP_KILL, &killemall) != 0) {
-			pkg_errno("%s", "Failed to kill all processes");
-		}
-	}
-	procctl(P_PID, mypid, PROC_REAP_RELEASE, NULL);
-#endif
+	pkg_reaper_release(&reaper);
 	free(line);
 
 	return (ret);

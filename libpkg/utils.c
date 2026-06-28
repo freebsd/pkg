@@ -35,6 +35,9 @@
 #include <sys/socket.h>
 #include <sys/stat.h>
 #include <sys/param.h>
+#if __has_include(<sys/procctl.h>)
+#include <sys/procctl.h>
+#endif
 #include <stdio.h>
 
 #include <assert.h>
@@ -1265,4 +1268,43 @@ ucl_parse_buf(const char *buf, size_t len, const char *name)
 	ucl_parser_free(p);
 
 	return (obj);
+}
+
+void
+pkg_reaper_acquire(struct pkg_reaper *r)
+{
+#ifdef PROC_REAP_KILL
+	r->mypid = getpid();
+	r->do_reap = procctl(P_PID, r->mypid, PROC_REAP_ACQUIRE, NULL) == 0;
+#else
+	r->mypid = getpid();
+	r->do_reap = false;
+#endif
+}
+
+void
+pkg_reaper_release(struct pkg_reaper *r)
+{
+#ifdef PROC_REAP_KILL
+	struct procctl_reaper_status info;
+	struct procctl_reaper_kill killemall;
+
+	if (!r->do_reap)
+		return;
+
+	memset(&info, 0, sizeof(info));
+	memset(&killemall, 0, sizeof(killemall));
+
+	procctl(P_PID, r->mypid, PROC_REAP_STATUS, &info);
+	if (info.rs_children != 0) {
+		killemall.rk_sig = SIGKILL;
+		killemall.rk_flags = 0;
+		if (procctl(P_PID, r->mypid, PROC_REAP_KILL, &killemall) != 0) {
+			if (errno != ESRCH || killemall.rk_killed != 0) {
+				pkg_errno("%s", "Failed to kill all processes");
+			}
+		}
+	}
+	procctl(P_PID, r->mypid, PROC_REAP_RELEASE, NULL);
+#endif
 }

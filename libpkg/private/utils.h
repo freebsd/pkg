@@ -116,4 +116,12 @@ gid_t get_gid_from_gname(const char *);
 ucl_object_t *ucl_parse_fd(int fd, const char *name);
 ucl_object_t *ucl_parse_buf(const char *buf, size_t len, const char *name);
 
+struct pkg_reaper {
+	bool do_reap;
+	pid_t mypid;
+};
+
+void pkg_reaper_acquire(struct pkg_reaper *r);
+void pkg_reaper_release(struct pkg_reaper *r);
+
 #endif

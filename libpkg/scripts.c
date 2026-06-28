@@ -68,12 +68,7 @@ pkg_script_run(struct pkg * const pkg, pkg_script type, bool upgrade, bool noexe
 	ssize_t bytes_written;
 	long argmax;
 	int cur_pipe[2] = {-1, -1};
-#ifdef PROC_REAP_KILL
-	bool do_reap;
-	pid_t mypid;
-	struct procctl_reaper_status info;
-	struct procctl_reaper_kill killemall;
-#endif
+	struct pkg_reaper reaper;
 	struct {
 		const char * const arg;
 		const pkg_script b;
@@ -97,10 +92,7 @@ pkg_script_run(struct pkg * const pkg, pkg_script type, bool upgrade, bool noexe
 
 	assert(i < NELEM(map));
 
-#ifdef PROC_REAP_KILL
-	mypid = getpid();
-	do_reap = procctl(P_PID, mypid, PROC_REAP_ACQUIRE, NULL) == 0;
-#endif
+	pkg_reaper_acquire(&reaper);
 	for (j = 0; j < PKG_NUM_SCRIPTS; j++) {
 		if (pkg_script_get(pkg, j) == NULL)
 			continue;
@@ -250,26 +242,7 @@ cleanup:
 	if (cur_pipe[1] != -1)
 		close(cur_pipe[1]);
 
-#ifdef PROC_REAP_KILL
-	/*
-	 * If the prior PROCCTL_REAP_ACQUIRE call failed, the kernel
-	 * probably doesn't support this, so don't try.
-	 */
-	if (!do_reap)
-		return (ret);
-
-	procctl(P_PID, mypid, PROC_REAP_STATUS, &info);
-	if (info.rs_children != 0) {
-		killemall.rk_sig = SIGKILL;
-		killemall.rk_flags = 0;
-		if (procctl(P_PID, mypid, PROC_REAP_KILL, &killemall) != 0) {
-			if (errno != ESRCH || killemall.rk_killed != 0 ) {
-				pkg_errno("%s", "Failed to kill all processes");
-			}
-		}
-	}
-	procctl(P_PID, mypid, PROC_REAP_RELEASE, NULL);
-#endif
+	pkg_reaper_release(&reaper);
 
 	return (ret);
 }
