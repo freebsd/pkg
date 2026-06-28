@@ -928,31 +928,34 @@ format_time_t(xstring *buf, time_t timestamp, struct percent_esc *p)
  * packages.  Optionally accepts per-field format in %{ %| %} Default
  * %{%An: %Av\n%|%}
  */
+static xstring *
+format_string_list(xstring *buf, const struct pkg *pkg, const charv_t *vec,
+    const char *default_fmt, const char *default_sep, int pp_const,
+    struct percent_esc *p)
+{
+	if (p->flags & (PP_ALTERNATE_FORM1|PP_ALTERNATE_FORM2))
+		return (list_count(buf, vec_len(vec), p));
+
+	int count = 1;
+	set_list_defaults(p, default_fmt, default_sep);
+	xstring_flush(p->sep_fmt);
+	xstring_flush(p->item_fmt);
+	vec_foreach(*vec, i) {
+		if (count > 1)
+			iterate_item(buf, pkg, p->sep_fmt->buf,
+			    vec->d[i], count, pp_const);
+		iterate_item(buf, pkg, p->item_fmt->buf,
+		    vec->d[i], count, pp_const);
+		count++;
+	}
+	return (buf);
+}
+
 xstring *
 format_annotations(xstring *buf, const void *data, struct percent_esc *p)
 {
-	const struct pkg	*pkg = data;
-	int			count;
-
-	if (p->flags & (PP_ALTERNATE_FORM1|PP_ALTERNATE_FORM2)) {
-		return (list_count(buf, vec_len(&pkg->annotations), p));
-	} else {
-		set_list_defaults(p, "%An: %Av\n", "");
-
-		count = 1;
-		xstring_flush(p->sep_fmt);
-		xstring_flush(p->item_fmt);
-		vec_foreach(pkg->annotations, i) {
-			if (count > 1)
-				iterate_item(buf, pkg, p->sep_fmt->buf,
-					     pkg->annotations.d[i], count, PP_A);
-
-			iterate_item(buf, pkg, p->item_fmt->buf,
-				     pkg->annotations.d[i], count, PP_A);
-			count++;
-		}
-	}
-	return (buf);
+	return (format_string_list(buf, data, &((const struct pkg *)data)->annotations,
+	    "%An: %Av\n", "", PP_A, p));
 }
 
 /*
@@ -985,29 +988,8 @@ format_annotation_value(xstring *buf, const void *data, struct percent_esc *p)
 xstring *
 format_shlibs_required(xstring *buf, const void *data, struct percent_esc *p)
 {
-	const struct pkg	*pkg = data;
-
-	if (p->flags & (PP_ALTERNATE_FORM1|PP_ALTERNATE_FORM2))
-		return (list_count(buf, vec_len(&pkg->shlibs_required), p));
-	else {
-		int			 count;
-
-		set_list_defaults(p, "%Bn\n", "");
-
-		count = 1;
-		xstring_flush(p->sep_fmt);
-		xstring_flush(p->item_fmt);
-		vec_foreach(pkg->shlibs_required, i) {
-			if (count > 1)
-				iterate_item(buf, pkg, p->sep_fmt->buf,
-					     pkg->shlibs_required.d[i], count, PP_B);
-
-			iterate_item(buf, pkg, p->item_fmt->buf,
-				     pkg->shlibs_required.d[i], count, PP_B);
-			count++;
-		}
-	}
-	return (buf);
+	return (format_string_list(buf, data, &((const struct pkg *)data)->shlibs_required,
+	    "%Bn\n", "", PP_B, p));
 }
 
 /*
@@ -1031,28 +1013,8 @@ format_shlib_name(xstring *buf, const void *data, struct percent_esc *p)
 xstring *
 format_categories(xstring *buf, const void *data, struct percent_esc *p)
 {
-	const struct pkg	*pkg = data;
-	int			 count = 0;
-
-	if (p->flags & (PP_ALTERNATE_FORM1|PP_ALTERNATE_FORM2)) {
-		return (list_count(buf, vec_len(&pkg->categories), p));
-	} else {
-		set_list_defaults(p, "%Cn", ", ");
-
-		count = 1;
-		xstring_flush(p->sep_fmt);
-		xstring_flush(p->item_fmt);
-		vec_foreach(pkg->categories, i) {
-			if (count > 1)
-				iterate_item(buf, pkg, p->sep_fmt->buf,
-				    pkg->categories.d[i], count, PP_C);
-
-			iterate_item(buf, pkg, p->item_fmt->buf, pkg->categories.d[i],
-			    count, PP_C);
-			count++;
-		}
-	}
-	return (buf);
+	return (format_string_list(buf, data, &((const struct pkg *)data)->categories,
+	    "%Cn", ", ", PP_C, p));
 }
 
 /*
@@ -1289,29 +1251,8 @@ format_file_fflags(xstring *buf, const void *data, struct percent_esc *p)
 xstring *
 format_groups(xstring *buf, const void *data, struct percent_esc *p)
 {
-	const struct pkg	*pkg = data;
-
-	if (p->flags & (PP_ALTERNATE_FORM1|PP_ALTERNATE_FORM2))
-		return (list_count(buf, vec_len(&pkg->groups), p));
-	else {
-		int	 count;
-
-		set_list_defaults(p, "%Gn\n", "");
-
-		count = 1;
-		xstring_flush(p->sep_fmt);
-		xstring_flush(p->item_fmt);
-		vec_foreach(pkg->groups, i) {
-			if (count > 1)
-				iterate_item(buf, pkg, p->sep_fmt->buf,
-					     pkg->groups.d[i], count, PP_G);
-
-			iterate_item(buf, pkg,p->item_fmt->buf,
-				     pkg->groups.d[i], count, PP_G);
-			count++;
-		}
-	}
-	return (buf);
+	return (format_string_list(buf, data, &((const struct pkg *)data)->groups,
+	    "%Gn\n", "", PP_G, p));
 }
 
 /*
@@ -1344,28 +1285,8 @@ format_row_counter(xstring *buf, const void *data, struct percent_esc *p)
 xstring *
 format_licenses(xstring *buf, const void *data, struct percent_esc *p)
 {
-	const struct pkg	*pkg = data;
-	int			 count = 0;
-
-	if (p->flags & (PP_ALTERNATE_FORM1|PP_ALTERNATE_FORM2)) {
-		return (list_count(buf, vec_len(&pkg->licenses), p));
-	} else {
-		set_list_defaults(p, "%Ln", " %l ");
-
-		count = 1;
-		xstring_flush(p->sep_fmt);
-		xstring_flush(p->item_fmt);
-		vec_foreach(pkg->licenses, i) {
-			if (count > 1)
-				iterate_item(buf, pkg, p->sep_fmt->buf,
-				    pkg->licenses.d[i], count, PP_L);
-
-			iterate_item(buf, pkg, p->item_fmt->buf, pkg->licenses.d[i],
-			    count, PP_L);
-			count++;
-		}
-	}
-	return (buf);
+	return (format_string_list(buf, data, &((const struct pkg *)data)->licenses,
+	    "%Ln", " %l ", PP_L, p));
 }
 
 /*
@@ -1552,29 +1473,8 @@ format_char_string(xstring *buf, const void *data, struct percent_esc *p)
 xstring *
 format_users(xstring *buf, const void *data, struct percent_esc *p)
 {
-	const struct pkg	*pkg = data;
-
-	if (p->flags & (PP_ALTERNATE_FORM1|PP_ALTERNATE_FORM2))
-		return (list_count(buf, vec_len(&pkg->users), p));
-	else {
-		int	 count;
-
-		set_list_defaults(p, "%Un\n", "");
-
-		count = 1;
-		xstring_flush(p->sep_fmt);
-		xstring_flush(p->item_fmt);
-		vec_foreach(pkg->users, i) {
-			if (count > 1)
-				iterate_item(buf, pkg, p->sep_fmt->buf,
-					     pkg->users.d[i], count, PP_U);
-
-			iterate_item(buf, pkg, p->item_fmt->buf,
-				     pkg->users.d[i], count, PP_U);
-			count++;
-		}
-	}
-	return (buf);
+	return (format_string_list(buf, data, &((const struct pkg *)data)->users,
+	    "%Un\n", "", PP_U, p));
 }
 
 /*
@@ -1618,29 +1518,8 @@ format_int_checksum(xstring *buf, const void *data, struct percent_esc *p)
 xstring *
 format_required(xstring *buf, const void *data, struct percent_esc *p)
 {
-	const struct pkg	*pkg = data;
-
-	if (p->flags & (PP_ALTERNATE_FORM1|PP_ALTERNATE_FORM2))
-		return (list_count(buf, vec_len(&pkg->requires), p));
-	else {
-		int	 count;
-
-		set_list_defaults(p, "%Yn\n", "");
-
-		count = 1;
-		xstring_flush(p->sep_fmt);
-		xstring_flush(p->item_fmt);
-		vec_foreach(pkg->requires, i) {
-			if (count > 1)
-				iterate_item(buf, pkg, p->sep_fmt->buf,
-					     pkg->requires.d[i], count, PP_Y);
-
-			iterate_item(buf, pkg, p->item_fmt->buf,
-				     pkg->requires.d[i], count, PP_Y);
-			count++;
-		}
-	}
-	return (buf);
+	return (format_string_list(buf, data, &((const struct pkg *)data)->requires,
+	    "%Yn\n", "", PP_Y, p));
 }
 
 /*
@@ -1675,29 +1554,8 @@ format_autoremove(xstring *buf, const void *data, struct percent_esc *p)
 xstring *
 format_shlibs_provided(xstring *buf, const void *data, struct percent_esc *p)
 {
-	const struct pkg	*pkg = data;
-
-	if (p->flags & (PP_ALTERNATE_FORM1|PP_ALTERNATE_FORM2))
-		return (list_count(buf, vec_len(&pkg->shlibs_provided), p));
-	else {
-		int	 count;
-
-		set_list_defaults(p, "%bn\n", "");
-
-		count = 1;
-		xstring_flush(p->sep_fmt);
-		xstring_flush(p->item_fmt);
-		vec_foreach(pkg->shlibs_provided, i) {
-			if (count > 1)
-				iterate_item(buf, pkg, p->sep_fmt->buf,
-					     pkg->shlibs_provided.d[i], count, PP_b);
-
-			iterate_item(buf, pkg, p->item_fmt->buf,
-				     pkg->shlibs_provided.d[i], count, PP_b);
-			count++;
-		}
-	}
-	return (buf);
+	return (format_string_list(buf, data, &((const struct pkg *)data)->shlibs_provided,
+	    "%bn\n", "", PP_b, p));
 }
 
 /*
@@ -2004,29 +1862,8 @@ format_pkgsize(xstring *buf, const void *data, struct percent_esc *p)
 xstring *
 format_provided(xstring *buf, const void *data, struct percent_esc *p)
 {
-	const struct pkg	*pkg = data;
-
-	if (p->flags & (PP_ALTERNATE_FORM1|PP_ALTERNATE_FORM2))
-		return (list_count(buf, vec_len(&pkg->provides), p));
-	else {
-		int	 count;
-
-		set_list_defaults(p, "%yn\n", "");
-
-		count = 1;
-		xstring_flush(p->sep_fmt);
-		xstring_flush(p->item_fmt);
-		vec_foreach(pkg->provides, i) {
-			if (count > 1)
-				iterate_item(buf, pkg, p->sep_fmt->buf,
-					     pkg->provides.d[i], count, PP_y);
-
-			iterate_item(buf, pkg, p->item_fmt->buf,
-				     pkg->provides.d[i], count, PP_y);
-			count++;
-		}
-	}
-	return (buf);
+	return (format_string_list(buf, data, &((const struct pkg *)data)->provides,
+	    "%yn\n", "", PP_y, p));
 }
 
 /*
