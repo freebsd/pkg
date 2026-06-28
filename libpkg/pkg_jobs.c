@@ -2103,22 +2103,17 @@ pkg_jobs_execute(struct pkg_jobs *j)
 	size_t current_action = 0;
 
 //j->triggers.cleanup = triggers_load(true);
-	if (j->type == PKG_JOBS_INSTALL) {
-		pre = PKG_PLUGIN_HOOK_PRE_INSTALL;
-		post = PKG_PLUGIN_HOOK_POST_INSTALL;
-	}
-	else if (j->type == PKG_JOBS_UPGRADE) {
-		pre = PKG_PLUGIN_HOOK_PRE_UPGRADE;
-		post = PKG_PLUGIN_HOOK_POST_UPGRADE;
-	}
-	else if (j->type == PKG_JOBS_AUTOREMOVE){
-		pre = PKG_PLUGIN_HOOK_PRE_AUTOREMOVE;
-		post = PKG_PLUGIN_HOOK_POST_AUTOREMOVE;
-	}
-	else {
-		pre = PKG_PLUGIN_HOOK_PRE_DEINSTALL;
-		post = PKG_PLUGIN_HOOK_POST_DEINSTALL;
-	}
+	static const struct {
+		pkg_plugin_hook_t pre;
+		pkg_plugin_hook_t post;
+	} hook_map[] = {
+		[PKG_JOBS_INSTALL]   = { PKG_PLUGIN_HOOK_PRE_INSTALL,   PKG_PLUGIN_HOOK_POST_INSTALL },
+		[PKG_JOBS_UPGRADE]   = { PKG_PLUGIN_HOOK_PRE_UPGRADE,   PKG_PLUGIN_HOOK_POST_UPGRADE },
+		[PKG_JOBS_AUTOREMOVE]= { PKG_PLUGIN_HOOK_PRE_AUTOREMOVE,PKG_PLUGIN_HOOK_POST_AUTOREMOVE },
+		[PKG_JOBS_DEINSTALL]  = { PKG_PLUGIN_HOOK_PRE_DEINSTALL, PKG_PLUGIN_HOOK_POST_DEINSTALL },
+	};
+	pre = hook_map[j->type].pre;
+	post = hook_map[j->type].post;
 
 	if (j->flags & PKG_FLAG_SKIP_INSTALL)
 		return (EPKG_OK);
