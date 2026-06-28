@@ -200,52 +200,41 @@ cudf_emit_pkg(struct pkg *pkg, int version, FILE *f,
 }
 
 static int
-cudf_emit_request_packages(const char *op, struct pkg_jobs *j, FILE *f)
+cudf_emit_request_section(FILE *f, const char *label, pkghash *hash, size_t *column)
 {
 	struct pkg_job_request *req;
-	size_t column = 0, cnt = 0, max;
+	size_t cnt = 0, max = pkghash_count(hash);
 	bool printed = false;
 
-	max = pkghash_count(j->request_add);
-	if (fprintf(f, "%s: ", op) < 0)
+	if (fprintf(f, "%s: ", label) < 0)
 		return (EPKG_FATAL);
-	pkghash_foreach(j->request_add, it) {
+	pkghash_foreach(hash, it) {
 		req = it.value;
 		cnt++;
 		if (req->skip)
 			continue;
 		if (cudf_print_element(f, req->items.d[0].pkg->uid,
-		    (max > cnt), &column) < 0) {
+		    (max > cnt), column) < 0)
 			return (EPKG_FATAL);
-		}
 		printed = true;
 	}
+	if (!printed && fputc('\n', f) < 0)
+		return (EPKG_FATAL);
+	return (EPKG_OK);
+}
 
-	if (!printed)
-		if (fputc('\n', f) < 0)
-			return (EPKG_FATAL);
+cudf_emit_request_packages(const char *op, struct pkg_jobs *j, FILE *f)
+{
+	size_t column = 0;
+	int ret;
 
+	ret = cudf_emit_request_section(f, op, j->request_add, &column);
+	if (ret != EPKG_OK)
+		return (ret);
 	column = 0;
-	printed = false;
-	if (fprintf(f, "remove: ") < 0)
-		return (EPKG_FATAL);
-	max = pkghash_count(j->request_delete);
-	pkghash_foreach(j->request_delete, it) {
-		req = it.value;
-		cnt++;
-		if (req->skip)
-			continue;
-		if (cudf_print_element(f, req->items.d[0].pkg->uid,
-		    (max > cnt), &column) < 0) {
-			return (EPKG_FATAL);
-		}
-		printed = true;
-	}
-
-	if (!printed)
-		if (fputc('\n', f) < 0)
-			return (EPKG_FATAL);
-
+	ret = cudf_emit_request_section(f, "remove", j->request_delete, &column);
+	if (ret != EPKG_OK)
+		return (ret);
 	return (EPKG_OK);
 }
 
