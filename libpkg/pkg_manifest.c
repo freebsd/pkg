@@ -978,6 +978,21 @@ pkg_emit_filelist(struct pkg *pkg, FILE *f, pkghash **dirs, int *ndirs)
 	return (EPKG_OK);
 }
 
+static void
+manifest_emit_strv(ucl_object_t *top, const char *key, const charv_t *vec)
+{
+	ucl_object_t *seq = NULL;
+
+	dbg(4, "Emitting %s", key);
+	vec_foreach(*vec, i) {
+		if (seq == NULL)
+			seq = ucl_object_typed_new(UCL_ARRAY);
+		ucl_array_append(seq, ucl_object_fromstring(vec->d[i]));
+	}
+	if (seq != NULL)
+		ucl_object_insert_key(top, seq, key, strlen(key), false);
+}
+
 pkg_object*
 pkg_emit_object(struct pkg *pkg, short flags)
 {
@@ -1040,15 +1055,7 @@ pkg_emit_object(struct pkg *pkg, short flags)
 		break;
 	}
 
-	dbg(4, "Emitting licenses");
-	seq = NULL;
-	vec_foreach(pkg->licenses, i) {
-		if (seq == NULL)
-			seq = ucl_object_typed_new(UCL_ARRAY);
-		ucl_array_append(seq, ucl_object_fromstring(pkg->licenses.d[i]));
-	}
-	if (seq)
-		ucl_object_insert_key(top, seq, "licenses", 8, false);
+	manifest_emit_strv(top, "licenses", &pkg->licenses);
 
 	if (pkg->pkgsize > 0)
 		MANIFEST_EXPORT_FIELD(top, pkg, pkgsize, int);
@@ -1075,75 +1082,19 @@ pkg_emit_object(struct pkg *pkg, short flags)
 	if (map)
 		ucl_object_insert_key(top, map, "deps", 4, false);
 
-	dbg(4, "Emitting categories");
-	seq = NULL;
-	vec_foreach(pkg->categories, i) {
-		if (seq == NULL)
-			seq = ucl_object_typed_new(UCL_ARRAY);
-		ucl_array_append(seq, ucl_object_fromstring(pkg->categories.d[i]));
-	}
-	if (seq)
-		ucl_object_insert_key(top, seq, "categories", 10, false);
+	manifest_emit_strv(top, "categories", &pkg->categories);
 
-	dbg(4, "Emitting users");
-	seq = NULL;
-	vec_foreach(pkg->users, i) {
-		if (seq == NULL)
-			seq = ucl_object_typed_new(UCL_ARRAY);
-		ucl_array_append(seq, ucl_object_fromstring(pkg->users.d[i]));
-	}
-	if (seq)
-		ucl_object_insert_key(top, seq, "users", 5, false);
+	manifest_emit_strv(top, "users", &pkg->users);
 
-	dbg(4, "Emitting groups");
-	seq = NULL;
-	vec_foreach(pkg->groups, i) {
-		if (seq == NULL)
-			seq = ucl_object_typed_new(UCL_ARRAY);
-		ucl_array_append(seq, ucl_object_fromstring(pkg->groups.d[i]));
-	}
-	if (seq)
-		ucl_object_insert_key(top, seq, "groups", 6, false);
+	manifest_emit_strv(top, "groups", &pkg->groups);
 
-	dbg(4, "Emitting shibs_required");
-	seq = NULL;
-	vec_foreach(pkg->shlibs_required, i) {
-		if (seq == NULL)
-			seq = ucl_object_typed_new(UCL_ARRAY);
-		ucl_array_append(seq, ucl_object_fromstring(pkg->shlibs_required.d[i]));
-	}
-	if (seq)
-		ucl_object_insert_key(top, seq, "shlibs_required", 15, false);
+	manifest_emit_strv(top, "shlibs_required", &pkg->shlibs_required);
 
-	dbg(4, "Emitting shibs_required_ignore");
-	seq = NULL;
-	vec_foreach(pkg->shlibs_required_ignore, i) {
-		if (seq == NULL)
-			seq = ucl_object_typed_new(UCL_ARRAY);
-		ucl_array_append(seq, ucl_object_fromstring(pkg->shlibs_required_ignore.d[i]));
-	}
-	if (seq)
-		ucl_object_insert_key(top, seq, "shlibs_required_ignore", 22, false);
+	manifest_emit_strv(top, "shlibs_required_ignore", &pkg->shlibs_required_ignore);
 
-	dbg(4, "Emitting shlibs_provided");
-	seq = NULL;
-	vec_foreach(pkg->shlibs_provided, i) {
-		if (seq == NULL)
-			seq = ucl_object_typed_new(UCL_ARRAY);
-		ucl_array_append(seq, ucl_object_fromstring(pkg->shlibs_provided.d[i]));
-	}
-	if (seq)
-		ucl_object_insert_key(top, seq, "shlibs_provided", 15, false);
+	manifest_emit_strv(top, "shlibs_provided", &pkg->shlibs_provided);
 
-	dbg(4, "Emitting shlibs_provided_ignore");
-	seq = NULL;
-	vec_foreach(pkg->shlibs_provided_ignore, i) {
-		if (seq == NULL)
-			seq = ucl_object_typed_new(UCL_ARRAY);
-		ucl_array_append(seq, ucl_object_fromstring(pkg->shlibs_provided_ignore.d[i]));
-	}
-	if (seq)
-		ucl_object_insert_key(top, seq, "shlibs_provided_ignore", 22, false);
+	manifest_emit_strv(top, "shlibs_provided_ignore", &pkg->shlibs_provided_ignore);
 
 	dbg(4, "Emitting conflicts");
 	seq = NULL;
@@ -1155,25 +1106,9 @@ pkg_emit_object(struct pkg *pkg, short flags)
 	if (seq)
 		ucl_object_insert_key(top, seq, "conflicts", 9, false);
 
-	dbg(4, "Emitting provides");
-	seq = NULL;
-	vec_foreach(pkg->provides, i) {
-		if (seq == NULL)
-			seq = ucl_object_typed_new(UCL_ARRAY);
-		ucl_array_append(seq, ucl_object_fromstring(pkg->provides.d[i]));
-	}
-	if (seq)
-		ucl_object_insert_key(top, seq, "provides", 8, false);
+	manifest_emit_strv(top, "provides", &pkg->provides);
 
-	dbg(4, "Emitting requires");
-	seq = NULL;
-	vec_foreach(pkg->requires, i) {
-		if (seq == NULL)
-			seq = ucl_object_typed_new(UCL_ARRAY);
-		ucl_array_append(seq, ucl_object_fromstring(pkg->requires.d[i]));
-	}
-	if (seq)
-		ucl_object_insert_key(top, seq, "requires", 8, false);
+	manifest_emit_strv(top, "requires", &pkg->requires);
 
 	dbg(4, "Emitting options");
 	map = NULL;
