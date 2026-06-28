@@ -2722,63 +2722,23 @@ done:
 const char *
 process_escape(xstring *buf, const char *f)
 {
-	f++;			/* Eat the \ */
+	static const char esc[256] = {
+		['a'] = '\a', ['b'] = '\b', ['f'] = '\f',
+		['n'] = '\n', ['t'] = '\t', ['v'] = '\v',
+		['\''] = '\'', ['"'] = '"', ['\\'] = '\\',
+	};
 
-	switch (*f) {
-	case 'a':
-		xstring_putc(buf, '\a');
+	f++;			/* Eat the \\ */
+
+	if (esc[(unsigned char)*f] != 0) {
+		xstring_putc(buf, esc[(unsigned char)*f]);
 		f++;
-		break;
-	case 'b':
-		xstring_putc(buf, '\b');
-		f++;
-		break;
-	case 'f':
-		xstring_putc(buf, '\f');
-		f++;
-		break;
-	case 'n':
-		xstring_putc(buf, '\n');
-		f++;
-		break;
-	case 't':
-		xstring_putc(buf, '\t');
-		f++;
-		break;
-	case 'v':
-		xstring_putc(buf, '\v');
-		f++;
-		break;
-	case '\'':
-		xstring_putc(buf, '\'');
-		f++;
-		break;
-	case '"':
-		xstring_putc(buf, '"');
-		f++;
-		break;
-	case '\\':
-		xstring_putc(buf, '\\');
-		f++;
-		break;
-	case 'x':		/* Hex escape: \xNN */
+	} else if (*f == 'x') {		/* Hex escape: \\xNN */
 		f = maybe_read_hex_byte(buf, f);
-		break;
-	case '0':
-	case '1':
-	case '2':
-	case '3':
-	case '4':
-	case '5':
-	case '6':
-	case '7':		/* Oct escape: all fall through */
+	} else if (*f >= '0' && *f <= '7') {	/* Oct escape */
 		f = read_oct_byte(buf, f);
-		break;
-	default:		/* If it's not a recognised escape,
-				   leave f pointing at the escaped
-				   character */
+	} else {		/* Not a recognised escape */
 		xstring_putc(buf, '\\');
-		break;
 	}
 
 	return (f);
