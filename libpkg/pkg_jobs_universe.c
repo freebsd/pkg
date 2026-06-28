@@ -637,6 +637,18 @@ pkg_jobs_universe_process_provides_requires(struct pkg_jobs_universe *universe,
 	return (EPKG_OK);
 }
 
+static int
+pkg_jobs_universe_process_shlibs_and_provides(struct pkg_jobs_universe *universe,
+    struct pkg *pkg)
+{
+	int rc;
+
+	rc = pkg_jobs_universe_process_shlibs(universe, pkg);
+	if (rc != EPKG_OK)
+		return (rc);
+	return (pkg_jobs_universe_process_provides_requires(universe, pkg));
+}
+
 int
 pkg_jobs_universe_process_item(struct pkg_jobs_universe *universe, struct pkg *pkg,
 		struct pkg_job_universe_item **result)
@@ -710,10 +722,7 @@ pkg_jobs_universe_process_item(struct pkg_jobs_universe *universe, struct pkg *p
 				return (rc);
 		}
 		/* Provides/requires */
-		rc = pkg_jobs_universe_process_shlibs(universe, pkg);
-		if (rc != EPKG_OK)
-			return (rc);
-		rc = pkg_jobs_universe_process_provides_requires(universe, pkg);
+		rc = pkg_jobs_universe_process_shlibs_and_provides(universe, pkg);
 		if (rc != EPKG_OK)
 			return (rc);
 		break;
@@ -721,10 +730,7 @@ pkg_jobs_universe_process_item(struct pkg_jobs_universe *universe, struct pkg *p
 		rc = pkg_jobs_universe_process_deps(universe, pkg, flags);
 		if (rc != EPKG_OK)
 			return (rc);
-		rc = pkg_jobs_universe_process_shlibs(universe, pkg);
-		if (rc != EPKG_OK)
-			return (rc);
-		rc = pkg_jobs_universe_process_provides_requires(universe, pkg);
+		rc = pkg_jobs_universe_process_shlibs_and_provides(universe, pkg);
 		if (rc != EPKG_OK)
 			return (rc);
 		break;
@@ -737,10 +743,7 @@ pkg_jobs_universe_process_item(struct pkg_jobs_universe *universe, struct pkg *p
 			rc = pkg_jobs_universe_process_deps(universe, pkg, flags);
 			if (rc != EPKG_OK)
 				return (rc);
-			rc = pkg_jobs_universe_process_shlibs(universe, pkg);
-			if (rc != EPKG_OK)
-				return (rc);
-			rc = pkg_jobs_universe_process_provides_requires(universe, pkg);
+			rc = pkg_jobs_universe_process_shlibs_and_provides(universe, pkg);
 			if (rc != EPKG_OK)
 				return (rc);
 			break;
