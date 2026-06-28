@@ -366,6 +366,25 @@ pkg_conflicts_check_local_path(const char *path, const char *uid,
 
 static struct pkg_job_universe_item *
 pkg_conflicts_check_all_paths(struct pkg_jobs *j, const char *path,
+    struct pkg_job_universe_item *it, struct sipkey *k);
+
+static struct pkg_job_universe_item *
+pkg_conflicts_handle_collision(struct pkg_jobs *j, const char *path,
+    struct pkg_job_universe_item *it, struct sipkey *k,
+    const char *uid1, const char *uid2)
+{
+	struct sipkey nk;
+
+	pkg_debug(2, "found a collision on path %s between %s and %s, key: %lu",
+	    path, uid1, uid2, (unsigned long)k->k[0]);
+
+	nk = *k;
+	nk.k[0]++;
+	return (pkg_conflicts_check_all_paths(j, path, it, &nk));
+}
+
+static struct pkg_job_universe_item *
+pkg_conflicts_check_all_paths(struct pkg_jobs *j, const char *path,
 	struct pkg_job_universe_item *it, struct sipkey *k)
 {
 	const char *uid1, *uid2;
@@ -401,14 +420,7 @@ pkg_conflicts_check_all_paths(struct pkg_jobs *j, const char *path,
 			 * Collision found, change the key following the
 			 * Cuckoo principle
 			 */
-			struct sipkey nk;
-
-			pkg_debug(2, "found a collision on path %s between %s and %s, key: %lu",
-				path, uid1, uid2, (unsigned long)k->k[0]);
-
-			nk = *k;
-			nk.k[0] ++;
-			return (pkg_conflicts_check_all_paths(j, path, it, &nk));
+			return (pkg_conflicts_handle_collision(j, path, it, k, uid1, uid2));
 		}
 
 		/* Look up the universe vecs for both items */
@@ -416,14 +428,7 @@ pkg_conflicts_check_all_paths(struct pkg_jobs *j, const char *path,
 		universe_itemv_t *uv2 = pkg_jobs_universe_find(j->universe, uid2);
 		if (uv1 == NULL || uv2 == NULL ||
 		    !pkg_conflicts_register_chain(j, uv1, uv2, path)) {
-			struct sipkey nk;
-
-			pkg_debug(2, "found a collision on path %s between %s and %s, key: %lu",
-				path, uid1, uid2, (unsigned long)k->k[0]);
-
-			nk = *k;
-			nk.k[0] ++;
-			return (pkg_conflicts_check_all_paths(j, path, it, &nk));
+			return (pkg_conflicts_handle_collision(j, path, it, k, uid1, uid2));
 		}
 
 		return (cit->item);
