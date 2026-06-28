@@ -156,43 +156,32 @@ pkg_deps_parse_formula(const char *in)
 				p ++;
 				break;
 			default:
-				if (p - c == 2) {
-					if (memcmp(c, ">=", 2) == 0) {
-						cur_op = VERSION_GE;
-					}
-					else if (memcmp(c, "<=", 2) == 0) {
-						cur_op = VERSION_LE;
-					}
-					else if (memcmp(c, "!=", 2) == 0) {
-						cur_op = VERSION_NOT;
-					}
-					else if (memcmp(c, "==", 2) == 0) {
-						cur_op = VERSION_EQ;
-					}
-					else {
-						state = st_error;
-					}
+				static const struct {
+				const char *op;
+				int len;
+				enum pkg_dep_version_op val;
+			} oplist[] = {
+				{">=", 2, VERSION_GE},
+				{"<=", 2, VERSION_LE},
+				{"!=", 2, VERSION_NOT},
+				{"==", 2, VERSION_EQ},
+				{">", 1, VERSION_GT},
+				{"<", 1, VERSION_LT},
+				{"!", 1, VERSION_NOT},
+				{"=", 1, VERSION_EQ},
+			};
+			int olen = p - c;
+			bool found = false;
+			for (size_t oi = 0; oi < NELEM(oplist); oi++) {
+				if (olen == oplist[oi].len &&
+				    memcmp(c, oplist[oi].op, olen) == 0) {
+					cur_op = oplist[oi].val;
+					found = true;
+					break;
 				}
-				else if (p - c == 1) {
-					if (*c == '>') {
-						cur_op = VERSION_GT;
-					}
-					else if (*c == '<') {
-						cur_op = VERSION_LT;
-					}
-					else if (*c == '!') {
-						cur_op = VERSION_NOT;
-					}
-					else if (*c == '=') {
-						cur_op = VERSION_EQ;
-					}
-					else {
-						state = st_error;
-					}
-				}
-				else {
-					state = st_error;
-				}
+			}
+			if (!found)
+				state = st_error;
 
 				if (state != st_error) {
 					state = st_skip_spaces;
@@ -560,34 +549,27 @@ pkg_deps_string_toop(const char *in)
 	if (in != NULL) {
 		len = strlen(in);
 
-		if (len == 2) {
-			if (memcmp(in, ">=", 2) == 0) {
-				ret = VERSION_GE;
-			}
-			else if (memcmp(in, "<=", 2) == 0) {
-				ret = VERSION_LE;
-			}
-			else if (memcmp(in, "!=", 2) == 0) {
-				ret = VERSION_NOT;
-			}
-			else if (memcmp(in, "==", 2) == 0) {
-				ret = VERSION_EQ;
-			}
+		static const struct {
+		const char *op;
+		int len;
+		enum pkg_dep_version_op val;
+	} oplist[] = {
+		{">=", 2, VERSION_GE},
+		{"<=", 2, VERSION_LE},
+		{"!=", 2, VERSION_NOT},
+		{"==", 2, VERSION_EQ},
+		{">", 1, VERSION_GT},
+		{"<", 1, VERSION_LT},
+		{"!", 1, VERSION_NOT},
+		{"=", 1, VERSION_EQ},
+	};
+	for (size_t oi = 0; oi < NELEM(oplist); oi++) {
+		if (len == oplist[oi].len &&
+		    memcmp(in, oplist[oi].op, len) == 0) {
+			ret = oplist[oi].val;
+			break;
 		}
-		else if (len == 1) {
-			if (*in == '>') {
-				ret = VERSION_GT;
-			}
-			else if (*in == '<') {
-				ret = VERSION_LT;
-			}
-			else if (*in == '!') {
-				ret = VERSION_NOT;
-			}
-			else if (*in == '=') {
-				ret = VERSION_EQ;
-			}
-		}
+	}
 	}
 
 	return (ret);
