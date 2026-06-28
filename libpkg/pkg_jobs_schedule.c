@@ -42,20 +42,15 @@ extern struct pkg_ctx ctx;
 static const char *
 pkg_jobs_schedule_job_type_string(struct pkg_solved *job)
 {
-	switch (job->type) {
-	case PKG_SOLVED_INSTALL:
-		return "install";
-	case PKG_SOLVED_DELETE:
-		return "delete";
-	case PKG_SOLVED_UPGRADE:
-		return "upgrade";
-	case PKG_SOLVED_UPGRADE_INSTALL:
-		return "split upgrade install";
-	case PKG_SOLVED_UPGRADE_REMOVE:
-		return "split upgrade delete";
-	default:
-		assert(false);
-	}
+	static const char *names[] = {
+		[PKG_SOLVED_INSTALL]         = "install",
+		[PKG_SOLVED_DELETE]          = "delete",
+		[PKG_SOLVED_UPGRADE]         = "upgrade",
+		[PKG_SOLVED_UPGRADE_INSTALL] = "split upgrade install",
+		[PKG_SOLVED_UPGRADE_REMOVE]  = "split upgrade delete",
+	};
+	assert((size_t)job->type < sizeof(names)/sizeof(names[0]));
+	return (names[job->type]);
 }
 
 /*
