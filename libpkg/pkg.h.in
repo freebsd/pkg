@@ -1308,6 +1308,7 @@ typedef enum {
 	PKG_EVENT_FETCHING,
 	PKG_EVENT_FETCH_BEGIN,
 	PKG_EVENT_FETCH_FINISHED,
+	PKG_EVENT_PKG_FETCH_BEGIN,
 	PKG_EVENT_UPDATE_ADD,
 	PKG_EVENT_UPDATE_REMOVE,
 	PKG_EVENT_INTEGRITYCHECK_BEGIN,
@@ -1397,6 +1398,9 @@ struct pkg_event {
 		struct {
 			const char *url;
 		} e_fetching;
+		struct {
+			struct pkg *pkg;
+		} e_pkg_fetching;
 		struct {
 			struct pkg *pkg;
 		} e_already_installed;

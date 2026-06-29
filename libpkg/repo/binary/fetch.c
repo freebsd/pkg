@@ -221,6 +221,7 @@ pkg_repo_binary_try_fetch(struct pkg_repo *repo, struct pkg *pkg,
 		return EPKG_FATAL;
 	}
 
+	pkg_emit_pkg_fetch_begin(pkg);
 	retcode = pkg_fetch_file(repo, pkg->repopath, dest, 0, offset, pkg->pkgsize);
 
 	if (offset == -1)
