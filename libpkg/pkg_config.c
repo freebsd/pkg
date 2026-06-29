@@ -106,6 +106,11 @@ static size_t repos_iter = 0;
 ucl_object_t *config = NULL;
 
 static struct config_entry c[] = {
+	{			/* Keep this first! */
+		PKG_STRING,
+		"PKG_CONFIG_FILE",
+		PREFIX"/etc/pkg.conf",
+	},
 	{
 		PKG_STRING,
 		"PKG_DBDIR",
@@ -596,7 +601,8 @@ pkg_initialized(void)
 }
 
 const pkg_object *
-pkg_config_get(const char *key) {
+pkg_config_get(const char *key)
+{
 	return (ucl_object_find_key(config, key));
 }
 
@@ -1245,15 +1251,32 @@ pkg_ini(const char *path, const char *reposdir, pkg_init_flags flags)
 		return (EPKG_FATAL);
 	}
 
+	config = ucl_object_typed_new(UCL_OBJECT);
+
+	/*
+	 * Get default configuration file path if none provided, then
+	 * store in config.  The path is assumed to be absolute if passed
+	 * by the caller or obtained from the environment, and relative to
+	 * the root directory otherwise.  Always config entry 0.
+	 */
+	tmp = NULL;
 	if (path == NULL)
-		conffd = openat(ctx.rootfd, &PREFIX"/etc/pkg.conf"[1], 0);
-	else
-		conffd = open(path, O_RDONLY);
-	if (conffd == -1 && errno != ENOENT) {
-		pkg_errno("Cannot open %s/%s",
-		    ctx.pkg_rootdir != NULL ? ctx.pkg_rootdir : "",
-		    path);
+		path = getenv(c[0].key);
+	if (path == NULL) {
+		path = c[0].def;
+		if (ctx.pkg_rootdir) {
+			xasprintf(&tmp, "%s%s", ctx.pkg_rootdir, path);
+			path = tmp;
+		}
 	}
+	obj = ucl_object_fromstring_common(path, 0, UCL_STRING_TRIM);
+	ucl_object_insert_key(config, obj, c[0].key, 0, false);
+	conffd = open(path, O_RDONLY);
+	if (conffd == -1 && errno != ENOENT)
+		pkg_errno("Cannot open %s", path);
+	path = NULL;
+	if (tmp != NULL)
+		free(tmp);
 
 	config_parse_abi_options(conffd);
 	if (!config_init_abi(&ctx.abi)) {
@@ -1270,9 +1293,12 @@ pkg_ini(const char *path, const char *reposdir, pkg_init_flags flags)
 	if ((flags & PKG_INIT_FLAG_USE_IPV4) == PKG_INIT_FLAG_USE_IPV4)
 		ctx.ip = IPV6;
 
-	config = ucl_object_typed_new(UCL_OBJECT);
-
-	for (i = 0; i < c_size; i++) {
+	/*
+	 * Loop over configuration variables and store their default
+	 * values in the config.  Index 0 is the configuration file path
+	 * we special-cased earlier, so we start at index 1.
+	 */
+	for (i = 1; i < c_size; i++) {
 		switch (c[i].type) {
 		case PKG_STRING:
 			tmp = NULL;
@@ -1372,6 +1398,10 @@ pkg_ini(const char *path, const char *reposdir, pkg_init_flags flags)
 
 		object = ucl_object_find_keyl(config, sb_str(&ukey), ukey.len);
 
+		/* The configuration file path cannot be changed */
+		if (STREQ(sb_str(&ukey), c[0].key))
+			continue;
+
 		if (STREQ(sb_str(&ukey), "PACKAGESITE") ||
 		    STREQ(sb_str(&ukey), "PUBKEY") ||
 		    STREQ(sb_str(&ukey), "MIRROR_TYPE")) {
@@ -1428,6 +1458,9 @@ pkg_ini(const char *path, const char *reposdir, pkg_init_flags flags)
 	while ((cur = ucl_iterate_object(config, &it, true))) {
 		o = NULL;
 		key = ucl_object_key(cur);
+		/* Skip configuration file path */
+		if (strcmp(key, c[0].key) == 0)
+			continue;
 		val = getenv(key);
 		if (val == NULL)
 			continue;

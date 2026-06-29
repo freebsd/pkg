@@ -27,7 +27,7 @@
 .\"
 .\"     @(#)pkg.1
 .\"
-.Dd May 28, 2026
+.Dd September 12, 2026
 .Dt PKG.CONF 5
 .Os
 .Sh NAME
@@ -309,6 +309,12 @@ value, make
 use verbose mode as standard.
 Default:
 .Sy NO .
+.It Cm PKG_CONFIG_FILE: string
+Specifies the location of the configuration file.
+Setting this in the configuration file has no effect, it must be
+passed on the command line or in the environment.
+Default:
+.Pa /usr/local/etc/pkg.conf .
 .It Cm PKG_DBDIR: string
 Specifies the directory to use for storing the package
 database files.
