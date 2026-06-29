@@ -683,9 +683,6 @@ main(int argc, char **argv)
 			exit(EXIT_FAILURE);
 	}
 
-	if (conffile == NULL)
-		conffile = getenv("PKG_CONFIG_FILE");
-
 	if (pkg_ini(conffile, reposdir, init_flags) != EPKG_OK)
 		errx(EXIT_FAILURE, "Cannot parse configuration file!");
 
