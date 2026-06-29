@@ -96,6 +96,7 @@ static const struct pkg_dbg_flags debug_flags[] = {
 void pkg_emit_already_installed(struct pkg *p);
 void pkg_emit_fetch_begin(const char *url);
 void pkg_emit_fetch_finished(const char *url);
+void pkg_emit_pkg_fetch_begin(struct pkg *p);
 void pkg_emit_update_add(int total, int done);
 void pkg_emit_update_remove(int total, int done);
 void pkg_emit_install_begin(struct pkg *p);
