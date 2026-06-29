@@ -680,6 +680,17 @@ pkg_emit_fetch_finished(const char *url)
 }
 
 void
+pkg_emit_pkg_fetch_begin(struct pkg *p)
+{
+	struct pkg_event ev;
+
+	ev.type = PKG_EVENT_PKG_FETCH_BEGIN;
+	ev.e_pkg_fetching.pkg = p;
+
+	pkg_emit_event(&ev);
+}
+
+void
 pkg_emit_update_remove(int total, int done)
 {
 	struct pkg_event ev;
