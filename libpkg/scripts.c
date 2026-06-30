@@ -204,7 +204,7 @@ pkg_script_run(struct pkg * const pkg, pkg_script type, bool upgrade, bool noexe
 			    NULL, __DECONST(char **, argv),
 			    environ)) != 0) {
 				errno = error;
-				pkg_errno("Cannot runscript %s", map[i].arg);
+				pkg_errno("Cannot run script %s", map[i].arg);
 				posix_spawn_file_actions_destroy(&action);
 				goto cleanup;
 			}
