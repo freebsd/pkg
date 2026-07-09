@@ -13,7 +13,7 @@
 
 #include <errno.h>
 #include <poll.h>
-#include <xstring.h>
+#include <pkg/sb.h>
 #include <err.h>
 #include <stdio.h>
 

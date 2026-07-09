@@ -894,8 +894,8 @@ pkg_repo_binary_file_which_parse(FILE *fp, struct pkg_repo *repo,
 	}
 
 	/* Build SQL to fetch package details for matching IDs */
-	xstring *sqlstr = xstring_new();
-	xstring_printf(sqlstr,
+	sb_t sqlstr = sb_init();
+	sb_printf(&sqlstr,
 	    "SELECT p.id, p.origin, p.name, p.version, p.comment, "
 	    "p.name as uniqueid, "
 	    "p.prefix, p.desc, p.arch, p.maintainer, p.www, "
@@ -905,12 +905,12 @@ pkg_repo_binary_file_which_parse(FILE *fp, struct pkg_repo *repo,
 
 	for (size_t i = 0; i < matching_ids->len; i++) {
 		if (i > 0)
-			xstring_printf(sqlstr, ",");
-		xstring_printf(sqlstr, "%" PRId64, matching_ids->d[i]);
+			sb_cat_c(&sqlstr, ',');
+		sb_printf(&sqlstr, "%" PRId64, matching_ids->d[i]);
 	}
-	xstring_printf(sqlstr, ") ORDER BY p.name;");
+	sb_cat(&sqlstr, ") ORDER BY p.name;");
 
-	char *sqlcmd = xstring_get(sqlstr);
+	char *sqlcmd = sb_get(&sqlstr);
 	*out_stmt = prepare_sql(sqlite, sqlcmd);
 	free(sqlcmd);
 
@@ -1257,7 +1257,7 @@ pkg_repo_binary_search_how(match_t match)
 }
 
 static int
-pkg_repo_binary_build_search_query(xstring *sql, match_t match,
+pkg_repo_binary_build_search_query(sb_t *sql, match_t match,
     pkgdb_field field, pkgdb_field sort)
 {
 	const char	*how;
@@ -1293,13 +1293,13 @@ pkg_repo_binary_build_search_query(xstring *sql, match_t match,
 	}
 
 	if (field == FIELD_COMMENT_DESC && how != NULL) {
-		xstring_printf(sql, "(");
-		xstring_printf(sql, how, "comment");
-		xstring_printf(sql, " OR ");
-		xstring_printf(sql, how, "desc");
-		xstring_printf(sql, ")");
+		sb_printf(sql, "(");
+		sb_printf(sql, how, "comment");
+		sb_printf(sql, " OR ");
+		sb_printf(sql, how, "desc");
+		sb_printf(sql, ")");
 	} else if (what != NULL && how != NULL)
-		xstring_printf(sql, how, what);
+		sb_printf(sql, how, what);
 
 	switch (sort) {
 	case FIELD_NONE:
@@ -1328,7 +1328,7 @@ pkg_repo_binary_build_search_query(xstring *sql, match_t match,
 	}
 
 	if (orderby != NULL)
-		xstring_printf(sql, "%s", orderby);
+		sb_printf(sql, "%s", orderby);
 
 	return (EPKG_OK);
 }
@@ -1339,7 +1339,7 @@ pkg_repo_binary_search(struct pkg_repo *repo, const char *pattern, match_t match
 {
 	sqlite3 *sqlite = PRIV_GET(repo);
 	sqlite3_stmt	*stmt = NULL;
-	xstring	*sql = NULL;
+	sb_t sql = sb_init();
 	char *sqlcmd = NULL;
 	const char	*multireposql = ""
 		"SELECT DISTINCT p.id, origin, p.name, version, comment, "
@@ -1354,15 +1354,14 @@ pkg_repo_binary_search(struct pkg_repo *repo, const char *pattern, match_t match
 	if (match != MATCH_ALL && (pattern == NULL || pattern[0] == '\0'))
 		return (NULL);
 
-	sql = xstring_new();
-	xstring_printf(sql, multireposql, repo->name, repo->url);
+	sb_printf(&sql, multireposql, repo->name, repo->url);
 
 	/* close the UNIONs and build the search query */
-	xstring_printf(sql, "%s", "WHERE ");
+	sb_cat(&sql, "WHERE ");
 
-	pkg_repo_binary_build_search_query(sql, match, field, sort);
-	xstring_printf(sql, "%s", ";");
-	sqlcmd = xstring_get(sql);
+	pkg_repo_binary_build_search_query(&sql, match, field, sort);
+	sb_cat_c(&sql, ';');
+	sqlcmd = sb_get(&sql);
 
 	stmt = prepare_sql(sqlite, sqlcmd);
 	free(sqlcmd);

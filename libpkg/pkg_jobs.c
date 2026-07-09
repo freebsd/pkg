@@ -57,7 +57,7 @@
 #include <ctype.h>
 
 #include "pkg.h"
-#include <xstring.h>
+#include "pkg/sb.h"
 #include "private/event.h"
 #include "private/pkg.h"
 #include "private/pkgdb.h"
@@ -1028,7 +1028,7 @@ static bool
 charv_diff(const charv_t *local, const charv_t *remote,
     const char *label, char **reason)
 {
-	xstring *diff = NULL;
+	sb_t diff = sb_init();
 	int nd = 0;
 	size_t li = 0, ri = 0;
 	size_t ll = vec_len(local);
@@ -1040,13 +1040,11 @@ charv_diff(const charv_t *local, const charv_t *remote,
 		else if (ri >= rl) cmp = -1;
 		else cmp = strcmp(local->d[li], remote->d[ri]);
 		if (cmp < 0) {
-			if (diff == NULL) diff = xstring_new();
-			xstring_printf(diff, "%s%s (removed)",
+			sb_printf(&diff, "%s%s (removed)",
 			    nd ? ", " : "", local->d[li]);
 			nd++; li++;
 		} else if (cmp > 0) {
-			if (diff == NULL) diff = xstring_new();
-			xstring_printf(diff, "%s%s (added)",
+			sb_printf(&diff, "%s%s (added)",
 			    nd ? ", " : "", remote->d[ri]);
 			nd++; ri++;
 		} else {
@@ -1054,10 +1052,10 @@ charv_diff(const charv_t *local, const charv_t *remote,
 		}
 	}
 	if (nd > 0) {
-		xstring_flush(diff);
+
 		free(*reason);
-		xasprintf(reason, "%s: %s", label, diff->buf);
-		xstring_free(diff);
+		xasprintf(reason, "%s: %s", label, sb_str(&diff));
+		sb_fini(&diff);
 		return (true);
 	}
 	return (false);
@@ -1067,6 +1065,8 @@ bool
 pkg_jobs_need_upgrade(charv_t *system_shlibs, struct pkg *rp, struct pkg *lp)
 {
 	int ret, ret1, ret2;
+	struct pkg_kv *lo = NULL, *ro = NULL;
+	struct pkg_dep *ld = NULL, *rd = NULL;
 	struct pkg_conflict *lc = NULL, *rc = NULL;
 
 	/* If no local package, then rp is obviously need to be added */
@@ -1111,102 +1111,82 @@ pkg_jobs_need_upgrade(charv_t *system_shlibs, struct pkg *rp, struct pkg *lp)
 
 	/* compare options */
 	if (pkg_object_bool(pkg_config_get("PKG_REINSTALL_ON_OPTIONS_CHANGE"))) {
-		xstring *optdiff = NULL;
+		sb_t optdiff = sb_init();
 		int ndiffs = 0;
-		size_t i = 0, j = 0;
-		size_t cntl = vec_len(&lp->options);
-		size_t cntr = vec_len(&rp->options);
-		while (i < cntl || j < cntr) {
-			int cmp;
-			if (i >= cntl) cmp = 1;
-			else if (j >= cntr) cmp = -1;
-			else cmp = strcmp(lp->options.d[i]->key,
-			    rp->options.d[j]->key);
-			if (cmp < 0) {
-				/* only in local: option removed */
-				if (optdiff == NULL)
-					optdiff = xstring_new();
-				xstring_printf(optdiff, "%s%s (removed)",
-				    ndiffs ? ", " : "", lp->options.d[i]->key);
-				ndiffs++; i++;
-			} else if (cmp > 0) {
-				/* only in remote: option added */
-				if (optdiff == NULL)
-					optdiff = xstring_new();
-				xstring_printf(optdiff, "%s%s (added)",
-				    ndiffs ? ", " : "", rp->options.d[j]->key);
-				ndiffs++; j++;
-			} else {
-				/* same option: compare values */
-				if (!STREQ(lp->options.d[i]->value,
-				    rp->options.d[j]->value)) {
-					if (optdiff == NULL)
-						optdiff = xstring_new();
-					xstring_printf(optdiff, "%s%s (%s -> %s)",
-					    ndiffs ? ", " : "", lp->options.d[i]->key,
-					    lp->options.d[i]->value,
-					    rp->options.d[j]->value);
-					ndiffs++;
+		for (;;) {
+			ret1 = pkg_options(rp, &ro);
+			ret2 = pkg_options(lp, &lo);
+			if (ret1 != ret2) {
+				if (ro == NULL) {
+					sb_printf(&optdiff, "%s%s (removed)",
+					    ndiffs ? ", " : "", lo->key);
+				} else if (lo == NULL) {
+					sb_printf(&optdiff, "%s%s (added)",
+					    ndiffs ? ", " : "", ro->key);
 				}
-				i++; j++;
+				ndiffs++;
+				/* lists have different lengths, done */
+				break;
+			}
+			if (ret1 != EPKG_OK)
+				break;
+			if (!STREQ(lo->key, ro->key)) {
+				sb_printf(&optdiff, "%s%s (removed), %s (added)",
+				    ndiffs ? ", " : "", lo->key, ro->key);
+				ndiffs++;
+			} else if (!STREQ(lo->value, ro->value)) {
+				sb_printf(&optdiff, "%s%s (%s -> %s)",
+				    ndiffs ? ", " : "", lo->key,
+				    lo->value, ro->value);
+				ndiffs++;
 			}
 		}
 		if (ndiffs > 0) {
-			xstring_flush(optdiff);
+
 			free(rp->reason);
 			xasprintf(&rp->reason, "option changed: %s",
-			    optdiff->buf);
-			xstring_free(optdiff);
+			    sb_str(&optdiff));
+			sb_fini(&optdiff);
 			return (true);
 		}
 	}
 
 	/* What about the direct deps */
 
-	xstring *diff = NULL;
+	sb_t diff = sb_init();
 	int nd = 0;
-	size_t li = 0, ri = 0;
-	size_t ll = vec_len(&lp->depends);
-	size_t rl = vec_len(&rp->depends);
-	while (li < ll || ri < rl) {
-		int cmp;
-		if (li >= ll) cmp = 1;
-		else if (ri >= rl) cmp = -1;
-		else cmp = strcmp(lp->depends.d[li].name,
-		    rp->depends.d[ri].name);
-		if (cmp < 0) {
-			/* only in local: dependency removed */
-			if (diff == NULL) diff = xstring_new();
-			xstring_printf(diff, "%s%s (removed)",
-			    nd ? ", " : "", lp->depends.d[li].name);
-			nd++; li++;
-		} else if (cmp > 0) {
-			/* only in remote: dependency added */
-			if (diff == NULL) diff = xstring_new();
-			xstring_printf(diff, "%s%s (added)",
-			    nd ? ", " : "", rp->depends.d[ri].name);
-			nd++; ri++;
-		} else {
-			/* same dependency: compare origins (may be NULL) */
-			const char *lorig = lp->depends.d[li].origin;
-			const char *rorig = rp->depends.d[ri].origin;
-			if (lorig != rorig &&
-			    (lorig == NULL || rorig == NULL ||
-			     strcmp(lorig, rorig) != 0)) {
-				if (diff == NULL) diff = xstring_new();
-				xstring_printf(diff, "%s%s (origin changed)",
-				    nd ? ", " : "", rp->depends.d[ri].name);
-				nd++;
+	for (;;) {
+		ret1 = pkg_deps(rp, &rd);
+		ret2 = pkg_deps(lp, &ld);
+		if (ret1 != ret2) {
+			if (rd == NULL) {
+				sb_printf(&diff, "%s%s (removed)",
+				    nd ? ", " : "", ld->name);
+			} else if (ld == NULL) {
+				sb_printf(&diff, "%s%s (added)",
+				    nd ? ", " : "", rd->name);
 			}
-			li++; ri++;
+			nd++;
+			break;
+		}
+		if (ret1 != EPKG_OK)
+			break;
+		if (!STREQ(rd->name, ld->name)) {
+			sb_printf(&diff, "%s%s (removed), %s (added)",
+			    nd ? ", " : "", ld->name, rd->name);
+			nd++;
+		} else if (!STREQ(rd->origin, ld->origin)) {
+			sb_printf(&diff, "%s%s (origin changed)",
+			    nd ? ", " : "", rd->name);
+			nd++;
 		}
 	}
 	if (nd > 0) {
-		xstring_flush(diff);
+
 		free(rp->reason);
 		xasprintf(&rp->reason, "direct dependency changed: %s",
-		    diff->buf);
-		xstring_free(diff);
+		    sb_str(&diff));
+		sb_fini(&diff);
 		return (true);
 	}
 
@@ -1243,56 +1223,51 @@ pkg_jobs_need_upgrade(charv_t *system_shlibs, struct pkg *rp, struct pkg *lp)
 		return (true);
 
 	/* shlibs_required needs special handling for system shlibs */
-	{
-		xstring *diff = NULL;
-		int nd = 0;
-		size_t cntl = vec_len(&lp->shlibs_required);
-		size_t cntr = vec_len(&rp->shlibs_required);
-		bool has_system_shlibs = vec_len(system_shlibs) > 0;
-		size_t i = 0, j = 0;
-		while (i < cntl || j < cntr) {
-			if (has_system_shlibs) {
-				while (i < cntl &&
-				    charv_search(system_shlibs,
-				    lp->shlibs_required.d[i]) != NULL)
-					i++;
-				while (j < cntr &&
-				    charv_search(system_shlibs,
-				    rp->shlibs_required.d[j]) != NULL)
-					j++;
-			}
-			if (i >= cntl && j >= cntr)
-				break;
-			int cmp;
-			if (i >= cntl) cmp = 1;
-			else if (j >= cntr) cmp = -1;
-			else cmp = strcmp(lp->shlibs_required.d[i],
+	sb_reset(&diff);
+	nd = 0;
+	size_t cntl = vec_len(&lp->shlibs_required);
+	size_t cntr = vec_len(&rp->shlibs_required);
+	bool has_system_shlibs = vec_len(system_shlibs) > 0;
+	size_t i = 0, j = 0;
+	while (i < cntl || j < cntr) {
+		if (has_system_shlibs) {
+			while (i < cntl &&
+			    charv_search(system_shlibs,
+			    lp->shlibs_required.d[i]) != NULL)
+				i++;
+			while (j < cntr &&
+			    charv_search(system_shlibs,
+			    rp->shlibs_required.d[j]) != NULL)
+				j++;
+		}
+		if (i >= cntl && j >= cntr)
+			break;
+		int cmp;
+		if (i >= cntl) cmp = 1;
+		else if (j >= cntr) cmp = -1;
+		else cmp = strcmp(lp->shlibs_required.d[i],
+		    rp->shlibs_required.d[j]);
+		if (cmp < 0) {
+			sb_printf(&diff, "%s%s (removed)",
+			    nd ? ", " : "",
+			    lp->shlibs_required.d[i]);
+			nd++; i++;
+		} else if (cmp > 0) {
+			sb_printf(&diff, "%s%s (added)",
+			    nd ? ", " : "",
 			    rp->shlibs_required.d[j]);
-			if (cmp < 0) {
-				if (diff == NULL) diff = xstring_new();
-				xstring_printf(diff, "%s%s (removed)",
-				    nd ? ", " : "",
-				    lp->shlibs_required.d[i]);
-				nd++; i++;
-			} else if (cmp > 0) {
-				if (diff == NULL) diff = xstring_new();
-				xstring_printf(diff, "%s%s (added)",
-				    nd ? ", " : "",
-				    rp->shlibs_required.d[j]);
-				nd++; j++;
-			} else {
-				i++; j++;
-			}
+			nd++; j++;
+		} else {
+			i++; j++;
 		}
-		if (nd > 0) {
-			xstring_flush(diff);
-			free(rp->reason);
-			xasprintf(&rp->reason,
-			    "required shared library changed: %s",
-			    diff->buf);
-			xstring_free(diff);
-			return (true);
-		}
+	}
+	if (nd > 0) {
+		free(rp->reason);
+		xasprintf(&rp->reason,
+		    "required shared library changed: %s",
+		    sb_str(&diff));
+		sb_fini(&diff);
+		return (true);
 	}
 
 	return (false);

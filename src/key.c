@@ -96,7 +96,7 @@ static int
 key_sign_data(struct pkg_key *key, const char *name)
 {
 	char buf[BUFSIZ];
-	xstring *datastr;
+	sb_t datastr = sb_init();
 	char *data;
 	unsigned char *sig;
 	size_t datasz, readsz, siglen;
@@ -104,7 +104,6 @@ key_sign_data(struct pkg_key *key, const char *name)
 	int rc;
 
 	datafile = NULL;
-	datastr = NULL;
 	rc = EPKG_FATAL;
 	if (STREQ(name, "-")) {
 		datafile = stdin;	/* XXX Make it configurable? */
@@ -115,7 +114,6 @@ key_sign_data(struct pkg_key *key, const char *name)
 			err(EXIT_FAILURE, "fopen");
 	}
 
-	datastr = xstring_new();
 	while (!feof(datafile)) {
 		readsz = fread(&buf[0], 1, sizeof(buf), datafile);
 		if (readsz == 0 && ferror(datafile)) {
@@ -123,11 +121,11 @@ key_sign_data(struct pkg_key *key, const char *name)
 			goto out;
 		}
 
-		xstring_write(datastr, buf, readsz, 1);
+		sb_cat_n(&datastr, buf, readsz);
 	}
 
-	data = xstring_get_binary(datastr, &datasz);
-	datastr = NULL;
+	datasz = datastr.len;
+	data = sb_get(&datastr);
 
 	sig = NULL;
 	rc = pkg_key_sign_data(key, (unsigned char *)data, datasz, &sig, &siglen);
@@ -150,7 +148,7 @@ key_sign_data(struct pkg_key *key, const char *name)
 	free(sig);
 
 out:
-	xstring_free(datastr);
+	sb_fini(&datastr);
 	if (datafile != stdin)
 		fclose(datafile);
 	return rc;

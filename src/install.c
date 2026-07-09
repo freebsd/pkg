@@ -279,10 +279,8 @@ exec_install(int argc, char **argv)
 			}
 		}
 
-		if (messages != NULL && !quiet) {
-			xstring_flush(messages);
-			printf("%s", messages->buf);
-		}
+		if (messages && messages->len > 0 && !quiet)
+			printf("%s", sb_str(messages));
 		break;
 	}
 

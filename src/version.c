@@ -553,7 +553,7 @@ cleanup:
 }
 
 static int
-exec_buf(xstring *res, char **argv) {
+exec_buf(sb_t *res, char **argv) {
 	char buf[BUFSIZ];
 	int spawn_err;
 	pid_t pid;
@@ -587,9 +587,9 @@ exec_buf(xstring *res, char **argv) {
 
 	close(pfd[1]);
 
-	xstring_reset(res);
+	sb_reset(res);
 	while ((r = read(pfd[0], buf, BUFSIZ)) > 0)
-		xstring_write(res, buf, sizeof(char), r);
+		sb_cat_n(res, buf, sizeof(char) * r);
 
 	close(pfd[0]);
 	while (waitpid(pid, &pstat, 0) == -1) {
@@ -599,19 +599,18 @@ exec_buf(xstring *res, char **argv) {
 	if (WEXITSTATUS(pstat) != 0)
 		return (-1);
 
-	xstring_flush(res);
-	return (strlen(res->buf));
+
+	return (strlen(res->d));
 }
 
 static struct category *
 category_new(int portsfd, const char *category)
 {
 	struct category	*cat = NULL;
-	xstring		*makecmd;
+	sb_t makecmd = sb_init();
 	char		*results, *d;
 	char		*argv[5];
 
-	makecmd = xstring_new();
 	fchdir(portsfd);
 
 	argv[0] = "make";
@@ -620,11 +619,10 @@ category_new(int portsfd, const char *category)
 	argv[3] = "-VSUBDIR";
 	argv[4] = NULL;
 
-	if (exec_buf(makecmd, argv) <= 0)
+	if (exec_buf(&makecmd, argv) <= 0)
 		goto cleanup;
 
-	xstring_flush(makecmd);
-	results = makecmd->buf;
+	results = sb_str(&makecmd);
 
 	if (categories == NULL)
 		categories = pkghash_new();
@@ -637,7 +635,7 @@ category_new(int portsfd, const char *category)
 		pkghash_safe_add(cat->ports, d, NULL, NULL);
 
 cleanup:
-	xstring_free(makecmd);
+	sb_fini(&makecmd);
 
 	return (cat);
 }
@@ -674,7 +672,7 @@ validate_origin(int portsfd, const char *origin)
 }
 
 static const char *
-port_version(xstring *cmd, int portsfd, const char *origin, const char *pkgname)
+port_version(sb_t *cmd, int portsfd, const char *origin, const char *pkgname)
 {
 	char	*output, *walk, *name;
 	char	*version = NULL;
@@ -692,8 +690,8 @@ port_version(xstring *cmd, int portsfd, const char *origin, const char *pkgname)
 		argv[4] = NULL;
 
 		if (exec_buf(cmd, argv) > 0) {
-			xstring_flush(cmd);
-			output = cmd->buf;
+
+			output = cmd->d;
 			while ((walk = strsep(&output, "\n")) != NULL) {
 				name = walk;
 				walk = strrchr(walk, '-');
@@ -719,7 +717,7 @@ do_source_ports(unsigned int opt, char limchar, char *pattern, match_t match,
 	struct pkgdb	*db = NULL;
 	struct pkgdb_it	*it = NULL;
 	struct pkg	*pkg = NULL;
-	xstring		*cmd;
+	sb_t cmd = sb_init();
 	const char	*name = NULL;
 	const char	*origin = NULL;
 	const char	*version = NULL;
@@ -744,8 +742,6 @@ do_source_ports(unsigned int opt, char limchar, char *pattern, match_t match,
 	if ((it = pkgdb_query(db, pattern, match)) == NULL)
 		goto cleanup;
 
-	cmd = xstring_new();
-
 	while (pkgdb_it_next(it, &pkg, PKG_LOAD_BASIC) == EPKG_OK) {
 		pkg_get(pkg, PKG_ATTR_NAME, &name);
 		pkg_get(pkg, PKG_ATTR_ORIGIN, &origin);
@@ -760,16 +756,16 @@ do_source_ports(unsigned int opt, char limchar, char *pattern, match_t match,
 		    !STREQ(name, matchname))
 			continue;
 
-		version = port_version(cmd, portsfd, origin, name);
+		version = port_version(&cmd, portsfd, origin, name);
 		print_version(pkg, "port", version, limchar, opt);
-		xstring_reset(cmd);
+		sb_reset(&cmd);
 
 		/* If we reach here, it means at least one package
 		   has matched with our query. */
 		gotnone = false;
 	}
 
-	xstring_free(cmd);
+	sb_fini(&cmd);
 
 cleanup:
 	pkgdb_release_lock(db, PKGDB_LOCK_READONLY);

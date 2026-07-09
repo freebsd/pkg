@@ -79,7 +79,7 @@ pkg_free(struct pkg *pkg)
 	free(pkg->rwhich_path);
 
 	for (int i = 0; i < PKG_NUM_SCRIPTS; i++)
-		xstring_free(pkg->scripts[i]);
+		sb_fini(&pkg->scripts[i]);
 	for (int i = 0; i < PKG_NUM_LUA_SCRIPTS; i++)
 		vec_autofree(&pkg->lua_scripts[i]);
 
@@ -788,8 +788,8 @@ pkg_addscript(struct pkg *pkg, const char *data, pkg_script type)
 {
 
 	assert(pkg != NULL);
-	xstring_renew(pkg->scripts[type]);
-	xstring_printf(pkg->scripts[type], "%s", data);
+	sb_reset(&pkg->scripts[type]);
+	sb_printf(&pkg->scripts[type], "%s", data);
 
 	return (EPKG_OK);
 }
@@ -896,10 +896,7 @@ pkg_appendscript(struct pkg *pkg, const char *cmd, pkg_script type)
 	assert(pkg != NULL);
 	assert(cmd != NULL && cmd[0] != '\0');
 
-	if (pkg->scripts[type] == NULL)
-		pkg->scripts[type] = xstring_new();
-
-	xstring_printf(pkg->scripts[type], "%s", cmd);
+	sb_printf(&pkg->scripts[type], "%s", cmd);
 
 	return (EPKG_OK);
 }

@@ -261,9 +261,8 @@ pkg_checksum_generate(struct pkg *pkg, char *dest, size_t destlen,
 
 	if (inc_scripts) {
 		for (int i = 0; i < PKG_NUM_SCRIPTS; i++) {
-			if (pkg->scripts[i] != NULL) {
-				xstring_flush(pkg->scripts[i]);
-				vec_push(&entries, ((struct kv){ "script", pkg->scripts[i]->buf }));
+			if (pkg->scripts[i].len != 0) {
+				vec_push(&entries, ((struct kv){ "script", sb_str(&pkg->scripts[i]) }));
 			}
 		}
 		for (int i = 0; i < PKG_NUM_LUA_SCRIPTS; i++) {

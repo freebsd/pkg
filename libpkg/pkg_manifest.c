@@ -201,22 +201,21 @@ static const struct pkg_manifest_key {
 };
 
 static int
-urlencode(const char *src, xstring **dest)
+urlencode(const char *src, sb_t *dest)
 {
 	size_t len;
 	size_t i;
 
-	xstring_renew(*dest);
+	sb_reset(dest);
 
 	len = strlen(src);
 	for (i = 0; i < len; i++) {
 		if (!isascii(src[i]) || src[i] == '%')
-			xstring_printf((*dest), "%%%.2x", (unsigned char)src[i]);
+			sb_printf(dest, "%%%.2x", (unsigned char)src[i]);
 		else
-			xstring_putc((*dest), src[i]);
+			sb_cat_c(dest, src[i]);
 	}
 
-	xstring_flush((*dest));
 	return (EPKG_OK);
 }
 
@@ -1002,7 +1001,7 @@ pkg_emit_object(struct pkg *pkg, short flags)
 	struct pkg_dir		*dir      = NULL;
 	struct pkg_conflict	*conflict = NULL;
 	struct pkg_config_file	*cf       = NULL;
-	xstring		*tmpsbuf  = NULL;
+	sb_t tmpsbuf  = sb_init();
 	const char *script_types = NULL;
 	char legacyarch[BUFSIZ];
 	char perm_str[sizeof("00000")];
@@ -1065,7 +1064,7 @@ pkg_emit_object(struct pkg *pkg, short flags)
 	if (pkg->desc != NULL) {
 		urlencode(pkg->desc, &tmpsbuf);
 		ucl_object_insert_key(top,
-			ucl_object_fromstring_common(tmpsbuf->buf, strlen(tmpsbuf->buf), UCL_STRING_TRIM),
+			ucl_object_fromstring_common(tmpsbuf.d, tmpsbuf.len, UCL_STRING_TRIM),
 			"desc", 4, false);
 	}
 
@@ -1207,7 +1206,7 @@ pkg_emit_object(struct pkg *pkg, short flags)
 				if (map == NULL)
 					map = ucl_object_typed_new(UCL_OBJECT);
 				ucl_object_insert_key(map, file_attrs,
-						      tmpsbuf->buf, 0, true);
+						      tmpsbuf.d, tmpsbuf.len, true);
 			}
 			if (map)
 				ucl_object_insert_key(top, map, "files", 5, false);
@@ -1218,7 +1217,7 @@ pkg_emit_object(struct pkg *pkg, short flags)
 				urlencode(cf->path, &tmpsbuf);
 				if (seq == NULL)
 					seq = ucl_object_typed_new(UCL_ARRAY);
-				ucl_array_append(seq, ucl_object_fromstring(tmpsbuf->buf));
+				ucl_array_append(seq, ucl_object_fromstring(sb_str(&tmpsbuf)));
 			}
 			if (seq)
 				ucl_object_insert_key(top, seq, "config", 6, false);
@@ -1261,7 +1260,7 @@ pkg_emit_object(struct pkg *pkg, short flags)
 				if (map == NULL)
 					map = ucl_object_typed_new(UCL_OBJECT);
 				ucl_object_insert_key(map, dir_attrs,
-						      tmpsbuf->buf, strlen(tmpsbuf->buf), true);
+						      tmpsbuf.d, tmpsbuf.len, true);
 			}
 			if (map)
 				ucl_object_insert_key(top, map, "directories", 11, false);
@@ -1297,8 +1296,8 @@ pkg_emit_object(struct pkg *pkg, short flags)
 			if (map == NULL)
 				map = ucl_object_typed_new(UCL_OBJECT);
 			ucl_object_insert_key(map,
-			    ucl_object_fromstring_common(tmpsbuf->buf,
-			        strlen(tmpsbuf->buf), UCL_STRING_TRIM),
+			    ucl_object_fromstring_common(tmpsbuf.d,
+			        tmpsbuf.len, UCL_STRING_TRIM),
 			    script_types, 0, true);
 		}
 		if (map)
@@ -1340,7 +1339,7 @@ pkg_emit_object(struct pkg *pkg, short flags)
 			"messages", sizeof("messages") - 1, false);
 	}
 
-	xstring_free(tmpsbuf);
+	sb_fini(&tmpsbuf);
 
 	return (top);
 }

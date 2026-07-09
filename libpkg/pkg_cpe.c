@@ -25,8 +25,8 @@
 #include <xmalloc.h>
 #include <ctype.h>
 #include <stdlib.h>
-#include <xstring.h>
 
+#include "pkg/sb.h"
 #include "pkg.h"
 #include "pkg/audit.h"
 #include "private/pkg_cpe.h"

@@ -42,7 +42,7 @@
 #include <stdlib.h>
 #include <limits.h>
 #include <string.h>
-#include <xstring.h>
+#include <pkg/sb.h>
 
 #include "pkg.h"
 #include "private/pkg.h"
@@ -53,8 +53,8 @@ extern char **environ;
 int
 pkg_script_run(struct pkg * const pkg, pkg_script type, bool upgrade, bool noexec)
 {
-	xstring *script_cmd = NULL;
-	size_t i, j, script_len;
+	sb_t script_cmd = sb_init();
+	size_t i, j;
 	int error, pstat;
 	pid_t pid;
 	const char *script_cmd_p;
@@ -102,7 +102,7 @@ pkg_script_run(struct pkg * const pkg, pkg_script type, bool upgrade, bool noexe
 			break;
 		}
 		if (j == map[i].a || j == map[i].b) {
-			xstring_renew(script_cmd);
+			sb_reset(&script_cmd);
 			if (upgrade) {
 				setenv("PKG_UPGRADE", "true", 1);
 			}
@@ -117,15 +117,15 @@ pkg_script_run(struct pkg * const pkg, pkg_script type, bool upgrade, bool noexe
 				setenv("PKG_CHROOTED", "true", 1);
 			debug = pkg_object_bool(pkg_config_get("DEBUG_SCRIPTS"));
 			if (debug)
-				xstring_printf(script_cmd, "set -x\n");
-			pkg_fprintf(script_cmd->fp, "set -- %n-%v", pkg, pkg);
+				sb_printf(&script_cmd, "set -x\n");
+			sb_printf(&script_cmd, "set -- %s-%s", pkg->name, pkg->version);
 
 			if (j == map[i].b) {
 				/* add arg **/
-				xstring_printf(script_cmd, " %s", map[i].arg);
+				sb_printf(&script_cmd, " %s", map[i].arg);
 			}
 
-			xstring_printf(script_cmd, "\n%s", pkg->scripts[j]->buf);
+			sb_printf(&script_cmd, "\n%s", sb_str(&pkg->scripts[j]));
 
 			/* Determine the maximum argument length for the given
 			   script to determine if /bin/sh -c can be used, or
@@ -138,9 +138,7 @@ pkg_script_run(struct pkg * const pkg, pkg_script type, bool upgrade, bool noexe
 				argmax -= strlen(*ep) + 1 + sizeof(*ep);
 			argmax -= 1 + sizeof(*ep);
 
-			xstring_flush(script_cmd);
-			script_len = strlen(script_cmd->buf);
-			pkg_debug(3, "Scripts: executing\n--- BEGIN ---\n%s\nScripts: --- END ---", script_cmd->buf);
+			pkg_debug(3, "Scripts: executing\n--- BEGIN ---\n%s\nScripts: --- END ---", sb_str(&script_cmd));
 			posix_spawn_file_actions_init(&action);
 			if (get_socketpair(cur_pipe) == -1) {
 				pkg_emit_errno("pkg_script_run", "socketpair");
@@ -164,7 +162,7 @@ pkg_script_run(struct pkg * const pkg, pkg_script type, bool upgrade, bool noexe
 				if (k != cur_pipe[0] && k != ctx.devnullfd)
 					posix_spawn_file_actions_addclose(&action, k);
 			}
-			if (argmax < 0 || script_len > (size_t)argmax) {
+			if (argmax < 0 || script_cmd.len > (size_t)argmax) {
 				if (pipe(stdin_pipe) < 0) {
 					ret = EPKG_FATAL;
 					posix_spawn_file_actions_destroy(&action);
@@ -186,7 +184,7 @@ pkg_script_run(struct pkg * const pkg, pkg_script type, bool upgrade, bool noexe
 
 				argv[0] = _PATH_BSHELL;
 				argv[1] = "-c";
-				argv[2] = script_cmd->buf;
+				argv[2] = sb_str(&script_cmd);
 				argv[3] = NULL;
 
 				use_pipe = 0;
@@ -203,17 +201,17 @@ pkg_script_run(struct pkg * const pkg, pkg_script type, bool upgrade, bool noexe
 			posix_spawn_file_actions_destroy(&action);
 
 			if (use_pipe) {
-				script_cmd_p = script_cmd->buf;
-				while (script_len > 0) {
+				script_cmd_p = script_cmd.d;
+				while (script_cmd.len > 0) {
 					if ((bytes_written = write(stdin_pipe[1], script_cmd_p,
-					    script_len)) == -1) {
+					    script_cmd.len)) == -1) {
 						if (errno == EINTR)
 							continue;
 						ret = EPKG_FATAL;
 						goto cleanup;
 					}
 					script_cmd_p += bytes_written;
-					script_len -= bytes_written;
+					script_cmd.len -= bytes_written;
 				}
 				close(stdin_pipe[1]);
 			}
@@ -232,7 +230,7 @@ pkg_script_run(struct pkg * const pkg, pkg_script type, bool upgrade, bool noexe
 
 cleanup:
 
-	xstring_free(script_cmd);
+	sb_fini(&script_cmd);
 	if (stdin_pipe[0] != -1)
 		close(stdin_pipe[0]);
 	if (stdin_pipe[1] != -1)

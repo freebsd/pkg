@@ -6,7 +6,7 @@
  * Copyright (c) 2011-2012 Marin Atanasov Nikolov <dnaeon@gmail.com>
  * Copyright (c) 2013-2014 Matthew Seaman <matthew@FreeBSD.org>
  * All rights reserved.
- * 
+ *
  * Redistribution and use in source and binary forms, with or without
  * modification, are permitted provided that the following conditions
  * are met:
@@ -16,7 +16,7 @@
  * 2. Redistributions in binary form must reproduce the above copyright
  *    notice, this list of conditions and the following disclaimer in the
  *    documentation and/or other materials provided with the distribution.
- * 
+ *
  * THIS SOFTWARE IS PROVIDED BY THE AUTHOR(S) ``AS IS'' AND ANY EXPRESS OR
  * IMPLIED WARRANTIES, INCLUDING, BUT NOT LIMITED TO, THE IMPLIED WARRANTIES
  * OF MERCHANTABILITY AND FITNESS FOR A PARTICULAR PURPOSE ARE DISCLAIMED.
@@ -141,7 +141,7 @@ exec_register(int argc, char **argv)
 	 * other files mentioned below.  These are here for backwards
 	 * compatibility with the way the ports tree works with
 	 * pkg_tools.
-	 * 
+	 *
 	 * The -M option specifies one manifest file to read the
 	 * meta-data from, and overrides the use of legacy meta-data
 	 * inputs.
@@ -195,10 +195,8 @@ exec_register(int argc, char **argv)
 
 	retcode = pkg_add_port(db, pkg, input_path, location, testing_mode);
 
-	if (retcode == EPKG_OK && messages != NULL && !quiet) {
-		xstring_flush(messages);
-		printf("%s\n", messages->buf);
-	}
+	if (retcode == EPKG_OK && messages && messages->len > 0 && !quiet)
+		printf("%s\n", sb_str(messages));
 
 	pkg_free(pkg);
 	if (db != NULL) {

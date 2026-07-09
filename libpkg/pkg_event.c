@@ -33,7 +33,7 @@
 #include <errno.h>
 #include <string.h>
 #include <syslog.h>
-#include <xstring.h>
+#include <pkg/sb.h>
 
 #include "pkg.h"
 #include "private/pkg.h"
@@ -43,9 +43,9 @@ static pkg_event_cb _cb = NULL;
 static void *_data = NULL;
 
 static void
-pipe_errno(struct pkg_event *ev, xstring *msg)
+pipe_errno(struct pkg_event *ev, sb_t *msg)
 {
-	xstring_printf(msg, "{ \"type\": \"ERROR\", "
+	sb_printf(msg, "{ \"type\": \"ERROR\", "
 	    "\"data\": {"
 	    "\"msg\": \"%s(%s): %s\","
 	    "\"errno\": %d}}",
@@ -56,33 +56,33 @@ pipe_errno(struct pkg_event *ev, xstring *msg)
 }
 
 static void
-pipe_error(struct pkg_event *ev, xstring *msg)
+pipe_error(struct pkg_event *ev, sb_t *msg)
 {
-	xstring_printf(msg, "{ \"type\": \"ERROR\", "
+	sb_printf(msg, "{ \"type\": \"ERROR\", "
 	    "\"data\": {\"msg\": \"%s\"}}",
 	    json_escape(ev->e_pkg_error.msg));
 }
 
 static void
-pipe_notice(struct pkg_event *ev, xstring *msg)
+pipe_notice(struct pkg_event *ev, sb_t *msg)
 {
-	xstring_printf(msg, "{ \"type\": \"NOTICE\", "
+	sb_printf(msg, "{ \"type\": \"NOTICE\", "
 	    "\"data\": {\"msg\": \"%s\"}}",
 	    json_escape(ev->e_pkg_notice.msg));
 }
 
 static void
-pipe_developer_mode(struct pkg_event *ev, xstring *msg)
+pipe_developer_mode(struct pkg_event *ev, sb_t *msg)
 {
-	xstring_printf(msg, "{ \"type\": \"ERROR\", "
+	sb_printf(msg, "{ \"type\": \"ERROR\", "
 	    "\"data\": {\"msg\": \"DEVELOPER_MODE: %s\"}}",
 	    json_escape(ev->e_pkg_error.msg));
 }
 
 static void
-pipe_update_add(struct pkg_event *ev, xstring *msg)
+pipe_update_add(struct pkg_event *ev, sb_t *msg)
 {
-	xstring_printf(msg, "{ \"type\": \"INFO_UPDATE_ADD\", "
+	sb_printf(msg, "{ \"type\": \"INFO_UPDATE_ADD\", "
 	    "\"data\": { "
 	    "\"fetched\": %d, "
 	    "\"total\": %d"
@@ -93,9 +93,9 @@ pipe_update_add(struct pkg_event *ev, xstring *msg)
 }
 
 static void
-pipe_update_remove(struct pkg_event *ev, xstring *msg)
+pipe_update_remove(struct pkg_event *ev, sb_t *msg)
 {
-	xstring_printf(msg, "{ \"type\": \"INFO_UPDATE_REMOVE\", "
+	sb_printf(msg, "{ \"type\": \"INFO_UPDATE_REMOVE\", "
 	    "\"data\": { "
 	    "\"fetched\": %d, "
 	    "\"total\": %d"
@@ -106,9 +106,9 @@ pipe_update_remove(struct pkg_event *ev, xstring *msg)
 }
 
 static void
-pipe_fetch_begin(struct pkg_event *ev, xstring *msg)
+pipe_fetch_begin(struct pkg_event *ev, sb_t *msg)
 {
-	xstring_printf(msg, "{ \"type\": \"INFO_FETCH_BEGIN\", "
+	sb_printf(msg, "{ \"type\": \"INFO_FETCH_BEGIN\", "
 	    "\"data\": { "
 	    "\"url\": \"%s\" "
 	    "}}",
@@ -117,9 +117,9 @@ pipe_fetch_begin(struct pkg_event *ev, xstring *msg)
 }
 
 static void
-pipe_fetch_finished(struct pkg_event *ev, xstring *msg)
+pipe_fetch_finished(struct pkg_event *ev, sb_t *msg)
 {
-	xstring_printf(msg, "{ \"type\": \"INFO_FETCH_FINISHED\", "
+	sb_printf(msg, "{ \"type\": \"INFO_FETCH_FINISHED\", "
 	    "\"data\": { "
 	    "\"url\": \"%s\" "
 	    "}}",
@@ -128,65 +128,68 @@ pipe_fetch_finished(struct pkg_event *ev, xstring *msg)
 }
 
 static void
-pipe_install_begin(struct pkg_event *ev, xstring *msg)
+pipe_install_begin(struct pkg_event *ev, sb_t *msg)
 {
-	pkg_fprintf(msg->fp, "{ \"type\": \"INFO_INSTALL_BEGIN\", "
+	sb_printf(msg, "{ \"type\": \"INFO_INSTALL_BEGIN\", "
 	    "\"data\": { "
-	    "\"pkgname\": \"%n\", "
-	    "\"pkgversion\": \"%v\""
-	    "}}", ev->e_install_begin.pkg, ev->e_install_begin.pkg);
+	    "\"pkgname\": \"%s\", "
+	    "\"pkgversion\": \"%s\""
+	    "}}", ev->e_install_begin.pkg->name,
+	    ev->e_install_begin.pkg->version);
 }
 
 static void
-pipe_extract_begin(struct pkg_event *ev, xstring *msg)
+pipe_extract_begin(struct pkg_event *ev, sb_t *msg)
 {
-	pkg_fprintf(msg->fp, "{ \"type\": \"INFO_EXTRACT_BEGIN\", "
+	sb_printf(msg, "{ \"type\": \"INFO_EXTRACT_BEGIN\", "
 	    "\"data\": { "
-	    "\"pkgname\": \"%n\", "
-	    "\"pkgversion\": \"%v\""
-	    "}}", ev->e_extract_begin.pkg, ev->e_extract_begin.pkg);
+	    "\"pkgname\": \"%s\", "
+	    "\"pkgversion\": \"%s\""
+	    "}}", ev->e_extract_begin.pkg->name,
+	    ev->e_extract_begin.pkg->version);
 }
 
 static void
-pipe_extract_finished(struct pkg_event *ev, xstring *msg)
+pipe_extract_finished(struct pkg_event *ev, sb_t *msg)
 {
-	pkg_fprintf(msg->fp, "{ \"type\": \"INFO_EXTRACT_FINISHED\", "
+	sb_printf(msg, "{ \"type\": \"INFO_EXTRACT_FINISHED\", "
 	    "\"data\": { "
-	    "\"pkgname\": \"%n\", "
-	    "\"pkgversion\": \"%v\""
-	    "}}", ev->e_extract_finished.pkg, ev->e_extract_finished.pkg);
+	    "\"pkgname\": \"%s\", "
+	    "\"pkgversion\": \"%s\""
+	    "}}", ev->e_extract_finished.pkg->name,
+	    ev->e_extract_finished.pkg->version);
 }
 
 static void
-pipe_install_finished(struct pkg_event *ev, xstring *msg)
+pipe_install_finished(struct pkg_event *ev, sb_t *msg)
 {
 	char *msgjson = pkg_has_message(ev->e_install_finished.pkg) ?
 	    pkg_message_to_str(ev->e_install_finished.pkg) : NULL;
-	pkg_fprintf(msg->fp, "{ \"type\": \"INFO_INSTALL_FINISHED\", "
+	sb_printf(msg, "{ \"type\": \"INFO_INSTALL_FINISHED\", "
 	    "\"data\": { "
-	    "\"pkgname\": \"%n\", "
-	    "\"pkgversion\": \"%v\", "
-	    "\"message\": %S"
+	    "\"pkgname\": \"%s\", "
+	    "\"pkgversion\": \"%s\", "
+	    "\"message\": %s"
 	    "}}",
-	    ev->e_install_finished.pkg,
-	    ev->e_install_finished.pkg,
+	    ev->e_install_finished.pkg->name,
+	    ev->e_install_finished.pkg->version,
 	    msgjson != NULL ? msgjson : "\"\"");
 	free(msgjson);
 }
 
 static void
-pipe_integritycheck_begin(struct pkg_event *ev __unused, xstring *msg)
+pipe_integritycheck_begin(struct pkg_event *ev __unused, sb_t *msg)
 {
-	fputs("{ \"type\": \"INFO_INTEGRITYCHECK_BEGIN\", "
-	    "\"data\": {}}", msg->fp);
+	sb_cat(msg, "{ \"type\": \"INFO_INTEGRITYCHECK_BEGIN\", "
+	    "\"data\": {}}");
 }
 
 static void
-pipe_integritycheck_conflict(struct pkg_event *ev, xstring *msg)
+pipe_integritycheck_conflict(struct pkg_event *ev, sb_t *msg)
 {
 	struct pkg_event_conflict *cur_conflict;
 
-	xstring_printf(msg, "{ \"type\": \"INFO_INTEGRITYCHECK_CONFLICT\","
+	sb_printf(msg, "{ \"type\": \"INFO_INTEGRITYCHECK_CONFLICT\","
 		"\"data\": { "
 		"\"pkguid\": \"%s\", "
 		"\"pkgpath\": \"%s\", "
@@ -196,131 +199,130 @@ pipe_integritycheck_conflict(struct pkg_event *ev, xstring *msg)
 	cur_conflict = ev->e_integrity_conflict.conflicts;
 	while (cur_conflict != NULL) {
 		if (cur_conflict->next != NULL) {
-			xstring_printf(msg, "{\"uid\":\"%s\"},",
+			sb_printf(msg, "{\"uid\":\"%s\"},",
 					cur_conflict->uid);
 		}
 		else {
-			xstring_printf(msg, "{\"uid\":\"%s\"}",
+			sb_printf(msg, "{\"uid\":\"%s\"}",
 					cur_conflict->uid);
 			break;
 		}
 		cur_conflict = cur_conflict->next;
 	}
-	xstring_puts(msg, "]}}");
+	sb_cat(msg, "]}}");
 }
 
 static void
-pipe_integritycheck_finished(struct pkg_event *ev, xstring *msg)
+pipe_integritycheck_finished(struct pkg_event *ev, sb_t *msg)
 {
-	xstring_printf(msg, "{ \"type\": \"INFO_INTEGRITYCHECK_FINISHED\", "
+	sb_printf(msg, "{ \"type\": \"INFO_INTEGRITYCHECK_FINISHED\", "
 	    "\"data\": {\"conflicting\": %d}}",
 	    ev->e_integrity_finished.conflicting);
 }
 
 static void
-pipe_deinstall_begin(struct pkg_event *ev, xstring *msg)
+pipe_deinstall_begin(struct pkg_event *ev, sb_t *msg)
 {
-	pkg_fprintf(msg->fp, "{ \"type\": \"INFO_DEINSTALL_BEGIN\", "
+	sb_printf(msg, "{ \"type\": \"INFO_DEINSTALL_BEGIN\", "
 	    "\"data\": { "
-	    "\"pkgname\": \"%n\", "
-	    "\"pkgversion\": \"%v\""
+	    "\"pkgname\": \"%s\", "
+	    "\"pkgversion\": \"%s\""
 	    "}}",
-	    ev->e_deinstall_begin.pkg,
-	    ev->e_deinstall_begin.pkg);
+	    ev->e_deinstall_begin.pkg->name,
+	    ev->e_deinstall_begin.pkg->version);
 }
 
 static void
-pipe_deinstall_finished(struct pkg_event *ev, xstring *msg)
+pipe_deinstall_finished(struct pkg_event *ev, sb_t *msg)
 {
-	pkg_fprintf(msg->fp, "{ \"type\": \"INFO_DEINSTALL_FINISHED\", "
+	sb_printf(msg, "{ \"type\": \"INFO_DEINSTALL_FINISHED\", "
 	    "\"data\": { "
-	    "\"pkgname\": \"%n\", "
-	    "\"pkgversion\": \"%v\""
+	    "\"pkgname\": \"%s\", "
+	    "\"pkgversion\": \"%s\""
 	    "}}",
-	    ev->e_deinstall_finished.pkg,
-	    ev->e_deinstall_finished.pkg);
+	    ev->e_deinstall_finished.pkg->name,
+	    ev->e_deinstall_finished.pkg->version);
 }
 
 static void
-pipe_upgrade_begin(struct pkg_event *ev, xstring *msg)
+pipe_upgrade_begin(struct pkg_event *ev, sb_t *msg)
 {
-	pkg_fprintf(msg->fp, "{ \"type\": \"INFO_UPGRADE_BEGIN\", "
+	sb_printf(msg, "{ \"type\": \"INFO_UPGRADE_BEGIN\", "
 	    "\"data\": { "
-	    "\"pkgname\": \"%n\", "
-	    "\"pkgversion\": \"%v\" ,"
-	    "\"pkgnewversion\": \"%v\""
+	    "\"pkgname\": \"%s\", "
+	    "\"pkgversion\": \"%s\" ,"
+	    "\"pkgnewversion\": \"%s\""
 	    "}}",
-	    ev->e_upgrade_begin.o,
-	    ev->e_upgrade_begin.o,
-	    ev->e_upgrade_begin.n);
+	    ev->e_upgrade_begin.o->name,
+	    ev->e_upgrade_begin.o->version,
+	    ev->e_upgrade_begin.n->version);
 }
 
 static void
-pipe_upgrade_finished(struct pkg_event *ev, xstring *msg)
+pipe_upgrade_finished(struct pkg_event *ev, sb_t *msg)
 {
-	pkg_fprintf(msg->fp, "{ \"type\": \"INFO_UPGRADE_FINISHED\", "
+	sb_printf(msg, "{ \"type\": \"INFO_UPGRADE_FINISHED\", "
 	    "\"data\": { "
-	    "\"pkgname\": \"%n\", "
-	    "\"pkgversion\": \"%v\" ,"
-	    "\"pkgnewversion\": \"%v\""
+	    "\"pkgname\": \"%s\", "
+	    "\"pkgversion\": \"%s\" ,"
+	    "\"pkgnewversion\": \"%s\""
 	    "}}",
-	    ev->e_upgrade_finished.o,
-	    ev->e_upgrade_finished.o,
-	    ev->e_upgrade_finished.n);
+	    ev->e_upgrade_finished.o->name,
+	    ev->e_upgrade_finished.o->version,
+	    ev->e_upgrade_finished.n->version);
 }
 
 static void
-pipe_locked(struct pkg_event *ev, xstring *msg)
+pipe_locked(struct pkg_event *ev, sb_t *msg)
 {
-	pkg_fprintf(msg->fp, "{ \"type\": \"ERROR_LOCKED\", "
+	sb_printf(msg, "{ \"type\": \"ERROR_LOCKED\", "
 	    "\"data\": { "
-	    "\"pkgname\": \"%n\", "
-	    "\"pkgversion\": \"%n\""
+	    "\"pkgname\": \"%s\", "
+	    "\"pkgversion\": \"%s\""
 	    "}}",
-	    ev->e_locked.pkg,
-	    ev->e_locked.pkg);
+	    ev->e_locked.pkg->name,
+	    ev->e_locked.pkg->version);
 }
 
 static void
-pipe_required(struct pkg_event *ev, xstring *msg)
+pipe_required(struct pkg_event *ev, sb_t *msg)
 {
 	struct pkg_dep *dep = NULL;
-	int c = 0;
 
-	pkg_fprintf(msg->fp, "{ \"type\": \"ERROR_REQUIRED\", "
+	sb_printf(msg, "{ \"type\": \"ERROR_REQUIRED\", "
 	    "\"data\": { "
-	    "\"pkgname\": \"%n\", "
-	    "\"pkgversion\": \"%v\", "
-	    "\"force\": %S, "
+	    "\"pkgname\": \"%s\", "
+	    "\"pkgversion\": \"%s\", "
+	    "\"force\": %s, "
 	    "\"required_by\": [",
-	    ev->e_required.pkg,
-	    ev->e_required.pkg,
+	    ev->e_required.pkg->name,
+	    ev->e_required.pkg->version,
 	    ev->e_required.force == 1 ? "true": "false");
 	while (pkg_rdeps(ev->e_required.pkg, &dep) == EPKG_OK)
-		xstring_printf(msg, "{ \"pkgname\": \"%s\", "
+		sb_printf(msg, "{ \"pkgname\": \"%s\", "
 		    "\"pkgversion\": \"%s\" }, ",
 		    dep->name, dep->version);
-	ungetc(c, msg->fp);
-	ungetc(c, msg->fp);
-	xstring_puts(msg, "]}}");
+	;
+	;
+	sb_cat(msg, "]}}");
 }
 
 static void
-pipe_already_installed(struct pkg_event *ev, xstring *msg)
+pipe_already_installed(struct pkg_event *ev, sb_t *msg)
 {
-	pkg_fprintf(msg->fp, "{ \"type\": \"ERROR_ALREADY_INSTALLED\", "
+	sb_printf(msg, "{ \"type\": \"ERROR_ALREADY_INSTALLED\", "
 	    "\"data\": { "
-	    "\"pkgname\": \"%n\", "
-	    "\"pkgversion\": \"%v\""
+	    "\"pkgname\": \"%s\", "
+	    "\"pkgversion\": \"%s\""
 	    "}}",
-	    ev->e_already_installed.pkg,
-	    ev->e_already_installed.pkg);
+	    ev->e_already_installed.pkg->name,
+	    ev->e_already_installed.pkg->version);
 }
 
 static void
-pipe_missing_dep(struct pkg_event *ev, xstring *msg)
+pipe_missing_dep(struct pkg_event *ev, sb_t *msg)
 {
-	xstring_printf(msg, "{ \"type\": \"ERROR_MISSING_DEP\", "
+	sb_printf(msg, "{ \"type\": \"ERROR_MISSING_DEP\", "
 	    "\"data\": { "
 	    "\"depname\": \"%s\", "
 	    "\"depversion\": \"%s\""
@@ -330,9 +332,9 @@ pipe_missing_dep(struct pkg_event *ev, xstring *msg)
 }
 
 static void
-pipe_noremotedb(struct pkg_event *ev, xstring *msg)
+pipe_noremotedb(struct pkg_event *ev, sb_t *msg)
 {
-	xstring_printf(msg, "{ \"type\": \"ERROR_NOREMOTEDB\", "
+	sb_printf(msg, "{ \"type\": \"ERROR_NOREMOTEDB\", "
 	    "\"data\": { "
 	    "\"url\": \"%s\" "
 	    "}}" ,
@@ -340,37 +342,35 @@ pipe_noremotedb(struct pkg_event *ev, xstring *msg)
 }
 
 static void
-pipe_nolocaldb(struct pkg_event *ev __unused, xstring *msg)
+pipe_nolocaldb(struct pkg_event *ev __unused, sb_t *msg)
 {
-	fputs("{ \"type\": \"ERROR_NOLOCALDB\", \"data\": {}} ",
-	    msg->fp);
+	sb_cat(msg, "{ \"type\": \"ERROR_NOLOCALDB\", \"data\": {}} ");
 }
 
 static void
-pipe_newpkgversion(struct pkg_event *ev __unused, xstring *msg)
+pipe_newpkgversion(struct pkg_event *ev __unused, sb_t *msg)
 {
-	fputs("{ \"type\": \"INFO_NEWPKGVERSION\", \"data\": {}} ",
-	    msg->fp);
+	sb_cat(msg, "{ \"type\": \"INFO_NEWPKGVERSION\", \"data\": {}} ");
 }
 
 static void
-pipe_file_mismatch(struct pkg_event *ev, xstring *msg)
+pipe_file_mismatch(struct pkg_event *ev, sb_t *msg)
 {
-	pkg_fprintf(msg->fp, "{ \"type\": \"ERROR_FILE_MISMATCH\", "
+	sb_printf(msg, "{ \"type\": \"ERROR_FILE_MISMATCH\", "
 	    "\"data\": { "
-	    "\"pkgname\": \"%n\", "
-	    "\"pkgversion\": \"%v\", "
-	    "\"path\": \"%S\""
+	    "\"pkgname\": \"%s\", "
+	    "\"pkgversion\": \"%s\", "
+	    "\"path\": \"%s\""
 	    "}}",
-	    ev->e_file_mismatch.pkg,
-	    ev->e_file_mismatch.pkg,
+	    ev->e_file_mismatch.pkg->name,
+	    ev->e_file_mismatch.pkg->version,
 	    json_escape(ev->e_file_mismatch.file->path));
 }
 
 static void
-pipe_plugin_errno(struct pkg_event *ev, xstring *msg)
+pipe_plugin_errno(struct pkg_event *ev, sb_t *msg)
 {
-	xstring_printf(msg, "{ \"type\": \"ERROR_PLUGIN\", "
+	sb_printf(msg, "{ \"type\": \"ERROR_PLUGIN\", "
 	    "\"data\": {"
 	    "\"plugin\": \"%s\", "
 	    "\"msg\": \"%s(%s): %s\","
@@ -384,9 +384,9 @@ pipe_plugin_errno(struct pkg_event *ev, xstring *msg)
 }
 
 static void
-pipe_plugin_error(struct pkg_event *ev, xstring *msg)
+pipe_plugin_error(struct pkg_event *ev, sb_t *msg)
 {
-	xstring_printf(msg, "{ \"type\": \"ERROR_PLUGIN\", "
+	sb_printf(msg, "{ \"type\": \"ERROR_PLUGIN\", "
 	    "\"data\": {"
 	    "\"plugin\": \"%s\", "
 	    "\"msg\": \"%s\""
@@ -396,9 +396,9 @@ pipe_plugin_error(struct pkg_event *ev, xstring *msg)
 }
 
 static void
-pipe_plugin_info(struct pkg_event *ev, xstring *msg)
+pipe_plugin_info(struct pkg_event *ev, sb_t *msg)
 {
-	xstring_printf(msg, "{ \"type\": \"INFO_PLUGIN\", "
+	sb_printf(msg, "{ \"type\": \"INFO_PLUGIN\", "
 	    "\"data\": {"
 	    "\"plugin\": \"%s\", "
 	    "\"msg\": \"%s\""
@@ -408,9 +408,9 @@ pipe_plugin_info(struct pkg_event *ev, xstring *msg)
 }
 
 static void
-pipe_incremental_update(struct pkg_event *ev, xstring *msg)
+pipe_incremental_update(struct pkg_event *ev, sb_t *msg)
 {
-	xstring_printf(msg, "{ \"type\": \"INFO_INCREMENTAL_UPDATE\", "
+	sb_printf(msg, "{ \"type\": \"INFO_INCREMENTAL_UPDATE\", "
 	    "\"data\": {"
 	        "\"name\": \"%s\", "
 		"\"processed\": %d"
@@ -419,9 +419,9 @@ pipe_incremental_update(struct pkg_event *ev, xstring *msg)
 }
 
 static void
-pipe_query_yesno(struct pkg_event *ev, xstring *msg)
+pipe_query_yesno(struct pkg_event *ev, sb_t *msg)
 {
-	xstring_printf(msg, "{ \"type\": \"QUERY_YESNO\", "
+	sb_printf(msg, "{ \"type\": \"QUERY_YESNO\", "
 	    "\"data\": {"
 		"\"msg\": \"%s\","
 		"\"default\": \"%d\""
@@ -430,11 +430,11 @@ pipe_query_yesno(struct pkg_event *ev, xstring *msg)
 }
 
 static void
-pipe_query_select(struct pkg_event *ev, xstring *msg)
+pipe_query_select(struct pkg_event *ev, sb_t *msg)
 {
 	int i;
 
-	xstring_printf(msg, "{ \"type\": \"QUERY_SELECT\", "
+	sb_printf(msg, "{ \"type\": \"QUERY_SELECT\", "
 	    "\"data\": {"
 		"\"msg\": \"%s\","
 		"\"ncnt\": \"%d\","
@@ -445,54 +445,51 @@ pipe_query_select(struct pkg_event *ev, xstring *msg)
 		ev->e_query_select.deft);
 	for (i = 0; i < ev->e_query_select.ncnt - 1; i++)
 	{
-		xstring_printf(msg, "{ \"text\": \"%s\" },",
+		sb_printf(msg, "{ \"text\": \"%s\" },",
 			ev->e_query_select.items[i]);
 	}
-	xstring_printf(msg, "{ \"text\": \"%s\" } ] }}",
+	sb_printf(msg, "{ \"text\": \"%s\" } ] }}",
 		ev->e_query_select.items[i]);
 }
 
 static void
-pipe_progress_start(struct pkg_event *ev __unused, xstring *msg)
+pipe_progress_start(struct pkg_event *ev __unused, sb_t *msg)
 {
-	fputs("{ \"type\": \"INFO_PROGRESS_START\", \"data\": {}}",
-	    msg->fp);
+	sb_cat(msg, "{ \"type\": \"INFO_PROGRESS_START\", \"data\": {}}");
 }
 
 static void
-pipe_progress_tick(struct pkg_event *ev, xstring *msg)
+pipe_progress_tick(struct pkg_event *ev, sb_t *msg)
 {
-	xstring_printf(msg, "{ \"type\": \"INFO_PROGRESS_TICK\", "
+	sb_printf(msg, "{ \"type\": \"INFO_PROGRESS_TICK\", "
 	  "\"data\": { \"current\": %jd, \"total\" : %jd}}",
 	  (intmax_t)ev->e_progress_tick.current,
 	  (intmax_t)ev->e_progress_tick.total);
 }
 
 static void
-pipe_triggers_begin(struct pkg_event *ev __unused, xstring *msg)
+pipe_triggers_begin(struct pkg_event *ev __unused, sb_t *msg)
 {
-	fputs("{ \"type\": \"INFO_TRIGGERS_BEGIN\", \"data\": {}}",
-	    msg->fp);
+	sb_cat(msg, "{ \"type\": \"INFO_TRIGGERS_BEGIN\", \"data\": {}}");
 }
 
 static void
-pipe_triggers_finished(struct pkg_event *ev __unused, xstring *msg)
+pipe_triggers_finished(struct pkg_event *ev __unused, sb_t *msg)
 {
-	fputs("{ \"type\": \"INFO_TRIGGERS_FINISHED\", \"data\": {}}",
-	    msg->fp);
+	sb_cat(msg, "{ \"type\": \"INFO_TRIGGERS_FINISHED\", \"data\": {}}");
 }
 
 static void
-pipe_trigger(struct pkg_event *ev, xstring *msg)
+pipe_trigger(struct pkg_event *ev, sb_t *msg)
 {
-	xstring_printf(msg, "{ \"type\": \"INFO_TRIGGER\", \"data\": { "
+	sb_printf(msg, "{ \"type\": \"INFO_TRIGGER\", \"data\": { "
 	    "\"cleanup\": %s, \"name\": \"%s\" }}",
 	    ev->e_trigger.cleanup ? "true" : "false",
 	    ev->e_trigger.name);
 }
 
 static void
-pipe_rc_script(struct pkg_event *ev, xstring *msg)
+pipe_rc_script(struct pkg_event *ev, sb_t *msg)
 {
 	const char *action;
 
@@ -508,12 +505,12 @@ pipe_rc_script(struct pkg_event *ev, xstring *msg)
 		break;
 	}
 
-	xstring_printf(msg, "{ \"type\": \"INFO_RC_SCRIPT\", \"data\": { "
+	sb_printf(msg, "{ \"type\": \"INFO_RC_SCRIPT\", \"data\": { "
 	    "\"action\": \"%s\", \"name\": \"%s\" }}",
 	    action, json_escape(ev->e_rc_script.name));
 }
 
-typedef void (*pipe_handler_fn)(struct pkg_event *ev, xstring *msg);
+typedef void (*pipe_handler_fn)(struct pkg_event *ev, sb_t *msg);
 
 static const pipe_handler_fn pipe_handlers[PKG_EVENT_LAST] = {
 	[PKG_EVENT_INSTALL_BEGIN] = pipe_install_begin,
@@ -562,19 +559,16 @@ _Static_assert(NELEM(pipe_handlers) == PKG_EVENT_LAST,
 static void
 pipeevent(struct pkg_event *ev)
 {
-	xstring *msg;
+	sb_t msg = sb_init();
 
 	if (ctx.eventpipe < 0)
 		return;
 
-	msg = xstring_new();
-
 	if (ev->type < PKG_EVENT_LAST && pipe_handlers[ev->type] != NULL)
-		pipe_handlers[ev->type](ev, msg);
+		pipe_handlers[ev->type](ev, &msg);
 
-	xstring_flush(msg);
-	dprintf(ctx.eventpipe, "%s\n", msg->buf);
-	xstring_free(msg);
+	dprintf(ctx.eventpipe, "%s\n", sb_str(&msg));
+	sb_fini(&msg);
 }
 
 void
@@ -1266,7 +1260,7 @@ pkg_dbg(uint64_t flags, int level, const char *fmt, ...)
 {
 	struct pkg_event ev;
 	va_list ap;
-	xstring *string_fmt;
+	sb_t string_fmt = sb_init();
 	char *nfmt;
 
 	if (ctx.debug_level < level)
@@ -1275,21 +1269,20 @@ pkg_dbg(uint64_t flags, int level, const char *fmt, ...)
 	if ((ctx.debug_flags & (flags|PKG_DBG_ALL)) == 0)
 		return;
 
-	string_fmt = xstring_new();
 	ev.type = PKG_EVENT_DEBUG;
 	ev.e_debug.level = level;
 	for (size_t i = 0; i < NELEM(debug_flags); i++) {
 		if (flags & debug_flags[i].flag) {
-			if (string_fmt->size == 0) {
-				xstring_printf(string_fmt, "(%s", debug_flags[i].name);
-				xstring_flush(string_fmt);
+			if (string_fmt.len == 0) {
+				sb_printf(&string_fmt, "(%s", debug_flags[i].name);
+
 			} else {
-				xstring_printf(string_fmt, "|%s", debug_flags[i].name);
+				sb_printf(&string_fmt, "|%s", debug_flags[i].name);
 			}
 		}
 	}
-	xstring_printf(string_fmt, ") %s", fmt);
-	nfmt = xstring_get(string_fmt);
+	sb_printf(&string_fmt, ") %s", fmt);
+	nfmt = sb_get(&string_fmt);
 	va_start(ap, fmt);
 	vasprintf(&ev.e_debug.msg, nfmt, ap);
 	va_end(ap);

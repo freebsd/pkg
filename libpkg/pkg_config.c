@@ -1107,34 +1107,34 @@ config_parse_abi_options(int conffd)
 
 	ucl_object_iter_t it = NULL;
 	const ucl_object_t *cur;
-	xstring *ukey = NULL;
+	sb_t ukey = sb_init();
 	while (obj != NULL && (cur = ucl_iterate_object(obj, &it, true))) {
-		xstring_renew(ukey);
+		sb_reset(&ukey);
 		const char *key = ucl_object_key(cur);
 		for (size_t i = 0; key[i] != '\0'; i++)
-			xstring_putc(ukey, toupper(key[i]));
-		xstring_flush(ukey);
+			sb_cat_c(&ukey, toupper(key[i]));
 
-		if (STREQ(ukey->buf, "ABI_FILE") ||
-		    STREQ(ukey->buf, "ABI") ||
-		    STREQ(ukey->buf, "ALTABI")) {
+
+		if (STREQ(sb_str(&ukey), "ABI_FILE") ||
+		    STREQ(sb_str(&ukey), "ABI") ||
+		    STREQ(sb_str(&ukey), "ALTABI")) {
 			if (cur->type == UCL_STRING) {
 				/* Don't overwrite the value already set on the
 				   command line or in the environment */
-				setenv(ukey->buf, ucl_object_tostring(cur), 0);
+				setenv(sb_str(&ukey), ucl_object_tostring(cur), 0);
 			} else {
 				pkg_emit_error("Malformed key %s, got '%s' expecting "
 				    "'string', ignoring", key,
 				    type_to_string(cur->type));
 			}
-		} else if (STREQ(ukey->buf, "OSVERSION")) {
+		} else if (STREQ(sb_str(&ukey), "OSVERSION")) {
 			if (cur->type == UCL_INT) {
 				int64_t osversion = ucl_object_toint(cur);
 				char *str_osversion;
 				xasprintf(&str_osversion, "%" PRIi64, osversion);
 				/* Don't overwrite the value already set on the
 				   command line or in the environment */
-				setenv(ukey->buf, str_osversion, 0);
+				setenv(sb_str(&ukey), str_osversion, 0);
 				free(str_osversion);
 			} else {
 				pkg_emit_error("Malformed key %s, got '%s' expecting "
@@ -1145,7 +1145,7 @@ config_parse_abi_options(int conffd)
 
 		}
 	}
-	xstring_free(ukey);
+	sb_fini(&ukey);
 
 	ucl_object_unref(obj);
 	ucl_parser_free(p);
@@ -1226,11 +1226,10 @@ pkg_ini(const char *path, const char *reposdir, pkg_init_flags flags)
 	const ucl_object_t *cur, *object;
 	ucl_object_t *obj = NULL, *o, *ncfg;
 	ucl_object_iter_t it = NULL;
-	xstring *ukey = NULL;
+	sb_t ukey = sb_init();
 	bool fatal_errors = false;
 	int conffd = -1;
 	char *tmp = NULL;
-	size_t ukeylen;
 	int err = EPKG_OK;
 	int64_t num;
 
@@ -1365,30 +1364,28 @@ pkg_ini(const char *path, const char *reposdir, pkg_init_flags flags)
 
 	obj = ucl_parser_get_object(p);
 	ncfg = NULL;
-	ukey = NULL;
 	while (obj != NULL && (cur = ucl_iterate_object(obj, &it, true))) {
-		xstring_renew(ukey);
+		sb_reset(&ukey);
 		key = ucl_object_key(cur);
 		for (i = 0; key[i] != '\0'; i++)
-			xstring_putc(ukey, toupper(key[i]));
-		xstring_flush(ukey);
-		ukeylen = strlen(ukey->buf);
-		object = ucl_object_find_keyl(config, ukey->buf, ukeylen);
+			sb_cat_c(&ukey, toupper(key[i]));
 
-		if (STREQ(ukey->buf, "PACKAGESITE") ||
-		    STREQ(ukey->buf, "PUBKEY") ||
-		    STREQ(ukey->buf, "MIRROR_TYPE")) {
+		object = ucl_object_find_keyl(config, sb_str(&ukey), ukey.len);
+
+		if (STREQ(sb_str(&ukey), "PACKAGESITE") ||
+		    STREQ(sb_str(&ukey), "PUBKEY") ||
+		    STREQ(sb_str(&ukey), "MIRROR_TYPE")) {
 			pkg_emit_error("%s in pkg.conf is no longer "
 			    "supported.  Convert to the new repository style."
-			    "  See pkg.conf(5)", ukey->buf);
+			    "  See pkg.conf(5)", sb_str(&ukey));
 			fatal_errors = true;
 			continue;
 		}
 
-		if (STREQ(ukey->buf, "ABI_FILE") ||
-		    STREQ(ukey->buf, "ABI") ||
-		    STREQ(ukey->buf, "ALTABI") ||
-		    STREQ(ukey->buf, "OSVERSION")) {
+		if (STREQ(sb_str(&ukey), "ABI_FILE") ||
+		    STREQ(sb_str(&ukey), "ABI") ||
+		    STREQ(sb_str(&ukey), "ALTABI") ||
+		    STREQ(sb_str(&ukey), "OSVERSION")) {
 			continue; /* Already parsed in config_parse_abi_options() */
 		}
 
@@ -1406,10 +1403,10 @@ pkg_ini(const char *path, const char *reposdir, pkg_init_flags flags)
 
 		if (ncfg == NULL)
 			ncfg = ucl_object_typed_new(UCL_OBJECT);
-		ucl_object_insert_key(ncfg, ucl_object_copy(cur), ukey->buf,
-		    ukeylen, true);
+		ucl_object_insert_key(ncfg, ucl_object_copy(cur), sb_str(&ukey),
+		    ukey.len, true);
 	}
-	xstring_free(ukey);
+	sb_fini(&ukey);
 
 	if (fatal_errors) {
 		ucl_object_unref(ncfg);

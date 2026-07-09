@@ -61,7 +61,8 @@ SRCS=	backup_lib.c \
 	triggers.c \
 	pkghash.c \
 	yuarel.c \
-	json.c
+	json.c \
+	sb.c
 
 LOCAL_CFLAGS=	-I$(top_srcdir)/compat \
 		-I$(top_srcdir)/external/blake2 \

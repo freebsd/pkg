@@ -47,6 +47,7 @@ extern "C" {
 #include <stdio.h>
 #include <stdlib.h>
 #include <pkg/vec.h>
+#include <pkg/sb.h>
 
 /* The expected name of the pkg(8) binary executable. */
 #ifndef PKG_EXEC_NAME
@@ -1761,6 +1762,8 @@ int pkg_asprintf(char **ret, const char * restrict format, ...);
  */
 int pkg_vasprintf(char **ret, const char * restrict format, va_list ap);
 
+int pkg_sb_printf(sb_t * restrict buf, const char * restrict format, ...);
+int pkg_sb_vprintf(sb_t * restrict buf, const char * restrict format, va_list ap);
 bool pkg_has_message(struct pkg *p);
 bool pkg_is_locked(const struct pkg * restrict p);
 

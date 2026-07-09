@@ -298,9 +298,8 @@ exec_delete(int argc, char **argv)
 	if (!rc || (retcode = pkg_jobs_apply(jobs)) != EPKG_OK)
 		goto cleanup;
 
-	if (messages != NULL && !quiet) {
-		xstring_flush(messages);
-		printf("%s", messages->buf);
+	if (messages && messages->len > 0 && !quiet) {
+		printf("%s", sb_str(messages));
 	}
 	pkgdb_compact(db);
 	pkgcli_autoremove(db, autoremove_flag);

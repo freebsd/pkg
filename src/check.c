@@ -24,33 +24,36 @@
 #include "pkgcli.h"
 
 static int check_deps(struct pkgdb *db, struct pkg *pkg, charv_t *dh,
-    bool noinstall, xstring *out);
+    bool noinstall, sb_t *out);
 static void add_missing_dep(struct pkg_dep *d, charv_t *dh, int *nbpkgs);
 static int fix_deps(struct pkgdb *db, charv_t *dh, int nbpkgs);
 static void check_summary(struct pkgdb *db, charv_t *dh);
 
 static int
-check_deps(struct pkgdb *db, struct pkg *p, charv_t *dh, bool noinstall, xstring *out)
+check_deps(struct pkgdb *db, struct pkg *p, charv_t *dh, bool noinstall, sb_t *out)
 {
 	struct pkg_dep *dep = NULL;
 	struct pkgdb_it *it;
 	const char *buf;
 	int nbpkgs = 0;
+	const char *pname = NULL;
 	struct pkg_stringlist *sl = NULL;
 	struct pkg_stringlist_iterator	*slit;
 	struct pkgbase *pb;
 
 	assert(db != NULL);
 	assert(p != NULL);
+	pkg_get(p, PKG_ATTR_NAME, &pname);
 
 	while (pkg_deps(p, &dep) == EPKG_OK) {
+		const char *depname = pkg_dep_name(dep);
 		/* do we have a missing dependency? */
-		if (pkg_is_installed(db, pkg_dep_name(dep)) != EPKG_OK) {
+		if (pkg_is_installed(db, depname) != EPKG_OK) {
 			if (quiet)
-				pkg_fprintf(out->fp, "%n\t%dn\n", p, dep);
+				sb_printf(out, "%s\t%s\n", pname, depname);
 			else
-				pkg_fprintf(out->fp, "%n has a missing dependency: %dn\n",
-				    p, dep);
+				sb_printf(out, "%s has a missing dependency: %s\n",
+				    pname, depname);
 			if (!noinstall)
 				add_missing_dep(dep, dh, &nbpkgs);
 		}
@@ -70,10 +73,10 @@ check_deps(struct pkgdb *db, struct pkg *p, charv_t *dh, bool noinstall, xstring
 		}
 		pkgdb_it_free(it);
 		if (quiet)
-			pkg_fprintf(out->fp, "%n\t%S\n", p, buf);
+			sb_printf(out, "%s\t%s\n", pname, buf);
 		else
-			pkg_fprintf(out->fp, "%n depends on a missing or unregistered shared library: %S\n",
-			    p, buf);
+			sb_printf(out, "%s depends on a missing or unregistered shared library: %s\n",
+			    pname, buf);
 	}
 	free(slit);
 	free(sl);
@@ -92,10 +95,10 @@ check_deps(struct pkgdb *db, struct pkg *p, charv_t *dh, bool noinstall, xstring
 		}
 		pkgdb_it_free(it);
 		if (quiet)
-			pkg_fprintf(out->fp, "%n\t%S\n", p, buf);
+			sb_printf(out, "%s\t%s\n", pname, buf);
 		else
-			pkg_fprintf(out->fp, "%n has a missing requirement: %S\n",
-			    p, buf);
+			sb_printf(out, "%s has a missing requirement: %s\n",
+			    pname, buf);
 	}
 	pkgbase_free(pb);
 	free(slit);
@@ -232,7 +235,8 @@ exec_check(int argc, char **argv)
 	struct pkg *pkg = NULL;
 	struct pkgdb_it *it = NULL;
 	struct pkgdb *db = NULL;
-	xstring *msg = NULL;
+	sb_t msg = sb_init();
+	sb_t out = sb_init();
 	match_t match = MATCH_EXACT;
 	int flags = PKG_LOAD_BASIC;
 	int ret, rc = EXIT_SUCCESS;
@@ -373,34 +377,35 @@ exec_check(int argc, char **argv)
 			break;
 		}
 
-		if (msg == NULL)
-			msg = xstring_new();
+		sb_reset(&msg);
 		if (!verbose) {
 			if (!quiet) {
 				if (match == MATCH_ALL)
 					progressbar_start("Checking all packages");
 				else {
-					xstring_printf(msg, "Checking %s", argv[i]);
-					xstring_flush(msg);
-					progressbar_start(msg->buf);
+					sb_printf(&msg, "Checking %s", argv[i]);
+
+					progressbar_start(sb_str(&msg));
 				}
 			}
 			processed = 0;
 			total = pkgdb_it_count(it);
 		}
 
-		xstring *out = xstring_new();
+		sb_reset(&out);
 		while (pkgdb_it_next(it, &pkg, flags) == EPKG_OK) {
 			if (!quiet) {
 				if (!verbose)
 					progressbar_tick(processed, total);
 				else {
-					job_status_begin(msg);
-					pkg_fprintf(msg->fp, "Checking %n-%v:",
-					    pkg, pkg);
-					xstring_flush(msg);
-					printf("%s", msg->buf);
-					xstring_reset(msg);
+					const char *n, *v;
+					pkg_get(pkg, PKG_ATTR_NAME, &n);
+					pkg_get(pkg, PKG_ATTR_VERSION, &v);
+					job_status_begin(&msg);
+					sb_printf(&msg, "Checking %s-%s:", n, v);
+
+					printf("%s", sb_str(&msg));
+					sb_reset(&msg);
 				}
 			}
 
@@ -408,7 +413,7 @@ exec_check(int argc, char **argv)
 			if (dcheck) {
 				if (!quiet && verbose)
 					printf(" dependencies...");
-				nbpkgs += check_deps(db, pkg, &dh, noinstall, out);
+				nbpkgs += check_deps(db, pkg, &dh, noinstall, &out);
 				if (noinstall && nbpkgs > 0) {
 					rc = EXIT_FAILURE;
 				}
@@ -434,13 +439,9 @@ exec_check(int argc, char **argv)
 
 		if (!quiet && !verbose)
 			progressbar_tick(processed, total);
-		xstring_flush(out);
-		if (out->buf[0] != '\0') {
-			printf("%s", out->buf);
-		}
-		xstring_free(out);
-		xstring_free(msg);
-		msg = NULL;
+
+		if (out.len > 0 )
+			printf("%s", sb_str(&out));
 
 		if (dcheck && nbpkgs > 0 && !noinstall) {
 			printf("\n>>> Missing package dependencies were detected.\n");
@@ -470,7 +471,8 @@ exec_check(int argc, char **argv)
 
 	if (!verbose)
 		progressbar_stop();
-	xstring_free(msg);
+	sb_fini(&msg);
+	sb_fini(&out);
 	vec_free_and_free(&dh, free);
 	pkg_free(pkg);
 	pkgdb_close(db);

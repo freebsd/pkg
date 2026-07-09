@@ -16,7 +16,7 @@
 #include <sys/param.h>
 #include <ucl.h>
 #include <pkg.h>
-#include <xstring.h>
+#include <pkg/sb.h>
 
 #define STARTS_WITH(string, needle) (strncasecmp(string, needle, strlen(needle)) == 0)
 #define RELATIVE_PATH(p) (&p[strspn(p, "/")])
@@ -84,7 +84,7 @@ pid_t process_spawn_pipe(FILE *inout[2], const char *command);
 
 void *parse_mode(const char *str);
 int *text_diff(char *a, char *b);
-int merge_3way(char *pivot, char *v1, char *v2, xstring *out);
+int merge_3way(char *pivot, char *v1, char *v2, sb_t *out);
 bool mkdirat_p(int fd, const char *path);
 int get_socketpair(int *);
 int checkflags(const char *mode, int *optr);

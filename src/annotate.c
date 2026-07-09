@@ -171,10 +171,8 @@ do_show(struct pkg *pkg, const char *tag)
 static char *
 read_input(void)
 {
-	xstring	*input;
+	sb_t input = sb_init();
 	int		 ch;
-
-	input = xstring_new();
 
 	for (;;) {
 		ch = getc(stdin);
@@ -184,10 +182,10 @@ read_input(void)
 			if (ferror(stdin))
 				err(EXIT_FAILURE, "Failed to read stdin");
 		}
-		xstring_putc(input, ch);
+		sb_cat_c(&input, ch);
 	}
 
-	return (xstring_get(input));
+	return (sb_get(&input));
 }
 
 int

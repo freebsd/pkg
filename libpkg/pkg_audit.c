@@ -40,7 +40,7 @@
 #include <fnmatch.h>
 #include <stdio.h>
 #include <string.h>
-#include <xstring.h>
+#include <pkg/sb.h>
 
 #include <yxml.h>
 
@@ -447,7 +447,7 @@ struct vulnxml_userdata {
 	struct pkg_audit_entry *cur_entry;
 	struct pkg_audit *audit;
 	enum vulnxml_parse_state state;
-	xstring *content;
+	sb_t content;
 	int range_num;
 	enum vulnxml_parse_attribute_state attr;
 };
@@ -511,7 +511,7 @@ vulnxml_end_element(struct vulnxml_userdata *ud, yxml_t *xml)
 	struct pkg_audit_versions_range *vers;
 	int range_type = -1;
 
-	xstring_flush(ud->content);
+
 	if (ud->state == VULNXML_PARSE_VULN && STRIEQ(xml->elem, "vuxml")) {
 		/* Entry is already in the vec, just validate it */
 		struct pkg_audit_entry *e = ud->cur_entry;
@@ -524,12 +524,12 @@ vulnxml_end_element(struct vulnxml_userdata *ud, yxml_t *xml)
 		ud->state = VULNXML_PARSE_INIT;
 	}
 	else if (ud->state == VULNXML_PARSE_TOPIC && STRIEQ(xml->elem, "vuln")) {
-		ud->cur_entry->desc = xstrdup(ud->content->buf);
+		ud->cur_entry->desc = xstrdup(sb_str(&ud->content));
 		ud->state = VULNXML_PARSE_VULN;
 	}
 	else if (ud->state == VULNXML_PARSE_CVE && STRIEQ(xml->elem, "references")) {
 		vec_push(&ud->cur_entry->cve,
-		    ((struct pkg_audit_cve){ .cvename = xstrdup(ud->content->buf) }));
+		    ((struct pkg_audit_cve){ .cvename = xstrdup(sb_str(&ud->content)) }));
 		ud->state = VULNXML_PARSE_VULN;
 	}
 	else if (ud->state == VULNXML_PARSE_PACKAGE && STRIEQ(xml->elem, "affects")) {
@@ -540,7 +540,7 @@ vulnxml_end_element(struct vulnxml_userdata *ud, yxml_t *xml)
 		    &ud->cur_entry->packages.d[ud->cur_entry->packages.len - 1];
 		struct pkg_audit_pkgname *cur_name =
 		    &cur_pkg->names.d[cur_pkg->names.len - 1];
-		cur_name->pkgname = xstrdup(ud->content->buf);
+		cur_name->pkgname = xstrdup(sb_str(&ud->content));
 		ud->state = VULNXML_PARSE_PACKAGE;
 	}
 	else if (ud->state == VULNXML_PARSE_RANGE && STRIEQ(xml->elem, "package")) {
@@ -572,15 +572,15 @@ vulnxml_end_element(struct vulnxml_userdata *ud, yxml_t *xml)
 		    &ud->cur_entry->packages.d[ud->cur_entry->packages.len - 1];
 		vers = &cur_pkg->versions.d[cur_pkg->versions.len - 1];
 		if (ud->range_num == 1) {
-			vers->v1.version = xstrdup(ud->content->buf);
+			vers->v1.version = xstrdup(sb_str(&ud->content));
 			vers->v1.type = range_type;
 		}
 		else if (ud->range_num == 2) {
-			vers->v2.version = xstrdup(ud->content->buf);
+			vers->v2.version = xstrdup(sb_str(&ud->content));
 			vers->v2.type = range_type;
 		}
 	}
-	xstring_reset(ud->content);
+	sb_reset(&ud->content);
 }
 
 static void
@@ -596,19 +596,19 @@ vulnxml_start_attribute(struct vulnxml_userdata *ud, yxml_t *xml)
 static void
 vulnxml_end_attribute(struct vulnxml_userdata *ud, yxml_t *xml __unused)
 {
-	xstring_flush(ud->content);
+
 	if (ud->state == VULNXML_PARSE_VULN && ud->attr == VULNXML_ATTR_VID) {
-		ud->cur_entry->id = xstrdup(ud->content->buf);
+		ud->cur_entry->id = xstrdup(sb_str(&ud->content));
 		ud->attr = VULNXML_ATTR_NONE;
 	}
-	xstring_reset(ud->content);
+	sb_reset(&ud->content);
 }
 
 static void
 vulnxml_val_attribute(struct vulnxml_userdata *ud, yxml_t *xml)
 {
 	if (ud->state == VULNXML_PARSE_VULN && ud->attr == VULNXML_ATTR_VID) {
-		xstring_puts(ud->content, xml->data);
+		sb_cat(&ud->content, xml->data);
 	}
 }
 
@@ -631,7 +631,7 @@ vulnxml_handle_data(struct vulnxml_userdata *ud, yxml_t *xml)
 	case VULNXML_PARSE_RANGE_LT:
 	case VULNXML_PARSE_RANGE_LE:
 	case VULNXML_PARSE_RANGE_EQ:
-		xstring_puts(ud->content, xml->data);
+		sb_cat(&ud->content, xml->data);
 		break;
 	}
 }
@@ -644,14 +644,11 @@ pkg_audit_parse_vulnxml(struct pkg_audit *audit)
 	yxml_ret_t r;
 	char buf[BUFSIZ];
 	char *walk, *end;
-	struct vulnxml_userdata ud;
+	struct vulnxml_userdata ud = { 0 };
 
 	yxml_init(&x, buf, BUFSIZ);
-	ud.cur_entry = NULL;
 	ud.audit = audit;
-	ud.range_num = 0;
 	ud.state = VULNXML_PARSE_INIT;
-	ud.content = xstring_new();
 
 	walk = audit->map;
 	end = walk + audit->len;
@@ -702,7 +699,7 @@ pkg_audit_parse_vulnxml(struct pkg_audit *audit)
 	else
 		pkg_emit_error("Invalid end of XML");
 out:
-	xstring_free(ud.content);
+	sb_fini(&ud.content);
 
 	return (ret);
 }

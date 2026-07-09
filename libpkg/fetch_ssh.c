@@ -160,7 +160,7 @@ ssh_connect(struct pkg_repo *repo, struct yuarel *u)
 	size_t linecap = 0;
 	int sshin[2];
 	int sshout[2];
-	xstring *cmd = NULL;
+	sb_t cmd = sb_init();
 	char *cmdline;
 	int retcode = EPKG_FATAL;
 	const char *ssh_args;
@@ -187,25 +187,24 @@ ssh_connect(struct pkg_repo *repo, struct yuarel *u)
 			goto ssh_cleanup;
 		}
 
-		cmd = xstring_new();
-		xstring_puts(cmd, "/usr/bin/ssh -e none -T ");
+		sb_cat(&cmd, "/usr/bin/ssh -e none -T ");
 
 		ssh_args = repo->ssh_args;
 		if (ssh_args == NULL)
 			ssh_args = pkg_object_string(
 			    pkg_config_get("PKG_SSH_ARGS"));
 		if (ssh_args != NULL)
-			xstring_printf(cmd, "%s ", ssh_args);
+			sb_printf(&cmd, "%s ", ssh_args);
 		if (repo->ip == IPV4)
-			xstring_puts(cmd, "-4 ");
+			sb_cat(&cmd, "-4 ");
 		else if (repo->ip == IPV6)
-			xstring_puts(cmd, "-6 ");
+			sb_cat(&cmd, "-6 ");
 		if (u->port > 0)
-			xstring_printf(cmd, "-p %d ", u->port);
+			sb_printf(&cmd, "-p %d ", u->port);
 		if (u->username != NULL)
-			xstring_printf(cmd, "%s@", u->username);
-		xstring_printf(cmd, "%s pkg ssh", u->host);
-		cmdline = xstring_get(cmd);
+			sb_printf(&cmd, "%s@", u->username);
+		sb_printf(&cmd, "%s pkg ssh", u->host);
+		cmdline = sb_get(&cmd);
 		pkg_dbg(PKG_DBG_FETCH, 1, "Fetch: running '%s'", cmdline);
 		argv[0] = _PATH_BSHELL;
 		argv[1] = "-c";

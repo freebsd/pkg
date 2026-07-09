@@ -61,7 +61,7 @@ int
 pkg_delete(struct pkg *pkg, struct pkg *rpkg, struct pkgdb *db, int flags,
     struct triggers *t, struct deferred_rc *rc)
 {
-	xstring		*message = NULL;
+	sb_t message = sb_init();
 	int		 ret, cancel = 0;
 	bool		 handle_rc = false;
 	const unsigned load_flags = PKG_LOAD_RDEPS|PKG_LOAD_FILES|PKG_LOAD_DIRS|
@@ -143,19 +143,16 @@ pkg_delete(struct pkg *pkg, struct pkg *rpkg, struct pkgdb *db, int flags,
 	pkg_emit_deinstall_finished(pkg);
 	vec_foreach(pkg->message, i) {
 		if (pkg->message.d[i]->type == PKG_MESSAGE_REMOVE) {
-			if (message == NULL) {
-				message = xstring_new();
-				pkg_fprintf(message->fp, "Message from "
-				    "%n-%v:\n", pkg, pkg);
+			if (message.len == 0) {
+				sb_printf(&message, "Message from "
+				    "%s-%s:\n", pkg->name, pkg->version);
 			}
-			xstring_printf(message, "%s\n", pkg->message.d[i]->str);
+			sb_printf(&message, "%s\n", pkg->message.d[i]->str);
 		}
 	}
-	if (pkg_has_message(pkg) && message != NULL) {
-		xstring_flush(message);
-		pkg_emit_message(message->buf);
-		xstring_free(message);
-	}
+	if (pkg_has_message(pkg) && message.len != 0)
+		pkg_emit_message(sb_str(&message));
+	sb_fini(&message);
 
 	ret = pkgdb_unregister_pkg(db, pkg->id);
 	if (ret != EPKG_OK)

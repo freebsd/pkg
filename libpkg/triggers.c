@@ -20,7 +20,7 @@
 #include <fcntl.h>
 #include <paths.h>
 #include <spawn.h>
-#include <xstring.h>
+#include <pkg/sb.h>
 
 #include <pkg.h>
 #include <private/pkg.h>
@@ -764,7 +764,8 @@ exec_deferred(int dfd, const char *name)
 {
 	bool sandbox = false;
 	pkghash *args = NULL;
-	xstring *script = NULL;
+	sb_t script = sb_init();
+	sb_t *tgt = NULL;
 
 	int fd = openat(dfd, name, O_RDONLY);
 	if (fd == -1) {
@@ -796,7 +797,7 @@ exec_deferred(int dfd, const char *name)
 		}
 		if (strncmp(walk, "end args", 8) == 0) {
 			inargs = false;
-			script = xstring_new();
+			tgt = &script;
 			continue;
 		}
 		if (inargs) {
@@ -805,16 +806,16 @@ exec_deferred(int dfd, const char *name)
 				line[linelen -1] = '\0';
 			pkghash_safe_add(args, walk, NULL, NULL);
 		}
-		if (script != NULL)
-			xstring_puts(script, line);
+		if (tgt != NULL)
+			sb_cat(tgt, line);
 	}
 	free(line);
 	fclose(f);
-	if (script == NULL) {
+	if (tgt == NULL) {
 		pkghash_destroy(args);
 		return;
 	}
-	char *s = xstring_get(script);
+	char *s = sb_get(&script);
 	if (trigger_execute_lua(s, sandbox, args) == EPKG_OK) {
 		unlinkat(dfd, name, 0);
 	}

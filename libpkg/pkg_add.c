@@ -25,7 +25,7 @@
 #include <sys/time.h>
 #include <sys/wait.h>
 #include <time.h>
-#include <xstring.h>
+#include <pkg/sb.h>
 
 #include <dirent.h>
 
@@ -195,7 +195,7 @@ attempt_to_merge(int rootfd, struct pkg_config_file *rcf, struct pkg *local,
 {
 	const struct pkg_file *lf = NULL;
 	struct stat st;
-	xstring *newconf;
+	sb_t newconf =  sb_init();
 	struct pkg_config_file *lcf = NULL;
 	size_t lcf_len;
 
@@ -267,12 +267,11 @@ attempt_to_merge(int rootfd, struct pkg_config_file *rcf, struct pkg *local,
 		if (rcf->status == MERGE_SUCCESS)
 			goto ret;
 	}
-	newconf = xstring_new();
-	if (merge_3way(lcf->content, localconf, rcf->content, newconf) != 0) {
-		xstring_free(newconf);
+	if (merge_3way(lcf->content, localconf, rcf->content, &newconf) != 0) {
+		sb_fini(&newconf);
 		pkg_emit_error("Unable to merge configuration file: %s", rcf->path);
 	} else {
-		char *conf = xstring_get(newconf);
+		char *conf = sb_get(&newconf);
 		rcf->newcontent = conf;
 		rcf->status = MERGE_SUCCESS;
 	}
@@ -1601,7 +1600,7 @@ pkg_add_common(struct pkgdb *db, const char *path, unsigned flags,
 	struct archive		*a = NULL;
 	struct archive_entry	*ae = NULL;
 	struct pkg		*pkg = NULL;
-	xstring			*message = NULL;
+	sb_t message = sb_init();
 	struct pkg_message	*msg;
 	struct pkg_file		*f;
 	const char		*msgstr;
@@ -1833,19 +1832,16 @@ pkg_add_common(struct pkgdb *db, const char *path, unsigned flags,
 			msgstr = msg->str;
 		}
 		if (msgstr != NULL) {
-			if (message == NULL) {
-				message = xstring_new();
-				pkg_fprintf(message->fp, "=====\nMessage from "
+			if (message.len == 0) {
+				pkg_sb_printf(&message, "=====\nMessage from "
 				    "%n-%v:\n\n", pkg, pkg);
 			}
-			xstring_printf(message, "--\n%s\n", msgstr);
+			sb_printf(&message, "--\n%s\n", msgstr);
 		}
 	}
-	if (pkg_has_message(pkg) && message != NULL) {
-		xstring_flush(message);
-		pkg_emit_message(message->buf);
-		xstring_free(message);
-	}
+	if (pkg_has_message(pkg) && message.len != 0)
+		pkg_emit_message(sb_str(&message));
+	sb_fini(&message);
 
 cleanup:
 	if (openxact)

@@ -129,7 +129,7 @@ libfetch_open(struct pkg_repo *repo, struct fetch_item *fi)
 	struct dns_srvinfo *srv_current = NULL;
 	struct http_mirror *http_current = NULL;
 	struct url_stat st;
-	xstring *fetchOpts = NULL;
+	sb_t fetchOpts = sb_init();
 
 	max_retry = pkg_object_int(pkg_config_get("FETCH_RETRY"));
 	if (max_retry < 0)
@@ -243,17 +243,16 @@ libfetch_open(struct pkg_repo *repo, struct fetch_item *fi)
 			u->doc = docpath;
 			u->port = http_current->url->port;
 		}
-		fetchOpts = xstring_new();
-		xstring_puts(fetchOpts, "i");
+		sb_cat(&fetchOpts, "i");
 		if (repo->ip == IPV4)
-			xstring_puts(fetchOpts, "4");
+			sb_cat(&fetchOpts, "4");
 		else if (repo->ip == IPV6)
-			xstring_puts(fetchOpts, "6");
+			sb_cat(&fetchOpts, "6");
 
 		if (ctx.debug_level >= 4)
-			xstring_puts(fetchOpts, "v");
+			sb_cat(&fetchOpts, "v");
 
-		opts = xstring_get(fetchOpts);
+		opts = sb_get(&fetchOpts);
 		pkg_dbg(PKG_DBG_FETCH, 1,
 		    "libfetch> fetching from: %s://%s%s%s%s with opts \"%s\"",
 		    u->scheme,

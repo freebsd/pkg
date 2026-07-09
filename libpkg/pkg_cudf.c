@@ -223,6 +223,7 @@ cudf_emit_request_section(FILE *f, const char *label, pkghash *hash, size_t *col
 	return (EPKG_OK);
 }
 
+static int
 cudf_emit_request_packages(const char *op, struct pkg_jobs *j, FILE *f)
 {
 	size_t column = 0;

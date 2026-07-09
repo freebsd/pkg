@@ -13,9 +13,9 @@
 #include <stdbool.h>
 #include <stdint.h>
 #include <string.h>
-#include <xstring.h>
 #include <bsd_compat.h>
 #include <pkg/vec.h>
+#include <pkg/sb.h>
 
 #define pkg_warnx(fmt, ...) pkg_fprintf(stderr, "%S: " fmt, getprogname(), __VA_ARGS__, -1)
 #define ll_foreach(head, el) for (el=head; el != NULL; el = (el)->next)
@@ -280,8 +280,8 @@ int info_flags(uint64_t opt, bool remote);
 void print_info(struct pkgdb *db, struct pkg * const pkg, uint64_t opt);
 int print_jobs_summary(struct pkg_jobs *j, const char *msg, ...);
 
-void job_status_begin(xstring *);
-void job_status_end(xstring *);
+void job_status_begin(sb_t *);
+void job_status_end(sb_t *);
 
 int event_callback(void *data, struct pkg_event *ev);
 int print_pkg(struct pkg *p, void *ctx);
@@ -291,7 +291,7 @@ void progressbar_start(const char *pmsg);
 void progressbar_tick(int64_t current, int64_t total);
 void progressbar_stop(void);
 
-extern xstring *messages;
+extern sb_t *messages;
 
 
 /* pkg-query / pkg-rquery */
@@ -303,7 +303,7 @@ struct query_flags {
 };
 
 void print_query(struct pkg *pkg, char *qstr, char multiline);
-int format_sql_condition(const char *str, xstring *sqlcond,
+int format_sql_condition(const char *str, sb_t *sqlcond,
 			 bool for_remote);
 int analyse_query_string(char *qstr, struct query_flags *q_flags,
 			 const unsigned int q_flags_len, int *flags,

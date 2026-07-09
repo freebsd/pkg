@@ -52,7 +52,7 @@
 */
 
 #include <sys/types.h>
-#include <xstring.h>
+#include <pkg/sb.h>
 
 #include <string.h>
 #include <stdlib.h>
@@ -115,7 +115,7 @@ static int sameEdit(
 */
 
 static int
-buf_copy_lines(xstring *to, const char *from, int N)
+buf_copy_lines(sb_t *to, const char *from, int N)
 {
 	int cnt = 0;
 	int i;
@@ -134,7 +134,7 @@ buf_copy_lines(xstring *to, const char *from, int N)
 		i++;
 	}
 	if (to)
-		xstring_write(to, from, i, 1);
+		sb_cat_n(to, from, i * 1);
 	return (i);
 }
 
@@ -151,14 +151,14 @@ buf_copy_lines(xstring *to, const char *from, int N)
 ** of conflicts is returns
 */
 static int
-buf_merge(char *pPivot, char *pV1, char *pV2, xstring *pOut){
+buf_merge(char *pPivot, char *pV1, char *pV2, sb_t *pOut){
   int *aC1;              /* Changes from pPivot to pV1 */
   int *aC2;              /* Changes from pPivot to pV2 */
   int i1, i2;            /* Index into aC1[] and aC2[] */
   int nCpy, nDel, nIns;  /* Number of lines to copy, delete, or insert */
   int limit1, limit2;    /* Sizes of aC1[] and aC2[] */
 
-  xstring_reset(pOut);         /* Merge results stored in pOut */
+  sb_reset(pOut);         /* Merge results stored in pOut */
 
   /* Compute the edits that occur from pPivot => pV1 (into aC1)
   ** and pPivot => pV2 (into aC2).  Each of the aC1 and aC2 arrays is
@@ -276,7 +276,7 @@ int merge_3way(
   char *pPivot,       /* Common ancestor (older) */
   char *pV1,    /* Name of file for version merging into (mine) */
   char *pV2,          /* Version merging from (yours) */
-  xstring *pOut         /* Output written here */
+  sb_t *pOut         /* Output written here */
 ){
   int rc;             /* Return code of subroutines and this routine */
 

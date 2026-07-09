@@ -12,7 +12,7 @@
 #include <private/pkg.h>
 #include <private/pkg_abi.h>
 #include <private/binfmt.h>
-#include <xstring.h>
+#include <pkg/sb.h>
 #include <pkg.h>
 
 #ifndef __unused
@@ -23,7 +23,7 @@
 # endif
 #endif
 
-xstring *msg;
+sb_t *msg;
 
 ATF_TC_WITHOUT_HEAD(analyse_elf);
 
@@ -32,8 +32,8 @@ event_callback(void *data __unused, struct pkg_event *ev)
 {
 	switch (ev->type) {
 	case PKG_EVENT_ERROR:
-		xstring_reset(msg);
-		xstring_printf(msg, "%s", ev->e_pkg_error.msg);
+		sb_reset(msg);
+		sb_printf(msg, "%s", ev->e_pkg_error.msg);
 		break;
 	default:
 		/* IGNORE */

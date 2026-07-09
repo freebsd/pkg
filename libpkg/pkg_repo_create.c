@@ -1029,12 +1029,12 @@ pkg_repo_sign(const char *path, char **argv, int argc, char **sig, size_t *sigle
 {
 	FILE *fps[2];
 	char *sha256;
-	xstring *cmd = NULL;
-	xstring *buf = NULL;
-	xstring *sigstr = NULL;
-	xstring *certstr = NULL;
-	xstring *typestr = NULL;
+	sb_t cmd = sb_init();
+	sb_t sigstr = sb_init();
+	sb_t certstr = sb_init();
+	sb_t typestr = sb_init();
 	char *line = NULL;
+	sb_t *buf = NULL;
 	size_t linecap = 0;
 	ssize_t linelen;
 	pid_t spid;
@@ -1045,17 +1045,15 @@ pkg_repo_sign(const char *path, char **argv, int argc, char **sig, size_t *sigle
 	if (!sha256)
 		return (EPKG_FATAL);
 
-	cmd = xstring_new();
-
 	for (i = 0; i < argc; i++) {
 		if (strspn(argv[i], " \t\n") > 0)
-			xstring_printf(cmd, " \"%s\" ", argv[i]);
+			sb_printf(&cmd, " \"%s\" ", argv[i]);
 		else
-			xstring_printf(cmd, " %s ", argv[i]);
+			sb_printf(&cmd, " %s ", argv[i]);
 	}
 
-	xstring_flush(cmd);
-	if ((spid = process_spawn_pipe(fps, cmd->buf)) < 0) {
+
+	if ((spid = process_spawn_pipe(fps, sb_str(&cmd))) < 0) {
 		ret = EPKG_FATAL;
 		goto done;
 	}
@@ -1063,33 +1061,28 @@ pkg_repo_sign(const char *path, char **argv, int argc, char **sig, size_t *sigle
 	fprintf(fps[1], "%s\n", sha256);
 	fflush(fps[1]);
 
-	sigstr = xstring_new();
-	certstr = xstring_new();
-	typestr = xstring_new();
-
 	while ((linelen = getline(&line, &linecap, fps[0])) > 0 ) {
 		if (STREQ(line, "SIGNATURE\n")) {
-			buf = sigstr;
+			buf = &sigstr;
 			continue;
 		} else if (STREQ(line, "CERT\n")) {
-			buf = certstr;
+			buf = &certstr;
 			continue;
 		} else if (STREQ(line, "TYPE\n")) {
-			buf = typestr;
+			buf = &typestr;
 			continue;
 		} else if (STREQ(line, "END\n")) {
 			end_seen = true;
 			break;
 		}
-		if (buf != NULL) {
-			xstring_write(buf, line, linelen, 1);
-		}
+		if (buf != NULL)
+			sb_cat_n(buf, line, linelen * 1);
 	}
 	free(line);
 
-	*sigtype = xstring_get(typestr);
-	*cert = xstring_get_binary(certstr, certlen);
-	*sig = xstring_get_binary(sigstr, siglen);
+	*sigtype = sb_get(&typestr);
+	*cert = sb_get(&certstr);
+	*sig = sb_get(&sigstr);
 
 	/*
 	 * cert could be DER-encoded rather than PEM, so strip off any trailing
@@ -1108,7 +1101,7 @@ pkg_repo_sign(const char *path, char **argv, int argc, char **sig, size_t *sigle
 
 done:
 	free(sha256);
-	xstring_free(cmd);
+	sb_fini(&cmd);
 
 	return (ret);
 }

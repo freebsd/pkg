@@ -45,7 +45,7 @@
 #include <spawn.h>
 #include <stdbool.h>
 #include <unistd.h>
-#include <xstring.h>
+#include <pkg/sb.h>
 
 #include "private/pkg.h"
 #include "private/event.h"
@@ -62,33 +62,31 @@ stack_dump(lua_State *L)
 {
 	int i;
 	int top = lua_gettop(L);
-	xstring *stack;
+	sb_t stack = sb_init();
 	char *stackstr;
 
-	stack = xstring_new();
-
-	fputs("\nLua Stack\n---------\n"
-	    "\tType   Data\n\t-----------\n", stack->fp);
+	sb_cat(&stack, "\nLua Stack\n---------\n"
+	    "\tType   Data\n\t-----------\n");
 
 	for (i = 1; i <= top; i++) {  /* repeat for each level */
 		int t = lua_type(L, i);
-		xstring_printf(stack, "%i", i);
+		sb_printf(&stack, "%i", i);
 		switch (t) {
 		case LUA_TSTRING:  /* strings */
-			xstring_printf(stack, "\tString: `%s'\n", lua_tostring(L, i));
+			sb_printf(&stack, "\tString: `%s'\n", lua_tostring(L, i));
 			break;
 		case LUA_TBOOLEAN:  /* booleans */
-			xstring_printf(stack, "\tBoolean: %s", lua_toboolean(L, i) ? "\ttrue\n" : "\tfalse\n");
+			sb_printf(&stack, "\tBoolean: %s", lua_toboolean(L, i) ? "\ttrue\n" : "\tfalse\n");
 			break;
 		case LUA_TNUMBER:  /* numbers */
-			xstring_printf(stack, "\tNumber: %g\n", lua_tonumber(L, i));
+			sb_printf(&stack, "\tNumber: %g\n", lua_tonumber(L, i));
 			break;
 		default:  /* other values */
-			xstring_printf(stack, "\tOther: %s\n", lua_typename(L, t));
+			sb_printf(&stack, "\tOther: %s\n", lua_typename(L, t));
 			break;
 		}
 	}
-	stackstr = xstring_get(stack);
+	stackstr = sb_get(&stack);
 	pkg_emit_error("%s\n", stackstr);
 	free(stackstr);
 
@@ -203,8 +201,8 @@ lua_exec_capture(lua_State *L)
 	int n = lua_gettop(L);
 	char buf[BUFSIZ];
 	ssize_t nread;
-	xstring *out = NULL;
-	xstring *err = NULL;
+	sb_t out = sb_init();
+	sb_t err = sb_init();
 
 	luaL_argcheck(L, n == 1, n > 1 ? 2 : n,
 	    "pkg.exec_capture takes exactly one argument");
@@ -249,32 +247,30 @@ lua_exec_capture(lua_State *L)
 	close(stdout_pipe[1]);
 	close(stderr_pipe[1]);
 
-	out = xstring_new();
 	while ((nread = read(stdout_pipe[0], buf, sizeof(buf))) != 0) {
 		if (nread < 0) {
 			if (errno == EINTR)
 				continue;
 			break;
 		}
-		xstring_write(out, buf, 1, nread);
+		sb_cat_n(&out, buf, nread);
 	}
 	close(stdout_pipe[0]);
 
-	err = xstring_new();
 	while ((nread = read(stderr_pipe[0], buf, sizeof(buf))) != 0) {
 		if (nread < 0) {
 			if (errno == EINTR)
 				continue;
 			break;
 		}
-		xstring_write(err, buf, 1, nread);
+		sb_cat_n(&err, buf, nread);
 	}
 	close(stderr_pipe[0]);
 
 	while (waitpid(pid, &pstat, 0) == -1) {
 		if (errno != EINTR) {
-			xstring_free(out);
-			xstring_free(err);
+			sb_fini(&out);
+			sb_fini(&err);
 			lua_pushnil(L);
 			lua_pushnil(L);
 			lua_pushinteger(L, -1);
@@ -282,13 +278,13 @@ lua_exec_capture(lua_State *L)
 		}
 	}
 
-	xstring_flush(out);
-	xstring_flush(err);
-	lua_pushstring(L, out->buf);
-	lua_pushstring(L, err->buf);
+
+
+	lua_pushstring(L, sb_str(&out));
+	lua_pushstring(L, sb_str(&err));
 	lua_pushinteger(L, WEXITSTATUS(pstat));
-	xstring_free(out);
-	xstring_free(err);
+	sb_fini(&out);
+	sb_fini(&err);
 	return 3;
 }
 

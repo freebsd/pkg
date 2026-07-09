@@ -38,7 +38,7 @@
 #include <unistd.h>
 #include <errno.h>
 #include <signal.h>
-#include <xstring.h>
+#include <pkg/sb.h>
 #include <pkghash.h>
 #include <pkg.h>
 
@@ -421,10 +421,8 @@ exec_upgrade(int argc, char **argv)
 				goto cleanup;
 		}
 
-		if (messages != NULL && !quiet) {
-			xstring_flush(messages);
-			printf("%s", messages->buf);
-		}
+		if (messages && messages->len > 0 && !quiet)
+			printf("%s", sb_str(messages));
 		break;
 	}
 

@@ -201,9 +201,9 @@ setprefix(struct plist *p, char *line, struct file_attr *a __unused)
 
 	p->slash = p->prefix[strlen(p->prefix) -1] == '/' ? "" : "/";
 
-	xstring_printf(p->post_install_buf, "cd %s\n", p->prefix);
-	xstring_printf(p->pre_deinstall_buf, "cd %s\n", p->prefix);
-	xstring_printf(p->post_deinstall_buf, "cd %s\n", p->prefix);
+	sb_printf(&p->post_install_buf, "cd %s\n", p->prefix);
+	sb_printf(&p->pre_deinstall_buf, "cd %s\n", p->prefix);
+	sb_printf(&p->post_deinstall_buf, "cd %s\n", p->prefix);
 
 	return (EPKG_OK);
 }
@@ -633,16 +633,16 @@ append_script(struct plist *p, pkg_script t, const char *cmd)
 {
 	switch (t) {
 	case PKG_SCRIPT_PRE_INSTALL:
-		xstring_printf(p->pre_install_buf, "%s\n", cmd);
+		sb_printf(&p->pre_install_buf, "%s\n", cmd);
 		break;
 	case PKG_SCRIPT_POST_INSTALL:
-		xstring_printf(p->post_install_buf, "%s\n", cmd);
+		sb_printf(&p->post_install_buf, "%s\n", cmd);
 		break;
 	case PKG_SCRIPT_PRE_DEINSTALL:
-		xstring_printf(p->pre_deinstall_buf, "%s\n", cmd);
+		sb_printf(&p->pre_deinstall_buf, "%s\n", cmd);
 		break;
 	case PKG_SCRIPT_POST_DEINSTALL:
-		xstring_printf(p->post_deinstall_buf, "%s\n", cmd);
+		sb_printf(&p->post_deinstall_buf, "%s\n", cmd);
 		break;
 	}
 }
@@ -974,12 +974,11 @@ extract_keywords(char *line, char **keyword, struct file_attr **attr)
 }
 
 static void
-flush_script_buffer(xstring *buf, struct pkg *p, int type)
+flush_script_buffer(sb_t *buf, struct pkg *p, int type)
 {
-	xstring_flush(buf);
-	if (buf->buf[0] != '\0') {
-		pkg_appendscript(p, buf->buf, type);
-	}
+
+	if (buf->len != 0)
+		pkg_appendscript(p, sb_str(buf), type);
 }
 
 int
@@ -1000,8 +999,8 @@ plist_parse_line(struct plist *plist, char *line)
 		    (line[4] == '\0' || isspace((unsigned char)line[4]))) {
 			return (forloop_execute(plist));
 		}
-		xstring_printf(plist->forloop_stack->body, "%s\n", line);
-		xstring_flush(plist->forloop_stack->body);
+		sb_printf(&plist->forloop_stack->body, "%s\n", line);
+
 		return (EPKG_OK);
 	}
 
@@ -1071,11 +1070,6 @@ plist_new(struct pkg *pkg, const char *stage)
 	p->uname = xstrdup("root");
 	p->gname = xstrdup("wheel");
 
-	p->pre_install_buf = xstring_new();
-	p->post_install_buf = xstring_new();
-	p->pre_deinstall_buf = xstring_new();
-	p->post_deinstall_buf = xstring_new();
-
 	populate_keywords(p);
 
 	return (p);
@@ -1102,10 +1096,10 @@ plist_free(struct plist *p)
 	vec_free_and_free(&p->hardlinks, free);
 	vec_free_and_free(&p->variables, pkg_kv_free);
 
-	xstring_free(p->post_deinstall_buf);
-	xstring_free(p->post_install_buf);
-	xstring_free(p->pre_deinstall_buf);
-	xstring_free(p->pre_install_buf);
+	sb_fini(&p->post_deinstall_buf);
+	sb_fini(&p->post_install_buf);
+	sb_fini(&p->pre_deinstall_buf);
+	sb_fini(&p->pre_install_buf);
 
 	forloop_free_stack(p);
 	free(p);
@@ -1114,29 +1108,28 @@ plist_free(struct plist *p)
 char *
 expand_plist_variables(const char *in, kvlist_t *vars)
 {
-	xstring *buf;
+	sb_t buf = sb_init();
 	const char *cp;
 	size_t len;
 
 	if (vec_len(vars) == 0)
 		return (xstrdup(in));
 
-	buf = xstring_new();
 	cp = NULL;
 	while (in[0] != '\0') {
 		if (in[0] != '%') {
-			xstring_putc(buf, in[0]);
+			sb_cat_c(&buf, in[0]);
 			in++;
 			continue;
 		}
 		in++;
 		if (in[0] == '\0') {
-			xstring_putc(buf, '%');
+			sb_cat_c(&buf, '%');
 			break;
 		}
 		if (in[0] != '%') {
-			xstring_putc(buf, '%');
-			xstring_putc(buf, in[0]);
+			sb_cat_c(&buf, '%');
+			sb_cat_c(&buf, in[0]);
 			in++;
 			continue;
 		}
@@ -1150,7 +1143,7 @@ expand_plist_variables(const char *in, kvlist_t *vars)
 			in++;
 		}
 		if (in[0] != '%') {
-			xstring_printf(buf, "%%%%%.*s", (int)(in - cp), cp);
+			sb_printf(&buf, "%%%%%.*s", (int)(in - cp), cp);
 			continue;
 		}
 		len = in - cp -1;
@@ -1159,17 +1152,17 @@ expand_plist_variables(const char *in, kvlist_t *vars)
 		vec_foreach(*vars, i) {
 			if (strncmp(cp, vars->d[i]->key, len) != 0)
 				continue;
-			xstring_puts(buf, vars->d[i]->value);
+			sb_cat(&buf, vars->d[i]->value);
 			found = true;
 			in++;
 			break;
 		}
 		if (found)
 			continue;
-		xstring_printf(buf, "%%%%%.*s%%", (int)(in - cp), cp);
+		sb_printf(&buf, "%%%%%.*s%%", (int)(in - cp), cp);
 		in++;
 	}
-	return (xstring_get(buf));
+	return (sb_get(&buf));
 }
 
 static int
@@ -1224,12 +1217,11 @@ open_directory_of(const char *file)
 static char *
 forloop_substitute_var(const char *in, const char *varname, const char *varval)
 {
-	xstring *buf;
+	sb_t buf = sb_init();
 	const char *cp, *pct;
 	size_t vlen;
 
 	vlen = strlen(varname);
-	buf = xstring_new();
 
 	for (cp = in; *cp != '\0'; cp++) {
 		if (cp[0] == '%' && cp[1] == '%') {
@@ -1239,15 +1231,15 @@ forloop_substitute_var(const char *in, const char *varname, const char *varval)
 			if (pct != NULL && (size_t)(pct - cp) == vlen &&
 			    strncmp(cp, varname, vlen) == 0) {
 				/* exact variable match */
-				xstring_printf(buf, "%s", varval);
+				sb_cat(&buf, varval);
 				cp = pct + 1;
 				continue;
 			}
 		}
-		xstring_putc(buf, *cp);
+		sb_cat_c(&buf, *cp);
 	}
 
-	return (xstring_get(buf));
+	return (sb_get(&buf));
 }
 
 static void
@@ -1257,7 +1249,7 @@ forloop_frame_free(forloop_frame_t *f)
 		return;
 	free(f->var);
 	vec_free_and_free(&f->values, free);
-	xstring_free(f->body);
+	sb_fini(&f->body);
 	free(f);
 }
 
@@ -1296,7 +1288,7 @@ forloop_execute(struct plist *p)
 	p->in_for_loop = p->forloop_stack != NULL;
 
 	/* flush body buffer so buf is complete */
-	xstring_flush(f->body);
+
 
 	for (i = 0; i < f->values.len; i++) {
 		char *expanded;
@@ -1304,7 +1296,7 @@ forloop_execute(struct plist *p)
 		int inner_rc;
 
 		expanded = forloop_substitute_var(
-		    f->body->buf, f->var, f->values.d[i]);
+		    sb_str(&f->body), f->var, f->values.d[i]);
 		if (expanded == NULL) {
 			forloop_frame_free(f);
 			return (EPKG_FATAL);
@@ -1315,26 +1307,20 @@ forloop_execute(struct plist *p)
 			nl_start = expanded;
 			while (*nl_start != '\0') {
 				nl_end = strchr(nl_start, '\n');
-				if (nl_end != NULL) {
-					if ((size_t)(nl_end - nl_start) > 0)
-						xstring_printf(p->forloop_stack->body,
-						    "%.*s\n",
-						    (int)(nl_end - nl_start),
-						    nl_start);
-					else
-						xstring_printf(p->forloop_stack->body,
-						    "\n");
-					nl_start = nl_end + 1;
-				} else {
+				if (nl_end == NULL) {
 					/* last segment without trailing \n */
-					xstring_printf(p->forloop_stack->body,
-					    "%s", nl_start);
+					sb_cat(&p->forloop_stack->body,
+					    nl_start);
 					break;
 				}
+				if ((size_t)(nl_end - nl_start) > 0)
+					sb_cat_n(&p->forloop_stack->body,
+					    nl_start,
+					    (int)(nl_end - nl_start));
+				sb_cat_c(&p->forloop_stack->body, '\n');
+				nl_start = nl_end + 1;
 			}
-			if (p->forloop_stack->body->fp != NULL)
-				xstring_flush(p->forloop_stack->body);
-		} else {
+			} else {
 			/* Top-level: parse each line */
 			nl_start = expanded;
 			while (*nl_start != '\0') {
@@ -1399,7 +1385,6 @@ for_handler(struct plist *p, char *line, struct file_attr *a __unused)
 
 	f = xcalloc(1, sizeof(*f));
 	f->var = xstrdup(line);
-	f->body = xstring_new();
 	f->next = p->forloop_stack;
 
 	/* Parse space-separated values */
@@ -1525,13 +1510,13 @@ ports_parse_plist(struct pkg *pkg, const char *plist, const char *stage)
 
 	pkg->flatsize = pplist->flatsize;
 
-	flush_script_buffer(pplist->pre_install_buf, pkg,
+	flush_script_buffer(&pplist->pre_install_buf, pkg,
 	    PKG_SCRIPT_PRE_INSTALL);
-	flush_script_buffer(pplist->post_install_buf, pkg,
+	flush_script_buffer(&pplist->post_install_buf, pkg,
 	    PKG_SCRIPT_POST_INSTALL);
-	flush_script_buffer(pplist->pre_deinstall_buf, pkg,
+	flush_script_buffer(&pplist->pre_deinstall_buf, pkg,
 	    PKG_SCRIPT_PRE_DEINSTALL);
-	flush_script_buffer(pplist->post_deinstall_buf, pkg,
+	flush_script_buffer(&pplist->post_deinstall_buf, pkg,
 	    PKG_SCRIPT_POST_DEINSTALL);
 
 	fclose(plist_f);
@@ -1551,7 +1536,7 @@ pkg_add_port(struct pkgdb *db, struct pkg *pkg, const char *input_path,
 {
 	const char *location;
 	int rc = EPKG_OK;
-	xstring *message;
+	sb_t message = sb_init();
 
 	if (db != NULL && pkg_is_installed(db, pkg->name) != EPKG_END) {
 		return(EPKG_INSTALLED);
@@ -1603,20 +1588,16 @@ pkg_add_port(struct pkgdb *db, struct pkg *pkg, const char *input_path,
 
 	if (rc == EPKG_OK) {
 		pkg_emit_install_finished(pkg, NULL);
-		if (pkg_has_message(pkg))
-			message = xstring_new();
 		vec_foreach(pkg->message, i) {
 			if (pkg->message.d[i]->type == PKG_MESSAGE_ALWAYS ||
 			    pkg->message.d[i]->type == PKG_MESSAGE_INSTALL) {
-				xstring_printf(message, "%s\n", pkg->message.d[i]->str);
+				sb_printf(&message, "%s\n", pkg->message.d[i]->str);
 			}
 		}
 		if (pkg_has_message(pkg)) {
-			xstring_flush(message);
-			if (message->buf[0] != '\0') {
-				pkg_emit_message(message->buf);
-			}
-			xstring_free(message);
+			if (message.len != 0)
+				pkg_emit_message(sb_str(&message));
+			sb_fini(&message);
 		}
 	}
 	/* it is impossible at this point to get any cleanup triggers to run */
