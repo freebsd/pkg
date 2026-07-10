@@ -25,6 +25,7 @@
 #include "private/utils.h"
 #include "private/fetch.h"
 #include "pkghash.h"
+#include "pkg/stringset.h"
 
 /*
  * GCC/Clang cleanup attribute helpers for automatic resource management.
@@ -142,7 +143,7 @@ struct pkg_ctx {
 	bool backup_libraries;
 	const char *backup_library_path;
 	bool triggers;
-	pkghash *touched_dir_hash;
+	stringset_t *touched_dir_hash;
 	bool defer_triggers;
 	bool repo_accept_legacy_pkg;
 	ip_version_t ip;
@@ -403,8 +404,8 @@ struct deferred_rc {
 	char *tmpdir;		/* mkdtemp'd dir for saved old scripts */
 	rc_stop_t to_stop;	/* services to stop (deletions & upgrades) */
 	charv_t to_start;	/* service names to start (installs & upgrades) */
-	pkghash *seen_stop;	/* dedup: names already in to_stop */
-	pkghash *seen_start;	/* dedup: names already in to_start */
+	stringset_t *seen_stop;	/* dedup: names already in to_stop */
+	stringset_t *seen_start;	/* dedup: names already in to_start */
 };
 
 struct pkg_create {

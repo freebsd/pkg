@@ -33,6 +33,7 @@
 #include "private/utils.h"
 #include "private/pkg.h"
 #include "pkg.h"
+#include "pkg/stringset.h"
 
 #define IS_DELETE(j) ((j)->type == PKG_JOBS_DEINSTALL || (j)->type == PKG_JOBS_AUTOREMOVE)
 
@@ -154,8 +155,8 @@ struct pkg_jobs {
 	vec_t(struct pkg *)	lockedpkgs;
 	struct triggers triggers;
 	struct deferred_rc rc;
-	struct pkghash *orphaned;
-	struct pkghash *notorphaned;
+	stringset_t *orphaned;
+	stringset_t *notorphaned;
 	charv_t system_shlibs;
 };
 

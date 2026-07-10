@@ -275,9 +275,9 @@ pkg_deferred_rc_free(struct deferred_rc *rc)
 		free(rc->to_start.d[i]);
 	vec_free(&rc->to_start);
 
-	pkghash_destroy(rc->seen_stop);
+	stringset_destroy(rc->seen_stop);
 	rc->seen_stop = NULL;
-	pkghash_destroy(rc->seen_start);
+	stringset_destroy(rc->seen_start);
 	rc->seen_start = NULL;
 
 	if (rc->tmpdir != NULL) {
@@ -335,9 +335,9 @@ pkg_deferred_rc_add(struct deferred_rc *rc, struct pkg *pkg, pkg_rc_attr attr)
 
 		switch (attr) {
 		case PKG_RC_ATTR_STOP:
-			if (pkghash_get(rc->seen_stop, rcname) != NULL)
+			if (stringset_contains(rc->seen_stop, rcname))
 				break;
-			pkghash_safe_add(rc->seen_stop, rcname, NULL, NULL);
+			stringset_safe_add(&rc->seen_stop, rcname);
 
 			struct deferred_rc_stop entry = { .name = xstrdup(rcname) };
 			if (deferred_rc_ensure_tmpdir(rc) == 0) {
@@ -355,9 +355,9 @@ pkg_deferred_rc_add(struct deferred_rc *rc, struct pkg *pkg, pkg_rc_attr attr)
 			vec_push(&rc->to_stop, entry);
 			break;
 		case PKG_RC_ATTR_START:
-			if (pkghash_get(rc->seen_start, rcname) != NULL)
+			if (stringset_contains(rc->seen_start, rcname))
 				break;
-			pkghash_safe_add(rc->seen_start, rcname, NULL, NULL);
+			stringset_safe_add(&rc->seen_start, rcname);
 			vec_push(&rc->to_start, xstrdup(rcname));
 			break;
 		}
@@ -380,7 +380,7 @@ pkg_deferred_rc_execute(struct deferred_rc *rc)
 	 */
 	vec_foreach(rc->to_stop, i) {
 		struct deferred_rc_stop *s = &rc->to_stop.d[i];
-		if (pkghash_get(rc->seen_start, s->name) != NULL) {
+		if (stringset_contains(rc->seen_start, s->name)) {
 			pkg_emit_rc_script(s->name, PKG_RC_RESTART);
 			ret += service_cmd(s->name, "restart");
 		} else {
@@ -396,7 +396,7 @@ pkg_deferred_rc_execute(struct deferred_rc *rc)
 	/* Start only services that were not already restarted above */
 	vec_foreach(rc->to_start, i) {
 		char *name = rc->to_start.d[i];
-		if (pkghash_get(rc->seen_stop, name) != NULL)
+		if (stringset_contains(rc->seen_stop, name))
 			continue;
 		pkg_emit_rc_script(name, PKG_RC_START);
 		ret += rc_start(name);

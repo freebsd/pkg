@@ -568,9 +568,10 @@ triggers_execute(struct triggers *t)
 	}
 
 	if (ctx.touched_dir_hash) {
-		pkghash_foreach(ctx.touched_dir_hash, it) {
+		const char *dir;
+		stringset_foreach(ctx.touched_dir_hash, dir) {
 			vec_foreach(*triggers, i)
-				trigger_check_match(triggers->d[i], it.key);
+				trigger_check_match(triggers->d[i], (char *)dir);
 		}
 	}
 
@@ -591,7 +592,7 @@ cleanup:
 	vec_autofree(triggers);
 	free(triggers);
 	if (ctx.touched_dir_hash) {
-		pkghash_destroy(ctx.touched_dir_hash);
+		stringset_destroy(ctx.touched_dir_hash);
 		ctx.touched_dir_hash = NULL;
 	}
 
@@ -674,7 +675,7 @@ triggers_execute_perpackage(struct pkg *pkg,
 {
 	struct pkg_file *f = NULL;
 	struct pkg_dir *d = NULL;
-	pkghash *pkg_paths_hash = NULL;
+	stringset_t *pkg_paths_hash = NULL;
 	int ret = EPKG_OK;
 	trigger_t *triggers;
 
@@ -689,17 +690,17 @@ triggers_execute_perpackage(struct pkg *pkg,
 	/* Build set of file paths and their parent directories */
 	while (pkg_files(pkg, &f) == EPKG_OK) {
 		char *dir, *slash;
-		pkghash_safe_add(pkg_paths_hash, f->path, NULL, NULL);
+		stringset_safe_add(&pkg_paths_hash, f->path);
 		dir = xstrdup(f->path);
 		slash = strrchr(dir, '/');
 		if (slash != NULL) {
 			*slash = '\0';
-			pkghash_safe_add(pkg_paths_hash, dir, NULL, NULL);
+			stringset_safe_add(&pkg_paths_hash, dir);
 		}
 		free(dir);
 	}
 	while (pkg_dirs(pkg, &d) == EPKG_OK) {
-		pkghash_safe_add(pkg_paths_hash, d->path, NULL, NULL);
+		stringset_safe_add(&pkg_paths_hash, d->path);
 	}
 
 	if (pkg_paths_hash == NULL) {
@@ -712,8 +713,9 @@ triggers_execute_perpackage(struct pkg *pkg,
 	vec_foreach(*triggers, i) {
 		struct trigger *trig = triggers->d[i];
 		pkghash *local_matched = NULL;
-		pkghash_foreach(pkg_paths_hash, it)
-			trigger_check_match_local(trig, it.key, &local_matched);
+		const char *path;
+		stringset_foreach(pkg_paths_hash, path)
+			trigger_check_match_local(trig, path, &local_matched);
 
 		if (local_matched == NULL)
 			continue;
@@ -732,7 +734,7 @@ triggers_execute_perpackage(struct pkg *pkg,
 		}
 	}
 
-	pkghash_destroy(pkg_paths_hash);
+	stringset_destroy(pkg_paths_hash);
 	vec_autofree(triggers);
 	free(triggers);
 	return (ret);
@@ -741,7 +743,7 @@ triggers_execute_perpackage(struct pkg *pkg,
 void
 append_touched_dir(const char *path)
 {
-	pkghash_safe_add(ctx.touched_dir_hash, path, NULL, NULL);
+	stringset_safe_add(&ctx.touched_dir_hash, path);
 }
 
 void
@@ -751,11 +753,13 @@ append_touched_file(const char *path)
 
 	newpath = xstrdup(path);
 	walk = strrchr(newpath, '/');
-	if (walk == NULL)
+	if (walk == NULL) {
+		free(newpath);
 		return;
+	}
 	*walk = '\0';
 
-	pkghash_safe_add(ctx.touched_dir_hash, newpath, NULL, NULL );
+	stringset_safe_add(&ctx.touched_dir_hash, newpath);
 	free(newpath);
 }
 

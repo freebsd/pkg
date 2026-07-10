@@ -104,26 +104,26 @@ ATF_TC_BODY(deferred_rc_dedup, tc)
 	pkg_deferred_rc_init(&rc);
 
 	/* Simulate what pkg_deferred_rc_add does for dedup */
-	pkghash_safe_add(rc.seen_stop, "svc", NULL, NULL);
+	stringset_safe_add(&rc.seen_stop, "svc");
 	s.name = xstrdup("svc");
 	s.oldpath = NULL;
 	vec_push(&rc.to_stop, s);
 
 	/* Second add should be detected via seen_stop */
-	ATF_REQUIRE(pkghash_get(rc.seen_stop, "svc") != NULL);
+	ATF_REQUIRE(stringset_contains(rc.seen_stop, "svc"));
 	/* Don't add again — this is what pkg_deferred_rc_add checks */
 	ATF_REQUIRE_EQ(rc.to_stop.len, 1);
 
 	/* Same for start */
-	pkghash_safe_add(rc.seen_start, "svc2", NULL, NULL);
+	stringset_safe_add(&rc.seen_start, "svc2");
 	vec_push(&rc.to_start, xstrdup("svc2"));
 
-	ATF_REQUIRE(pkghash_get(rc.seen_start, "svc2") != NULL);
+	ATF_REQUIRE(stringset_contains(rc.seen_start, "svc2"));
 	ATF_REQUIRE_EQ(rc.to_start.len, 1);
 
 	/* Cross-lookup: seen_start used to detect upgrades in execute */
-	pkghash_safe_add(rc.seen_start, "svc", NULL, NULL);
-	ATF_REQUIRE(pkghash_get(rc.seen_start, "svc") != NULL);
+	stringset_safe_add(&rc.seen_start, "svc");
+	ATF_REQUIRE(stringset_contains(rc.seen_start, "svc"));
 
 	pkg_deferred_rc_free(&rc);
 }
@@ -177,8 +177,8 @@ ATF_TC_BODY(deferred_rc_free_reuse, tc)
 	vec_push(&rc.to_stop, s);
 	vec_push(&rc.to_start, xstrdup("nginx"));
 
-	pkghash_safe_add(rc.seen_stop, "sshd", NULL, NULL);
-	pkghash_safe_add(rc.seen_start, "nginx", NULL, NULL);
+	stringset_safe_add(&rc.seen_stop, "sshd");
+	stringset_safe_add(&rc.seen_start, "nginx");
 
 	pkg_deferred_rc_free(&rc);
 
@@ -296,20 +296,20 @@ ATF_TC_BODY(deferred_rc_seen_sets_independent, tc)
 	pkg_deferred_rc_init(&rc);
 
 	/* Add to seen_stop only */
-	pkghash_safe_add(rc.seen_stop, "only_stop", NULL, NULL);
+	stringset_safe_add(&rc.seen_stop, "only_stop");
 	/* Add to seen_start only */
-	pkghash_safe_add(rc.seen_start, "only_start", NULL, NULL);
+	stringset_safe_add(&rc.seen_start, "only_start");
 
 	/* Each should be in its own set but not the other */
-	ATF_REQUIRE(pkghash_get(rc.seen_stop, "only_stop") != NULL);
-	ATF_REQUIRE(pkghash_get(rc.seen_start, "only_stop") == NULL);
+	ATF_REQUIRE(stringset_contains(rc.seen_stop, "only_stop"));
+	ATF_REQUIRE(!stringset_contains(rc.seen_start, "only_stop"));
 
-	ATF_REQUIRE(pkghash_get(rc.seen_start, "only_start") != NULL);
-	ATF_REQUIRE(pkghash_get(rc.seen_stop, "only_start") == NULL);
+	ATF_REQUIRE(stringset_contains(rc.seen_start, "only_start"));
+	ATF_REQUIRE(!stringset_contains(rc.seen_stop, "only_start"));
 
 	/* A name not in either set */
-	ATF_REQUIRE(pkghash_get(rc.seen_stop, "unknown") == NULL);
-	ATF_REQUIRE(pkghash_get(rc.seen_start, "unknown") == NULL);
+	ATF_REQUIRE(!stringset_contains(rc.seen_stop, "unknown"));
+	ATF_REQUIRE(!stringset_contains(rc.seen_start, "unknown"));
 
 	pkg_deferred_rc_free(&rc);
 }
@@ -326,36 +326,36 @@ ATF_TC_BODY(deferred_rc_mixed_stop_start, tc)
 	 * nginx is only stopped (deleted).
 	 * postfix is only started (new install).
 	 */
-	pkghash_safe_add(rc.seen_stop, "sshd", NULL, NULL);
+	stringset_safe_add(&rc.seen_stop, "sshd");
 	s.name = xstrdup("sshd");
 	s.oldpath = NULL;
 	vec_push(&rc.to_stop, s);
 
-	pkghash_safe_add(rc.seen_stop, "nginx", NULL, NULL);
+	stringset_safe_add(&rc.seen_stop, "nginx");
 	s.name = xstrdup("nginx");
 	s.oldpath = NULL;
 	vec_push(&rc.to_stop, s);
 
-	pkghash_safe_add(rc.seen_start, "sshd", NULL, NULL);
+	stringset_safe_add(&rc.seen_start, "sshd");
 	vec_push(&rc.to_start, xstrdup("sshd"));
 
-	pkghash_safe_add(rc.seen_start, "postfix", NULL, NULL);
+	stringset_safe_add(&rc.seen_start, "postfix");
 	vec_push(&rc.to_start, xstrdup("postfix"));
 
 	ATF_REQUIRE_EQ(rc.to_stop.len, 2);
 	ATF_REQUIRE_EQ(rc.to_start.len, 2);
 
 	/* sshd is an upgrade: in both sets */
-	ATF_REQUIRE(pkghash_get(rc.seen_stop, "sshd") != NULL);
-	ATF_REQUIRE(pkghash_get(rc.seen_start, "sshd") != NULL);
+	ATF_REQUIRE(stringset_contains(rc.seen_stop, "sshd"));
+	ATF_REQUIRE(stringset_contains(rc.seen_start, "sshd"));
 
 	/* nginx is a deletion: stop only */
-	ATF_REQUIRE(pkghash_get(rc.seen_stop, "nginx") != NULL);
-	ATF_REQUIRE(pkghash_get(rc.seen_start, "nginx") == NULL);
+	ATF_REQUIRE(stringset_contains(rc.seen_stop, "nginx"));
+	ATF_REQUIRE(!stringset_contains(rc.seen_start, "nginx"));
 
 	/* postfix is a new install: start only */
-	ATF_REQUIRE(pkghash_get(rc.seen_stop, "postfix") == NULL);
-	ATF_REQUIRE(pkghash_get(rc.seen_start, "postfix") != NULL);
+	ATF_REQUIRE(!stringset_contains(rc.seen_stop, "postfix"));
+	ATF_REQUIRE(stringset_contains(rc.seen_start, "postfix"));
 
 	pkg_deferred_rc_free(&rc);
 }

@@ -193,8 +193,8 @@ pkg_jobs_free(struct pkg_jobs *j)
 	if (j->triggers.schema != NULL)
 		ucl_object_unref(j->triggers.schema);
 	pkg_deferred_rc_free(&j->rc);
-	pkghash_destroy(j->orphaned);
-	pkghash_destroy(j->notorphaned);
+	stringset_destroy(j->orphaned);
+	stringset_destroy(j->notorphaned);
 	vec_autofree(&j->system_shlibs);
 	pkg_conflicts_free(j);
 	vec_free_and_free(&j->lockedpkgs, pkg_free);
@@ -636,7 +636,7 @@ _is_orphaned(struct pkg_jobs *j, const char *uid)
 	universe_itemv_t *uv;
 	struct pkg *npkg;
 
-	if (pkghash_get(j->notorphaned, uid) != NULL)
+	if (stringset_contains(j->notorphaned, uid))
 		return (false);
 	uv = pkg_jobs_universe_find(j->universe, uid);
 	if (uv != NULL) {
@@ -666,9 +666,9 @@ _is_orphaned(struct pkg_jobs *j, const char *uid)
 static bool
 is_orphaned(struct pkg_jobs *j, const char *uid)
 {
-	if (pkghash_get(j->orphaned, uid) != NULL)
+	if (stringset_contains(j->orphaned, uid))
 		return (true);
-	if (pkghash_get(j->notorphaned, uid) != NULL)
+	if (stringset_contains(j->notorphaned, uid))
 		return (false);
 	/*
 	 * Optimistically mark as orphaned before evaluating to break
@@ -677,11 +677,11 @@ is_orphaned(struct pkg_jobs *j, const char *uid)
 	 * provided by A). If _is_orphaned() returns false, we correct
 	 * the entry below.
 	 */
-	pkghash_safe_add(j->orphaned, uid, NULL, NULL);
+	stringset_safe_add(&j->orphaned, uid);
 	if (_is_orphaned(j, uid))
 		return (true);
-	pkghash_del(j->orphaned, uid);
-	pkghash_safe_add(j->notorphaned, uid, NULL, NULL);
+	stringset_del(j->orphaned, uid);
+	stringset_safe_add(&j->notorphaned, uid);
 	return (false);
 }
 
