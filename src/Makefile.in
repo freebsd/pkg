@@ -116,7 +116,7 @@ all: pkg-static
 install: install-static
 
 pkg-static: $(OBJS) $(top_builddir)/libpkg/libpkg_flat.a
-	$(CC) -o $@ $(OBJS) $(STATIC_ARG) $(LDFLAGS) $(STATIC_LDFLAGS)
+	$(CC) -o $@ $(OBJS) $(STATIC_ARG) $(LDFLAGS) -Wl,--no-pie $(STATIC_LDFLAGS)
 
 .PHONY: install-static
 install-static: pkg-static
