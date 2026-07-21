@@ -345,7 +345,15 @@ pkg_create_repo_thread(void *arg)
 			 * TODO: use pkg_checksum for new manifests
 			 */
 			pthread_mutex_lock(&te->flock);
-			ucl_object_t *o = pkg_emit_object(pkg, 0);
+			/*
+			 * The data catalog and the per-package manifest must
+			 * not contain file lists or directories: those belong
+			 * only to the file database emitted via -l.  Always emit
+			 * in compact form so that data.pkg is identical whether
+			 * or not --list-files is used.
+			 */
+			ucl_object_t *o = pkg_emit_object(pkg,
+			    PKG_MANIFEST_EMIT_COMPACT);
 			ucl_object_emit_streamline_add_object(te->ctx, o);
 			ucl_object_emit_file(o, UCL_EMIT_JSON_COMPACT, te->mfile);
 			fprintf(te->mfile, "\n");
