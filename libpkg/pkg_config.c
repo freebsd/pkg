@@ -629,6 +629,8 @@ add_repo(const ucl_object_t *obj, struct pkg_repo *r, const char *rname, pkg_ini
 	const char *ssh_args = NULL;
 	const char *key;
 	const char *type = NULL;
+	signature_t repo_signature_type;
+	bool has_signature_type = false;
 	int use_ipvx = 0;
 	int priority = 0;
 
@@ -691,20 +693,28 @@ add_repo(const ucl_object_t *obj, struct pkg_repo *r, const char *rname, pkg_ini
 		dbg(1, "No repo and no url for %s", rname);
 		return;
 	}
+	if (signature_type != NULL) {
+		if (STRIEQ(signature_type, "pubkey"))
+			repo_signature_type = SIG_PUBKEY;
+		else if (STRIEQ(signature_type, "fingerprints"))
+			repo_signature_type = SIG_FINGERPRINT;
+		else if (STRIEQ(signature_type, "none"))
+			repo_signature_type = SIG_NONE;
+		else {
+			pkg_emit_error("Invalid signature_type '%s' for the '%s' repo",
+			    signature_type, rname);
+			return;
+		}
+		has_signature_type = true;
+	}
 
 	if (r == NULL)
 		r = pkg_repo_new(rname, url, type);
 	else
 		pkg_repo_overwrite(r, rname, url, type);
 
-	if (signature_type != NULL) {
-		if (STRIEQ(signature_type, "pubkey"))
-			r->signature_type = SIG_PUBKEY;
-		else if (STRIEQ(signature_type, "fingerprints"))
-			r->signature_type = SIG_FINGERPRINT;
-		else
-			r->signature_type = SIG_NONE;
-	}
+	if (has_signature_type)
+		r->signature_type = repo_signature_type;
 
 
 	if (fingerprints != NULL) {
