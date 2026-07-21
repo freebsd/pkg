@@ -184,7 +184,7 @@ repo_content_body() {
 	atf_check -s exit:0 sh ${RESOURCEDIR}/test_subr.sh new_pkg test test 1.0 "${TMPDIR}"
 	atf_check pkg create --format txz -M test.ucl
 	atf_check -o ignore pkg repo .
-	nb=$(tar -xf packagesite.pkg -O - packagesite.yaml | wc -l)
+	nb=$(bsdtar -xf packagesite.pkg -O - packagesite.yaml | wc -l)
 	[ $nb -eq 1 ] || atf_fail "packagesite has $nb entries instead of 1"
 }
 
@@ -238,14 +238,14 @@ EOF
 	atf_check -s exit:0 \
 		-o not-match:'"files":' \
 		-o not-match:'"directories":' \
-		sh -c 'tar -xf data.pkg -O - data'
+		sh -c 'bsdtar -xf data.pkg -O - data'
 	atf_check -s exit:0 -o match:'mybin' \
-		sh -c 'tar -xf files.pkg -O - files'
+		sh -c 'bsdtar -xf files.pkg -O - files'
 
 	# Without --list-files: data still has no files/directories.
 	atf_check -o ignore -e empty -s exit:0 pkg repo .
 	atf_check -s exit:0 \
 		-o not-match:'"files":' \
 		-o not-match:'"directories":' \
-		sh -c 'tar -xf data.pkg -O - data'
+		sh -c 'bsdtar -xf data.pkg -O - data'
 }
