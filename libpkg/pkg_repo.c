@@ -71,6 +71,9 @@ struct sig_cert {
 	bool trusted;
 };
 
+#define PKG_REPO_MAX_SIGNATURE_ENTRIES	8
+#define PKG_REPO_MAX_SIGNATURE_SIZE	(1024 * 1024)
+
 int
 pkg_repo_fetch_remote_tmp(struct pkg_repo *repo,
   const char *filename, const char *extension, time_t *t, int *rc, bool silent)
@@ -258,6 +261,7 @@ pkg_repo_meta_extract_signature_pubkey(int fd, void *ud)
 	struct archive_entry *ae = NULL;
 	struct pkg_extract_cbdata *cb = ud;
 	int siglen;
+	int64_t entry_size;
 	int rc = EPKG_FATAL;
 
 	pkg_debug(1, "PkgRepo: extracting signature of repo in a sandbox");
@@ -270,7 +274,12 @@ pkg_repo_meta_extract_signature_pubkey(int fd, void *ud)
 
 	while (archive_read_next_header(a, &ae) == ARCHIVE_OK) {
 		if (cb->need_sig && STREQ(archive_entry_pathname(ae), "signature")) {
-			siglen = archive_entry_size(ae);
+			entry_size = archive_entry_size(ae);
+			if (entry_size <= 0 || entry_size > PKG_REPO_MAX_SIGNATURE_SIZE) {
+				pkg_emit_error("invalid repository signature entry size");
+				break;
+			}
+			siglen = entry_size;
 			rc = pkg_repo_write_sig_from_archive(a, fd, siglen);
 			if (rc != EPKG_OK)
 				break;
@@ -304,6 +313,8 @@ pkg_repo_meta_extract_signature_fingerprints(int fd, void *ud)
 	struct pkg_extract_cbdata *cb = ud;
 	const char *type;
 	int siglen, keylen, typelen;
+	int signature_entries = 0;
+	int64_t entry_size;
 	uint8_t *sig, *sigdata;
 	int rc = EPKG_FATAL;
 	char key[MAXPATHLEN], t;
@@ -320,14 +331,23 @@ pkg_repo_meta_extract_signature_fingerprints(int fd, void *ud)
 	while (archive_read_next_header(a, &ae) == ARCHIVE_OK) {
 		if (str_ends_with(archive_entry_pathname(ae), ".sig") ||
 		    str_ends_with(archive_entry_pathname(ae), ".pub")) {
+			if (++signature_entries > PKG_REPO_MAX_SIGNATURE_ENTRIES) {
+				pkg_emit_error("too many repository signature entries");
+				return (EPKG_FATAL);
+			}
+			entry_size = archive_entry_size(ae);
+			if (entry_size <= 0 || entry_size > PKG_REPO_MAX_SIGNATURE_SIZE) {
+				pkg_emit_error("invalid repository signature entry size");
+				return (EPKG_FATAL);
+			}
 			t = str_ends_with(archive_entry_pathname(ae), ".sig") ? 0 : 1;
 			snprintf(key, sizeof(key), "%.*s",
 					(int) strlen(archive_entry_pathname(ae)) - 4,
 					archive_entry_pathname(ae));
 			type = NULL;
-			siglen = archive_entry_size(ae);
+			siglen = entry_size;
 			sigdata = sig = xmalloc(siglen);
-			if (archive_read_data(a, sig, siglen) == -1) {
+			if (archive_read_data(a, sig, siglen) != siglen) {
 				pkg_emit_errno("pkg_repo_meta_extract_signature",
 						"archive_read_data failed");
 				free(sig);
