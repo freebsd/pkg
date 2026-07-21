@@ -412,6 +412,13 @@ read_macho_file(const int fd, macho_file_t **dest)
 /**** OS -> Kernel conversion ****/
 
 static macho_version_t macos_to_darwin[][2] = {
+	// macOS Tahoe
+	{ { 26, 5, 0 }, { 25, 5, 0 } },
+	{ { 26, 4, 0 }, { 25, 4, 0 } },
+	{ { 26, 3, 0 }, { 25, 3, 0 } },
+	{ { 26, 2, 0 }, { 25, 2, 0 } },
+	{ { 26, 1, 0 }, { 25, 1, 0 } },
+	{ { 26, 0, 0 }, { 25, 0, 0 } },
 	// macOS Sequoia
 	{ { 15, 2, 0 }, { 24, 2, 0 } },
 	{ { 15, 1, 0 }, { 24, 1, 0 } },
@@ -583,6 +590,8 @@ static macho_version_t macos_to_darwin[][2] = {
 };
 
 static macho_version_t ios_to_darwin[][2] = {
+	// iOS 19, iPadOS 19, tvOS 19
+	{ { 19, 0, 0 }, { 25, 0, 0 } },
 	// iOS 18, iPadOS 18, tvOS 18
 	{ { 18, 0, 0 }, { 24, 0, 0 } },
 	// iOS 17, iPadOS 17, tvOS 17
