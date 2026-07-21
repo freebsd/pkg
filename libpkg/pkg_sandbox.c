@@ -54,6 +54,8 @@
 #include <xmalloc.h>
 #include "pkg.h"
 
+#define PKG_SANDBOX_MAX_OUTPUT	(8 * 1024 * 1024)
+
 int
 pkg_handle_sandboxed_call(pkg_sandbox_cb func, int fd, void *ud)
 {
@@ -119,7 +121,9 @@ pkg_handle_sandboxed_get_string(pkg_sandbox_cb func, char **result, int64_t *len
 	pid_t pid;
 	struct rlimit rl_zero;
 	int	status, ret = EPKG_OK;
-	int pair[2], r, allocated_len = 0, off = 0;
+	int pair[2];
+	ssize_t r;
+	size_t allocated_len = 0, off = 0;
 	char *buf = NULL;
 
 	if (socketpair(AF_UNIX, SOCK_STREAM, 0, pair) == -1) {
@@ -147,7 +151,20 @@ pkg_handle_sandboxed_get_string(pkg_sandbox_cb func, char **result, int64_t *len
 		allocated_len = BUFSIZ;
 		do {
 			if (off >= allocated_len) {
-				allocated_len *= 2;
+				if (allocated_len >= PKG_SANDBOX_MAX_OUTPUT) {
+					pkg_emit_error("sandboxed callback output exceeds %d bytes",
+					    PKG_SANDBOX_MAX_OUTPUT);
+					free(buf);
+					close(pair[1]);
+					kill(pid, SIGTERM);
+					while (waitpid(pid, &status, 0) == -1 && errno == EINTR)
+						;
+					return (EPKG_FATAL);
+				}
+				if (allocated_len > PKG_SANDBOX_MAX_OUTPUT / 2)
+					allocated_len = PKG_SANDBOX_MAX_OUTPUT;
+				else
+					allocated_len *= 2;
 				buf = xrealloc(buf, allocated_len);
 			}
 
@@ -158,7 +175,7 @@ pkg_handle_sandboxed_get_string(pkg_sandbox_cb func, char **result, int64_t *len
 				return (EPKG_FATAL);
 			}
 			else if (r > 0) {
-				off += r;
+				off += (size_t)r;
 			}
 		} while (r > 0);
 
