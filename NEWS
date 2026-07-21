@@ -1,3 +1,6 @@
+Changes from 2.7.99.3 to 2.8.99.1
+- fix: SRV/HTTP-mirror fetch only retried the first server; walk the server list once with a per-server retry budget and report SRV/mirror-list lookup failures (#296955)
+
 Changes from 2.7.99.2 to 2.7.99.3
 - db: switch the local database to WAL journal mode with synchronous=NORMAL for better read concurrency and faster writes
 - db: bump schema to v42; drop 15 redundant single-column indexes, add a flavors VIEW and shlib_id indexes

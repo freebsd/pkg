@@ -200,7 +200,17 @@ Send all event messages to the specified FIFO or Unix socket.
 Events messages should be formatted as JSON.
 Default: not set.
 .It Cm FETCH_RETRY: integer
-Number of times to retry a failed fetch of a file.
+Number of times to retry a failed fetch of a file against a given
+server before moving on to the next server.
+For repositories configured with
+.Cm mirror_type
+.Cm srv
+or
+.Cm http ,
+each server in the list is tried this many times before advancing to
+the next one; the list is walked at most once.
+For a plain repository (a single server) this is the total number of
+retries before giving up.
 Default: 3.
 .It Cm FETCH_TIMEOUT: integer
 Maximum number of seconds to wait for any one file to download from the
