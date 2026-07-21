@@ -8,7 +8,8 @@ tests_init \
 	repo_multiformat \
 	repo_symlinks \
 	repo_content \
-	repo_extra_fields
+	repo_extra_fields \
+	repo_filelist_data
 
 repo_v2_body() {
 	touch plop
@@ -211,4 +212,40 @@ EOF
 		-o match:'bar = 123;' \
 		-o match:'\}' \
 		cat meta.conf
+}
+
+repo_filelist_data_body() {
+	# The data catalog (data.pkg) must not contain file lists or
+	# directories regardless of --list-files; -l only generates the
+	# separate file database (files.pkg).
+	atf_check -s exit:0 sh ${RESOURCEDIR}/test_subr.sh new_pkg test test 1 "${TMPDIR}"
+	cat << EOF >> test.ucl
+files: {
+    ${TMPDIR}/usr/local/bin/mybin: "",
+}
+directories: {
+    ${TMPDIR}/usr/local/bin: {uname: root, gname: wheel, perm: 0755}
+}
+EOF
+	mkdir -p usr/local/bin
+	touch usr/local/bin/mybin
+
+	atf_check -s exit:0 pkg create -M test.ucl
+
+	# With --list-files: data has no files/directories, but the file
+	# database does list the file.
+	atf_check -o ignore -e empty -s exit:0 pkg repo -l .
+	atf_check -s exit:0 \
+		-o not-match:'"files":' \
+		-o not-match:'"directories":' \
+		sh -c 'tar -xf data.pkg -O - data'
+	atf_check -s exit:0 -o match:'mybin' \
+		sh -c 'tar -xf files.pkg -O - files'
+
+	# Without --list-files: data still has no files/directories.
+	atf_check -o ignore -e empty -s exit:0 pkg repo .
+	atf_check -s exit:0 \
+		-o not-match:'"files":' \
+		-o not-match:'"directories":' \
+		sh -c 'tar -xf data.pkg -O - data'
 }
