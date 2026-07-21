@@ -6,6 +6,7 @@ tests_init \
 	delete_all \
 	delete_pkg \
 	delete_with_directory_owned \
+	delete_nested_dirs_outside_prefix \
 	simple_delete \
 	simple_delete_prefix_ending_with_slash \
 	delete_force_ignores_rdeps \
@@ -217,6 +218,47 @@ EOF
 
 	test -d dir && atf_fail "'dir' still present"
 	test -d ${TMPDIR} || atf_fail "Prefix has been removed"
+}
+
+delete_nested_dirs_outside_prefix_body() {
+	# Regression test: a package owning a nested tree of @dir entries
+	# outside of its prefix (e.g. /var/db/foo with subdirectories) must
+	# have the parent directory removed as well as the children.  The
+	# dirs vector is sorted ascending by path, so children must be
+	# processed before their parent; otherwise unlinkat(2) fails with
+	# ENOTEMPTY on the parent and it is left behind as a leftover.
+	atf_check -s exit:0 sh ${RESOURCEDIR}/test_subr.sh new_pkg "test" "test" "1" "${TMPDIR}/usr/local"
+
+	mkdir -p ${TMPDIR}/var/db/test/data
+	mkdir -p ${TMPDIR}/var/db/test/repositories
+	mkdir -p ${TMPDIR}/var/log/test
+
+	cat << EOF >> test.ucl
+directories: {
+    ${TMPDIR}/var/db/test: 'y',
+    ${TMPDIR}/var/db/test/data: 'y',
+    ${TMPDIR}/var/db/test/repositories: 'y',
+    ${TMPDIR}/var/log/test: 'y',
+}
+EOF
+
+	atf_check \
+		-o match:".*Installing.*\.\.\.$" \
+		-e empty \
+		-s exit:0 \
+		pkg register -M test.ucl
+
+	atf_check \
+		-o match:".*Deinstalling.*" \
+		-e empty \
+		-s exit:0 \
+		pkg delete -y test
+
+	test -d ${TMPDIR}/var/db/test && atf_fail "'var/db/test' parent directory still present"
+	test -d ${TMPDIR}/var/db/test/data && atf_fail "'var/db/test/data' still present"
+	test -d ${TMPDIR}/var/db/test/repositories && atf_fail "'var/db/test/repositories' still present"
+	test -d ${TMPDIR}/var/log/test && atf_fail "'var/log/test' still present"
+	return 0
 }
 
 delete_dry_run_body() {

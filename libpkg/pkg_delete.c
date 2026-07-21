@@ -436,9 +436,18 @@ pkg_delete_dir(struct pkg *pkg, struct pkg_dir *dir)
 int
 pkg_delete_dirs(__unused struct pkgdb *db, struct pkg *pkg, struct pkg *new)
 {
-	struct pkg_dir	*dir = NULL;
+	struct pkg_dir	*dir;
 
-	while (pkg_dirs(pkg, &dir) == EPKG_OK) {
+	/*
+	 * The dirs vector is sorted ascending by path.  Iterate it in
+	 * reverse so that subdirectories are queued for removal before
+	 * their parents: out-of-prefix @dir trees (e.g. /var/db/foo)
+	 * are not pruned recursively by rmdir_p, so a parent processed
+	 * before its children would fail with ENOTEMPTY and be left
+	 * behind as a leftover directory.
+	 */
+	vec_rforeach(pkg->dirs, i) {
+		dir = &pkg->dirs.d[i];
 		if (new != NULL && pkg_has_dir(new, dir->path))
 			continue;
 		pkg_delete_dir(pkg, dir);
