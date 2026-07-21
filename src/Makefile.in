@@ -98,7 +98,7 @@ LOCAL_LDFLAGS=	-Wl,-Bstatic \
 		-Wl,-Bdynamic -Wl,--as-needed $(OTHER_LIBS) \
 		-Wl,--export-dynamic
 STATIC_ARG=	-static
-STATIC_LDFLAGS=	$(LIBPKGFLAT) $(LIBS) $(OTHER_LIBS)
+STATIC_LDFLAGS=	$(LIBPKGFLAT) $(LIBS) $(OTHER_LIBS) -Wl,--no-pie
 @endif
 
 # For libarchive
@@ -116,7 +116,7 @@ all: pkg-static
 install: install-static
 
 pkg-static: $(OBJS) $(top_builddir)/libpkg/libpkg_flat.a
-	$(CC) -o $@ $(OBJS) $(STATIC_ARG) $(LDFLAGS) -Wl,--no-pie $(STATIC_LDFLAGS)
+	$(CC) -o $@ $(OBJS) $(STATIC_ARG) $(LDFLAGS) $(STATIC_LDFLAGS)
 
 .PHONY: install-static
 install-static: pkg-static
