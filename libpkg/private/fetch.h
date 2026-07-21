@@ -52,3 +52,5 @@ int stdio_fetch(struct pkg_repo *, int dest, struct fetch_item *);
 int libfetch_open(struct pkg_repo *, struct fetch_item *);
 int libfetch_fetch(struct pkg_repo *, int dest, struct fetch_item *);
 void libfetch_cleanup(struct pkg_repo *);
+void pkg_repo_http_mirror_append(struct pkg_repo *repo, const char *url,
+    bool reldoc);

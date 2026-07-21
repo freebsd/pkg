@@ -1,3 +1,6 @@
+Changes from 2.8.1 to 2.8.2
+- fix: SRV/HTTP-mirror fetch only retried the first server; walk the server list once with a per-server retry budget and report SRV/mirror-list lookup failures (#296955)
+
 Changes from 2.8.0 to 2.8.1
 - fix: non-root reads of a WAL-mode database with missing sidecars
 - fix: leftover parent @dir directories on deinstall

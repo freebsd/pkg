@@ -94,6 +94,28 @@ gethttpmirrors(struct pkg_repo *repo, const char *url, bool withdoc) {
 	fclose(f);
 }
 
+/*
+ * Append one mirror to a repository's HTTP mirror list. Exposed so that
+ * the failover logic in libfetch_open() can be exercised by unit tests
+ * without having to run a real HTTP server to serve a mirrorlist.
+ */
+void
+pkg_repo_http_mirror_append(struct pkg_repo *repo, const char *url,
+    bool reldoc)
+{
+	struct http_mirror *m;
+	struct url *u;
+
+	u = fetchParseURL(url);
+	if (u == NULL)
+		return;
+	m = xmalloc(sizeof(*m));
+	m->url = u;
+	m->reldoc = reldoc;
+	m->next = NULL;
+	LL_APPEND(repo->http, m);
+}
+
 int
 libfetch_open(struct pkg_repo *repo, struct fetch_item *fi)
 {
@@ -153,40 +175,69 @@ libfetch_open(struct pkg_repo *repo, struct fetch_item *fi)
 
 	pkg_dbg(PKG_DBG_FETCH, 1, "libfetch> connecting");
 
-	while (repo->fh == NULL) {
-		if (repo->mirror_type == SRV &&
-		    (strncmp(u->scheme, "http", 4) == 0)) {
-			if (repo->srv == NULL) {
-				snprintf(zone, sizeof(zone),
-				    "_%s._tcp.%s", u->scheme, u->host);
-				repo->srv = dns_getsrvinfo(zone);
-			}
-			srv_current = repo->srv;
-		} else if (repo->mirror_type == HTTP &&
-		    strncmp(u->scheme, "http", 4) == 0) {
-			if (u->port == 0) {
-				if (strcmp(u->scheme, "https") == 0)
-					u->port = 443;
-				else
-					u->port = 80;
-			}
+	/*
+	 * Build the server list once, before entering the fetch loop. For
+	 * SRV repositories this resolves the DNS SRV records (RFC 2782); for
+	 * HTTP mirror repositories it fetches the mirror list. A plain
+	 * repository has a single implicit server: the configured URL.
+	 *
+	 * Each server is given its own retry budget before we advance to the
+	 * next one, so a handful of unreachable servers no longer consumes
+	 * the whole budget meant for the list. The list is walked at most
+	 * once: once every server has been tried we give up.
+	 */
+	if (repo->mirror_type == SRV &&
+	    strncmp(u->scheme, "http", 4) == 0) {
+		if (repo->srv == NULL) {
 			snprintf(zone, sizeof(zone),
-			    "%s://%s:%d", u->scheme, u->host, u->port);
-			if (repo->http == NULL)
-				gethttpmirrors(repo, zone, false);
-			if (repo->http == NULL)
-				gethttpmirrors(repo, repo->url, true);
+			    "_%s._tcp.%s", u->scheme, u->host);
+			repo->srv = dns_getsrvinfo(zone);
+		}
+		if (repo->srv == NULL) {
+			pkg_emit_error("SRV lookup failed for '%s', "
+			    "falling back to %s://%s", zone, u->scheme, u->host);
+			if (u->port == 0)
+				u->port = strcmp(u->scheme, "https") == 0 ?
+				    443 : 80;
+		} else {
+			srv_current = repo->srv;
+		}
+	} else if (repo->mirror_type == HTTP &&
+	    strncmp(u->scheme, "http", 4) == 0) {
+		if (u->port == 0) {
+			if (strcmp(u->scheme, "https") == 0)
+				u->port = 443;
+			else
+				u->port = 80;
+		}
+		snprintf(zone, sizeof(zone),
+		    "%s://%s:%d", u->scheme, u->host, u->port);
+		if (repo->http == NULL)
+			gethttpmirrors(repo, zone, false);
+		if (repo->http == NULL)
+			gethttpmirrors(repo, repo->url, true);
+		if (repo->http == NULL) {
+			pkg_emit_error("Could not retrieve mirror list from "
+			    "'%s', falling back to %s://%s", zone,
+			    u->scheme, u->host);
+		} else {
 			http_current = repo->http;
 		}
-		if (repo->mirror_type == SRV && repo->srv != NULL) {
+	}
+
+	while (repo->fh == NULL) {
+		if (repo->mirror_type == SRV && srv_current != NULL) {
 			strlcpy(u->host, srv_current->host, sizeof(u->host));
 			u->port = srv_current->port;
 		} else if (repo->mirror_type == HTTP &&
 		    http_current != NULL) {
-			strlcpy(u->scheme, http_current->url->scheme, sizeof(u->scheme));
-			strlcpy(u->host, http_current->url->host, sizeof(u->host));
+			strlcpy(u->scheme, http_current->url->scheme,
+			    sizeof(u->scheme));
+			strlcpy(u->host, http_current->url->host,
+			    sizeof(u->host));
 			snprintf(docpath, sizeof(docpath), "%s%s",
-			    http_current->url->doc, http_current->reldoc ? reldoc : doc);
+			    http_current->url->doc,
+			    http_current->reldoc ? reldoc : doc);
 			u->doc = docpath;
 			u->port = http_current->url->port;
 		}
@@ -214,10 +265,12 @@ libfetch_open(struct pkg_repo *repo, struct fetch_item *fi)
 		free(opts);
 		if (repo->fh == NULL) {
 			if (fetchLastErrCode == FETCH_OK) {
+				u->doc = doc;
 				fetchFreeURL(u);
 				return (EPKG_UPTODATE);
 			}
 			if (fetchLastErrCode == FETCH_ABORT) {
+				u->doc = doc;
 				fetchFreeURL(u);
 				return (EPKG_CANCEL);
 			}
@@ -230,6 +283,7 @@ libfetch_open(struct pkg_repo *repo, struct fetch_item *fi)
 					    u->host,
 					    u->doc,
 					    fetchLastErrString);
+				u->doc = doc;
 				fetchFreeURL(u);
 				return (EPKG_ENOENT);
 			}
@@ -240,32 +294,43 @@ libfetch_open(struct pkg_repo *repo, struct fetch_item *fi)
 				    "libfetch_open", NULL);
 			}
 			--retry;
-			if (retry <= 0) {
-				if (!repo->silent)
-					pkg_emit_error("%s://%s%s%s%s: %s",
-					    u->scheme,
-					    u->user,
-					    u->user[0] != '\0' ? "@" : "",
-					    u->host,
-					    u->doc,
-					    fetchLastErrString);
-				fetchFreeURL(u);
-				return (EPKG_FATAL);
-			}
-			if (repo->mirror_type == SRV && repo->srv != NULL) {
+			if (retry > 0)
+				continue;
+			/*
+			 * This server's retry budget is exhausted; move on to the
+			 * next server in the list and give it a fresh budget.
+			 */
+			retry = max_retry;
+			if (repo->mirror_type == SRV && srv_current != NULL) {
 				srv_current = srv_current->next;
-				if (srv_current == NULL)
-					srv_current = repo->srv;
+				if (srv_current != NULL)
+					continue;
 			} else if (repo->mirror_type == HTTP &&
 			    http_current != NULL) {
 				http_current = http_current->next;
-				if (http_current == NULL)
-					http_current = repo->http;
+				if (http_current != NULL)
+					continue;
 			}
+			/* No more servers to try. */
+			break;
 		}
+	}
+	if (repo->fh == NULL) {
+		if (!repo->silent)
+			pkg_emit_error("%s://%s%s%s%s: %s",
+			    u->scheme,
+			    u->user,
+			    u->user[0] != '\0' ? "@" : "",
+			    u->host,
+			    u->doc,
+			    fetchLastErrString);
+		u->doc = doc;
+		fetchFreeURL(u);
+		return (EPKG_FATAL);
 	}
 	fi->size = st.size > 0 ? st.size : 0;
 	fi->mtime = st.mtime;
+	u->doc = doc;
 	fetchFreeURL(u);
 	return (EPKG_OK);
 }
