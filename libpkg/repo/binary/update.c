@@ -964,7 +964,13 @@ pkg_repo_binary_update(struct pkg_repo *repo, bool force)
 	if (repo->dfd == -1 && pkg_repo_open(repo) == EPKG_FATAL)
 		return (EPKG_FATAL);
 
-	if (repo->ops->open(repo, R_OK|W_OK) != EPKG_OK) {
+	/*
+	 * Validate the existing repo database in read-only mode.  We do
+	 * not need write access here: the checks below are all SELECTs, and
+	 * the actual read-write open is deferred to pkg_repo_binary_init_update
+	 * which runs only when new data has been fetched.
+	 */
+	if (repo->ops->open(repo, R_OK) != EPKG_OK) {
 		pkg_debug(1, "PkgRepo: need forced update of %s", repo->name);
 		t = 0;
 		force = true;
