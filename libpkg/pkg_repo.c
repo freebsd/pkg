@@ -36,6 +36,7 @@
 #include <sys/types.h>
 #include <sys/stat.h>
 #include <sys/uio.h>
+#include <sys/statvfs.h>
 
 #include <archive_entry.h>
 #include <assert.h>
@@ -47,6 +48,7 @@
 #define _WITH_GETLINE
 #include <stdio.h>
 #include <stdbool.h>
+#include <stdint.h>
 #include <unistd.h>
 #include <errno.h>
 #include <sys/mman.h>
@@ -73,7 +75,31 @@ struct sig_cert {
 
 #define PKG_REPO_MAX_SIGNATURE_ENTRIES	8
 #define PKG_REPO_MAX_SIGNATURE_SIZE	(1024 * 1024)
+#define PKG_REPO_MAX_META_SIZE		(1024 * 1024)
+#define PKG_REPO_MAX_TEMP_SIZE	(1024LL * 1024 * 1024)
 
+static int
+pkg_repo_get_temp_limit(int fd, int64_t *limit)
+{
+	struct statvfs svfs;
+
+	if (fstatvfs(fd, &svfs) == -1 || svfs.f_frsize == 0) {
+		pkg_emit_errno("fstatvfs", "repository temporary file");
+		return (EPKG_FATAL);
+	}
+	if (svfs.f_bavail > INT64_MAX / svfs.f_frsize)
+		*limit = PKG_REPO_MAX_TEMP_SIZE;
+	else
+		*limit = (int64_t)svfs.f_bavail * svfs.f_frsize / 2;
+	if (*limit > PKG_REPO_MAX_TEMP_SIZE)
+		*limit = PKG_REPO_MAX_TEMP_SIZE;
+	if (*limit == 0) {
+		pkg_emit_error("insufficient space for repository temporary file");
+		return (EPKG_FATAL);
+	}
+
+	return (EPKG_OK);
+}
 int
 pkg_repo_fetch_remote_tmp(struct pkg_repo *repo,
   const char *filename, const char *extension, time_t *t, int *rc, bool silent)
@@ -82,6 +108,7 @@ pkg_repo_fetch_remote_tmp(struct pkg_repo *repo,
 	char url[MAXPATHLEN];
 	char tmp[MAXPATHLEN];
 	int fd;
+	int64_t max_size;
 	const char *tmpdir, *dot;
 
 	memset(&fi, 0, sizeof(struct fetch_item));
@@ -114,6 +141,15 @@ pkg_repo_fetch_remote_tmp(struct pkg_repo *repo,
 		return (-1);
 	}
 	(void)unlink(tmp);
+	if (pkg_repo_get_temp_limit(fd, &max_size) != EPKG_OK) {
+		close(fd);
+		*rc = EPKG_FATAL;
+		return (-1);
+	}
+	fi.max_size = max_size;
+	if (STREQ(filename, "meta") && STREQ(extension, "conf") &&
+	    fi.max_size > PKG_REPO_MAX_META_SIZE)
+		fi.max_size = PKG_REPO_MAX_META_SIZE;
 
 	fi.url = url;
 	fi.mtime = *t;
@@ -227,8 +263,34 @@ struct pkg_extract_cbdata {
 	int afd;
 	int tfd;
 	const char *fname;
+	int64_t max_extracted_size;
 	bool need_sig;
+	bool extracted;
 };
+
+static int
+pkg_repo_extract_member(struct archive *a, struct archive_entry *ae,
+    struct pkg_extract_cbdata *cb)
+{
+	int64_t entry_size;
+
+	if (cb->extracted) {
+		pkg_emit_error("duplicate repository archive entry: %s", cb->fname);
+		return (EPKG_FATAL);
+	}
+	entry_size = archive_entry_size(ae);
+	if (entry_size < 0 || entry_size > cb->max_extracted_size) {
+		pkg_emit_error("repository archive entry is too large: %s", cb->fname);
+		return (EPKG_FATAL);
+	}
+	if (archive_read_data_into_fd(a, cb->tfd) != 0) {
+		pkg_emit_error("Error extracting the archive: '%s'",
+		    archive_error_string(a));
+		return (EPKG_FATAL);
+	}
+	cb->extracted = true;
+	return (EPKG_OK);
+}
 
 #define	PKGSIGN_DEFAULT_IMPL	"rsa"
 
@@ -285,12 +347,9 @@ pkg_repo_meta_extract_signature_pubkey(int fd, void *ud)
 				break;
 		}
 		else if (STREQ(archive_entry_pathname(ae), cb->fname)) {
-			if (archive_read_data_into_fd(a, cb->tfd) != 0) {
-				pkg_emit_error("Error extracting the archive: '%s'", archive_error_string(a));
-				rc = EPKG_FATAL;
+			if ((rc = pkg_repo_extract_member(a, ae, cb)) != EPKG_OK)
 				break;
-			}
-			else if (!cb->need_sig) {
+			if (!cb->need_sig) {
 				rc = EPKG_OK;
 			}
 		}
@@ -395,11 +454,8 @@ pkg_repo_meta_extract_signature_fingerprints(int fd, void *ud)
 		}
 		else {
 			if (STREQ(archive_entry_pathname(ae), cb->fname)) {
-				if (archive_read_data_into_fd(a, cb->tfd) != 0) {
-					pkg_emit_error("Error extracting the archive: '%s'", archive_error_string(a));
-					rc = EPKG_FATAL;
+				if ((rc = pkg_repo_extract_member(a, ae, cb)) != EPKG_OK)
 					break;
-				}
 			}
 		}
 	}
@@ -563,7 +619,6 @@ pkg_repo_archive_extract_archive(int fd, const char *file,
 	struct pkghash *sc = NULL;
 	struct sig_cert *s;
 	struct pkg_extract_cbdata cbdata;
-
 	char *sig = NULL;
 	int rc = EPKG_OK;
 	int64_t siglen = 0;
@@ -577,6 +632,12 @@ pkg_repo_archive_extract_archive(int fd, const char *file,
 	cbdata.afd = fd;
 	cbdata.fname = file;
 	cbdata.tfd = dest_fd;
+	cbdata.extracted = false;
+	if (pkg_repo_get_temp_limit(dest_fd, &cbdata.max_extracted_size) != EPKG_OK)
+		return (EPKG_FATAL);
+	if (STREQ(file, "meta") &&
+	    cbdata.max_extracted_size > PKG_REPO_MAX_META_SIZE)
+		cbdata.max_extracted_size = PKG_REPO_MAX_META_SIZE;
 
 	if (pkg_repo_signature_type(repo) == SIG_PUBKEY) {
 		cbdata.need_sig = true;

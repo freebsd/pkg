@@ -176,6 +176,7 @@ pkg_fetch_file(struct pkg_repo *repo, const char *url, char *dest, time_t t,
 
 	fi.offset = offset;
 	fi.size = size;
+	fi.max_size = 0;
 	fi.mtime = t;
 
 	retcode = pkg_fetch_file_to_fd(repo, fd, &fi, false);
@@ -295,6 +296,11 @@ pkg_fetch_file_to_fd(struct pkg_repo *repo, int dest, struct fetch_item *fi,
 	if ((retcode = repo->fetcher->open(repo, fi)) != EPKG_OK)
 		goto cleanup;
 	pkg_dbg(PKG_DBG_FETCH, 1, "Fetch: fetcher used: %s", repo->fetcher->scheme);
+	if (fi->max_size > 0 && fi->size > fi->max_size) {
+		pkg_emit_error("fetch exceeds configured size limit");
+		retcode = EPKG_FATAL;
+		goto cleanup;
+	}
 
 	retcode = repo->fetcher->fetch(repo, dest, fi);
 	if (retcode == EPKG_OK)
