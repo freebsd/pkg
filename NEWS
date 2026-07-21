@@ -1,3 +1,11 @@
+Changes from 2.8.0 to 2.8.1
+- fix: non-root reads of a WAL-mode database with missing sidecars
+- fix: leftover parent @dir directories on deinstall
+- fix: static build with -pie in LDFLAGS on macOS
+- macho: map macOS 26 / iOS 19 to Darwin 25
+- api: add PKG_EVENT_PKG_FETCH_BEGIN for per-package fetch progress
+- fix: missing space in a libpkg error message
+
 Changes from 2.7.99.3 to 2.8.0
 - none
 
