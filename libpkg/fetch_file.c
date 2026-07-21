@@ -129,6 +129,14 @@ stdio_fetch(struct pkg_repo *repo, int dest, struct fetch_item *fi)
 	left = sizeof(buf);
 	if (fi->size > 0)
 		left = fi->size - done;
+	if (fi->expected_size > 0) {
+		if (done > fi->expected_size) {
+			pkg_emit_error("fetch exceeds expected package size");
+			return (EPKG_FATAL);
+		}
+		if (fi->size == 0 || left > fi->expected_size - done)
+			left = fi->expected_size - done;
+	}
 
 	while ((r = fread(buf, 1, left < buflen ? left : buflen, repo->fh)) > 0) {
 		if (write(dest, buf, r) != r) {
@@ -136,17 +144,29 @@ stdio_fetch(struct pkg_repo *repo, int dest, struct fetch_item *fi)
 			return (EPKG_FATAL);
 		}
 		done += r;
-		if (fi->size > 0) {
+		if (fi->size > 0 || fi->expected_size > 0) {
 			left -= r;
+		}
+		if (fi->size > 0) {
 			pkg_dbg(PKG_DBG_FETCH, 1, "Read status: %jd over %jd", (intmax_t)done, (intmax_t)fi->size);
 		} else
 			pkg_dbg(PKG_DBG_FETCH, 1,  "Read status: %jd", (intmax_t)done);
 		if (fi->size > 0)
 			pkg_emit_progress_tick(done, fi->size);
 	}
+	if (fi->expected_size > 0 && done == fi->expected_size &&
+	    (fi->size == 0 || fi->size > fi->expected_size) &&
+	    fgetc(repo->fh) != EOF) {
+		pkg_emit_error("fetch exceeds expected package size");
+		return (EPKG_FATAL);
+	}
 	if (ferror(repo->fh)) {
 		pkg_emit_error("An error occurred while fetching package");
 		return(EPKG_FATAL);
+	}
+	if (fi->expected_size > 0 && done != fi->expected_size) {
+		pkg_emit_error("fetch size does not match expected package size");
+		return (EPKG_FATAL);
 	}
 	return (EPKG_OK);
 }

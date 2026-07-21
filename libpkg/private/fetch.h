@@ -30,6 +30,7 @@
 struct fetch_item {
 	const char *url;
 	off_t size;
+	off_t expected_size;
 	off_t offset;
 	time_t mtime;
 };
