@@ -36,6 +36,10 @@
 #include <libgen.h>
 #include <fcntl.h>
 #include <fnmatch.h>
+#include <inttypes.h>
+
+#include <archive.h>
+#include <archive_entry.h>
 
 #include <sqlite3.h>
 
@@ -53,6 +57,27 @@ struct pkg_repo_group {
 	size_t index;
 	ucl_object_t *groups;
 };
+
+/*
+ * Iterator for file_which glob mode.
+ * Stores (pkgid, realpath) pairs and returns one row per match.
+ */
+struct file_which_pair {
+	int64_t pkgid;
+	char  *path;
+};
+typedef vec_t(struct file_which_pair) fwpairv_t;
+
+struct pkg_repo_file_which_glob {
+	fwpairv_t  pairs;
+	size_t     index;
+	sqlite3    *sqlite;
+	sqlite3_stmt *pkg_stmt;
+	bool       pkg_cached;
+	int64_t    last_pkgid;
+	struct pkg *last_pkg;
+};
+
 static int pkg_repo_binary_it_next(struct pkg_repo_it *it, struct pkg **pkg_p, unsigned flags);
 static void pkg_repo_binary_it_free(struct pkg_repo_it *it);
 static void pkg_repo_binary_it_reset(struct pkg_repo_it *it);
@@ -60,6 +85,10 @@ static void pkg_repo_binary_it_reset(struct pkg_repo_it *it);
 static int pkg_repo_binary_group_it_next(struct pkg_repo_it *it, struct pkg **pkg_p, unsigned flags);
 static void pkg_repo_binary_group_it_free(struct pkg_repo_it *it);
 static void pkg_repo_binary_group_it_reset(struct pkg_repo_it *it);
+
+static int pkg_repo_binary_file_which_glob_next(struct pkg_repo_it *it, struct pkg **pkg_p, unsigned flags);
+static void pkg_repo_binary_file_which_glob_free(struct pkg_repo_it *it);
+static void pkg_repo_binary_file_which_glob_reset(struct pkg_repo_it *it);
 
 static const struct pkg_repo_it_ops pkg_repo_binary_it_ops = {
 	.next = pkg_repo_binary_it_next,
@@ -71,6 +100,12 @@ static const struct pkg_repo_it_ops pkg_repo_binary_group_it_ops = {
 	.next = pkg_repo_binary_group_it_next,
 	.free = pkg_repo_binary_group_it_free,
 	.reset = pkg_repo_binary_group_it_reset
+};
+
+static const struct pkg_repo_it_ops pkg_repo_binary_file_which_glob_it_ops = {
+	.next = pkg_repo_binary_file_which_glob_next,
+	.free = pkg_repo_binary_file_which_glob_free,
+	.reset = pkg_repo_binary_file_which_glob_reset
 };
 
 static struct pkg_repo_it*
@@ -177,6 +212,166 @@ pkg_repo_binary_group_it_reset(struct pkg_repo_it *it)
 	struct pkg_repo_group *prg = it->data;
 
 	prg->index = 0;
+}
+
+/*
+ * file_which glob iterator implementation.
+ * Iterates over (pkgid, realpath) pairs, returning one row per pair.
+ * The realpath is stored in pkg->rwhich_path so the caller can display it.
+ */
+
+static void
+populate_pkg_from_stmt(sqlite3_stmt *stmt, struct pkg *pkg)
+{
+	int icol;
+	const unsigned char *val;
+
+	for (icol = 0; icol < sqlite3_column_count(stmt); icol++) {
+		const char *colname = sqlite3_column_name(stmt, icol);
+
+		if (strcmp(colname, "id") == 0)
+			pkg->id = sqlite3_column_int64(stmt, icol);
+		else if (strcmp(colname, "origin") == 0) {
+			val = sqlite3_column_text(stmt, icol);
+			free(pkg->origin);
+			pkg->origin = val ? xstrdup((const char *)val) : NULL;
+		} else if (strcmp(colname, "name") == 0) {
+			val = sqlite3_column_text(stmt, icol);
+			free(pkg->name);
+			pkg->name = val ? xstrdup((const char *)val) : NULL;
+		} else if (strcmp(colname, "version") == 0) {
+			val = sqlite3_column_text(stmt, icol);
+			free(pkg->version);
+			pkg->version = val ? xstrdup((const char *)val) : NULL;
+		} else if (strcmp(colname, "comment") == 0) {
+			val = sqlite3_column_text(stmt, icol);
+			free(pkg->comment);
+			pkg->comment = val ? xstrdup((const char *)val) : NULL;
+		} else if (strcmp(colname, "uniqueid") == 0) {
+			val = sqlite3_column_text(stmt, icol);
+			free(pkg->uid);
+			pkg->uid = val ? xstrdup((const char *)val) : NULL;
+		} else if (strcmp(colname, "prefix") == 0) {
+			val = sqlite3_column_text(stmt, icol);
+			free(pkg->prefix);
+			pkg->prefix = val ? xstrdup((const char *)val) : NULL;
+		} else if (strcmp(colname, "desc") == 0) {
+			val = sqlite3_column_text(stmt, icol);
+			free(pkg->desc);
+			pkg->desc = val ? xstrdup((const char *)val) : NULL;
+		} else if (strcmp(colname, "arch") == 0) {
+			val = sqlite3_column_text(stmt, icol);
+			free(pkg->abi);
+			pkg->abi = val ? xstrdup((const char *)val) : NULL;
+		} else if (strcmp(colname, "maintainer") == 0) {
+			val = sqlite3_column_text(stmt, icol);
+			free(pkg->maintainer);
+			pkg->maintainer = val ? xstrdup((const char *)val) : NULL;
+		} else if (strcmp(colname, "www") == 0) {
+			val = sqlite3_column_text(stmt, icol);
+			free(pkg->www);
+			pkg->www = val ? xstrdup((const char *)val) : NULL;
+		} else if (strcmp(colname, "flatsize") == 0)
+			pkg->flatsize = sqlite3_column_int64(stmt, icol);
+		else if (strcmp(colname, "pkgsize") == 0)
+			pkg->pkgsize = sqlite3_column_int64(stmt, icol);
+		else if (strcmp(colname, "cksum") == 0) {
+			val = sqlite3_column_text(stmt, icol);
+			free(pkg->sum);
+			pkg->sum = val ? xstrdup((const char *)val) : NULL;
+		} else if (strcmp(colname, "manifestdigest") == 0) {
+			val = sqlite3_column_text(stmt, icol);
+			free(pkg->digest);
+			pkg->digest = val ? xstrdup((const char *)val) : NULL;
+		} else if (strcmp(colname, "repopath") == 0) {
+			val = sqlite3_column_text(stmt, icol);
+			free(pkg->repopath);
+			pkg->repopath = val ? xstrdup((const char *)val) : NULL;
+		}
+	}
+}
+
+static int
+pkg_repo_binary_file_which_glob_next(struct pkg_repo_it *it, struct pkg **pkg_p, unsigned flags __unused)
+{
+	struct pkg_repo_file_which_glob *fglob = it->data;
+	sqlite3_stmt *stmt = fglob->pkg_stmt;
+
+	while (fglob->index < fglob->pairs.len) {
+		struct file_which_pair *pair = &fglob->pairs.d[fglob->index];
+		fglob->index++;
+
+		/* If same package as last time, just update the path */
+		if (pair->pkgid == fglob->last_pkgid && fglob->last_pkg != NULL) {
+			free(fglob->last_pkg->rwhich_path);
+			fglob->last_pkg->rwhich_path = xstrdup(pair->path);
+			*pkg_p = fglob->last_pkg;
+			fglob->last_pkg = NULL;
+			return (EPKG_OK);
+		}
+
+		/* Load package from database */
+		pkg_free(fglob->last_pkg);
+		fglob->last_pkg = NULL;
+		fglob->last_pkgid = pair->pkgid;
+
+		sqlite3_reset(stmt);
+		sqlite3_bind_int64(stmt, 2, pair->pkgid);
+
+		if (sqlite3_step(stmt) != SQLITE_ROW)
+			continue;
+
+		pkg_free(*pkg_p);
+		int ret = pkg_new(pkg_p, PKG_REMOTE);
+		if (ret != EPKG_OK)
+			return (ret);
+
+		/* Manually populate from the statement */
+		populate_pkg_from_stmt(stmt, *pkg_p);
+
+		free((*pkg_p)->rwhich_path);
+		(*pkg_p)->rwhich_path = xstrdup(pair->path);
+
+		(*pkg_p)->repo = it->repo;
+
+		/* Check if the next pair is the same package - if so, cache */
+		if (fglob->index < fglob->pairs.len &&
+		    fglob->pairs.d[fglob->index].pkgid == pair->pkgid) {
+			fglob->last_pkg = *pkg_p;
+			fglob->last_pkgid = pair->pkgid;
+		}
+
+		return (EPKG_OK);
+	}
+
+	return (EPKG_END);
+}
+
+static void
+pkg_repo_binary_file_which_glob_free(struct pkg_repo_it *it)
+{
+	struct pkg_repo_file_which_glob *fglob = it->data;
+
+	if (fglob != NULL) {
+		for (size_t i = 0; i < fglob->pairs.len; i++)
+			free(fglob->pairs.d[i].path);
+		vec_free(&fglob->pairs);
+		pkg_free(fglob->last_pkg);
+		sqlite3_finalize(fglob->pkg_stmt);
+		free(fglob);
+	}
+	free(it);
+}
+
+static void
+pkg_repo_binary_file_which_glob_reset(struct pkg_repo_it *it)
+{
+	struct pkg_repo_file_which_glob *fglob = it->data;
+
+	fglob->index = 0;
+	pkg_free(fglob->last_pkg);
+	fglob->last_pkg = NULL;
+	fglob->last_pkgid = -1;
 }
 
 struct pkg_repo_it *
@@ -359,73 +554,673 @@ pkg_repo_binary_require(struct pkg_repo *repo, const char *provide)
 	return (pkg_repo_binary_it_new(repo, stmt, PKGDB_IT_FLAG_ONCE));
 }
 
+/*
+ * Streaming filesite parser for rwhich.
+ *
+ * The compressed 'files' archive contains a text file with two sections
+ * separated by a blank line:
+ *  1) Directory dictionary: front-compressed lines "N suffix"
+ *     (N = common prefix bytes with previous directory)
+ *  2) Package data: "<name> <version>" header followed by
+ *     ">N" directory index changes and filename lines.
+ *
+ * We stream through the decompressed file, keeping only the directory
+ * dictionary in memory (thousands of entries, not millions of files).
+ * For each file entry we reconstruct the full path and match it
+ * against the requested path or glob pattern, collecting only the
+ * matching package IDs.
+ */
+
+typedef vec_t(int64_t) idvec_t;
+typedef vec_t(char *) dirv_t;
+
+/* Helper to build full path from directory dictionary and filename */
+static char *
+build_fullpath(const char *dir, const char *file)
+{
+	char *fullpath;
+	if (dir[0] == '\0')
+		fullpath = xstrdup(file);
+	else
+		xasprintf(&fullpath, "%s/%s", dir, file);
+	return (fullpath);
+}
+
+typedef vec_t(int) intv_t;
+
+/*
+ * Optimized glob matcher for rwhich -g.
+ *
+ * Splits the glob pattern at the last '/' into:
+ *   - dir_pattern: everything before the last '/'
+ *   - fn_pattern:  the last component (filename pattern)
+ *
+ * Without FNM_PATHNAME, '*' in fnmatch traverses '/' so we cannot
+ * safely split arbitrary patterns by components.  However, we can
+ * optimize two common cases:
+ *
+ *   1. Pattern has no '/' -> apply fnmatch only on the filename,
+ *      skip directory filtering entirely (all dirs match).
+ *
+ *   2. Pattern has '/' and the directory part contains no glob
+ *      metacharacters -> exact string compare on the directory,
+ *      fnmatch only on the filename.
+ *
+ *   3. Otherwise -> fallback to fnmatch on the full path (same as
+ *      before, but only for complex patterns with wildcards in dir).
+ *
+ * This avoids millions of fnmatch+alloc calls for the common cases
+ * where the user searches a filename pattern or a fixed directory.
+ */
+struct glob_matcher {
+	char    *pattern;      /* original pattern (for fallback) */
+	char    *fn_pattern;   /* filename part of the pattern */
+	char    *dir_pattern;  /* directory part (may be NULL) */
+	bool    fn_is_glob;   /* fn_pattern has glob metacharacters */
+	bool    dir_is_exact; /* dir_pattern has no glob metacharacters */
+	int     exact_dir_idx;/* directory index if dir_is_exact, -1 otherwise */
+};
+
+static bool
+glob_has_metachars(const char *p)
+{
+	const char *s;
+
+	for (s = p; *s; s++) {
+		if (*s == '*' || *s == '?' || *s == '[' || *s == ']')
+			return (true);
+	}
+	return (false);
+}
+
+static struct glob_matcher *
+glob_matcher_new(const char *pattern)
+{
+	struct glob_matcher *gm;
+	const char *last_slash;
+
+	gm = xcalloc(1, sizeof(*gm));
+	gm->pattern = xstrdup(pattern);
+	gm->exact_dir_idx = -1;
+
+	last_slash = strrchr(pattern, '/');
+	if (last_slash == NULL) {
+		/* No '/' → filename-only pattern, all directories match */
+		gm->fn_pattern = xstrdup(pattern);
+		gm->dir_pattern = NULL;
+		gm->dir_is_exact = false;
+	} else {
+		/* Split at last '/' */
+		size_t dir_len = (size_t)(last_slash - pattern);
+
+		gm->dir_pattern = xstrndup(pattern, dir_len);
+		gm->fn_pattern = xstrdup(last_slash + 1);
+		gm->dir_is_exact = !glob_has_metachars(gm->dir_pattern);
+	}
+
+	gm->fn_is_glob = glob_has_metachars(gm->fn_pattern);
+
+	return (gm);
+}
+
+static void
+glob_matcher_free(struct glob_matcher *gm)
+{
+	if (gm == NULL)
+		return;
+	free(gm->pattern);
+	free(gm->fn_pattern);
+	free(gm->dir_pattern);
+	free(gm);
+}
+
+/*
+ * After the directory dictionary is fully parsed, find the matching
+ * directory index if we have an exact directory pattern.
+ */
+static void
+glob_matcher_resolve_dirs(struct glob_matcher *gm, const dirv_t *dirs)
+{
+	int i;
+
+	if (!gm->dir_is_exact || gm->dir_pattern == NULL)
+		return;
+
+	for (i = 0; i < (int)dirs->len; i++) {
+		if (STREQ(dirs->d[i], gm->dir_pattern)) {
+			gm->exact_dir_idx = i;
+			return;
+		}
+	}
+}
+
+/*
+ * Check if a file in directory cur_dir with name 'filename' matches
+ * the glob pattern. Returns true if it matches.
+ */
+static bool
+glob_matcher_matches(const struct glob_matcher *gm, int cur_dir,
+    const char *filename, const char *dirpath)
+{
+	bool fn_match;
+
+	/* Case 1: no directory constraint — all dirs match */
+	if (gm->dir_pattern == NULL)
+		goto check_fn;
+
+	/* Case 2: exact directory match — O(1) index check */
+	if (gm->dir_is_exact) {
+		if (cur_dir != gm->exact_dir_idx)
+			return (false);
+		goto check_fn;
+	}
+
+	/* Case 3: directory has wildcards — fallback to full fnmatch */
+	{
+		char *fullpath;
+		bool res;
+
+		if (dirpath[0] == '\0')
+			fullpath = xstrdup(filename);
+		else
+			xasprintf(&fullpath, "%s/%s", dirpath, filename);
+		res = (fnmatch(gm->pattern, fullpath, 0) == 0);
+		free(fullpath);
+		return (res);
+	}
+
+check_fn:
+	if (gm->fn_is_glob)
+		fn_match = (fnmatch(gm->fn_pattern, filename, 0) == 0);
+	else
+		fn_match = STREQ(filename, gm->fn_pattern);
+
+	return (fn_match);
+}
+
+static void
+idvec_free(idvec_t *v)
+{
+	if (v != NULL) {
+		free(v->d);
+		free(v);
+	}
+}
+
+static idvec_t *
+idvec_new(void)
+{
+	idvec_t *v = xcalloc(1, sizeof(*v));
+	return (v);
+}
+
+static int
+pkg_repo_binary_file_which_parse(FILE *fp, struct pkg_repo *repo,
+    const char *path, bool glob, sqlite3_stmt **out_stmt)
+{
+	sqlite3 *sqlite = PRIV_GET(repo);
+	dirv_t dirs = vec_init();
+	idvec_t *matching_ids = idvec_new();
+	char *line = NULL;
+	size_t linecap = 0;
+	ssize_t linelen;
+	int phase = 0;			/* 0=dirs, 1=packages */
+	int64_t cur_pkgid = -1;
+	char cur_pkgname[256] = { 0 };
+	int cur_dir = -1;
+	sqlite3_stmt *id_stmt = NULL;
+	const char *id_sql = "SELECT id FROM packages WHERE name = ?1 "
+	    "AND version = ?2 LIMIT 1;";
+	int ret = EPKG_FATAL;
+
+	/*
+	 * For exact (non-glob) lookup, split the requested path into
+	 * directory and filename components so we can match efficiently
+	 * without reconstructing every full path.
+	 */
+	char *match_dir = NULL;
+	const char *match_file = NULL;
+	int match_dir_idx = -1;
+
+	if (!glob) {
+		const char *last_slash = strrchr(path, '/');
+		if (last_slash == NULL) {
+			/* No slash: file is at root, dir is empty */
+			match_dir = xstrdup("");
+			match_file = path;
+		} else {
+			match_file = last_slash + 1;
+			size_t dir_len = last_slash - path;
+			match_dir = xstrndup(path, dir_len);
+		}
+	}
+
+	id_stmt = prepare_sql(sqlite, id_sql);
+	if (id_stmt == NULL)
+		goto cleanup;
+
+	while ((linelen = getline(&line, &linecap, fp)) > 0) {
+		/* Strip trailing newline */
+		if (linelen > 0 && line[linelen - 1] == '\n')
+			line[--linelen] = '\0';
+
+		/* Empty line = section separator or package delimiter */
+		if (linelen == 0) {
+			if (phase == 1)
+				cur_pkgid = -1;
+			phase = 1;
+			/*
+			 * For exact match, find the directory index now that
+			 * the dictionary is fully parsed.
+			 */
+			if (!glob && match_dir_idx == -1) {
+				for (size_t i = 0; i < dirs.len; i++) {
+					if (STREQ(dirs.d[i], match_dir)) {
+						match_dir_idx = (int)i;
+						break;
+					}
+				}
+			}
+			continue;
+		}
+
+		if (phase == 0) {
+			/* Directory dictionary: "N suffix" */
+			long prefix_len;
+			char *space;
+
+			space = strchr(line, ' ');
+			if (space == NULL) {
+				/* First line: no prefix, whole line is the dir */
+				vec_push(&dirs, xstrdup(line));
+			} else {
+				prefix_len = strtol(line, &space, 10);
+				while (*space == ' ')
+					space++;
+				const char *prev = dirs.len > 0 ?
+				    dirs.d[dirs.len - 1] : "";
+				char *dir = xmalloc(strlen(prev) + strlen(space) + 1);
+				memcpy(dir, prev, prefix_len);
+				strcpy(dir + prefix_len, space);
+				vec_push(&dirs, dir);
+			}
+		} else {
+			/* Package data */
+			if (line[0] == '>') {
+				/* Directory index change: ">N" */
+				cur_dir = strtol(line + 1, NULL, 10);
+			} else if (strchr(line, ' ') != NULL && cur_pkgid == -1) {
+				/* Package header: "<name> <version>" */
+				char *sp = strchr(line, ' ');
+				strncpy(cur_pkgname, line, sp - line);
+				cur_pkgname[sp - line] = '\0';
+				const char *ver = sp + 1;
+
+				sqlite3_reset(id_stmt);
+				sqlite3_bind_text(id_stmt, 1, cur_pkgname, -1,
+				    SQLITE_TRANSIENT);
+				sqlite3_bind_text(id_stmt, 2, ver, -1,
+				    SQLITE_TRANSIENT);
+				if (sqlite3_step(id_stmt) == SQLITE_ROW)
+					cur_pkgid = sqlite3_column_int64(id_stmt, 0);
+				else
+					cur_pkgid = -1;
+			} else if (cur_pkgid >= 0 && cur_dir >= 0) {
+				/* Filename line */
+				bool is_match = false;
+
+				if (glob) {
+					/* Reconstruct full path and glob-match */
+					if (cur_dir >= 0 &&
+					    cur_dir < (int)dirs.len) {
+						char *fullpath;
+						if (dirs.d[cur_dir][0] == '\0')
+							fullpath = xstrdup(line);
+						else
+							xasprintf(&fullpath,
+							    "%s/%s",
+							    dirs.d[cur_dir],
+							    line);
+						is_match = (fnmatch(path,
+						    fullpath, 0) == 0);
+						free(fullpath);
+					}
+				} else {
+					/* Exact match: compare dir index + filename */
+					is_match = (cur_dir == match_dir_idx &&
+					    STREQ(line, match_file));
+				}
+
+				if (is_match)
+					vec_push(matching_ids, cur_pkgid);
+			}
+		}
+	}
+
+	sqlite3_finalize(id_stmt);
+
+	/* Clean up directory dictionary */
+	vec_free_and_free(&dirs, free);
+
+	if (matching_ids->len == 0) {
+		ret = EPKG_OK;
+		goto cleanup;
+	}
+
+	/* Build SQL to fetch package details for matching IDs */
+	xstring *sqlstr = xstring_new();
+	xstring_printf(sqlstr,
+	    "SELECT p.id, p.origin, p.name, p.version, p.comment, "
+	    "p.name as uniqueid, "
+	    "p.prefix, p.desc, p.arch, p.maintainer, p.www, "
+	    "p.licenselogic, p.flatsize, p.pkgsize, "
+	    "p.cksum, p.manifestdigest, p.path AS repopath, '%s' AS dbname "
+	    "FROM packages AS p WHERE p.id IN (", repo->name);
+
+	for (size_t i = 0; i < matching_ids->len; i++) {
+		if (i > 0)
+			xstring_printf(sqlstr, ",");
+		xstring_printf(sqlstr, "%" PRId64, matching_ids->d[i]);
+	}
+	xstring_printf(sqlstr, ") ORDER BY p.name;");
+
+	*out_stmt = prepare_sql(sqlite, xstring_get(sqlstr));
+
+	if (*out_stmt == NULL)
+		ret = EPKG_FATAL;
+	else
+		ret = EPKG_OK;
+
+cleanup:
+	idvec_free(matching_ids);
+	free(line);
+	free(match_dir);
+	return (ret);
+}
+
+/*
+ * Parse the filesite for glob mode, collecting (pkgid, realpath) pairs.
+ * Uses optimized matching: splits the pattern into directory + filename
+ * parts, pre-filters directories when possible, and avoids fnmatch on
+ * full paths for the common cases.
+ * Returns a fwpairv_t with the matching pairs.
+ */
+static int
+pkg_repo_binary_file_which_parse_glob(FILE *fp, struct pkg_repo *repo,
+    const char *pattern, fwpairv_t *out_pairs)
+{
+	sqlite3 *sqlite = PRIV_GET(repo);
+	dirv_t dirs = vec_init();
+	char *line = NULL;
+	size_t linecap = 0;
+	ssize_t linelen;
+	int phase = 0;
+	int64_t cur_pkgid = -1;
+	char cur_pkgname[256] = { 0 };
+	int cur_dir = -1;
+	sqlite3_stmt *id_stmt = NULL;
+	const char *id_sql = "SELECT id FROM packages WHERE name = ?1 "
+	    "AND version = ?2 LIMIT 1;";
+	struct glob_matcher *gm = NULL;
+	int ret = EPKG_FATAL;
+
+	gm = glob_matcher_new(pattern);
+
+	id_stmt = prepare_sql(sqlite, id_sql);
+	if (id_stmt == NULL)
+		goto cleanup;
+
+	while ((linelen = getline(&line, &linecap, fp)) > 0) {
+		if (linelen > 0 && line[linelen - 1] == '\n')
+			line[--linelen] = '\0';
+
+		if (linelen == 0) {
+			if (phase == 1)
+				cur_pkgid = -1;
+			phase = 1;
+			/*
+			 * Directory dictionary is fully parsed — resolve
+			 * exact directory index if applicable.
+			 */
+			glob_matcher_resolve_dirs(gm, &dirs);
+			continue;
+		}
+
+		if (phase == 0) {
+			long prefix_len;
+			char *space;
+
+			space = strchr(line, ' ');
+			if (space == NULL)
+				vec_push(&dirs, xstrdup(line));
+			else {
+				prefix_len = strtol(line, &space, 10);
+				while (*space == ' ')
+					space++;
+				const char *prev = dirs.len > 0 ?
+				    dirs.d[dirs.len - 1] : "";
+				char *dir = xmalloc(strlen(prev) + strlen(space) + 1);
+				memcpy(dir, prev, prefix_len);
+				strcpy(dir + prefix_len, space);
+				vec_push(&dirs, dir);
+			}
+		} else {
+			if (line[0] == '>') {
+				cur_dir = strtol(line + 1, NULL, 10);
+			} else if (strchr(line, ' ') != NULL && cur_pkgid == -1) {
+				char *sp = strchr(line, ' ');
+				strncpy(cur_pkgname, line, sp - line);
+				cur_pkgname[sp - line] = '\0';
+				const char *ver = sp + 1;
+
+				sqlite3_reset(id_stmt);
+				sqlite3_bind_text(id_stmt, 1, cur_pkgname, -1,
+				    SQLITE_TRANSIENT);
+				sqlite3_bind_text(id_stmt, 2, ver, -1,
+				    SQLITE_TRANSIENT);
+				if (sqlite3_step(id_stmt) == SQLITE_ROW)
+					cur_pkgid = sqlite3_column_int64(id_stmt, 0);
+				else
+					cur_pkgid = -1;
+			} else if (cur_pkgid >= 0 && cur_dir >= 0) {
+				if (cur_dir >= 0 && cur_dir < (int)dirs.len) {
+					if (glob_matcher_matches(gm, cur_dir,
+					    line, dirs.d[cur_dir])) {
+						struct file_which_pair pair;
+						pair.pkgid = cur_pkgid;
+						pair.path = build_fullpath(
+						    dirs.d[cur_dir], line);
+						vec_push(out_pairs, pair);
+					}
+				}
+			}
+		}
+	}
+
+	sqlite3_finalize(id_stmt);
+	vec_free_and_free(&dirs, free);
+
+	ret = EPKG_OK;
+
+cleanup:
+	glob_matcher_free(gm);
+	free(line);
+	return (ret);
+}
+
+/*
+ * Read files.zst (zstd-compressed, raw format) and stream decompress
+ * into a FILE* via fopencookie, then parse without writing to disk.
+ */
+struct archive_read_data {
+	struct archive *a;
+	char  *buf;     /* owned buffer for archive_read_data */
+	size_t len;
+	off_t off;
+};
+
+static ssize_t
+archive_read_read_fn(void *p, char *buf, size_t n)
+{
+	struct archive_read_data *ad = p;
+	ssize_t total = 0;
+
+	while ((size_t)total < n) {
+		if ((off_t)ad->off >= (off_t)ad->len) {
+			if (ad->buf == NULL)
+				ad->buf = xmalloc(65536);
+			la_ssize_t rd = archive_read_data(ad->a,
+			    ad->buf, 65536);
+			if (rd <= 0)
+				break;
+			ad->len = (size_t)rd;
+			ad->off = 0;
+		}
+		size_t avail = ad->len - (size_t)ad->off;
+		size_t tocopy = avail < (n - (size_t)total) ? avail :
+		    n - (size_t)total;
+		memcpy(buf + total, (const char *)ad->buf + ad->off, tocopy);
+		ad->off += tocopy;
+		total += (ssize_t)tocopy;
+	}
+	return total;
+}
+
+static int pkg_repo_binary_file_which_decompress(struct pkg_repo *repo,
+    int fd, const char *path, bool glob, sqlite3_stmt **out_stmt, fwpairv_t *out_pairs);
+
+static int
+pkg_repo_binary_file_which_read(struct pkg_repo *repo, const char *path,
+    bool glob, sqlite3_stmt **out_stmt, fwpairv_t *out_pairs)
+{
+	int fd = -1;
+	int rc = EPKG_FATAL;
+
+	fd = openat(repo->dfd, "files", O_RDONLY|O_CLOEXEC);
+	if (fd == -1)
+		return (EPKG_OK); /* no filesite at all */
+
+	/* Legacy tar format - use old decompress path */
+	rc = pkg_repo_binary_file_which_decompress(repo, fd, path, glob,
+	    out_stmt, out_pairs);
+	close(fd);
+	return (rc);
+}
+
+static int
+pkg_repo_binary_file_which_decompress(struct pkg_repo *repo, int fd,
+    const char *path, bool glob, sqlite3_stmt **out_stmt, fwpairv_t *out_pairs)
+{
+	struct archive *a = archive_read_new();
+	struct archive_entry *ae = NULL;
+	FILE *unfp = NULL;
+	int rc = EPKG_FATAL;
+	int rc2;
+
+	archive_read_support_filter_all(a);
+	archive_read_support_format_tar(a);
+	archive_read_support_format_raw(a);
+
+	if (archive_read_open_fd(a, fd, 4096) != ARCHIVE_OK) {
+		archive_read_free(a);
+		return (EPKG_FATAL);
+	}
+
+	while ((rc2 = archive_read_next_header(a, &ae)) == ARCHIVE_OK) {
+		const char *pn = archive_entry_pathname(ae);
+		if (STREQ(pn, "files")) {
+			struct archive_read_data ad = { a, NULL, 0, 0 };
+			cookie_io_functions_t fi = { archive_read_read_fn, NULL, NULL, NULL };
+			unfp = fopencookie(&ad, "r", fi);
+			if (unfp != NULL) {
+				pkg_debug(1, "glob ? %s", glob ? "true" : "false");
+				if (glob)
+					rc = pkg_repo_binary_file_which_parse_glob(unfp, repo, path, out_pairs);
+				else
+					rc = pkg_repo_binary_file_which_parse(unfp, repo, path, glob, out_stmt);
+				fclose(unfp);
+			}
+			break;
+		} else {
+			archive_read_data_skip(a);
+		}
+	}
+
+	archive_read_close(a);
+	archive_read_free(a);
+	return (rc);
+}
+
+static struct pkg_repo_it *
+pkg_repo_binary_file_which_glob_new(struct pkg_repo *repo)
+{
+	struct pkg_repo_it *it;
+	struct pkg_repo_file_which_glob *fglob;
+
+	it = xcalloc(1, sizeof(*it));
+	fglob = xcalloc(1, sizeof(*fglob));
+
+	it->ops = &pkg_repo_binary_file_which_glob_it_ops;
+	it->flags = PKGDB_IT_FLAG_ONCE;
+	it->repo = repo;
+	it->data = fglob;
+
+	fglob->sqlite = PRIV_GET(repo);
+	fglob->last_pkgid = -1;
+
+	const char *sql =
+		"SELECT p.id, p.origin, p.name, p.version, p.comment, "
+		"p.name as uniqueid, "
+		"p.prefix, p.desc, p.arch, p.maintainer, p.www, "
+		"p.licenselogic, p.flatsize, p.pkgsize, "
+		"p.cksum, p.manifestdigest, p.path AS repopath, ? AS dbname "
+		"FROM packages AS p WHERE p.id = ?;";
+
+	fglob->pkg_stmt = prepare_sql(fglob->sqlite, sql);
+	if (fglob->pkg_stmt == NULL)
+		return (NULL);
+
+	sqlite3_bind_text(fglob->pkg_stmt, 1, repo->name, -1, SQLITE_STATIC);
+
+	return (it);
+}
+
 struct pkg_repo_it *
 pkg_repo_binary_file_which(struct pkg_repo *repo, const char *path, bool glob)
 {
-	sqlite3_stmt	*stmt;
-	sqlite3 *sqlite = PRIV_GET(repo);
-	char *sql = NULL;
-	int64_t has_files = 0;
+	int rc;
 
-	/* Check if file_dirs table exists (filesite may not have been loaded) */
-	if (get_pragma(sqlite,
-	    "SELECT count(name) FROM sqlite_master "
-	    "WHERE type='table' AND name='file_dirs';",
-	    &has_files, false) != EPKG_OK || has_files == 0) {
+	if (repo->dfd == -1 && pkg_repo_open(repo) == EPKG_FATAL)
 		return (NULL);
-	}
 
 	if (glob) {
-		const char basesql[] = ""
-		    "SELECT p.id, p.origin, p.name, p.version, p.comment, "
-		    "p.name as uniqueid, "
-		    "p.prefix, p.desc, p.arch, p.maintainer, p.www, "
-		    "p.licenselogic, p.flatsize, p.pkgsize, "
-		    "p.cksum, p.manifestdigest, p.path AS repopath, '%s' AS dbname "
-		    "FROM packages AS p "
-		    "INNER JOIN pkg_files AS pf ON p.id = pf.package_id "
-		    "INNER JOIN file_dirs AS fd ON pf.dir_id = fd.id "
-		    "WHERE fd.path || '/' || pf.name GLOB ?1 "
-		    "GROUP BY p.id;";
+		pkg_debug(1, "rwhich glob");
+		fwpairv_t pairs = vec_init();
+		struct pkg_repo_it *it;
 
-		xasprintf(&sql, basesql, repo->name);
-		stmt = prepare_sql(sqlite, sql);
-		free(sql);
-		if (stmt == NULL)
+		rc = pkg_repo_binary_file_which_read(repo, path, glob, NULL, &pairs);
+
+		if (rc != EPKG_OK || pairs.len == 0) {
+			for (size_t i = 0; i < pairs.len; i++)
+				free(pairs.d[i].path);
+			vec_free(&pairs);
 			return (NULL);
+		}
 
-		sqlite3_bind_text(stmt, 1, path, -1, SQLITE_TRANSIENT);
+		it = pkg_repo_binary_file_which_glob_new(repo);
+		((struct pkg_repo_file_which_glob *)it->data)->pairs = pairs;
+		return (it);
 	} else {
-		const char *last_slash = strrchr(path, '/');
-		if (last_slash == NULL)
+		pkg_debug(1, "rwhich no glob");
+		sqlite3_stmt *stmt = NULL;
+
+		rc = pkg_repo_binary_file_which_read(repo, path, glob, &stmt, NULL);
+
+		if (rc != EPKG_OK || stmt == NULL)
 			return (NULL);
 
-		const char basesql[] = ""
-		    "SELECT p.id, p.origin, p.name, p.version, p.comment, "
-		    "p.name as uniqueid, "
-		    "p.prefix, p.desc, p.arch, p.maintainer, p.www, "
-		    "p.licenselogic, p.flatsize, p.pkgsize, "
-		    "p.cksum, p.manifestdigest, p.path AS repopath, '%s' AS dbname "
-		    "FROM packages AS p "
-		    "INNER JOIN pkg_files AS pf ON p.id = pf.package_id "
-		    "INNER JOIN file_dirs AS fd ON pf.dir_id = fd.id "
-		    "WHERE fd.path = ?1 AND pf.name = ?2;";
-
-		xasprintf(&sql, basesql, repo->name);
-		stmt = prepare_sql(sqlite, sql);
-		free(sql);
-		if (stmt == NULL)
-			return (NULL);
-
-		size_t dir_len = last_slash - path;
-		if (dir_len == 0) dir_len = 1;
-		sqlite3_bind_text(stmt, 1, path, dir_len, SQLITE_TRANSIENT);
-		sqlite3_bind_text(stmt, 2, last_slash + 1, -1, SQLITE_TRANSIENT);
+		return (pkg_repo_binary_it_new(repo, stmt, PKGDB_IT_FLAG_ONCE));
 	}
-
-	pkgdb_debug(4, stmt);
-
-	return (pkg_repo_binary_it_new(repo, stmt, PKGDB_IT_FLAG_ONCE));
 }
 
 static const char *

@@ -90,6 +90,9 @@ exec_rwhich(int argc, char **argv)
 			retcode = EXIT_SUCCESS;
 			if (quiet)
 				pkg_printf("%n-%v\n", pkg, pkg);
+			else if (glob && pkg_rwhich_path(pkg) != NULL)
+				pkg_printf("%S is provided by package %n-%v\n",
+				    pkg_rwhich_path(pkg), pkg, pkg);
 			else
 				pkg_printf("%S is provided by package %n-%v\n",
 				    argv[0], pkg, pkg);

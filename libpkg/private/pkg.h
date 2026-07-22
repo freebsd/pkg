@@ -318,6 +318,7 @@ struct pkg {
 	charv_t	dir_to_del;
 	pkg_t		 type;
 	struct pkg_repo		*repo;
+	char			*rwhich_path;
 };
 typedef vec_t(struct pkg *) pkgs_t;
 
@@ -743,6 +744,7 @@ int pkg_repo_fetch_meta(struct pkg_repo *repo, time_t *t);
 int pkg_repo_fetch_remote_extract_fd(struct pkg_repo *repo, struct pkg_repo_content *);
 int pkg_repo_fetch_data_fd(struct pkg_repo *repo, struct pkg_repo_content *);
 int pkg_repo_fetch_filesite_fd(struct pkg_repo *repo, struct pkg_repo_content *);
+int pkg_repo_save_filesite(struct pkg_repo *repo, time_t orig_mtime);
 
 struct pkg_repo_meta *pkg_repo_meta_default(void);
 int pkg_repo_meta_load(const int fd, struct pkg_repo_meta **target);
