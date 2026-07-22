@@ -12,6 +12,7 @@ tests_init \
 	rwhich_multiple_args \
 	rwhich_repo_flag \
 	rwhich_shared_dirs \
+	rwhich_glob_realpath \
 	rwhich_no_filelist
 
 rwhich_basic_body() {
@@ -303,6 +304,43 @@ EOF
 		pkg -o REPOS_DIR="${TMPDIR}/reposconf" \
 		    -o PKG_CACHEDIR="${TMPDIR}" rwhich -r repoB \
 		    ${TMPDIR}/usr/local/bin/mybin
+}
+
+rwhich_glob_realpath_body() {
+	# Verify that glob mode displays the real file path, not the pattern
+	mkdir -p usr/local/bin usr/local/lib
+	touch usr/local/bin/mybin usr/local/lib/libtest.so.1
+
+	atf_check -s exit:0 sh ${RESOURCEDIR}/test_subr.sh new_pkg test test 1 "${TMPDIR}"
+	cat << EOF >> test.ucl
+files: {
+    ${TMPDIR}/usr/local/bin/mybin: "",
+    ${TMPDIR}/usr/local/lib/libtest.so.1: "",
+}
+EOF
+
+	atf_check -s exit:0 pkg create -M test.ucl
+	atf_check -o ignore -e empty -s exit:0 pkg repo -l .
+
+	mkdir reposconf
+	cat << EOF > reposconf/repo.conf
+local: {
+	url: file:///${TMPDIR},
+	enabled: true
+}
+EOF
+
+	atf_check -o ignore -e empty -s exit:0 \
+		pkg -o REPOS_DIR="${TMPDIR}/reposconf" \
+		    -o PKG_CACHEDIR="${TMPDIR}" update
+
+	# In glob mode, the output should include the real matched file path
+	# The real path (libtest.so.1) should appear, not the glob pattern
+	atf_check \
+		-o match:"${TMPDIR}/usr/local/lib/libtest.so.1 is provided by package test-1" \
+		-s exit:0 \
+		pkg -o REPOS_DIR="${TMPDIR}/reposconf" \
+		    -o PKG_CACHEDIR="${TMPDIR}" rwhich -g "*/lib/libtest*"
 }
 
 rwhich_shared_dirs_body() {

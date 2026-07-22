@@ -76,6 +76,7 @@ pkg_free(struct pkg *pkg)
 	free(pkg->reason);
 	free(pkg->dep_formula);
 	free(pkg->rootpath);
+	free(pkg->rwhich_path);
 
 	for (int i = 0; i < PKG_NUM_SCRIPTS; i++)
 		xstring_free(pkg->scripts[i]);
@@ -128,6 +129,14 @@ pkg_type(const struct pkg * restrict pkg)
 	assert(pkg != NULL);
 
 	return (pkg->type);
+}
+
+const char *
+pkg_rwhich_path(const struct pkg * restrict pkg)
+{
+	assert(pkg != NULL);
+
+	return (pkg->rwhich_path);
 }
 
 int

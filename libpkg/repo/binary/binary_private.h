@@ -154,26 +154,6 @@ static const char binary_repo_initsql[] = ""
 		"  ON DELETE RESTRICT ON UPDATE RESTRICT,"
 		"UNIQUE(package_id, require_id)"
 	");"
-	"CREATE TABLE file_dirs ("
-		"id INTEGER PRIMARY KEY,"
-		"path TEXT NOT NULL UNIQUE"
-	");"
-	"CREATE TABLE pkg_files ("
-		"package_id INTEGER NOT NULL REFERENCES packages(id)"
-		"  ON DELETE CASCADE ON UPDATE CASCADE,"
-		"dir_id INTEGER NOT NULL REFERENCES file_dirs(id)"
-		"  ON DELETE RESTRICT ON UPDATE RESTRICT,"
-		"name TEXT NOT NULL,"
-		"UNIQUE(package_id, dir_id, name)"
-	");"
-/*	"CREATE INDEX packages_origin ON packages(origin COLLATE NOCASE);"
-	"CREATE INDEX packages_name ON packages(name COLLATE NOCASE);"
-	"CREATE INDEX packages_uid_nocase ON packages(name COLLATE NOCASE, origin COLLATE NOCASE);"
-	"CREATE INDEX packages_version_nocase ON packages(name COLLATE NOCASE, version);"
-	"CREATE INDEX packages_uid ON packages(name, origin);"
-	"CREATE INDEX packages_version ON packages(name, version);"
-	"CREATE UNIQUE INDEX packages_digest ON packages(manifestdigest);"*/
-
 	"CREATE INDEX IF NOT EXISTS pkg_shlibs_required_shlib_id ON pkg_shlibs_required(shlib_id);"
 	"CREATE INDEX IF NOT EXISTS pkg_shlibs_provided_shlib_id ON pkg_shlibs_provided(shlib_id);"
 	"CREATE VIEW IF NOT EXISTS flavors AS "
@@ -190,7 +170,7 @@ static const char binary_repo_initsql[] = ""
 /* The package repo schema minor revision.
    Minor schema changes don't prevent older pkgng
    versions accessing the repo. */
-#define REPO_SCHEMA_MINOR 15
+#define REPO_SCHEMA_MINOR 16
 
 #define REPO_SCHEMA_VERSION (REPO_SCHEMA_MAJOR * 1000 + REPO_SCHEMA_MINOR)
 
@@ -215,8 +195,6 @@ typedef enum _sql_prstmt_index {
 	PROVIDES,
 	REQUIRE,
 	REQUIRES,
-	FILEDIR1,
-	FILEDIR2,
 	PKGID,
 	PRSTMT_LAST,
 } sql_prstmt_index;

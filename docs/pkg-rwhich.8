@@ -69,8 +69,11 @@ $ pkg rwhich /usr/local/bin/bash
 Find which package provides a shared library using a glob pattern:
 .Bd -literal -offset indent
 $ pkg rwhich -g '*/lib/libcurl*'
-*/lib/libcurl* is provided by package curl-8.7.1
+/usr/local/lib/libcurl.so is provided by package curl-8.7.1
+/usr/local/lib/libcurl.so.4 is provided by package curl-8.7.1
 .Ed
+.Pp
+In glob mode, the real file path is displayed for each match, not the glob pattern.
 .Pp
 Quiet mode for scripting:
 .Bd -literal -offset indent
