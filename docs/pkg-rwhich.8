@@ -45,6 +45,16 @@ Unlike
 which searches locally installed packages,
 .Nm
 searches the remote repository catalogues.
+.Pp
+In glob mode (
+.Fl g
+) ,
+the pattern is split into a directory part and a filename part at the
+last slash.
+If the directory part contains no glob metacharacters, only files in
+the matching directory are tested, which significantly speeds up the search.
+Patterns without any slash are matched against the filename only,
+regardless of the directory.
 .Sh OPTIONS
 The following options are supported by
 .Nm :
@@ -66,11 +76,25 @@ $ pkg rwhich /usr/local/bin/bash
 /usr/local/bin/bash is provided by package bash-5.2.26_2
 .Ed
 .Pp
-Find which package provides a shared library using a glob pattern:
+Find all packages providing a shared library with a filename-only pattern:
 .Bd -literal -offset indent
-$ pkg rwhich -g '*/lib/libcurl*'
+$ pkg rwhich -g 'libcurl*'
 /usr/local/lib/libcurl.so is provided by package curl-8.7.1
 /usr/local/lib/libcurl.so.4 is provided by package curl-8.7.1
+.Ed
+.Pp
+Find packages in a specific directory (fast path, directory is matched exactly):
+.Bd -literal -offset indent
+$ pkg rwhich -g '/usr/local/bin/python*'
+/usr/local/bin/python3.11 is provided by package python311-3.11.9
+/usr/local/bin/python3 is provided by package python3-3.11.9
+.Ed
+.Pp
+Find files across all directories with a wildcard directory pattern:
+.Bd -literal -offset indent
+$ pkg rwhich -g '*/bin/ls'
+/usr/bin/ls is provided by package FreeBSD-runtime-15.1p1
+/usr/local/bin/ls is provided by package coreutils-9.5
 .Ed
 .Pp
 In glob mode, the real file path is displayed for each match, not the glob pattern.
@@ -79,6 +103,13 @@ Quiet mode for scripting:
 .Bd -literal -offset indent
 $ pkg rwhich -q /usr/local/bin/python3.11
 python311-3.11.9
+.Ed
+.Pp
+Multiple files can be queried in a single invocation:
+.Bd -literal -offset indent
+$ pkg rwhich /usr/local/bin/bash /usr/local/bin/zsh
+/usr/local/bin/bash is provided by package bash-5.2.26_2
+/usr/local/bin/zsh is provided by package zsh-5.9
 .Ed
 .Sh ENVIRONMENT
 The following environment variables affect the execution of
