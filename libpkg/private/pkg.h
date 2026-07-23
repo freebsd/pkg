@@ -741,6 +741,8 @@ int pkg_repo_mirror_package(struct pkg *pkg, const char *destdir, bool symlink);
 int pkg_repo_fetch_remote_extract_fd(struct pkg_repo *repo, struct pkg_repo_content *);
 int pkg_repo_meta_dump_fd(struct pkg_repo_meta *target, const int fd);
 int pkg_repo_fetch_meta(struct pkg_repo *repo, time_t *t);
+int pkg_fetch_file_tmp_limit(struct pkg_repo *repo, const char *url, char *dest,
+    time_t t, int *outfd, off_t max_size);
 int pkg_repo_fetch_remote_extract_fd(struct pkg_repo *repo, struct pkg_repo_content *);
 int pkg_repo_fetch_data_fd(struct pkg_repo *repo, struct pkg_repo_content *);
 int pkg_repo_fetch_filesite_fd(struct pkg_repo *repo, struct pkg_repo_content *);

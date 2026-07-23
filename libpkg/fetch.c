@@ -102,8 +102,8 @@ static struct fetcher fetchers[] = {
 };
 
 int
-pkg_fetch_file_tmp(struct pkg_repo *repo, const char *url, char *dest,
-	time_t t, int *outfd)
+pkg_fetch_file_tmp_limit(struct pkg_repo *repo, const char *url, char *dest,
+	time_t t, int *outfd, off_t max_size)
 {
 	int fd = -1;
 	int retcode = EPKG_FATAL;
@@ -124,6 +124,7 @@ pkg_fetch_file_tmp(struct pkg_repo *repo, const char *url, char *dest,
 
 	fi.url = url;
 	fi.mtime = t;
+	fi.max_size = max_size;
 	retcode = pkg_fetch_file_to_fd(repo, fd, &fi, false);
 
 	if (fi.mtime != 0) {
@@ -150,6 +151,13 @@ pkg_fetch_file_tmp(struct pkg_repo *repo, const char *url, char *dest,
 	*outfd = fd;
 
 	return (retcode);
+}
+
+int
+pkg_fetch_file_tmp(struct pkg_repo *repo, const char *url, char *dest,
+	time_t t, int *outfd)
+{
+	return (pkg_fetch_file_tmp_limit(repo, url, dest, t, outfd, 0));
 }
 
 int
