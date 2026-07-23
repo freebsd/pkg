@@ -1097,6 +1097,7 @@ pkg_repo_binary_file_which_read(struct pkg_repo *repo, const char *path,
 	}
 
 	archive_read_close(a);
+	free(ad.buf);
 	archive_read_free(a);
 	close(fd);
 	return (rc);
