@@ -1024,7 +1024,7 @@ cleanup:
 
 /*
  * Read "files" (compressed, raw format) and stream decompress
- * into a FILE* via fopencookie, then parse without writing to disk.
+ * into a FILE* via funopen, then parse without writing to disk.
  */
 struct archive_read_data {
 	struct archive *a;
@@ -1033,13 +1033,13 @@ struct archive_read_data {
 	off_t off;
 };
 
-static ssize_t
-archive_read_read_fn(void *p, char *buf, size_t n)
+static int
+archive_read_read_fn(void *p, char *buf, int n)
 {
 	struct archive_read_data *ad = p;
-	ssize_t total = 0;
+	int total = 0;
 
-	while ((size_t)total < n) {
+	while (total < n) {
 		if ((off_t)ad->off >= (off_t)ad->len) {
 			if (ad->buf == NULL)
 				ad->buf = xmalloc(65536);
@@ -1052,11 +1052,13 @@ archive_read_read_fn(void *p, char *buf, size_t n)
 		}
 		size_t avail = ad->len - (size_t)ad->off;
 		size_t tocopy = avail < (n - (size_t)total) ? avail :
-		    n - (size_t)total;
+		    (n - (size_t)total);
 		memcpy(buf + total, (const char *)ad->buf + ad->off, tocopy);
 		ad->off += tocopy;
-		total += (ssize_t)tocopy;
+		total += (int)tocopy;
 	}
+	if (total == 0)
+		return -1;
 	return total;
 }
 
@@ -1086,8 +1088,7 @@ pkg_repo_binary_file_which_read(struct pkg_repo *repo, const char *path,
 
 	/* The entire stream is the zstd-compressed filesite data (raw format, no header) */
 	struct archive_read_data ad = { a, NULL, 0, 0 };
-	cookie_io_functions_t fi = { archive_read_read_fn, NULL, NULL, NULL };
-	unfp = fopencookie(&ad, "r", fi);
+	unfp = funopen(&ad, archive_read_read_fn, NULL, NULL, NULL);
 	if (unfp != NULL) {
 		if (glob)
 			rc = pkg_repo_binary_file_which_parse_glob(unfp, repo, path, out_pairs);
