@@ -1,7 +1,7 @@
 /*-
  * SPDX-License-Identifier: LicenseRef-scancode-bsd-unchanged
  *
- * Copyright (c) 2011-2024 Baptiste Daroussin <bapt@FreeBSD.org>
+ * Copyright (c) 2011-2026 Baptiste Daroussin <bapt@FreeBSD.org>
  * Copyright (c) 2011-2012 Julien Laffaye <jlaffaye@FreeBSD.org>
  * Copyright (c) 2011-2012 Marin Atanasov Nikolov <dnaeon@gmail.com>
  * Copyright (c) 2012-2015 Matthew Seaman <matthew@FreeBSD.org>
@@ -884,7 +884,7 @@ pkg_repo_fetch_remote_extract_fd(struct pkg_repo *repo, struct pkg_repo_content 
 	    &prc->manifest_fd, &prc->manifest_len));
 }
 
-int
+static int
 pkg_repo_fetch_filesite_fd(struct pkg_repo *repo, struct pkg_repo_content *prc)
 {
 	int fd;
@@ -895,7 +895,7 @@ pkg_repo_fetch_filesite_fd(struct pkg_repo *repo, struct pkg_repo_content *prc)
 	const char *name = repo->meta->filesite;
 
 	/* Try to fetch filesite silently — it is optional */
-	fd = pkg_repo_fetch_remote_tmp(repo, name, "pkg", &prc->mtime, &rc, true);
+	fd = pkg_repo_fetch_remote_tmp(repo, name, "pkg", &prc->filemtime, &rc, true);
 	if (fd == -1) {
 		fd = pkg_repo_fetch_remote_tmp(repo, name,
 		    packing_format_to_string(repo->meta->packing_format),
@@ -924,7 +924,16 @@ pkg_repo_fetch_filesite_fd(struct pkg_repo *repo, struct pkg_repo_content *prc)
 	}
 
 	close(fd);
-	if (fstat(prc->filesite_fd, &st) == -1) {
+	if (fstat(prc->filesite_fd, &st) == -1 || st.st_size == 0) {
+		close(prc->filesite_fd);
+		prc->filesite_fd = -1;
+		return (EPKG_FATAL);
+	}
+
+	prc->filesite_len = (size_t)st.st_size;
+
+	/* pkgsign_verify leaves the fd at EOF, rewind for the caller */
+	if (lseek(prc->filesite_fd, 0, SEEK_SET) == -1) {
 		close(prc->filesite_fd);
 		prc->filesite_fd = -1;
 		return (EPKG_FATAL);
@@ -934,94 +943,89 @@ pkg_repo_fetch_filesite_fd(struct pkg_repo *repo, struct pkg_repo_content *prc)
 }
 
 /*
- * Extract the "files" member from a tar archive read from fd,
- * and write it compressed with zstd to files.zst in the repo directory.
- * Streams data through libarchive - no full decompression in memory.
+ * Fetch the filesite archive from the repo, verify its signature
+ * (via sandbox), then compress the extracted data with zstd into
+ * "files" in the repo directory.
  */
 int
 pkg_repo_save_filesite(struct pkg_repo *repo, time_t orig_mtime)
 {
-	int fd, fetch_rc;
-	const char *name = repo->meta->filesite;
+	struct pkg_repo_content prc = { 0 };
+	int fd, outfd;
+	int rc;
 
-	/* Fetch the compressed archive */
-	fetch_rc = 0;
-	fd = pkg_repo_fetch_remote_tmp(repo, name, "pkg",
-	    &orig_mtime, &fetch_rc, true);
-	if (fd == -1) {
-		fetch_rc = 0;
-		fd = pkg_repo_fetch_remote_tmp(repo, name,
-		    packing_format_to_string(repo->meta->packing_format),
-		    &orig_mtime, &fetch_rc, true);
-	}
-	if (fd == -1)
-		return (EPKG_FATAL);
+	prc.filemtime = orig_mtime;
+
+	/* Fetch, verify signature, extract "files" member via sandbox */
+	rc = pkg_repo_fetch_filesite_fd(repo, &prc);
+	if (rc != EPKG_OK)
+		return (rc);
+
+	fd = prc.filesite_fd;
 
 	if (repo->dfd == -1 && pkg_repo_open(repo) == EPKG_FATAL) {
 		close(fd);
 		return (EPKG_FATAL);
 	}
 
-	/* Open the remote tar archive for reading */
-	struct archive *ar = archive_read_new();
-	archive_read_support_filter_all(ar);
-	archive_read_support_format_tar(ar);
-	if (archive_read_open_fd(ar, fd, 4096) != ARCHIVE_OK) {
-		archive_read_free(ar);
-		close(fd);
-		return (EPKG_FATAL);
-	}
+	pkg_emit_progress_start("Compressing files");
 
-	/* Open the output files.zst for writing */
+	/* Stream the extracted raw data into "files" (zstd compressed) */
 	struct archive *aw = archive_write_new();
 	archive_write_add_filter_zstd(aw);
 	archive_write_set_format_raw(aw);
-	int outfd = openat(repo->dfd, "files.zst",
+	outfd = openat(repo->dfd, "files",
 	    O_CREAT|O_TRUNC|O_WRONLY, 0644);
 	if (outfd == -1) {
-		archive_read_free(ar);
 		archive_write_free(aw);
 		close(fd);
 		return (EPKG_FATAL);
 	}
 	if (archive_write_open_fd(aw, outfd) != ARCHIVE_OK) {
-		archive_read_free(ar);
 		archive_write_free(aw);
 		close(outfd);
 		close(fd);
 		return (EPKG_FATAL);
 	}
+	struct archive_entry *ae = archive_entry_new();
+	archive_entry_set_pathname(ae, "files");
+	archive_entry_set_size(ae, prc.filesite_len);
+	archive_entry_set_filetype(ae, AE_IFREG);
+	archive_write_header(aw, ae);
+	archive_entry_free(ae);
 
-	/* Stream through the tar, find "files" member, write to zst */
-	struct archive_entry *ae;
-	int rc = EPKG_FATAL;
-
-	while (archive_read_next_header(ar, &ae) == ARCHIVE_OK) {
-		const char *pn = archive_entry_pathname(ae);
-		if (STREQ(pn, "files") || STREQ(pn, "filelist")) {
-			const void *buf;
-			size_t len;
-			off_t offset;
-
-			while (archive_read_data_block(ar, &buf, &len, &offset) == ARCHIVE_OK) {
-				if (archive_write_data(aw, buf, len) != ARCHIVE_OK)
-					break;
-			}
-			rc = EPKG_OK;
+	size_t total = prc.filesite_len;
+	size_t offset = 0;
+	char buf[65536];
+	ssize_t n;
+	int r;
+	for (;;) {
+		n = read(fd, buf, sizeof(buf));
+		if (n < 0) {
+			if (errno == EINTR)
+				continue;
 			break;
 		}
-		archive_read_data_skip(ar);
+		if (n == 0)
+			break;
+		offset += (size_t)n;
+		if (offset >= 1024 * 1024 || offset >= total)
+			pkg_emit_progress_tick(offset, total);
+		if ((r = archive_write_data(aw, buf, n)) < 0) {
+			if (r != ARCHIVE_EOF) {
+				pkg_emit_error("%s %d", archive_error_string(aw), r);
+				rc = EPKG_FATAL;
+			}
+			break;
+		}
 	}
+	if (rc == EPKG_OK)
+		pkg_emit_progress_tick(total, total);
 
 	archive_write_close(aw);
 	archive_write_free(aw);
-	archive_read_close(ar);
-	archive_read_free(ar);
 	close(outfd);
 	close(fd);
-
-	/* Remove old "files" if it exists (backward compat transition) */
-	unlinkat(repo->dfd, "files", 0);
 
 	return (rc);
 }
