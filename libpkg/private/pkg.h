@@ -160,7 +160,9 @@ struct pkg_repo_content {
 	int manifest_fd;
 	size_t manifest_len;
 	int data_fd;
+	time_t filemtime;
 	int filesite_fd;
+	size_t filesite_len;
 };
 
 struct pkgsign_ctx;
@@ -743,7 +745,6 @@ int pkg_repo_meta_dump_fd(struct pkg_repo_meta *target, const int fd);
 int pkg_repo_fetch_meta(struct pkg_repo *repo, time_t *t);
 int pkg_repo_fetch_remote_extract_fd(struct pkg_repo *repo, struct pkg_repo_content *);
 int pkg_repo_fetch_data_fd(struct pkg_repo *repo, struct pkg_repo_content *);
-int pkg_repo_fetch_filesite_fd(struct pkg_repo *repo, struct pkg_repo_content *);
 int pkg_repo_save_filesite(struct pkg_repo *repo, time_t orig_mtime);
 
 struct pkg_repo_meta *pkg_repo_meta_default(void);

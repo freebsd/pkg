@@ -572,17 +572,6 @@ dump_json(struct pkg_repo *repo, const char *line, jsmntok_t *tok, const char *d
 	return (0);
 }
 
-static void
-pkg_repo_binary_save_filesite(struct pkg_repo *repo, time_t orig_mtime)
-{
-	/*
-	 * Fetch, verify signature, and save the compressed filesite
-	 * archive to the repo directory in a single network fetch.
-	 * The filesite is optional, so failures are silently ignored.
-	 */
-	(void)pkg_repo_save_filesite(repo, orig_mtime);
-}
-
 static int
 pkg_repo_binary_update_proceed(const char *name, struct pkg_repo *repo,
 	time_t *mtime, bool force)
@@ -759,7 +748,7 @@ pkg_repo_binary_update_proceed(const char *name, struct pkg_repo *repo,
 
 	/* Fetch and save compressed filesite for rwhich queries */
 	if (rc == EPKG_OK)
-		pkg_repo_binary_save_filesite(repo, orig_mtime);
+		pkg_repo_save_filesite(repo, orig_mtime);
 
 cleanup:
 

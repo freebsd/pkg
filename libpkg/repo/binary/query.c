@@ -1,6 +1,6 @@
 /*
  * Copyright (c) 2014, Vsevolod Stakhov
- * Copyright (c) 2024, Baptiste Daroussin <bapt@FreeBSD.org>
+ * Copyright (c) 2024-2026, Baptiste Daroussin <bapt@FreeBSD.org>
  * Copyright (c) 2023, Serenity Cyber Security, LLC
  *                     Author: Gleb Popov <arrowd@FreeBSD.org>
  *
@@ -756,7 +756,7 @@ idvec_new(void)
 
 static int
 pkg_repo_binary_file_which_parse(FILE *fp, struct pkg_repo *repo,
-    const char *path, bool glob, sqlite3_stmt **out_stmt)
+    const char *path, sqlite3_stmt **out_stmt)
 {
 	sqlite3 *sqlite = PRIV_GET(repo);
 	dirv_t dirs = vec_init();
@@ -782,17 +782,15 @@ pkg_repo_binary_file_which_parse(FILE *fp, struct pkg_repo *repo,
 	const char *match_file = NULL;
 	int match_dir_idx = -1;
 
-	if (!glob) {
-		const char *last_slash = strrchr(path, '/');
-		if (last_slash == NULL) {
-			/* No slash: file is at root, dir is empty */
-			match_dir = xstrdup("");
-			match_file = path;
-		} else {
-			match_file = last_slash + 1;
-			size_t dir_len = last_slash - path;
-			match_dir = xstrndup(path, dir_len);
-		}
+	const char *last_slash = strrchr(path, '/');
+	if (last_slash == NULL) {
+		/* No slash: file is at root, dir is empty */
+		match_dir = xstrdup("");
+		match_file = path;
+	} else {
+		match_file = last_slash + 1;
+		size_t dir_len = last_slash - path;
+		match_dir = xstrndup(path, dir_len);
 	}
 
 	id_stmt = prepare_sql(sqlite, id_sql);
@@ -813,7 +811,7 @@ pkg_repo_binary_file_which_parse(FILE *fp, struct pkg_repo *repo,
 			 * For exact match, find the directory index now that
 			 * the dictionary is fully parsed.
 			 */
-			if (!glob && match_dir_idx == -1) {
+			if (match_dir_idx == -1) {
 				for (size_t i = 0; i < dirs.len; i++) {
 					if (STREQ(dirs.d[i], match_dir)) {
 						match_dir_idx = (int)i;
@@ -866,32 +864,8 @@ pkg_repo_binary_file_which_parse(FILE *fp, struct pkg_repo *repo,
 				else
 					cur_pkgid = -1;
 			} else if (cur_pkgid >= 0 && cur_dir >= 0) {
-				/* Filename line */
-				bool is_match = false;
-
-				if (glob) {
-					/* Reconstruct full path and glob-match */
-					if (cur_dir >= 0 &&
-					    cur_dir < (int)dirs.len) {
-						char *fullpath;
-						if (dirs.d[cur_dir][0] == '\0')
-							fullpath = xstrdup(line);
-						else
-							xasprintf(&fullpath,
-							    "%s/%s",
-							    dirs.d[cur_dir],
-							    line);
-						is_match = (fnmatch(path,
-						    fullpath, 0) == 0);
-						free(fullpath);
-					}
-				} else {
-					/* Exact match: compare dir index + filename */
-					is_match = (cur_dir == match_dir_idx &&
-					    STREQ(line, match_file));
-				}
-
-				if (is_match)
+				if (cur_dir == match_dir_idx &&
+					    STREQ(line, match_file))
 					vec_push(matching_ids, cur_pkgid);
 			}
 		}
@@ -1049,7 +1023,7 @@ cleanup:
 }
 
 /*
- * Read files.zst (zstd-compressed, raw format) and stream decompress
+ * Read "files" (compressed, raw format) and stream decompress
  * into a FILE* via fopencookie, then parse without writing to disk.
  */
 struct archive_read_data {
@@ -1086,13 +1060,13 @@ archive_read_read_fn(void *p, char *buf, size_t n)
 	return total;
 }
 
-static int pkg_repo_binary_file_which_decompress(struct pkg_repo *repo,
-    int fd, const char *path, bool glob, sqlite3_stmt **out_stmt, fwpairv_t *out_pairs);
-
 static int
 pkg_repo_binary_file_which_read(struct pkg_repo *repo, const char *path,
     bool glob, sqlite3_stmt **out_stmt, fwpairv_t *out_pairs)
 {
+	struct archive *a = archive_read_new();
+	struct archive_entry *ae;
+	FILE *unfp = NULL;
 	int fd = -1;
 	int rc = EPKG_FATAL;
 
@@ -1100,54 +1074,31 @@ pkg_repo_binary_file_which_read(struct pkg_repo *repo, const char *path,
 	if (fd == -1)
 		return (EPKG_OK); /* no filesite at all */
 
-	/* Legacy tar format - use old decompress path */
-	rc = pkg_repo_binary_file_which_decompress(repo, fd, path, glob,
-	    out_stmt, out_pairs);
-	close(fd);
-	return (rc);
-}
-
-static int
-pkg_repo_binary_file_which_decompress(struct pkg_repo *repo, int fd,
-    const char *path, bool glob, sqlite3_stmt **out_stmt, fwpairv_t *out_pairs)
-{
-	struct archive *a = archive_read_new();
-	struct archive_entry *ae = NULL;
-	FILE *unfp = NULL;
-	int rc = EPKG_FATAL;
-	int rc2;
-
 	archive_read_support_filter_all(a);
-	archive_read_support_format_tar(a);
 	archive_read_support_format_raw(a);
 
 	if (archive_read_open_fd(a, fd, 4096) != ARCHIVE_OK) {
 		archive_read_free(a);
+		close(fd);
 		return (EPKG_FATAL);
 	}
+	archive_read_next_header(a, &ae);
 
-	while ((rc2 = archive_read_next_header(a, &ae)) == ARCHIVE_OK) {
-		const char *pn = archive_entry_pathname(ae);
-		if (STREQ(pn, "files")) {
-			struct archive_read_data ad = { a, NULL, 0, 0 };
-			cookie_io_functions_t fi = { archive_read_read_fn, NULL, NULL, NULL };
-			unfp = fopencookie(&ad, "r", fi);
-			if (unfp != NULL) {
-				pkg_debug(1, "glob ? %s", glob ? "true" : "false");
-				if (glob)
-					rc = pkg_repo_binary_file_which_parse_glob(unfp, repo, path, out_pairs);
-				else
-					rc = pkg_repo_binary_file_which_parse(unfp, repo, path, glob, out_stmt);
-				fclose(unfp);
-			}
-			break;
-		} else {
-			archive_read_data_skip(a);
-		}
+	/* The entire stream is the zstd-compressed filesite data (raw format, no header) */
+	struct archive_read_data ad = { a, NULL, 0, 0 };
+	cookie_io_functions_t fi = { archive_read_read_fn, NULL, NULL, NULL };
+	unfp = fopencookie(&ad, "r", fi);
+	if (unfp != NULL) {
+		if (glob)
+			rc = pkg_repo_binary_file_which_parse_glob(unfp, repo, path, out_pairs);
+		else
+			rc = pkg_repo_binary_file_which_parse(unfp, repo, path, out_stmt);
+		fclose(unfp);
 	}
 
 	archive_read_close(a);
 	archive_read_free(a);
+	close(fd);
 	return (rc);
 }
 
