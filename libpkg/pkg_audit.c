@@ -30,8 +30,10 @@
  */
 
 #include <sys/mman.h>
+#include <sys/statvfs.h>
 
 #include <archive.h>
+#include <errno.h>
 #include <err.h>
 #include <fcntl.h>
 #include <fnmatch.h>
@@ -51,6 +53,9 @@
 #include "pkg/audit.h"
 #include "private/pkg.h"
 #include "private/event.h"
+
+#define PKG_AUDIT_MAX_DOWNLOAD_SIZE	(64LL * 1024 * 1024)
+#define PKG_AUDIT_MAX_EXTRACTED_SIZE	(256LL * 1024 * 1024)
 
 /*
  * The _sorted stuff.
@@ -147,13 +152,81 @@ struct pkg_audit_extract_cbdata {
 	int out;
 	const char *fname;
 	const char *dest;
+	int64_t max_size;
 };
+
+static int
+pkg_audit_get_limit(struct statvfs *svfs, int64_t maximum, int64_t *limit)
+{
+	if (svfs->f_frsize == 0 || svfs->f_bavail == 0) {
+		pkg_emit_error("insufficient space for audit database");
+		return (EPKG_FATAL);
+	}
+	if (svfs->f_bavail > INT64_MAX / svfs->f_frsize)
+		*limit = maximum;
+	else
+		*limit = (int64_t)svfs->f_bavail * svfs->f_frsize / 2;
+	if (*limit > maximum)
+		*limit = maximum;
+	if (*limit == 0) {
+		pkg_emit_error("insufficient space for audit database");
+		return (EPKG_FATAL);
+	}
+	return (EPKG_OK);
+}
+
+static int
+pkg_audit_get_path_limit(const char *path, int64_t maximum, int64_t *limit)
+{
+	struct statvfs svfs;
+
+	if (statvfs(path, &svfs) == -1) {
+		pkg_emit_errno("statvfs", path);
+		return (EPKG_FATAL);
+	}
+	return (pkg_audit_get_limit(&svfs, maximum, limit));
+}
+
+static int
+pkg_audit_get_fd_limit(int fd, int64_t maximum, int64_t *limit)
+{
+	struct statvfs svfs;
+
+	if (fstatvfs(fd, &svfs) == -1) {
+		pkg_emit_errno("fstatvfs", "audit database");
+		return (EPKG_FATAL);
+	}
+	return (pkg_audit_get_limit(&svfs, maximum, limit));
+}
+
+static int
+pkg_audit_write(int fd, const void *buf, size_t len)
+{
+	const char *p = buf;
+	ssize_t written;
+
+	while (len > 0) {
+		written = write(fd, p, len);
+		if (written <= 0) {
+			if (errno == EINTR)
+				continue;
+			return (EPKG_FATAL);
+		}
+		p += written;
+		len -= written;
+	}
+	return (EPKG_OK);
+}
 
 static int
 pkg_audit_sandboxed_extract(int fd, void *ud)
 {
 	struct pkg_audit_extract_cbdata *cbdata = ud;
+	char buf[8192];
+	int archive_rc;
 	int rc = EPKG_OK;
+	int64_t extracted = 0;
+	ssize_t nread;
 	struct archive *a = NULL;
 	struct archive_entry *ae = NULL;
 
@@ -172,24 +245,47 @@ pkg_audit_sandboxed_extract(int fd, void *ud)
 		rc = EPKG_FATAL;
 	}
 	else {
-		while (archive_read_next_header(a, &ae) == ARCHIVE_OK) {
-			if (archive_read_data_into_fd(a, cbdata->out) != ARCHIVE_OK) {
-				pkg_emit_error("archive_read_data_into_fd(%s) failed: %s",
-						cbdata->dest, archive_error_string(a));
-				break;
+		while ((archive_rc = archive_read_next_header(a, &ae)) == ARCHIVE_OK) {
+			while ((nread = archive_read_data(a, buf, sizeof(buf))) > 0) {
+				if (nread > cbdata->max_size - extracted) {
+					pkg_emit_error("audit database exceeds size limit");
+					rc = EPKG_FATAL;
+					goto cleanup;
+				}
+				if (pkg_audit_write(cbdata->out, buf, nread) != EPKG_OK) {
+					pkg_emit_errno("write", cbdata->dest);
+					rc = EPKG_FATAL;
+					goto cleanup;
+				}
+				extracted += nread;
+			}
+			if (nread < 0) {
+				pkg_emit_error("cannot extract audit database: %s",
+					archive_error_string(a));
+				rc = EPKG_FATAL;
+				goto cleanup;
 			}
 		}
-		archive_read_close(a);
-		archive_read_free(a);
+		if (archive_rc != ARCHIVE_EOF) {
+			pkg_emit_error("cannot read audit database: %s",
+				archive_error_string(a));
+			rc = EPKG_FATAL;
+		}
 	}
 
+cleanup:
+	archive_read_close(a);
+	archive_read_free(a);
 	return (rc);
 }
 
 int
 pkg_audit_fetch(const char *src, const char *dest)
 {
+	char outname[NAME_MAX] = {0};
+	char outtmp[MAXPATHLEN] = {0};
 	int fd = -1, outfd = -1;
+	int64_t download_limit, extract_limit;
 	char tmp[MAXPATHLEN];
 	const char *tmpdir;
 	int retcode = EPKG_FATAL;
@@ -197,6 +293,7 @@ pkg_audit_fetch(const char *src, const char *dest)
 	struct stat st;
 	struct pkg_audit_extract_cbdata cbdata;
 	int dfd = -1;
+	bool output_created = false;
 	struct timespec ts[2] = {
 		{
 		.tv_nsec = 0
@@ -216,6 +313,9 @@ pkg_audit_fetch(const char *src, const char *dest)
 
 	strlcpy(tmp, tmpdir, sizeof(tmp));
 	strlcat(tmp, "/vuln.xml.XXXXXXXXXX", sizeof(tmp));
+	if (pkg_audit_get_path_limit(tmpdir, PKG_AUDIT_MAX_DOWNLOAD_SIZE,
+			&download_limit) != EPKG_OK)
+		goto cleanup;
 
 	if (dest != NULL) {
 		if (stat(dest, &st) != -1)
@@ -226,7 +326,8 @@ pkg_audit_fetch(const char *src, const char *dest)
 			t = st.st_mtime;
 	}
 
-	switch (pkg_fetch_file_tmp(NULL, src, tmp, t, &fd)) {
+	switch (pkg_fetch_file_tmp_limit(NULL, src, tmp, t, &fd,
+			download_limit)) {
 	case EPKG_OK:
 		break;
 	case EPKG_UPTODATE:
@@ -237,35 +338,75 @@ pkg_audit_fetch(const char *src, const char *dest)
 		pkg_emit_error("cannot fetch vulnxml file");
 		goto cleanup;
 	}
-	/* Open out fd */
+	/* Create a temporary output beside the final database. */
 	if (dest != NULL) {
-		outfd = open(dest, O_RDWR|O_CREAT|O_TRUNC,
-		    S_IRUSR|S_IRGRP|S_IROTH);
+		hidden_tempfile(outtmp, sizeof(outtmp), dest);
+		outfd = mkstemp(outtmp);
 	} else {
-		outfd = openat(dfd, "vuln.xml", O_RDWR|O_CREAT|O_TRUNC,
-		    S_IRUSR|S_IRGRP|S_IROTH);
+		hidden_tempfile(outname, sizeof(outname), "vuln.xml");
+		outfd = openat(dfd, outname, O_CREAT|O_EXCL|O_RDWR, 0600);
 	}
 	if (outfd == -1) {
-		pkg_emit_errno("pkg_audit_fetch", "open out fd");
+		pkg_emit_errno("pkg_audit_fetch", "create temporary audit database");
 		goto cleanup;
 	}
+	output_created = true;
+	if (pkg_audit_get_fd_limit(outfd, PKG_AUDIT_MAX_EXTRACTED_SIZE,
+			&extract_limit) != EPKG_OK)
+		goto cleanup;
 
 	cbdata.fname = tmp;
 	cbdata.out = outfd;
-	cbdata.dest = dest;
-	fstat(fd, &st);
+	cbdata.dest = dest != NULL ? dest : "vuln.xml";
+	cbdata.max_size = extract_limit;
+	if (fstat(fd, &st) == -1) {
+		pkg_emit_errno("fstat", "audit database download");
+		retcode = EPKG_FATAL;
+		goto cleanup;
+	}
 
 	/* Call sandboxed */
 	retcode = pkg_emit_sandbox_call(pkg_audit_sandboxed_extract, fd, &cbdata);
+	if (retcode != EPKG_OK)
+		goto cleanup;
+	if (fchmod(outfd, S_IRUSR|S_IRGRP|S_IROTH) == -1) {
+		pkg_emit_errno("fchmod", cbdata.dest);
+		retcode = EPKG_FATAL;
+		goto cleanup;
+	}
 	ts[0].tv_sec = st.st_mtime;
 	ts[1].tv_sec = st.st_mtime;
-	futimens(outfd, ts);
+	if (futimens(outfd, ts) == -1 || fsync(outfd) == -1) {
+		pkg_emit_errno("finalize", cbdata.dest);
+		retcode = EPKG_FATAL;
+		goto cleanup;
+	}
+	if (close(outfd) == -1) {
+		outfd = -1;
+		pkg_emit_errno("close", cbdata.dest);
+		retcode = EPKG_FATAL;
+		goto cleanup;
+	}
+	outfd = -1;
+	if ((dest != NULL && rename(outtmp, dest) == -1) ||
+	    (dest == NULL && renameat(dfd, outname, dfd, "vuln.xml") == -1)) {
+		pkg_emit_errno("rename", cbdata.dest);
+		retcode = EPKG_FATAL;
+		goto cleanup;
+	}
+	output_created = false;
 
 cleanup:
 	if (fd != -1)
 		close(fd);
 	if (outfd != -1)
 		close(outfd);
+	if (output_created) {
+		if (dest != NULL)
+			unlink(outtmp);
+		else
+			unlinkat(dfd, outname, 0);
+	}
 
 	return (retcode);
 }
