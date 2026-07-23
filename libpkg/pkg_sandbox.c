@@ -100,6 +100,8 @@ pkg_handle_sandboxed_call(pkg_sandbox_cb func, int fd, void *ud)
 		err(EXIT_FAILURE, "Unable to setrlimit(RLIMIT_NPROC)");
 
 	/* Here comes child process */
+	pkg_drop_privileges();
+
 #ifdef HAVE_CAPSICUM
 #ifndef COVERAGE
 	if (cap_enter() < 0 && errno != ENOSYS) {
