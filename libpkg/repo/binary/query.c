@@ -898,7 +898,9 @@ pkg_repo_binary_file_which_parse(FILE *fp, struct pkg_repo *repo,
 	}
 	xstring_printf(sqlstr, ") ORDER BY p.name;");
 
-	*out_stmt = prepare_sql(sqlite, xstring_get(sqlstr));
+	char *sqlcmd = xstring_get(sqlstr);
+	*out_stmt = prepare_sql(sqlite, sqlcmd);
+	free(sqlcmd);
 
 	if (*out_stmt == NULL)
 		ret = EPKG_FATAL;
