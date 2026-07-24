@@ -974,6 +974,12 @@ pkg_repo_save_filesite(struct pkg_repo *repo, time_t orig_mtime)
 	struct archive *aw = archive_write_new();
 	archive_write_add_filter_zstd(aw);
 	archive_write_set_format_raw(aw);
+	int clevel = pkg_object_int(pkg_config_get("COMPRESSION_LEVEL"));
+	if (clevel == -1)
+		clevel = 19;
+	char *clevel_buf[16];
+	snprintf(clevel_buf, sizeof(clevel_buf), "%d", clevel);
+	archive_write_set_filter_option(aw, NULL, "compression-level", clevel_buf);
 	outfd = openat(repo->dfd, "files",
 	    O_CREAT|O_TRUNC|O_WRONLY, 0644);
 	if (outfd == -1) {
