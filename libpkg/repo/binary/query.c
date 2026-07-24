@@ -1083,6 +1083,11 @@ pkg_repo_binary_file_which_read(struct pkg_repo *repo, const char *path,
 	int fd = -1;
 	int rc = EPKG_FATAL;
 
+	/* Check both global and per-repo rwhich database flags */
+	if (!pkg_object_bool(pkg_config_get("PKG_RWHICH_DATABASE")) ||
+	    !repo->rwhich_database)
+		return (EPKG_OK); /* rwhich disabled, no results */
+
 	fd = openat(repo->dfd, "files", O_RDONLY|O_CLOEXEC);
 	if (fd == -1)
 		return (EPKG_OK); /* no filesite at all */

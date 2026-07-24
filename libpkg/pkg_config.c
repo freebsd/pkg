@@ -506,6 +506,11 @@ static struct config_entry c[] = {
 		"TRACK_LINUX_COMPAT_SHLIBS",
 		"FALSE",
 	},
+	{
+		PKG_BOOL,
+		"PKG_RWHICH_DATABASE",
+		"YES",
+	},
 };
 
 static bool parsed = false;
@@ -624,6 +629,7 @@ add_repo(const ucl_object_t *obj, struct pkg_repo *r, const char *rname, pkg_ini
 	ucl_object_iter_t it = NULL;
 	struct pkg_kv *kv;
 	bool enable = r != NULL ? r->enable : true;
+	bool enable_rwhich = r != NULL ? r->rwhich_database : true;
 	const char *url = NULL, *pubkey = NULL, *mirror_type = NULL;
 	const char *signature_type = NULL, *fingerprints = NULL;
 	const char *ssh_args = NULL;
@@ -685,6 +691,9 @@ add_repo(const ucl_object_t *obj, struct pkg_repo *r, const char *rname, pkg_ini
 		} else if (STRIEQ(key, "env")) {
 			repo_ucl_check_type(cur, UCL_OBJECT, "an object", key, rname);
 			env = cur;
+		} else if (STRIEQ(key, "rwhich_database")) {
+			repo_ucl_check_type(cur, UCL_BOOLEAN, "a boolean", key, rname);
+			enable_rwhich = ucl_object_toboolean(cur);
 		}
 	}
 #undef repo_ucl_check_type
@@ -733,6 +742,7 @@ add_repo(const ucl_object_t *obj, struct pkg_repo *r, const char *rname, pkg_ini
 	}
 
 	r->enable = enable;
+	r->rwhich_database = enable_rwhich;
 	r->priority = priority;
 
 	if (mirror_type != NULL) {
@@ -1715,6 +1725,7 @@ pkg_repo_new(const char *name, const char *url, const char *type)
 	r->signature_type = SIG_NONE;
 	r->mirror_type = NOMIRROR;
 	r->enable = true;
+	r->rwhich_database = true;
 	r->meta = pkg_repo_meta_default();
 	r->name = xstrdup(name);
 	vec_push(&repos, r);

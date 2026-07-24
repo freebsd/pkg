@@ -119,7 +119,29 @@ See
 for further description.
 .Bl -tag -width ".Ev NO_DESCRIPTIONS"
 .It Ev PKG_DBDIR
+.It Ev PKG_RWHICH_DATABASE
 .It Ev REPOS_DIR
+.El
+.Sh CONFIGURATION
+.Nm
+is controlled by two configuration options described in
+.Xr pkg.conf 5 :
+.Bl -tag -width ".Cm PKG_RWHICH_DATABASE"
+.It Cm PKG_RWHICH_DATABASE
+Global boolean option (default:
+.Cm YES ).
+When set to
+.Cm NO ,
+disables rwhich for all repositories regardless of per-repository settings.
+.It Cm RWHICH_DATABASE
+Per-repository boolean option (default:
+.Cm YES ).
+When set to
+.Cm NO ,
+the file listing database is not downloaded for that specific repository
+and
+.Nm
+will not search it.
 .El
 .Sh SEE ALSO
 .Xr pkg_checksum 3 ,

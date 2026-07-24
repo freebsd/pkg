@@ -601,6 +601,9 @@ struct pkg_repo {
 		REPO_STATE_DISABLED,
 	} state;
 
+	/* Per-repository rwhich database flag, controlled by repository annotation. */
+	bool rwhich_database;
+
 	unsigned int priority;
 
 	ip_version_t ip;

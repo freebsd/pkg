@@ -747,7 +747,9 @@ pkg_repo_binary_update_proceed(const char *name, struct pkg_repo *repo,
 	 );
 
 	/* Fetch and save compressed filesite for rwhich queries */
-	if (rc == EPKG_OK)
+	if (rc == EPKG_OK &&
+	    pkg_object_bool(pkg_config_get("PKG_RWHICH_DATABASE")) &&
+	    repo->rwhich_database)
 		pkg_repo_save_filesite(repo, orig_mtime);
 
 cleanup:
