@@ -1063,6 +1063,15 @@ archive_read_read_fn(void *p, char *buf, int n)
 }
 
 static int
+archive_read_close_fn(void *p)
+{
+	struct archive_read_data *ad = p;
+	free(ad->buf);
+	ad->buf = NULL;
+	return 0;
+}
+
+static int
 pkg_repo_binary_file_which_read(struct pkg_repo *repo, const char *path,
     bool glob, sqlite3_stmt **out_stmt, fwpairv_t *out_pairs)
 {
@@ -1088,7 +1097,8 @@ pkg_repo_binary_file_which_read(struct pkg_repo *repo, const char *path,
 
 	/* The entire stream is the zstd-compressed filesite data (raw format, no header) */
 	struct archive_read_data ad = { a, NULL, 0, 0 };
-	unfp = funopen(&ad, archive_read_read_fn, NULL, NULL, NULL);
+	unfp = funopen(&ad, archive_read_read_fn, NULL, NULL,
+	    archive_read_close_fn);
 	if (unfp != NULL) {
 		if (glob)
 			rc = pkg_repo_binary_file_which_parse_glob(unfp, repo, path, out_pairs);
@@ -1098,7 +1108,6 @@ pkg_repo_binary_file_which_read(struct pkg_repo *repo, const char *path,
 	}
 
 	archive_read_close(a);
-	free(ad.buf);
 	archive_read_free(a);
 	close(fd);
 	return (rc);
