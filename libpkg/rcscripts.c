@@ -313,7 +313,6 @@ pkg_deferred_rc_add(struct deferred_rc *rc, struct pkg *pkg, pkg_rc_attr attr)
 {
 	struct pkg_file *file = NULL;
 	char rc_d_path[PATH_MAX];
-	size_t len;
 	bool handle_rc;
 
 	handle_rc = pkg_object_bool(pkg_config_get("HANDLE_RC_SCRIPTS"));
@@ -321,17 +320,16 @@ pkg_deferred_rc_add(struct deferred_rc *rc, struct pkg *pkg, pkg_rc_attr attr)
 		return;
 
 	/* Do not manage rc scripts when operating on an alternate rootdir */
-	if (ctx.pkg_rootdir != NULL)
+	if (strcmp(ctx.pkg_rootdir, "/") != 0)
 		return;
 
 	snprintf(rc_d_path, sizeof(rc_d_path), "%s/etc/rc.d/", pkg->prefix);
-	len = strlen(rc_d_path);
 
 	while (pkg_files(pkg, &file) == EPKG_OK) {
-		if (strncmp(rc_d_path, file->path, len) != 0)
+		if (!STARTS_WITH(file->path, rc_d_path))
 			continue;
 
-		const char *rcname = file->path + len;
+		const char *rcname = file->path + strlen(rc_d_path);
 
 		switch (attr) {
 		case PKG_RC_STOP:
