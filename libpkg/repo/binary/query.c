@@ -1077,7 +1077,7 @@ static int
 pkg_repo_binary_file_which_read(struct pkg_repo *repo, const char *path,
     bool glob, sqlite3_stmt **out_stmt, fwpairv_t *out_pairs)
 {
-	struct archive *a = archive_read_new();
+	struct archive *a;
 	struct archive_entry *ae;
 	FILE *unfp = NULL;
 	int fd = -1;
@@ -1086,6 +1086,8 @@ pkg_repo_binary_file_which_read(struct pkg_repo *repo, const char *path,
 	fd = openat(repo->dfd, "files", O_RDONLY|O_CLOEXEC);
 	if (fd == -1)
 		return (EPKG_OK); /* no filesite at all */
+
+	a = archive_read_new();
 
 	archive_read_support_filter_all(a);
 	archive_read_support_format_raw(a);
