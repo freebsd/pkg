@@ -543,6 +543,25 @@ Default: all.
 .It Cm TRACK_LINUX_COMPAT_SHLIBS: boolean
 When enabled, pkg tracks Linux compatibility shared libraries.
 Default: NO.
+.It Cm PKG_RWHICH_DATABASE: boolean
+Controls whether
+.Xr pkg-update 8
+fetches the remote file listing database and
+.Xr pkg-rwhich 8
+usrs it.
+When set to
+.Cm NO ,
+.Xr pkg-update 8
+will not download the compressed file listing from repositories and
+.Xr pkg-rwhich 8
+will return no results.
+A per-repository override
+.Cm rwhich_database
+can also be set in the repository configuration.
+The global option takes precedence: if set to
+.Cm NO ,
+it disables rwhich for all repositories regardless of per-repository settings.
+Default: YES.
 .El
 .Sh REPOSITORY CONFIGURATION
 To use a repository you will need at least one repository
@@ -618,6 +637,20 @@ setting for this repository only.
 Useful for specifying a private key or connection options on a
 per-repository basis.
 Default: not set.
+.It Cm RWHICH_DATABASE: boolean
+Controls whether
+.Xr pkg-rwhich 8
+downloads and uses the file listing database for this specific repository.
+When disabled, the file listing is not downloaded during
+.Xr pkg-update 8
+and
+.Xr pkg-rwhich 8
+will not search this repository.
+This option is ignored if the global
+.Cm PKG_RWHICH_DATABASE
+is set to
+.Cm NO .
+Default: YES.
 .El
 .El
 .Pp
