@@ -1482,9 +1482,9 @@ pkg_add_cleanup_old(struct pkgdb *db, struct pkg *old, struct pkg *new,
 	int ret = EPKG_OK;
 
 	if (rc != NULL)
-		pkg_deferred_rc_add(rc, old, PKG_RC_STOP);
+		pkg_deferred_rc_add(rc, old, PKG_RC_ATTR_STOP);
 	else
-		pkg_start_stop_rc_scripts(old, PKG_RC_STOP);
+		pkg_start_stop_rc_scripts(old, PKG_RC_ATTR_STOP);
 
 	/*
 	 * Execute pre deinstall scripts
@@ -1793,9 +1793,9 @@ pkg_add_common(struct pkgdb *db, const char *path, unsigned flags,
 	 * or start them immediately if running outside a transaction.
 	 */
 	if (rc != NULL)
-		pkg_deferred_rc_add(rc, pkg, PKG_RC_START);
+		pkg_deferred_rc_add(rc, pkg, PKG_RC_ATTR_START);
 	else
-		pkg_start_stop_rc_scripts(pkg, PKG_RC_START);
+		pkg_start_stop_rc_scripts(pkg, PKG_RC_ATTR_START);
 
 	if ((flags & (PKG_ADD_UPGRADE | PKG_ADD_SPLITTED_UPGRADE)) !=
 	    PKG_ADD_UPGRADE)

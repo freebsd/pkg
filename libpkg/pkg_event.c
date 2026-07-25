@@ -491,6 +491,28 @@ pipe_trigger(struct pkg_event *ev, xstring *msg)
 	    ev->e_trigger.name);
 }
 
+static void
+pipe_rc_script(struct pkg_event *ev, xstring *msg)
+{
+	const char *action;
+
+	switch (ev->e_rc_script.action) {
+	case PKG_RC_START:
+		action = "start";
+		break;
+	case PKG_RC_STOP:
+		action = "stop";
+		break;
+	case PKG_RC_RESTART:
+		action = "restart";
+		break;
+	}
+
+	xstring_printf(msg, "{ \"type\": \"INFO_RC_SCRIPT\", \"data\": { "
+	    "\"action\": \"%s\", \"name\": \"%s\" }}",
+	    action, json_escape(ev->e_rc_script.name));
+}
+
 typedef void (*pipe_handler_fn)(struct pkg_event *ev, xstring *msg);
 
 static const pipe_handler_fn pipe_handlers[PKG_EVENT_LAST] = {
@@ -532,6 +554,7 @@ static const pipe_handler_fn pipe_handlers[PKG_EVENT_LAST] = {
 	[PKG_EVENT_TRIGGERS_BEGIN] = pipe_triggers_begin,
 	[PKG_EVENT_TRIGGER] = pipe_trigger,
 	[PKG_EVENT_TRIGGERS_FINISHED] = pipe_triggers_finished,
+	[PKG_EVENT_RC_SCRIPT] = pipe_rc_script,
 };
 _Static_assert(NELEM(pipe_handlers) == PKG_EVENT_LAST,
     "pipe_handlers table size does not match pkg_event_t enum");
@@ -1412,6 +1435,18 @@ pkg_emit_trigger(const char *name, bool cleanup)
 	ev.type = PKG_EVENT_TRIGGER;
 	ev.e_trigger.name = name;
 	ev.e_trigger.cleanup = cleanup;
+
+	pkg_emit_event(&ev);
+}
+
+void
+pkg_emit_rc_script(const char *name, int action)
+{
+	struct pkg_event ev;
+
+	ev.type = PKG_EVENT_RC_SCRIPT;
+	ev.e_rc_script.name = name;
+	ev.e_rc_script.action = action;
 
 	pkg_emit_event(&ev);
 }

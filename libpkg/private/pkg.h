@@ -720,8 +720,8 @@ static inline sql_arg_t make_int64_arg(int64_t i) {
  * rc script actions
  */
 typedef enum {
-	PKG_RC_START = 0,
-	PKG_RC_STOP
+	PKG_RC_ATTR_START = 0,
+	PKG_RC_ATTR_STOP
 } pkg_rc_attr;
 
 /**

@@ -1366,8 +1366,18 @@ typedef enum {
 	PKG_EVENT_PKG_ERRNO,
 	PKG_EVENT_FILE_META_MISMATCH,
 	PKG_EVENT_DIR_META_MISMATCH,
+	PKG_EVENT_RC_SCRIPT,
 	PKG_EVENT_LAST,
 } pkg_event_t;
+
+/**
+ * rc script actions used by PKG_EVENT_RC_SCRIPT.
+ */
+typedef enum {
+	PKG_RC_START = 0,
+	PKG_RC_STOP,
+	PKG_RC_RESTART,
+} pkg_rc_action_t;
 
 enum pkg_meta_attribute {
 	PKG_META_ATTR_TYPE,
@@ -1579,6 +1589,10 @@ struct pkg_event {
 			struct pkg *pkg;
 			struct pkg_dir *dir;
 		} e_dir_ok;
+		struct {
+			const char *name;
+			pkg_rc_action_t action;
+		} e_rc_script;
 	};
 };
 

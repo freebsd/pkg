@@ -149,6 +149,7 @@ void pkg_emit_conflicts(struct pkg *p1, struct pkg *p2, const char *path);
 void pkg_emit_triggers_begin(void);
 void pkg_emit_trigger(const char *name, bool cleanup);
 void pkg_emit_triggers_finished(void);
+void pkg_emit_rc_script(const char *name, int action);
 void pkg_emit_file_meta_mismatch(struct pkg *pkg, struct pkg_file *file,
 				 enum pkg_meta_attribute attrib,
 				 const char *db_val, const char *fs_val);

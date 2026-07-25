@@ -90,9 +90,9 @@ pkg_delete(struct pkg *pkg, struct pkg *rpkg, struct pkgdb *db, int flags,
 	handle_rc = pkg_object_bool(pkg_config_get("HANDLE_RC_SCRIPTS"));
 	if (handle_rc) {
 		if (rc != NULL)
-			pkg_deferred_rc_add(rc, pkg, PKG_RC_STOP);
+			pkg_deferred_rc_add(rc, pkg, PKG_RC_ATTR_STOP);
 		else
-			pkg_start_stop_rc_scripts(pkg, PKG_RC_STOP);
+			pkg_start_stop_rc_scripts(pkg, PKG_RC_ATTR_STOP);
 	}
 
 	if ((flags & PKG_DELETE_NOSCRIPT) == 0) {
