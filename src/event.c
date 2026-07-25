@@ -979,6 +979,28 @@ event_cb_trigger(struct pkg_event *ev, int *debug __unused)
 	return (0);
 }
 
+static int
+event_cb_rc_script(struct pkg_event *ev, int *debug __unused)
+{
+	if (!quiet) {
+		switch (ev->e_rc_script.action) {
+		case PKG_RC_START:
+			printf("Starting %s\n", ev->e_rc_script.name);
+			break;
+		case PKG_RC_STOP:
+			printf("Stopping %s\n", ev->e_rc_script.name);
+			break;
+		case PKG_RC_RESTART:
+			printf("Restarting %s\n", ev->e_rc_script.name);
+			break;
+		default:
+			printf("Restarting %s\n", ev->e_rc_script.name);
+			break;
+		}
+	}
+	return (0);
+}
+
 static const event_handler_fn event_handlers[PKG_EVENT_LAST] = {
 	[PKG_EVENT_INSTALL_BEGIN]                = event_cb_install_begin,
 	[PKG_EVENT_DEINSTALL_BEGIN]              = event_cb_deinstall_begin,
@@ -1029,6 +1051,7 @@ static const event_handler_fn event_handlers[PKG_EVENT_LAST] = {
 	[PKG_EVENT_TRIGGER]                      = event_cb_trigger,
 	[PKG_EVENT_FILE_META_MISMATCH]           = event_cb_file_meta_mismatch,
 	[PKG_EVENT_DIR_META_MISMATCH]            = event_cb_dir_meta_mismatch,
+	[PKG_EVENT_RC_SCRIPT]                    = event_cb_rc_script,
 };
 _Static_assert(NELEM(event_handlers) == PKG_EVENT_LAST,
     "event_handlers table size does not match pkg_event_t enum");
