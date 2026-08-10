@@ -1,5 +1,26 @@
 Changes from 2.7.99.3 to 2.8.99.1
-- fix: SRV/HTTP-mirror fetch only retried the first server; walk the server list once with a per-server retry budget and report SRV/mirror-list lookup failures (#296955)
+- security: bound vulnerability database downloads and decompression; build a temporary database and atomically replace it only after validation
+- security: bound repository archive downloads and extraction (1 GiB or half of free temporary storage, 1 MiB metadata) and reject duplicate members and oversized target members
+- security: bound repository signature extraction (8 MiB callback response, at most 8 signature entries of 1 MiB each)
+- security: drop to nobody before entering Capsicum in the sandboxed archive and signature callbacks
+- security: enforce the signed package size while fetching, capping the stream even when the server omits a Content-Length
+- security: reject invalid repository signature types; only pubkey, fingerprints and none are accepted
+- repo: keep file lists out of the data catalog
+- repo: open the catalogue read-only when checking its validity
+- rwhich: store the compressed filesite as a standalone file
+- rwhich: verify the repository signature and store the filesite as a raw compressed file
+- rwhich: add a global and a per-repository configuration
+- fix: report (added)/(removed) reinstall reasons only once
+- fix: use-after-free during the additional SAT cycle
+- fix: deferred rc script execution
+- rcscript: add a dedicated PKG_EVENT_RC_SCRIPT event for rc.d script actions
+- fix: remove leftover nested @dir parents on deinstall
+- fix: non-root reads of WAL databases with missing sidecar files fall back to immutable mode
+- db: respect compression_level for the file db and the repository metadata
+- macho: map macOS 26 / iOS 19 to Darwin 25 in pkg config abi
+- libpkg: add PKG_EVENT_PKG_FETCH_BEGIN to report the package being downloaded (for PackageKit)
+- utils: always print the signature_type
+- fix: SRV/HTTP-mirror fetch only retried the first server; walk the server list once with a per-server retry budget and report SRV/mirror-list lookup failures
 
 Changes from 2.7.99.2 to 2.7.99.3
 - db: switch the local database to WAL journal mode with synchronous=NORMAL for better read concurrency and faster writes
