@@ -117,7 +117,6 @@ ATF_TC_BODY(http_mirror_failover, tc)
 		socklen_t clen = sizeof(caddr);
 		int cfd;
 		char req[4096];
-		ssize_t rlen;
 		char path[MAXPATHLEN];
 		int ffd;
 		char fbuf[4096];
@@ -127,10 +126,27 @@ ATF_TC_BODY(http_mirror_failover, tc)
 		cfd = accept(listen_fd, (struct sockaddr *)&caddr, &clen);
 		if (cfd < 0)
 			_exit(1);
-		rlen = read(cfd, req, sizeof(req) - 1);
-		if (rlen <= 0)
-			_exit(1);
-		req[rlen] = '\0';
+
+		/*
+		 * Read the full request before replying. libfetch writes the
+		 * request line by line (GET, Host, Accept, ...), each with a
+		 * separate write(); if we reply after a single read we may
+		 * close the socket while libfetch is still writing the
+		 * remaining headers, which makes it die of SIGPIPE. Keep
+		 * reading until we have the end-of-headers marker.
+		 */
+		size_t rlen = 0;
+		for (;;) {
+			ssize_t n = read(cfd, req + rlen, sizeof(req) - 1 - rlen);
+			if (n <= 0)
+				_exit(1);
+			rlen += (size_t)n;
+			req[rlen] = '\0';
+			if (strstr(req, "\r\n\r\n") != NULL)
+				break;
+			if (rlen >= sizeof(req) - 1)
+				break;
+		}
 
 		/* Parse "GET /path HTTP/1.x" */
 		char *p = strchr(req, ' ');
@@ -166,6 +182,10 @@ ATF_TC_BODY(http_mirror_failover, tc)
 	}
 
 	close(listen_fd);
+
+	/* Ignore SIGPIPE like pkg does, so a write to a socket closed by
+	 * the test HTTP server does not terminate the test case. */
+	signal(SIGPIPE, SIG_IGN);
 
 	ATF_REQUIRE_EQ(EPKG_OK, pkg_ini(NULL, NULL, 0));
 
