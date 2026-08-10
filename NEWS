@@ -1,5 +1,21 @@
 Changes from 2.8.1 to 2.8.2
-- fix: SRV/HTTP-mirror fetch only retried the first server; walk the server list once with a per-server retry budget and report SRV/mirror-list lookup failures (#296955)
+- security: bound vulnerability database downloads and decompression, then atomically replace the database only after validation
+- security: bound repository archive and signature extraction before verification (1 GiB / half of free temp storage, 1 MiB metadata, 8 MiB callback response)
+- security: enforce the signed package size while fetching, capping the stream at the trusted size
+- security: reject invalid repository signature types; accept only pubkey, fingerprints and none
+- security: drop to nobody before entering Capsicum in sandboxed callbacks
+- repo: keep file lists out of the data catalog
+- rwhich: store the filesite as a compressed archive parsed in memory on demand
+- rwhich: add global and per-repository configuration for fine-grained control of the rwhich database
+- api: add PKG_EVENT_RC_SCRIPT for rc.d script start/stop/restart actions
+- fix: deferred rc script execution
+- fix: doubled (added)/(removed) reinstall reasons in pkg_jobs
+- fix: use-after-free in pkg_jobs during an additional SAT cycle
+- fix: SRV/HTTP-mirror fetch only retried the first server; walk the server list once with a per-server retry budget and report SRV/mirror-list lookup failures
+- compression: respect compression_level for the file database and the metadata
+- utils: always print signature_type
+- repo: open the catalogue read-only when checking validity
+- plug additional memory leaks and avoid allocating the archive reader when unused
 
 Changes from 2.8.0 to 2.8.1
 - fix: non-root reads of a WAL-mode database with missing sidecars
