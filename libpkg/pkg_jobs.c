@@ -1052,8 +1052,6 @@ bool
 pkg_jobs_need_upgrade(charv_t *system_shlibs, struct pkg *rp, struct pkg *lp)
 {
 	int ret, ret1, ret2;
-	struct pkg_kv *lo = NULL, *ro = NULL;
-	struct pkg_dep *ld = NULL, *rd = NULL;
 	struct pkg_conflict *lc = NULL, *rc = NULL;
 
 	/* If no local package, then rp is obviously need to be added */
@@ -1100,38 +1098,42 @@ pkg_jobs_need_upgrade(charv_t *system_shlibs, struct pkg *rp, struct pkg *lp)
 	if (pkg_object_bool(pkg_config_get("PKG_REINSTALL_ON_OPTIONS_CHANGE"))) {
 		xstring *optdiff = NULL;
 		int ndiffs = 0;
-		for (;;) {
-			ret1 = pkg_options(rp, &ro);
-			ret2 = pkg_options(lp, &lo);
-			if (ret1 != ret2) {
+		size_t i = 0, j = 0;
+		size_t cntl = vec_len(&lp->options);
+		size_t cntr = vec_len(&rp->options);
+		while (i < cntl || j < cntr) {
+			int cmp;
+			if (i >= cntl) cmp = 1;
+			else if (j >= cntr) cmp = -1;
+			else cmp = strcmp(lp->options.d[i]->key,
+			    rp->options.d[j]->key);
+			if (cmp < 0) {
+				/* only in local: option removed */
 				if (optdiff == NULL)
 					optdiff = xstring_new();
-				if (ro == NULL) {
-					xstring_printf(optdiff, "%s%s (removed)",
-					    ndiffs ? ", " : "", lo->key);
-				} else if (lo == NULL) {
-					xstring_printf(optdiff, "%s%s (added)",
-					    ndiffs ? ", " : "", ro->key);
+				xstring_printf(optdiff, "%s%s (removed)",
+				    ndiffs ? ", " : "", lp->options.d[i]->key);
+				ndiffs++; i++;
+			} else if (cmp > 0) {
+				/* only in remote: option added */
+				if (optdiff == NULL)
+					optdiff = xstring_new();
+				xstring_printf(optdiff, "%s%s (added)",
+				    ndiffs ? ", " : "", rp->options.d[j]->key);
+				ndiffs++; j++;
+			} else {
+				/* same option: compare values */
+				if (!STREQ(lp->options.d[i]->value,
+				    rp->options.d[j]->value)) {
+					if (optdiff == NULL)
+						optdiff = xstring_new();
+					xstring_printf(optdiff, "%s%s (%s -> %s)",
+					    ndiffs ? ", " : "", lp->options.d[i]->key,
+					    lp->options.d[i]->value,
+					    rp->options.d[j]->value);
+					ndiffs++;
 				}
-				ndiffs++;
-				/* lists have different lengths, done */
-				break;
-			}
-			if (ret1 != EPKG_OK)
-				break;
-			if (!STREQ(lo->key, ro->key)) {
-				if (optdiff == NULL)
-					optdiff = xstring_new();
-				xstring_printf(optdiff, "%s%s (removed), %s (added)",
-				    ndiffs ? ", " : "", lo->key, ro->key);
-				ndiffs++;
-			} else if (!STREQ(lo->value, ro->value)) {
-				if (optdiff == NULL)
-					optdiff = xstring_new();
-				xstring_printf(optdiff, "%s%s (%s -> %s)",
-				    ndiffs ? ", " : "", lo->key,
-				    lo->value, ro->value);
-				ndiffs++;
+				i++; j++;
 			}
 		}
 		if (ndiffs > 0) {
@@ -1148,33 +1150,40 @@ pkg_jobs_need_upgrade(charv_t *system_shlibs, struct pkg *rp, struct pkg *lp)
 
 	xstring *diff = NULL;
 	int nd = 0;
-	for (;;) {
-		ret1 = pkg_deps(rp, &rd);
-		ret2 = pkg_deps(lp, &ld);
-		if (ret1 != ret2) {
+	size_t li = 0, ri = 0;
+	size_t ll = vec_len(&lp->depends);
+	size_t rl = vec_len(&rp->depends);
+	while (li < ll || ri < rl) {
+		int cmp;
+		if (li >= ll) cmp = 1;
+		else if (ri >= rl) cmp = -1;
+		else cmp = strcmp(lp->depends.d[li].name,
+		    rp->depends.d[ri].name);
+		if (cmp < 0) {
+			/* only in local: dependency removed */
 			if (diff == NULL) diff = xstring_new();
-			if (rd == NULL) {
-				xstring_printf(diff, "%s%s (removed)",
-				    nd ? ", " : "", ld->name);
-			} else if (ld == NULL) {
-				xstring_printf(diff, "%s%s (added)",
-				    nd ? ", " : "", rd->name);
+			xstring_printf(diff, "%s%s (removed)",
+			    nd ? ", " : "", lp->depends.d[li].name);
+			nd++; li++;
+		} else if (cmp > 0) {
+			/* only in remote: dependency added */
+			if (diff == NULL) diff = xstring_new();
+			xstring_printf(diff, "%s%s (added)",
+			    nd ? ", " : "", rp->depends.d[ri].name);
+			nd++; ri++;
+		} else {
+			/* same dependency: compare origins (may be NULL) */
+			const char *lorig = lp->depends.d[li].origin;
+			const char *rorig = rp->depends.d[ri].origin;
+			if (lorig != rorig &&
+			    (lorig == NULL || rorig == NULL ||
+			     strcmp(lorig, rorig) != 0)) {
+				if (diff == NULL) diff = xstring_new();
+				xstring_printf(diff, "%s%s (origin changed)",
+				    nd ? ", " : "", rp->depends.d[ri].name);
+				nd++;
 			}
-			nd++;
-			break;
-		}
-		if (ret1 != EPKG_OK)
-			break;
-		if (!STREQ(rd->name, ld->name)) {
-			if (diff == NULL) diff = xstring_new();
-			xstring_printf(diff, "%s%s (removed), %s (added)",
-			    nd ? ", " : "", ld->name, rd->name);
-			nd++;
-		} else if (!STREQ(rd->origin, ld->origin)) {
-			if (diff == NULL) diff = xstring_new();
-			xstring_printf(diff, "%s%s (origin changed)",
-			    nd ? ", " : "", rd->name);
-			nd++;
+			li++; ri++;
 		}
 	}
 	if (nd > 0) {
