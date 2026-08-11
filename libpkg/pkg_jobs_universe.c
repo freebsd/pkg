@@ -520,7 +520,7 @@ provide:
 					name);
 		}
 		vec_push(provvec, ((struct pkg_job_provide){
-		    .un = unit, .provide = name, .is_shlib = is_shlib }));
+		    .un = unit, .provide = xstrdup(name), .is_shlib = is_shlib }));
 	}
 	pkg_free(rpkg);
 
@@ -761,6 +761,8 @@ pkg_jobs_universe_process(struct pkg_jobs_universe *universe,
 static void
 pkg_jobs_universe_provide_free(providev_t *pv)
 {
+	vec_foreach(*pv, i)
+		free((char *)pv->d[i].provide);
 	vec_free(pv);
 	free(pv);
 }
