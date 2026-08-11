@@ -1,3 +1,6 @@
+Changes from 2.8.2 to 2.8.3
+- fix use after free
+
 Changes from 2.8.1 to 2.8.2
 - security: bound vulnerability database downloads and decompression, then atomically replace the database only after validation
 - security: bound repository archive and signature extraction before verification (1 GiB / half of free temp storage, 1 MiB metadata, 8 MiB callback response)
