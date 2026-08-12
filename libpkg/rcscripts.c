@@ -322,7 +322,7 @@ pkg_deferred_rc_add(struct deferred_rc *rc, struct pkg *pkg, pkg_rc_attr attr)
 		return;
 
 	/* Do not manage rc scripts when operating on an alternate rootdir */
-	if (strcmp(ctx.pkg_rootdir, "/") != 0)
+	if (ctx.pkg_rootdir != NULL && strcmp(ctx.pkg_rootdir, "/") != 0)
 		return;
 
 	snprintf(rc_d_path, sizeof(rc_d_path), "%s/etc/rc.d/", pkg->prefix);
