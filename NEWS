@@ -1,3 +1,7 @@
+Changes from 2.8.3 to 2.8.4
+- fix: NULL/dangling path when installing or upgrading a package from a local file
+- fix: NULL deref in pkg_deferred_rc_add
+
 Changes from 2.8.2 to 2.8.3
 - fix use after free
 
