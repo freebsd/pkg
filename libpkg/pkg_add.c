@@ -1614,7 +1614,10 @@ pkg_add_common(struct pkgdb *db, const char *path, unsigned flags,
 
 	memset(&context, 0, sizeof(context));
 
-	assert(path != NULL);
+	if (path == NULL) {
+		pkg_emit_error("pkg_add_common: no package path provided");
+		return (EPKG_FATAL);
+	}
 
 	/*
 	 * Open the package archive file, read all the meta files and set the

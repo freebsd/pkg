@@ -155,6 +155,8 @@ void
 pkg_jobs_request_free(struct pkg_job_request *req)
 {
 	if (req != NULL) {
+		vec_foreach(req->items, _i)
+			free(req->items.d[_i].path);
 		vec_free(&req->items);
 		free(req);
 	}
@@ -999,8 +1001,10 @@ pkg_jobs_find_remote_pattern(struct pkg_jobs *j, struct job_pattern *jp)
 		pkg_jobs_add_req(j, pkg);
 
 		req = pkghash_get_value(j->request_add, pkg->uid);
-		if (req != NULL)
+		if (req != NULL) {
 			req->items.d[0].jp = jp;
+			req->items.d[0].path = xstrdup(jp->path);
+		}
 	} else {
 		pkg_emit_error("cannot load %s: invalid format", jp->pattern);
 		rc = EPKG_FATAL;
@@ -1998,11 +2002,12 @@ pkg_jobs_handle_install(struct pkg_solved *ps, struct pkg_jobs *j)
 
 	req = pkghash_get_value(j->request_add, new->uid);
 	if (req != NULL && req->items.d[0].jp != NULL &&
-			(req->items.d[0].jp->flags & PKG_PATTERN_FLAG_FILE)) {
+			(req->items.d[0].jp->flags & PKG_PATTERN_FLAG_FILE) &&
+			req->items.d[0].path != NULL) {
 		/*
 		 * We have package as a file, set special repository name
 		 */
-		target = req->items.d[0].jp->path;
+		target = req->items.d[0].path;
 		free(new->reponame);
 		new->reponame = xstrdup("local file");
 	}
