@@ -58,6 +58,7 @@ struct pkg_job_request_item {
 	struct pkg *pkg;
 	struct pkg_job_universe_item *unit;
 	struct job_pattern *jp;
+	char *path;	/* local file path for PKG_PATTERN_FLAG_FILE requests */
 };
 typedef vec_t(struct pkg_job_request_item) request_itemv_t;
 

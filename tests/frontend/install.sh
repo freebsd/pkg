@@ -20,7 +20,8 @@ tests_init \
 	install_disabled_repo \
 	install_vulnerable \
 	install_vulnerable_not_in_range \
-	install_vulnerable_no_vuln_db
+	install_vulnerable_no_vuln_db \
+	install_local_file_upgrade
 
 test_setup()
 {
@@ -749,4 +750,34 @@ EOF
 		-s exit:1 \
 		pkg -o REPOS_DIR="${TMPDIR}/repoconf" -o PKG_CACHEDIR="${TMPDIR}" \
 		install -n test
+}
+
+# PR #2261: installing/upgrading a package from a local file when the package
+# is already installed must not pass a NULL path to archive_read_open_filename().
+install_local_file_upgrade_body()
+{
+	# Install v1 from a local .pkg file
+	atf_check sh ${RESOURCEDIR}/test_subr.sh new_pkg "test" "test" "1"
+	atf_check pkg create -M test.ucl
+
+	atf_check \
+		-o match:"Installing test" \
+		-s exit:0 \
+		pkg -o REPOS_DIR="/dev/null" -o PKG_CACHEDIR="${TMPDIR}" \
+		install -y ${TMPDIR}/test-1.pkg
+
+	atf_check -s exit:0 pkg info -e test
+
+	# Now upgrade from a local .pkg file (the package is already installed)
+	atf_check sh ${RESOURCEDIR}/test_subr.sh new_pkg "test" "test" "2"
+	atf_check pkg create -M test.ucl
+
+	atf_check \
+		-o not-match:"archive_read_open_filename" \
+		-s exit:0 \
+		pkg -o REPOS_DIR="/dev/null" -o PKG_CACHEDIR="${TMPDIR}" \
+		install -y ${TMPDIR}/test-2.pkg
+
+	atf_check -s exit:0 pkg info -e test
+	atf_check -o match:"2" pkg query "%v" test
 }
