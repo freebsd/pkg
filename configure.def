@@ -69,7 +69,7 @@ define LIBSOEXT "$_libsoext"
 
 # Git hash
 define GITHASH ""
-if cc_check_progs git 2>/dev/null && [ -d "$_srcdir/.git" ]; then
+if cc_check_progs git 2>/dev/null && [ -e "$_srcdir/.git" ]; then
 	_gitrev=$(git -C "$_srcdir" rev-parse --short HEAD 2>/dev/null) || true
 	_gitdirty=$(git -C "$_srcdir" diff-index -m --name-only HEAD 2>/dev/null) || true
 	if [ -n "$_gitrev" ]; then
