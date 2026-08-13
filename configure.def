@@ -25,6 +25,7 @@ options \
 	"with-asan            => build with Clang AddressSanitizer (non-prod use)" \
 	"with-lsan            => build with Clang LeakSanitizer (non-prod use)" \
 	"with-ubsan           => build with Clang UndefinedBehaviorSanitizer (non-prod use)" \
+	"with-tests           => build tests" \
 	"with-tsan            => build with Clang ThreadSanitizer (non-prod use)" \
 	"with-openssl.pc      => build with openssl via pkg-config" \
 	"default-format:tzst  => Default compression format: tzst (default), txz, tbz, tar"
@@ -287,6 +288,8 @@ if opt_bool with-asan; then
 	esac
 	define asan 1
 	undefine HAVE_STATIC
+
+	msg "Enabling ASAN"
 fi
 if opt_bool with-lsan; then
 	define_append LSAN_CFLAGS -O0 -g -fsanitize=leak
@@ -295,30 +298,51 @@ if opt_bool with-lsan; then
 		*-linux*) define_append LSAN_LDFLAGS -ldl ;;
 	esac
 	define lsan 1
+
+	msg "Enabling LSAN"
 fi
 if opt_bool with-ubsan; then
 	define_append UBSAN_CFLAGS -D_MUM_UNALIGNED_ACCESS=0
 	define_append UBSAN_CFLAGS -O0 -g -fsanitize=undefined
 	define_append UBSAN_LDFLAGS -fsanitize=undefined
 	define ubsan 1
+
+	msg "Enabled UBSAN"
 fi
 if opt_bool with-tsan; then
 	define_append TSAN_CFLAGS -O1 -g -fsanitize=thread
 	define_append TSAN_LDFLAGS -fsanitize=thread
 	define tsan 1
+
+	msg "Enabled TSAN"
 fi
 if opt_bool with-coverage; then
-	define_append COVERAGE_CFLAGS -O0 -g -fprofile-arcs -ftest-coverage -fprofile-instr-generate -fcoverage-mapping -DCOVERAGE=1
-	define_append COVERAGE_LDFLAGS -fprofile-instr-generate
+	define_append COVERAGE_CFLAGS -O0 -g --coverage -fprofile-instr-generate -fcoverage-mapping -DCOVERAGE=1
+	define_append COVERAGE_LDFLAGS --coverage -fprofile-instr-generate
 	define coverage 1
+
+	msg "Enabled runtime code coverage"
 fi
 
 # pkg-config based dependencies
 if pkg_config_init; then
-	# atf / tests
-	if pkg_config atf-c && cc_check_progs kyua; then
-		define TESTS 1
-		msg "test suite will be built"
+	# tests
+	if opt_bool with-tests; then
+		if ! pkg_config atf-c; then
+			user_error "Cannot find ATF libraries"
+		elif ! cc_check_progs kyua; then
+			user_error "Cannot find kyua"
+		else
+			define PKG_ATF_C_CFLAGS "$(pkg-config atf-c --cflags)"
+			define PKG_ATF_C_LDFLAGS "$(pkg-config atf-c --libs-only-L)"
+			define PKG_ATF_C_LIBS "$(pkg-config atf-c --libs-only-l)"
+
+			define TESTS 1
+			msg "test suite will be built"
+		fi
+		user_notice "ATF_C_CFLAGS=$(get_define PKG_ATF_C_CFLAGS)"
+		user_notice "ATF_C_LDLAGS=$(get_define PKG_ATF_C_LDFLAGS)"
+		user_notice "ATF_C_LIBS=$(get_define PKG_ATF_C_LIBS)"
 	else
 		msg "Skipping test suite"
 	fi
