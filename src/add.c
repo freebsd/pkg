@@ -146,6 +146,7 @@ exec_add(int argc, char **argv)
 	for (i = 0; i < argc; i++) {
 		if (is_url(argv[i]) == EPKG_OK) {
 			const char *name = strrchr(argv[i], '/');
+			int fd;
 			if (name == NULL)
 				name = argv[i];
 			else
@@ -153,7 +154,19 @@ exec_add(int argc, char **argv)
 
 			if ((env = getenv("TMPDIR")) == NULL)
 				env = "/tmp";
-			snprintf(path, sizeof(path), "%s/%s.XXXXX", env, name);
+			snprintf(path, sizeof(path), "%s/%s.XXXXXX", env, name);
+			fd = mkstemp(path);
+			if (fd == -1) {
+				warn("mkstemp %s", path);
+				retcode = EPKG_FATAL;
+				break;
+			}
+			if (close(fd) == -1) {
+				warn("close %s", path);
+				unlink(path);
+				retcode = EPKG_FATAL;
+				break;
+			}
 			if ((retcode = pkg_fetch_file(NULL, argv[i], path, 0, 0, 0)) != EPKG_OK)
 				break;
 
@@ -210,4 +223,3 @@ exec_add(int argc, char **argv)
 
 	return (retcode == EPKG_OK ? EXIT_SUCCESS : EXIT_FAILURE);
 }
-

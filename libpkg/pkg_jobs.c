@@ -206,6 +206,7 @@ pkg_jobs_maybe_match_url(struct job_pattern *jp, const char *pattern)
 {
 	char path[MAXPATHLEN];
 	const char *name;
+	int fd;
 
 	if (strncmp(pattern, "http://", 7) != 0 &&
 	    strncmp(pattern, "https://", 8) != 0 &&
@@ -221,8 +222,18 @@ pkg_jobs_maybe_match_url(struct job_pattern *jp, const char *pattern)
 	else
 		name++;
 
-	snprintf(path, sizeof(path), "%s/%s.XXXXX",
+	snprintf(path, sizeof(path), "%s/%s.XXXXXX",
 	    getenv("TMPDIR") ? getenv("TMPDIR") : "/tmp", name);
+	fd = mkstemp(path);
+	if (fd == -1) {
+		pkg_emit_errno("mkstemp", path);
+		return (false);
+	}
+	if (close(fd) == -1) {
+		pkg_emit_errno("close", path);
+		unlink(path);
+		return (false);
+	}
 
 	if (pkg_fetch_file(NULL, pattern, path, 0, 0, 0) != EPKG_OK) {
 		pkg_emit_error("Failed to fetch package from '%s'", pattern);
