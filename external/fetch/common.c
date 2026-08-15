@@ -1386,6 +1386,7 @@ fetch_read(conn_t *conn, char *buf, size_t len)
  * Read a line of text from a connection w/ timeout
  */
 #define MIN_BUF_SIZE 1024
+#define FETCH_MAX_LINE_SIZE (64 * 1024)
 
 int
 fetch_getln(conn_t *conn)
@@ -1412,6 +1413,10 @@ fetch_getln(conn_t *conn)
 			return (-1);
 		if (len == 0)
 			break;
+		if (conn->buflen == FETCH_MAX_LINE_SIZE) {
+			errno = E2BIG;
+			return (-1);
+		}
 		conn->buf[conn->buflen++] = c;
 		if (conn->buflen == conn->bufsize) {
 			tmp = conn->buf;
