@@ -29,6 +29,8 @@
 
 #include <sys/stat.h> /* for private.utils.h */
 
+#include <stdbool.h>
+#include <stdint.h>
 #include <string.h>
 #include <netinet/in.h>
 #ifdef HAVE_LDNS
@@ -125,36 +127,67 @@ srv_final_cmp(const void *a, const void *b)
 }
 
 #ifndef HAVE_LDNS
+static bool
+dns_advance(const unsigned char **p, const unsigned char *end, size_t len)
+{
+	if ((size_t)(end - *p) < len)
+		return (false);
+	*p += len;
+	return (true);
+}
+
+static bool
+dns_get16(const unsigned char **p, const unsigned char *end,
+    unsigned int *value)
+{
+	if (!dns_advance(p, end, NS_INT16SZ))
+		return (false);
+	*value = ((unsigned int)(*p)[-NS_INT16SZ] << 8) |
+	    (*p)[-1];
+	return (true);
+}
+
+static bool
+dns_get32(const unsigned char **p, const unsigned char *end,
+    unsigned int *value)
+{
+	if (!dns_advance(p, end, NS_INT32SZ))
+		return (false);
+	*value = ((unsigned int)(*p)[-NS_INT32SZ] << 24) |
+	    ((unsigned int)(*p)[-3] << 16) |
+	    ((unsigned int)(*p)[-2] << 8) |
+	    (*p)[-1];
+	return (true);
+}
+
 static void
 compute_weight(struct dns_srvinfo **d, int first, int last)
 {
 	int i, j;
-	int totalweight = 0;
-	int *chosen;
 
-	for (i = 0; i <= last; i++)
-		totalweight += d[i]->weight;
+	/* Select one record at a time from the remaining priority group. */
+	for (i = first; i <= last; i++) {
+		uint32_t totalweight = 0;
+		uint32_t selected;
+		struct dns_srvinfo *tmp;
 
-	if (totalweight == 0)
-		return;
-
-	chosen = xmalloc(sizeof(int) * (last - first + 1));
-
-	for (i = 0; i <= last; i++) {
-		for (;;) {
-			chosen[i] = random() % (d[i]->weight * 100 / totalweight);
-			for (j = 0; j < i; j++) {
-				if (chosen[i] == chosen[j])
+		for (j = i; j <= last; j++)
+			totalweight += d[j]->weight;
+		if (totalweight == 0) {
+			j = i + random() % (last - i + 1);
+		} else {
+			selected = random() % totalweight;
+			for (j = i; j <= last; j++) {
+				if (selected < d[j]->weight)
 					break;
-			}
-			if (j == i) {
-				d[i]->finalweight = chosen[i];
-				break;
+				selected -= d[j]->weight;
 			}
 		}
+		tmp = d[i];
+		d[i] = d[j];
+		d[j] = tmp;
+		d[i]->finalweight = last - i + 1;
 	}
-
-	free(chosen);
 }
 
 struct dns_srvinfo *
@@ -164,12 +197,12 @@ dns_getsrvinfo(const char *zone)
 	query_t q;
 	int len, qdcount, ancount, n, i;
 	struct dns_srvinfo **res, *first;
-	unsigned char *end, *p;
-	unsigned int type, class, ttl, priority, weight, port;
+	const unsigned char *end, *p, *rdata_end;
+	unsigned int type, class, ttl, priority, weight, port, rdlen;
 	int f, l;
 
 	if ((len = res_query(zone, C_IN, T_SRV, q.buf, sizeof(q.buf))) == -1 ||
-	    len < (int)sizeof(HEADER))
+	    len < (int)sizeof(HEADER) || len > (int)sizeof(q.buf))
 		return (NULL);
 
 	qdcount = ntohs(q.hdr.qdcount);
@@ -178,48 +211,45 @@ dns_getsrvinfo(const char *zone)
 	end = q.buf + len;
 	p = q.buf + sizeof(HEADER);
 
-	while(qdcount > 0 && p < end) {
+	while (qdcount > 0) {
 		qdcount--;
-		if((len = dn_expand(q.buf, end, p, host, sizeof(host))) < 0)
+		if (p >= end ||
+		    (len = dn_expand(q.buf, end, p, host, sizeof(host))) < 0 ||
+		    !dns_advance(&p, end, len) ||
+		    !dns_advance(&p, end, NS_QFIXEDSZ))
 			return (NULL);
-		p += len + NS_QFIXEDSZ;
 	}
 
+	if (ancount == 0 || (size_t)(end - p) / 11 < (size_t)ancount)
+		return (NULL);
 	res = xcalloc(ancount, sizeof(struct dns_srvinfo *));
 	n = 0;
-	while (ancount > 0 && p < end) {
+	while (ancount > 0) {
 		ancount--;
-		len = dn_expand(q.buf, end, p, host, sizeof(host));
-		if (len < 0) {
-			for (i = 0; i < n; i++)
-				free(res[i]);
-			free(res);
-			return NULL;
-		}
-
-		p += len;
-
-		NS_GET16(type, p);
-		NS_GET16(class, p);
-		NS_GET32(ttl, p);
-		NS_GET16(len, p);
+		if (p >= end ||
+		    (len = dn_expand(q.buf, end, p, host, sizeof(host))) < 0 ||
+		    !dns_advance(&p, end, len) ||
+		    !dns_get16(&p, end, &type) ||
+		    !dns_get16(&p, end, &class) ||
+		    !dns_get32(&p, end, &ttl) ||
+		    !dns_get16(&p, end, &rdlen) ||
+		    !dns_advance(&p, end, rdlen))
+			goto bad_answer;
+		rdata_end = p;
+		p -= rdlen;
 
 		if (type != T_SRV) {
-			p += len;
+			p = rdata_end;
 			continue;
 		}
 
-		NS_GET16(priority, p);
-		NS_GET16(weight, p);
-		NS_GET16(port, p);
-
-		len = dn_expand(q.buf, end, p, host, sizeof(host));
-		if (len < 0) {
-			for (i = 0; i < n; i++)
-				free(res[i]);
-			free(res);
-			return NULL;
-		}
+		if (rdlen < 7 ||
+		    !dns_get16(&p, rdata_end, &priority) ||
+		    !dns_get16(&p, rdata_end, &weight) ||
+		    !dns_get16(&p, rdata_end, &port) ||
+		    (len = dn_expand(q.buf, end, p, host, sizeof(host))) < 0 ||
+		    !dns_advance(&p, rdata_end, len) || p != rdata_end)
+			goto bad_answer;
 
 		res[n] = xmalloc(sizeof(struct dns_srvinfo));
 		res[n]->type = type;
@@ -232,25 +262,26 @@ dns_getsrvinfo(const char *zone)
 		res[n]->finalweight = 0;
 		strlcpy(res[n]->host, host, sizeof(res[n]->host));
 
-		p += len;
 		n++;
 	}
+	if (n == 0)
+		goto bad_answer;
 
 	/* order by priority */
 	qsort(res, n, sizeof(res[0]), srv_priority_cmp);
 
-	priority = 0;
 	f = 0;
 	l = 0;
-	for (i = 0; i < n; i++) {
-		if (res[i]->priority != priority) {
+	for (i = 1; i < n; i++) {
+		if (res[i]->priority != res[f]->priority) {
 			if (f != l)
 				compute_weight(res, f, l);
 			f = i;
-			priority = res[i]->priority;
 		}
 		l = i;
 	}
+	if (f != l)
+		compute_weight(res, f, l);
 
 	qsort(res, n, sizeof(res[0]), srv_final_cmp);
 
@@ -263,6 +294,12 @@ dns_getsrvinfo(const char *zone)
 	free(res);
 
 	return (first);
+
+bad_answer:
+	for (i = 0; i < n; i++)
+		free(res[i]);
+	free(res);
+	return (NULL);
 }
 
 int
@@ -321,32 +358,30 @@ static void
 compute_weight(struct dns_srvinfo *d, int first, int last)
 {
 	int i, j;
-	int totalweight = 0;
-	int *chosen;
 
-	for (i = 0; i <= last; i++)
-		totalweight += d[i].weight;
+	/* Select one record at a time from the remaining priority group. */
+	for (i = first; i <= last; i++) {
+		uint32_t totalweight = 0;
+		uint32_t selected;
+		struct dns_srvinfo tmp;
 
-	if (totalweight == 0)
-		return;
-
-	chosen = xmalloc(sizeof(int) * (last - first + 1));
-
-	for (i = 0; i <= last; i++) {
-		for (;;) {
-			chosen[i] = random() % (d[i].weight * 100 / totalweight);
-			for (j = 0; j < i; j++) {
-				if (chosen[i] == chosen[j])
+		for (j = i; j <= last; j++)
+			totalweight += d[j].weight;
+		if (totalweight == 0) {
+			j = i + random() % (last - i + 1);
+		} else {
+			selected = random() % totalweight;
+			for (j = i; j <= last; j++) {
+				if (selected < d[j].weight)
 					break;
-			}
-			if (j == i) {
-				d[i].finalweight = chosen[i];
-				break;
+				selected -= d[j].weight;
 			}
 		}
+		tmp = d[i];
+		d[i] = d[j];
+		d[j] = tmp;
+		d[i].finalweight = last - i + 1;
 	}
-
-	free(chosen);
 }
 
 struct dns_srvinfo *
@@ -357,7 +392,7 @@ dns_getsrvinfo(const char *zone)
 	ldns_rr_list *srv;
 	struct dns_srvinfo *res;
 	int ancount, i;
-	int f, l, priority;
+	int f, l;
 
 	if (lres == NULL)
 		if (ldns_resolver_new_frm_file(&lres, NULL) != LDNS_STATUS_OK)
@@ -408,18 +443,18 @@ dns_getsrvinfo(const char *zone)
 	/* order by priority */
 	qsort(res, ancount, sizeof(res[0]), srv_priority_cmp);
 
-	priority = 0;
 	f = 0;
 	l = 0;
-	for (i = 0; i < ancount; i++) {
-		if (res[i].priority != priority) {
+	for (i = 1; i < ancount; i++) {
+		if (res[i].priority != res[f].priority) {
 			if (f != l)
 				compute_weight(res, f, l);
 			f = i;
-			priority = res[i].priority;
 		}
 		l = i;
 	}
+	if (f != l)
+		compute_weight(res, f, l);
 
 	/* Sort against priority then weight */
 	qsort(res, ancount, sizeof(res[0]), srv_final_cmp);
