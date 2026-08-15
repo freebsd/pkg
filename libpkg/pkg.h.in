@@ -1636,6 +1636,8 @@ const char *pkg_repo_key(struct pkg_repo *r);
 const char *pkg_repo_fingerprints(struct pkg_repo *r);
 const char *pkg_repo_ssh_args(struct pkg_repo *r);
 signature_t pkg_repo_signature_type(struct pkg_repo *r);
+/* ucl_object_emit'ed "extra" field of the repo's meta */
+char *pkg_repo_meta_extra(struct pkg_repo *r);
 bool pkg_repo_enabled(struct pkg_repo *r);
 bool pkg_repo_overridden(struct pkg_repo *r);
 mirror_t pkg_repo_mirror_type(struct pkg_repo *r);

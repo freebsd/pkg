@@ -1862,6 +1862,12 @@ pkg_repo_signature_type(struct pkg_repo *r)
 	return (r->signature_type);
 }
 
+char *
+pkg_repo_meta_extra(struct pkg_repo *r)
+{
+	return ucl_object_emit(r->meta->extra_fields, UCL_EMIT_CONFIG);
+}
+
 bool
 pkg_repo_enabled(struct pkg_repo *r)
 {
