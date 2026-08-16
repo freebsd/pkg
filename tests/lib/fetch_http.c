@@ -64,6 +64,7 @@ make_http_repo(const char *dead_url)
 
 ATF_TC_WITHOUT_HEAD(http_mirror_failover);
 ATF_TC_WITHOUT_HEAD(http_mirror_all_dead);
+ATF_TC_WITHOUT_HEAD(http_mirror_zero_retry);
 
 /*
  * The first mirror is unreachable; pkg must exhaust its per-server retry
@@ -236,10 +237,40 @@ ATF_TC_BODY(http_mirror_all_dead, tc)
 	pkg_shutdown();
 }
 
+/*
+ * With FETCH_RETRY=0 every failed server must be tried exactly once and the
+ * loop must terminate. Before the fix, retry was decremented to -1, the
+ * "retry > 0" branch was never taken and the "retry <= 0" case was not
+ * handled, leading to an infinite loop.
+ */
+ATF_TC_BODY(http_mirror_zero_retry, tc)
+{
+	struct pkg_repo repo;
+	struct fetch_item fi = {0};
+	int ret;
+
+	ATF_REQUIRE_EQ(0, setenv("FETCH_RETRY", "0", 1));
+	ATF_REQUIRE_EQ(EPKG_OK, pkg_ini(NULL, NULL, 0));
+
+	repo = make_http_repo(NULL);
+	pkg_repo_http_mirror_append(&repo, "http://127.0.0.1:1/", false);
+
+	fi.url = "http://pkg.test/target";
+
+	ret = libfetch_open(&repo, &fi);
+	ATF_REQUIRE_EQ_MSG(EPKG_FATAL, ret,
+	    "expected EPKG_FATAL with FETCH_RETRY=0, got %d", ret);
+	ATF_REQUIRE_MSG(repo.fh == NULL, "handle should not be open on failure");
+
+	libfetch_cleanup(&repo);
+	pkg_shutdown();
+}
+
 ATF_TP_ADD_TCS(tp)
 {
 	ATF_TP_ADD_TC(tp, http_mirror_failover);
 	ATF_TP_ADD_TC(tp, http_mirror_all_dead);
+	ATF_TP_ADD_TC(tp, http_mirror_zero_retry);
 
 	return (atf_no_error());
 }

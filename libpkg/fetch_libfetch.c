@@ -132,6 +132,8 @@ libfetch_open(struct pkg_repo *repo, struct fetch_item *fi)
 	xstring *fetchOpts = NULL;
 
 	max_retry = pkg_object_int(pkg_config_get("FETCH_RETRY"));
+	if (max_retry < 0)
+		max_retry = 0;
 	fetch_timeout = pkg_object_int(pkg_config_get("FETCH_TIMEOUT"));
 
 	fetchTimeout = (int)MIN(fetch_timeout, INT_MAX);
@@ -296,6 +298,10 @@ libfetch_open(struct pkg_repo *repo, struct fetch_item *fi)
 			--retry;
 			if (retry > 0)
 				continue;
+			if (max_retry <= 0) {
+				/* No retry budget at all, no failover. */
+				break;
+			}
 			/*
 			 * This server's retry budget is exhausted; move on to the
 			 * next server in the list and give it a fresh budget.
