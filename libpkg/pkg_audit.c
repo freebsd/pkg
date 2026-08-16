@@ -33,6 +33,7 @@
 #include <sys/statvfs.h>
 
 #include <archive.h>
+#include <archive_entry.h>
 #include <errno.h>
 #include <err.h>
 #include <fcntl.h>
@@ -246,6 +247,17 @@ pkg_audit_sandboxed_extract(int fd, void *ud)
 	}
 	else {
 		while ((archive_rc = archive_read_next_header(a, &ae)) == ARCHIVE_OK) {
+			/*
+			 * Enforce the limit on the total amount of data
+			 * extracted across all members, not per member.
+			 */
+			int64_t entry_size = archive_entry_size(ae);
+			if (entry_size >= 0 &&
+			    extracted + entry_size > cbdata->max_size) {
+				pkg_emit_error("audit database exceeds size limit");
+				rc = EPKG_FATAL;
+				goto cleanup;
+			}
 			while ((nread = archive_read_data(a, buf, sizeof(buf))) > 0) {
 				if (nread > cbdata->max_size - extracted) {
 					pkg_emit_error("audit database exceeds size limit");
