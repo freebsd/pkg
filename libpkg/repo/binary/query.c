@@ -1203,6 +1203,12 @@ pkg_repo_binary_file_which(struct pkg_repo *repo, const char *path, bool glob)
 		}
 
 		it = pkg_repo_binary_file_which_glob_new(repo);
+		if (it == NULL) {
+			for (size_t i = 0; i < pairs.len; i++)
+				free(pairs.d[i].path);
+			vec_free(&pairs);
+			return (NULL);
+		}
 		((struct pkg_repo_file_which_glob *)it->data)->pairs = pairs;
 		return (it);
 	} else {
