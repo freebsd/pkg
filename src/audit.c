@@ -266,11 +266,11 @@ exec_audit(int argc, char **argv)
 
 	if (pkg_audit_load(audit, audit_file) != EPKG_OK) {
 		if (errno == ENOENT)
-			warnx("vulnxml file %s does not exist. "
+			warnx("FreeBSD OSV file %s does not exist. "
 					"Try running 'pkg audit -F' first",
-			    audit_file == NULL ? "vuln.xml" : audit_file);
+			    audit_file == NULL ? "freebsd-osv.json" : audit_file);
 		else
-			warn("unable to open vulnxml file %s",
+			warn("unable to open OSV JSON file %s",
 					audit_file);
 
 		pkg_audit_free(audit);
@@ -386,7 +386,7 @@ exec_audit(int argc, char **argv)
 
 	pkg_drop_privileges();
 
-	/* Now we have vulnxml loaded and check list formed */
+	/* Now we have OSV loaded and check list formed */
 #ifdef HAVE_CAPSICUM
 #ifndef COVERAGE
 	if (cap_enter() < 0 && errno != ENOSYS) {
@@ -489,13 +489,13 @@ exec_audit(int argc, char **argv)
 		} else {
 			ucl_object_insert_key(top, ucl_object_fromint(vuln), "pkg_count", 9, false );
 			ucl_object_insert_key(top, vuln_objs, "packages", 8, false);
-			char *output = ucl_object_emit(top, raw);
+			unsigned char *output = ucl_object_emit(top, raw);
 			fprintf(stdout, "%s\n", output);
 			free(output);
 			ucl_object_unref(top);
 		}
 	} else {
-		warnx("cannot process vulnxml");
+		warnx("cannot process OSV");
 		ret = EXIT_FAILURE;
 		pkghash_destroy(check);
 	}

@@ -25,25 +25,53 @@ setup_packages() {
 
 # Helper: create a vuln XML with a vulnerability affecting test >=1.0 <2.0
 create_vuln_db() {
-	cat > vuln.xml << 'EOF'
-<?xml version="1.0" encoding="utf-8"?>
-<vuxml xmlns="http://www.vuxml.org/apps/vuxml-1">
-  <vuln vid="test-vuln-001">
-    <topic>Test vulnerability in test package</topic>
-    <affects>
-      <package>
-        <name>test</name>
-        <range>
-          <ge>1.0</ge>
-          <lt>2.0</lt>
-        </range>
-      </package>
-    </affects>
-    <references>
-      <cvename>CVE-2024-00001</cvename>
-    </references>
-  </vuln>
-</vuxml>
+	cat > vuln.json << 'EOF'
+[
+    {
+    "affected": [
+        {
+        "package": {
+            "ecosystem": "FreeBSD:ports",
+            "name": "test"
+        },
+        "ranges": [
+            {
+            "events": [
+                {
+                "introduced": "1.0"
+                },
+                {
+                "fixed": "2.0"
+                }
+            ],
+            "type": "ECOSYSTEM"
+            }
+        ]
+        }
+    ],
+    "database_specific": {
+        "discovery": "2024-01-01T00:00:00Z",
+        "references": {
+        "cvename": [
+            "CVE-2024-00001"
+        ]
+        },
+        "vid": "test-vuln-001"
+    },
+    "details": "Example description\n",
+    "id": "FreeBSD-2024-0001",
+    "modified": "2024-01-01T00:00:00Z",
+    "published": "2024-01-01T00:00:00Z",
+    "references": [
+        {
+        "type": "ADVISORY",
+        "url": "https://cveawg.mitre.org/api/cve/CVE-2024-00001"
+        }
+    ],
+    "schema_version": "1.7.0",
+    "summary": "Test vulnerability in test package"
+    }
+]
 EOF
 }
 
@@ -58,7 +86,7 @@ audit_vulnerable_body() {
 		-o match:"CVE-2024-00001" \
 		-o match:"1 problem" \
 		-s exit:1 \
-		pkg audit -f vuln.xml
+		pkg audit -f vuln.json
 }
 
 audit_not_vulnerable_body() {
@@ -71,54 +99,81 @@ audit_not_vulnerable_body() {
 	atf_check \
 		-o match:"0 problem" \
 		-s exit:0 \
-		pkg audit -f vuln.xml
+		pkg audit -f vuln.json
 }
 
 audit_empty_db_body() {
 	setup_packages
 
-	cat > vuln.xml << 'EOF'
-<?xml version="1.0" encoding="utf-8"?>
-<vuxml xmlns="http://www.vuxml.org/apps/vuxml-1">
-</vuxml>
+	cat > vuln.json << 'EOF'
+[]
 EOF
 
 	# Empty vuln db -> no problems
 	atf_check \
 		-o match:"0 problem" \
 		-s exit:0 \
-		pkg audit -f vuln.xml
+		pkg audit -f vuln.json
 }
 
 audit_out_of_range_body() {
 	setup_packages
 
 	# Vulnerability only affects versions < 1.0
-	cat > vuln.xml << 'EOF'
-<?xml version="1.0" encoding="utf-8"?>
-<vuxml xmlns="http://www.vuxml.org/apps/vuxml-1">
-  <vuln vid="old-vuln">
-    <topic>Old vulnerability</topic>
-    <affects>
-      <package>
-        <name>test</name>
-        <range>
-          <lt>1.0</lt>
-        </range>
-      </package>
-    </affects>
-    <references>
-      <cvename>CVE-2020-99999</cvename>
-    </references>
-  </vuln>
-</vuxml>
+	cat > vuln.json << 'EOF'
+[
+    {
+    "affected": [
+        {
+        "package": {
+            "ecosystem": "FreeBSD:ports",
+            "name": "test"
+        },
+        "ranges": [
+            {
+            "events": [
+                {
+                "introduced": "0"
+                },
+                {
+                "fixed": "1.0"
+                }
+            ],
+            "type": "ECOSYSTEM"
+            }
+        ]
+        }
+    ],
+    "database_specific": {
+        "discovery": "2020-12-31T00:00:00Z",
+        "references": {
+        "cvename": [
+            "CVE-2020-99999"
+        ]
+        },
+        "vid": "old-vuln"
+    },
+    "details": "Old vulnerability description\n",
+    "id": "FreeBSD-2020-0001",
+    "modified": "2020-12-31T00:00:00Z",
+    "published": "2020-12-31T00:00:00Z",
+    "references": [
+        {
+        "type": "ADVISORY",
+        "url": "https://cveawg.mitre.org/api/cve/CVE-2020-99999"
+        }
+    ],
+    "schema_version": "1.7.0",
+    "summary": "Old vulnerability"
+    }
+]
 EOF
 
 	# test-1.5 >= 1.0, so not affected
 	atf_check \
 		-o match:"0 problem" \
 		-s exit:0 \
-		pkg audit -f vuln.xml
+		pkg audit -f vuln.json
 }
 
 audit_quiet_body() {
@@ -129,7 +184,7 @@ audit_quiet_body() {
 	atf_check \
 		-o inline:"test-1.5\n" \
 		-s exit:1 \
-		pkg audit -qf vuln.xml
+		pkg audit -qf vuln.json
 }
 
 audit_recursive_body() {
@@ -153,7 +208,7 @@ EOF
 		-o match:"test-1.5 is vulnerable" \
 		-o match:"rdep" \
 		-s exit:1 \
-		pkg audit -rf vuln.xml
+		pkg audit -rf vuln.json
 }
 
 audit_raw_json_body() {
@@ -165,7 +220,7 @@ audit_raw_json_body() {
 	atf_check \
 		-o save:out.json \
 		-s exit:1 \
-		pkg audit -f vuln.xml -Rjson
+		pkg audit -f vuln.json -Rjson
 
 	# Must be valid JSON
 	atf_check -o ignore -e empty python3 -m json.tool out.json
@@ -194,7 +249,7 @@ audit_raw_ucl_body() {
 		-o match:"version.*1.5" \
 		-o match:"CVE-2024-00001" \
 		-s exit:1 \
-		pkg audit -f vuln.xml -R
+		pkg audit -f vuln.json -R
 }
 
 audit_pattern_body() {
@@ -210,53 +265,110 @@ audit_pattern_body() {
 	atf_check \
 		-o match:"1 problem" \
 		-s exit:1 \
-		pkg audit -f vuln.xml test
+		pkg audit -f vuln.json test
 
 	# Audit only the safe package by name
 	atf_check \
 		-o match:"0 problem" \
 		-s exit:0 \
-		pkg audit -f vuln.xml safe
+		pkg audit -f vuln.json safe
 }
 
 audit_multiple_vulns_body() {
 	setup_packages
 
 	# Two vulnerabilities affecting the same package
-	cat > vuln.xml << 'EOF'
-<?xml version="1.0" encoding="utf-8"?>
-<vuxml xmlns="http://www.vuxml.org/apps/vuxml-1">
-  <vuln vid="vuln-001">
-    <topic>First vulnerability</topic>
-    <affects>
-      <package>
-        <name>test</name>
-        <range>
-          <ge>1.0</ge>
-          <lt>2.0</lt>
-        </range>
-      </package>
-    </affects>
-    <references>
-      <cvename>CVE-2024-00001</cvename>
-    </references>
-  </vuln>
-  <vuln vid="vuln-002">
-    <topic>Second vulnerability</topic>
-    <affects>
-      <package>
-        <name>test</name>
-        <range>
-          <ge>1.0</ge>
-          <le>1.5</le>
-        </range>
-      </package>
-    </affects>
-    <references>
-      <cvename>CVE-2024-00002</cvename>
-    </references>
-  </vuln>
-</vuxml>
+	cat > vuln.json << 'EOF'
+[
+    {
+        "affected": [
+            {
+                "package": {
+                    "ecosystem": "FreeBSD:ports",
+                    "name": "test"
+                },
+                "ranges": [
+                    {
+                        "events": [
+                            {
+                                "introduced": "1.0"
+                            },
+                            {
+                                "fixed": "1.5"
+                            }
+                        ],
+                        "type": "ECOSYSTEM"
+                    }
+                ]
+            }
+        ],
+        "database_specific": {
+            "discovery": "2024-01-02T00:00:00Z",
+            "references": {
+                "cvename": [
+                    "CVE-2024-00002"
+                ]
+            },
+            "vid": "vuln-002"
+        },
+        "details": "Second vulnerability description\n",
+        "id": "FreeBSD-2024-0003",
+        "modified": "2024-01-02T00:00:00Z",
+        "published": "2024-01-02T00:00:00Z",
+        "references": [
+            {
+                "type": "ADVISORY",
+                "url": "https://cveawg.mitre.org/api/cve/CVE-2024-00002"
+            }
+        ],
+        "schema_version": "1.7.0",
+        "summary": "Second vulnerability"
+    },
+    {
+        "affected": [
+            {
+                "package": {
+                    "ecosystem": "FreeBSD:ports",
+                    "name": "test"
+                },
+                "ranges": [
+                    {
+                        "events": [
+                            {
+                                "introduced": "1.0"
+                            },
+                            {
+                                "fixed": "2.0"
+                            }
+                        ],
+                        "type": "ECOSYSTEM"
+                    }
+                ]
+            }
+        ],
+        "database_specific": {
+            "discovery": "2024-01-01T00:00:00Z",
+            "references": {
+                "cvename": [
+                    "CVE-2024-00001"
+                ]
+            },
+            "vid": "vuln-001"
+        },
+        "details": "First vulnerability description\n",
+        "id": "FreeBSD-2024-0004",
+        "modified": "2024-01-01T00:00:00Z",
+        "published": "2024-01-01T00:00:00Z",
+        "references": [
+            {
+                "type": "ADVISORY",
+                "url": "https://cveawg.mitre.org/api/cve/CVE-2024-00001"
+            }
+        ],
+        "schema_version": "1.7.0",
+        "summary": "First vulnerability"
+    }
+]
 EOF
 
 	# Both vulnerabilities should be reported
@@ -265,7 +377,7 @@ EOF
 		-o match:"CVE-2024-00002" \
 		-o match:"2 problem" \
 		-s exit:1 \
-		pkg audit -f vuln.xml
+		pkg audit -f vuln.json
 }
 
 audit_multiple_packages_body() {
@@ -276,24 +388,53 @@ audit_multiple_packages_body() {
 	atf_check -s exit:0 sh ${RESOURCEDIR}/test_subr.sh new_pkg "safe" "safe" "1.0" "/usr/local"
 	atf_check -o ignore pkg register -M safe.ucl
 
-	cat > vuln.xml << 'EOF'
-<?xml version="1.0" encoding="utf-8"?>
-<vuxml xmlns="http://www.vuxml.org/apps/vuxml-1">
-  <vuln vid="vuln-pkg-001">
-    <topic>Vulnerability in vuln package</topic>
-    <affects>
-      <package>
-        <name>vuln</name>
-        <range>
-          <le>2.0</le>
-        </range>
-      </package>
-    </affects>
-    <references>
-      <cvename>CVE-2024-99999</cvename>
-    </references>
-  </vuln>
-</vuxml>
+	cat > vuln.json << 'EOF'
+[
+    {
+        "affected": [
+            {
+                "package": {
+                    "ecosystem": "FreeBSD:ports",
+                    "name": "vuln"
+                },
+                "ranges": [
+                    {
+                        "events": [
+                            {
+                                "introduced": "0"
+                            },
+                            {
+                                "fixed": "2.0"
+                            }
+                        ],
+                        "type": "ECOSYSTEM"
+                    }
+                ]
+            }
+        ],
+        "database_specific": {
+            "discovery": "2024-12-31T00:00:00Z",
+            "references": {
+                "cvename": [
+                    "CVE-2024-99999"
+                ]
+            },
+            "vid": "vuln-pkg-001"
+        },
+        "details": "Vulnerability in vuln package description\n",
+        "id": "FreeBSD-2024-0002",
+        "modified": "2024-12-31T00:00:00Z",
+        "published": "2024-12-31T00:00:00Z",
+        "references": [
+            {
+                "type": "ADVISORY",
+                "url": "https://cveawg.mitre.org/api/cve/CVE-2024-99999"
+            }
+        ],
+        "schema_version": "1.7.0",
+        "summary": "Vulnerability in vuln package"
+    }
+]
 EOF
 
 	# Only vuln package should be flagged
@@ -301,13 +442,13 @@ EOF
 		-o match:"vuln-1.0 is vulnerable" \
 		-o match:"1 problem.*1 package" \
 		-s exit:1 \
-		pkg audit -f vuln.xml
+		pkg audit -f vuln.json
 
 	# Quiet mode should only list the vulnerable one
 	atf_check \
 		-o inline:"vuln-1.0\n" \
 		-s exit:1 \
-		pkg audit -qf vuln.xml
+		pkg audit -qf vuln.json
 }
 
 audit_glob_name_body() {
@@ -315,24 +456,53 @@ audit_glob_name_body() {
 	atf_check -s exit:0 sh ${RESOURCEDIR}/test_subr.sh new_pkg "perl5-DBI" "perl5-DBI" "1.5" "/usr/local"
 	atf_check -o ignore pkg register -M perl5-DBI.ucl
 
-	cat > vuln.xml << 'EOF'
-<?xml version="1.0" encoding="utf-8"?>
-<vuxml xmlns="http://www.vuxml.org/apps/vuxml-1">
-  <vuln vid="perl-vuln-001">
-    <topic>Vulnerability in perl DBI</topic>
-    <affects>
-      <package>
-        <name>perl5*-DBI</name>
-        <range>
-          <lt>2.0</lt>
-        </range>
-      </package>
-    </affects>
-    <references>
-      <cvename>CVE-2024-55555</cvename>
-    </references>
-  </vuln>
-</vuxml>
+	cat > vuln.json << 'EOF'
+[
+    {
+        "affected": [
+            {
+                "package": {
+                    "ecosystem": "FreeBSD:ports",
+                    "name": "perl5-DBI"
+                },
+                "ranges": [
+                    {
+                        "events": [
+                            {
+                                "introduced": "0"
+                            },
+                            {
+                                "fixed": "2.0"
+                            }
+                        ],
+                        "type": "ECOSYSTEM"
+                    }
+                ]
+            }
+        ],
+        "database_specific": {
+            "discovery": "2024-06-15T00:00:00Z",
+            "references": {
+                "cvename": [
+                    "CVE-2024-55555"
+                ]
+            },
+            "vid": "perl-vuln-001"
+        },
+        "details": "Vulnerability in perl DBI description\n",
+        "id": "FreeBSD-2024-0001",
+        "modified": "2024-06-15T00:00:00Z",
+        "published": "2024-06-15T00:00:00Z",
+        "references": [
+            {
+                "type": "ADVISORY",
+                "url": "https://cveawg.mitre.org/api/cve/CVE-2024-55555"
+            }
+        ],
+        "schema_version": "1.7.0",
+        "summary": "Vulnerability in perl DBI"
+    }
+]
 EOF
 
 	# Glob pattern in vuln DB should match perl5-DBI
@@ -340,7 +510,7 @@ EOF
 		-o match:"perl5-DBI-1.5 is vulnerable" \
 		-o match:"CVE-2024-55555" \
 		-s exit:1 \
-		pkg audit -f vuln.xml
+		pkg audit -f vuln.json
 }
 
 audit_no_db_body() {
@@ -350,5 +520,5 @@ audit_no_db_body() {
 	atf_check \
 		-e match:"does not exist" \
 		-s exit:1 \
-		pkg audit -f /nonexistent/vuln.xml
+		pkg audit -f /nonexistent/vuln.json
 }

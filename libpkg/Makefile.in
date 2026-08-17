@@ -68,8 +68,6 @@ LOCAL_CFLAGS=	-I$(top_srcdir)/compat \
 		-I$(top_srcdir)/external/sqlite \
 		-I$(top_srcdir)/external/uthash \
 		-I$(top_srcdir)/external/picosat \
-		-I$(top_srcdir)/external/yxml \
-		-I$(top_srcdir)/external/uthash \
 		-I$(top_srcdir)/external/include \
 		-I$(top_srcdir)/external/libucl/include \
 		-I$(top_srcdir)/external/lua/src \
@@ -96,7 +94,6 @@ LOCAL_LDFLAGS=	@waflags@ \
 		-L$(top_builddir)/external/libucl -lucl_pic \
 		-L$(top_builddir)/external/libpicosat -lpicosat_pic \
 		-L$(top_builddir)/external/liblinenoise -llinenoise_pic \
-		-L$(top_builddir)/external/libyxml -lyxml_pic \
 		-L$(top_builddir)/external/libblake2 -lblake2_pic \
 		-L$(top_builddir)/compat -lbsd_compat_pic \
 		-L$(top_builddir)/external/liblua -llua_pic \
@@ -111,7 +108,6 @@ STATIC_LIBS=	@REPOS_STATIC_LIBS@ \
 		$(top_builddir)/external/libucl/libucl.a \
 		$(top_builddir)/external/libpicosat/libpicosat.a \
 		$(top_builddir)/external/liblinenoise/liblinenoise.a \
-		$(top_builddir)/external/libyxml/libyxml.a \
 		$(top_builddir)/external/libblake2/libblake2.a \
 		$(top_builddir)/external/liblua/liblua.a \
 		$(top_builddir)/compat/libbsd_compat.a \
