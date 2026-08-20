@@ -333,15 +333,11 @@ if pkg_config_init; then
 		elif ! cc_check_progs kyua; then
 			user_error "Cannot find kyua"
 		else
-			define PKG_ATF_C_CFLAGS "$(pkg-config atf-c --cflags)"
-			define PKG_ATF_C_LDFLAGS "$(pkg-config atf-c --libs-only-L)"
-			define PKG_ATF_C_LIBS "$(pkg-config atf-c --libs-only-l)"
-
 			define TESTS 1
 			msg "test suite will be built"
 		fi
 		user_notice "ATF_C_CFLAGS=$(get_define PKG_ATF_C_CFLAGS)"
-		user_notice "ATF_C_LDLAGS=$(get_define PKG_ATF_C_LDFLAGS)"
+		user_notice "ATF_C_LDFLAGS=$(get_define PKG_ATF_C_LDFLAGS)"
 		user_notice "ATF_C_LIBS=$(get_define PKG_ATF_C_LIBS)"
 	else
 		msg "Skipping test suite"
