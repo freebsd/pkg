@@ -1065,8 +1065,6 @@ bool
 pkg_jobs_need_upgrade(charv_t *system_shlibs, struct pkg *rp, struct pkg *lp)
 {
 	int ret, ret1, ret2;
-	struct pkg_kv *lo = NULL, *ro = NULL;
-	struct pkg_dep *ld = NULL, *rd = NULL;
 	struct pkg_conflict *lc = NULL, *rc = NULL;
 
 	/* If no local package, then rp is obviously need to be added */
@@ -1113,82 +1111,93 @@ pkg_jobs_need_upgrade(charv_t *system_shlibs, struct pkg *rp, struct pkg *lp)
 	if (pkg_object_bool(pkg_config_get("PKG_REINSTALL_ON_OPTIONS_CHANGE"))) {
 		sb_t optdiff = sb_init();
 		int ndiffs = 0;
-		for (;;) {
-			ret1 = pkg_options(rp, &ro);
-			ret2 = pkg_options(lp, &lo);
-			if (ret1 != ret2) {
-				if (ro == NULL) {
-					sb_printf(&optdiff, "%s%s (removed)",
-					    ndiffs ? ", " : "", lo->key);
-				} else if (lo == NULL) {
-					sb_printf(&optdiff, "%s%s (added)",
-					    ndiffs ? ", " : "", ro->key);
+		size_t i = 0, j = 0;
+		size_t cntl = lp->options.len;
+		size_t cntr = rp->options.len;
+		while (i < cntl || j < cntr) {
+			int cmp;
+			if (i >= cntl) cmp = 1;
+			else if (j >= cntr) cmp = -1;
+			else cmp = strcmp(lp->options.d[i]->key,
+			    rp->options.d[j]->key);
+			if (cmp < 0) {
+				/* only in local: option removed */
+				sb_printf(&optdiff, "%s%s (removed)",
+				    ndiffs ? ", " : "", lp->options.d[i]->key);
+				ndiffs++; i++;
+			} else if (cmp > 0) {
+				/* only in remote: option added */
+				sb_printf(&optdiff, "%s%s (added)",
+				    ndiffs ? ", " : "", rp->options.d[j]->key);
+				ndiffs++; j++;
+			} else {
+				/* same option: compare values */
+				if (!STREQ(lp->options.d[i]->value,
+				    rp->options.d[j]->value)) {
+					sb_printf(&optdiff, "%s%s (%s -> %s)",
+					    ndiffs ? ", " : "", lp->options.d[i]->key,
+					    lp->options.d[i]->value,
+					    rp->options.d[j]->value);
+					ndiffs++;
 				}
-				ndiffs++;
-				/* lists have different lengths, done */
-				break;
-			}
-			if (ret1 != EPKG_OK)
-				break;
-			if (!STREQ(lo->key, ro->key)) {
-				sb_printf(&optdiff, "%s%s (removed), %s (added)",
-				    ndiffs ? ", " : "", lo->key, ro->key);
-				ndiffs++;
-			} else if (!STREQ(lo->value, ro->value)) {
-				sb_printf(&optdiff, "%s%s (%s -> %s)",
-				    ndiffs ? ", " : "", lo->key,
-				    lo->value, ro->value);
-				ndiffs++;
+				i++; j++;
 			}
 		}
 		if (ndiffs > 0) {
-
 			free(rp->reason);
 			xasprintf(&rp->reason, "option changed: %s",
 			    sb_str(&optdiff));
 			sb_fini(&optdiff);
 			return (true);
 		}
+		sb_fini(&optdiff);
 	}
 
 	/* What about the direct deps */
 
 	sb_t diff = sb_init();
 	int nd = 0;
-	for (;;) {
-		ret1 = pkg_deps(rp, &rd);
-		ret2 = pkg_deps(lp, &ld);
-		if (ret1 != ret2) {
-			if (rd == NULL) {
-				sb_printf(&diff, "%s%s (removed)",
-				    nd ? ", " : "", ld->name);
-			} else if (ld == NULL) {
-				sb_printf(&diff, "%s%s (added)",
-				    nd ? ", " : "", rd->name);
+	size_t li = 0, ri = 0;
+	size_t ll = lp->depends.len;
+	size_t rl = rp->depends.len;
+	while (li < ll || ri < rl) {
+		int cmp;
+		if (li >= ll) cmp = 1;
+		else if (ri >= rl) cmp = -1;
+		else cmp = strcmp(lp->depends.d[li].name,
+		    rp->depends.d[ri].name);
+		if (cmp < 0) {
+			/* only in local: dependency removed */
+			sb_printf(&diff, "%s%s (removed)",
+			    nd ? ", " : "", lp->depends.d[li].name);
+			nd++; li++;
+		} else if (cmp > 0) {
+			/* only in remote: dependency added */
+			sb_printf(&diff, "%s%s (added)",
+			    nd ? ", " : "", rp->depends.d[ri].name);
+			nd++; ri++;
+		} else {
+			/* same dependency: compare origins (may be NULL) */
+			const char *lorig = lp->depends.d[li].origin;
+			const char *rorig = rp->depends.d[ri].origin;
+			if (lorig != rorig &&
+			    (lorig == NULL || rorig == NULL ||
+			     strcmp(lorig, rorig) != 0)) {
+				sb_printf(&diff, "%s%s (origin changed)",
+				    nd ? ", " : "", rp->depends.d[ri].name);
+				nd++;
 			}
-			nd++;
-			break;
-		}
-		if (ret1 != EPKG_OK)
-			break;
-		if (!STREQ(rd->name, ld->name)) {
-			sb_printf(&diff, "%s%s (removed), %s (added)",
-			    nd ? ", " : "", ld->name, rd->name);
-			nd++;
-		} else if (!STREQ(rd->origin, ld->origin)) {
-			sb_printf(&diff, "%s%s (origin changed)",
-			    nd ? ", " : "", rd->name);
-			nd++;
+			li++; ri++;
 		}
 	}
 	if (nd > 0) {
-
 		free(rp->reason);
 		xasprintf(&rp->reason, "direct dependency changed: %s",
 		    sb_str(&diff));
 		sb_fini(&diff);
 		return (true);
 	}
+	sb_fini(&diff);
 
 	/* Conflicts */
 	for (;;) {
