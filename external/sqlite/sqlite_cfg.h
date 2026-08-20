@@ -7,6 +7,9 @@
 #define HAVE_LSTAT 1
 #define HAVE_READLINK 1
 #define HAVE_STRERROR_R 1
+#define HAVE_NANOSLEEP 1
+#define HAVE_PREAD 1
+#define HAVE_PWRITE 1
 #define HAVE_STDINT_H 1
 #define HAVE_INTTYPES_H 1
 #ifndef __APPLE__

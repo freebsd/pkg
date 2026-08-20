@@ -165,26 +165,14 @@ else
 	define_feature atomic_builtins 0
 fi
 
-# Required functions
-for _fct in memmove usleep pread pwrite; do
-	cc_check_functions "$_fct"
-	_FCTUP=$(echo "$_fct" | tr '[:lower:]' '[:upper:]')
-	if [ "$(get_define "HAVE_${_FCTUP}")" != "1" ]; then
-		user_error "Cannot find $_fct"
-	fi
-done
-
 # Struct members
 cc_with "-includes netinet/in.h" cc_check_members "struct sockaddr_in.sin_len"
 cc_with "-includes sys/stat.h" cc_check_members "struct stat.st_mtim" "struct stat.st_flags"
 
-# SQLite check
-cc_check_functions strchrnul
-
 # pkg function checks
 cc_check_functions arc4random arc4random_stir chflagsat \
 	closefrom fopencookie funopen getprogname \
-	strtofflags strtonum utimensat __res_setservers \
+	strtofflags strtonum __res_setservers \
 	fflagstostr strchrnul copy_file_range reallocf
 
 # humanize_number declaration
