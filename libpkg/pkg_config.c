@@ -1241,7 +1241,7 @@ pkg_ini(const char *path, const char *reposdir, pkg_init_flags flags)
 		return (EPKG_FATAL);
 	}
 
-	if (parsed != false) {
+	if (parsed) {
 		pkg_emit_error("pkg_init() must only be called once");
 		return (EPKG_FATAL);
 	}
