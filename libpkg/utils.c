@@ -58,10 +58,6 @@
 #include <pwd.h>
 #include <grp.h>
 
-#if defined(__linux__) && __has_include(<linux/close_range.h>)
-#include <linux/close_range.h>
-#endif
-
 #include <bsd_compat.h>
 
 #include "pkg.h"
@@ -556,11 +552,7 @@ pkg_closefrom_proc(int lowfd)
 void
 pkg_closefrom(int lowfd)
 {
-#if defined(__linux__)
-	if (close_range(lowfd, ~0U, CLOSE_RANGE_UNSHARE) == 0)
-		return;
-	pkg_closefrom_proc(lowfd);
-#elif defined(__illumos__) || defined(__sun)
+#if defined(__linux__) || defined(__illumos__) || defined(__sun)
 	pkg_closefrom_proc(lowfd);
 #elif defined(HAVE_CLOSEFROM)
 	closefrom(lowfd);
