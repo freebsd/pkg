@@ -89,20 +89,12 @@
 #include <sys/fcntl.h>
 #include <sys/stat.h>
 
-#if !HAVE_HUMANIZE_NUMBER
-#include "humanize_number.h"
-#endif
-
 #ifndef AT_FDCWD
 #define AT_FDCWD		-100
 #endif
 
 #ifndef AT_SYMLINK_NOFOLLOW
 #define	AT_SYMLINK_NOFOLLOW	0x200
-#endif
-
-#if !HAVE_STRTONUM
-long long strtonum(const char *, long long, long long, const char **);
 #endif
 
 #ifndef _PATH_GROUP
@@ -145,15 +137,6 @@ long long strtonum(const char *, long long, long long, const char **);
 # endif
 #endif
 
-#if !HAVE_FUNOPEN
-#if !HAVE_FOPENCOOKIE
-# error "Your system has neither funopen nor fopencookie, cannot continue"
-#endif
-FILE * funopen(const void *cookie, int (*readfn)(void *, char *, int),
-         int (*writefn)(void *, const char *, int),
-         off_t (*seekfn)(void *, off_t, int), int (*closefn)(void *));
-#endif
-
 #if !HAVE_GETPROGNAME
 # if defined (__linux__) && defined (__GLIBC__)
 extern char *program_invocation_short_name;
@@ -164,10 +147,6 @@ extern char *__progname;
 # else
 #  error "Don't know how to replace getprogname()"
 # endif
-#endif
-
-#if !HAVE_REALLOCF
-void *reallocf(void *, size_t);
 #endif
 
 #endif

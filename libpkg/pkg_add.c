@@ -395,25 +395,10 @@ set_attr_tofd(int fd, const char *path, mode_t perm, uid_t uid, gid_t gid,
 static void
 fill_timespec_buf(const struct stat *aest, struct timespec tspec[2])
 {
-#ifdef HAVE_STRUCT_STAT_ST_MTIM
 	tspec[0].tv_sec = aest->st_atim.tv_sec;
 	tspec[0].tv_nsec = 0;
 	tspec[1].tv_sec = aest->st_mtim.tv_sec;
 	tspec[1].tv_nsec = 0;
-#else
-# if defined(_DARWIN_C_SOURCE) || defined(__APPLE__)
-	tspec[0].tv_sec = aest->st_atimespec.tv_sec;
-	tspec[0].tv_nsec = 0;
-	tspec[1].tv_sec = aest->st_mtimespec.tv_sec;
-	tspec[1].tv_nsec = 0;
-# else
-	/* Portable unix version */
-	tspec[0].tv_sec = aest->st_atime;
-	tspec[0].tv_nsec = 0;
-	tspec[1].tv_sec = aest->st_mtime;
-	tspec[1].tv_nsec = 0;
-# endif
-#endif
 }
 
 static void
@@ -2008,20 +1993,8 @@ pkg_add_fromdir(struct pkg *pkg, const char *src, struct pkgdb *db __unused)
 		} else {
 			d->gid = st.st_gid;
 		}
-#ifdef HAVE_STRUCT_STAT_ST_MTIM
 		d->time[0] = st.st_atim;
 		d->time[1] = st.st_mtim;
-#else
-#if defined(_DARWIN_C_SOURCE) || defined(__APPLE__)
-		d->time[0] = st.st_atimespec;
-		d->time[1] = st.st_mtimespec;
-#else
-		d->time[0].tv_sec = st.st_atime;
-		d->time[0].tv_nsec = 0;
-		d->time[1].tv_sec = st.st_mtime;
-		d->time[1].tv_nsec = 0;
-#endif
-#endif
 
 		if (create_dir(&context, d, &tempdirs) == EPKG_FATAL) {
 			retcode = EPKG_FATAL;
@@ -2090,20 +2063,8 @@ pkg_add_fromdir(struct pkg *pkg, const char *src, struct pkgdb *db __unused)
 			f->perm = st.st_mode & ~S_IFMT;
 		if (f->uid == 0 && install_as_user)
 			f->uid = st.st_uid;
-#ifdef HAVE_STRUCT_STAT_ST_MTIM
 		f->time[0] = st.st_atim;
 		f->time[1] = st.st_mtim;
-#else
-#if defined(_DARWIN_C_SOURCE) || defined(__APPLE__)
-		f->time[0] = st.st_atimespec;
-		f->time[1] = st.st_mtimespec;
-#else
-		f->time[0].tv_sec = st.st_atime;
-		f->time[0].tv_nsec = 0;
-		f->time[1].tv_sec = st.st_mtime;
-		f->time[1].tv_nsec = 0;
-#endif
-#endif
 
 		if (S_ISLNK(st.st_mode)) {
 			if ((link_len = readlinkat(fromfd,

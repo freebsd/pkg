@@ -148,32 +148,14 @@ if [ "$(get_define HAVE_ZSTD_VERSIONNUMBER)" = "1" ]; then
 	define ZSTDLIB "-lprivatezstd"
 fi
 
-# Atomics
-msg_checking "Checking for atomic builtins... "
-if cctest '
-	volatile unsigned long val = 1;
-	__sync_synchronize();
-	__sync_val_compare_and_swap(&val, 1, 0);
-	__sync_add_and_fetch(&val, 1);
-	__sync_sub_and_fetch(&val, 1);
-	return 0;
-'; then
-	msg_result "ok"
-	define_feature atomic_builtins
-else
-	msg_result "no"
-	define_feature atomic_builtins 0
-fi
-
 # Struct members
-cc_with "-includes netinet/in.h" cc_check_members "struct sockaddr_in.sin_len"
-cc_with "-includes sys/stat.h" cc_check_members "struct stat.st_mtim" "struct stat.st_flags"
+cc_with "-includes sys/stat.h" cc_check_members "struct stat.st_flags"
 
 # pkg function checks
 cc_check_functions arc4random arc4random_stir chflagsat \
 	closefrom fopencookie funopen getprogname \
 	strtofflags strtonum __res_setservers \
-	fflagstostr strchrnul copy_file_range reallocf
+	fflagstostr strchrnul copy_file_range
 
 # humanize_number declaration
 cc_with "-includes libutil.h" cc_check_decls humanize_number
@@ -365,7 +347,7 @@ define_append CONF_GEN_FILES Makefile.in
 
 for _dir in external/libblake2 external/libpicosat \
 	external/liblinenoise external/libsqlite external/libfetch \
-	external compat libpkg libpkg/repo libpkg/repo/binary src \
+	external libpkg libpkg/repo libpkg/repo/binary src \
 	external/libucl external/libelf tests docs tests/fuzz \
 	external/liblua external/libyxml scripts external/libder \
 	external/libecc; do

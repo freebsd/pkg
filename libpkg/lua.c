@@ -336,20 +336,8 @@ lua_pkg_copy(lua_State *L)
 	close(fd1);
 	close(fd2);
 
-#ifdef HAVE_STRUCT_STAT_ST_MTIM
 	ts[0] = s1.st_atim;
 	ts[1] = s1.st_mtim;
-#else
-#if defined(_DARWIN_C_SOURCE) || defined(__APPLE__)
-	ts[0] = s1.st_atimespec;
-	ts[1] = s1.st_mtimespec;
-#else
-	ts[0].tv_sec = s1.st_atime;
-	ts[0].tv_nsec = 0;
-	ts[1].tv_sec = s1.st_mtime;
-	ts[1].tv_nsec = 0;
-#endif
-#endif
 
 	if (set_attrsat(rootfd, RELATIVE_PATH(dst), s1.st_mode, s1.st_uid,
 	  s1.st_gid, &ts[0], &ts[1]) != EPKG_OK) {

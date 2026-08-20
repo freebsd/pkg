@@ -100,7 +100,6 @@ LOCAL_LDFLAGS=	@waflags@ \
 		-L$(top_builddir)/external/liblinenoise -llinenoise_pic \
 		-L$(top_builddir)/external/libyxml -lyxml_pic \
 		-L$(top_builddir)/external/libblake2 -lblake2_pic \
-		-L$(top_builddir)/compat -lbsd_compat_pic \
 		-L$(top_builddir)/external/liblua -llua_pic \
 		-L$(top_builddir)/external/libder -lder_pic \
 		-L$(top_builddir)/external/libecc -lecc_pic \
@@ -116,7 +115,6 @@ STATIC_LIBS=	@REPOS_STATIC_LIBS@ \
 		$(top_builddir)/external/libyxml/libyxml.a \
 		$(top_builddir)/external/libblake2/libblake2.a \
 		$(top_builddir)/external/liblua/liblua.a \
-		$(top_builddir)/compat/libbsd_compat.a \
 		$(top_builddir)/external/libder/libder.a \
 		$(top_builddir)/external/libecc/libecc.a \
 		$(top_builddir)/external/libfetch/libfetch.a \
