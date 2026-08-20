@@ -5,6 +5,7 @@ packages:
   - g++
   - make
   - pkgconf
+  - atf-dev
   - kyua
   - gcompat
   - tcl

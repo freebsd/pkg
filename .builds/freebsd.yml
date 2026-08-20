@@ -2,6 +2,7 @@ image: freebsd/latest
 packages:
   - pkgconf
   - python3
+  - atf
 sources:
   - https://github.com/freebsd/pkg
 tasks:
