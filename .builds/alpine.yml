@@ -22,7 +22,7 @@ tasks:
   - configure: |
       mkdir build
       cd build
-      ../pkg/configure
+      ../pkg/configure --with-tests
   - build: |
       cd build
       make

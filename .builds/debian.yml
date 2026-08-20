@@ -25,7 +25,7 @@ tasks:
   - configure: |
       mkdir build
       cd build
-      ../pkg/configure --default-format=txz --with-libarchive.pc --with-openssl.pc
+      ../pkg/configure --default-format=txz --with-libarchive.pc --with-openssl.pc --with-tests
   - build: |
       cd build
       make
