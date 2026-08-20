@@ -1865,7 +1865,7 @@ pkg_repo_signature_type(struct pkg_repo *r)
 char *
 pkg_repo_meta_extra(struct pkg_repo *r)
 {
-	return ucl_object_emit(r->meta->extra_fields, UCL_EMIT_CONFIG);
+	return ((char *)ucl_object_emit(r->meta->extra_fields, UCL_EMIT_CONFIG));
 }
 
 bool

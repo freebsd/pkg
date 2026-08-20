@@ -9,6 +9,7 @@ TESTS=	\
 	pkg_cpe \
 	pkg_jobs_need_upgrade \
 	pkg_printf \
+	pkg_repo_meta \
 	pkg_validation \
 	pkg_osvf \
 	pkg \
@@ -138,6 +139,7 @@ shlibs_OBJS=	lib/shlibs.o
 kv_OBJS=	lib/kv.o
 pkg_OBJS=	lib/pkg.o
 pkg_osvf_OBJS=	lib/pkg_osvf.o
+pkg_repo_meta_OBJS=	lib/pkg_repo_meta.o
 rcscripts_OBJS=	lib/rcscripts.o
 fetch_file_OBJS=	lib/fetch_file.o
 fetch_http_OBJS=	lib/fetch_http.o
@@ -155,6 +157,7 @@ SRCS=	\
 	$(pkg_jobs_need_upgrade_OBJS:.o=.c) \
 	$(pkg_validation_OBJS:.o=.c) \
 	$(pkg_osvf_OBJS:.o=.c) \
+	$(pkg_repo_meta_OBJS:.o=.c) \
 	$(ssh_OBJS:.o=.c) \
 	$(utils_OBJS:.o=.c) \
 	$(metalog_OBJS:.o=.c) \

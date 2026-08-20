@@ -167,6 +167,7 @@ global:
 	pkg_repo_fingerprints;
 	pkg_repo_ip_version;
 	pkg_repo_key;
+	pkg_repo_meta_extra;
 	pkg_repo_mirror_type;
 	pkg_repo_name;
 	pkg_repo_overridden;
