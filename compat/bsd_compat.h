@@ -88,7 +88,6 @@
 
 #include <sys/fcntl.h>
 #include <sys/stat.h>
-#include "endian_util.h"
 
 #if !HAVE_HUMANIZE_NUMBER
 #include "humanize_number.h"

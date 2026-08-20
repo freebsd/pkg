@@ -21,6 +21,7 @@
 
 #include <err.h>
 #include <getopt.h>
+#include <inttypes.h>
 #include <stdio.h>
 #include <stdlib.h>
 #include <pkg.h>

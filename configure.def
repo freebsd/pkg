@@ -216,22 +216,6 @@ if ! have_func dlclose; then
 	fi
 fi
 
-# Endian functions
-for _fct in be16dec be16enc be32dec be32enc be64dec be64enc \
-            le16dec le16enc le32dec le32enc le64dec le64enc; do
-	_FCTUP=$(echo "$_fct" | tr '[:lower:]' '[:upper:]')
-	for _header in endian.h sys/endian.h machine/endian.h; do
-		cc_check_includes "$_header" >/dev/null 2>&1 || continue
-		_HDR=$(echo "$_header" | tr '[:lower:]/.' '[:upper:]__')
-		if [ "$(get_define "HAVE_${_HDR}")" = "1" ]; then
-			cc_with "-includes $_header" cc_check_decls "$_fct"
-			if [ "$(get_define "HAVE_DECL_${_FCTUP}")" = "1" ]; then
-				break
-			fi
-		fi
-	done
-done
-
 # Darwin / libelf
 case "$_host" in
 	*-darwin*)

@@ -9,13 +9,6 @@
 #include "pkg_config.h"
 #endif
 
-#if __has_include(<sys/endian.h>)
-#include <sys/endian.h>
-#elif __has_include(<endian.h>)
-#include <endian.h>
-#elif __has_include(<machine/endian.h>)
-#include <machine/endian.h>
-#endif
 #include <sys/types.h>
 #if __has_include(<sys/elf_common.h>) && !defined(__DragonFly__)
 #include <sys/elf_common.h>
@@ -45,6 +38,7 @@
 #include "private/pkg_abi.h"
 #include "private/event.h"
 #include "private/binfmt.h"
+#include "private/endian.h"
 
 #ifndef NT_ABI_TAG
 #define NT_ABI_TAG 1
@@ -547,12 +541,12 @@ elf_note_analyse(Elf_Data *data, GElf_Ehdr *elfhdr, struct pkg_abi *abi)
 		src += roundup2(note.n_namesz, 4);
 		if (elfhdr->e_ident[EI_DATA] == ELFDATA2MSB) {
 			for (int wdndx = 0; wdndx < 4; wdndx++) {
-				gnu_abi_tag[wdndx] = be32dec(src);
+				gnu_abi_tag[wdndx] = pkg_be32dec(src);
 				src += 4;
 			}
 		} else {
 			for (int wdndx = 0; wdndx < 4; wdndx++) {
-				gnu_abi_tag[wdndx] = le32dec(src);
+				gnu_abi_tag[wdndx] = pkg_le32dec(src);
 				src += 4;
 			}
 		}
@@ -574,9 +568,9 @@ elf_note_analyse(Elf_Data *data, GElf_Ehdr *elfhdr, struct pkg_abi *abi)
 		}
 		src += roundup2(note.n_namesz, 4);
 		if (elfhdr->e_ident[EI_DATA] == ELFDATA2MSB)
-			version = be32dec(src);
+			version = pkg_be32dec(src);
 		else
-			version = le32dec(src);
+			version = pkg_le32dec(src);
 	}
 
 	if (version_style == 2) {

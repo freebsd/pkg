@@ -29,13 +29,6 @@
 #include "pkg_config.h"
 #endif
 
-#if __has_include(<sys/endian.h>)
-#include <sys/endian.h>
-#elif __has_include(<endian.h>)
-#include <endian.h>
-#elif __has_include(<machine/endian.h>)
-#include <machine/endian.h>
-#endif
 #include <errno.h>
 #include <fcntl.h>
 #include <stdio.h>
@@ -46,6 +39,7 @@
 #include <bsd_compat.h>
 #include <xmalloc.h>
 #include "private/binfmt_macho.h"
+#include "private/endian.h"
 
 /**
  * Minimal Mach-O binary file parser for both FAT as well as plain binaries with
@@ -87,9 +81,9 @@ read_u32(const int fd, const bool swap, uint32_t *dest)
 		return x;
 	}
 	if (swap) {
-		*dest = le32dec(buf);
+		*dest = pkg_le32dec(buf);
 	} else {
-		*dest = be32dec(buf);
+		*dest = pkg_be32dec(buf);
 	}
 	return x;
 }
@@ -103,9 +97,9 @@ read_u64(const int fd, const bool swap, uint64_t *dest)
 		return x;
 	}
 	if (swap) {
-		*dest = le64dec(buf);
+		*dest = pkg_le64dec(buf);
 	} else {
-		*dest = be64dec(buf);
+		*dest = pkg_be64dec(buf);
 	}
 	return x;
 }
