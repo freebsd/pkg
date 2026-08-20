@@ -561,8 +561,11 @@ event_cb_integritycheck_finished(struct pkg_event *ev, int *debug __unused)
 	if (quiet)
 		return (0);
 	printf(" done (%d conflicting)\n", ev->e_integrity_finished.conflicting);
-	if (conflicts.len != 0)
-		printf("%s", sb_get(&conflicts));
+	if (conflicts.len != 0) {
+		char *c = sb_get(&conflicts);
+		printf("%s", c);
+		free(c);
+	}
 	return (0);
 }
 
