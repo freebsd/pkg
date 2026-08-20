@@ -26,7 +26,9 @@ TESTS=	\
 	rcscripts \
 	fetch_file \
 	fetch_http \
-	reaper
+	reaper \
+	sb \
+	stringset
 
 TESTS_SH= \
 	frontend/audit.sh \
@@ -145,6 +147,8 @@ rcscripts_OBJS=	lib/rcscripts.o
 fetch_file_OBJS=	lib/fetch_file.o
 fetch_http_OBJS=	lib/fetch_http.o
 reaper_OBJS=	lib/reaper.o
+sb_OBJS=	lib/sb.o
+stringset_OBJS=	lib/stringset.o
 
 SRCS=	\
 	$(packing_OBJS:.o=.c) \
@@ -172,7 +176,9 @@ SRCS=	\
 	$(rcscripts_OBJS:.o=.c) \
 	$(fetch_file_OBJS:.o=.c) \
 	$(fetch_http_OBJS:.o=.c) \
-	$(reaper_OBJS:.o=.c)
+	$(reaper_OBJS:.o=.c) \
+	$(sb_OBJS:.o=.c) \
+	$(stringset_OBJS:.o=.c)
 
 include $(MK)/common.mk
 
