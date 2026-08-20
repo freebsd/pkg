@@ -1749,7 +1749,8 @@ http_request_body(struct url *URL, const char *op, struct url_stat *us,
 	char hbuf[MAXHOSTNAMELEN + 7], *host;
 	conn_t *conn;
 	struct url *url, *new;
-	int chunked, conn_close, direct, from_cache, ims, noredirect, verbose;
+	int chunked, close_after, conn_close, direct, from_cache, ims, noredirect,
+	    verbose;
 	int e, i, n, val;
 	off_t offset, clength, length, size;
 	time_t mtime;
@@ -1768,6 +1769,8 @@ http_request_body(struct url *URL, const char *op, struct url_stat *us,
 	init_http_auth_challenges(&proxy_challenges);
 
 	direct = CHECK_FLAG('d');
+	/* The internal c flag requests a non-reusable response stream. */
+	close_after = CHECK_FLAG('c');
 	noredirect = CHECK_FLAG('A');
 	verbose = CHECK_FLAG('v');
 	ims = CHECK_FLAG('i');
@@ -2224,7 +2227,8 @@ http_request_body(struct url *URL, const char *op, struct url_stat *us,
 	URL->length = clength;
 
 	/* wrap it up in a FILE */
-	if ((f = http_funopen(conn, chunked, !conn_close && purl == NULL, clength)) == NULL) {
+	if ((f = http_funopen(conn, chunked,
+	    !conn_close && !close_after && purl == NULL, clength)) == NULL) {
 		fetch_syserr();
 		goto ouch;
 	}
