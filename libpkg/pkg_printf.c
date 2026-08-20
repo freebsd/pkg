@@ -927,8 +927,14 @@ format_time_t(sb_t *buf, time_t timestamp, struct percent_esc *p)
  * packages.  Optionally accepts per-field format in %{ %| %} Default
  * %{%An: %Av\n%|%}
  */
+struct vec_view {
+	const void **d;
+	size_t len;
+	size_t cap;
+};
+
 static sb_t *
-format_string_list(sb_t *buf, const struct pkg *pkg, const charv_t *vec,
+format_string_list(sb_t *buf, const struct pkg *pkg, const struct vec_view *vec,
     const char *default_fmt, const char *default_sep, int pp_const,
     struct percent_esc *p)
 {
@@ -953,7 +959,7 @@ format_string_list(sb_t *buf, const struct pkg *pkg, const charv_t *vec,
 sb_t *
 format_annotations(sb_t *buf, const void *data, struct percent_esc *p)
 {
-	return (format_string_list(buf, data, &((const struct pkg *)data)->annotations,
+	return (format_string_list(buf, data, (const struct vec_view *)&((const struct pkg *)data)->annotations,
 	    "%An: %Av\n", "", PP_A, p));
 }
 
@@ -987,7 +993,7 @@ format_annotation_value(sb_t *buf, const void *data, struct percent_esc *p)
 sb_t *
 format_shlibs_required(sb_t *buf, const void *data, struct percent_esc *p)
 {
-	return (format_string_list(buf, data, &((const struct pkg *)data)->shlibs_required,
+	return (format_string_list(buf, data, (const struct vec_view *)&((const struct pkg *)data)->shlibs_required,
 	    "%Bn\n", "", PP_B, p));
 }
 
@@ -1012,7 +1018,7 @@ format_shlib_name(sb_t *buf, const void *data, struct percent_esc *p)
 sb_t *
 format_categories(sb_t *buf, const void *data, struct percent_esc *p)
 {
-	return (format_string_list(buf, data, &((const struct pkg *)data)->categories,
+	return (format_string_list(buf, data, (const struct vec_view *)&((const struct pkg *)data)->categories,
 	    "%Cn", ", ", PP_C, p));
 }
 
@@ -1250,7 +1256,7 @@ format_file_fflags(sb_t *buf, const void *data, struct percent_esc *p)
 sb_t *
 format_groups(sb_t *buf, const void *data, struct percent_esc *p)
 {
-	return (format_string_list(buf, data, &((const struct pkg *)data)->groups,
+	return (format_string_list(buf, data, (const struct vec_view *)&((const struct pkg *)data)->groups,
 	    "%Gn\n", "", PP_G, p));
 }
 
@@ -1284,7 +1290,7 @@ format_row_counter(sb_t *buf, const void *data, struct percent_esc *p)
 sb_t *
 format_licenses(sb_t *buf, const void *data, struct percent_esc *p)
 {
-	return (format_string_list(buf, data, &((const struct pkg *)data)->licenses,
+	return (format_string_list(buf, data, (const struct vec_view *)&((const struct pkg *)data)->licenses,
 	    "%Ln", " %l ", PP_L, p));
 }
 
@@ -1463,7 +1469,7 @@ format_char_string(sb_t *buf, const void *data, struct percent_esc *p)
 sb_t *
 format_users(sb_t *buf, const void *data, struct percent_esc *p)
 {
-	return (format_string_list(buf, data, &((const struct pkg *)data)->users,
+	return (format_string_list(buf, data, (const struct vec_view *)&((const struct pkg *)data)->users,
 	    "%Un\n", "", PP_U, p));
 }
 
@@ -1508,7 +1514,7 @@ format_int_checksum(sb_t *buf, const void *data, struct percent_esc *p)
 sb_t *
 format_required(sb_t *buf, const void *data, struct percent_esc *p)
 {
-	return (format_string_list(buf, data, &((const struct pkg *)data)->requires,
+	return (format_string_list(buf, data, (const struct vec_view *)&((const struct pkg *)data)->requires,
 	    "%Yn\n", "", PP_Y, p));
 }
 
@@ -1544,7 +1550,7 @@ format_autoremove(sb_t *buf, const void *data, struct percent_esc *p)
 sb_t *
 format_shlibs_provided(sb_t *buf, const void *data, struct percent_esc *p)
 {
-	return (format_string_list(buf, data, &((const struct pkg *)data)->shlibs_provided,
+	return (format_string_list(buf, data, (const struct vec_view *)&((const struct pkg *)data)->shlibs_provided,
 	    "%bn\n", "", PP_b, p));
 }
 
@@ -1852,7 +1858,7 @@ format_pkgsize(sb_t *buf, const void *data, struct percent_esc *p)
 sb_t *
 format_provided(sb_t *buf, const void *data, struct percent_esc *p)
 {
-	return (format_string_list(buf, data, &((const struct pkg *)data)->provides,
+	return (format_string_list(buf, data, (const struct vec_view *)&((const struct pkg *)data)->provides,
 	    "%yn\n", "", PP_y, p));
 }
 
