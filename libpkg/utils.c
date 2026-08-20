@@ -41,8 +41,10 @@
 #include <stdio.h>
 
 #include <assert.h>
+#include <dirent.h>
 #include <errno.h>
 #include <fcntl.h>
+#include <limits.h>
 #include <stdlib.h>
 #include <unistd.h>
 #include <string.h>
@@ -55,6 +57,10 @@
 #include <regex.h>
 #include <pwd.h>
 #include <grp.h>
+
+#if defined(__linux__) && __has_include(<linux/close_range.h>)
+#include <linux/close_range.h>
+#endif
 
 #include <bsd_compat.h>
 
@@ -526,6 +532,49 @@ set_blocking(int fd)
  * that same order) as arguments.
 */
 extern char **environ;
+
+static void
+pkg_closefrom_proc(int lowfd)
+{
+	DIR *dirp;
+	struct dirent *dent;
+	char *endp;
+	long fd;
+
+	dirp = opendir("/proc/self/fd");
+	if (dirp == NULL)
+		return;
+	while ((dent = readdir(dirp)) != NULL) {
+		fd = strtol(dent->d_name, &endp, 10);
+		if (dent->d_name != endp && *endp == '\0' &&
+		    fd >= 0 && fd < INT_MAX && fd >= lowfd && fd != dirfd(dirp))
+			(void) close((int) fd);
+	}
+	(void) closedir(dirp);
+}
+
+void
+pkg_closefrom(int lowfd)
+{
+#if defined(__linux__)
+	if (close_range(lowfd, ~0U, CLOSE_RANGE_UNSHARE) == 0)
+		return;
+	pkg_closefrom_proc(lowfd);
+#elif defined(__illumos__) || defined(__sun)
+	pkg_closefrom_proc(lowfd);
+#elif defined(HAVE_CLOSEFROM)
+	closefrom(lowfd);
+#else
+	long maxfd = sysconf(_SC_OPEN_MAX);
+	long fd;
+
+	if (maxfd < 0)
+		maxfd = 256;
+	for (fd = lowfd; fd < maxfd; fd++)
+		(void) close((int) fd);
+#endif
+}
+
 pid_t
 process_spawn_pipe(FILE *inout[2], const char *command)
 {
@@ -572,7 +621,7 @@ process_spawn_pipe(FILE *inout[2], const char *command)
 			dup2(pipes[2], STDIN_FILENO);
 			close(pipes[2]);
 		}
-		closefrom(STDERR_FILENO + 1);
+		pkg_closefrom(STDERR_FILENO + 1);
 
 		execve(_PATH_BSHELL, argv, environ);
 

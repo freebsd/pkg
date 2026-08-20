@@ -81,6 +81,7 @@ int pkg_symlink_cksumat(int fd, const char *path, const char *root,
     char *cksum);
 
 pid_t process_spawn_pipe(FILE *inout[2], const char *command);
+void pkg_closefrom(int lowfd);
 
 void *parse_mode(const char *str);
 int *text_diff(char *a, char *b);

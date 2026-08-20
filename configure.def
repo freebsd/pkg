@@ -165,16 +165,6 @@ else
 	define_feature atomic_builtins 0
 fi
 
-# /proc/self/fd
-msg_checking "Checking for /proc/self/fd support... "
-if [ -e /proc/self/fd ]; then
-	msg_result "ok"
-	define_feature proc-pid
-else
-	msg_result "no"
-	define_feature proc-pid 0
-fi
-
 # Required functions
 for _fct in memmove usleep pread pwrite; do
 	cc_check_functions "$_fct"
