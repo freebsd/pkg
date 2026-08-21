@@ -1364,6 +1364,10 @@ pkg_repo_load_fingerprint(const char *dir, const char *filename)
 
 	snprintf(path, sizeof(path), "%s/%s", dir, filename);
 	fd = openat(ctx.rootfd, RELATIVE_PATH(path), O_RDONLY);
+	if (fd == -1 && ctx.pkg_rootdir != NULL) {
+		/* Fallback: try the path on the host when using -r */
+		fd = open(path, O_RDONLY | O_CLOEXEC);
+	}
 	if (fd == -1) {
 		pkg_emit_error("cannot load fingerprints from %s: %s",
 				path, strerror(errno));
