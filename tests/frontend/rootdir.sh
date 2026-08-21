@@ -7,11 +7,7 @@ tests_init \
 
 rootdir_body() {
 	unset PKG_DBDIR
-	if [ `uname -s` = "Linux" ]; then
-		RP='readlink -e'
-	else
-		RP='realpath'
-	fi
+	RP='realpath'
 
 	atf_check \
 		-o inline:"`${RP} ${TMPDIR}`/var/db/pkg\n" \

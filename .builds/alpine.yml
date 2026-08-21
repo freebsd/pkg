@@ -11,6 +11,7 @@ packages:
   - tcl
   - musl-fts-dev
   - libbsd-dev
+  - libarchive-tools
   - libarchive-dev
   - openssl-dev
   - bzip2-dev

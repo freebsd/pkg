@@ -1,3 +1,5 @@
+#!/bin/sh
+
 new_pkg() {
 	cat << EOF > $1.ucl
 name: $2
