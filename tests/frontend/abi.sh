@@ -18,6 +18,11 @@ native_body() {
 	case "${OS}" in
 		Linux)
 			version=$(readelf -n /bin/uname  | awk '/ABI: / { split($NF, a, "."); print a[1]"."a[2] }')
+			if [ -z "${version}" ]; then
+				# musl-based systems (e.g. Alpine) do not embed a
+				# GNU ABI tag, so pkg reports a 0.0 version.
+				version="0.0"
+			fi
 			;;
 		Darwin)
 			# without a hint, the first arch is selected, which happens to be consistently x86_64
@@ -95,7 +100,7 @@ elfparse_body() {
 	for bin in \
 		freebsd-aarch64.bin freebsd-amd64.bin freebsd-armv6.bin freebsd-armv7.bin \
 		freebsd-i386.bin freebsd-powerpc.bin freebsd-powerpc64.bin freebsd-powerpc64le.bin \
-		freebsd-riscv64.bin dfly.bin linux.bin
+		freebsd-riscv64.bin dfly.bin linux.bin musl.bin
 	do
 		bin_meta ${bin}
 

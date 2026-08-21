@@ -132,7 +132,7 @@ create_from_bin_body() {
     for bin in \
         freebsd-aarch64.bin freebsd-amd64.bin freebsd-armv6.bin freebsd-armv7.bin \
 		freebsd-i386.bin freebsd-powerpc.bin freebsd-powerpc64.bin freebsd-powerpc64le.bin \
-		freebsd-riscv64.bin dfly.bin linux.bin \
+		freebsd-riscv64.bin dfly.bin linux.bin musl.bin \
         macos.bin macos106.bin macos150.bin \
         macosfat.bin "macosfat.bin#x86_64" "macosfat.bin#aarch64" \
         macosfatlib.bin "macosfatlib.bin#x86_64" "macosfatlib.bin#aarch64"

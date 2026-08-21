@@ -632,6 +632,46 @@ elf_parse_abi(Elf *elf, GElf_Ehdr *ehdr, struct pkg_abi *abi)
 	abi->arch = elf_parse_arch(elf, ehdr);
 }
 
+/*
+ * ABI detection for ELF relies on the notes section to identify the OS.
+ * Binaries built against musl (e.g. on Alpine Linux) do not carry the GNU
+ * ABI tag that glibc adds, so their OS cannot be identified from the notes.
+ * Detect Linux from the ELF interpreter instead: both the glibc (ld-linux)
+ * and musl (ld-musl) loaders live under a path matching those names, whereas
+ * the FreeBSD (ld-elf) and NetBSD (ld.elf_so) loaders do not.
+ */
+static bool
+elf_interp_is_linux(Elf *elf)
+{
+	size_t phnum, rawsize;
+	GElf_Phdr phdr;
+	char *raw;
+	char interp[256];
+
+	if (elf_getphdrnum(elf, &phnum) != 0)
+		return (false);
+
+	if ((raw = elf_rawfile(elf, &rawsize)) == NULL)
+		return (false);
+
+	for (size_t i = 0; i < phnum; i++) {
+		if (gelf_getphdr(elf, i, &phdr) != &phdr)
+			continue;
+		if (phdr.p_type != PT_INTERP)
+			continue;
+		if (phdr.p_offset + phdr.p_filesz > rawsize)
+			return (false);
+		size_t len = phdr.p_filesz;
+		if (len >= sizeof(interp))
+			len = sizeof(interp) - 1;
+		memcpy(interp, raw + phdr.p_offset, len);
+		interp[len] = '\0';
+		return (strstr(interp, "ld-musl") != NULL ||
+		    strstr(interp, "ld-linux") != NULL);
+	}
+	return (false);
+}
+
 int
 pkg_elf_abi_from_fd(int fd, struct pkg_abi *abi)
 {
@@ -658,6 +698,12 @@ pkg_elf_abi_from_fd(int fd, struct pkg_abi *abi)
 	}
 
 	elf_parse_abi(elf, &elfhdr, abi);
+
+	if (abi->os == PKG_OS_UNKNOWN && elf_interp_is_linux(elf)) {
+		/* musl-based Linux binaries (e.g. Alpine) lack the GNU ABI
+		   tag, infer Linux from the ELF interpreter. */
+		abi->os = PKG_OS_LINUX;
+	}
 
 	if (abi->os == PKG_OS_UNKNOWN) {
 		ret = EPKG_FATAL;
