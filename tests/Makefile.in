@@ -111,6 +111,7 @@ TESTS_SHELL_BINS= \
 	frontend/freebsd-powerpc64le.bin \
 	frontend/freebsd-riscv64.bin \
 	frontend/linux.bin \
+	frontend/musl.bin \
 	frontend/macos.bin \
 	frontend/macos106.bin \
 	frontend/macos150.bin \

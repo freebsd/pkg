@@ -132,6 +132,11 @@ bin_meta() {
 			XALTABI=linux:3.2:x86_64
 			Xshlibs_required="libc.so.6"
 			;;
+		*musl.bin)
+			XABI=Linux:0.0:x86_64
+			XALTABI=linux:0.0:x86_64
+			Xshlibs_required="libc.so.7"
+			;;
 
 		*macos.bin)
 			XABI=Darwin:24:aarch64
