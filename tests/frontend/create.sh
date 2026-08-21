@@ -846,7 +846,7 @@ create_from_plist_keyword_override_prefix_body()
 	file"
 	touch file
 	atf_check pkg create -o ${TMPDIR} -m . -p test.plist -r .
-	atf_check -o match:".*/plop/file$" -e ignore tar tf test-1.pkg
+	atf_check -o match:".*/plop/file$" -e ignore bsdtar tvf test-1.pkg
 	atf_check -o inline:"/plop/file\n" pkg info -F test-1.pkg -ql
 
 	genprefixmanifest
@@ -854,7 +854,7 @@ create_from_plist_keyword_override_prefix_body()
 	mkdir "prefix"
 	touch prefix/file
 	atf_check pkg create -o ${TMPDIR} -m . -p test.plist -r .
-	atf_check -o match:".*/plop/file$" -e ignore tar tf test-1.pkg
+	atf_check -o match:".*/plop/file$" -e ignore bsdtar tvf test-1.pkg
 	atf_check -o inline:"/plop/file\n" pkg info -F test-1.pkg -ql
 }
 
