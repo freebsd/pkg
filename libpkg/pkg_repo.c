@@ -621,7 +621,6 @@ pkg_repo_archive_extract_archive(int fd, const char *file,
 	struct sig_cert *s;
 	struct pkg_extract_cbdata cbdata;
 	char *sig = NULL;
-	int rc = EPKG_OK;
 	int64_t siglen = 0;
 
 
@@ -696,17 +695,12 @@ pkg_repo_archive_extract_archive(int fd, const char *file,
 	if (dest_fd != -1)
 		(void)lseek(dest_fd, 0, SEEK_SET);
 
-	if (rc == EPKG_OK) {
-		if (signatures != NULL)
-			*signatures = sc;
-		else
-			pkg_repo_signatures_free(sc);
-	}
-	else {
+	if (signatures != NULL)
+		*signatures = sc;
+	else
 		pkg_repo_signatures_free(sc);
-	}
 
-	return rc;
+	return EPKG_OK;
 }
 
 static int
