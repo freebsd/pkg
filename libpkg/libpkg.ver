@@ -2,6 +2,7 @@ LIBPKG_1.4 {
 global:
 	pkg_absolutepath;
 	pkg_add;
+	pkg_add_fd;
 	pkg_add_port;
 	pkg_add_triggers;
 	pkg_adddep;

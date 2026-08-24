@@ -907,7 +907,13 @@ int pkg_add_group(struct pkg *pkg);
 int pkg_add_upgrade(struct pkgdb *db, const char *path, unsigned flags,
     const char *location, struct pkg *rp, struct pkg *lp, struct triggers *,
     struct deferred_rc *);
+int pkg_add_upgrade_fd(struct pkgdb *db, int fd, unsigned flags,
+    const char *location, struct pkg *rp, struct pkg *lp, struct triggers *,
+    struct deferred_rc *);
 int pkg_add_from_remote(struct pkgdb *db, const char *path, unsigned flags,
+    const char *location, struct pkg *rp, struct triggers *,
+    struct deferred_rc *);
+int pkg_add_from_remote_fd(struct pkgdb *db, int fd, unsigned flags,
     const char *location, struct pkg *rp, struct triggers *,
     struct deferred_rc *);
 void pkg_delete_dir(struct pkg *pkg, struct pkg_dir *dir);

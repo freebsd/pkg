@@ -147,6 +147,8 @@ pkg_jobs_destdir(struct pkg_jobs *j)
 static void
 pkg_jobs_pattern_free(struct job_pattern *jp)
 {
+	if (jp->fd != -1)
+		close(jp->fd);
 	free(jp->pattern);
 	free(jp->path);
 }
@@ -155,8 +157,11 @@ void
 pkg_jobs_request_free(struct pkg_job_request *req)
 {
 	if (req != NULL) {
-		vec_foreach(req->items, _i)
+		vec_foreach(req->items, _i) {
 			free(req->items.d[_i].path);
+			if (req->items.d[_i].fd != -1)
+				close(req->items.d[_i].fd);
+		}
 		vec_free(&req->items);
 		free(req);
 	}
@@ -206,7 +211,7 @@ pkg_jobs_maybe_match_url(struct job_pattern *jp, const char *pattern)
 {
 	char path[MAXPATHLEN];
 	const char *name;
-	int fd;
+	int fd = -1;
 
 	if (strncmp(pattern, "http://", 7) != 0 &&
 	    strncmp(pattern, "https://", 8) != 0 &&
@@ -224,25 +229,14 @@ pkg_jobs_maybe_match_url(struct job_pattern *jp, const char *pattern)
 
 	snprintf(path, sizeof(path), "%s/%s.XXXXXX",
 	    getenv("TMPDIR") ? getenv("TMPDIR") : "/tmp", name);
-	fd = mkstemp(path);
-	if (fd == -1) {
-		pkg_emit_errno("mkstemp", path);
-		return (false);
-	}
-	if (close(fd) == -1) {
-		pkg_emit_errno("close", path);
-		unlink(path);
-		return (false);
-	}
-
-	if (pkg_fetch_file(NULL, pattern, path, 0, 0, 0) != EPKG_OK) {
+	if (pkg_fetch_file_tmp(NULL, pattern, path, 0, &fd) != EPKG_OK) {
 		pkg_emit_error("Failed to fetch package from '%s'", pattern);
 		return (false);
 	}
 
-	dbg(2, "Fetched URL to file: %s", path);
+	dbg(2, "Fetched URL to an anonymous temporary file");
 	jp->flags |= PKG_PATTERN_FLAG_FILE;
-	jp->path = xstrdup(path);
+	jp->fd = fd;
 	/* Use just the filename (without .pkg extension) as the pattern */
 	size_t len = strlen(name) - strlen(".pkg") + 1;
 	jp->pattern = xmalloc(len);
@@ -313,7 +307,7 @@ pkg_jobs_add(struct pkg_jobs *j, match_t match, char **argv, int argc)
 	}
 
 	for (i = 0; i < argc; i++) {
-		struct job_pattern jp = { 0 };
+		struct job_pattern jp = { .fd = -1 };
 		if (j->type == PKG_JOBS_DEINSTALL ||
 		    !pkg_jobs_maybe_match_file(&jp, argv[i])) {
 			jp.pattern = xstrdup(argv[i]);
@@ -323,7 +317,7 @@ pkg_jobs_add(struct pkg_jobs *j, match_t match, char **argv, int argc)
 	}
 
 	if (argc == 0 && match == MATCH_ALL) {
-		struct job_pattern jp = { .match = match };
+		struct job_pattern jp = { .fd = -1, .match = match };
 		vec_push(&j->patterns, jp);
 	}
 
@@ -391,7 +385,7 @@ pkg_jobs_add_req_from_universe(pkghash **head, universe_itemv_t *uv,
 		if ((uit->pkg->type == PKG_INSTALLED && local) ||
 				(uit->pkg->type != PKG_INSTALLED && !local)) {
 			vec_push(&req->items, ((struct pkg_job_request_item){
-			    .pkg = uit->pkg, .unit = uit }));
+			    .pkg = uit->pkg, .unit = uit, .fd = -1 }));
 		}
 	}
 
@@ -477,7 +471,7 @@ pkg_jobs_add_req(struct pkg_jobs *j, struct pkg *pkg)
 
 	/* Append candidate to the list of candidates */
 	vec_push(&req->items, ((struct pkg_job_request_item){
-	    .pkg = pkg, .unit = un }));
+	    .pkg = pkg, .unit = un, .fd = -1 }));
 
 	return (&req->items.d[req->items.len - 1]);
 }
@@ -998,27 +992,41 @@ pkg_jobs_find_remote_pattern(struct pkg_jobs *j, struct job_pattern *jp)
 			}
 		}
 		rc = pkg_jobs_find_upgrade(j, jp->pattern, jp->match);
-	} else if (pkg_open(&pkg, jp->path, PKG_OPEN_MANIFEST_ONLY) != EPKG_OK) {
-		rc = EPKG_FATAL;
-	} else if (pkg_validate(pkg, j->db) == EPKG_OK) {
-		if (j->type == PKG_JOBS_UPGRADE &&
-		    _pkg_is_installed(j, pkg->name, MATCH_INTERNAL) != EPKG_OK) {
-			pkg_emit_error(
-			    "%s is not installed, therefore upgrade is impossible",
-			    pkg->name);
-			return (EPKG_NOTINSTALLED);
-		}
-		pkg->type = PKG_FILE;
-		pkg_jobs_add_req(j, pkg);
-
-		req = pkghash_get_value(j->request_add, pkg->uid);
-		if (req != NULL) {
-			req->items.d[0].jp = jp;
-			req->items.d[0].path = xstrdup(jp->path);
-		}
 	} else {
-		pkg_emit_error("cannot load %s: invalid format", jp->pattern);
-		rc = EPKG_FATAL;
+		int open_rc;
+
+		if (jp->fd != -1)
+			open_rc = pkg_open_fd(&pkg, jp->fd, PKG_OPEN_MANIFEST_ONLY);
+		else
+			open_rc = pkg_open(&pkg, jp->path, PKG_OPEN_MANIFEST_ONLY);
+
+		if (open_rc != EPKG_OK) {
+			rc = EPKG_FATAL;
+		} else if (pkg_validate(pkg, j->db) == EPKG_OK) {
+			if (j->type == PKG_JOBS_UPGRADE &&
+			    _pkg_is_installed(j, pkg->name, MATCH_INTERNAL) != EPKG_OK) {
+				pkg_emit_error(
+				    "%s is not installed, therefore upgrade is impossible",
+				    pkg->name);
+				return (EPKG_NOTINSTALLED);
+			}
+			pkg->type = PKG_FILE;
+			pkg_jobs_add_req(j, pkg);
+
+			req = pkghash_get_value(j->request_add, pkg->uid);
+			if (req != NULL) {
+				if (req->items.d[0].fd != -1)
+					close(req->items.d[0].fd);
+				req->items.d[0].jp = jp;
+				req->items.d[0].fd = jp->fd;
+				jp->fd = -1;
+				if (jp->path != NULL)
+					req->items.d[0].path = xstrdup(jp->path);
+			}
+		} else {
+			pkg_emit_error("cannot load %s: invalid format", jp->pattern);
+			rc = EPKG_FATAL;
+		}
 	}
 
 	return (rc);
@@ -1978,7 +1986,9 @@ pkg_jobs_handle_install(struct pkg_solved *ps, struct pkg_jobs *j)
 {
 	struct pkg *new, *old;
 	struct pkg_job_request *req;
+	struct pkg_job_request_item *request_item = NULL;
 	char path[MAXPATHLEN], *target;
+	int target_fd = -1;
 	int flags = 0;
 	int retcode = EPKG_FATAL;
 
@@ -1998,11 +2008,13 @@ pkg_jobs_handle_install(struct pkg_solved *ps, struct pkg_jobs *j)
 	req = pkghash_get_value(j->request_add, new->uid);
 	if (req != NULL && req->items.d[0].jp != NULL &&
 			(req->items.d[0].jp->flags & PKG_PATTERN_FLAG_FILE) &&
-			req->items.d[0].path != NULL) {
+			(req->items.d[0].path != NULL || req->items.d[0].fd != -1)) {
 		/*
 		 * We have package as a file, set special repository name
 		 */
-		target = req->items.d[0].path;
+		request_item = &req->items.d[0];
+		target = request_item->path;
+		target_fd = request_item->fd;
 		free(new->reponame);
 		new->reponame = xstrdup("local file");
 	}
@@ -2042,12 +2054,31 @@ pkg_jobs_handle_install(struct pkg_solved *ps, struct pkg_jobs *j)
 		local_old = old;
 	}
 
-	if (new->type == PKG_GROUP_REMOTE)
+	if (target_fd != -1 && lseek(target_fd, 0, SEEK_SET) == -1) {
+		pkg_emit_errno("lseek", "package archive");
+		retcode = EPKG_FATAL;
+	} else if (new->type == PKG_GROUP_REMOTE)
 		retcode = pkg_add_group(new);
-	else if (old != NULL)
-		retcode = pkg_add_upgrade(j->db, target, flags, NULL, new, old, &j->triggers, &j->rc);
-	else
-		retcode = pkg_add_from_remote(j->db, target, flags, NULL, new, &j->triggers, &j->rc);
+	else if (old != NULL) {
+		if (target_fd != -1)
+			retcode = pkg_add_upgrade_fd(j->db, target_fd, flags, NULL,
+			    new, old, &j->triggers, &j->rc);
+		else
+			retcode = pkg_add_upgrade(j->db, target, flags, NULL, new, old,
+			    &j->triggers, &j->rc);
+	} else {
+		if (target_fd != -1)
+			retcode = pkg_add_from_remote_fd(j->db, target_fd, flags, NULL,
+			    new, &j->triggers, &j->rc);
+		else
+			retcode = pkg_add_from_remote(j->db, target, flags, NULL, new,
+			    &j->triggers, &j->rc);
+	}
+
+	if (request_item != NULL && request_item->fd != -1) {
+		close(request_item->fd);
+		request_item->fd = -1;
+	}
 
 	if (local_old != NULL && !pkg_in_universe(j->universe, local_old))
 		pkg_free(local_old);

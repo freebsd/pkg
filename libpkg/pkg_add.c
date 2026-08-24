@@ -1578,7 +1578,7 @@ populate_config_file_contents(struct archive *a, struct archive_entry *ae,
 }
 
 static int
-pkg_add_common(struct pkgdb *db, const char *path, unsigned flags,
+pkg_add_common(struct pkgdb *db, const char *path, int fd, unsigned flags,
     const char *reloc, struct pkg *remote,
     struct pkg *local, struct triggers *t, struct deferred_rc *rc)
 {
@@ -1598,7 +1598,7 @@ pkg_add_common(struct pkgdb *db, const char *path, unsigned flags,
 
 	memset(&context, 0, sizeof(context));
 
-	if (path == NULL) {
+	if (path == NULL && fd == -1) {
 		pkg_emit_error("pkg_add_common: no package path provided");
 		return (EPKG_FATAL);
 	}
@@ -1608,7 +1608,7 @@ pkg_add_common(struct pkgdb *db, const char *path, unsigned flags,
 	 * current archive_entry to the first non-meta file.
 	 * If there is no non-meta files, EPKG_END is returned.
 	 */
-	ret = pkg_open2(&pkg, &a, &ae, path, 0, -1);
+	ret = pkg_open2(&pkg, &a, &ae, path, 0, fd);
 	context.pkg = pkg;
 	context.localpkg = local;
 	if (ret == EPKG_END)
@@ -1845,7 +1845,15 @@ int
 pkg_add(struct pkgdb *db, const char *path, unsigned flags,
     const char *location)
 {
-	return pkg_add_common(db, path, flags, location, NULL, NULL, NULL, NULL);
+	return pkg_add_common(db, path, -1, flags, location, NULL, NULL, NULL,
+	    NULL);
+}
+
+int
+pkg_add_fd(struct pkgdb *db, int fd, unsigned flags, const char *location)
+{
+	return pkg_add_common(db, "-", fd, flags, location, NULL, NULL, NULL,
+	    NULL);
 }
 
 int
@@ -1853,7 +1861,15 @@ pkg_add_from_remote(struct pkgdb *db, const char *path, unsigned flags,
     const char *location, struct pkg *rp, struct triggers *t,
     struct deferred_rc *rc)
 {
-	return pkg_add_common(db, path, flags, location, rp, NULL, t, rc);
+	return pkg_add_common(db, path, -1, flags, location, rp, NULL, t, rc);
+}
+
+int
+pkg_add_from_remote_fd(struct pkgdb *db, int fd, unsigned flags,
+    const char *location, struct pkg *rp, struct triggers *t,
+    struct deferred_rc *rc)
+{
+	return pkg_add_common(db, "-", fd, flags, location, rp, NULL, t, rc);
 }
 
 int
@@ -1866,7 +1882,19 @@ pkg_add_upgrade(struct pkgdb *db, const char *path, unsigned flags,
 	    PKG_LOAD_FILES|PKG_LOAD_SCRIPTS|PKG_LOAD_DIRS|PKG_LOAD_LUA_SCRIPTS) != EPKG_OK)
 		return (EPKG_FATAL);
 
-	return pkg_add_common(db, path, flags, location, rp, lp, t, rc);
+	return pkg_add_common(db, path, -1, flags, location, rp, lp, t, rc);
+}
+
+int
+pkg_add_upgrade_fd(struct pkgdb *db, int fd, unsigned flags,
+    const char *location, struct pkg *rp, struct pkg *lp, struct triggers *t,
+    struct deferred_rc *rc)
+{
+	if (pkgdb_ensure_loaded(db, lp,
+	    PKG_LOAD_FILES|PKG_LOAD_SCRIPTS|PKG_LOAD_DIRS|PKG_LOAD_LUA_SCRIPTS) != EPKG_OK)
+		return (EPKG_FATAL);
+
+	return pkg_add_common(db, "-", fd, flags, location, rp, lp, t, rc);
 }
 
 static int

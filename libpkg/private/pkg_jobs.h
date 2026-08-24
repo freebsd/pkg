@@ -60,6 +60,7 @@ struct pkg_job_request_item {
 	struct pkg_job_universe_item *unit;
 	struct job_pattern *jp;
 	char *path;	/* local file path for PKG_PATTERN_FLAG_FILE requests */
+	int fd;		/* open archive for URL requests */
 };
 typedef vec_t(struct pkg_job_request_item) request_itemv_t;
 
@@ -128,6 +129,7 @@ typedef vec_t(struct pkg_jobs_conflict_item) conflict_itemv_t;
 struct job_pattern {
 	char		*pattern;
 	char		*path;
+	int		 fd;
 	match_t		 match;
 	int		 flags;
 };

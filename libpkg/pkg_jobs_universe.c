@@ -41,6 +41,7 @@
 #include <stdlib.h>
 #include <string.h>
 #include <ctype.h>
+#include <unistd.h>
 
 #include "pkg.h"
 #include "private/event.h"
@@ -1042,13 +1043,15 @@ pkg_jobs_universe_process_upgrade_chains(struct pkg_jobs *j)
 
 				for (size_t _ri = req->items.len; _ri > 0; _ri--) {
 					if (req->items.d[_ri - 1].unit == cur) {
+						if (req->items.d[_ri - 1].fd != -1)
+							close(req->items.d[_ri - 1].fd);
 						vec_remove(&req->items, _ri - 1);
 					}
 				}
 			}
 			if (req->items.len == 0) {
 				vec_push(&req->items, ((struct pkg_job_request_item){
-				    .pkg = selected->pkg, .unit = selected }));
+				    .pkg = selected->pkg, .unit = selected, .fd = -1 }));
 			}
 			pkghash_safe_add(j->request_add, selected->pkg->uid, req, NULL);
 		}

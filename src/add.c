@@ -68,6 +68,7 @@ exec_add(int argc, char **argv)
 	sb_t failedpkgs = sb_init();
 	char path[MAXPATHLEN];
 	char *env, *file;
+	int fd = -1;
 	int retcode;
 	int ch;
 	int i;
@@ -145,7 +146,6 @@ exec_add(int argc, char **argv)
 	for (i = 0; i < argc; i++) {
 		if (is_url(argv[i]) == EPKG_OK) {
 			const char *name = strrchr(argv[i], '/');
-			int fd;
 			if (name == NULL)
 				name = argv[i];
 			else
@@ -154,22 +154,9 @@ exec_add(int argc, char **argv)
 			if ((env = getenv("TMPDIR")) == NULL)
 				env = "/tmp";
 			snprintf(path, sizeof(path), "%s/%s.XXXXXX", env, name);
-			fd = mkstemp(path);
-			if (fd == -1) {
-				warn("mkstemp %s", path);
-				retcode = EPKG_FATAL;
+			fd = -1;
+			if ((retcode = pkg_fetch_file_tmp(NULL, argv[i], path, 0, &fd)) != EPKG_OK)
 				break;
-			}
-			if (close(fd) == -1) {
-				warn("close %s", path);
-				unlink(path);
-				retcode = EPKG_FATAL;
-				break;
-			}
-			if ((retcode = pkg_fetch_file(NULL, argv[i], path, 0, 0, 0)) != EPKG_OK)
-				break;
-
-			file = path;
 		} else {
 			file = argv[i];
 
@@ -193,15 +180,21 @@ exec_add(int argc, char **argv)
 
 		}
 
-		if ((retcode = pkg_add(db, file, f, location)) != EPKG_OK) {
+		if (is_url(argv[i]) == EPKG_OK)
+			retcode = pkg_add_fd(db, fd, f, location);
+		else
+			retcode = pkg_add(db, file, f, location);
+		if (retcode != EPKG_OK) {
 			sb_cat(&failedpkgs, argv[i]);
 			if (i != argc - 1)
 				sb_printf(&failedpkgs, ", ");
 			failedpkgcount++;
 		}
 
-		if (is_url(argv[i]) == EPKG_OK)
-			unlink(file);
+		if (fd != -1) {
+			close(fd);
+			fd = -1;
+		}
 
 	}
 	pkgdb_release_lock(db, PKGDB_LOCK_EXCLUSIVE);

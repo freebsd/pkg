@@ -1068,6 +1068,14 @@ int pkgdb_compact(struct pkgdb *db);
  */
 int pkg_add(struct pkgdb *db, const char *path, unsigned flags,
     const char *location);
+/**
+ * Install and register a new package from an open file descriptor.
+ * @param db An opened pkgdb
+ * @param fd A seekable file descriptor positioned at the start of an archive
+ * @return An error code.
+ */
+int pkg_add_fd(struct pkgdb *db, int fd, unsigned flags,
+    const char *location);
 
 #define PKG_ADD_UPGRADE			(1U << 0)
 /* (1U << 1) removed intentionally */
