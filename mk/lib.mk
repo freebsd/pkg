@@ -18,7 +18,7 @@ install: install-lib
 
 install-lib: lib$(LIB)$(LIBSOEXT) lib$(LIB).a
 	install -d -m 755 $(DESTDIR)$(libdir)
-	install -m 755 lib$(LIB)$(LIBSOEXT) $(DESTDIR)$(libdir)/
+	$(INSTALL_LIB) -m 755 lib$(LIB)$(LIBSOEXT) $(DESTDIR)$(libdir)/
 	ln -sf lib$(LIB)$(LIBSOEXT) $(DESTDIR)$(libdir)/lib$(LIB)$(SH_SOEXT)
 	install -m 644 lib$(LIB).a $(DESTDIR)$(libdir)/
 

@@ -125,7 +125,7 @@ pkg-static: $(OBJS) $(top_builddir)/libpkg/libpkg_flat.a
 .PHONY: install-static
 install-static: pkg-static
 	install -d -m 755 $(DESTDIR)$(sbindir)
-	install -m 755 pkg-static $(DESTDIR)$(sbindir)/pkg-static
+	$(INSTALL_PROGRAM) -m 755 pkg-static $(DESTDIR)$(sbindir)/pkg-static
 @endif
 
 ${OBJS}: $(top_builddir)/pkg_config.h

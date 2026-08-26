@@ -206,7 +206,7 @@ install: all pkg.h lib$(LIB)$(LIBSOEXT) lib$(LIB)_flat.a
 	install -d -m 755 $(DESTDIR)$(includedir)
 	install -d -m 755 $(DESTDIR)$(includedir)/pkg
 	install -d -m 755 $(DESTDIR)$(pkgconfigdir)
-	install -m 644 lib$(LIB)$(LIBSOEXT) $(DESTDIR)$(libdir)/
+	$(INSTALL_LIB) -m 644 lib$(LIB)$(LIBSOEXT) $(DESTDIR)$(libdir)/
 	ln -sf lib$(LIB)$(LIBSOEXT) $(DESTDIR)$(libdir)/lib$(LIB)$(SH_SOEXT)
 	install -m 644 lib$(LIB)_flat.a $(DESTDIR)$(libdir)/lib$(LIB).a
 	install -m 644 pkg.h $(DESTDIR)$(includedir)/
