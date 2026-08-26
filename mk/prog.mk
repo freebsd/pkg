@@ -15,6 +15,6 @@ install: install-prog
 
 install-prog: $(PROGNAME)
 	install -d -m 755 $(DESTDIR)$(bindir)
-	install -m 755 $(PROGNAME) $(DESTDIR)$(bindir)/
+	$(INSTALL_PROGRAM) -m 755 $(PROGNAME) $(DESTDIR)$(bindir)/
 
 distclean: clean

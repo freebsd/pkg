@@ -47,6 +47,14 @@ sysconfdir=	@sysconfdir@
 pkgconfigdir=	@pkgconfigdir@
 MK=	$(top_srcdir)/mk
 
+INSTALL?=		install
+
+BSD_INSTALL_PROGRAM?=	$(INSTALL)
+BSD_INSTALL_LIB?=	$(INSTALL)
+
+INSTALL_PROGRAM?=	$(BSD_INSTALL_PROGRAM)
+INSTALL_LIB?=		$(BSD_INSTALL_LIB)
+
 all:
 
 clean:
