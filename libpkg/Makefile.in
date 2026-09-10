@@ -27,7 +27,7 @@ SRCS=	backup_lib.c \
 	pkg_osvf.c \
 	pkg_repo.c \
 	pkgdb_query.c \
-	sha256.c dns_utils.c \
+	dns_utils.c \
 	pkg_add.c \
 	pkg_create.c \
 	pkg_jobs_conflicts.c pkg_ports.c \
