@@ -129,10 +129,7 @@ SRCS+=	ecccdh.c \
 VPATH+=	$(top_srcdir)/external/libecc/src/external_deps
 SRCS+=	print.c
 
-CONFLICTS=	-Dsha256_init=_libecc_sha256_init \
-		-Dsha256_update=_libecc_sha256_update \
-		-Dsha256_final=_libecc_sha256_final \
-		-Dsha512_224_init=_libecc_sha512_224_init \
+CONFLICTS=	-Dsha512_224_init=_libecc_sha512_224_init \
 		-Dsha512_256_init=_libecc_sha512_256_init
 
 LOCAL_CFLAGS=	-I$(top_srcdir)/external/libecc/include \
