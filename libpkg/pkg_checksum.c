@@ -43,6 +43,7 @@
 
 /* Hash is in format <version>:<typeid>:<hexhash> */
 #define PKG_CHECKSUM_SHA256_LEN (SHA256_DIGEST_SIZE * 2 + 1)
+#define PKG_CHECKSUM_SHA512_LEN (SHA512_DIGEST_SIZE * 2 + 1)
 #define PKG_CHECKSUM_BLAKE2_LEN (BLAKE2B_OUTBYTES * 8 / 5 + sizeof("100") * 2 + 2)
 #define PKG_CHECKSUM_BLAKE2S_LEN (BLAKE2S_OUTBYTES * 8 / 5 + sizeof("100") * 2 + 2)
 #define PKG_CHECKSUM_CUR_VERSION 2
@@ -68,6 +69,12 @@ static void pkg_checksum_hash_sha256(kvv_t *entries,
 static void pkg_checksum_hash_sha256_bulk(const unsigned char *in, size_t inlen,
 				unsigned char **out, size_t *outlen);
 static void pkg_checksum_hash_sha256_file(int fd, unsigned char **out,
+    size_t *outlen);
+static void pkg_checksum_hash_sha512(kvv_t *entries,
+				unsigned char **out, size_t *outlen);
+static void pkg_checksum_hash_sha512_bulk(const unsigned char *in, size_t inlen,
+				unsigned char **out, size_t *outlen);
+static void pkg_checksum_hash_sha512_file(int fd, unsigned char **out,
     size_t *outlen);
 static void pkg_checksum_hash_blake2(kvv_t *entries,
 				unsigned char **out, size_t *outlen);
@@ -148,6 +155,30 @@ static const struct _pkg_cksum_type {
 		pkg_checksum_hash_blake2s,
 		pkg_checksum_hash_blake2s_bulk,
 		pkg_checksum_hash_blake2s_file,
+		NULL
+	},
+	[PKG_HASH_TYPE_SHA512_BASE32] = {
+		"sha512_base32",
+		PKG_CHECKSUM_SHA512_LEN,
+		pkg_checksum_hash_sha512,
+		pkg_checksum_hash_sha512_bulk,
+		pkg_checksum_hash_sha512_file,
+		pkg_checksum_encode_base32
+	},
+	[PKG_HASH_TYPE_SHA512_HEX] = {
+		"sha512_hex",
+		PKG_CHECKSUM_SHA512_LEN,
+		pkg_checksum_hash_sha512,
+		pkg_checksum_hash_sha512_bulk,
+		pkg_checksum_hash_sha512_file,
+		pkg_checksum_encode_hex
+	},
+	[PKG_HASH_TYPE_SHA512_RAW] = {
+		"sha512_raw",
+		SHA512_DIGEST_SIZE,
+		pkg_checksum_hash_sha512,
+		pkg_checksum_hash_sha512_bulk,
+		pkg_checksum_hash_sha512_file,
 		NULL
 	},
 	[PKG_HASH_TYPE_UNKNOWN] = {
@@ -418,6 +449,57 @@ pkg_checksum_hash_sha256_file(int fd, unsigned char **out, size_t *outlen)
 	}
 	sha256_final(&sign_ctx, *out);
 	*outlen = SHA256_DIGEST_SIZE;
+}
+
+static void
+pkg_checksum_hash_sha512(kvv_t *entries,
+		unsigned char **out, size_t *outlen)
+{
+	sha512_context sign_ctx;
+
+	sha512_init(&sign_ctx);
+
+	vec_foreach(*entries, i) {
+		sha512_update(&sign_ctx, entries->d[i].key, strlen(entries->d[i].key));
+		sha512_update(&sign_ctx, entries->d[i].value, strlen(entries->d[i].value));
+	}
+	*out = xmalloc(SHA512_DIGEST_SIZE);
+	sha512_final(&sign_ctx, *out);
+	*outlen = SHA512_DIGEST_SIZE;
+}
+
+static void
+pkg_checksum_hash_sha512_bulk(const unsigned char *in, size_t inlen,
+				unsigned char **out, size_t *outlen)
+{
+	sha512_context sign_ctx;
+
+	*out = xmalloc(SHA512_DIGEST_SIZE);
+	sha512_init(&sign_ctx);
+	sha512_update(&sign_ctx, in, inlen);
+	sha512_final(&sign_ctx, *out);
+	*outlen = SHA512_DIGEST_SIZE;
+}
+
+static void
+pkg_checksum_hash_sha512_file(int fd, unsigned char **out, size_t *outlen)
+{
+	char buffer[8192];
+	ssize_t r;
+
+	sha512_context sign_ctx;
+	*out = xmalloc(SHA512_DIGEST_SIZE);
+	sha512_init(&sign_ctx);
+	while ((r = read(fd, buffer, sizeof(buffer))) > 0)
+		sha512_update(&sign_ctx, buffer, r);
+	if (r < 0) {
+		pkg_emit_errno(__func__, "read failed");
+		free(*out);
+		*out = NULL;
+		return;
+	}
+	sha512_final(&sign_ctx, *out);
+	*outlen = SHA512_DIGEST_SIZE;
 }
 
 static void
