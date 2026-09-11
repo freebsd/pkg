@@ -638,7 +638,7 @@ _pkg_args() {
 	[[ -z $state ]] && return ret
 	if [[ $state = repositories ]]; then
 		local -U repos
-		repos=( $(_call_program repositories _pkg_cmd query '%R') )
+		repos=( $(_call_program repositories _pkg_cmd repositories -l) )
 		_wanted -x repositories expl repository compadd -a repos
 		return
 	fi
