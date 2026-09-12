@@ -432,8 +432,6 @@ struct pkg_repo_create {
 	ucl_object_t *groups;
 	ucl_object_t *expired_packages;
 	struct {
-		char **argv;
-		int argc;
 		pkg_password_cb *cb;
 		const char *type;
 		const char *cmd;

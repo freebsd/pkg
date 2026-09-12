@@ -46,11 +46,15 @@ usage_repo(void)
 int
 exec_repo(int argc, char **argv)
 {
-	int	 ch;
+	int	 ch, i;
 	bool	 hash = false;
 	bool	 hash_symlink = false;
+	bool	 got_sign_cmd = false;
+	bool	 got_sign_key = false;
 	bool	 got_signopts = false;
 	struct pkg_repo_create *prc = pkg_repo_create_new();
+	char	*cpos;
+	sb_t	 cmd = sb_init();
 
 	hash = (getenv("PKG_REPO_HASH") != NULL);
 	hash_symlink = (getenv("PKG_REPO_SYMLINK") != NULL);
@@ -72,7 +76,7 @@ exec_repo(int argc, char **argv)
 	while ((ch = getopt_long(argc, argv, "+c:g:hk:lm:o:qst:", longopts, NULL)) != -1) {
 		switch (ch) {
 		case 'c':
-			got_signopts = true;
+			got_sign_cmd = got_signopts = true;
 			pkg_repo_create_set_signcmd(prc, optarg);
 			break;
 		case 'g':
@@ -82,7 +86,7 @@ exec_repo(int argc, char **argv)
 			hash = true;
 			break;
 		case 'k':
-			got_signopts = true;
+			got_sign_key = got_signopts = true;
 			pkg_repo_create_set_signkey(prc, optarg);
 			break;
 		case 'l':
@@ -120,28 +124,61 @@ exec_repo(int argc, char **argv)
 
 	pkg_repo_create_set_hash(prc, hash);
 	pkg_repo_create_set_hash_symlink(prc, hash_symlink);
+	pkg_repo_create_set_password_cb(prc, password_cb);
 
 	/* If we have signing options and we have signing args, error. */
 	if (argc > 1 && got_signopts) {
 		pkg_repo_create_free(prc);
+		warnx("Cannot pass both legacy signing arguments and modern signing options.");
 		usage_repo();
 		return (EXIT_FAILURE);
 	}
 
-	pkg_repo_create_set_sign(prc, argv + 1, argc - 1, password_cb);
-
-	if (argc > 2 && !STREQ(argv[1], "signing_command:")) {
+	if (got_sign_cmd && got_sign_key) {
 		pkg_repo_create_free(prc);
+		warnx("Cannot pass both signing key and signing command.");
 		usage_repo();
 		return (EXIT_FAILURE);
+	}
+
+	/* Compatibility with old signing calling convention. */
+	if (argc == 2) {
+		/* Should be "dir rsa:path/to/key.pem" */
+		if ((cpos = strchr(argv[1], ':')) == NULL) {
+			/* No type detected, assume "rsa" */
+			pkg_repo_create_set_signtype(prc, "rsa");
+			pkg_repo_create_set_signkey(prc, argv[1]);
+		} else {
+			cpos[0] = '\0';
+			pkg_repo_create_set_signtype(prc, argv[1]);
+			pkg_repo_create_set_signkey(prc, cpos + 1);
+		}
+	} else if (argc > 2) {
+		/* Should be "dir signing_command: sign.sh arg arg" */
+		if (STREQ(argv[1], "signing_command:")) {
+			for (i = 2; i < argc; i++) {
+				if (strspn(argv[i], " \t\n") > 0)
+					sb_printf(&cmd, " \"%s\" ", argv[i]);
+				else
+					sb_printf(&cmd, " %s ", argv[i]);
+			}
+			pkg_repo_create_set_signcmd(prc, sb_str(&cmd));
+		} else {
+			sb_fini(&cmd);
+			pkg_repo_create_free(prc);
+			usage_repo();
+			return (EXIT_FAILURE);
+		}
 	}
 
 	if (pkg_repo_create(prc, argv[0]) != EPKG_OK) {
 		printf("Cannot create repository catalogue\n");
+		sb_fini(&cmd);
 		pkg_repo_create_free(prc);
 		return (EXIT_FAILURE);
 	}
 
+	sb_fini(&cmd);
 	pkg_repo_create_free(prc);
 	return (EXIT_SUCCESS);
 }
