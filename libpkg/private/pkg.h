@@ -435,6 +435,9 @@ struct pkg_repo_create {
 		char **argv;
 		int argc;
 		pkg_password_cb *cb;
+		const char *type;
+		const char *cmd;
+		const char *key;
 	} sign;
 };
 
