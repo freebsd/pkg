@@ -30,15 +30,6 @@
 #include <signal.h>
 #include <stdio.h>
 #include <string.h>
-
-#if __has_include(<readpassphrase.h>)
-#include <readpassphrase.h>
-#elif __has_include(<bsd/readpassphrase.h>)
-#include <bsd/readpassphrase.h>
-#else
-#include "readpassphrase_compat.h"
-#endif
-
 #include <unistd.h>
 
 #include <pkg.h>
@@ -47,8 +38,8 @@
 void
 usage_repo(void)
 {
-	fprintf(stderr, "Usage: pkg repo [-hlqs] [-m metafile] [-o output-dir] <repo-path> "
-	    "[rsa:<rsa-key>|signing_command: <the command>]\n\n");
+	fprintf(stderr, "Usage: pkg repo [-hlqs] [-m metafile] [-o output-dir] "
+                        "[-t <keytype> [-k keyfile | -c cmd]] <repo-path>\n\n");
 	fprintf(stderr, "For more information see 'pkg help repo'.\n");
 }
 
@@ -58,32 +49,47 @@ exec_repo(int argc, char **argv)
 	int	 ch;
 	bool	 hash = false;
 	bool	 hash_symlink = false;
+	bool	 got_signopts = false;
 	struct pkg_repo_create *prc = pkg_repo_create_new();
 
 	hash = (getenv("PKG_REPO_HASH") != NULL);
 	hash_symlink = (getenv("PKG_REPO_SYMLINK") != NULL);
 
 	struct option longopts[] = {
+		{ "sign-cmd",	required_argument,	NULL,	'c' },
 		{ "groups",	required_argument,	NULL,	'g' },
 		{ "hash",	no_argument,		NULL,	'h' },
+		{ "sign-key",	required_argument,	NULL,	'k' },
 		{ "list-files", no_argument,		NULL,	'l' },
 		{ "meta-file",	required_argument,	NULL,	'm' },
 		{ "output-dir", required_argument,	NULL,	'o' },
 		{ "quiet",	no_argument,		NULL,	'q' },
 		{ "symlink",	no_argument,		NULL,	's' },
+		{ "sign-type",	required_argument,	NULL,	't' },
 		{ NULL,		0,			NULL,	0   },
 	};
 
-	while ((ch = getopt_long(argc, argv, "+hg:lo:qm:s", longopts, NULL)) != -1) {
+	while ((ch = getopt_long(argc, argv, "+c:g:hk:lm:o:qst:", longopts, NULL)) != -1) {
 		switch (ch) {
+		case 'c':
+			got_signopts = true;
+			pkg_repo_create_set_signcmd(prc, optarg);
+			break;
 		case 'g':
 			pkg_repo_create_set_groups(prc, optarg);
 			break;
 		case 'h':
 			hash = true;
 			break;
+		case 'k':
+			got_signopts = true;
+			pkg_repo_create_set_signkey(prc, optarg);
+			break;
 		case 'l':
 			pkg_repo_create_set_create_filelist(prc, true);
+			break;
+		case 'm':
+			pkg_repo_create_set_metafile(prc, optarg);
 			break;
 		case 'o':
 			pkg_repo_create_set_output_dir(prc, optarg);
@@ -91,11 +97,12 @@ exec_repo(int argc, char **argv)
 		case 'q':
 			quiet = true;
 			break;
-		case 'm':
-			pkg_repo_create_set_metafile(prc, optarg);
-			break;
 		case 's':
 			hash_symlink = true;
+			break;
+		case 't':
+			got_signopts = true;
+			pkg_repo_create_set_signtype(prc, optarg);
 			break;
 		default:
 			usage_repo();
@@ -113,6 +120,14 @@ exec_repo(int argc, char **argv)
 
 	pkg_repo_create_set_hash(prc, hash);
 	pkg_repo_create_set_hash_symlink(prc, hash_symlink);
+
+	/* If we have signing options and we have signing args, error. */
+	if (argc > 1 && got_signopts) {
+		pkg_repo_create_free(prc);
+		usage_repo();
+		return (EXIT_FAILURE);
+	}
+
 	pkg_repo_create_set_sign(prc, argv + 1, argc - 1, password_cb);
 
 	if (argc > 2 && !STREQ(argv[1], "signing_command:")) {
