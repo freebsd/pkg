@@ -33,19 +33,25 @@ ATF_TC_WITHOUT_HEAD(basics);
 ATF_TC_BODY(basics, tc) {
 #ifdef HAVE_FFLAGSTOSTR
 	const char *file = "./file type=file uname=root gname=wheel mode=644 flags=uchg\n"
+		"./file\\0402 type=file uname=root gname=wheel mode=644 flags=uchg\n"
 		"./dir type=dir uname=root gname=wheel mode=644 flags=uchg\n"
-		"./link type=link uname=root gname=wheel mode=644 link=bla\n";
+		"./link type=link uname=root gname=wheel mode=644 link=bla\n"
+		"./link\\0122 type=link uname=root gname=wheel mode=644 link=bla\\#2\n";
 #else
 	const char *file = "./file type=file uname=root gname=wheel mode=644 flags=\n"
+		"./file\\0402 type=file uname=root gname=wheel mode=644 flags=\n"
 		"./dir type=dir uname=root gname=wheel mode=644 flags=\n"
-		"./link type=link uname=root gname=wheel mode=644 link=bla\n";
+		"./link type=link uname=root gname=wheel mode=644 link=bla\n"
+		"./link\\0122 type=link uname=root gname=wheel mode=644 link=bla\\#2\n";
 #endif
 	ATF_REQUIRE_EQ(EPKG_FATAL, metalog_open("/dev/nope/nope"));
 	ATF_REQUIRE_EQ(EPKG_FATAL, metalog_add(PKG_METALOG_FILE, "meh", "root", "wheel", 0644, 2, NULL));
 	ATF_REQUIRE_EQ(EPKG_OK, metalog_open("out"));
 	ATF_REQUIRE_EQ(EPKG_OK, metalog_add(PKG_METALOG_FILE, "file", "root", "wheel", 0644, 2, NULL));
+	ATF_REQUIRE_EQ(EPKG_OK, metalog_add(PKG_METALOG_FILE, "file 2", "root", "wheel", 0644, 2, NULL));
 	ATF_REQUIRE_EQ(EPKG_OK, metalog_add(PKG_METALOG_DIR, "dir", "root", "wheel", 0644, 2, NULL));
 	ATF_REQUIRE_EQ(EPKG_OK, metalog_add(PKG_METALOG_LINK, "link", "root", "wheel", 0644, 0, "bla"));
+	ATF_REQUIRE_EQ(EPKG_OK, metalog_add(PKG_METALOG_LINK, "link\n2", "root", "wheel", 0644, 0, "bla#2"));
 	metalog_close();
 	if (!atf_utils_compare_file("out", file)) {
 		atf_utils_cat_file("out", ">");

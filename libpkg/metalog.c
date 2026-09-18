@@ -27,12 +27,19 @@
  */
 
 #include <errno.h>
+#if __has_include(<vis.h>)
+#include <vis.h>
+#elif __has_include(<bsd/vis.h>)
+#include <bsd/vis.h>
+#endif
 
 #include "pkg.h"
 #include "private/pkg.h"
 #include "private/event.h"
 
 static FILE *metalogfp = NULL;
+static char metalogbuf[MAXPATHLEN * 4 + 1];
+static char const * metalog_escape_path(char const *, int);
 
 int
 metalog_open(const char *metalog)
@@ -66,7 +73,7 @@ metalog_add(int type, const char *path, const char *uname, const char *gname,
 	case PKG_METALOG_DIR:
 		if (fprintf(metalogfp,
 		    "./%s type=dir uname=%s gname=%s mode=%3o%s%s\n",
-		    path, uname, gname, mode,
+		    metalog_escape_path(path, 0), uname, gname, mode,
 		    fflags ? " flags=" : "",
 		    fflags_buffer ? fflags_buffer : "") < 0) {
 			pkg_errno("%s", "Unable to write to the metalog");
@@ -76,7 +83,7 @@ metalog_add(int type, const char *path, const char *uname, const char *gname,
 	case PKG_METALOG_FILE:
 		if (fprintf(metalogfp,
 		    "./%s type=file uname=%s gname=%s mode=%3o%s%s\n",
-		    path, uname, gname, mode,
+		    metalog_escape_path(path, 0), uname, gname, mode,
 		    fflags ? " flags=" : "",
 		    fflags_buffer ? fflags_buffer : "") < 0) {
 			pkg_errno("%s", "Unable to write to the metalog");
@@ -85,8 +92,10 @@ metalog_add(int type, const char *path, const char *uname, const char *gname,
 		break;
 	case PKG_METALOG_LINK:
 		if (fprintf(metalogfp,
-		    "./%s type=link uname=%s gname=%s mode=%3o link=%s%s%s\n",
-		    path, uname, gname, mode, link,
+		    "./%s type=link uname=%s gname=%s mode=%3o",
+		    metalog_escape_path(path, 0), uname, gname, mode) < 0 ||
+		    fprintf(metalogfp, " link=%s%s%s\n",
+		    metalog_escape_path(link, 1),
 		    fflags ? " flags=" : "",
 		    fflags_buffer ? fflags_buffer : "") < 0) {
 			pkg_errno("%s", "Unable to write to the metalog");
@@ -107,4 +116,14 @@ metalog_close(void)
 	if (metalogfp != NULL) {
 		fclose(metalogfp);
 	}
+}
+
+static char const *
+metalog_escape_path(char const * path, int link)
+{
+	static const char extra[] = { ' ', '\t', '\n', '\\', '#', '\0' };
+
+	strsnvis(metalogbuf, sizeof(metalogbuf), path,
+	         link ? VIS_CSTYLE : VIS_OCTAL, extra);
+	return metalogbuf;
 }
