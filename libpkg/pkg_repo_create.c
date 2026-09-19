@@ -1081,7 +1081,9 @@ pkg_repo_sign(const char *path, char **argv, int argc, char **sig, size_t *sigle
 	free(line);
 
 	*sigtype = sb_get(&typestr);
+	*certlen = certstr.len;
 	*cert = sb_get(&certstr);
+	*siglen = sigstr.len;
 	*sig = sb_get(&sigstr);
 
 	/*
