@@ -12,6 +12,7 @@
 #include "pkg_config.h"
 #endif
 
+#include <assert.h>
 #include <ctype.h>
 #include <paths.h>
 #include <string.h>

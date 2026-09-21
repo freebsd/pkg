@@ -30,6 +30,7 @@
 #include <sys/stat.h>
 #include <sys/param.h>
 
+#include <assert.h>
 #include <fcntl.h>
 
 #include <openssl/err.h>

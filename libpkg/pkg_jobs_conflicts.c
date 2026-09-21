@@ -28,6 +28,7 @@
 
 #include <sys/param.h>
 #include <sys/types.h>
+#include <assert.h>
 #include <stdbool.h>
 #include <stdlib.h>
 #include <string.h>
