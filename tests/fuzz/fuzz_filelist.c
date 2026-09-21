@@ -20,7 +20,7 @@ LLVMFuzzerTestOneInput(const uint8_t *data, size_t size)
 {
 	struct pkg *p = NULL;
 	FILE *f = NULL;
-	pkghash *dirs = NULL;
+	hash_t *dirs = NULL;
 	int ndirs = 0;
 	const uint8_t *cur, *end;
 
@@ -79,7 +79,7 @@ LLVMFuzzerTestOneInput(const uint8_t *data, size_t size)
 		fclose(f);
 	}
 
-	pkghash_destroy(dirs);
+	hash_destroy(dirs);
 	pkg_free(p);
 	return (0);
 }

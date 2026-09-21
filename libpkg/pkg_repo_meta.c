@@ -73,6 +73,16 @@ pkg_repo_meta_set_default(struct pkg_repo_meta *meta)
 	meta->extra_fields = NULL;
 }
 
+static void
+pkg_repo_meta_key_free(struct pkg_repo_meta_key *k)
+{
+
+	free(k->name);
+	free(k->pubkey);
+	free(k->pubkey_type);
+	free(k);
+}
+
 void
 pkg_repo_meta_free(struct pkg_repo_meta *meta)
 {
@@ -97,14 +107,11 @@ pkg_repo_meta_free(struct pkg_repo_meta *meta)
 		free(meta->maintainer);
 		free(meta->source);
 		free(meta->source_identifier);
-		pkghash_foreach(meta->keys, it) {
+		hash_foreach(meta->keys, it) {
 			k = (struct pkg_repo_meta_key *)it.value;
-			free(k->name);
-			free(k->pubkey);
-			free(k->pubkey_type);
-			free(k);
+			pkg_repo_meta_key_free(k);
 		}
-		pkghash_destroy(meta->keys);
+		hash_destroy(meta->keys);
 		ucl_object_unref(meta->extra_fields);
 		free(meta);
 	}
@@ -286,8 +293,11 @@ pkg_repo_meta_parse(ucl_object_t *top, struct pkg_repo_meta **target, int versio
 	obj = ucl_object_find_key(top, "cert");
 	while ((cur = ucl_iterate_object(obj, &iter, false)) != NULL) {
 		cert = pkg_repo_meta_parse_cert(cur);
-		if (cert != NULL)
-			pkghash_safe_add(meta->keys, cert->name, cert, NULL);
+		/* A duplicated cert name is dropped: free it, the table owns
+		 * the first one. */
+		if (cert != NULL &&
+		    !hash_safe_add(meta->keys, cert->name, cert, NULL))
+			pkg_repo_meta_key_free(cert);
 	}
 
 	obj = ucl_object_find_key(top, "extra");

@@ -40,7 +40,7 @@
 #include "private/pkg.h"
 #include "private/event.h"
 #include "xmalloc.h"
-#include "pkghash.h"
+#include "hash.h"
 
 extern char **environ;
 

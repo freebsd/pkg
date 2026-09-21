@@ -912,7 +912,7 @@ pkg_parse_manifest_file(struct pkg *pkg, const char *file)
 	} while (0)
 
 int
-pkg_emit_filelist(struct pkg *pkg, FILE *f, pkghash **dirs, int *ndirs)
+pkg_emit_filelist(struct pkg *pkg, FILE *f, hash_t **dirs, int *ndirs)
 {
 	struct pkg_file *file = NULL;
 	int cur_idx = -1;
@@ -926,7 +926,7 @@ pkg_emit_filelist(struct pkg *pkg, FILE *f, pkghash **dirs, int *ndirs)
 		size_t dir_len;
 		char dirbuf[MAXPATHLEN];
 		int idx;
-		pkghash_entry *e;
+		hash_entry *e;
 
 		if (pkg->oprefix != NULL) {
 			size_t l = strlen(pkg->prefix);
@@ -955,14 +955,14 @@ pkg_emit_filelist(struct pkg *pkg, FILE *f, pkghash **dirs, int *ndirs)
 		dirbuf[dir_len] = '\0';
 
 		/* Get or assign directory index */
-		e = pkghash_get(*dirs, dirbuf);
+		e = hash_get(*dirs, dirbuf);
 		if (e != NULL) {
 			idx = (int)(intptr_t)e->value;
 		} else {
 			idx = (*ndirs)++;
 			if (*dirs == NULL)
-				*dirs = pkghash_new();
-			pkghash_add(*dirs, dirbuf, (void *)(intptr_t)idx, NULL);
+				*dirs = hash_new();
+			hash_add(*dirs, dirbuf, (void *)(intptr_t)idx, NULL);
 		}
 
 		if (idx != cur_idx) {

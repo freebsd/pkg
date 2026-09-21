@@ -23,7 +23,7 @@
 
 #include "private/pkg_osvf.h"
 #include "private/utils.h"
-#include "pkghash.h"
+#include "hash.h"
 
 /*
   Open Source Vulnerability format: https://ossf.github.io/osv-schema/
@@ -705,14 +705,14 @@ pkg_osvf_free_entry(struct pkg_osvf_entry *entry)
 	free(entry);
 }
 
-static struct pkghash *
+static hash_t *
 pkg_osvf_create_seek_hash(struct pkg_osvf_hash *osvf_ptr)
 {
-	struct pkghash *hash_table = pkghash_new();
+	hash_t *hash_table = hash_new();
 
 	while(osvf_ptr->name)
 	{
-		pkghash_add(hash_table, osvf_ptr->name, osvf_ptr, NULL);
+		hash_add(hash_table, osvf_ptr->name, osvf_ptr, NULL);
 		osvf_ptr ++;
 	}
 
@@ -722,8 +722,8 @@ pkg_osvf_create_seek_hash(struct pkg_osvf_hash *osvf_ptr)
 static unsigned int
 pkg_osvf_get_hash(const char *key, struct pkg_osvf_hash *global, unsigned int unknow)
 {
-	struct pkghash *hash = NULL;
-	pkghash_entry *entry = NULL;
+	hash_t *hash = NULL;
+	hash_entry *entry = NULL;
 	struct pkg_osvf_hash *rtn_struct = NULL;
 	unsigned int rtn_value = unknow;
 
@@ -738,7 +738,7 @@ pkg_osvf_get_hash(const char *key, struct pkg_osvf_hash *global, unsigned int un
 	 */
 	hash = pkg_osvf_create_seek_hash(global);
 
-	entry = pkghash_get(hash, key);
+	entry = hash_get(hash, key);
 
 	/*
 	 * If there was key then get it and
@@ -748,7 +748,7 @@ pkg_osvf_get_hash(const char *key, struct pkg_osvf_hash *global, unsigned int un
 	{
 		rtn_struct = (struct pkg_osvf_hash *) entry->value;
 		rtn_value = rtn_struct->value;
-		pkghash_destroy(hash);
+		hash_destroy(hash);
 	}
 
 	return rtn_value;

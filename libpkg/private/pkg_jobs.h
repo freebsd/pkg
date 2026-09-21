@@ -112,9 +112,9 @@ struct pkg_job_provide {
 typedef vec_t(struct pkg_job_provide) providev_t;
 
 struct pkg_jobs_universe {
-	pkghash *items;		/* package uid -> universe_itemv_t * */
-	pkghash *seen;		/* package digest -> universe_itemv_t * */
-	pkghash *provides;	/* shlibs, pkg_job_provide */
+	hash_t *items;		/* package uid -> universe_itemv_t * */
+	hash_t *seen;		/* package digest -> universe_itemv_t * */
+	hash_t *provides;	/* shlibs, pkg_job_provide */
 	struct pkg_jobs *j;
 	size_t nitems;
 	int rdeps_depth;	/* track rdeps recursion to prevent explosion */
@@ -137,8 +137,8 @@ typedef vec_t(struct job_pattern) job_patternv_t;
 
 struct pkg_jobs {
 	struct pkg_jobs_universe *universe;
-	pkghash	*request_add;
-	pkghash	*request_delete;
+	hash_t	*request_add;
+	hash_t	*request_delete;
 	pkg_solved_list	 jobs;
 	struct pkgdb	*db;
 	pkg_jobs_t	 type;

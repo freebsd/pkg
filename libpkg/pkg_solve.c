@@ -41,7 +41,7 @@
 #include <math.h>
 
 #include "pkg.h"
-#include "pkghash.h"
+#include "hash.h"
 #include "private/event.h"
 #include "private/pkg.h"
 #include "private/pkgdb.h"
@@ -108,7 +108,7 @@ struct pkg_solve_rule {
 struct pkg_solve_problem {
 	struct pkg_jobs *j;
 	vec_t(struct pkg_solve_rule *) rules;
-	pkghash *variables_by_uid;
+	hash_t *variables_by_uid;
 	struct pkg_solve_variable *variables;
 	PicoSAT *sat;
 	size_t nvars;
@@ -158,10 +158,10 @@ pkg_solve_problem_free(struct pkg_solve_problem *problem)
 {
 	vec_free_and_free(&problem->rules, pkg_solve_rule_free);
 	{
-		pkghash_foreach(problem->variables_by_uid, it)
+		hash_foreach(problem->variables_by_uid, it)
 			free(it.value);
 	}
-	pkghash_destroy(problem->variables_by_uid);
+	hash_destroy(problem->variables_by_uid);
 	picosat_reset(problem->sat);
 	free(problem->variables);
 	free(problem);
@@ -274,7 +274,7 @@ pkg_solve_handle_provide(struct pkg_solve_problem *problem,
 
 	/* Find the corresponding variables chain */
 
-	solve_var_slice_t *slice = pkghash_get_value(problem->variables_by_uid, pr->un->pkg->uid);
+	solve_var_slice_t *slice = hash_get_value(problem->variables_by_uid, pr->un->pkg->uid);
 	if (slice == NULL)
 		return;
 	for (size_t vi = 0; vi < slice->count; vi++) {
@@ -405,7 +405,7 @@ pkg_solve_add_depend_rule(struct pkg_solve_problem *problem,
 			cur = &dep->alternatives.d[_dalt - 1];
 		}
 		uid = cur->uid;
-		solve_var_slice_t *depslice = pkghash_get_value(problem->variables_by_uid, uid);
+		solve_var_slice_t *depslice = hash_get_value(problem->variables_by_uid, uid);
 		if (depslice == NULL) {
 			dbg(2, "cannot find variable dependency %s", uid);
 			continue;
@@ -444,7 +444,7 @@ pkg_solve_add_conflict_rule(struct pkg_solve_problem *problem,
 	struct pkg *other;
 
 	uid = conflict->uid;
-	solve_var_slice_t *confslice = pkghash_get_value(problem->variables_by_uid, uid);
+	solve_var_slice_t *confslice = hash_get_value(problem->variables_by_uid, uid);
 	if (confslice == NULL) {
 		dbg(2, "cannot find conflict %s", uid);
 		return;
@@ -504,7 +504,7 @@ pkg_solve_add_require_rule(struct pkg_solve_problem *problem,
 
 	pkg = var->unit->pkg;
 
-	provvec = pkghash_get_value(problem->j->universe->provides, requirement);
+	provvec = hash_get_value(problem->j->universe->provides, requirement);
 	if (provvec != NULL) {
 		dbg(4, "Add require rule: %s-%s(%c) wants %s",
 			pkg->name, pkg->version, pkg->type == PKG_INSTALLED ? 'l' : 'r',
@@ -605,7 +605,7 @@ pkg_solve_add_request_rule(struct pkg_solve_problem *problem,
 	/*
 	 * Get the suggested item
 	 */
-	solve_var_slice_t *reqslice = pkghash_get_value(problem->variables_by_uid, req->items.d[0].pkg->uid);
+	solve_var_slice_t *reqslice = hash_get_value(problem->variables_by_uid, req->items.d[0].pkg->uid);
 	var = pkg_solve_find_var_in_chain(reqslice, req->items.d[0].unit);
 	assert(var != NULL);
 	/* Assume the most significant variable */
@@ -714,10 +714,10 @@ pkg_solve_process_universe_variable(struct pkg_solve_problem *problem,
 
 		/* Request */
 		if (!(cur_var->flags & PKG_VAR_TOP)) {
-			jreq = pkghash_get_value(j->request_add, cur_var->uid);
+			jreq = hash_get_value(j->request_add, cur_var->uid);
 			if (jreq != NULL)
 				pkg_solve_add_request_rule(problem, cur_var, jreq, 1);
-			jreq = pkghash_get_value(j->request_delete, cur_var->uid);
+			jreq = hash_get_value(j->request_delete, cur_var->uid);
 			if (jreq != NULL)
 				pkg_solve_add_request_rule(problem, cur_var, jreq, -1);
 		}
@@ -786,7 +786,7 @@ pkg_solve_add_variable(universe_itemv_t *uv,
 		if (slice->begin == NULL) {
 			slice->begin = var;
 			dbg(4, "add variable from universe with uid %s", var->uid);
-			pkghash_safe_add(problem->variables_by_uid, var->uid, slice, NULL);
+			hash_safe_add(problem->variables_by_uid, var->uid, slice, NULL);
 		}
 		slice->count++;
 		(*n)++;
@@ -817,18 +817,18 @@ pkg_solve_jobs_to_sat(struct pkg_jobs *j)
 	picosat_adjust(problem->sat, problem->nvars);
 
 	/* Parse universe */
-	pkghash_foreach(j->universe->items, it) {
+	hash_foreach(j->universe->items, it) {
 		uv = (universe_itemv_t *)it.value;
 		/* Add corresponding variables */
 		pkg_solve_add_variable(uv, problem, &i);
 	}
 
 	/* Add rules for all conflict chains */
-	pkghash_foreach(j->universe->items, it) {
+	hash_foreach(j->universe->items, it) {
 		solve_var_slice_t *slice;
 
 		uv = (universe_itemv_t *)it.value;
-		slice = pkghash_get_value(problem->variables_by_uid, uv->d[0]->pkg->uid);
+		slice = hash_get_value(problem->variables_by_uid, uv->d[0]->pkg->uid);
 		if (slice == NULL) {
 			pkg_emit_error("internal solver error: variable %s is not found",
 			    uv->d[0]->pkg->uid);
@@ -859,7 +859,7 @@ pkg_solve_picosat_iter(struct pkg_solve_problem *problem, int iter __unused)
 		var = &problem->variables[i];
 		is_installed = false;
 
-		solve_var_slice_t *pslice = pkghash_get_value(problem->variables_by_uid, var->uid);
+		solve_var_slice_t *pslice = hash_get_value(problem->variables_by_uid, var->uid);
 		if (pslice != NULL) {
 			for (size_t vi = 0; vi < pslice->count; vi++) {
 				if (pslice->begin[vi].unit->pkg->type == PKG_INSTALLED) {
@@ -954,7 +954,7 @@ pkg_solve_set_initial_assumption(struct pkg_solve_problem *problem,
 		var = item->var;
 
 		/* Look up slice from hash */
-		solve_var_slice_t *aslice = pkghash_get_value(problem->variables_by_uid, var->uid);
+		solve_var_slice_t *aslice = hash_get_value(problem->variables_by_uid, var->uid);
 		assert(aslice != NULL);
 
 		for (size_t vi = 0; vi < aslice->count; vi++) {
@@ -1176,7 +1176,7 @@ reiterate:
 				struct pkg_solve_variable *lvar = &problem->variables[i];
 
 				if (!(lvar->flags & PKG_VAR_INSTALL)) {
-					solve_var_slice_t *lslice = pkghash_get_value(problem->variables_by_uid, lvar->uid);
+					solve_var_slice_t *lslice = hash_get_value(problem->variables_by_uid, lvar->uid);
 					if (lslice != NULL) {
 						for (size_t vi = 0; vi < lslice->count; vi++) {
 							struct pkg_solve_variable *cur = &lslice->begin[vi];
@@ -1196,7 +1196,7 @@ reiterate:
 				 * iteration to ensure that we have no other choices
 				 */
 				if (failed_var) {
-					solve_var_slice_t *lslice = pkghash_get_value(problem->variables_by_uid, lvar->uid);
+					solve_var_slice_t *lslice = hash_get_value(problem->variables_by_uid, lvar->uid);
 					dbg (1, "trying to delete local package %s-%s on install/upgrade,"
 							" reiterate on SAT",
 							lvar->unit->pkg->name, lvar->unit->pkg->version);
@@ -1352,7 +1352,7 @@ pkg_solve_can_keep(struct pkg_solve_problem *problem,
 	while (pkg_deps(pkg, &dep) == EPKG_OK) {
 		solve_var_slice_t *depslice;
 
-		depslice = pkghash_get_value(problem->variables_by_uid, dep->uid);
+		depslice = hash_get_value(problem->variables_by_uid, dep->uid);
 		if (depslice == NULL) {
 			/*
 			 * Dep not in the universe at all -- it is either
@@ -1385,7 +1385,7 @@ pkg_solve_can_keep(struct pkg_solve_problem *problem,
 		solve_var_slice_t *confslice;
 
 		conflict = &pkg->conflicts.d[_ci];
-		confslice = pkghash_get_value(problem->variables_by_uid,
+		confslice = hash_get_value(problem->variables_by_uid,
 		    conflict->uid);
 		if (confslice == NULL)
 			continue;
@@ -1479,7 +1479,7 @@ pkg_solve_insert_res_job (solve_var_slice_t *slice,
 				 */
 				if ((j->type == PKG_JOBS_INSTALL ||
 				    j->type == PKG_JOBS_UPGRADE) &&
-				    pkghash_get(j->request_delete, cur_var->uid) == NULL &&
+				    hash_get(j->request_delete, cur_var->uid) == NULL &&
 				    pkg_solve_can_keep(problem, cur_var)) {
 					dbg(2, "keeping %s-%s: deps still satisfied",
 					    cur_var->unit->pkg->name,
@@ -1507,7 +1507,7 @@ int
 pkg_solve_sat_to_jobs(struct pkg_solve_problem *problem)
 {
 	solve_var_slice_t *slice;
-	pkghash_foreach(problem->variables_by_uid, it) {
+	hash_foreach(problem->variables_by_uid, it) {
 		slice = (solve_var_slice_t *)it.value;
 		dbg(4, "check variable with uid %s", slice->begin[0].uid);
 		pkg_solve_insert_res_job(slice, problem);

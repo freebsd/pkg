@@ -59,7 +59,7 @@ SRCS=	backup_lib.c \
 	fetch_libfetch.c \
 	fetch_file.c \
 	triggers.c \
-	pkghash.c \
+	hash.c \
 	yuarel.c \
 	json.c \
 	sb.c \

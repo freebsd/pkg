@@ -24,7 +24,7 @@
 #include "private/pkg_abi.h"
 #include "private/utils.h"
 #include "private/fetch.h"
-#include "pkghash.h"
+#include "hash.h"
 #include "pkg/stringset.h"
 
 /*
@@ -368,7 +368,7 @@ struct trigger {
 		int type;
 		bool sandbox;
 	} cleanup;
-	pkghash *matched;
+	hash_t *matched;
 };
 typedef vec_t(struct trigger *) trigger_t;
 
@@ -487,7 +487,7 @@ struct pkg_repo_meta {
 	char *source_identifier;
 	int64_t revision;
 
-	pkghash *keys;
+	hash_t *keys;
 
 	time_t eol;
 
@@ -579,8 +579,8 @@ struct pkg_repo {
 	void *fetch_priv;
 	bool silent;
 
-	pkghash *trusted_fp;
-	pkghash *revoked_fp;
+	hash_t *trusted_fp;
+	hash_t *revoked_fp;
 
 	struct {
 		int in;
@@ -643,7 +643,7 @@ struct plist {
 	int64_t flatsize;
 	hardlinks_t hardlinks;
 	mode_t perm;
-	pkghash *keywords;
+	hash_t *keywords;
 	kvlist_t variables;
 	bool in_for_loop;
 	forloop_frame_t *forloop_stack;
@@ -764,10 +764,10 @@ typedef enum {
 	HASH_UNKNOWN,
 	HASH_SHA256,
 	HASH_BLAKE2
-} hash_t;
+} checksum_type_t;
 
 struct fingerprint {
-	hash_t type;
+	checksum_type_t type;
 	char hash[BUFSIZ];
 };
 int pkg_repo_load_fingerprints(struct pkg_repo *repo);
@@ -864,7 +864,7 @@ int pkgdb_set_pkg_digest(struct pkgdb *db, struct pkg *pkg);
 int pkgdb_is_dir_used(struct pkgdb *db, struct pkg *p, const char *dir, int64_t *res);
 int pkgdb_file_set_cksum(struct pkgdb *db, struct pkg_file *file, const char *sha256);
 
-int pkg_emit_filelist(struct pkg *, FILE *, pkghash **dirs, int *ndirs);
+int pkg_emit_filelist(struct pkg *, FILE *, hash_t **dirs, int *ndirs);
 
 bool ucl_object_emit_buf(const ucl_object_t *obj, enum ucl_emitter emit_type,
     sb_t **buf);

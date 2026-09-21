@@ -36,7 +36,7 @@
 #include <errno.h>
 #include <pwd.h>
 #include <pkg.h>
-#include <pkghash.h>
+#include <hash.h>
 #include <xmalloc.h>
 #include <pkg/audit.h>
 
@@ -1039,14 +1039,14 @@ namecmp(const void *a, const void *b)
 	return (pkg_namecmp(sda->new, sdb->new));
 }
 
-static pkghash *
+static hash_t *
 audit_check_summary(pkg_solved_display_t *disp)
 {
 	int pfd[2];
 	pid_t cld;
 	struct pkg_audit *audit;
 	struct pkg_audit_issues *issues;
-	pkghash *vulnerable = NULL;
+	hash_t *vulnerable = NULL;
 	FILE *in;
 	char *line = NULL;
 	size_t linecap = 0;
@@ -1122,11 +1122,11 @@ audit_check_summary(pkg_solved_display_t *disp)
 			return (NULL);
 		}
 
-		vulnerable = pkghash_new();
+		vulnerable = hash_new();
 		while ((linelen = getline(&line, &linecap, in)) > 0) {
 			if (line[linelen - 1] == '\n')
 				line[linelen - 1] = '\0';
-			pkghash_safe_add(vulnerable, line, NULL, NULL);
+			hash_safe_add(vulnerable, line, NULL, NULL);
 		}
 		free(line);
 		fclose(in);
@@ -1136,8 +1136,8 @@ audit_check_summary(pkg_solved_display_t *disp)
 				break;
 		}
 
-		if (pkghash_count(vulnerable) == 0) {
-			pkghash_destroy(vulnerable);
+		if (hash_count(vulnerable) == 0) {
+			hash_destroy(vulnerable);
 			return (NULL);
 		}
 
@@ -1171,7 +1171,7 @@ print_jobs_summary(struct pkg_jobs *jobs, const char *msg, ...)
 	}
 
 	/* Check packages against audit database for vulnerabilities */
-	pkghash *vulnerable = audit_check_summary(disp);
+	hash_t *vulnerable = audit_check_summary(disp);
 	int vuln_count = 0;
 	if (vulnerable != NULL) {
 		for (type = 0; type < PKG_DISPLAY_MAX; type++) {
@@ -1182,14 +1182,14 @@ print_jobs_summary(struct pkg_jobs *jobs, const char *msg, ...)
 				pkg_get(disp[type].d[i]->new, PKG_ATTR_VERSION, &v);
 				if (n != NULL && v != NULL) {
 					snprintf(nv, sizeof(nv), "%s-%s", n, v);
-					if (pkghash_get(vulnerable, nv) != NULL) {
+					if (hash_get(vulnerable, nv) != NULL) {
 						disp[type].d[i]->vulnerable = true;
 						vuln_count++;
 					}
 				}
 			}
 		}
-		pkghash_destroy(vulnerable);
+		hash_destroy(vulnerable);
 	}
 
 	for (type = 0; type < PKG_DISPLAY_MAX; type ++) {

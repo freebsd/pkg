@@ -200,15 +200,15 @@ cudf_emit_pkg(struct pkg *pkg, int version, FILE *f,
 }
 
 static int
-cudf_emit_request_section(FILE *f, const char *label, pkghash *hash, size_t *column)
+cudf_emit_request_section(FILE *f, const char *label, hash_t *hash, size_t *column)
 {
 	struct pkg_job_request *req;
-	size_t cnt = 0, max = pkghash_count(hash);
+	size_t cnt = 0, max = hash_count(hash);
 	bool printed = false;
 
 	if (fprintf(f, "%s: ", label) < 0)
 		return (EPKG_FATAL);
-	pkghash_foreach(hash, it) {
+	hash_foreach(hash, it) {
 		req = it.value;
 		cnt++;
 		if (req->skip)
@@ -269,7 +269,7 @@ pkg_jobs_cudf_emit_file(struct pkg_jobs *j, pkg_jobs_t t, FILE *f)
 	if (fprintf(f, "preamble: \n\n") < 0)
 		return (EPKG_FATAL);
 
-	pkghash_foreach(j->universe->items, hit) {
+	hash_foreach(j->universe->items, hit) {
 		uv = (universe_itemv_t *)hit.value;
 		/* Sort the vec by version */
 		qsort(uv->d, uv->len, sizeof(uv->d[0]), pkg_cudf_version_cmp);

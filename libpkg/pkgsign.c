@@ -32,14 +32,14 @@
 
 #include "private/pkg.h"
 #include "private/pkgsign.h"
-#include "pkghash.h"
+#include "hash.h"
 #include "xmalloc.h"
 
 /* Other parts of libpkg should use pkgsign instead of rsa directly. */
 extern const struct pkgsign_ops	pkgsign_ossl;
 extern const struct pkgsign_ops	pkgsign_ecc;
 
-static pkghash *pkgsign_verifiers;
+static hash_t *pkgsign_verifiers;
 
 /*
  * The eventual goal is to allow plugins to register their own pkgsign
@@ -119,10 +119,10 @@ int
 pkgsign_new_verify(const char *name, const struct pkgsign_ctx **octx)
 {
 	struct pkgsign_ctx *ctx;
-	pkghash_entry *entry;
+	hash_entry *entry;
 	int ret;
 
-	entry = pkghash_get(pkgsign_verifiers, name);
+	entry = hash_get(pkgsign_verifiers, name);
 	if (entry != NULL) {
 		*octx = entry->value;
 		return (EPKG_OK);
@@ -132,7 +132,7 @@ pkgsign_new_verify(const char *name, const struct pkgsign_ctx **octx)
 	if ((ret = pkgsign_new(name, &ctx)) != EPKG_OK)
 		return (ret);
 
-	pkghash_safe_add(pkgsign_verifiers, name, ctx, NULL);
+	hash_safe_add(pkgsign_verifiers, name, ctx, NULL);
 	*octx = ctx;
 	return (EPKG_OK);
 }

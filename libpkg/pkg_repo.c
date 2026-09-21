@@ -165,14 +165,14 @@ pkg_repo_fetch_remote_tmp(struct pkg_repo *repo,
 }
 
 static bool
-pkg_repo_check_fingerprint(struct pkg_repo *repo, pkghash *sc, bool fatal)
+pkg_repo_check_fingerprint(struct pkg_repo *repo, hash_t *sc, bool fatal)
 {
 	char *hash;
 	int nbgood = 0;
 	struct sig_cert *s = NULL;
 	struct pkg_repo_meta_key *mk = NULL;
 
-	if (pkghash_count(sc) == 0) {
+	if (hash_count(sc) == 0) {
 		if (fatal)
 			pkg_emit_error("No signature found");
 		return (false);
@@ -184,14 +184,14 @@ pkg_repo_check_fingerprint(struct pkg_repo *repo, pkghash *sc, bool fatal)
 			return (false);
 	}
 
-	pkghash_foreach(sc, it) {
+	hash_foreach(sc, it) {
 		s = (struct sig_cert *) it.value;
 		if (s->sig != NULL && s->cert == NULL) {
 			/*
 			 * We may want to check meta
 			 */
 			if (repo->meta != NULL && repo->meta->keys != NULL) {
-				mk = pkghash_get_value(repo->meta->keys, s->name);
+				mk = hash_get_value(repo->meta->keys, s->name);
 			}
 
 			if (mk != NULL && mk->pubkey != NULL) {
@@ -213,7 +213,7 @@ pkg_repo_check_fingerprint(struct pkg_repo *repo, pkghash *sc, bool fatal)
 		s->trusted = false;
 		hash = pkg_checksum_data(s->cert, s->certlen,
 		    PKG_HASH_TYPE_SHA256_HEX);
-		if (pkghash_get(repo->revoked_fp, hash) != NULL) {
+		if (hash_get(repo->revoked_fp, hash) != NULL) {
 			pkg_debug(1, "Fingerprint '%s' has been revoked", hash);
 			if (fatal)
 				pkg_emit_error("At least one of the "
@@ -223,7 +223,7 @@ pkg_repo_check_fingerprint(struct pkg_repo *repo, pkghash *sc, bool fatal)
 			return (false);
 		}
 
-		if (pkghash_get(repo->trusted_fp, hash) != NULL) {
+		if (hash_get(repo->trusted_fp, hash) != NULL) {
 			nbgood++;
 			s->trusted = true;
 			pkg_debug(1, "Fingerprint '%s' is trusted", hash);
@@ -242,13 +242,13 @@ pkg_repo_check_fingerprint(struct pkg_repo *repo, pkghash *sc, bool fatal)
 }
 
 static void
-pkg_repo_signatures_free(pkghash *sc)
+pkg_repo_signatures_free(hash_t *sc)
 {
 	struct sig_cert *s;
 
 	if (sc == NULL)
 		return;
-	pkghash_foreach(sc, it) {
+	hash_foreach(sc, it) {
 		s = (struct sig_cert *)it.value;
 		free(s->sig);
 		free(s->type);
@@ -256,7 +256,7 @@ pkg_repo_signatures_free(pkghash *sc)
 			free(s->cert);
 		free(s);
 	}
-	pkghash_destroy(sc);
+	hash_destroy(sc);
 }
 
 
@@ -467,7 +467,7 @@ pkg_repo_meta_extract_signature_fingerprints(int fd, void *ud)
 }
 
 static int
-pkg_repo_parse_sigkeys(const char *in, int inlen, pkghash **sc)
+pkg_repo_parse_sigkeys(const char *in, int inlen, hash_t **sc)
 {
 	const char *p = in, *end = in + inlen;
 	int rc = EPKG_OK;
@@ -524,7 +524,7 @@ pkg_repo_parse_sigkeys(const char *in, int inlen, pkghash **sc)
 				return (EPKG_FATAL);
 			}
 			char *k = xstrndup(p, len);
-			s = pkghash_get_value(*sc, k);
+			s = hash_get_value(*sc, k);
 			free(k);
 			if ( s == NULL) {
 				s = xcalloc(1, sizeof(struct sig_cert));
@@ -603,7 +603,7 @@ pkg_repo_parse_sigkeys(const char *in, int inlen, pkghash **sc)
 			p += len;
 
 			if (new)
-				pkghash_safe_add(*sc, s->name, s, NULL);
+				hash_safe_add(*sc, s->name, s, NULL);
 
 			break;
 		}
@@ -615,9 +615,9 @@ pkg_repo_parse_sigkeys(const char *in, int inlen, pkghash **sc)
 static int
 pkg_repo_archive_extract_archive(int fd, const char *file,
     struct pkg_repo *repo, int dest_fd,
-    pkghash **signatures)
+    hash_t **signatures)
 {
-	struct pkghash *sc = NULL;
+	hash_t *sc = NULL;
 	struct sig_cert *s;
 	struct pkg_extract_cbdata cbdata;
 	char *sig = NULL;
@@ -660,7 +660,7 @@ pkg_repo_archive_extract_archive(int fd, const char *file,
 			s->sig = sig;
 			s->siglen = siglen;
 			strlcpy(s->name, "signature", sizeof(s->name));
-			pkghash_safe_add(sc, s->name, s, NULL);
+			hash_safe_add(sc, s->name, s, NULL);
 		}
 	}
 	else if (pkg_repo_signature_type(repo) == SIG_FINGERPRINT) {
@@ -707,12 +707,12 @@ static int
 pkg_repo_archive_extract_check_archive(int fd, const char *file,
     struct pkg_repo *repo, int dest_fd)
 {
-	pkghash *sc = NULL;
+	hash_t *sc = NULL;
 	struct sig_cert *s;
 	const struct pkgsign_ctx *sctx;
 	const char *rkey;
 	signature_t sigtype;
-	pkghash_it it;
+	hash_it it;
 	int ret;
 
 	ret = EPKG_OK;
@@ -738,8 +738,8 @@ pkg_repo_archive_extract_check_archive(int fd, const char *file,
 			ret = EPKG_FATAL;
 			goto cleanup;
 		}
-		it = pkghash_iterator(sc);
-		pkghash_next(&it); /* check that there is content is already above */
+		it = hash_iterator(sc);
+		hash_next(&it); /* check that there is content is already above */
 		s = (struct sig_cert *)it.value;
 
 		ret = pkgsign_new_verify(s->type, &sctx);
@@ -775,13 +775,13 @@ pkg_repo_archive_extract_check_archive(int fd, const char *file,
 	else if (pkg_repo_signature_type(repo) == SIG_FINGERPRINT) {
 		const char *signer_name = NULL;
 
-		pkghash_foreach(sc, it) {
+		hash_foreach(sc, it) {
 			s = (struct sig_cert *)it.value;
 
 			/*
 			 * Each signature may use a different signer, so we'll potentially
 			 * grab a new context for each one.  This is cheaper than it sounds,
-			 * verifying contexts are stashed in a pkghash for re-use.
+			 * verifying contexts are stashed in a hash_t for re-use.
 			 */
 			if (sctx == NULL || !STREQ(s->type, signer_name)) {
 				ret = pkgsign_new_verify(s->type, &sctx);
@@ -1129,7 +1129,7 @@ pkg_repo_fetch_meta(struct pkg_repo *repo, time_t *t)
 	unsigned char *map = NULL;
 	int fd, dbdirfd, metafd;
 	int rc = EPKG_OK, ret;
-	pkghash *sc = NULL;
+	hash_t *sc = NULL;
 	struct sig_cert *s;
 	struct pkg_repo_check_cbdata cbdata;
 	bool newscheme = false;
@@ -1219,7 +1219,7 @@ pkg_repo_fetch_meta(struct pkg_repo *repo, time_t *t)
 
 		cbdata.len = st.st_size;
 		cbdata.map = map;
-		pkghash_foreach(sc, it) {
+		hash_foreach(sc, it) {
 			s = (struct sig_cert *) it.value;
 			if (s->siglen != 0 && s->certlen == 0) {
 				/*
@@ -1241,7 +1241,7 @@ pkg_repo_fetch_meta(struct pkg_repo *repo, time_t *t)
 		}
 
 		ret = EPKG_FATAL;
-		pkghash_foreach(sc, it) {
+		hash_foreach(sc, it) {
 			s = (struct sig_cert *) it.value;
 
 			/*
@@ -1309,7 +1309,7 @@ pkg_repo_parse_fingerprint(ucl_object_t *obj)
 	const ucl_object_t *cur;
 	ucl_object_iter_t it = NULL;
 	const char *function = NULL, *fp = NULL;
-	hash_t fct = HASH_UNKNOWN;
+	checksum_type_t fct = HASH_UNKNOWN;
 	struct fingerprint *f = NULL;
 	const char *key;
 
@@ -1394,7 +1394,7 @@ pkg_repo_load_fingerprint(const char *dir, const char *filename)
 }
 
 static int
-pkg_repo_load_fingerprints_from_path(const char *path, pkghash **f)
+pkg_repo_load_fingerprints_from_path(const char *path, hash_t **f)
 {
 	DIR *d;
 	int fd;
@@ -1422,8 +1422,11 @@ pkg_repo_load_fingerprints_from_path(const char *path, pkghash **f)
 		    STREQ(ent->d_name, ".."))
 			continue;
 		finger = pkg_repo_load_fingerprint(path, ent->d_name);
-		if (finger != NULL)
-			pkghash_safe_add(*f, finger->hash, finger, NULL);
+		/* Two files with the same fingerprint: the table owns the first
+		 * occurrence, free the dropped one. */
+		if (finger != NULL &&
+		    !hash_safe_add(*f, finger->hash, finger, NULL))
+			free(finger);
 	}
 
 	closedir(d);
@@ -1444,7 +1447,7 @@ pkg_repo_load_fingerprints(struct pkg_repo *repo)
 		return (EPKG_FATAL);
 	}
 
-	if (pkghash_count(repo->trusted_fp) == 0) {
+	if (hash_count(repo->trusted_fp) == 0) {
 		pkg_emit_error("No trusted certificates");
 		return (EPKG_FATAL);
 	}

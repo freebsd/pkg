@@ -164,7 +164,7 @@ pkg_conflicts_request_resolve(struct pkg_jobs *j)
 	struct pkg_conflict *c;
 	universe_itemv_t *uv;
 
-	pkghash_foreach(j->request_add, it) {
+	hash_foreach(j->request_add, it) {
 		req = it.value;
 		conflict_chain_t chain = vec_init();
 		if (req->skip)
@@ -174,7 +174,7 @@ pkg_conflicts_request_resolve(struct pkg_jobs *j)
 			c = &req->items.d[0].pkg->conflicts.d[_ci];
 			uv = pkg_jobs_universe_find(j->universe, c->uid);
 			if (uv != NULL) {
-				found = pkghash_get_value(j->request_add,
+				found = hash_get_value(j->request_add,
 				    uv->d[0]->pkg->uid);
 				if (found != NULL && !found->skip)
 					vec_push(&chain, found);

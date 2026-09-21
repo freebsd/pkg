@@ -517,6 +517,8 @@ static struct script_map {
 	{ "post-deinstall", PKG_SCRIPT_POST_DEINSTALL },
 };
 
+static void keyword_free(struct keyword *k);
+
 static void
 populate_keywords(struct plist *p)
 {
@@ -530,7 +532,10 @@ populate_keywords(struct plist *p)
 		k->keyword = xstrdup(keyacts[i].key);
 		a->perform = keyacts[i].action;
 		vec_push(&k->actions, a);
-		pkghash_safe_add(p->keywords, k->keyword, k, NULL);
+		/* A duplicated keyword is dropped: free it, the table owns the
+		 * first one. */
+		if (!hash_safe_add(p->keywords, k->keyword, k, NULL))
+			keyword_free(k);
 	}
 }
 
@@ -917,7 +922,7 @@ parse_keywords(struct plist *plist, char *keyword,
 	if (*keyword == '\0')
 		return (file(plist, line, attr));
 
-	k = pkghash_get_value(plist->keywords, keyword);
+	k = hash_get_value(plist->keywords, keyword);
 	if (k != NULL) {
 		vec_foreach(k->actions, i) {
 			ret = k->actions.d[i]->perform(plist, line, attr);
@@ -1086,9 +1091,9 @@ plist_free(struct plist *p)
 	if (p->plistdirfd != -1)
 		close(p->plistdirfd);
 
-	pkghash_foreach(p->keywords, it)
+	hash_foreach(p->keywords, it)
 		keyword_free((struct keyword *)it.value);
-	pkghash_destroy(p->keywords);
+	hash_destroy(p->keywords);
 	p->keywords = NULL;
 
 	free(p->uname);

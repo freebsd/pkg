@@ -15,7 +15,7 @@
 
 #include <private/pkg.h>
 #include <xmalloc.h>
-#include <pkghash.h>
+#include <hash.h>
 
 ATF_TC_WITHOUT_HEAD(deferred_rc_init_free);
 ATF_TC_WITHOUT_HEAD(deferred_rc_free_null);

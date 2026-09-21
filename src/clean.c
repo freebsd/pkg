@@ -37,7 +37,7 @@
 #include <bsd_compat.h>
 
 #include "pkgcli.h"
-#include "pkghash.h"
+#include "hash.h"
 #include "xmalloc.h"
 #include "pkg/vec.h"
 
@@ -119,7 +119,7 @@ delete_dellist(int fd, const char *cachedir,  charv_t *dl)
 	return (retcode);
 }
 
-static pkghash *
+static hash_t *
 populate_sums(struct pkgdb *db)
 {
 	struct pkg *p = NULL;
@@ -127,15 +127,15 @@ populate_sums(struct pkgdb *db)
 	const char *sum;
 	char *cksum;
 	size_t slen;
-	pkghash *suml = NULL;
+	hash_t *suml = NULL;
 
-	suml = pkghash_new();
+	suml = hash_new();
 	it = pkgdb_repo_search(db, "*", MATCH_GLOB, FIELD_NAME, FIELD_NONE, NULL);
 	while (pkgdb_it_next(it, &p, PKG_LOAD_BASIC) == EPKG_OK) {
 		pkg_get(p, PKG_ATTR_CKSUM, &sum);
 		slen = MIN(strlen(sum), PKG_FILE_CKSUM_CHARS);
 		cksum = strndup(sum, slen);
-		pkghash_safe_add(suml, cksum, NULL, NULL);
+		hash_safe_add(suml, cksum, NULL, NULL);
 		free(cksum);
 	}
 	pkg_free(p);
@@ -174,7 +174,7 @@ extract_filename_sum(const char *fname, char sum[])
 
 static int
 recursive_analysis(int fd, struct pkgdb *db, const char *dir,
-    const char *cachedir, charv_t *dl, pkghash **sumlist, bool all,
+    const char *cachedir, charv_t *dl, hash_t **sumlist, bool all,
     size_t *total)
 {
 	DIR *d;
@@ -185,7 +185,7 @@ recursive_analysis(int fd, struct pkgdb *db, const char *dir,
 	const char *name;
 	ssize_t link_len;
 	size_t nbfiles = 0, added = 0;
-	pkghash_entry *e;
+	hash_entry *e;
 
 	tmpfd = dup(fd);
 	d = fdopendir(tmpfd);
@@ -240,7 +240,7 @@ recursive_analysis(int fd, struct pkgdb *db, const char *dir,
 
 		e = NULL;
 		if (extract_filename_sum(name, csum)) {
-			e = pkghash_get(*sumlist, csum);
+			e = hash_get(*sumlist, csum);
 		}
 		if (e == NULL) {
 			added++;
@@ -262,7 +262,7 @@ int
 exec_clean(int argc, char **argv)
 {
 	struct pkgdb	*db = NULL;
-	pkghash		*sumlist = NULL;
+	hash_t		*sumlist = NULL;
 	charv_t		 dl = vec_init();
 	const char	*cachedir;
 	bool		 all = false;
@@ -369,7 +369,7 @@ exec_clean(int argc, char **argv)
 
 	recursive_analysis(cachefd, db, cachedir, cachedir, &dl, &sumlist, all,
 	    &total);
-	pkghash_destroy(sumlist);
+	hash_destroy(sumlist);
 
 	if (dl.len == 0) {
 		if (!quiet)

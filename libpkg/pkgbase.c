@@ -16,7 +16,7 @@
 #include <string.h>
 
 #include "pkg.h"
-#include "pkghash.h"
+#include "hash.h"
 #include "private/event.h"
 #include "private/pkg.h"
 #include "private/pkgdb.h"

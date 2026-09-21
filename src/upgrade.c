@@ -39,7 +39,7 @@
 #include <errno.h>
 #include <signal.h>
 #include <pkg/sb.h>
-#include <pkghash.h>
+#include <hash.h>
 #include <pkg.h>
 
 #if __has_include(<sys/capsicum.h>)
@@ -60,12 +60,12 @@ usage_upgrade(void)
 }
 
 static void
-add_to_check(pkghash *check, struct pkg *pkg)
+add_to_check(hash_t *check, struct pkg *pkg)
 {
 	const char *uid = NULL;
 
 	pkg_get(pkg, PKG_ATTR_UNIQUEID, &uid);
-	pkghash_safe_add(check, uid, pkg, NULL);
+	hash_safe_add(check, uid, pkg, NULL);
 }
 
 static void
@@ -74,7 +74,7 @@ check_vulnerable(struct pkg_audit *audit, struct pkgdb *db, int sock)
 	struct pkg_audit_issues	*issues;
 	struct pkgdb_it	*it = NULL;
 	struct pkg		*pkg = NULL;
-	pkghash			*check = NULL;
+	hash_t			*check = NULL;
 	const char		*uid;
 	FILE			*out;
 
@@ -90,7 +90,7 @@ check_vulnerable(struct pkg_audit *audit, struct pkgdb *db, int sock)
 		fclose(out);
 		return;
 	}
-	check = pkghash_new();
+	check = hash_new();
 
 	while (pkgdb_it_next(it, &pkg, PKG_LOAD_BASIC|PKG_LOAD_RDEPS) == EPKG_OK) {
 		if (pkg_type(pkg) == PKG_INSTALLED) {
@@ -122,7 +122,7 @@ check_vulnerable(struct pkg_audit *audit, struct pkgdb *db, int sock)
 #endif
 
 	if (pkg_audit_process(audit) == EPKG_OK) {
-		pkghash_foreach(check, hit) {
+		hash_foreach(check, hit) {
 				issues = NULL;
 				pkg = (struct pkg *)hit.value;
 				if (pkg_audit_is_vulnerable(audit, pkg, &issues, true)) {
@@ -142,7 +142,7 @@ check_vulnerable(struct pkg_audit *audit, struct pkgdb *db, int sock)
 
 out_cleanup:
 	pkg_audit_free(audit);
-	pkghash_destroy(check);
+	hash_destroy(check);
 	fclose(out);
 }
 

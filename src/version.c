@@ -49,7 +49,7 @@
 #include <spawn.h>
 #include <sys/types.h>
 #include <sys/stat.h>
-#include <pkghash.h>
+#include <hash.h>
 #include <xmalloc.h>
 
 #include "pkgcli.h"
@@ -63,10 +63,10 @@ struct index_entry {
 
 struct category {
 	char *name;
-	pkghash *ports;
+	hash_t *ports;
 };
 
-pkghash *categories = NULL;
+hash_t *categories = NULL;
 
 void
 usage_version(void)
@@ -280,11 +280,11 @@ indexfilename(char *filebuf, size_t filebuflen)
 	return (filebuf);
 }
 
-static pkghash *
+static hash_t *
 hash_indexfile(const char *indexfilename)
 {
 	FILE			*indexfile;
-	pkghash			*index = NULL;
+	hash_t			*index = NULL;
 	struct index_entry	*entry;
 	char			*version, *name;
 	char			*line = NULL, *l;
@@ -317,9 +317,9 @@ hash_indexfile(const char *indexfilename)
 		entry->version = xstrdup(version);
 
 		if (index == NULL)
-			index = pkghash_new();
+			index = hash_new();
 
-		if (!pkghash_add(index, entry->name, entry, NULL)) {
+		if (!hash_add(index, entry->name, entry, NULL)) {
 			free(entry->version);
 			free(entry->name);
 			free(entry);
@@ -340,27 +340,27 @@ static void
 free_categories(void)
 {
 	struct category *cat;
-	pkghash_foreach(categories, it) {
+	hash_foreach(categories, it) {
 		cat = (struct category *) it.value;
 		free(cat->name);
-		pkghash_destroy(cat->ports);
+		hash_destroy(cat->ports);
 		free(cat);
 	}
-	pkghash_destroy(categories);
+	hash_destroy(categories);
 }
 
 static void
-free_index(pkghash *index)
+free_index(hash_t *index)
 {
 	struct index_entry *entry;
 
-	pkghash_foreach(index, it) {
+	hash_foreach(index, it) {
 		entry = (struct index_entry *)it.value;
 		free(entry->version);
 		free(entry->name);
 		free(entry);
 	}
-	pkghash_destroy(index);
+	hash_destroy(index);
 }
 
 static bool
@@ -396,7 +396,7 @@ static int
 do_source_index(unsigned int opt, char limchar, char *pattern, match_t match,
     const char *matchorigin, const char *matchname, const char *indexfile)
 {
-	pkghash		*index;
+	hash_t		*index;
 	struct index_entry *ie;
 	struct pkgdb	*db = NULL;
 	struct pkgdb_it	*it = NULL;
@@ -441,7 +441,7 @@ do_source_index(unsigned int opt, char limchar, char *pattern, match_t match,
 		    !STREQ(name, matchname))
 			continue;
 
-		ie = pkghash_get_value(index, name);
+		ie = hash_get_value(index, name);
 		print_version(pkg, "index", ie != NULL ? ie->version : NULL,
 		    limchar, opt);
 
@@ -625,14 +625,14 @@ category_new(int portsfd, const char *category)
 	results = sb_str(&makecmd);
 
 	if (categories == NULL)
-		categories = pkghash_new();
+		categories = hash_new();
 
 	cat = xcalloc(1, sizeof(*cat));
 	cat->name = xstrdup(category);
 
-	pkghash_add(categories, cat->name, cat, NULL);
+	hash_add(categories, cat->name, cat, NULL);
 	while ((d = strsep(&results, " \n")) != NULL)
-		pkghash_safe_add(cat->ports, d, NULL, NULL);
+		hash_safe_add(cat->ports, d, NULL, NULL);
 
 cleanup:
 	sb_fini(&makecmd);
@@ -656,7 +656,7 @@ validate_origin(int portsfd, const char *origin)
 	buf = strrchr(category, '/');
 	buf[0] = '\0';
 
-	cat = pkghash_get_value(categories, category);
+	cat = hash_get_value(categories, category);
 	if (cat == NULL)
 		cat = category_new(portsfd, category);
 	if (cat == NULL)
@@ -668,7 +668,7 @@ validate_origin(int portsfd, const char *origin)
 	if (STREQ(origin, "base"))
 		return (false);
 
-	return (pkghash_get(cat->ports, buf) != NULL);
+	return (hash_get(cat->ports, buf) != NULL);
 }
 
 static const char *
