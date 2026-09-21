@@ -15,6 +15,7 @@ ATF_TC_WITHOUT_HEAD(charv_t);
 ATF_TC_WITHOUT_HEAD(vec_remove_and_free);
 ATF_TC_WITHOUT_HEAD(charv_search);
 ATF_TC_WITHOUT_HEAD(charv_insert_sorted);
+ATF_TC_WITHOUT_HEAD(vec_edge_cases);
 
 ATF_TC_BODY(c_charv_t, tc)
 {
@@ -173,6 +174,40 @@ ATF_TC_BODY(charv_insert_sorted, tc)
 	ATF_REQUIRE_STREQ(list.d[1], "bla");
 }
 
+ATF_TC_BODY(vec_edge_cases, tc)
+{
+	c_charv_t list = vec_init();
+	const char *p;
+
+	/* Operations on an empty vector leave it untouched. */
+	ATF_REQUIRE_MSG(vec_first(&list) == NULL, "vec_first: empty vector");
+	ATF_REQUIRE_MSG(vec_last(&list) == NULL, "vec_last: empty vector");
+	ATF_REQUIRE_MSG(vec_pop(&list) == NULL, "vec_pop: empty vector");
+	ATF_REQUIRE_MSG(vec_pop_front(&list) == NULL, "vec_pop_front: empty vector");
+	vec_remove(&list, 0);
+	vec_swap_remove(&list, 0);
+	ATF_REQUIRE_EQ_MSG(vec_len(&list), 0, "empty vector modified");
+	ATF_REQUIRE_EQ_MSG(list.d, NULL, "empty vector allocated a buffer");
+
+	/* Out of range indices are ignored. */
+	vec_push(&list, "test1");
+	vec_remove(&list, 1);
+	vec_swap_remove(&list, 4);
+	ATF_REQUIRE_EQ_MSG(vec_len(&list), 1, "out of range remove changed the length");
+	ATF_REQUIRE_STREQ_MSG(vec_first(&list), "test1", "out of range remove changed the content");
+
+	/* push_front/pop_front. */
+	vec_push_front(&list, "test0");
+	ATF_REQUIRE_EQ_MSG(vec_len(&list), 2, "vec_push_front: length mismatch");
+	ATF_REQUIRE_STREQ_MSG(vec_first(&list), "test0", "vec_push_front: content mismatch");
+	p = vec_pop_front(&list);
+	ATF_REQUIRE_STREQ_MSG(p, "test0", "vec_pop_front: value mismatch");
+	ATF_REQUIRE_EQ_MSG(vec_len(&list), 1, "vec_pop_front: length mismatch");
+	ATF_REQUIRE_STREQ_MSG(vec_first(&list), "test1", "vec_pop_front: content mismatch");
+
+	vec_free(&list);
+}
+
 ATF_TP_ADD_TCS(tp)
 {
 	ATF_TP_ADD_TC(tp, c_charv_t);
@@ -181,6 +216,7 @@ ATF_TP_ADD_TCS(tp)
 	ATF_TP_ADD_TC(tp, vec_remove_and_free);
 	ATF_TP_ADD_TC(tp, charv_search);
 	ATF_TP_ADD_TC(tp, charv_insert_sorted);
+	ATF_TP_ADD_TC(tp, vec_edge_cases);
 
 	return (atf_no_error());
 }

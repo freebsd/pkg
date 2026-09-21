@@ -1,5 +1,5 @@
 /*-
- * Copyright(c) 2024-2025 Baptiste Daroussin <bapt@FreeBSD.org>
+ * Copyright(c) 2024-2026 Baptiste Daroussin <bapt@FreeBSD.org>
  *
  * SPDX-License-Identifier: BSD-2-Clause
  */
@@ -10,6 +10,7 @@
 #include <stdbool.h>
 #include <stdlib.h>
 #include <stddef.h>
+#include <string.h>
 
 #define vec_t(Type) \
   struct { Type *d; size_t len, cap; }
@@ -32,27 +33,42 @@
 
 #define vec_free_and_free(v, free_func)        \
 	do {                                   \
-		vec_foreach(*(v), _i) {        \
-			free_func((v)->d[_i]); \
-			(v)->d[_i] = NULL;     \
+		vec_foreach(*(v), __vec_i) {     \
+			free_func((v)->d[__vec_i]); \
+			(v)->d[__vec_i] = NULL;     \
 		}                              \
 		vec_free((v));                 \
 	} while(0)
 
-#define vec_first(v) \
-	(v)->d[0]
+/*
+ * First (vec_first) and last (vec_last) element.  Like vec_pop() they are
+ * statement expressions, so not lvalues, and yield a zeroed element when the
+ * vector is empty.
+ */
+#define vec_first(v) __extension__ \
+	({ \
+		__typeof__(*(v)->d) _ret = { 0 }; \
+		if ((v)->len > 0) \
+			_ret = (v)->d[0]; \
+		_ret; \
+	})
 
-#define vec_last(v) \
-	(v)->d[(v)->len -1]
+#define vec_last(v) __extension__ \
+	({ \
+		__typeof__(*(v)->d) _ret = { 0 }; \
+		if ((v)->len > 0) \
+			_ret = (v)->d[(v)->len - 1]; \
+		_ret; \
+	})
 
 #define vec_clear(v) \
 	(v)->len = 0
 
 #define vec_clear_and_free(v, free_func)       \
 	do {                                   \
-		vec_foreach(*(v), _i) {        \
-			free_func((v)->d[_i]); \
-			(v)->d[_i] = NULL;     \
+		vec_foreach(*(v), __vec_i) {     \
+			free_func((v)->d[__vec_i]); \
+			(v)->d[__vec_i] = NULL;     \
 		}                              \
 		(v)->len = 0;                  \
 	} while (0)
@@ -71,35 +87,77 @@
 		(v)->d[(v)->len++] = (_d);                                  \
 	} while (0)                                                   \
 
-#define vec_pop(v) \
-	(v)->d[--(v)->len]
+#define vec_push_front(v, _d)                                      \
+	do {                                                       \
+		if ((v)->len >= (v)->cap) {                         \
+			if ((v)->cap == 0)                          \
+				(v)->cap = 1;                      \
+			else                                       \
+				(v)->cap *= 2;                     \
+			(v)->d = realloc((v)->d, (v)->cap * sizeof(*(v)->d)); \
+			if ((v)->d == NULL)                         \
+				abort();                           \
+		}                                                  \
+		for (size_t _i = (v)->len; _i > 0; _i--)           \
+			(v)->d[_i] = (v)->d[_i - 1];              \
+		(v)->d[0] = (_d);                                  \
+		(v)->len++;                                        \
+	} while (0)
+
+/*
+ * Pop the last (vec_pop) or first (vec_pop_front) element.  Both expand to a
+ * statement expression, so they yield a value and are not lvalues.  On an
+ * empty vector they return a zeroed element and leave the vector unchanged.
+ */
+#define vec_pop(v) __extension__                               \
+	({                                                     \
+		__typeof__(*(v)->d) _ret = { 0 };              \
+		if ((v)->len > 0)                              \
+			_ret = (v)->d[--(v)->len];             \
+		_ret;                                          \
+	})
+
+#define vec_pop_front(v) __extension__                             \
+	({                                                         \
+		__typeof__(*(v)->d) _ret = { 0 };                  \
+		if ((v)->len > 0) {                                \
+			_ret = (v)->d[0];                          \
+			vec_remove(v, 0);                          \
+		}                                                  \
+		_ret;                                              \
+	})
 
 #define vec_remove(v, cnt) \
 	do {                                                    \
-		for (size_t _i = cnt; _i < (v)->len - 1; _i++) {    \
-			(v)->d[_i] = (v)->d[_i + 1];            \
+		if ((v)->len > 0 && (cnt) < (v)->len) {         \
+			for (size_t _i = (cnt);                 \
+			    _i < (v)->len - 1; _i++) {          \
+				(v)->d[_i] = (v)->d[_i + 1];    \
+			}                                       \
+			(v)->len--;                             \
 		}                                               \
-		(v)->len--;                                     \
 	} while (0)
 
 #define vec_remove_and_free(v, cnt, free_func) \
 	do {                                                    \
-		free_func((v)->d[cnt]);                         \
-		vec_remove(v, cnt);                             \
+		if ((v)->len > 0 && (cnt) < (v)->len) {         \
+			free_func((v)->d[cnt]);                 \
+			vec_remove(v, cnt);                     \
+		}                                               \
 	} while (0)
 
 /*
  * Remove the element at the given index and replace it with the last
  * element in the vec. Does not preserve order, but is O(1).
  */
-#define vec_swap_remove(v, index)                    \
-	do {                                         \
-		assert((index) < (v)->len);          \
-		assert((v)->len > 0);                \
-		if ((index) < (v)->len - 1) {        \
-			(v)->d[index] = vec_last(v); \
-		}                                    \
-		(v)->len--;                          \
+#define vec_swap_remove(v, index)                        \
+	do {                                             \
+		if ((v)->len > 0 && (index) < (v)->len) {\
+			if ((index) < (v)->len - 1) {    \
+				(v)->d[index] = vec_last(v); \
+			}                                \
+			(v)->len--;                      \
+		}                                        \
 	} while (0)
 
 #define vec_len(v) \
