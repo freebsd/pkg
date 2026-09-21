@@ -9,16 +9,16 @@
 #include <stdlib.h>
 #include <string.h>
 
-#include "mum.h"
+#include "strhash.h"
 #include "xmalloc.h"
 
-#include "pkg/stringset.h"
+#include "stringset.h"
 
 /*
  * Open-addressing hash set storing only strings (no values).
  * Each entry is either:
- *   - key != NULL  → occupied
- *   - key == NULL  → empty or tombstone
+ *   - key != NULL  -> occupied
+ *   - key == NULL  -> empty or tombstone
  *
  * We track tombstones separately to know when to rehash.
  *
@@ -68,10 +68,10 @@ stringset_destroy(stringset_t *set)
 static const struct stringset_entry *
 stringset_find(const stringset_t *set, const char *key)
 {
-	if (set == NULL)
+	if (set == NULL || key == NULL)
 		return (NULL);
 
-	uint64_t hash = mum_hash(key, strlen(key), 0);
+	uint64_t hash = strhash(key, strlen(key));
 	size_t index = (size_t)(hash & (uint64_t)(set->capacity - 1));
 
 	for (size_t i = 0; i < set->capacity; i++) {
@@ -98,7 +98,7 @@ static bool
 stringset_insert_entry(struct stringset_entry *entries, size_t capacity,
     const char *key, size_t *pcount)
 {
-	uint64_t hash = mum_hash(key, strlen(key), 0);
+	uint64_t hash = strhash(key, strlen(key));
 	size_t index = (size_t)(hash & (uint64_t)(capacity - 1));
 
 	for (size_t i = 0; i < capacity; i++) {
@@ -148,6 +148,8 @@ stringset_expand(stringset_t *set)
 bool
 stringset_add(stringset_t *set, const char *key)
 {
+	if (set == NULL || key == NULL)
+		return (false);
 	if ((set->tombstones > set->capacity / 4 ||
 	    set->count * 2 >= set->capacity) &&
 	    !stringset_expand(set))

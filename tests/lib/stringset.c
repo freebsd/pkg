@@ -17,6 +17,7 @@ ATF_TC_WITHOUT_HEAD(stringset_foreach);
 ATF_TC_WITHOUT_HEAD(stringset_grow);
 ATF_TC_WITHOUT_HEAD(stringset_tombstone_reuse);
 ATF_TC_WITHOUT_HEAD(stringset_null);
+ATF_TC_WITHOUT_HEAD(stringset_safe_add);
 
 ATF_TC_BODY(stringset_new, tc)
 {
@@ -193,11 +194,36 @@ ATF_TC_BODY(stringset_tombstone_reuse, tc)
 
 ATF_TC_BODY(stringset_null, tc)
 {
+	stringset_t *set = stringset_new();
+
 	/* NULL-safe operations. */
 	ATF_REQUIRE_EQ_MSG(stringset_count(NULL), 0, "count(NULL) should be 0");
 	ATF_REQUIRE_MSG(!stringset_contains(NULL, "foo"), "contains(NULL) should be false");
 
 	stringset_destroy(NULL);
+
+	/* A NULL key is never present and is never stored. */
+	ATF_REQUIRE_MSG(!stringset_add(set, NULL), "add(NULL key) should be false");
+	ATF_REQUIRE_MSG(!stringset_contains(set, NULL), "contains(NULL key) should be false");
+	ATF_REQUIRE_MSG(!stringset_del(set, NULL), "del(NULL key) should be false");
+	ATF_REQUIRE_EQ_MSG(stringset_count(set), 0, "a NULL key was stored");
+
+	stringset_destroy(set);
+}
+
+ATF_TC_BODY(stringset_safe_add, tc)
+{
+	stringset_t *set = NULL;
+
+	/* The set is created by the first add. */
+	ATF_REQUIRE_MSG(stringset_safe_add(&set, "foo"), "first stringset_safe_add");
+	ATF_REQUIRE_MSG(set != NULL, "stringset_safe_add did not create the set");
+	ATF_REQUIRE_EQ_MSG(stringset_count(set), 1, "count after the first add");
+
+	ATF_REQUIRE_MSG(!stringset_safe_add(&set, "foo"), "duplicate stringset_safe_add");
+	ATF_REQUIRE_EQ_MSG(stringset_count(set), 1, "count after the duplicate add");
+
+	stringset_destroy(set);
 }
 
 ATF_TP_ADD_TCS(tp)
@@ -211,6 +237,7 @@ ATF_TP_ADD_TCS(tp)
 	ATF_TP_ADD_TC(tp, stringset_grow);
 	ATF_TP_ADD_TC(tp, stringset_tombstone_reuse);
 	ATF_TP_ADD_TC(tp, stringset_null);
+	ATF_TP_ADD_TC(tp, stringset_safe_add);
 
 	return (atf_no_error());
 }

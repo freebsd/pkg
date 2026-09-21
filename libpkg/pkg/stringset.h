@@ -41,10 +41,20 @@ stringset_it stringset_next(stringset_iter *it);
 	for (stringset_iter _ss_iter = stringset_iterator(set); \
 	     (it = stringset_next(&_ss_iter)) != NULL; )
 
-#define stringset_safe_add(_s, _k) do { \
-	if (*(_s) == NULL) \
-		*(_s) = stringset_new(); \
-	stringset_add(*(_s), (_k)); \
-} while (0)
+/*
+ * Add _k only when it is not already present.  Expands to a statement
+ * expression yielding true if the key was newly added and false otherwise
+ * (key already present, allocation failure, or NULL set).
+ *
+ * _s is evaluated several times: it must be a simple lvalue pointing to the
+ * set, e.g. &s or &obj->field.
+ */
+#define stringset_safe_add(_s, _k) __extension__ ({	\
+	bool _added;					\
+	if (*(_s) == NULL)				\
+		*(_s) = stringset_new();		\
+	_added = stringset_add(*(_s), (_k));		\
+	_added;						\
+})
 
 #endif
