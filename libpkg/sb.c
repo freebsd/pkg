@@ -5,7 +5,7 @@
  *
  */
 
-#include "pkg/sb.h"
+#include "sb.h"
 
 /* Growth strategy modeled on FreeBSD's sbuf(9): double while the buffer
  * is smaller than one page, then grow linearly by page-sized increments.
@@ -20,7 +20,11 @@ sb_grow(sb_t *sb, size_t needed)
 {
 	size_t newcap;
 
-	if (needed <= sb->cap)
+	if (sb == NULL)
+		return;
+	/* Grow only when needed; a NULL buffer always has to be allocated,
+	 * even if the (stale) capacity looks large enough. */
+	if (needed <= sb->cap && sb->d != NULL)
 		return;
 	if (needed < SB_MAXEXTENDSIZE) {
 		newcap = SB_MINEXTENDSIZE;
@@ -41,7 +45,11 @@ sb_grow(sb_t *sb, size_t needed)
 void
 sb_cat(sb_t *sb, const char *s)
 {
-	size_t slen = strlen(s);
+	size_t slen;
+
+	if (sb == NULL)
+		return;
+	slen = strlen(s);
 	sb_grow(sb, sb->len + slen + 1);
 	memcpy(sb->d + sb->len, s, slen + 1);
 	sb->len += slen;
@@ -50,7 +58,7 @@ sb_cat(sb_t *sb, const char *s)
 void
 sb_cat_n(sb_t *sb, const char *s, size_t n)
 {
-	if (n == 0)
+	if (sb == NULL || n == 0)
 		return;
 	sb_grow(sb, sb->len + n + 1);
 	memcpy(sb->d + sb->len, s, n);
@@ -61,6 +69,9 @@ sb_cat_n(sb_t *sb, const char *s, size_t n)
 void
 sb_cat_c(sb_t *sb, char c)
 {
+
+	if (sb == NULL)
+		return;
 	sb_grow(sb, sb->len + 2);
 	sb->d[sb->len++] = c;
 	sb->d[sb->len] = '\0';
@@ -72,6 +83,8 @@ sb_printf(sb_t *sb, const char *fmt, ...)
 	va_list ap;
 	int n;
 
+	if (sb == NULL)
+		return;
 	if (sb->cap == 0)
 		sb_grow(sb, 512);
 
@@ -133,6 +146,9 @@ sb_get(sb_t *sb)
 char *
 sb_str(sb_t *sb)
 {
+
+	if (sb == NULL)
+		return (NULL);
 	if (sb->d == NULL) {
 		sb_grow(sb, 1);
 		sb->d[0] = '\0';

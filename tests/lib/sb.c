@@ -18,6 +18,7 @@ ATF_TC_WITHOUT_HEAD(sb_reset);
 ATF_TC_WITHOUT_HEAD(sb_fini);
 ATF_TC_WITHOUT_HEAD(sb_grow);
 ATF_TC_WITHOUT_HEAD(sb_empty_get);
+ATF_TC_WITHOUT_HEAD(sb_null);
 
 ATF_TC_BODY(sb_init, tc)
 {
@@ -170,6 +171,11 @@ ATF_TC_BODY(sb_grow, tc)
 {
 	sb_t sb = sb_init();
 
+	/* An empty buffer must be allocated even when needed == 0. */
+	sb_grow(&sb, 0);
+	ATF_REQUIRE_MSG(sb.d != NULL, "sb_grow: empty buffer not allocated");
+	ATF_REQUIRE_STREQ_MSG(sb.d, "", "sb_grow: allocated buffer not empty");
+
 	/* Append enough data to force multiple growth steps. */
 	for (int i = 0; i < 10000; i++)
 		sb_cat_c(&sb, 'x');
@@ -185,6 +191,21 @@ ATF_TC_BODY(sb_grow, tc)
 	sb_fini(&sb);
 }
 
+ATF_TC_BODY(sb_null, tc)
+{
+
+	/* Every entry point must tolerate a NULL sb pointer. */
+	sb_grow(NULL, 16);
+	sb_cat(NULL, "x");
+	sb_cat_n(NULL, "x", 1);
+	sb_cat_c(NULL, 'x');
+	sb_printf(NULL, "%d", 1);
+	sb_fini(NULL);
+	sb_reset(NULL);
+	ATF_REQUIRE_MSG(sb_get(NULL) == NULL, "sb_get: NULL sb not handled");
+	ATF_REQUIRE_MSG(sb_str(NULL) == NULL, "sb_str: NULL sb not handled");
+}
+
 ATF_TP_ADD_TCS(tp)
 {
 	ATF_TP_ADD_TC(tp, sb_init);
@@ -198,6 +219,7 @@ ATF_TP_ADD_TCS(tp)
 	ATF_TP_ADD_TC(tp, sb_reset);
 	ATF_TP_ADD_TC(tp, sb_fini);
 	ATF_TP_ADD_TC(tp, sb_grow);
+	ATF_TP_ADD_TC(tp, sb_null);
 
 	return (atf_no_error());
 }
