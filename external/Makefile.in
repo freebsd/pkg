@@ -1,5 +1,5 @@
 include @builddir@/mk/defs.mk
-DIRS=	libblake2 libpicosat liblinenoise libfetch libsqlite libucl liblua libyxml libder libecc
+DIRS=	libblake2 libpicosat liblinenoise libfetch libsqlite libucl liblua libder libecc
 @if libelf-internal
 DIRS+=	libelf
 @endif
