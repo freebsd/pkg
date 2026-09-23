@@ -1,4 +1,5 @@
 Changes from 2.7.99.3 to 2.8.99.1
+- solve: rank the assumptions and give up the least important ones instead of negating them, so that an upgrade is held back rather than a package that was installed explicitly being removed; report the packages that are held back
 - upgrade/install: add -N/--no-remove and the NEVER_REMOVE configuration option to refuse removing packages that were not explicitly requested
 - upgrade/install: recall the number of packages to be removed in the confirmation prompt and require an explicit confirmation to remove packages that were installed explicitly
 - upgrade/install: report why each installed package that the plan removes

@@ -105,11 +105,40 @@ struct pkg_solve_rule {
 	vec_t(struct pkg_solve_item) items;
 };
 
+/*
+ * Assumptions used to drive the solver are ordered by importance.
+ *
+ * When the problem cannot be satisfied, the least important assumptions that take
+ * part in the unsatisfiable core are dropped: the corresponding variables
+ * are left unconstrained and the problem is solved again.
+ *
+ * Assumptions of the two first kinds are never dropped.
+ */
+enum pkg_solve_assumption_type {
+	PKG_ASSUME_REQUEST = 0,		/* explicitly requested */
+	PKG_ASSUME_DELETE,		/* explicitly requested removal */
+	PKG_ASSUME_KEEP_NONAUTO,	/* installed non-automatic package stays */
+	PKG_ASSUME_NONAUTO,		/* installed non-automatic package is upgraded */
+	PKG_ASSUME_AUTO,		/* installed automatic package is upgraded */
+	PKG_ASSUME_TYPE_MAX
+};
+
+struct pkg_solve_assumption {
+	int lit;			/* the assumed literal */
+	enum pkg_solve_assumption_type type;
+	const char *uid;		/* used to make the result deterministic */
+	const struct pkg *pkg;		/* reported when the assumption is dropped */
+	bool active;
+	bool in_core;
+};
+
 struct pkg_solve_problem {
 	struct pkg_jobs *j;
 	vec_t(struct pkg_solve_rule *) rules;
 	hash_t *variables_by_uid;
 	struct pkg_solve_variable *variables;
+	vec_t(struct pkg_solve_assumption) assumptions;
+	vec_t(struct pkg_solve_assumption) dropped;
 	PicoSAT *sat;
 	size_t nvars;
 };
@@ -591,6 +620,285 @@ pkg_solve_find_var_in_chain(solve_var_slice_t *slice,
 	return (NULL);
 }
 
+static void
+pkg_solve_add_assumption(struct pkg_solve_problem *problem, int lit,
+    enum pkg_solve_assumption_type type, const char *uid,
+    const struct pkg *pkg)
+{
+	struct pkg_solve_assumption a = {
+		.lit = lit,
+		.type = type,
+		.uid = uid,
+		.pkg = pkg,
+		.active = true,
+		.in_core = false,
+	};
+
+	vec_push(&problem->assumptions, a);
+}
+
+static int
+pkg_solve_assumption_cmp(const void *pa, const void *pb)
+{
+	const struct pkg_solve_assumption *a = pa;
+	const struct pkg_solve_assumption *b = pb;
+	int ret;
+
+	ret = (int)b->type - (int)a->type;
+	if (ret != 0)
+		return (ret);
+
+	if (a->uid == NULL || b->uid == NULL)
+		return (a->uid != NULL ? 1 : -1);
+
+	return (strcmp(a->uid, b->uid));
+}
+
+static void
+pkg_solve_sort_assumptions(struct pkg_solve_problem *problem)
+{
+	if (problem->assumptions.len > 1)
+		qsort(problem->assumptions.d, problem->assumptions.len,
+		    sizeof(problem->assumptions.d[0]),
+		    pkg_solve_assumption_cmp);
+}
+
+static void
+pkg_solve_apply_assumptions(struct pkg_solve_problem *problem)
+{
+	vec_foreach(problem->assumptions, _i) {
+		struct pkg_solve_assumption *a = &problem->assumptions.d[_i];
+
+		if (a->active)
+			picosat_assume(problem->sat, a->lit);
+	}
+}
+
+static void
+pkg_solve_flip_assumption(struct pkg_solve_problem *problem,
+    struct pkg_solve_variable *var)
+{
+	enum pkg_solve_assumption_type type = PKG_ASSUME_REQUEST;
+	const char *uid = var->uid;
+	const struct pkg *pkg = NULL;
+	int lit;
+	bool found = false;
+
+	lit = var->order * (var->flags & PKG_VAR_INSTALL ? 1 : -1);
+
+	vec_foreach(problem->assumptions, _i) {
+		struct pkg_solve_assumption *a = &problem->assumptions.d[_i];
+
+		if (!a->active || !STREQ(a->uid, var->uid))
+			continue;
+		if (a->lit != var->order && a->lit != -var->order)
+			continue;
+
+		a->active = false;
+		type = a->type;
+		pkg = a->pkg;
+		found = true;
+	}
+
+	if (found)
+		pkg_solve_add_assumption(problem, lit, type, uid, pkg);
+	else
+		pkg_solve_add_assumption(problem, lit, type, uid,
+		    var->unit->pkg);
+}
+
+/*
+ * Give up on the least important assumptions
+ *
+ * Returns false when the core only contains assumptions that must be kept
+ */
+static bool
+pkg_solve_relax_assumptions(struct pkg_solve_problem *problem)
+{
+	const int *failed;
+	enum pkg_solve_assumption_type type;
+	size_t dropped = 0;
+	bool found;
+
+	failed = picosat_failed_assumptions(problem->sat);
+	if (failed == NULL)
+		return (false);
+
+	for (size_t i = 0; i < problem->assumptions.len; i++)
+		problem->assumptions.d[i].in_core = false;
+
+	for (; *failed != 0; failed++) {
+		for (size_t i = 0; i < problem->assumptions.len; i++) {
+			struct pkg_solve_assumption *a = &problem->assumptions.d[i];
+
+			if (!a->active || a->lit != *failed)
+				continue;
+			a->in_core = true;
+			break;
+		}
+	}
+
+	for (type = PKG_ASSUME_TYPE_MAX - 1; type > PKG_ASSUME_DELETE; type--) {
+		found = false;
+		for (size_t i = 0; i < problem->assumptions.len; i++) {
+			struct pkg_solve_assumption *a = &problem->assumptions.d[i];
+
+			if (a->active && a->in_core && a->type == type) {
+				found = true;
+				break;
+			}
+		}
+		if (!found)
+			continue;
+
+		for (size_t i = 0; i < problem->assumptions.len; i++) {
+			struct pkg_solve_assumption *a = &problem->assumptions.d[i];
+
+			if (!a->active || !a->in_core || a->type != type)
+				continue;
+
+			if (a->pkg != NULL)
+				vec_push(&problem->dropped, *a);
+			a->active = false;
+			dropped++;
+		}
+		break;
+	}
+
+	return (dropped > 0);
+}
+
+static bool
+pkg_solve_held_back(struct pkg_solve_problem *problem, size_t upto,
+    struct pkg_solve_assumption *a)
+{
+	struct pkg_solve_variable *var;
+
+	if (a->pkg == NULL || a->type == PKG_ASSUME_KEEP_NONAUTO)
+		return (false);
+	if (abs(a->lit) > (int)problem->nvars)
+		return (false);
+
+	var = &problem->variables[abs(a->lit) - 1];
+	if (var->flags & PKG_VAR_INSTALL)
+		return (false);
+
+	/* Report a package only once, whatever was dropped for it */
+	for (size_t i = 0; i < upto; i++) {
+		struct pkg_solve_assumption *pa = &problem->dropped.d[i];
+
+		if (pa->pkg == NULL ||
+		    pa->type == PKG_ASSUME_KEEP_NONAUTO)
+			continue;
+		if (abs(pa->lit) > (int)problem->nvars)
+			continue;
+		if (problem->variables[abs(pa->lit) - 1].flags &
+		    PKG_VAR_INSTALL)
+			continue;
+		if (STREQ(pa->uid, a->uid))
+			return (false);
+	}
+
+	return (true);
+}
+
+static void
+pkg_solve_report_held_back(struct pkg_solve_problem *problem)
+{
+	vec_foreach(problem->dropped, _i) {
+		struct pkg_solve_assumption *a = &problem->dropped.d[_i];
+
+		if (!pkg_solve_held_back(problem, _i, a))
+			continue;
+
+		dbg(1, "holding back %s-%s to solve the problem",
+		    a->pkg->name, a->pkg->version);
+		pkg_emit_notice("%s-%s is held back to solve the problem",
+		    a->pkg->name, a->pkg->version);
+	}
+}
+
+/*
+ * Priority of the request of an installed package: upgrading a package that
+ * was installed as a dependency is worth giving up before upgrading one that
+ * was explicitly installed by the user.
+ */
+static enum pkg_solve_assumption_type
+pkg_solve_request_assumption_type(solve_var_slice_t *slice, int inverse)
+{
+	if (inverse < 0)
+		return (PKG_ASSUME_DELETE);
+
+	for (size_t vi = 0; vi < slice->count; vi++) {
+		const struct pkg *pkg = slice->begin[vi].unit->pkg;
+
+		if (pkg->type != PKG_INSTALLED)
+			continue;
+		return (pkg->automatic ? PKG_ASSUME_AUTO :
+		    PKG_ASSUME_NONAUTO);
+	}
+
+	/* Nothing is installed yet: this is an explicit request */
+	return (PKG_ASSUME_REQUEST);
+}
+
+static void
+pkg_solve_add_keep_assumptions(struct pkg_solve_problem *problem)
+{
+	solve_var_slice_t *slice;
+	const struct pkg *installed;
+	int sel;
+	bool keep;
+
+	if (problem->j->type != PKG_JOBS_INSTALL &&
+	    problem->j->type != PKG_JOBS_UPGRADE)
+		return;
+
+	/*
+	 * Forcing is the escape hatch: the user asked for the operation to
+	 * happen even if it costs packages, exactly as FORCE_CAN_REMOVE_VITAL
+	 * lets a forced run remove vital packages.
+	 */
+	if (problem->j->flags & PKG_FLAG_FORCE)
+		return;
+
+	/*
+	 * All the variables that the clauses use are allocated before the
+	 * selectors, so that the two sets do not overlap (the order of a
+	 * variable is its picosat index).
+	 */
+	picosat_adjust(problem->sat, problem->nvars);
+
+	hash_foreach(problem->variables_by_uid, it) {
+		slice = (solve_var_slice_t *)it.value;
+		installed = NULL;
+		keep = false;
+
+		for (size_t vi = 0; vi < slice->count; vi++) {
+			const struct pkg *pkg = slice->begin[vi].unit->pkg;
+
+			if (pkg->type != PKG_INSTALLED)
+				continue;
+			installed = pkg;
+			keep = !pkg->automatic;
+			break;
+		}
+
+		if (!keep)
+			continue;
+
+		sel = picosat_inc_max_var(problem->sat);
+		/* (!sel | L | R1 | ... | Rn) */
+		picosat_add(problem->sat, -sel);
+		for (size_t vi = 0; vi < slice->count; vi++)
+			picosat_add(problem->sat, slice->begin[vi].order);
+		picosat_add(problem->sat, 0);
+
+		pkg_solve_add_assumption(problem, sel,
+		    PKG_ASSUME_KEEP_NONAUTO, slice->begin[0].uid, installed);
+	}
+}
+
 static int
 pkg_solve_add_request_rule(struct pkg_solve_problem *problem,
 	struct pkg_solve_variable *var, struct pkg_job_request *req, int inverse)
@@ -608,8 +916,13 @@ pkg_solve_add_request_rule(struct pkg_solve_problem *problem,
 	solve_var_slice_t *reqslice = hash_get_value(problem->variables_by_uid, req->items.d[0].pkg->uid);
 	var = pkg_solve_find_var_in_chain(reqslice, req->items.d[0].unit);
 	assert(var != NULL);
-	/* Assume the most significant variable */
-	picosat_assume(problem->sat, var->order * inverse);
+	/*
+	 * Assume the most significant variable, at the priority of the kind
+	 * of request it is
+	 */
+	pkg_solve_add_assumption(problem, var->order * inverse,
+	    pkg_solve_request_assumption_type(reqslice, inverse),
+	    var->uid, var->unit->pkg);
 
 	/*
 	 * Add clause for any of candidates:
@@ -1057,18 +1370,33 @@ pkg_solve_sat_problem(struct pkg_solve_problem *problem)
 		pkg_solve_set_initial_assumption(problem, rule);
 	}
 
+	pkg_solve_add_keep_assumptions(problem);
+	pkg_solve_sort_assumptions(problem);
+
 reiterate:
+
+	pkg_solve_apply_assumptions(problem);
 
 	res = pkg_solve_picosat_iter(problem, iter);
 
 	if (res != PICOSAT_SATISFIABLE) {
 		/*
-		 * in case we cannot satisfy the problem it appears by
-		 * experience that the culprit seems to always be the latest of
-		 * listed in the failed assumptions.
-		 * So try to remove them for the given problem.
-		 * To avoid endless loop allow a maximum of 10 iterations no
-		 * more
+		 * The problem cannot be satisfied with all the assumptions
+		 * held: give up the least important ones that take part in
+		 * the unsatisfiable core and try again.  This is what makes
+		 * the solver hold an upgrade back instead of removing a
+		 * package that was installed explicitly.
+		 */
+		if (pkg_solve_relax_assumptions(problem)) {
+			iter++;
+			goto reiterate;
+		}
+
+		/*
+		 * Nothing left to give up: the core only contains
+		 * assumptions that must be kept.  Fall back to picking the
+		 * last failed assumption, which negates it, and to asking the
+		 * user when the problem still cannot be solved.
 		 */
 		failed = picosat_failed_assumptions(problem->sat);
 		attempt++;
@@ -1168,6 +1496,13 @@ reiterate:
 							lvar->flags & PKG_VAR_INSTALL ? "install" : "delete");
 		}
 
+		/*
+		 * Report the packages that were given up on to make this plan
+		 * solvable, so that the user is not left wondering why they
+		 * are not upgraded
+		 */
+		pkg_solve_report_held_back(problem);
+
 		/* Check for reiterations */
 		if ((problem->j->type == PKG_JOBS_INSTALL ||
 				problem->j->type == PKG_JOBS_UPGRADE) && iter == 0) {
@@ -1215,18 +1550,20 @@ reiterate:
 	if (need_reiterate) {
 		iter ++;
 
-		/* Restore top-level assumptions */
+		/*
+		 * Update the assumptions of the top level variables that
+		 * could not be satisfied
+		 */
 		for (i = 0; i < problem->nvars; i ++) {
 			struct pkg_solve_variable *lvar = &problem->variables[i];
 
-			if (lvar->flags & PKG_VAR_TOP) {
-				if (lvar->flags & PKG_VAR_FAILED) {
-					lvar->flags ^= PKG_VAR_INSTALL | PKG_VAR_FAILED;
-				}
+			if (!(lvar->flags & PKG_VAR_TOP))
+				continue;
+			if (!(lvar->flags & PKG_VAR_FAILED))
+				continue;
 
-				picosat_assume(problem->sat, lvar->order *
-						(lvar->flags & PKG_VAR_INSTALL ? 1 : -1));
-			}
+			lvar->flags ^= PKG_VAR_INSTALL | PKG_VAR_FAILED;
+			pkg_solve_flip_assumption(problem, lvar);
 		}
 
 		need_reiterate = false;
