@@ -383,7 +383,7 @@ Installed packages to be UPGRADED:
 	myplop: 1 -> 2
 
 Installed packages to be REMOVED:
-	mymeta: 1
+	mymeta: 1 (conflicts with myplop-2, which is being installed)
 
 Number of packages to be removed: 1
 Number of packages to be upgraded: 1

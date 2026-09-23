@@ -1,4 +1,5 @@
 Changes from 2.7.99.3 to 2.8.99.1
+- upgrade/install: report why each installed package that the plan removes
 - security: bound vulnerability database downloads and decompression; build a temporary database and atomically replace it only after validation
 - security: bound repository archive downloads and extraction (1 GiB or half of free temporary storage, 1 MiB metadata) and reject duplicate members and oversized target members
 - security: bound repository signature extraction (8 MiB callback response, at most 8 signature entries of 1 MiB each)

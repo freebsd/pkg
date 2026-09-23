@@ -279,7 +279,7 @@ Installed packages to be REINSTALLED:
 	rubygem-ruby-augeas-1.0 (direct dependency changed: ruby (origin changed), ruby20-gems (removed), ruby21-gems (added))
 
 Installed packages to be REMOVED:
-	ruby20-gems: 1.0
+	ruby20-gems: 1.0 (conflicts with ruby21-gems-1.0, which is being installed)
 
 Number of packages to be removed: 1
 Number of packages to be installed: 1

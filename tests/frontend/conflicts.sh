@@ -147,7 +147,7 @@ Installed packages to be UPGRADED:
 	foo: 1.0 -> 1.0_1
 
 Installed packages to be REMOVED:
-	bar: 1.0
+	bar: 1.0 (conflicts with bar1-1.1, which is being installed)
 
 Number of packages to be removed: 1
 Number of packages to be installed: 1
@@ -349,8 +349,8 @@ Installed packages to be UPGRADED:
 	foo: 1.0 -> 1.0_1
 
 Installed packages to be REMOVED:
-	bar: 1.0
-	other: 1.0
+	bar: 1.0 (conflicts with bar1-1.1, which is being installed)
+	other: 1.0 (depends on bar, which is also being removed)
 
 Number of packages to be removed: 2
 Number of packages to be installed: 2
@@ -475,7 +475,7 @@ New packages to be INSTALLED:
 	test2: 1
 
 Installed packages to be REMOVED:
-	test: 1
+	test: 1 (conflicts with test2-1, which is being installed)
 
 Number of packages to be removed: 1
 Number of packages to be installed: 1

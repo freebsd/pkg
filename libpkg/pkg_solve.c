@@ -1338,11 +1338,14 @@ pkg_solve_dimacs_export(struct pkg_solve_problem *problem, FILE *f)
  *   each dep has PKG_VAR_INSTALL set).
  * - It does not conflict with any package being installed.
  *
+ * If the package cannot be kept and why is not NULL, a human readable
+ * explanation of the reason is appended to why.
+ *
  * Returns true if the package can stay.
  */
 static bool
 pkg_solve_can_keep(struct pkg_solve_problem *problem,
-    struct pkg_solve_variable *var)
+    struct pkg_solve_variable *var, sb_t *why)
 {
 	struct pkg *pkg = var->unit->pkg;
 	struct pkg_dep *dep = NULL;
@@ -1363,18 +1366,28 @@ pkg_solve_can_keep(struct pkg_solve_problem *problem,
 		}
 
 		/* Check if any version of this dep is being installed/kept */
-		bool dep_ok = false;
+		bool dep_ok = false, dep_installed = false;
 		for (size_t vi = 0; vi < depslice->count; vi++) {
 			struct pkg_solve_variable *cv = &depslice->begin[vi];
 			if (cv->flags & PKG_VAR_INSTALL) {
 				dep_ok = true;
 				break;
 			}
+			if (cv->unit->pkg->type == PKG_INSTALLED)
+				dep_installed = true;
 		}
 
 		if (!dep_ok) {
 			dbg(4, "dep %s of %s-%s not satisfied",
 			    dep->uid, pkg->name, pkg->version);
+			if (why != NULL) {
+				if (dep_installed)
+					sb_printf(why, "depends on %s, which is also being removed",
+					    dep->name);
+				else
+					sb_printf(why, "depends on %s, which is not available",
+					    dep->name);
+			}
 			return (false);
 		}
 	}
@@ -1397,6 +1410,10 @@ pkg_solve_can_keep(struct pkg_solve_problem *problem,
 				    pkg->name, pkg->version,
 				    cv->unit->pkg->name,
 				    cv->unit->pkg->version);
+				if (why != NULL)
+					sb_printf(why, "conflicts with %s-%s, which is being installed",
+					    cv->unit->pkg->name,
+					    cv->unit->pkg->version);
 				return (false);
 			}
 		}
@@ -1460,6 +1477,7 @@ pkg_solve_insert_res_job (solve_var_slice_t *slice,
 		 * For delete requests there could be multiple delete requests per UID,
 		 * so we need to re-process vars and add all delete jobs required.
 		 */
+		sb_t why = sb_init();
 		for (size_t vi = 0; vi < slice->count; vi++) {
 			cur_var = &slice->begin[vi];
 			if (!(cur_var->flags & PKG_VAR_INSTALL) &&
@@ -1467,6 +1485,8 @@ pkg_solve_insert_res_job (solve_var_slice_t *slice,
 				/* Skip already added items */
 				if (seen_add > 0 && cur_var == del_var)
 					continue;
+
+				sb_reset(&why);
 
 				/*
 				 * For install/upgrade jobs, avoid spurious
@@ -1480,12 +1500,18 @@ pkg_solve_insert_res_job (solve_var_slice_t *slice,
 				if ((j->type == PKG_JOBS_INSTALL ||
 				    j->type == PKG_JOBS_UPGRADE) &&
 				    hash_get(j->request_delete, cur_var->uid) == NULL &&
-				    pkg_solve_can_keep(problem, cur_var)) {
+				    pkg_solve_can_keep(problem, cur_var, &why)) {
 					dbg(2, "keeping %s-%s: deps still satisfied",
 					    cur_var->unit->pkg->name,
 					    cur_var->unit->pkg->version);
 					cur_var->flags |= PKG_VAR_INSTALL;
 					continue;
+				}
+
+				if (why.len > 0) {
+					free(cur_var->unit->pkg->reason);
+					cur_var->unit->pkg->reason =
+					    xstrdup(sb_str(&why));
 				}
 
 				res = xcalloc(1, sizeof(struct pkg_solved));
@@ -1496,6 +1522,7 @@ pkg_solve_insert_res_job (solve_var_slice_t *slice,
 					cur_var->uid, cur_var->digest);
 			}
 		}
+		sb_fini(&why);
 	}
 	else {
 		dbg(2, "ignoring package %s(%s) as its state has not been changed",
