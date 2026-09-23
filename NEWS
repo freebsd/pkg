@@ -1,5 +1,6 @@
 Changes from 2.7.99.3 to 2.8.99.1
 - upgrade/install: add -N/--no-remove and the NEVER_REMOVE configuration option to refuse removing packages that were not explicitly requested
+- upgrade/install: recall the number of packages to be removed in the confirmation prompt and require an explicit confirmation to remove packages that were installed explicitly
 - upgrade/install: report why each installed package that the plan removes
 - security: bound vulnerability database downloads and decompression; build a temporary database and atomically replace it only after validation
 - security: bound repository archive downloads and extraction (1 GiB or half of free temporary storage, 1 MiB metadata) and reject duplicate members and oversized target members

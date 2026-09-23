@@ -405,8 +405,7 @@ exec_upgrade(int argc, char **argv)
 				nbactions, pkg_jobs_total(jobs));
 
 			if (!dry_run) {
-				rc = query_yesno(false, "\nProceed with this "
-						"action? ");
+				rc = confirm_jobs_action(jobs);
 			} else {
 				rc = false;
 			}

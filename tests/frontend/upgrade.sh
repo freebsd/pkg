@@ -27,11 +27,16 @@ tests_init \
 	upgrade_options_changed \
 	upgrade_options_added_removed \
 	no_remove \
-	never_remove
+	never_remove \
+	confirm_removal \
+	removal_automatic
 
 # A repository where upgrading foo brings a new bar1 which conflicts with the
-# installed bar: upgrading removes bar, unless the user is asked for it.
+# installed bar: upgrading silently removes bar, unless the user is asked for
+# it.  bar is installed explicitly unless no is passed as first argument, in
+# which case it is only pulled in as a dependency of foo and is automatic.
 removal_setup() {
+	explicit_bar="${1:-yes}"
 	echo "bar-1.0" > file1
 	atf_check -s exit:0 sh ${RESOURCEDIR}/test_subr.sh new_pkg bar bar 1.0 "${TMPDIR}"
 	cat << EOF >> bar.ucl
@@ -67,7 +72,9 @@ EOF
 
 	# bar is installed explicitly, foo being installed afterwards does not
 	# make bar automatic
-	atf_check -o ignore -s exit:0 pkg -C ./pkg.conf install -y bar
+	if [ "${explicit_bar}" = "yes" ]; then
+		atf_check -o ignore -s exit:0 pkg -C ./pkg.conf install -y bar
+	fi
 	atf_check -o ignore -s exit:0 pkg -C ./pkg.conf install -y foo
 
 	rm -fr repo
@@ -140,6 +147,40 @@ never_remove_body() {
 		pkg -C ./pkg.conf -o NEVER_REMOVE=YES upgrade -y
 
 	atf_check -o match:"^bar-1.0$" -e empty -s exit:0 pkg -C ./pkg.conf info bar
+}
+
+confirm_removal_body() {
+	removal_setup
+
+	# Answering yes to the upgrade and no to the removal of the packages
+	# that were installed explicitly must leave the system untouched
+	printf 'y\nn\n' | atf_check \
+		-o match:"1 package\\(s\\) will be REMOVED by this operation, including 1 that you installed explicitly: bar-1.0" \
+		-o match:"Proceed with this action\\? \\(1 package\\(s\\) will be REMOVED\\)" \
+		-o match:"Confirm their removal\\?" \
+		-e ignore \
+		-s exit:1 \
+		pkg -C ./pkg.conf upgrade
+
+	atf_check -o match:"^bar-1.0$" -e empty -s exit:0 pkg -C ./pkg.conf info bar
+}
+
+removal_automatic_body() {
+	# Here bar is only a dependency of foo: removing it does not need an
+	# extra confirmation and is not reported as an explicit removal
+	removal_setup no
+
+	printf 'y\n' | atf_check \
+		-o match:"1 package\\(s\\) will be REMOVED by this operation" \
+		-o not-match:"installed explicitly" \
+		-o not-match:"Confirm their removal" \
+		-e ignore \
+		-s exit:0 \
+		pkg -C ./pkg.conf upgrade
+
+	# pkg info with no pattern also prints the comment: do not anchor
+	atf_check -o not-match:"bar-1.0" -o match:"foo-1.0_1" \
+		-e ignore -s exit:0 pkg -C ./pkg.conf info
 }
 
 issue1881_body() {

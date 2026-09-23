@@ -148,8 +148,10 @@ vquery_yesno(bool deft, const char *msg, va_list ap)
 	strlcpy(yesnomsg, msg, sizeof(yesnomsg));
 	append_yesno(default_yes || r, yesnomsg, sizeof yesnomsg);
 
-	pkg_vasprintf(&out, yesnomsg, ap);
-	printf("%s", out);
+	out = NULL;
+	if (pkg_vasprintf(&out, yesnomsg, ap) < 0)
+		out = NULL;
+	printf("%s", out != NULL ? out : yesnomsg);
 
 	for (;;) {
 		if ((linelen = getline(&line, &linecap, stdin)) != -1) {
@@ -1143,6 +1145,76 @@ audit_check_summary(pkg_solved_display_t *disp)
 
 		return (vulnerable);
 	}
+}
+
+bool
+confirm_jobs_action(struct pkg_jobs *jobs)
+{
+	struct pkg *new_pkg, *old_pkg;
+	void *iter = NULL;
+	int type, nremovals = 0, explicit_removals = 0;
+	bool automatic, ret;
+
+	type = pkg_jobs_type(jobs);
+
+	/*
+	 * There is no question to ask when the user asked to assume yes,
+	 * and no question at all in quiet mode.
+	 */
+	if (yes || quiet)
+		return (true);
+
+	if (type != PKG_JOBS_INSTALL && type != PKG_JOBS_UPGRADE)
+		return (query_yesno(false, "\nProceed with this action? "));
+
+	sb_t names = sb_init();
+	char prompt[BUFSIZ];
+
+	while (pkg_jobs_iter(jobs, &iter, &new_pkg, &old_pkg, &type)) {
+		if (type != PKG_SOLVED_DELETE)
+			continue;
+
+		pkg_get(new_pkg, PKG_ATTR_AUTOMATIC, &automatic);
+		nremovals++;
+		if (automatic)
+			continue;
+
+		explicit_removals++;
+		if (names.len > 0)
+			sb_cat_c(&names, ' ');
+		pkg_sb_printf(&names, "%n-%v", new_pkg, new_pkg);
+	}
+
+	if (nremovals > 0) {
+		printf("\n>>> %d package(s) will be REMOVED by this operation",
+		    nremovals);
+		if (explicit_removals > 0)
+			printf(", including %d that you installed "
+			    "explicitly: %s", explicit_removals,
+			    sb_str(&names));
+		putchar('\n');
+	}
+
+	if (nremovals > 0)
+		snprintf(prompt, sizeof(prompt),
+		    "\nProceed with this action? "
+		    "(%d package(s) will be REMOVED) ", nremovals);
+	else
+		snprintf(prompt, sizeof(prompt),
+		    "\nProceed with this action? ");
+
+	ret = query_yesno(false, prompt);
+
+	if (ret && explicit_removals > 0) {
+		printf("\n>>> These packages were installed explicitly and "
+		    "removing them makes them disappear until they are "
+		    "installed again: %s\n", sb_str(&names));
+		ret = query_yesno(false, "\nConfirm their removal? ");
+	}
+
+	sb_fini(&names);
+
+	return (ret);
 }
 
 int

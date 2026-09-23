@@ -264,8 +264,7 @@ exec_install(int argc, char **argv)
 			break;
 
 		if (!quiet) {
-			rc = query_yesno(false,
-			    "\nProceed with this action? ");
+			rc = confirm_jobs_action(jobs);
 		}
 
 		if (rc) {

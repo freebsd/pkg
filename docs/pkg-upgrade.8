@@ -91,6 +91,15 @@ option or the
 setting in
 .Pa pkg.conf .
 .Pp
+A package may have to be removed to upgrade another one, for example when a
+dependency disappeared from the repositories or a new package conflicts with
+an installed one.
+Such removals are reported in the summary with the reason for each package,
+and removing one that was installed explicitly needs an extra confirmation.
+The
+.Fl N
+option refuses those removals altogether.
+.Pp
 If the vulnerability database
 .Pa ( vuln.xml )
 is available

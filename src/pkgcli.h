@@ -279,6 +279,7 @@ bool query_tty_yesno(bool deft, const char *msg, ...);
 int info_flags(uint64_t opt, bool remote);
 void print_info(struct pkgdb *db, struct pkg * const pkg, uint64_t opt);
 int print_jobs_summary(struct pkg_jobs *j, const char *msg, ...);
+bool confirm_jobs_action(struct pkg_jobs *jobs);
 
 void job_status_begin(sb_t *);
 void job_status_end(sb_t *);
