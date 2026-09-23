@@ -22,13 +22,13 @@
 .Nd perform upgrades of package software distributions
 .Sh SYNOPSIS
 .Nm
-.Op Fl fInFqUy
+.Op Fl fInFNqUy
 .Op Fl r Ar reponame ...
 .Op Fl Cgix
 .Op Ar <pkg-origin|pkg-name|pkg-name-version> ...
 .Pp
 .Nm
-.Op Cm --{force,no-scripts,dry-run,fetch-only,autoremove}
+.Op Cm --{force,no-scripts,dry-run,fetch-only,autoremove,no-remove}
 .Op Cm --{quiet,no-repo-update,yes}
 .Op Cm --repository Ar reponame ...
 .Op Cm --{case-sensitive,glob,case-insensitive,regex}
@@ -163,6 +163,17 @@ Make the standard or the regular expression
 matching against
 .Ar pkg-name
 case insensitive.
+.It Fl N , Cm --no-remove
+Refuse to remove any installed package that was not explicitly requested for
+removal.
+A dry run
+.Fl ( n )
+always reports the plan, removals included, instead of failing.
+See the
+.Cm NEVER_REMOVE
+option in
+.Xr pkg.conf 5
+for the equivalent permanent setting.
 .It Fl n , Cm --dry-run
 Dry-run mode: show what packages have updates available, but do not perform
 any upgrades.

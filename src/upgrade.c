@@ -55,7 +55,7 @@ static const char vuln_end_lit[] = "**END**";
 void
 usage_upgrade(void)
 {
-	fprintf(stderr, "Usage: pkg upgrade [-fInFqUy] [--autoremove] [-r reponame] [-Cgix] <pkg-name> ...\n\n");
+	fprintf(stderr, "Usage: pkg upgrade [-fInFNqUy] [--autoremove] [--no-remove] [-r reponame] [-Cgix] <pkg-name> ...\n\n");
 	fprintf(stderr, "For more information see 'pkg help upgrade'.\n");
 }
 
@@ -263,13 +263,14 @@ exec_upgrade(int argc, char **argv)
 		{ "quiet",		no_argument,		NULL,	'q' },
 		{ "repository",		required_argument,	NULL,	'r' },
 		{ "no-repo-update",	no_argument,		NULL,	'U' },
+		{ "no-remove",		no_argument,		NULL,	'N' },
 		{ "regex",		no_argument,		NULL,	'x' },
 		{ "yes",		no_argument,		NULL,	'y' },
 		{ "vulnerable",		no_argument,		NULL,		'v' },
 		{ NULL,			0,			NULL,	0   },
 	};
 
-	while ((ch = getopt_long(argc, argv, "+CfFgiInqr:Uxyv", longopts, NULL)) != -1) {
+	while ((ch = getopt_long(argc, argv, "+CfFgiInNqr:Uxyv", longopts, NULL)) != -1) {
 		switch (ch) {
 		case 'C':
 			pkgdb_set_case_sensitivity(true);
@@ -294,6 +295,9 @@ exec_upgrade(int argc, char **argv)
 			f |= PKG_FLAG_DRY_RUN;
 			lock_type = PKGDB_LOCK_READONLY;
 			dry_run = true;
+			break;
+		case 'N':
+			f |= PKG_FLAG_NO_REMOVE;
 			break;
 		case 'q':
 			quiet = true;

@@ -1892,6 +1892,58 @@ pkg_jobs_run_solver(struct pkg_jobs *j)
 	return (ret);
 }
 
+static int
+pkg_jobs_check_unrequested_removals(struct pkg_jobs *j)
+{
+	struct pkg_solved *sit;
+	struct pkg *pkg;
+	const char *reason, *optname;
+	size_t removed = 0;
+
+	if (j->type != PKG_JOBS_INSTALL && j->type != PKG_JOBS_UPGRADE)
+		return (EPKG_OK);
+
+	/*
+	 * A dry run and a fetch only run do not remove anything: report the
+	 * plan instead of refusing it.
+	 */
+	if (j->flags & (PKG_FLAG_DRY_RUN|PKG_FLAG_SKIP_INSTALL))
+		return (EPKG_OK);
+
+	if (j->flags & PKG_FLAG_NO_REMOVE)
+		optname = "--no-remove";
+	else if (pkg_object_bool(pkg_config_get("NEVER_REMOVE")))
+		optname = "NEVER_REMOVE";
+	else
+		return (EPKG_OK);
+
+	vec_foreach(j->jobs, i) {
+		sit = j->jobs.d[i];
+		if (sit->type != PKG_SOLVED_DELETE)
+			continue;
+
+		pkg = sit->items[0]->pkg;
+		pkg_get(pkg, PKG_ATTR_REASON, &reason);
+		removed++;
+		if (reason != NULL)
+			pkg_emit_error("%s-%s would be removed: %s",
+			    pkg->name, pkg->version, reason);
+		else
+			pkg_emit_error("%s-%s would be removed",
+			    pkg->name, pkg->version);
+	}
+
+	if (removed == 0)
+		return (EPKG_OK);
+
+	pkg_emit_error("%s is set: refusing to remove %zu package(s) that "
+	    "were not explicitly requested", optname, removed);
+	pkg_emit_error("remove them explicitly with 'pkg delete' first, or "
+	    "unset %s to let this operation proceed", optname);
+
+	return (EPKG_FATAL);
+}
+
 int
 pkg_jobs_solve(struct pkg_jobs *j)
 {
@@ -1953,6 +2005,9 @@ pkg_jobs_solve(struct pkg_jobs *j)
 			}
 		} while (j->conflicts_registered > 0);
 	}
+
+	if (ret == EPKG_OK)
+		ret = pkg_jobs_check_unrequested_removals(j);
 
 	return (ret);
 }

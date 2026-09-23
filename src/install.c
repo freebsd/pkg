@@ -49,7 +49,7 @@ void
 usage_install(void)
 {
 	fprintf(stderr,
-	    "Usage: pkg install [-ACfFgiIlMnqRUxy] [--autoremove] [-r reponame] <pkg-name> ...\n\n");
+	    "Usage: pkg install [-ACfFgiIlMnNqRUxy] [--autoremove] [--no-remove] [-r reponame] <pkg-name> ...\n\n");
 	fprintf(stderr, "For more information see 'pkg help install'.\n");
 }
 
@@ -92,6 +92,7 @@ exec_install(int argc, char **argv)
 		{ "repository",		required_argument,	NULL,	'r' },
 		{ "recursive",		no_argument,		NULL,   'R' },
 		{ "no-repo-update",	no_argument,		NULL,	'U' },
+		{ "no-remove",		no_argument,		NULL,	'N' },
 		{ "regex",		no_argument,		NULL,	'x' },
 		{ "register-only",	no_argument,		NULL,	'X' },
 		{ "yes",		no_argument,		NULL,	'y' },
@@ -105,7 +106,7 @@ exec_install(int argc, char **argv)
 		quiet = true;
 	}
 
-	while ((ch = getopt_long(argc, argv, "+ACfFgiIlMnqr:RUXxy", longopts, NULL)) != -1) {
+	while ((ch = getopt_long(argc, argv, "+ACfFgiIlMnNqr:RUXxy", longopts, NULL)) != -1) {
 		switch (ch) {
 		case 'A':
 			f |= PKG_FLAG_AUTOMATIC;
@@ -140,6 +141,9 @@ exec_install(int argc, char **argv)
 			f |= PKG_FLAG_DRY_RUN;
 			lock_type = PKGDB_LOCK_READONLY;
 			dry_run = true;
+			break;
+		case 'N':
+			f |= PKG_FLAG_NO_REMOVE;
 			break;
 		case 'q':
 			quiet = true;

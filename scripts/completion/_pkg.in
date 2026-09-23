@@ -376,6 +376,7 @@ _pkg_args() {
 				'(-U --no-repo-update)'{-U,--no-repo-update}'[suppress the automatic update of the repo catalogue]' \
 				'(-I --no-scripts)'{-I,--no-scripts}"[don't execute any pre/post-install scripts]" \
 				'(-M --ignore-missing)'{-M,--ignore-missing}'[ignore missing dependencies]' \
+				'(-N --no-remove)'{-N,--no-remove}'[refuse to remove packages that were not explicitly requested]' \
 				'(-n --dry-run -y --yes)'{-y,--yes}'[assume yes when asked for confirmation]' \
 				'(-y --yes -n --dry-run)'{-n,--dry-run}'[assume no (dry run) when asked for confirmation]' \
 				'(-f --force)'{-f,--force}'[force reinstallation if needed]' \
@@ -577,6 +578,7 @@ _pkg_args() {
 				'(-i --case-insensitive -C --case-sensitive)'{-i,--case-insensitive}'[case insensitive pattern matching]' \
 				'(-U --no-repo-update)'{-U,--no-repo-update}'[suppress the automatic update of the repo catalogue]' \
 				'(-I --no-scripts)'{-I,--no-scripts}"[don't execute any pre/post-install scripts]" \
+				'(-N --no-remove)'{-N,--no-remove}'[refuse to remove packages that were not explicitly requested]' \
 				'(-q --quiet)'{-q,--quiet}'[be quiet]' \
 				'(-r --repository)'{-r+,--repository=}'[specify the repository to upgrade from]:repository:->repositories' \
 				'(-g --glob -x --regex)'{-g,--glob}'[process packages that match a glob pattern]' \

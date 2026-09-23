@@ -22,14 +22,14 @@
 .Nd install packages from remote repositories or local archives
 .Sh SYNOPSIS
 .Nm
-.Op Fl AfIMnFqRXUy
+.Op Fl AfIMnFNqRXUy
 .Op Fl r Ar reponame ...
 .Op Fl Cgix
 .Ar <pkg-origin|pkg-name|pkg-name-version> ...
 .Pp
 .Nm
 .Op Cm --{automatic,force,no-scripts,ignore-missing,register-only,autoremove}
-.Op Cm --{dry-run,fetch-only,quiet,recursive,no-repo-update,yes}
+.Op Cm --{dry-run,fetch-only,quiet,recursive,no-repo-update,yes,no-remove}
 .Op Cm --repository Ar reponame ...
 .Op Cm --{case-sensitive,glob,case-insensitive,regex}
 .Ar <pkg-origin|pkg-name|pkg-name-version> ...
@@ -162,6 +162,17 @@ matching against
 case insensitive.
 .It Fl M , Cm --ignore-missing
 Force the installation of the package with missing dependencies.
+.It Fl N , Cm --no-remove
+Refuse to remove any installed package that was not explicitly requested for
+removal.
+A dry run
+.Fl ( n )
+always reports the plan, removals included, instead of failing.
+See the
+.Cm NEVER_REMOVE
+option in
+.Xr pkg.conf 5
+for the equivalent permanent setting.
 .It Fl n , Cm --dry-run
 Dry-run mode.
 The list of changes to packages is always printed, but

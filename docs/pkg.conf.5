@@ -112,6 +112,23 @@ This is equivalent to running
 .Xr pkg-autoremove 8
 after each operation.
 Default: NO.
+.It Cm NEVER_REMOVE: boolean
+Refuse to remove any installed package that was not explicitly requested for
+removal during
+.Xr pkg-install 8
+or
+.Xr pkg-upgrade 8 .
+Those operations fail before anything is applied, and the packages that would
+have been removed are reported, with the reason why each of them was selected
+for removal.
+The
+.Fl N
+flag of
+.Xr pkg-install 8
+and
+.Xr pkg-upgrade 8
+enables the same behaviour for a single invocation.
+Default: NO.
 .It Cm DEFAULT_ALWAYS_YES: boolean
 When this option is enabled
 .Xr pkg 1

@@ -25,7 +25,122 @@ tests_init \
 	upgrade_all_disabled_repos \
 	upgrade_vulnerable \
 	upgrade_options_changed \
-	upgrade_options_added_removed
+	upgrade_options_added_removed \
+	no_remove \
+	never_remove
+
+# A repository where upgrading foo brings a new bar1 which conflicts with the
+# installed bar: upgrading removes bar, unless the user is asked for it.
+removal_setup() {
+	echo "bar-1.0" > file1
+	atf_check -s exit:0 sh ${RESOURCEDIR}/test_subr.sh new_pkg bar bar 1.0 "${TMPDIR}"
+	cat << EOF >> bar.ucl
+files: {
+	${TMPDIR}/file1: "",
+}
+EOF
+
+	atf_check -s exit:0 sh ${RESOURCEDIR}/test_subr.sh new_pkg foo foo 1.0 "${TMPDIR}"
+	cat << EOF >> foo.ucl
+deps: {
+	bar: {
+		origin: "bar",
+		version: "1.0"
+	}
+}
+EOF
+
+	atf_check -o empty -e empty -s exit:0 pkg create -M ./bar.ucl -o ./repo/
+	atf_check -o empty -e empty -s exit:0 pkg create -M ./foo.ucl -o ./repo/
+
+	cat << EOF > pkg.conf
+PKG_DBDIR=${TMPDIR}
+REPOS_DIR=[]
+repositories: {
+	local: { url : file://${TMPDIR}/repo }
+}
+EOF
+
+	atf_check -o inline:"Creating repository in ./repo:  done\nPacking files for repository:  done\n" \
+		-e empty -s exit:0 pkg -C ./pkg.conf repo ./repo
+	atf_check -o ignore -s exit:0 pkg -C ./pkg.conf update -f
+
+	# bar is installed explicitly, foo being installed afterwards does not
+	# make bar automatic
+	atf_check -o ignore -s exit:0 pkg -C ./pkg.conf install -y bar
+	atf_check -o ignore -s exit:0 pkg -C ./pkg.conf install -y foo
+
+	rm -fr repo
+	echo "bar-2.0" > file1
+	atf_check -s exit:0 sh ${RESOURCEDIR}/test_subr.sh new_pkg bar bar 2.0 "${TMPDIR}"
+	cat << EOF >> bar.ucl
+files: {
+	${TMPDIR}/file1: "",
+}
+EOF
+
+	echo "bar-1.1" > file1
+	atf_check -s exit:0 sh ${RESOURCEDIR}/test_subr.sh new_pkg bar1 bar1 1.1 "${TMPDIR}"
+	cat << EOF >> bar1.ucl
+files: {
+	${TMPDIR}/file1: "",
+}
+EOF
+
+	atf_check -s exit:0 sh ${RESOURCEDIR}/test_subr.sh new_pkg foo foo 1.0_1 "${TMPDIR}"
+	cat << EOF >> foo.ucl
+deps: {
+	bar1: {
+		origin: "bar1",
+		version: "1.1"
+	}
+}
+EOF
+
+	atf_check -o empty -e empty -s exit:0 pkg create -M ./bar.ucl -o ./repo/
+	atf_check -o empty -e empty -s exit:0 pkg create -M ./bar1.ucl -o ./repo/
+	atf_check -o empty -e empty -s exit:0 pkg create -M ./foo.ucl -o ./repo/
+
+	atf_check -o inline:"Creating repository in ./repo:  done\nPacking files for repository:  done\n" \
+		-e empty -s exit:0 pkg -C ./pkg.conf repo ./repo
+	atf_check -o ignore -s exit:0 pkg -C ./pkg.conf update -f
+}
+
+no_remove_body() {
+	removal_setup
+
+	# A dry run always reports the plan, removals included
+	atf_check \
+		-o match:"Installed packages to be REMOVED:" \
+		-o match:"bar: 1.0 \\(conflicts with bar1-1.1, which is being installed\\)" \
+		-e ignore \
+		-s exit:0 \
+		pkg -C ./pkg.conf upgrade -n --no-remove
+
+	# The upgrade would remove bar without having been asked to
+	atf_check \
+		-o ignore \
+		-e match:"bar-1.0 would be removed: conflicts with bar1-1.1, which is being installed" \
+		-e match:"--no-remove is set: refusing to remove 1 package" \
+		-s exit:1 \
+		pkg -C ./pkg.conf upgrade -y --no-remove
+
+	# Nothing was touched
+	atf_check -o match:"^bar-1.0$" -e empty -s exit:0 pkg -C ./pkg.conf info bar
+}
+
+never_remove_body() {
+	removal_setup
+
+	atf_check \
+		-o ignore \
+		-e match:"bar-1.0 would be removed: conflicts with bar1-1.1, which is being installed" \
+		-e match:"NEVER_REMOVE is set: refusing to remove 1 package" \
+		-s exit:1 \
+		pkg -C ./pkg.conf -o NEVER_REMOVE=YES upgrade -y
+
+	atf_check -o match:"^bar-1.0$" -e empty -s exit:0 pkg -C ./pkg.conf info bar
+}
 
 issue1881_body() {
 	atf_check -s exit:0 sh ${RESOURCEDIR}/test_subr.sh new_pkg pkg1 pkg_a 1

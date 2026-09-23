@@ -422,7 +422,8 @@ typedef enum _pkg_flags {
 	PKG_FLAG_NOEXEC = (1U << 14),
 	PKG_FLAG_KEEPFILES = (1U << 15),
 	PKG_FLAG_REGISTER_ONLY = (1U << 16),
-	PKG_FLAG_FETCH_SYMLINK = (1U << 17)
+	PKG_FLAG_FETCH_SYMLINK = (1U << 17),
+	PKG_FLAG_NO_REMOVE = (1U << 18)
 } pkg_flags;
 
 typedef enum _pkg_stats_t {

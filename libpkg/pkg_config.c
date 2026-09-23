@@ -357,6 +357,11 @@ static struct config_entry c[] = {
 		"NO",
 	},
 	{
+		PKG_BOOL,
+		"NEVER_REMOVE",
+		"NO",
+	},
+	{
 		PKG_STRING,
 		"DOT_FILE",
 		NULL,
