@@ -30,7 +30,8 @@ tests_init \
 	never_remove \
 	confirm_removal \
 	hold_back \
-	hold_back_force
+	hold_back_force \
+	removal_automatic
 
 # bar-1.0 owns ${TMPDIR}/file1 and is installed, either explicitly or, when no
 # is passed as first argument, as an automatic package.  The repository then
@@ -147,6 +148,24 @@ EOF
 	atf_check -o inline:"Creating repository in ./repo:  done\nPacking files for repository:  done\n" \
 		-e empty -s exit:0 pkg -C ./pkg.conf repo ./repo
 	atf_check -o ignore -s exit:0 pkg -C ./pkg.conf update -f
+}
+
+removal_automatic_body() {
+	# Here bar is automatic: removing it needs no extra confirmation and is
+	# not reported as an explicit removal
+	removal_setup no
+
+	printf 'y\n' | atf_check \
+		-o match:"1 package\\(s\\) will be REMOVED by this operation" \
+		-o not-match:"installed explicitly" \
+		-o not-match:"Confirm their removal" \
+		-e ignore \
+		-s exit:0 \
+		pkg -C ./pkg.conf install bar1
+
+	# pkg info with no pattern also prints the comment: do not anchor
+	atf_check -o not-match:"bar-1.0" -o match:"bar1-1.1" \
+		-e ignore -s exit:0 pkg -C ./pkg.conf info
 }
 
 # Upgrading foo would remove bar, which was installed explicitly: the upgrade

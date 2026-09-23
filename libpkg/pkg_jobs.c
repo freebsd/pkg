@@ -1311,7 +1311,7 @@ pkg_jobs_propagate_automatic(struct pkg_jobs *j)
 				dbg(2, "set automatic flag for %s", uv->d[0]->pkg->uid);
 				uv->d[0]->pkg->automatic = automatic;
 			}
-			else {
+			else if (uv->d[0]->pkg->type != PKG_INSTALLED) {
 				if (j->type == PKG_JOBS_INSTALL) {
 					uv->d[0]->pkg->automatic = false;
 				}
