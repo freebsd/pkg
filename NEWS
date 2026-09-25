@@ -26,6 +26,7 @@ Changes from 2.7.99.3 to 2.8.99.1
 - libpkg: add PKG_EVENT_PKG_FETCH_BEGIN to report the package being downloaded (for PackageKit)
 - utils: always print the signature_type
 - fix: SRV/HTTP-mirror fetch only retried the first server; walk the server list once with a per-server retry budget and report SRV/mirror-list lookup failures
+- pkg set -v: store the vital flag as a local (user) override that survives upgrades and reinstalls, and combine it with the package's own vital flag
 
 Changes from 2.7.99.2 to 2.7.99.3
 - db: switch the local database to WAL journal mode with synchronous=NORMAL for better read concurrency and faster writes

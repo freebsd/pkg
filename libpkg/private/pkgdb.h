@@ -13,6 +13,7 @@
 
 #include <sqlite3.h>
 #include "pkg/vec.h"
+#include "hash.h"
 
 typedef vec_t(struct pkg_repo *) repos_t;
 struct pkgdb {
@@ -21,6 +22,8 @@ struct pkgdb {
 	/* lazily evaluated presence of the pkg_local table */
 	bool		 pkg_local_checked;
 	bool		 pkg_local_present;
+	/* names of the packages flagged vital by the user, or NULL */
+	hash_t		*user_vital;
 	repos_t repos;
 };
 
@@ -60,6 +63,8 @@ struct pkgdb_it *pkgdb_it_new_sqlite(struct pkgdb *db, sqlite3_stmt *s,
 	int type, short flags);
 struct pkgdb_it *pkgdb_it_new_repo(struct pkgdb *db);
 void pkgdb_it_repo_attach(struct pkgdb_it *it, struct pkg_repo_it *rit);
+
+void pkgdb_local_apply(struct pkgdb *db, struct pkg *pkg);
 
 /**
  * Load missing flags for a specific package from pkgdb

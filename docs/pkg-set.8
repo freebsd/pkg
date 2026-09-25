@@ -109,7 +109,7 @@ Match
 as a regular expression according to the "modern" or "extended" syntax of
 .Xr re_format 7 .
 .It Fl v Ar 0|1 , Cm --vital Ar 0|1
-Set or unset the
+Set or unset the local
 .Qq vital
 flag on the target package(s).
 Set to
@@ -119,6 +119,9 @@ to disable the
 flag, and
 .Ar 1
 to enable it.
+The local flag is kept across upgrades and reinstalls, unlike the one set
+by the package itself; a package is vital when either the package or the
+user sets the flag.
 .It Fl y , Cm --yes
 Assume yes rather than asking for confirmation before modifying package information.
 .El

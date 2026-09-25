@@ -1150,6 +1150,8 @@ pkgdb_it_next(struct pkgdb_it *it, struct pkg **pkg_p, unsigned flags)
 		int ret;
 
 		ret = pkgdb_sqlite_it_next(it->local, pkg_p, flags);
+		if (ret == EPKG_OK && *pkg_p != NULL)
+			pkgdb_local_apply(it->db, *pkg_p);
 		if (ret != EPKG_END)
 			return (ret);
 	}

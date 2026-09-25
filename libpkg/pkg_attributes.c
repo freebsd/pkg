@@ -313,7 +313,7 @@ pkg_get_element(struct pkg *p, pkg_attr a)
 		e->type = PKG_BOOLEAN;
 		break;
 	case PKG_ATTR_VITAL:
-		e->boolean = p->vital;
+		e->boolean = pkg_is_vital(p);
 		e->type = PKG_BOOLEAN;
 		break;
 	case PKG_ATTR_FLATSIZE:

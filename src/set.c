@@ -349,7 +349,13 @@ exec_set(int argc, char **argv)
 				rc = saved_rc;
 			}
 			if ((sets & VITAL) == VITAL) {
-				pkg_get(pkg, PKG_ATTR_VITAL, &vital);
+				const char *name = NULL;
+				char *lv = NULL;
+
+				pkg_get(pkg, PKG_ATTR_NAME, &name);
+				pkgdb_local_get(db, name, "vital", &lv);
+				vital = (lv != NULL && !STREQ(lv, "0"));
+				free(lv);
 				if (vital == newvital)
 					continue;
 				if (!rc) {
@@ -363,7 +369,8 @@ exec_set(int argc, char **argv)
 								pkg, pkg);
 				}
 				if (rc)
-					pkgdb_set(db, pkg, PKG_SET_VITAL, (int)newvital);
+					pkgdb_local_set(db, name, "vital",
+					    newvital ? "1" : NULL);
 				rc = saved_rc;
 			}
 			if (sets & (ORIGIN|NAME)) {

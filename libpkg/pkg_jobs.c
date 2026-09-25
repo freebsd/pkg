@@ -634,7 +634,7 @@ _is_orphaned(struct pkg_jobs *j, const char *uid)
 		return (false);
 	uv = pkg_jobs_universe_find(j->universe, uid);
 	if (uv != NULL) {
-		if (!uv->d[0]->pkg->automatic || uv->d[0]->pkg->vital)
+		if (!uv->d[0]->pkg->automatic || pkg_is_vital(uv->d[0]->pkg))
 			return (false);
 		npkg = uv->d[0]->pkg;
 	} else {
@@ -643,7 +643,7 @@ _is_orphaned(struct pkg_jobs *j, const char *uid)
 		    PKG_LOAD_SHLIBS_REQUIRED|PKG_LOAD_REQUIRES);
 		if (npkg == NULL)
 			return (false);
-		if (!npkg->automatic || npkg->vital) {
+		if (!npkg->automatic || pkg_is_vital(npkg)) {
 			pkg_free(npkg);
 			return (false);
 		}
@@ -1435,7 +1435,7 @@ jobs_solve_deinstall(struct pkg_jobs *j)
 		while (pkgdb_it_next(it, &pkg, PKG_LOAD_BASIC|PKG_LOAD_RDEPS|
 		    PKG_LOAD_DEPS|PKG_LOAD_ANNOTATIONS|PKG_LOAD_PROVIDES|
 		    PKG_LOAD_SHLIBS_PROVIDED) == EPKG_OK) {
-			if(pkg->locked || (pkg->vital && !force)) {
+			if(pkg->locked || (pkg_is_vital(pkg) && !force)) {
 				vec_push(&j->lockedpkgs, pkg);
 			}
 			else {
@@ -2211,7 +2211,7 @@ pkg_jobs_execute(struct pkg_jobs *j)
 		case PKG_SOLVED_DELETE:
 			if ((j->flags & PKG_FLAG_FORCE) == 0) {
 				p = ps->items[0]->pkg;
-				if (p->vital) {
+				if (pkg_is_vital(p)) {
 					pkg_emit_error(
 					    "Cannot delete vital package: %s!", p->name);
 					pkg_emit_error(

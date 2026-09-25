@@ -1072,7 +1072,7 @@ pkg_solve_process_universe_variable(struct pkg_solve_problem *problem,
 		}
 
 		/* Vital flag */
-		if (pkg->vital && add_vital)
+		if (pkg_is_vital(pkg) && add_vital)
 			pkg_solve_add_vital_rule(problem, slice);
 
 		/*
@@ -1461,7 +1461,7 @@ reiterate:
 						depends_on_var = true;
 				}
 				if (dep_pkg != NULL && depends_on_var &&
-				    dep_pkg->var->unit->pkg->vital) {
+				    pkg_is_vital(dep_pkg->var->unit->pkg)) {
 					pkg_emit_error("Cannot remove %s: "
 					    "required by vital package %s",
 					    var->uid, dep_pkg->var->uid);

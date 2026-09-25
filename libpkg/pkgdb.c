@@ -1288,6 +1288,9 @@ pkgdb_close(struct pkgdb *db)
 	if (db == NULL)
 		return;
 
+	hash_destroy(db->user_vital);
+	db->user_vital = NULL;
+
 	if (db->prstmt_initialized)
 		prstmt_finalize(db);
 
@@ -2866,6 +2869,9 @@ pkgdb_local_set(struct pkgdb *db, const char *name, const char *key,
 	}
 	sqlite3_finalize(stmt);
 
+	hash_destroy(db->user_vital);
+	db->user_vital = NULL;
+
 	return (EPKG_OK);
 }
 
@@ -2905,6 +2911,36 @@ pkgdb_local_get(struct pkgdb *db, const char *name, const char *key,
 	sqlite3_finalize(stmt);
 
 	return (EPKG_OK);
+}
+
+void
+pkgdb_local_apply(struct pkgdb *db, struct pkg *pkg)
+{
+	static const char sql[] = ""
+	    "SELECT name FROM pkg_local WHERE key = 'vital' AND value <> '0'";
+	sqlite3_stmt *stmt;
+	const unsigned char *name;
+
+	if (pkg->type != PKG_INSTALLED || pkg->name == NULL)
+		return;
+
+	if (db->user_vital == NULL) {
+		db->user_vital = hash_new();
+		if (pkgdb_local_exists(db) &&
+		    sqlite3_prepare_v2(db->sqlite, sql, -1, &stmt, NULL) ==
+		    SQLITE_OK) {
+			while (sqlite3_step(stmt) == SQLITE_ROW) {
+				name = sqlite3_column_text(stmt, 0);
+				if (name != NULL)
+					hash_add(db->user_vital,
+					    (const char *)name, NULL, NULL);
+			}
+			sqlite3_finalize(stmt);
+		}
+	}
+
+	if (hash_get(db->user_vital, pkg->name) != NULL)
+		pkg->user_vital = true;
 }
 
 /*

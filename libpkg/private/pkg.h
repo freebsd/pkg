@@ -261,6 +261,7 @@ struct pkg {
 	bool		 locked;
 	bool		 automatic;
 	bool		 vital;
+	bool		 user_vital;
 	int64_t		 id;
 	sb_t scripts[PKG_NUM_SCRIPTS];
 	charv_t	 lua_scripts[PKG_NUM_LUA_SCRIPTS];
@@ -323,6 +324,13 @@ struct pkg {
 	struct pkg_repo		*repo;
 	char			*rwhich_path;
 };
+
+static inline bool
+pkg_is_vital(const struct pkg *pkg)
+{
+	return (pkg->vital || pkg->user_vital);
+}
+
 typedef vec_t(struct pkg *) pkgs_t;
 
 DEFINE_VEC_INSERT_SORTED_PROTO(pkgs_t, pkgs, struct pkg *);
