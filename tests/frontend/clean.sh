@@ -133,8 +133,13 @@ EOF
 	# an unrelated one: the checksum is what identifies the archive
 	touch "cache/test-1~${hash10}.pkg" "cache/renamed-9~${hash10}.pkg"
 
-	# drop test from the repository, keeping other so the repo stays valid
+	# Drop test from the repository, keeping other so the repo stays valid.
+	# A file rebuilt within the same second keeps the same mtime, and the
+	# file:// fetcher would then answer EPKG_UPTODATE and leave the cached
+	# catalogue unchanged, so make sure the rebuilt catalogue is at least
+	# one second newer.
 	rm -f repo/Hashed/test-1~*.pkg
+	sleep 1
 	atf_check -o ignore -e empty -s exit:0 env PKG_REPO_HASH=1 pkg repo repo
 	atf_check -o ignore -e empty -s exit:0 \
 		pkg -o REPOS_DIR="${TMPDIR}/reposconf" -o PKG_CACHEDIR="${TMPDIR}/cache" update
