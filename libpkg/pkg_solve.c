@@ -186,10 +186,10 @@ void
 pkg_solve_problem_free(struct pkg_solve_problem *problem)
 {
 	vec_free_and_free(&problem->rules, pkg_solve_rule_free);
-	{
-		hash_foreach(problem->variables_by_uid, it)
-			free(it.value);
-	}
+	vec_free(&problem->assumptions);
+	vec_free(&problem->dropped);
+	hash_foreach(problem->variables_by_uid, it)
+		free(it.value);
 	hash_destroy(problem->variables_by_uid);
 	picosat_reset(problem->sat);
 	free(problem->variables);
