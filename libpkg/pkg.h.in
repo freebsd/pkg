@@ -1003,6 +1003,10 @@ int pkgdb_local_set(struct pkgdb *db, const char *name, const char *key,
 	const char *value);
 int pkgdb_local_get(struct pkgdb *db, const char *name, const char *key,
 	char **value);
+int pkgdb_attr_set(struct pkgdb *db, const char *name, const char *key,
+	const char *value);
+int pkgdb_attr_get(struct pkgdb *db, const char *name, const char *key,
+	char **value);
 
 #define PKG_LOAD_BASIC			0
 #define PKG_LOAD_DEPS			(1U << 0)

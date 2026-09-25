@@ -22,6 +22,8 @@ Changes from 2.7.99.3 to 2.8.99.1
 - fix: remove leftover nested @dir parents on deinstall
 - fix: non-root reads of WAL databases with missing sidecar files fall back to immutable mode
 - db: respect compression_level for the file db and the repository metadata
+- db: add out-of-schema pkg_local and pkg_attr tables for local (user) and extended package attributes
+- clean: keep the archives of the installed packages, not only the ones still available in a repository
 - macho: map macOS 26 / iOS 19 to Darwin 25 in pkg config abi
 - libpkg: add PKG_EVENT_PKG_FETCH_BEGIN to report the package being downloaded (for PackageKit)
 - utils: always print the signature_type

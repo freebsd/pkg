@@ -32,6 +32,8 @@ is used to cleanup the local cache of packages downloaded from remote
 repositories.
 It removes packages that have been superseded by newer versions, and
 any packages that are no longer provided.
+Packages that are still installed are kept: the archive the package was
+installed from is only removed once the package is uninstalled.
 .Sh OPTIONS
 The following options are supported by
 .Nm :

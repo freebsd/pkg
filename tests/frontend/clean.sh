@@ -5,7 +5,9 @@
 tests_init \
 	basic \
 	clean_all_no_repo_db \
-	clean_no_repo_db
+	clean_no_repo_db \
+	keep_installed_archive \
+	keep_installed_archive_no_cksum
 
 basic_body() {
 	atf_check -s exit:0 sh ${RESOURCEDIR}/test_subr.sh new_pkg "test" "test" "1"
@@ -91,4 +93,92 @@ EOF
 		-e empty \
 		-s exit:0 \
 		pkg -o REPOS_DIR="${TMPDIR}/reposconf" -o PKG_CACHEDIR=${TMPDIR}/cache clean -n
+}
+
+keep_installed_archive_body() {
+	# An archive fetched from a repository has its checksum recorded at
+	# install time.  pkg clean must keep that archive as long as the
+	# package is installed, even when the version is not available in
+	# any repository anymore.
+	atf_check -s exit:0 sh ${RESOURCEDIR}/test_subr.sh new_pkg "test" "test" "1" "${TMPDIR}/root"
+	atf_check -s exit:0 sh ${RESOURCEDIR}/test_subr.sh new_pkg "other" "other" "1" "${TMPDIR}/root"
+
+	atf_check -o ignore -e empty -s exit:0 pkg create -M test.ucl
+	atf_check -o ignore -e empty -s exit:0 pkg create -M other.ucl
+
+	mkdir repo
+	mv test-1.pkg other-1.pkg repo/
+	atf_check -o ignore -e empty -s exit:0 env PKG_REPO_HASH=1 pkg repo repo
+
+	# the checksum embedded in the repository file name
+	hash10=$(basename repo/Hashed/test-1~*.pkg)
+	hash10=${hash10#*~}
+	hash10=${hash10%.pkg}
+	atf_check test -f "repo/Hashed/test-1~${hash10}.pkg"
+
+	mkdir -p cache root reposconf
+	cat << EOF > reposconf/repo.conf
+local: {
+	url: file:///${TMPDIR}/repo,
+	enabled: true
+}
+EOF
+
+	atf_check -o ignore -e empty -s exit:0 \
+		pkg -o REPOS_DIR="${TMPDIR}/reposconf" -o PKG_CACHEDIR="${TMPDIR}/cache" update
+	atf_check -o ignore -e empty -s exit:0 \
+		pkg -o REPOS_DIR="${TMPDIR}/reposconf" -o PKG_CACHEDIR="${TMPDIR}/cache" install -y test
+
+	# the archive of the installed package, under its own name and under
+	# an unrelated one: the checksum is what identifies the archive
+	touch "cache/test-1~${hash10}.pkg" "cache/renamed-9~${hash10}.pkg"
+
+	# drop test from the repository, keeping other so the repo stays valid
+	rm -f repo/Hashed/test-1~*.pkg
+	atf_check -o ignore -e empty -s exit:0 env PKG_REPO_HASH=1 pkg repo repo
+	atf_check -o ignore -e empty -s exit:0 \
+		pkg -o REPOS_DIR="${TMPDIR}/reposconf" -o PKG_CACHEDIR="${TMPDIR}/cache" update
+
+	atf_check -o match:"Nothing to do" -e empty -s exit:0 \
+		pkg -o REPOS_DIR="${TMPDIR}/reposconf" -o PKG_CACHEDIR="${TMPDIR}/cache" clean -n
+
+	atf_check -o ignore -e empty -s exit:0 pkg delete -y test
+
+	atf_check -o match:"test-1~" -o match:"renamed-9~" -e empty -s exit:0 \
+		pkg -o REPOS_DIR="${TMPDIR}/reposconf" -o PKG_CACHEDIR="${TMPDIR}/cache" clean -n
+}
+
+keep_installed_archive_no_cksum_body() {
+	# A package registered from a local manifest has no recorded archive
+	# checksum: its cached archive is matched on <name>-<version>.
+	atf_check -s exit:0 sh ${RESOURCEDIR}/test_subr.sh new_pkg "test" "test" "1" "${TMPDIR}/root"
+	atf_check -s exit:0 sh ${RESOURCEDIR}/test_subr.sh new_pkg "other" "other" "1" "${TMPDIR}/root"
+
+	atf_check -o ignore -e empty -s exit:0 pkg create -M other.ucl
+	mkdir repo
+	mv other-1.pkg repo/
+	atf_check -o ignore -e empty -s exit:0 pkg repo repo
+
+	mkdir -p cache root reposconf
+	cat << EOF > reposconf/repo.conf
+local: {
+	url: file:///${TMPDIR}/repo,
+	enabled: true
+}
+EOF
+
+	atf_check -o ignore -e empty -s exit:0 \
+		pkg -o REPOS_DIR="${TMPDIR}/reposconf" -o PKG_CACHEDIR="${TMPDIR}/cache" update
+	atf_check -o ignore -e empty -s exit:0 \
+		pkg -o REPOS_DIR="${TMPDIR}/reposconf" register -M test.ucl
+
+	touch cache/test-1~deadbeef00.pkg
+
+	atf_check -o match:"Nothing to do" -e empty -s exit:0 \
+		pkg -o REPOS_DIR="${TMPDIR}/reposconf" -o PKG_CACHEDIR="${TMPDIR}/cache" clean -n
+
+	atf_check -o ignore -e empty -s exit:0 pkg delete -y test
+
+	atf_check -o match:"test-1~deadbeef00\.pkg" -e empty -s exit:0 \
+		pkg -o REPOS_DIR="${TMPDIR}/reposconf" -o PKG_CACHEDIR="${TMPDIR}/cache" clean -n
 }

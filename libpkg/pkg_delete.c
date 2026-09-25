@@ -158,6 +158,14 @@ pkg_delete(struct pkg *pkg, struct pkg *rpkg, struct pkgdb *db, int flags,
 	if (ret != EPKG_OK)
 		return ret;
 
+	/*
+	 * Extended attributes belong to the installed instance: drop them.
+	 * Local (user) attributes survive an upgrade but not a removal.
+	 */
+	pkgdb_attr_purge(db, pkg->name);
+	if (rpkg == NULL && (flags & PKG_DELETE_UPGRADE) == 0)
+		pkgdb_local_purge(db, pkg->name);
+
 	return (cancel ? EPKG_CANCEL : ret);
 }
 

@@ -16,12 +16,24 @@
 #include "hash.h"
 
 typedef vec_t(struct pkg_repo *) repos_t;
+
+/*
+ * Local key/value stores.  Both are created on demand and kept out of the
+ * versioned schema.  pkg_local holds user attributes overriding the package
+ * ones, pkg_attr holds extended attributes recorded by pkg.
+ */
+enum pkgdb_kv {
+	PKGDB_KV_LOCAL = 0,
+	PKGDB_KV_ATTR,
+	PKGDB_KV_NKIND
+};
+
 struct pkgdb {
 	sqlite3		*sqlite;
 	bool		 prstmt_initialized;
-	/* lazily evaluated presence of the pkg_local table */
-	bool		 pkg_local_checked;
-	bool		 pkg_local_present;
+	/* lazily evaluated presence of the local key/value tables */
+	bool		 kv_checked[PKGDB_KV_NKIND];
+	bool		 kv_present[PKGDB_KV_NKIND];
 	/* names of the packages flagged vital by the user, or NULL */
 	hash_t		*user_vital;
 	repos_t repos;
@@ -65,6 +77,9 @@ struct pkgdb_it *pkgdb_it_new_repo(struct pkgdb *db);
 void pkgdb_it_repo_attach(struct pkgdb_it *it, struct pkg_repo_it *rit);
 
 void pkgdb_local_apply(struct pkgdb *db, struct pkg *pkg);
+
+int pkgdb_local_purge(struct pkgdb *db, const char *name);
+int pkgdb_attr_purge(struct pkgdb *db, const char *name);
 
 /**
  * Load missing flags for a specific package from pkgdb

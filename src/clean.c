@@ -119,27 +119,64 @@ delete_dellist(int fd, const char *cachedir,  charv_t *dl)
 	return (retcode);
 }
 
+static void
+keep_sum(hash_t *suml, const char *sum)
+{
+	char *cksum;
+	size_t slen;
+
+	if (sum == NULL || sum[0] == '\0')
+		return;
+
+	slen = MIN(strlen(sum), PKG_FILE_CKSUM_CHARS);
+	cksum = strndup(sum, slen);
+	hash_safe_add(suml, cksum, NULL, NULL);
+	free(cksum);
+}
+
 static hash_t *
-populate_sums(struct pkgdb *db)
+populate_sums(struct pkgdb *db, charv_t *namevers)
 {
 	struct pkg *p = NULL;
 	struct pkgdb_it *it = NULL;
-	const char *sum;
-	char *cksum;
-	size_t slen;
-	hash_t *suml = NULL;
+	const char *sum, *name, *version;
+	char *v, *namever;
+	hash_t *suml;
 
 	suml = hash_new();
+
+	/* packages still available in the remote repositories */
 	it = pkgdb_repo_search(db, "*", MATCH_GLOB, FIELD_NAME, FIELD_NONE, NULL);
 	while (pkgdb_it_next(it, &p, PKG_LOAD_BASIC) == EPKG_OK) {
 		pkg_get(p, PKG_ATTR_CKSUM, &sum);
-		slen = MIN(strlen(sum), PKG_FILE_CKSUM_CHARS);
-		cksum = strndup(sum, slen);
-		hash_safe_add(suml, cksum, NULL, NULL);
-		free(cksum);
+		keep_sum(suml, sum);
 	}
 	pkg_free(p);
 	pkgdb_it_free(it);
+
+	/*
+	 * Archives of installed packages are kept even when they are not
+	 * available in any repository anymore.
+	 */
+	p = NULL;
+	it = pkgdb_query(db, NULL, MATCH_ALL);
+	if (it != NULL) {
+		while (pkgdb_it_next(it, &p, PKG_LOAD_BASIC) == EPKG_OK) {
+			pkg_get(p, PKG_ATTR_NAME, &name);
+			v = NULL;
+			pkgdb_attr_get(db, name, "cksum", &v);
+			if (v != NULL && v[0] != '\0') {
+				keep_sum(suml, v);
+			} else {
+				pkg_get(p, PKG_ATTR_VERSION, &version);
+				xasprintf(&namever, "%s-%s", name, version);
+				vec_push(namevers, namever);
+			}
+			free(v);
+		}
+		pkg_free(p);
+		pkgdb_it_free(it);
+	}
 
 	return (suml);
 }
@@ -172,10 +209,29 @@ extract_filename_sum(const char *fname, char sum[])
 	return (true);
 }
 
+/*
+ * Return true if the cached file name starts with the <name>-<version>
+ * of an installed package which has no recorded archive checksum.
+ */
+static bool
+installed_name_match(const char *fname, const charv_t *namevers)
+{
+	size_t len;
+
+	vec_foreach(*namevers, i) {
+		len = strlen(namevers->d[i]);
+		if (strncmp(fname, namevers->d[i], len) == 0 &&
+		    (fname[len] == '~' || fname[len] == '-'))
+			return (true);
+	}
+
+	return (false);
+}
+
 static int
 recursive_analysis(int fd, struct pkgdb *db, const char *dir,
-    const char *cachedir, charv_t *dl, hash_t **sumlist, bool all,
-    size_t *total)
+    const char *cachedir, charv_t *dl, hash_t **sumlist, charv_t *namevers,
+    bool all, size_t *total)
 {
 	DIR *d;
 	struct dirent *ent;
@@ -209,7 +265,7 @@ recursive_analysis(int fd, struct pkgdb *db, const char *dir,
 				continue;
 			}
 			if (recursive_analysis(newfd, db, path, cachedir, dl,
-			    sumlist, all, total) == 0 || all) {
+			    sumlist, namevers, all, total) == 0 || all) {
 				add_to_dellist(fd, dl, cachedir, path);
 				added++;
 			}
@@ -224,7 +280,7 @@ recursive_analysis(int fd, struct pkgdb *db, const char *dir,
 			continue;
 		}
 		if (*sumlist == NULL) {
-			*sumlist = populate_sums(db);
+			*sumlist = populate_sums(db, namevers);
 		}
 		name = ent->d_name;
 		if (ent->d_type == DT_LNK) {
@@ -242,7 +298,7 @@ recursive_analysis(int fd, struct pkgdb *db, const char *dir,
 		if (extract_filename_sum(name, csum)) {
 			e = hash_get(*sumlist, csum);
 		}
-		if (e == NULL) {
+		if (e == NULL && !installed_name_match(name, namevers)) {
 			added++;
 			*total += add_to_dellist(fd, dl, cachedir, path);
 		}
@@ -264,6 +320,7 @@ exec_clean(int argc, char **argv)
 	struct pkgdb	*db = NULL;
 	hash_t		*sumlist = NULL;
 	charv_t		 dl = vec_init();
+	charv_t		 namevers = vec_init();
 	const char	*cachedir;
 	bool		 all = false;
 	int		 retcode;
@@ -367,8 +424,8 @@ exec_clean(int argc, char **argv)
 
 	/* Build the list of out-of-date or obsolete packages */
 
-	recursive_analysis(cachefd, db, cachedir, cachedir, &dl, &sumlist, all,
-	    &total);
+	recursive_analysis(cachefd, db, cachedir, cachedir, &dl, &sumlist,
+	    &namevers, all, &total);
 	hash_destroy(sumlist);
 
 	if (dl.len == 0) {
@@ -398,6 +455,7 @@ cleanup:
 		pkgdb_close(db);
 	}
 	vec_free_and_free(&dl, free);
+	vec_free_and_free(&namevers, free);
 
 	if (cachefd != -1)
 		close(cachefd);

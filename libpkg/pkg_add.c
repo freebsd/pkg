@@ -1691,6 +1691,13 @@ pkg_add_common(struct pkgdb *db, const char *path, int fd, unsigned flags,
 	openxact = true;
 
 	/*
+	 * Remember the archive the package is installed from so that
+	 * pkg clean can keep it in the cache.
+	 */
+	if (remote != NULL && remote->sum != NULL)
+		pkgdb_attr_set(db, pkg->name, "cksum", remote->sum);
+
+	/*
 	 * Execute pre-install scripts
 	 */
 	if ((flags & PKG_ADD_NOSCRIPT) == 0) {
