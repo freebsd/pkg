@@ -999,6 +999,11 @@ int pkgdb_modify_annotation(struct pkgdb *db, struct pkg *pkg,
 int pkgdb_delete_annotation(struct pkgdb *db, struct pkg *pkg,
 	const char *tag);
 
+int pkgdb_local_set(struct pkgdb *db, const char *name, const char *key,
+	const char *value);
+int pkgdb_local_get(struct pkgdb *db, const char *name, const char *key,
+	char **value);
+
 #define PKG_LOAD_BASIC			0
 #define PKG_LOAD_DEPS			(1U << 0)
 #define PKG_LOAD_RDEPS			(1U << 1)

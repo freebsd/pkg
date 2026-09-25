@@ -18,6 +18,9 @@ typedef vec_t(struct pkg_repo *) repos_t;
 struct pkgdb {
 	sqlite3		*sqlite;
 	bool		 prstmt_initialized;
+	/* lazily evaluated presence of the pkg_local table */
+	bool		 pkg_local_checked;
+	bool		 pkg_local_present;
 	repos_t repos;
 };
 
