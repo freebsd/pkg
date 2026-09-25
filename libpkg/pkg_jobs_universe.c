@@ -66,6 +66,19 @@ pkg_in_universe(struct pkg_jobs_universe *universe, struct pkg *pkg)
 	return (false);
 }
 
+static void
+free_rpkgs(struct pkg_jobs_universe *universe, pkgs_t *rpkgs)
+{
+	if (rpkgs == NULL)
+		return;
+	vec_foreach(*rpkgs, _i) {
+		if (!pkg_in_universe(universe, rpkgs->d[_i]))
+			pkg_free(rpkgs->d[_i]);
+	}
+	vec_free(rpkgs);
+	free(rpkgs);
+}
+
 struct pkg *
 pkg_jobs_universe_get_local(struct pkg_jobs_universe *universe,
 	const char *uid, unsigned flag)
@@ -302,10 +315,7 @@ pkg_jobs_universe_process_deps(struct pkg_jobs_universe *universe,
 
 		if (npkg != NULL) {
 			if (pkg_jobs_universe_process_item(universe, npkg, &unit) != EPKG_OK) {
-				if (rpkgs != NULL) {
-					vec_free(rpkgs);
-					free(rpkgs);
-				}
+				free_rpkgs(universe, rpkgs);
 				continue;
 			}
 		}
@@ -360,8 +370,7 @@ pkg_jobs_universe_process_deps(struct pkg_jobs_universe *universe,
 
 				/* Special case if we cannot find any package */
 				if (npkg == NULL && rc != EPKG_OK) {
-					vec_free(rpkgs);
-					free(rpkgs);
+					free_rpkgs(universe, rpkgs);
 					return (rc);
 				}
 			}
@@ -372,8 +381,7 @@ pkg_jobs_universe_process_deps(struct pkg_jobs_universe *universe,
 			if (npkg != NULL) {
 				/* Set reason for upgrades */
 				if (!pkg_jobs_need_upgrade(&universe->j->system_shlibs, rpkg, npkg)) {
-					vec_free(rpkgs);
-					free(rpkgs);
+					free_rpkgs(universe, rpkgs);
 					continue;
 				}
 				/* Save automatic flag */
@@ -382,18 +390,12 @@ pkg_jobs_universe_process_deps(struct pkg_jobs_universe *universe,
 
 			rc = pkg_jobs_universe_process_item(universe, rpkg, NULL);
 			if (npkg == NULL && rc != EPKG_OK) {
-				vec_free(rpkgs);
-				free(rpkgs);
+				free_rpkgs(universe, rpkgs);
 				return (rc);
 			}
 		}
 
-		vec_foreach(*rpkgs, _i) {
-			if (!pkg_in_universe(universe, rpkgs->d[_i]))
-				pkg_free(rpkgs->d[_i]);
-		}
-		vec_free(rpkgs);
-		free(rpkgs);
+		free_rpkgs(universe, rpkgs);
 	}
 
 	return (EPKG_OK);
