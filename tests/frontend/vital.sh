@@ -128,6 +128,14 @@ user_vital_body()
 		-s exit:0 \
 		pkg -o REPOS_DIR=/dev/null -r ${TMPDIR}/target query "%V" test
 
+	# the evaluation filter must see the local flag as well
+	atf_check \
+		-o inline:"test\n" \
+		-e empty \
+		-s exit:0 \
+		pkg -o REPOS_DIR=/dev/null -r ${TMPDIR}/target query \
+			-e "%V == 1" "%n" test
+
 	# the user flag is local state and must survive a reinstall
 	atf_check \
 		-o ignore \
@@ -159,6 +167,13 @@ user_vital_body()
 		-e empty \
 		-s exit:0 \
 		pkg -o REPOS_DIR=/dev/null -r ${TMPDIR}/target query "%V" test
+
+	atf_check \
+		-o empty \
+		-e empty \
+		-s exit:0 \
+		pkg -o REPOS_DIR=/dev/null -r ${TMPDIR}/target query \
+			-e "%V == 1" "%n"
 
 	atf_check \
 		-o empty \

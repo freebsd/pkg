@@ -5,8 +5,11 @@
 
 #include <stdlib.h>
 
+#include <sqlite3.h>
+
 #include <atf-c.h>
 #include <pkg.h>
+#include <private/pkgdb.h>
 
 /*
  * Unit tests for the local (user) package attributes store.  The
@@ -69,9 +72,43 @@ ATF_TC_BODY(set_get_unset, tc)
 	pkgdb_close(db);
 }
 
+ATF_TC_WITHOUT_HEAD(readonly_fallback);
+ATF_TC_BODY(readonly_fallback, tc)
+{
+	struct pkgdb *db = NULL;
+	sqlite3_stmt *stmt = NULL;
+
+	setenv("INSTALL_AS_USER", "yes", 1);
+	setenv("PKG_DBDIR", ".", 1);
+	setenv("NO_TICK", "yes", 1);
+	setenv("PKG_ENABLE_PLUGINS", "false", 1);
+
+	ATF_REQUIRE_EQ(EPKG_OK, pkg_ini(NULL, NULL, 0));
+	ATF_REQUIRE_EQ(EPKG_OK, pkgdb_open(&db, PKGDB_DEFAULT));
+
+	/* emulate a database created by an older pkg */
+	ATF_REQUIRE_EQ(SQLITE_OK, sqlite3_exec(db->sqlite,
+	    "DROP TABLE pkg_local", NULL, NULL, NULL));
+	pkgdb_close(db);
+	db = NULL;
+
+	/*
+	 * A read-only open must expose an empty pkg_local so that the SQL
+	 * queries referring to it stay valid.
+	 */
+	ATF_REQUIRE_EQ(EPKG_OK, pkgdb_open(&db, PKGDB_DEFAULT_READONLY));
+	ATF_REQUIRE_EQ(SQLITE_OK, sqlite3_prepare_v2(db->sqlite,
+	    "SELECT count(*) FROM pkg_local", -1, &stmt, NULL));
+	ATF_REQUIRE_EQ(SQLITE_ROW, sqlite3_step(stmt));
+	ATF_REQUIRE_EQ(0, sqlite3_column_int(stmt, 0));
+	sqlite3_finalize(stmt);
+	pkgdb_close(db);
+}
+
 ATF_TP_ADD_TCS(tp)
 {
 	ATF_TP_ADD_TC(tp, set_get_unset);
+	ATF_TP_ADD_TC(tp, readonly_fallback);
 
 	return (atf_no_error());
 }

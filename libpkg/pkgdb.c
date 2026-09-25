@@ -81,6 +81,7 @@ extern struct pkg_ctx ctx;
 
 static int pkgdb_upgrade(struct pkgdb *);
 static int pkgdb_init(sqlite3 *sdb);
+static bool pkgdb_local_exists(struct pkgdb *db);
 static int prstmt_initialize(struct pkgdb *db);
 static void prstmt_finalize(struct pkgdb *db);
 static int pkgdb_insert_scripts(struct pkg *pkg, int64_t package_id, sqlite3 *s);
@@ -1224,6 +1225,15 @@ retry:
 				pkgdb_close(db);
 				return (EPKG_FATAL);
 			}
+		} else if (!pkgdb_local_exists(db)) {
+			/*
+			 * Read-only database without a pkg_local table:
+			 * expose an empty temporary one so that the SQL
+			 * queries referring to it stay valid.
+			 */
+			sql_exec(db->sqlite, "CREATE TEMP TABLE IF NOT EXISTS "
+			    "pkg_local (name TEXT NOT NULL, "
+			    "key TEXT NOT NULL, value);");
 		}
 
 		/*

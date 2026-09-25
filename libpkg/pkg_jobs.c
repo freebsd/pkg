@@ -1457,7 +1457,9 @@ jobs_solve_autoremove(struct pkg_jobs *j)
 	struct pkg *pkg = NULL;
 	struct pkgdb_it *it;
 
-	if ((it = pkgdb_query_cond(j->db, " WHERE automatic=1 AND vital=0 AND locked=0", NULL, MATCH_ALL)) == NULL)
+	if ((it = pkgdb_query_cond(j->db, " WHERE automatic=1 AND vital=0 "
+	    "AND locked=0 AND p.name NOT IN (SELECT name FROM pkg_local "
+	    "WHERE key = 'vital' AND value <> '0')", NULL, MATCH_ALL)) == NULL)
 		return (EPKG_FATAL);
 
 	while (pkgdb_it_next(it, &pkg,

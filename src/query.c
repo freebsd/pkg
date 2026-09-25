@@ -615,7 +615,9 @@ format_sql_condition(const char *str, sb_t *sqlcond, bool for_remote)
 				case 'V':
 					if (for_remote)
 						goto bad_option;
-					sb_printf(sqlcond, "vital");
+					sb_printf(sqlcond, "(vital OR p.name IN "
+					    "(SELECT name FROM pkg_local WHERE "
+					    "key = 'vital' AND value <> '0'))");
 					state = OPERATOR_INT;
 					break;
 				case '#': /* FALLTHROUGH */

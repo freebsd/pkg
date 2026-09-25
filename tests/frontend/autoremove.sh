@@ -7,7 +7,8 @@ tests_init \
 	autoremove_quiet \
 	autoremove_dryrun \
 	autoremove_quiet_dryrun \
-	autoremove_order
+	autoremove_order \
+	autoremove_user_vital
 
 autoremove_prep() {
 	touch file1
@@ -69,6 +70,30 @@ autoremove_body() {
 	    pkg info
 
 	test ! -f ${TMPDIR}/file1 -o ! -f ${TMPDIR}/file2 || atf_fail "Files are still present"
+}
+
+autoremove_user_vital_body() {
+	autoremove_prep
+
+	# pkg1 is automatic, but the user marked it vital
+	atf_check \
+	    -o empty \
+	    -e empty \
+	    -s exit:0 \
+	    pkg set -y -v 1 test
+
+	atf_check \
+	    -o ignore \
+	    -e ignore \
+	    -s exit:0 \
+	    pkg autoremove -y
+
+	# a package marked vital by the user must not be autoremoved
+	atf_check \
+	    -o ignore \
+	    -e ignore \
+	    -s exit:0 \
+	    pkg info -e test
 }
 
 autoremove_no_scripts_body() {
