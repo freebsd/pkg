@@ -1038,6 +1038,7 @@ pkg_jobs_universe_process_upgrade_chains(struct pkg_jobs *j)
 				(j->flags & PKG_FLAG_FORCE) == 0) {
 				dbg(1, "removing %s from the request as it is the "
 								"same as local", selected->pkg->uid);
+				pkg_jobs_request_free(req);
 				continue;
 			}
 
