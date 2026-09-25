@@ -54,6 +54,7 @@ hash_file(struct pkg_repo_meta *meta, struct pkg *pkg, char *path)
 {
 	char tmp_repo[MAXPATHLEN] = { 0 };
 	char tmp_name[MAXPATHLEN] = { 0 };
+	char hashed_dir[MAXPATHLEN] = { 0 };
 	char repo_name[MAXPATHLEN] = { 0 };
 	char hash_name[MAXPATHLEN] = { 0 };
 	char link_name[MAXPATHLEN] = { 0 };
@@ -73,7 +74,6 @@ hash_file(struct pkg_repo_meta *meta, struct pkg *pkg, char *path)
 	while (strstr(rel_dir, "/Hashed") != NULL) {
 		rel_dir = get_dirname(rel_dir);
 	}
-	strlcpy(tmp_name, rel_dir, sizeof(tmp_name));
 	rel_dir = (char *)&tmp_name;
 
 	rel_repo = path;
@@ -101,11 +101,15 @@ hash_file(struct pkg_repo_meta *meta, struct pkg *pkg, char *path)
 	while (rel_link[0] == '/')
 		rel_link++;
 
-	snprintf(tmp_name, sizeof(tmp_name), "%s/%s", rel_dir, PKG_HASH_DIR);
-	rel_dir = (char *)&tmp_name;
-	if (!is_dir(rel_dir)) {
-		pkg_debug(1, "Making directory: %s", rel_dir);
-		(void)pkg_mkdirs(rel_dir);
+	/*
+	 * rel_dir points at tmp_name: use a distinct buffer, handing the
+	 * destination of snprintf(3) as one of its inputs is undefined.
+	 */
+	snprintf(hashed_dir, sizeof(hashed_dir), "%s/%s", rel_dir,
+	    PKG_HASH_DIR);
+	if (!is_dir(hashed_dir)) {
+		pkg_debug(1, "Making directory: %s", hashed_dir);
+		(void)pkg_mkdirs(hashed_dir);
 	}
 
 	if (!STREQ(path, hash_name)) {
@@ -284,6 +288,7 @@ pkg_create_repo_read_fts(fts_item_t *items, FTS *fts,
 
 struct thr_env {
 	int ntask;
+	bool failed;
 	FILE *ffile;
 	FILE *mfile;
 	FILE *dfile;
@@ -335,8 +340,19 @@ pkg_create_repo_thread(void *arg)
 			pkg->pkgsize = st.st_size;
 			if (te->meta->hash) {
 				ret = hash_file(te->meta, pkg, path);
-				if (ret != EPKG_OK)
+				if (ret != EPKG_OK) {
+					/*
+					 * Wake the main thread up before
+					 * bailing out: it waits for every
+					 * item to be accounted for.
+					 */
+					pthread_mutex_lock(&te->nlock);
+					te->failed = true;
+					te->ntask++;
+					pthread_cond_signal(&te->cond);
+					pthread_mutex_unlock(&te->nlock);
 					goto cleanup;
+				}
 			} else {
 				pkg->repopath = xstrdup(repopath);
 			}
@@ -882,7 +898,7 @@ pkg_repo_create(struct pkg_repo_create *prc, char *path)
 	}
 
 	pthread_mutex_lock(&te.nlock);
-	while (te.ntask < len) {
+	while (te.ntask < len && !te.failed) {
 		pthread_cond_wait(&te.cond, &te.nlock);
 		pkg_emit_progress_tick(te.ntask, len);
 	}
@@ -891,6 +907,9 @@ pkg_repo_create(struct pkg_repo_create *prc, char *path)
 	for (int i = 0; i < num_workers; i++)
 		pthread_join(threads[i], NULL);
 	free(threads);
+
+	if (te.failed)
+		goto cleanup;
 
 	/* Assemble filelist: write dictionary header + package data */
 	if (te.ffile != NULL && te.file_dirs != NULL) {
