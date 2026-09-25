@@ -32,7 +32,7 @@ httpd_startup() {
 httpd_cleanup() {
 	pid=$(cat ${TMPDIR}/http.pid)
 	if [ -z "${pid}" ]; then
-	    return 1
+	    return 0
 	fi
 	if kill -s 0 ${pid}; then
 	    kill -s INT ${pid}
