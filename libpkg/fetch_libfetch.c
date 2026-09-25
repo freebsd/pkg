@@ -177,6 +177,7 @@ libfetch_open(struct pkg_repo *repo, struct fetch_item *fi)
 	struct dns_srvinfo *srv_current = NULL;
 	struct http_mirror *http_current = NULL;
 	struct url_stat st;
+	time_t ims;
 	sb_t fetchOpts = sb_init();
 
 	max_retry = pkg_object_int(pkg_config_get("FETCH_RETRY"));
@@ -207,7 +208,8 @@ libfetch_open(struct pkg_repo *repo, struct fetch_item *fi)
 	reldoc = doc + strlen(repourl->doc);
 	fetchFreeURL(repourl);
 
-	u->ims_time = fi->mtime;
+	ims = fi->mtime;
+	u->ims_time = ims;
 	if (fi->offset > 0)
 		u->offset = fi->offset;
 
@@ -366,6 +368,21 @@ libfetch_open(struct pkg_repo *repo, struct fetch_item *fi)
 			}
 			/* No more servers to try. */
 			break;
+		}
+
+		/*
+		 * Some servers answer 200 to a conditional request even
+		 * when the file did not change.  The mtime of the response
+		 * tells whether it must be downloaded again.
+		 */
+		if (fi->offset == 0 && ims != 0 && st.mtime != 0 &&
+		    st.mtime <= ims) {
+			pkg_dbg(PKG_DBG_FETCH, 1, "libfetch> %s: up to "
+			    "date (mtime %ld)", u->doc, (long)ims);
+			fh_close(repo);
+			u->doc = doc;
+			fetchFreeURL(u);
+			return (EPKG_UPTODATE);
 		}
 	}
 	if (repo->fh == NULL) {
