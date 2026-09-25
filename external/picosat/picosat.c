@@ -2817,7 +2817,7 @@ fix_impl_lits (PS * ps, long delta)
   Lit ** p;
 
   for (s = ps->impls + 2; s <= ps->impls + 2 * ps->max_var + 1; s++)
-    for (p = s->start; p < s->start + s->count; p++)
+    for (p = s->start; s->start && p < s->start + s->count; p++)
       *p += delta;
 }
 #endif
