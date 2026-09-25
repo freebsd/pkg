@@ -371,8 +371,11 @@ pkg_jobs_universe_process_deps(struct pkg_jobs_universe *universe,
 
 			if (npkg != NULL) {
 				/* Set reason for upgrades */
-				if (!pkg_jobs_need_upgrade(&universe->j->system_shlibs, rpkg, npkg))
+				if (!pkg_jobs_need_upgrade(&universe->j->system_shlibs, rpkg, npkg)) {
+					vec_free(rpkgs);
+					free(rpkgs);
 					continue;
+				}
 				/* Save automatic flag */
 				rpkg->automatic = npkg->automatic;
 			}
