@@ -54,7 +54,6 @@ hash_file(struct pkg_repo_meta *meta, struct pkg *pkg, char *path)
 {
 	char tmp_repo[MAXPATHLEN] = { 0 };
 	char tmp_name[MAXPATHLEN] = { 0 };
-	char hashed_dir[MAXPATHLEN] = { 0 };
 	char repo_name[MAXPATHLEN] = { 0 };
 	char hash_name[MAXPATHLEN] = { 0 };
 	char link_name[MAXPATHLEN] = { 0 };
@@ -101,15 +100,10 @@ hash_file(struct pkg_repo_meta *meta, struct pkg *pkg, char *path)
 	while (rel_link[0] == '/')
 		rel_link++;
 
-	/*
-	 * rel_dir points at tmp_name: use a distinct buffer, handing the
-	 * destination of snprintf(3) as one of its inputs is undefined.
-	 */
-	snprintf(hashed_dir, sizeof(hashed_dir), "%s/%s", rel_dir,
-	    PKG_HASH_DIR);
-	if (!is_dir(hashed_dir)) {
-		pkg_debug(1, "Making directory: %s", hashed_dir);
-		(void)pkg_mkdirs(hashed_dir);
+	strlcat(tmp_name, "/" PKG_HASH_DIR, sizeof(tmp_name));
+	if (!is_dir(tmp_name)) {
+		pkg_debug(1, "Making directory: %s", tmp_name);
+		(void)pkg_mkdirs(tmp_name);
 	}
 
 	if (!STREQ(path, hash_name)) {
