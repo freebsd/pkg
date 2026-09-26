@@ -293,15 +293,11 @@ struct pkg {
 	int64_t			 old_flatsize;
 	int64_t			 timestamp;
 	pkg_depv_t		 depends;
-	size_t			 depends_iter;
 	pkg_depv_t		 rdepends;
-	size_t			 rdepends_iter;
 	charv_t		 categories;
 	charv_t		 licenses;
 	pkg_filev_t		 files;
-	size_t			 files_iter;
 	pkg_dirv_t		 dirs;
-	size_t			 dirs_iter;
 	kvlist_t		 options;
 	charv_t		 users;
 	charv_t		 groups;
@@ -310,11 +306,9 @@ struct pkg {
 	charv_t		 shlibs_provided;
 	charv_t		 shlibs_provided_ignore;
 	pkg_conflictv_t		 conflicts;
-	size_t			 conflicts_iter;
 	charv_t		 provides;
 	charv_t		 requires;
 	pkg_configfilev_t	 config_files;
-	size_t			 config_files_iter;
 	kvlist_t		 annotations;
 	unsigned			flags;
 	int		rootfd;

@@ -384,101 +384,34 @@ pkg_set_from_fileat(int fd, struct pkg *pkg, pkg_attr attr, const char *path,
 	return (ret);
 }
 
-#define pkg_each(name, type, field)		\
-int						\
-pkg_##name(const struct pkg *p, type **t) {	\
-	assert(p != NULL);			\
-	if ((*t) == NULL)			\
-		(*t) = p->field;		\
-	else					\
-		(*t) = (*t)->next;		\
-	if ((*t) == NULL)			\
-		return (EPKG_END);		\
-	return (EPKG_OK);			\
+#define pkg_each(name, type, field)				\
+int								\
+pkg_##name(const struct pkg *p, type **t) {			\
+	assert(p != NULL);					\
+	assert(t != NULL);					\
+	size_t idx = 0;						\
+								\
+	if (p->field.len == 0)					\
+		return (EPKG_END);				\
+	if ((*t) != NULL) {					\
+		assert(*t >= p->field.d);			\
+		assert(*t <= &p->field.d[p->field.len]);	\
+		idx = *t - &p->field.d[0] + 1;			\
+	}							\
+	if (idx >= p->field.len) {				\
+		(*t) = NULL;					\
+		return (EPKG_END);				\
+	}							\
+	(*t) = &p->field.d[idx];				\
+	return (EPKG_OK);					\
 }
 
-int
-pkg_dirs(const struct pkg *p, struct pkg_dir **t) {
-	struct pkg *mp = __DECONST(struct pkg *, p);
-	assert(p != NULL);
-	if ((*t) == NULL)
-		mp->dirs_iter = 0;
-	if (mp->dirs_iter >= p->dirs.len) {
-		(*t) = NULL;
-		return (EPKG_END);
-	}
-	(*t) = &mp->dirs.d[mp->dirs_iter++];
-	return (EPKG_OK);
-}
-
-int
-pkg_files(const struct pkg *p, struct pkg_file **t) {
-	struct pkg *mp = __DECONST(struct pkg *, p);
-	assert(p != NULL);
-	if ((*t) == NULL)
-		mp->files_iter = 0;
-	if (mp->files_iter >= p->files.len) {
-		(*t) = NULL;
-		return (EPKG_END);
-	}
-	(*t) = &mp->files.d[mp->files_iter++];
-	return (EPKG_OK);
-}
-
-int
-pkg_deps(const struct pkg *p, struct pkg_dep **t) {
-	struct pkg *mp = __DECONST(struct pkg *, p);
-	assert(p != NULL);
-	if ((*t) == NULL)
-		mp->depends_iter = 0;
-	if (mp->depends_iter >= p->depends.len) {
-		(*t) = NULL;
-		return (EPKG_END);
-	}
-	(*t) = &mp->depends.d[mp->depends_iter++];
-	return (EPKG_OK);
-}
-
-int
-pkg_rdeps(const struct pkg *p, struct pkg_dep **t) {
-	struct pkg *mp = __DECONST(struct pkg *, p);
-	assert(p != NULL);
-	if ((*t) == NULL)
-		mp->rdepends_iter = 0;
-	if (mp->rdepends_iter >= p->rdepends.len) {
-		(*t) = NULL;
-		return (EPKG_END);
-	}
-	(*t) = &mp->rdepends.d[mp->rdepends_iter++];
-	return (EPKG_OK);
-}
-int
-pkg_conflicts(const struct pkg *p, struct pkg_conflict **t) {
-	struct pkg *mp = __DECONST(struct pkg *, p);
-	assert(p != NULL);
-	if ((*t) == NULL)
-		mp->conflicts_iter = 0;
-	if (mp->conflicts_iter >= p->conflicts.len) {
-		(*t) = NULL;
-		return (EPKG_END);
-	}
-	(*t) = &mp->conflicts.d[mp->conflicts_iter++];
-	return (EPKG_OK);
-}
-
-int
-pkg_config_files(const struct pkg *p, struct pkg_config_file **t) {
-	struct pkg *mp = __DECONST(struct pkg *, p);
-	assert(p != NULL);
-	if ((*t) == NULL)
-		mp->config_files_iter = 0;
-	if (mp->config_files_iter >= p->config_files.len) {
-		(*t) = NULL;
-		return (EPKG_END);
-	}
-	(*t) = &mp->config_files.d[mp->config_files_iter++];
-	return (EPKG_OK);
-}
+pkg_each(dirs, struct pkg_dir, dirs)
+pkg_each(files, struct pkg_file, files)
+pkg_each(deps, struct pkg_dep, depends)
+pkg_each(rdeps, struct pkg_dep, rdepends)
+pkg_each(conflicts, struct pkg_conflict, conflicts)
+pkg_each(config_files, struct pkg_config_file, config_files)
 
 int
 pkg_options(const struct pkg *p, struct pkg_kv **kv)
@@ -1212,7 +1145,6 @@ pkg_list_free(struct pkg *pkg, pkg_list list)  {
 			pkg_dep_free_content(&pkg->depends.d[_di]);
 		}
 		vec_free(&pkg->depends);
-		pkg->depends_iter = 0;
 		pkg->flags &= ~PKG_LOAD_DEPS;
 		break;
 	case PKG_RDEPS:
@@ -1220,7 +1152,6 @@ pkg_list_free(struct pkg *pkg, pkg_list list)  {
 			pkg_dep_free_content(&pkg->rdepends.d[_ri]);
 		}
 		vec_free(&pkg->rdepends);
-		pkg->rdepends_iter = 0;
 		pkg->flags &= ~PKG_LOAD_RDEPS;
 		break;
 	case PKG_OPTIONS:
@@ -1232,7 +1163,6 @@ pkg_list_free(struct pkg *pkg, pkg_list list)  {
 			pkg_file_free_content(&pkg->files.d[_fi]);
 		}
 		vec_free(&pkg->files);
-		pkg->files_iter = 0;
 		pkg->flags &= ~PKG_LOAD_FILES;
 		break;
 	case PKG_CONFIG_FILES:
@@ -1240,14 +1170,12 @@ pkg_list_free(struct pkg *pkg, pkg_list list)  {
 			pkg_config_file_free_content(&pkg->config_files.d[_cfi]);
 		}
 		vec_free(&pkg->config_files);
-		pkg->config_files_iter = 0;
 		break;
 	case PKG_DIRS:
 		vec_foreach(pkg->dirs, _di) {
 			pkg_dir_free_content(&pkg->dirs.d[_di]);
 		}
 		vec_free(&pkg->dirs);
-		pkg->dirs_iter = 0;
 		pkg->flags &= ~PKG_LOAD_DIRS;
 		break;
 	case PKG_CONFLICTS:
@@ -1255,7 +1183,6 @@ pkg_list_free(struct pkg *pkg, pkg_list list)  {
 			pkg_conflict_free_content(&pkg->conflicts.d[_ci]);
 		}
 		vec_free(&pkg->conflicts);
-		pkg->conflicts_iter = 0;
 		pkg->flags &= ~PKG_LOAD_CONFLICTS;
 		break;
 	case PKG_USERS:
