@@ -387,12 +387,14 @@ pkg_set_from_fileat(int fd, struct pkg *pkg, pkg_attr attr, const char *path,
 #define pkg_each(name, type, field)				\
 int								\
 pkg_##name(const struct pkg *p, type **t) {			\
-	assert(p != NULL);					\
-	assert(t != NULL);					\
 	size_t idx = 0;						\
 								\
-	if (p->field.len == 0)					\
+	assert(p != NULL);					\
+	assert(t != NULL);					\
+	if (p->field.len == 0) {				\
+		(*t) = NULL;					\
 		return (EPKG_END);				\
+	}							\
 	if ((*t) != NULL) {					\
 		assert(*t >= p->field.d);			\
 		assert(*t <= &p->field.d[p->field.len]);	\
