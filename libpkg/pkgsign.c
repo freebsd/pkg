@@ -237,3 +237,13 @@ pkgsign_pubkey(struct pkgsign_ctx *ctx, char **pubkey, size_t *pubkeylen)
 		return (EPKG_OPNOTSUPP);
 	return (*ctx->impl->pi_ops->pkgsign_pubkey)(ctx, pubkey, pubkeylen);
 }
+
+pkg_checksum_type_t
+pkgsign_get_digest(struct pkgsign_ctx *ctx)
+{
+
+	/* If an implementation doesn't define a type, use SHA256 */
+	if (ctx->impl->pi_ops->pkgsign_get_digest == NULL)
+		return (PKG_HASH_TYPE_SHA256_HEX);
+	return (*ctx->impl->pi_ops->pkgsign_get_digest)(ctx);
+}

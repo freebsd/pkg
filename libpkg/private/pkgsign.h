@@ -90,6 +90,9 @@ typedef int pkgsign_sign_data_cb(struct pkgsign_ctx *, const unsigned char *,
 /* Return the public key. */
 typedef int pkgsign_pubkey_cb(struct pkgsign_ctx *, char **, size_t *);
 
+/* Return the digest associated with the signing type. */
+typedef pkg_checksum_type_t pkgsign_get_digest_cb(struct pkgsign_ctx *);
+
 struct pkgsign_ops {
 	/*
 	 * pkgsign_ctx_size <= sizeof(pkgsign_ctx) is wrong, but
@@ -113,6 +116,9 @@ struct pkgsign_ops {
 	/* Non-optional, and may be the same function. */
 	pkgsign_verify_cb		*pkgsign_verify;
 	pkgsign_verify_cert_cb		*pkgsign_verify_cert;
+
+	/* Optional digest type. */
+	pkgsign_get_digest_cb		*pkgsign_get_digest;
 };
 
 int pkgsign_new_sign(const char *, struct pkgsign_ctx **);
@@ -131,6 +137,7 @@ int pkgsign_keyinfo(struct pkgsign_ctx *, struct iovec **, int *);
 int pkgsign_pubkey(struct pkgsign_ctx *, char **, size_t *);
 int pkgsign_sign_data(struct pkgsign_ctx *, const unsigned char *,
     size_t, unsigned char **, size_t *);
+pkg_checksum_type_t pkgsign_get_digest(struct pkgsign_ctx *);
 
 const char *pkgsign_impl_name(const struct pkgsign_ctx *);
 
