@@ -233,7 +233,7 @@ pkg_repo_check_fingerprint(struct pkg_repo *repo, hash_t *sc, bool fatal)
 
 		hash = pkg_checksum_data(s->cert, s->certlen,
 		    PKG_HASH_TYPE_SHA512_HEX);
-		if (pkghash_get(repo->revoked_fp, hash) != NULL) {
+		if (hash_get(repo->revoked_fp, hash) != NULL) {
 			pkg_debug(1, "Fingerprint '%s' has been revoked", hash);
 			if (fatal)
 				pkg_emit_error("At least one of the "
@@ -243,7 +243,7 @@ pkg_repo_check_fingerprint(struct pkg_repo *repo, hash_t *sc, bool fatal)
 			return (false);
 		}
 
-		if (pkghash_get(repo->trusted_fp, hash) != NULL) {
+		if (hash_get(repo->trusted_fp, hash) != NULL) {
 			nbgood++;
 			s->trusted = true;
 			pkg_debug(1, "Fingerprint '%s' is trusted", hash);
