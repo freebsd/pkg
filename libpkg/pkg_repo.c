@@ -211,6 +211,7 @@ pkg_repo_check_fingerprint(struct pkg_repo *repo, hash_t *sc, bool fatal)
 		}
 
 		s->trusted = false;
+		/* Somewhat ghetto way to check both SHA256 and SHA512 */
 		hash = pkg_checksum_data(s->cert, s->certlen,
 		    PKG_HASH_TYPE_SHA256_HEX);
 		if (hash_get(repo->revoked_fp, hash) != NULL) {
@@ -224,6 +225,25 @@ pkg_repo_check_fingerprint(struct pkg_repo *repo, hash_t *sc, bool fatal)
 		}
 
 		if (hash_get(repo->trusted_fp, hash) != NULL) {
+			nbgood++;
+			s->trusted = true;
+			pkg_debug(1, "Fingerprint '%s' is trusted", hash);
+		}
+		free(hash);
+
+		hash = pkg_checksum_data(s->cert, s->certlen,
+		    PKG_HASH_TYPE_SHA512_HEX);
+		if (pkghash_get(repo->revoked_fp, hash) != NULL) {
+			pkg_debug(1, "Fingerprint '%s' has been revoked", hash);
+			if (fatal)
+				pkg_emit_error("At least one of the "
+					"certificates has been revoked");
+
+			free(hash);
+			return (false);
+		}
+
+		if (pkghash_get(repo->trusted_fp, hash) != NULL) {
 			nbgood++;
 			s->trusted = true;
 			pkg_debug(1, "Fingerprint '%s' is trusted", hash);
@@ -1334,6 +1354,8 @@ pkg_repo_parse_fingerprint(ucl_object_t *obj)
 
 	if (STRIEQ(function, "sha256"))
 		fct = HASH_SHA256;
+	else if (STRIEQ(function, "sha512"))
+		fct = HASH_SHA512;
 
 	if (fct == HASH_UNKNOWN) {
 		pkg_emit_error("Unsupported hashing function: %s", function);

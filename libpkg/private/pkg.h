@@ -766,7 +766,8 @@ bool pkg_repo_meta_is_old_file(const char *file, struct pkg_repo_meta *meta);
 typedef enum {
 	HASH_UNKNOWN,
 	HASH_SHA256,
-	HASH_BLAKE2
+	HASH_BLAKE2,
+	HASH_SHA512
 } checksum_type_t;
 
 struct fingerprint {
