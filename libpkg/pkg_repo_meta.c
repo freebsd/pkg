@@ -128,7 +128,7 @@ pkg_repo_meta_open_schema_v1(void)
 			"maintainer = {type = string};\n"
 			"source = {type = string};\n"
 			"packing_format = {enum = [tzst, txz, tbz, tgz, tar]};\n"
-			"digest_format = {enum = [sha256_base32, sha256_hex, blake2_base32, blake2s_base32]};\n"
+			"digest_format = {enum = [sha256_base32, sha256_hex, blake2_base32, blake2s_base32, sha256_zbase32, blake2_zbase32, blake2s_zbase32]};\n"
 			"digests = {type = string};\n"
 			"manifests = {type = string};\n"
 			"conflicts = {type = string};\n"

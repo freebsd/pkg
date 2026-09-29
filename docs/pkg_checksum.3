@@ -1,7 +1,7 @@
 .\"
 .\" SPDX-License-Identifier: BSD-2-Clause
 .\"
-.Dd April 28, 2026
+.Dd September 29, 2026
 .Dt PKG_CHECKSUM 3
 .Os
 .Sh NAME
@@ -80,24 +80,54 @@ if the name is not recognized.
 .Sh CHECKSUM TYPES
 The following types are defined in
 .In pkg/checksum.h :
-.Bl -tag -width "PKG_HASH_TYPE_BLAKE2S_BASE32"
+.Bl -tag -width "PKG_HASH_TYPE_BLAKE2S_ZBASE32"
 .It Dv PKG_HASH_TYPE_SHA256_HEX
 SHA-256, hexadecimal encoding.
 String name:
 .Qq sha256_hex .
+.It Dv PKG_HASH_TYPE_BLAKE2_HEX
+BLAKE2b-512, hexadecimal encoding.
+String name:
+.Qq blake2_hex .
+.It Dv PKG_HASH_TYPE_BLAKE2S_HEX
+BLAKE2s-256, hexadecimal encoding.
+String name:
+.Qq blake2s_hex .
 .It Dv PKG_HASH_TYPE_SHA256_BASE32
-SHA-256, z-base-32 encoding.
+SHA-256, pkg base-32 encoding.
 String name:
 .Qq sha256_base32 .
 .It Dv PKG_HASH_TYPE_BLAKE2_BASE32
-BLAKE2b-512, z-base-32 encoding.
+BLAKE2b-512, pkg base-32 encoding.
 String name:
 .Qq blake2_base32 .
 .It Dv PKG_HASH_TYPE_BLAKE2S_BASE32
-BLAKE2s-256, z-base-32 encoding.
+BLAKE2s-256, pkg base-32 encoding.
 String name:
 .Qq blake2s_base32 .
+.It Dv PKG_HASH_TYPE_SHA256_ZBASE32
+SHA-256, z-base-32 encoding.
+String name:
+.Qq sha256_zbase32 .
+.It Dv PKG_HASH_TYPE_BLAKE2_ZBASE32
+BLAKE2b-512, z-base-32 encoding.
+String name:
+.Qq blake2_zbase32 .
+.It Dv PKG_HASH_TYPE_BLAKE2S_ZBASE32
+BLAKE2s-256, z-base-32 encoding.
+String name:
+.Qq blake2s_zbase32 .
 .El
+.Pp
+There are two base-32 encodings: the pkg one and the standard
+z-base-32.
+They differ only in the order in which the bits are packed.
+The pkg encoding is the historical one and remains the default: it is the
+only one that validates the checksums already stored in package manifests
+and repository catalogs, but it is not interoperable with other z-base-32
+implementations and is deprecated for new uses.
+The z-base-32 encoding is the one described in
+.Lk http://philzimmermann.com/docs/human-oriented-base-32-encoding.txt .
 .Pp
 The raw variants
 .Pq Dv PKG_HASH_TYPE_SHA256_RAW , PKG_HASH_TYPE_BLAKE2_RAW , PKG_HASH_TYPE_BLAKE2S_RAW

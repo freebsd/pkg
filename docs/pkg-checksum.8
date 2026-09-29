@@ -1,7 +1,7 @@
 .\"
 .\" SPDX-License-Identifier: BSD-2-Clause
 .\"
-.Dd April 28, 2026
+.Dd September 29, 2026
 .Dt PKG-CHECKSUM 8
 .Os
 .Sh NAME
@@ -66,16 +66,33 @@ The default is
 .Cm blake2_base32 .
 Supported types:
 .Pp
-.Bl -tag -width "blake2s_base32" -compact
+.Bl -tag -width "blake2s_zbase32" -compact
 .It Cm sha256_hex
-SHA-256, hexadecimal encoding (64 characters).
+SHA-256, hexadecimal encoding.
+.It Cm blake2_hex
+BLAKE2b-512, hexadecimal encoding.
+.It Cm blake2s_hex
+BLAKE2s-256, hexadecimal encoding.
 .It Cm sha256_base32
-SHA-256, z-base-32 encoding.
+SHA-256, pkg base-32 encoding.
 .It Cm blake2_base32
-BLAKE2b-512, z-base-32 encoding (default).
+BLAKE2b-512, pkg base-32 encoding (default).
 .It Cm blake2s_base32
+BLAKE2s-256, pkg base-32 encoding.
+.It Cm sha256_zbase32
+SHA-256, z-base-32 encoding.
+.It Cm blake2_zbase32
+BLAKE2b-512, z-base-32 encoding.
+.It Cm blake2s_zbase32
 BLAKE2s-256, z-base-32 encoding.
 .El
+.Pp
+There are two base-32 encodings: the pkg one and the standard
+z-base-32.
+They differ only in the order in which the bits are packed.
+The pkg encoding is the historical one and remains the default.
+The z-base-32 encoding is the one described in
+.Lk http://philzimmermann.com/docs/human-oriented-base-32-encoding.txt .
 .El
 .Sh EXIT STATUS
 .Ex -std

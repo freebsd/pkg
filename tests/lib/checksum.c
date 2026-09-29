@@ -34,6 +34,8 @@ ATF_TC_WITHOUT_HEAD(check_symlinks);
 ATF_TC_WITHOUT_HEAD(check_pkg);
 ATF_TC_WITHOUT_HEAD(check_types);
 ATF_TC_WITHOUT_HEAD(check_validity);
+ATF_TC_WITHOUT_HEAD(check_zbase32);
+ATF_TC_WITHOUT_HEAD(check_hex);
 
 ATF_TC_BODY(check_validity, tc)
 {
@@ -54,6 +56,14 @@ ATF_TC_BODY(check_types, tc)
 	ATF_REQUIRE_EQ(pkg_checksum_type_from_string("blake2_raw"), PKG_HASH_TYPE_BLAKE2_RAW);
 	ATF_REQUIRE_EQ(pkg_checksum_type_from_string("blake2s_base32"), PKG_HASH_TYPE_BLAKE2S_BASE32);
 	ATF_REQUIRE_EQ(pkg_checksum_type_from_string("blake2s_raw"), PKG_HASH_TYPE_BLAKE2S_RAW);
+	ATF_REQUIRE_EQ(pkg_checksum_type_from_string("sha512_base32"), PKG_HASH_TYPE_SHA512_BASE32);
+	ATF_REQUIRE_EQ(pkg_checksum_type_from_string("sha512_hex"), PKG_HASH_TYPE_SHA512_HEX);
+	ATF_REQUIRE_EQ(pkg_checksum_type_from_string("sha512_raw"), PKG_HASH_TYPE_SHA512_RAW);
+	ATF_REQUIRE_EQ(pkg_checksum_type_from_string("blake2_hex"), PKG_HASH_TYPE_BLAKE2_HEX);
+	ATF_REQUIRE_EQ(pkg_checksum_type_from_string("blake2s_hex"), PKG_HASH_TYPE_BLAKE2S_HEX);
+	ATF_REQUIRE_EQ(pkg_checksum_type_from_string("sha256_zbase32"), PKG_HASH_TYPE_SHA256_ZBASE32);
+	ATF_REQUIRE_EQ(pkg_checksum_type_from_string("blake2_zbase32"), PKG_HASH_TYPE_BLAKE2_ZBASE32);
+	ATF_REQUIRE_EQ(pkg_checksum_type_from_string("blake2s_zbase32"), PKG_HASH_TYPE_BLAKE2S_ZBASE32);
 	ATF_REQUIRE_EQ(pkg_checksum_type_from_string("plop"), PKG_HASH_TYPE_UNKNOWN);
 
 	ATF_REQUIRE_EQ(pkg_checksum_get_type("0$0$", 0), PKG_HASH_TYPE_SHA256_BASE32);
@@ -63,6 +73,14 @@ ATF_TC_BODY(check_types, tc)
 	ATF_REQUIRE_EQ(pkg_checksum_get_type("0$4$", 0), PKG_HASH_TYPE_BLAKE2_RAW);
 	ATF_REQUIRE_EQ(pkg_checksum_get_type("0$5$", 0), PKG_HASH_TYPE_BLAKE2S_BASE32);
 	ATF_REQUIRE_EQ(pkg_checksum_get_type("0$6$", 0), PKG_HASH_TYPE_BLAKE2S_RAW);
+	ATF_REQUIRE_EQ(pkg_checksum_get_type("0$7$", 0), PKG_HASH_TYPE_SHA512_BASE32);
+	ATF_REQUIRE_EQ(pkg_checksum_get_type("0$8$", 0), PKG_HASH_TYPE_SHA512_HEX);
+	ATF_REQUIRE_EQ(pkg_checksum_get_type("0$9$", 0), PKG_HASH_TYPE_SHA512_RAW);
+	ATF_REQUIRE_EQ(pkg_checksum_get_type("0$10$", 0), PKG_HASH_TYPE_BLAKE2_HEX);
+	ATF_REQUIRE_EQ(pkg_checksum_get_type("0$11$", 0), PKG_HASH_TYPE_BLAKE2S_HEX);
+	ATF_REQUIRE_EQ(pkg_checksum_get_type("0$12$", 0), PKG_HASH_TYPE_SHA256_ZBASE32);
+	ATF_REQUIRE_EQ(pkg_checksum_get_type("0$13$", 0), PKG_HASH_TYPE_BLAKE2_ZBASE32);
+	ATF_REQUIRE_EQ(pkg_checksum_get_type("0$14$", 0), PKG_HASH_TYPE_BLAKE2S_ZBASE32);
 	ATF_REQUIRE_EQ(pkg_checksum_get_type("0$42$", 0), PKG_HASH_TYPE_UNKNOWN);
 	ATF_REQUIRE_EQ(pkg_checksum_get_type("", 0), PKG_HASH_TYPE_UNKNOWN);
 
@@ -73,6 +91,14 @@ ATF_TC_BODY(check_types, tc)
 	ATF_REQUIRE_EQ(pkg_checksum_file_get_type("4$", 0), PKG_HASH_TYPE_BLAKE2_RAW);
 	ATF_REQUIRE_EQ(pkg_checksum_file_get_type("5$", 0), PKG_HASH_TYPE_BLAKE2S_BASE32);
 	ATF_REQUIRE_EQ(pkg_checksum_file_get_type("6$", 0), PKG_HASH_TYPE_BLAKE2S_RAW);
+	ATF_REQUIRE_EQ(pkg_checksum_file_get_type("7$", 0), PKG_HASH_TYPE_SHA512_BASE32);
+	ATF_REQUIRE_EQ(pkg_checksum_file_get_type("8$", 0), PKG_HASH_TYPE_SHA512_HEX);
+	ATF_REQUIRE_EQ(pkg_checksum_file_get_type("9$", 0), PKG_HASH_TYPE_SHA512_RAW);
+	ATF_REQUIRE_EQ(pkg_checksum_file_get_type("10$", 0), PKG_HASH_TYPE_BLAKE2_HEX);
+	ATF_REQUIRE_EQ(pkg_checksum_file_get_type("11$", 0), PKG_HASH_TYPE_BLAKE2S_HEX);
+	ATF_REQUIRE_EQ(pkg_checksum_file_get_type("12$", 0), PKG_HASH_TYPE_SHA256_ZBASE32);
+	ATF_REQUIRE_EQ(pkg_checksum_file_get_type("13$", 0), PKG_HASH_TYPE_BLAKE2_ZBASE32);
+	ATF_REQUIRE_EQ(pkg_checksum_file_get_type("14$", 0), PKG_HASH_TYPE_BLAKE2S_ZBASE32);
 	ATF_REQUIRE_EQ(pkg_checksum_file_get_type("42$", 0), PKG_HASH_TYPE_UNKNOWN);
 	ATF_REQUIRE_EQ(pkg_checksum_file_get_type("", 0), PKG_HASH_TYPE_UNKNOWN);
 }
@@ -187,6 +213,75 @@ ATF_TC_BODY(check_pkg, tc)
 	pkg_free(p);
 }
 
+ATF_TC_BODY(check_zbase32, tc)
+{
+	FILE *f;
+	char *sum;
+
+	/*
+	 * Those are the digests of "a" encoded in standard z-base-32, as
+	 * produced by any implementation of
+	 * http://philzimmermann.com/docs/human-oriented-base-32-encoding.txt
+	 */
+	sum = pkg_checksum_data("a", 0, PKG_HASH_TYPE_BLAKE2_ZBASE32);
+	ATF_REQUIRE_STREQ(sum, "gc9hsuzbij6bnw4i7tuc7mrtx1f95yk567c84c147ocgj5q1ja4pmk9na4a5m5t9iuun95ma5xzaym3kozf3diniid41j8jubbjhsxy");
+	free(sum);
+
+	sum = pkg_checksum_data("a", 0, PKG_HASH_TYPE_BLAKE2S_ZBASE32);
+	ATF_REQUIRE_STREQ(sum, "jegtfgdueyadxospuqeroebso95ngx7sqqripabwuxkdrd9c84ey");
+	free(sum);
+
+	sum = pkg_checksum_data("a", 0, PKG_HASH_TYPE_SHA256_ZBASE32);
+	ATF_REQUIRE_STREQ(sum, "3kmanrskdq6hi6sngg33we6hjsuap59ant6rhhi3ob5amm9qjn7o");
+	free(sum);
+
+	/*
+	 * The legacy *_BASE32 types must keep producing the checksums they
+	 * always produced, they are stored in existing catalogs.
+	 */
+	sum = pkg_checksum_data("a", 0, PKG_HASH_TYPE_BLAKE2_BASE32);
+	ATF_REQUIRE_STREQ(sum, "u3xsc8fhkf9ntjikcz3hcsg1h5n59yqmz8s483emc8gessm4qnpk7ikhgqcmmz98ci391sdx565bazeffh1djkzkep7j1qqgeawsc6y");
+	free(sum);
+
+	sum = pkg_checksum_data("a", 0, PKG_HASH_TYPE_BLAKE2S_BASE32);
+	ATF_REQUIRE_STREQ(sum, "kkdrbcqqyncqdbz35rrtroag8w7819asumnpfoug5rifu8o76brb");
+	free(sum);
+
+	f = fopen("zbfile", "w");
+	ATF_REQUIRE(f != NULL);
+	fprintf(f, "bar\n");
+	fclose(f);
+
+	sum = pkg_checksum_generate_file("zbfile", PKG_HASH_TYPE_BLAKE2_ZBASE32);
+	ATF_REQUIRE_STREQ(sum, "13$w4qcmnna3c5h9dp89y9imot9nhxq8tc5h7ipx5qxy8xcg5634yerzpbu3sdd7a9os4oowc5c6jyypngfx9c38rshy8nfozc8rik87dy");
+	ATF_CHECK(pkg_checksum_validate_file("zbfile", sum) == 0);
+	free(sum);
+}
+
+ATF_TC_BODY(check_hex, tc)
+{
+	FILE *f;
+	char *sum;
+
+	sum = pkg_checksum_data("a", 0, PKG_HASH_TYPE_BLAKE2_HEX);
+	ATF_REQUIRE_STREQ(sum, "333fcb4ee1aa7c115355ec66ceac917c8bfd815bf7587d325aec1864edd24e34d5abe2c6b1b5ee3face62fed78dbef802f2a85cb91d455a8f5249d330853cb3c");
+	free(sum);
+
+	sum = pkg_checksum_data("a", 0, PKG_HASH_TYPE_BLAKE2S_HEX);
+	ATF_REQUIRE_STREQ(sum, "4a0d129873403037c2cd9b9048203687f6233fb6738956e0349bd4320fec3e90");
+	free(sum);
+
+	f = fopen("hexfile", "w");
+	ATF_REQUIRE(f != NULL);
+	fprintf(f, "bar\n");
+	fclose(f);
+
+	sum = pkg_checksum_generate_file("hexfile", PKG_HASH_TYPE_BLAKE2S_HEX);
+	ATF_REQUIRE_STREQ(sum, "11$c3554d2e81f8f2129cb62367a4a23539254b00ea8be56e8cc53fc4bcf8b3600c");
+	ATF_CHECK(pkg_checksum_validate_file("hexfile", sum) == 0);
+	free(sum);
+}
+
 ATF_TP_ADD_TCS(tp)
 {
 	ATF_TP_ADD_TC(tp, check_symlinks);
@@ -194,6 +289,8 @@ ATF_TP_ADD_TCS(tp)
 	ATF_TP_ADD_TC(tp, check_pkg);
 	ATF_TP_ADD_TC(tp, check_types);
 	ATF_TP_ADD_TC(tp, check_validity);
+	ATF_TP_ADD_TC(tp, check_zbase32);
+	ATF_TP_ADD_TC(tp, check_hex);
 
 	return (atf_no_error());
 }
