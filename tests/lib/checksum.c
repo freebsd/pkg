@@ -36,6 +36,7 @@ ATF_TC_WITHOUT_HEAD(check_types);
 ATF_TC_WITHOUT_HEAD(check_validity);
 ATF_TC_WITHOUT_HEAD(check_zbase32);
 ATF_TC_WITHOUT_HEAD(check_hex);
+ATF_TC_WITHOUT_HEAD(check_sha512);
 
 ATF_TC_BODY(check_validity, tc)
 {
@@ -197,6 +198,8 @@ ATF_TC_BODY(check_pkg, tc)
 		{ PKG_HASH_TYPE_BLAKE2S_BASE32, "2$5$ea9pqrut8o9q7oin9ddd5gxcx4j5a99negxmfxxrx1swih4n7gzb" },
 		{ PKG_HASH_TYPE_BLAKE2_HEX, "2$10$ac591e86efc60624879584c84e01ce50d0adfa2ecd212e47f2253653afadf08e1e9d822a5f5ec555d9b63e9c925328d8f935fcf9bd24ec827265e0f2245c010f" },
 		{ PKG_HASH_TYPE_BLAKE2S_HEX, "2$11$08ffe6c88c077ed761157f8cb1cd634fa78dff17c8bc55de234f5a5ab916dddc" },
+		{ PKG_HASH_TYPE_SHA512_HEX, "2$8$123b0ab0d7227c969e129694cefbe00956554f2b0a24f8881b08410258113c0e61a8e6c3fe47a2fc37d8c197ff598af76fd90fc7723a82332cb1d9aba71e3194" },
+		{ PKG_HASH_TYPE_SHA512_BASE32, "2$7$1aqwya64nb9cjxknsrf7h7dhjoiki8pfkyjoxrqdeeorycfnhtdngw4hds9xrt19zbsdhm6931nx9zf5xatf87eoubmn5cxi8i8ndkn" },
 	};
 	struct pkg *p = NULL;
 	char *sum;
@@ -227,6 +230,35 @@ ATF_TC_BODY(check_pkg, tc)
 	}
 
 	pkg_free(p);
+}
+
+ATF_TC_BODY(check_sha512, tc)
+{
+	FILE *f;
+	char *sum;
+
+	sum = pkg_checksum_data("a", 0, PKG_HASH_TYPE_SHA512_HEX);
+	ATF_REQUIRE_STREQ(sum, "1f40fc92da241694750979ee6cf582f2d5d7d28e18335de05abc54d0560e0f5302860c652bf08d560252aa5e74210546f369fbbbce8c12cfc7957b2652fe9a75");
+	free(sum);
+
+	sum = pkg_checksum_data("a", 0, PKG_HASH_TYPE_SHA512_BASE32);
+	ATF_REQUIRE_STREQ(sum, "9yoaxjk5rtfe34fb3u53s4mo1xixpj5taac4fommhfiypm3bxawryd1bf5ky9g4knowwkxtqbjbcw38p59q7cgknx6tm373r119i34b");
+	free(sum);
+
+	f = fopen("sha512file", "w");
+	ATF_REQUIRE(f != NULL);
+	fprintf(f, "bar\n");
+	fclose(f);
+
+	sum = pkg_checksum_generate_file("sha512file", PKG_HASH_TYPE_SHA512_HEX);
+	ATF_REQUIRE_STREQ(sum, "8$cc06808cbbee0510331aa97974132e8dc296aeb795be229d064bae784b0a87a5cf4281d82e8c99271b75db2148f08a026c1a60ed9cabdb8cac6d24242dac4063");
+	ATF_CHECK(pkg_checksum_validate_file("sha512file", sum) == 0);
+	free(sum);
+
+	sum = pkg_checksum_generate_file("sha512file", PKG_HASH_TYPE_SHA512_BASE32);
+	ATF_REQUIRE_STREQ(sum, "7$csbyegqzqxbyt3edjp6ezjafpwopjz6siwxf1q4ym1mtzfjb8cj9cbfoasmaac6r5e7s7oyjoznfysjdym533iq5crm5g1orpbmbwtb");
+	ATF_CHECK(pkg_checksum_validate_file("sha512file", sum) == 0);
+	free(sum);
 }
 
 ATF_TC_BODY(check_zbase32, tc)
@@ -307,6 +339,7 @@ ATF_TP_ADD_TCS(tp)
 	ATF_TP_ADD_TC(tp, check_validity);
 	ATF_TP_ADD_TC(tp, check_zbase32);
 	ATF_TP_ADD_TC(tp, check_hex);
+	ATF_TP_ADD_TC(tp, check_sha512);
 
 	return (atf_no_error());
 }
