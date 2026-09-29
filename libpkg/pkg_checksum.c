@@ -50,6 +50,13 @@
 #define PKG_CHECKSUM_BLAKE2S_HEX_LEN (BLAKE2S_OUTBYTES * 2 + 1)
 #define PKG_CHECKSUM_CUR_VERSION 2
 
+/*
+ * pkg_checksum_generate() stores the encoded digest behind a
+ * "<version>$<type>$" prefix, which the sizes above do not account for.
+ * sizeof() includes the terminating NUL.
+ */
+#define PKG_CHECKSUM_PREFIX_LEN sizeof("2$100$")
+
 struct kv {
 	const char *key;
 	const char *value;
@@ -789,6 +796,16 @@ pkg_checksum_type_size(pkg_checksum_type_t type)
 	return (checksum_types[type].hlen);
 }
 
+/*
+ * Size of the buffer pkg_checksum_generate() needs: the encoded digest
+ * and the prefix it writes in front of it.
+ */
+size_t
+pkg_checksum_string_size(pkg_checksum_type_t type)
+{
+	return (pkg_checksum_type_size(type) + PKG_CHECKSUM_PREFIX_LEN);
+}
+
 int
 pkg_checksum_calculate(struct pkg *pkg, struct pkgdb *db, bool inc_scripts,
     bool inc_version, bool inc_files)
@@ -810,8 +827,8 @@ pkg_checksum_calculate(struct pkg *pkg, struct pkgdb *db, bool inc_scripts,
 			type = repo->meta->digest_format;
 	}
 
-	new_digest = xmalloc(pkg_checksum_type_size(type));
-	if (pkg_checksum_generate(pkg, new_digest, pkg_checksum_type_size(type),
+	new_digest = xmalloc(pkg_checksum_string_size(type));
+	if (pkg_checksum_generate(pkg, new_digest, pkg_checksum_string_size(type),
 	    type, inc_scripts, inc_version, inc_files)
 			!= EPKG_OK) {
 		free(new_digest);

@@ -183,32 +183,48 @@ ATF_TC_BODY(check_files, tc)
 
 ATF_TC_BODY(check_pkg, tc)
 {
+	static const struct {
+		pkg_checksum_type_t type;
+		const char *digest;
+	} types[] = {
+		/*
+		 * The digests cover the arch, name, origin and vital fields
+		 * of the package below, sorted by field name and concatenated
+		 * without any separator.
+		 */
+		{ PKG_HASH_TYPE_SHA256_HEX, "2$1$c92e2953e828678424ea69eec32ee18b233fcbe3007c35fc7f742710f12b2d86" },
+		{ PKG_HASH_TYPE_BLAKE2_BASE32, "2$2$cpshbd67gsbe1ds1rr17wya3onw5k75fpqeh1dj6ftpgizsiozd7tqkok3zhinzk3sp7dqk1unko7hzghx65m1o7nwhkgom6rbzno8y" },
+		{ PKG_HASH_TYPE_BLAKE2S_BASE32, "2$5$ea9pqrut8o9q7oin9ddd5gxcx4j5a99negxmfxxrx1swih4n7gzb" },
+		{ PKG_HASH_TYPE_BLAKE2_HEX, "2$10$ac591e86efc60624879584c84e01ce50d0adfa2ecd212e47f2253653afadf08e1e9d822a5f5ec555d9b63e9c925328d8f935fcf9bd24ec827265e0f2245c010f" },
+		{ PKG_HASH_TYPE_BLAKE2S_HEX, "2$11$08ffe6c88c077ed761157f8cb1cd634fa78dff17c8bc55de234f5a5ab916dddc" },
+	};
 	struct pkg *p = NULL;
+	char *sum;
+	size_t i;
+
 	pkg_new(&p, PKG_INSTALLED);
 	pkg_set(p, PKG_ATTR_NAME, "test");
 	pkg_set(p, PKG_ATTR_ORIGIN, "origin");
 	pkg_set(p, PKG_ATTR_ARCH, "*");
-	char *sum = xcalloc(pkg_checksum_type_size(PKG_HASH_TYPE_SHA256_HEX) * 2, sizeof(char));
 
-	ATF_REQUIRE_EQ(pkg_checksum_generate(NULL, sum, pkg_checksum_type_size(PKG_HASH_TYPE_SHA256_HEX) * 2, PKG_HASH_TYPE_SHA256_HEX, false, false, false), EPKG_FATAL);
-	ATF_REQUIRE_EQ(pkg_checksum_generate(p, sum, pkg_checksum_type_size(PKG_HASH_TYPE_SHA256_HEX) * 2, 42, false, false, false), EPKG_FATAL);
+	sum = xcalloc(pkg_checksum_string_size(PKG_HASH_TYPE_SHA256_HEX), sizeof(char));
+	ATF_REQUIRE_EQ(pkg_checksum_generate(NULL, sum, pkg_checksum_string_size(PKG_HASH_TYPE_SHA256_HEX), PKG_HASH_TYPE_SHA256_HEX, false, false, false), EPKG_FATAL);
+	ATF_REQUIRE_EQ(pkg_checksum_generate(p, sum, pkg_checksum_string_size(PKG_HASH_TYPE_SHA256_HEX), 42, false, false, false), EPKG_FATAL);
 	ATF_REQUIRE_EQ(pkg_checksum_generate(p, sum, 2, PKG_HASH_TYPE_SHA256_HEX, false, false, false), EPKG_FATAL);
-	ATF_CHECK(pkg_checksum_generate(p, sum, pkg_checksum_type_size(PKG_HASH_TYPE_SHA256_HEX) * 2, PKG_HASH_TYPE_SHA256_HEX, false, false, false) == EPKG_OK);
-	ATF_REQUIRE_STREQ(sum, "2$1$c92e2953e828678424ea69eec32ee18b233fcbe3007c35fc7f742710f12b2d86");
-	ATF_REQUIRE_EQ(pkg_checksum_get_type(sum, -1), PKG_HASH_TYPE_SHA256_HEX);
 	free(sum);
 
-	sum = xcalloc(pkg_checksum_type_size(PKG_HASH_TYPE_BLAKE2_BASE32) * 2, sizeof(char));
-	ATF_CHECK(pkg_checksum_generate(p, sum, pkg_checksum_type_size(PKG_HASH_TYPE_BLAKE2_BASE32) * 2, PKG_HASH_TYPE_BLAKE2_BASE32, false, false, false) == EPKG_OK);
-	ATF_REQUIRE_STREQ(sum, "2$2$cpshbd67gsbe1ds1rr17wya3onw5k75fpqeh1dj6ftpgizsiozd7tqkok3zhinzk3sp7dqk1unko7hzghx65m1o7nwhkgom6rbzno8y");
-	ATF_REQUIRE_EQ(pkg_checksum_get_type(sum, -1), PKG_HASH_TYPE_BLAKE2_BASE32);
-	free(sum);
-
-	sum = xcalloc(pkg_checksum_type_size(PKG_HASH_TYPE_BLAKE2S_BASE32) * 2, sizeof(char));
-	ATF_CHECK(pkg_checksum_generate(p, sum, pkg_checksum_type_size(PKG_HASH_TYPE_BLAKE2S_BASE32) * 2, PKG_HASH_TYPE_BLAKE2S_BASE32, false, false, false) == EPKG_OK);
-	ATF_REQUIRE_STREQ(sum, "2$5$ea9pqrut8o9q7oin9ddd5gxcx4j5a99negxmfxxrx1swih4n7gzb");
-	ATF_REQUIRE_EQ(pkg_checksum_get_type(sum, -1), PKG_HASH_TYPE_BLAKE2S_BASE32);
-	free(sum);
+	/*
+	 * The buffer is exactly the size pkg_checksum_string_size()
+	 * advertises: a shorter one would silently drop the digest and
+	 * keep only the version and type prefix.
+	 */
+	for (i = 0; i < sizeof(types) / sizeof(types[0]); i++) {
+		sum = xcalloc(pkg_checksum_string_size(types[i].type), sizeof(char));
+		ATF_CHECK(pkg_checksum_generate(p, sum, pkg_checksum_string_size(types[i].type), types[i].type, false, false, false) == EPKG_OK);
+		ATF_REQUIRE_STREQ(sum, types[i].digest);
+		ATF_REQUIRE_EQ(pkg_checksum_get_type(sum, -1), types[i].type);
+		free(sum);
+	}
 
 	pkg_free(p);
 }
