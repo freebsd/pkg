@@ -896,6 +896,7 @@ pkg_shlib_flags_from_abi(const struct pkg_abi *shlib_abi)
 		case PKG_ARCH_POWERPC64LE:
 		case PKG_ARCH_RISCV32:
 		case PKG_ARCH_RISCV64:
+		case PKG_ARCH_LOONGARCH64:
 		case PKG_ARCH_ANY:
 			break;
 		}
