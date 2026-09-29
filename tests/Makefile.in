@@ -107,6 +107,7 @@ TESTS_SHELL_BINS= \
 	frontend/freebsd-armv6.bin \
 	frontend/freebsd-armv7.bin \
 	frontend/freebsd-i386.bin \
+	frontend/freebsd-loongarch64.bin \
 	frontend/freebsd-powerpc.bin \
 	frontend/freebsd-powerpc64.bin \
 	frontend/freebsd-powerpc64le.bin \

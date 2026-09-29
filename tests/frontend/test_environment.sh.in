@@ -122,6 +122,12 @@ bin_meta() {
 			XFreeBSD_version=1401000
 			Xshlibs_required="libc.so.7"
 			;;
+		*freebsd-loongarch64.bin)
+			XABI=FreeBSD:16:loongarch64
+			XALTABI=freebsd:16:loongarch:64
+			XFreeBSD_version=1600000
+			Xshlibs_required="libc.so.7"
+			;;
 		*dfly.bin)
 			XABI=dragonfly:5.10:x86:64
 			XALTABI=dragonfly:5.10:x86:64

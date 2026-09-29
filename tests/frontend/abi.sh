@@ -33,7 +33,7 @@ native_body() {
 		FreeBSD)
 			version=$(freebsd-version -u | cut -d. -f1)
 			thisarch=$(echo "${thisarch}" | sed s/x86_64/amd64/)
-			thisabi=$(echo "${thisarch}" | sed 's/amd64/x86:64/; s/aarch64/aarch64:64/')
+			thisabi=$(echo "${thisarch}" | sed 's/amd64/x86:64/; s/aarch64/aarch64:64/; s/loongarch64/loongarch:64/')
 			;;
 		*)
 			version=$(uname -r | cut -d. -f1)
@@ -92,6 +92,11 @@ override_body() {
 		-o inline:"${_expected}" \
 		-e ignore \
 		pkg -o ABI=CheriBSD:20260101:riscv64c config altabi
+	_expected="FreeBSD:16:loongarch64\n"
+	atf_check \
+		-o inline:"${_expected}" \
+		-e ignore \
+		pkg -o ABI=FreeBSD:16:loongarch64 config abi
 }
 
 elfparse_body() {
@@ -99,7 +104,8 @@ elfparse_body() {
 
 	for bin in \
 		freebsd-aarch64.bin freebsd-amd64.bin freebsd-armv6.bin freebsd-armv7.bin \
-		freebsd-i386.bin freebsd-powerpc.bin freebsd-powerpc64.bin freebsd-powerpc64le.bin \
+		freebsd-i386.bin freebsd-loongarch64.bin freebsd-powerpc.bin \
+		freebsd-powerpc64.bin freebsd-powerpc64le.bin \
 		freebsd-riscv64.bin dfly.bin linux.bin musl.bin
 	do
 		bin_meta ${bin}
