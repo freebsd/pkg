@@ -34,6 +34,7 @@
 #include "private/event.h"
 #include "private/pkg.h"
 #include "private/pkg_jobs.h"
+#include "xmalloc.h"
 
 #define dbg(x, ...) pkg_dbg(PKG_DBG_SCHEDULER, x, __VA_ARGS__)
 
@@ -65,6 +66,31 @@ static bool pkg_jobs_schedule_direct_depends(struct pkg *a, struct pkg *b)
 	struct pkg_dep *dep = NULL;
 	while (pkg_deps(a, &dep) == EPKG_OK) {
 		if (STREQ(b->uid, dep->uid)) {
+			return (true);
+		}
+	}
+	return (false);
+}
+
+/*
+ * Returns true if pkg a depends on pkg b through the provides/requires
+ * tables, that is if a requires a shared library or a named provide of b.
+ *
+ * These are resolved separately from the regular dependencies.  On a
+ * pkgbase system the base libraries are provided by packages (for example
+ * libc.so.7 by FreeBSD-clibs) so they must be taken into account when
+ * ordering jobs.
+ */
+static bool pkg_jobs_schedule_depends_provides(struct pkg *a, struct pkg *b)
+{
+	vec_foreach(a->shlibs_required, i) {
+		if (charv_search(&b->shlibs_provided,
+		    a->shlibs_required.d[i]) != NULL) {
+			return (true);
+		}
+	}
+	vec_foreach(a->requires, i) {
+		if (charv_search(&b->provides, a->requires.d[i]) != NULL) {
 			return (true);
 		}
 	}
@@ -150,8 +176,9 @@ pkg_jobs_schedule_graph_edge(struct pkg_solved *a, struct pkg_solved *b)
 	pkg_solved_extract_pkg(a, &a_new, &a_old);
 	pkg_solved_extract_pkg(b, &b_new, &b_old);
 
-	if (a_new != NULL && b_new != NULL &&
-	    pkg_jobs_schedule_direct_depends(b_new, a_new)) {
+	if (a_new != NULL && b_new != NULL && a->scc != b->scc &&
+	    (pkg_jobs_schedule_direct_depends(b_new, a_new) ||
+	     pkg_jobs_schedule_depends_provides(b_new, a_new))) {
 		return (PKG_SCHEDULE_EDGE_NEW_DEP_NEW);
 	}
 	if (a_old != NULL && b_new != NULL) {
@@ -271,18 +298,6 @@ pkg_jobs_schedule_debug_dot_file(pkg_solved_list *nodes)
 }
 
 
-static bool
-pkg_jobs_schedule_has_incoming_edge(pkg_solved_list *nodes,
-    struct pkg_solved *node)
-{
-	vec_foreach(*nodes, i) {
-		if (pkg_jobs_schedule_graph_edge(nodes->d[i], node) != PKG_SCHEDULE_EDGE_NONE) {
-			return (true);
-		}
-	}
-	return (false);
-}
-
 /*
  * Prioritizing the install jobs and deprioritizing the delete jobs of split
  * upgrades reduces the distance between the two halves of the split job in the
@@ -316,62 +331,117 @@ pkg_jobs_schedule_cmp_available(struct pkg_solved *a, struct pkg_solved *b)
 }
 
 /*
- * Move job nodes with no incoming edges from unavailable to available.
- * If changed is non-NULL, only check jobs with an incoming edge from changed. */
+ * Topological sort based on Kahn's algorithm with a tiebreaker.  All the jobs
+ * of a strongly connected component are scheduled as a single unit, so that
+ * jobs of other components are never interleaved between them.
+ */
 static void
-pkg_jobs_schedule_update_available(pkg_solved_list *unavailable,
-    pkg_solved_list *available, struct pkg_solved *changed)
+pkg_jobs_schedule_topological_sort(pkg_solved_list *jobs, size_t ngroups)
 {
-	for (size_t i = 0; i < unavailable->len;) {
-		struct pkg_solved *job = unavailable->d[i];
-		if ((changed == NULL ||
-		    pkg_jobs_schedule_graph_edge(changed, job) != PKG_SCHEDULE_EDGE_NONE) &&
-		    !pkg_jobs_schedule_has_incoming_edge(unavailable, job) &&
-		    !pkg_jobs_schedule_has_incoming_edge(available, job)) {
-			vec_push(available, job);
-			vec_swap_remove(unavailable, i);
-		} else {
-			i++;
+	pkg_solved_list result = vec_init();
+	size_t n = jobs->len;
+	int *indeg, *best;
+	bool *done;
+	size_t i, j;
+	int chosen;
+	bool remaining;
+
+	if (n == 0) {
+		vec_free(jobs);
+		*jobs = result;
+		return;
+	}
+
+	indeg = xcalloc(ngroups, sizeof(int));
+	best = xcalloc(ngroups, sizeof(int));
+	done = xcalloc(n, sizeof(bool));
+
+	/* In-degree of every component in the condensation of the graph. */
+	for (i = 0; i < n; i++) {
+		for (j = 0; j < n; j++) {
+			if (jobs->d[i]->scc == jobs->d[j]->scc)
+				continue;
+			if (pkg_jobs_schedule_graph_edge(jobs->d[i],
+			    jobs->d[j]) != PKG_SCHEDULE_EDGE_NONE)
+				indeg[jobs->d[j]->scc]++;
 		}
 	}
-}
 
-/* Topological sort based on Kahn's algorithm with a tiebreaker */
-static void
-pkg_jobs_schedule_topological_sort(pkg_solved_list *jobs)
-{
-	pkg_solved_list unavailable = *jobs;
-	pkg_solved_list available = vec_init();
-	*jobs = (pkg_solved_list)vec_init();
-
-	pkg_jobs_schedule_update_available(&unavailable, &available, NULL);
-
-	while (available.len > 0) {
-		/* Add the highest priority job from the set of available jobs
-		 * to the sorted list */
-		size_t max = 0;
-		for (size_t i = 1; i < available.len; i++) {
-			if (pkg_jobs_schedule_cmp_available(available.d[i], available.d[max]) > 0) {
-				max = i;
+	do {
+		remaining = false;
+		for (i = 0; i < n; i++) {
+			if (!done[i]) {
+				remaining = true;
+				break;
 			}
 		}
-		struct pkg_solved *node = available.d[max];
-		vec_push(jobs, node);
-		vec_swap_remove(&available, max);
+		if (!remaining)
+			break;
 
-		/* Again, place all job nodes with no incoming edges in the set
-		 * of available jobs, ignoring any incoming edges from job nodes
-		 * already added to the sorted list */
-		pkg_jobs_schedule_update_available(&unavailable, &available, node);
-	}
+		/* Find the best not yet scheduled job of every component. */
+		for (i = 0; i < ngroups; i++)
+			best[i] = -1;
+		for (i = 0; i < n; i++) {
+			if (done[i])
+				continue;
+			j = jobs->d[i]->scc;
+			if (best[j] == -1 ||
+			    pkg_jobs_schedule_cmp_available(jobs->d[i],
+			    jobs->d[best[j]]) > 0)
+				best[j] = i;
+		}
 
-	/* The unavailable set will only be non-empty at this point if there is a
-	 * cycle in the graph and all cycles must be eliminated by splitting
-	 * upgrade jobs before calling this function. */
-	assert(unavailable.len == 0);
+		/* Pick the component with no pending predecessor whose best
+		 * job has the highest priority. */
+		chosen = -1;
+		for (i = 0; i < ngroups; i++) {
+			if (best[i] == -1 || indeg[i] != 0)
+				continue;
+			if (chosen == -1 ||
+			    pkg_jobs_schedule_cmp_available(jobs->d[best[i]],
+			    jobs->d[best[chosen]]) > 0)
+				chosen = i;
+		}
 
-	vec_free(&unavailable);
-	vec_free(&available);
+		/* The graph is acyclic, so a component is always available as
+		 * long as some job remains; all cycles must have been
+		 * eliminated by splitting upgrade jobs before this point. */
+		assert(chosen != -1);
+
+		/* Schedule every job of the component, best first, and unblock
+		 * its successors. */
+		for (;;) {
+			int b = -1;
+			for (i = 0; i < n; i++) {
+				if (done[i] || jobs->d[i]->scc != chosen)
+					continue;
+				if (b == -1 ||
+				    pkg_jobs_schedule_cmp_available(jobs->d[i],
+				    jobs->d[b]) > 0)
+					b = i;
+			}
+			if (b == -1)
+				break;
+			done[b] = true;
+			vec_push(&result, jobs->d[b]);
+			for (i = 0; i < n; i++) {
+				if (done[i] || jobs->d[i]->scc == chosen)
+					continue;
+				if (pkg_jobs_schedule_graph_edge(jobs->d[b],
+				    jobs->d[i]) != PKG_SCHEDULE_EDGE_NONE)
+					indeg[jobs->d[i]->scc]--;
+			}
+		}
+	} while (true);
+
+	for (i = 0; i < n; i++)
+		assert(done[i]);
+
+	vec_free(jobs);
+	*jobs = result;
+	free(indeg);
+	free(best);
+	free(done);
 }
 
 /*
@@ -419,8 +489,133 @@ pkg_jobs_schedule_find_cycle(pkg_solved_list *jobs,
 	return (NULL);
 }
 
+/*
+ * Returns the new package of a solved job, or NULL if the job installs
+ * nothing (a plain delete or the remove half of a split upgrade).
+ */
+static struct pkg *
+pkg_solved_new_pkg(struct pkg_solved *s)
+{
+	switch (s->type) {
+	case PKG_SOLVED_INSTALL:
+	case PKG_SOLVED_UPGRADE_INSTALL:
+	case PKG_SOLVED_UPGRADE:
+		return (s->items[0]->pkg);
+	default:
+		return (NULL);
+	}
+}
+
+/*
+ * Returns true if the install of the new package of job b must happen after
+ * the install of the new package of job a.  This holds when b's new package
+ * depends on a's new package either through a regular dependency or through
+ * a shared library provided by a.
+ */
+static bool
+pkg_jobs_schedule_install_edge(struct pkg_solved *a, struct pkg_solved *b)
+{
+	struct pkg *a_new, *b_new;
+
+	if (a == b)
+		return (false);
+	a_new = pkg_solved_new_pkg(a);
+	b_new = pkg_solved_new_pkg(b);
+	if (a_new == NULL || b_new == NULL)
+		return (false);
+	return (pkg_jobs_schedule_direct_depends(b_new, a_new) ||
+	    pkg_jobs_schedule_depends_provides(b_new, a_new));
+}
+
+/*
+ * Install dependencies can be cyclic.  For example FreeBSD-runtime provides
+ * libraries required by FreeBSD-libarchive and in turn requires a library
+ * provided by it.  Such a cycle cannot be broken by splitting upgrade jobs,
+ * so the ordering only constrains jobs that belong to different strongly
+ * connected components of the install graph.  The components are computed
+ * with Tarjan's algorithm.
+ */
+struct pkg_jobs_schedule_scc {
+	pkg_solved_list *jobs;
+	int *index;
+	int *low;
+	int *comp;
+	bool *onstack;
+	int *stack;
+	size_t sp;
+	int next_index;
+	int next_comp;
+};
+
+static void
+pkg_jobs_schedule_scc_visit(struct pkg_jobs_schedule_scc *ctx, int v)
+{
+	ctx->index[v] = ctx->low[v] = ctx->next_index++;
+	ctx->stack[ctx->sp++] = v;
+	ctx->onstack[v] = true;
+
+	for (int w = 0; w < (int)ctx->jobs->len; w++) {
+		if (!pkg_jobs_schedule_install_edge(ctx->jobs->d[v],
+		    ctx->jobs->d[w]))
+			continue;
+		if (ctx->index[w] < 0) {
+			pkg_jobs_schedule_scc_visit(ctx, w);
+			if (ctx->low[w] < ctx->low[v])
+				ctx->low[v] = ctx->low[w];
+		} else if (ctx->onstack[w] && ctx->index[w] < ctx->low[v]) {
+			ctx->low[v] = ctx->index[w];
+		}
+	}
+
+	if (ctx->low[v] == ctx->index[v]) {
+		int w;
+		do {
+			w = ctx->stack[--ctx->sp];
+			ctx->onstack[w] = false;
+			ctx->comp[w] = ctx->next_comp;
+		} while (w != v);
+		ctx->next_comp++;
+	}
+}
+
+static size_t
+pkg_jobs_schedule_scc(pkg_solved_list *jobs)
+{
+	struct pkg_jobs_schedule_scc ctx = { .jobs = jobs };
+	size_t n = jobs->len;
+
+	if (n == 0)
+		return (0);
+
+	ctx.index = xcalloc(n, sizeof(int));
+	ctx.low = xcalloc(n, sizeof(int));
+	ctx.comp = xcalloc(n, sizeof(int));
+	ctx.onstack = xcalloc(n, sizeof(bool));
+	ctx.stack = xcalloc(n, sizeof(int));
+
+	for (size_t i = 0; i < n; i++)
+		ctx.index[i] = -1;
+	for (size_t i = 0; i < n; i++) {
+		if (ctx.index[i] < 0)
+			pkg_jobs_schedule_scc_visit(&ctx, i);
+	}
+	for (size_t i = 0; i < n; i++)
+		jobs->d[i]->scc = ctx.comp[i];
+
+	free(ctx.index);
+	free(ctx.low);
+	free(ctx.comp);
+	free(ctx.onstack);
+	free(ctx.stack);
+
+	return (ctx.next_comp);
+}
+
 int pkg_jobs_schedule(struct pkg_jobs *j)
 {
+	size_t ngroups;
+
+	pkg_jobs_schedule_scc(&j->jobs);
 	pkg_jobs_schedule_debug_dot_file(&j->jobs);
 
 	while (true) {
@@ -522,7 +717,10 @@ int pkg_jobs_schedule(struct pkg_jobs *j)
 		vec_push(&j->jobs, new);
 	}
 
-	pkg_jobs_schedule_topological_sort(&j->jobs);
+	/* Splitting upgrade jobs added jobs, so recompute the components
+	 * before scheduling the jobs of each component together. */
+	ngroups = pkg_jobs_schedule_scc(&j->jobs);
+	pkg_jobs_schedule_topological_sort(&j->jobs, ngroups);
 
 	dbg(3, "finished job scheduling");
 

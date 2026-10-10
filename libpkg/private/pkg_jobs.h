@@ -99,6 +99,8 @@ struct pkg_solved {
 	struct pkg_job_universe_item *items[2];
 	struct pkg_solved *xlink;	/* link split jobs together */
 	pkg_solved_t type;
+	int scc;			/* strongly connected component in the
+					   install graph, for scheduling */
 	enum pkg_solved_cycle_mark mark;/* scheduling cycle detection */
 	struct pkg_solved *path_prev;	/* scheduling cycle detection */
 };

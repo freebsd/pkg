@@ -67,6 +67,7 @@ TESTS_SH= \
 	frontend/rwhich.sh \
 	frontend/rootdir.sh \
 	frontend/rubypuppet.sh \
+	frontend/scheduling.sh \
 	frontend/search.sh \
 	frontend/set.sh \
 	frontend/version.sh \
