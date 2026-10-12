@@ -1,10 +1,32 @@
-Changes from 2.7.99.3 to 2.8.99.1
+Changes from 2.8.99.1 to 2.8.99.2
+- scheduler: order the packages providing a shared library or a named provide before the packages requiring them
 - libpkg: recognize loongarch64 ELF objects and the loongarch:64 ABI
 - fix: an install job no longer clears the automatic flag of the installed packages it keeps in the universe
-- solve: rank the assumptions and give up the least important ones instead of negating them, so that an upgrade is held back rather than a package that was installed explicitly being removed; report the packages that are held back
-- upgrade/install: add -N/--no-remove and the NEVER_REMOVE configuration option to refuse removing packages that were not explicitly requested
-- upgrade/install: recall the number of packages to be removed in the confirmation prompt and require an explicit confirmation to remove packages that were installed explicitly
+- solve: hold an upgrade back instead of removing an explicitly installed package, and report the packages that are held back
+- upgrade/install: add -N/--no-remove and NEVER_REMOVE to refuse removing unrequested packages
+- upgrade/install: require an explicit confirmation before removing explicitly installed packages
 - upgrade/install: report why each installed package that the plan removes
+- db: add out-of-schema pkg_local and pkg_attr tables for local (user) and extended package attributes
+- clean: keep the archives of the installed packages, not only the ones still available in a repository
+- pkg set -v: store the vital flag as a user override combined with the package's own flag
+- checksum: add sha512 support (sha512_base32, sha512_hex and sha512_raw)
+- checksum: add the z-base-32 and hex encodings for sha256, blake2 and blake2s
+- repo: fix a hang when using a hashed repository
+- fetch: detect up-to-date responses that do not carry a 304 Not Modified
+- libpkg: escape spaces in metalog filenames
+- config: make PKG_CONFIG_FILE a configuration variable
+- fix: available repositories completion
+- keys: fall back on the host keys when using a root directory
+- pkg_elf: detect Linux from the musl ELF interpreter
+- sqlite: update the bundled SQLite to 3.53.4
+- libpkg: add the pkg_repo_meta_extra() API
+- security: create URL package download files exclusively
+- security: harden DNS SRV response handling
+- rwhich: bound the directory dictionary prefix length
+- fetch: avoid an infinite loop when FETCH_RETRY is set to 0
+- security: enforce the audit extraction limit on the total extracted size, not per member
+
+Changes from 2.7.99.3 to 2.8.99.1
 - security: bound vulnerability database downloads and decompression; build a temporary database and atomically replace it only after validation
 - security: bound repository archive downloads and extraction (1 GiB or half of free temporary storage, 1 MiB metadata) and reject duplicate members and oversized target members
 - security: bound repository signature extraction (8 MiB callback response, at most 8 signature entries of 1 MiB each)
@@ -23,16 +45,10 @@ Changes from 2.7.99.3 to 2.8.99.1
 - fix: remove leftover nested @dir parents on deinstall
 - fix: non-root reads of WAL databases with missing sidecar files fall back to immutable mode
 - db: respect compression_level for the file db and the repository metadata
-- db: add out-of-schema pkg_local and pkg_attr tables for local (user) and extended package attributes
-- clean: keep the archives of the installed packages, not only the ones still available in a repository
 - macho: map macOS 26 / iOS 19 to Darwin 25 in pkg config abi
 - libpkg: add PKG_EVENT_PKG_FETCH_BEGIN to report the package being downloaded (for PackageKit)
 - utils: always print the signature_type
 - fix: SRV/HTTP-mirror fetch only retried the first server; walk the server list once with a per-server retry budget and report SRV/mirror-list lookup failures
-- pkg set -v: store the vital flag as a local (user) override that survives upgrades and reinstalls, and combine it with the package's own vital flag
-- checksum: add sha512 support (sha512_base32, sha512_hex and sha512_raw)
-- checksum: add sha256_zbase32, blake2_zbase32 and blake2s_zbase32 implementing the z-base-32 encoding, and blake2_hex and blake2s_hex; the historical *_base32 types keep their pkg-specific bit order for compatibility
-- checksum: fix the *_hex types when a repository sets digest_format to one of them: the digest buffer was too small and only the version and type prefix was kept
 
 Changes from 2.7.99.2 to 2.7.99.3
 - db: switch the local database to WAL journal mode with synchronous=NORMAL for better read concurrency and faster writes
