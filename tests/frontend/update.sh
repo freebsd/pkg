@@ -8,7 +8,8 @@ tests_init \
 	update_disabled_repo \
 	update_all_disabled_repos \
 	update_override_disabled_repo \
-	update_nonexistent_repo
+	update_nonexistent_repo \
+	failed_update_keeps_catalog
 
 update_error_body() {
 
@@ -293,4 +294,46 @@ EOF
 		-e match:"WARNING: repository 'bogus' does not exist" \
 		-s exit:1 \
 		pkg -R repos update -r bogus
+}
+
+# A failed update must not throw away the catalogue which has previously
+# been fetched: the repository database is only removed when it cannot be
+# opened anymore, so a failed or interrupted update still leaves a usable
+# catalogue behind.
+failed_update_keeps_catalog_body()
+{
+	# Create a package and a repository holding it
+	atf_check sh ${RESOURCEDIR}/test_subr.sh new_pkg "test" "test" "1"
+	atf_check pkg create -M test.ucl
+	mkdir repo
+	mv test-1.pkg repo/
+	atf_check -o ignore pkg repo repo
+
+	cat > pkg.conf << EOF
+PKG_DBDIR=${TMPDIR}
+PKG_CACHEDIR=${TMPDIR}/cache
+REPOS_DIR=[]
+repositories: {
+	local: { url: file://${TMPDIR}/repo }
+}
+EOF
+
+	# Fetch the catalogue
+	atf_check -o ignore pkg -C ./pkg.conf update
+
+	# Make the repository unreachable, the update cannot complete
+	mkdir repo.hide
+	mv repo/data.pkg repo/packagesite.pkg repo/meta.conf repo.hide/
+	atf_check \
+		-o match:"Unable to update repository local" \
+		-e ignore \
+		-s exit:1 \
+		pkg -C ./pkg.conf update
+
+	# The previously fetched catalogue has been kept and is still usable
+	atf_check -o match:"test 1" pkg -C ./pkg.conf rquery -U "%n %v"
+
+	# and updates work again as soon as the repository is back
+	mv repo.hide/* repo/
+	atf_check -o ignore pkg -C ./pkg.conf update
 }

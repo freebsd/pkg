@@ -845,9 +845,19 @@ pkg_repo_binary_update(struct pkg_repo *repo, bool force)
 	res = pkg_repo_binary_update_proceed(filename, repo, &t, force);
 	if (res != EPKG_OK && res != EPKG_UPTODATE) {
 		pkg_emit_notice("Unable to update repository %s", repo->name);
-		/* Remove potentially corrupted repo database so the
-		 * next update can start fresh */
-		unlink(filename);
+		/*
+		 * Most of the failures happen before the database is
+		 * touched, in that case the previous catalogue is still
+		 * usable: keep it, and only remove a database which can
+		 * not be opened anymore so the next update can start
+		 * fresh.
+		 */
+		if (repo->priv != NULL)
+			repo->ops->close(repo, false);
+		if (repo->ops->open(repo, R_OK) != EPKG_OK)
+			unlink(filename);
+		else
+			repo->ops->close(repo, false);
 		goto cleanup;
 	}
 

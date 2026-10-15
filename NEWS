@@ -12,6 +12,7 @@ Changes from 2.8.99.1 to 2.8.99.2
 - checksum: add sha512 support (sha512_base32, sha512_hex and sha512_raw)
 - checksum: add the z-base-32 and hex encodings for sha256, blake2 and blake2s
 - repo: fix a hang when using a hashed repository
+- repo: keep the previously fetched catalogue when an update fails
 - fetch: detect up-to-date responses that do not carry a 304 Not Modified
 - libpkg: escape spaces in metalog filenames
 - config: make PKG_CONFIG_FILE a configuration variable
