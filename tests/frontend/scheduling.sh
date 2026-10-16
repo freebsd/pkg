@@ -98,8 +98,15 @@ files: {
 	${TMPDIR}/libtest2fbsd.so.1: "",
 }
 EOF
-	atf_check -o ignore -e empty -s exit:0 pkg create -M ./zzz.ucl
-	atf_check -o ignore -e empty -s exit:0 pkg create -M ./aaa.ucl
+	# The test data are FreeBSD shared libraries: tell pkg to analyse
+	# them for the FreeBSD ABI, otherwise the files are ignored when
+	# pkg targets another OS.
+	atf_check -o ignore -e empty -s exit:0 \
+	    pkg -o IGNORE_OSMAJOR=1 -o ABI_FILE=$(atf_get_srcdir)/libfoo.so.1 \
+	    create -M ./zzz.ucl
+	atf_check -o ignore -e empty -s exit:0 \
+	    pkg -o IGNORE_OSMAJOR=1 -o ABI_FILE=$(atf_get_srcdir)/libfoo.so.1 \
+	    create -M ./aaa.ucl
 	setup_repo
 
 	atf_check -e ignore -s exit:0 -o save:${TMPDIR}/out \
