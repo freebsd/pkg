@@ -83,8 +83,8 @@ EOF
 # provides.
 shlibs_order_body()
 {
-	atf_check cp ${RESOURCEDIR}/libfoo.so.1 ${TMPDIR}/libfoo.so.1
-	atf_check cp ${RESOURCEDIR}/libtest2fbsd.so.1 ${TMPDIR}/libtest2fbsd.so.1
+	atf_check cp $(atf_get_srcdir)/libfoo.so.1 ${TMPDIR}/libfoo.so.1
+	atf_check cp $(atf_get_srcdir)/libtest2fbsd.so.1 ${TMPDIR}/libtest2fbsd.so.1
 
 	atf_check sh ${RESOURCEDIR}/test_subr.sh new_pkg zzz zzz 1.0 /
 	cat << EOF >> zzz.ucl
