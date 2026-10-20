@@ -480,7 +480,11 @@ elf_parse_arch(Elf *elf, GElf_Ehdr *ehdr)
 			return (PKG_ARCH_RISCV64);
 		}
 		break;
-#ifdef EM_LOONGARCH
+	/*
+	 * The bundled ELF headers always know the LoongArch machine type,
+	 * a system libelf only does when its headers define it.
+	 */
+#if !defined(HAVE_LIBELF) || defined(EM_LOONGARCH)
 	case EM_LOONGARCH:
 		/* Only support LA64 */
 		if (ehdr->e_ident[EI_CLASS] == ELFCLASS64) {
