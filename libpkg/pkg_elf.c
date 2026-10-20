@@ -480,12 +480,14 @@ elf_parse_arch(Elf *elf, GElf_Ehdr *ehdr)
 			return (PKG_ARCH_RISCV64);
 		}
 		break;
+#ifdef EM_LOONGARCH
 	case EM_LOONGARCH:
 		/* Only support LA64 */
 		if (ehdr->e_ident[EI_CLASS] == ELFCLASS64) {
 			return (PKG_ARCH_LOONGARCH64);
 		}
 		break;
+#endif
 	}
 
 	return (PKG_ARCH_UNKNOWN);
