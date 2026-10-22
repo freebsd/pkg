@@ -1155,7 +1155,8 @@ expand_plist_variables(const char *in, kvlist_t *vars)
 		/* we have a variable */
 		bool found = false;
 		vec_foreach(*vars, i) {
-			if (strncmp(cp, vars->d[i]->key, len) != 0)
+			if (strlen(vars->d[i]->key) != len ||
+			    strncmp(cp, vars->d[i]->key, len) != 0)
 				continue;
 			sb_cat(&buf, vars->d[i]->value);
 			found = true;

@@ -5,6 +5,7 @@
 tests_init \
 	create_from_plist \
 	create_from_plist_with_variables \
+	create_from_plist_with_variables_exact_match \
 	create_from_plist_set_owner \
 	create_from_plist_set_group_space \
 	create_from_plist_gather_mode \
@@ -890,4 +891,24 @@ create_from_plist_with_variables_body() {
 		-e match:"%%plop%%" \
 		-s exit:1 \
 		pkg create -o ${TMPDIR} -m . -p test.plist -r .
+}
+
+create_from_plist_with_variables_exact_match_body() {
+	touch plipfile1
+	genmanifest
+	genplist "
+@var key1suffix plop
+@var key1 plip
+%%key1%%file1"
+
+	atf_check \
+		-o empty \
+		-e empty \
+		-s exit:0 \
+		pkg create -o ${TMPDIR} -m . -p test.plist -r .
+
+	basic_validation
+	atf_check \
+		-o inline:"/plipfile1\n" \
+		pkg info -F test-1.pkg -ql
 }
