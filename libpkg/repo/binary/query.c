@@ -781,6 +781,7 @@ pkg_repo_binary_file_which_parse(FILE *fp, struct pkg_repo *repo,
 	char *match_dir = NULL;
 	const char *match_file = NULL;
 	int match_dir_idx = -1;
+	bool dirs_resolved = false;
 
 	const char *last_slash = strrchr(path, '/');
 	if (last_slash == NULL) {
@@ -809,9 +810,11 @@ pkg_repo_binary_file_which_parse(FILE *fp, struct pkg_repo *repo,
 			phase = 1;
 			/*
 			 * For exact match, find the directory index now that
-			 * the dictionary is fully parsed.
+			 * the dictionary is fully parsed.  This has to happen
+			 * only once, empty lines also delimit packages.
 			 */
-			if (match_dir_idx == -1) {
+			if (!dirs_resolved) {
+				dirs_resolved = true;
 				for (size_t i = 0; i < dirs.len; i++) {
 					if (STREQ(dirs.d[i], match_dir)) {
 						match_dir_idx = (int)i;
@@ -950,6 +953,7 @@ pkg_repo_binary_file_which_parse_glob(FILE *fp, struct pkg_repo *repo,
 	const char *id_sql = "SELECT id FROM packages WHERE name = ?1 "
 	    "AND version = ?2 LIMIT 1;";
 	struct glob_matcher *gm = NULL;
+	bool dirs_resolved = false;
 	int ret = EPKG_FATAL;
 
 	gm = glob_matcher_new(pattern);
@@ -967,10 +971,14 @@ pkg_repo_binary_file_which_parse_glob(FILE *fp, struct pkg_repo *repo,
 				cur_pkgid = -1;
 			phase = 1;
 			/*
-			 * Directory dictionary is fully parsed — resolve
-			 * exact directory index if applicable.
+			 * Directory dictionary is fully parsed: resolve the
+			 * exact directory index once, empty lines also delimit
+			 * packages.
 			 */
-			glob_matcher_resolve_dirs(gm, &dirs);
+			if (!dirs_resolved) {
+				dirs_resolved = true;
+				glob_matcher_resolve_dirs(gm, &dirs);
+			}
 			continue;
 		}
 
