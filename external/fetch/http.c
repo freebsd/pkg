@@ -95,6 +95,15 @@
 #include <netinet/in.h>
 #include <netinet/tcp.h>
 
+#ifdef __APPLE__
+/*
+ * Darwin does not flush queued output when TCP_NOPUSH is cleared or
+ * TCP_NODELAY is set.  Do not cork requests: a short request can otherwise
+ * remain buffered while both the client and the server wait for input.
+ */
+#undef TCP_NOPUSH
+#endif
+
 #include "fetch.h"
 #include "common.h"
 #include "httperr.h"
