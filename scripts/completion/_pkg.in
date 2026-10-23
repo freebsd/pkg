@@ -157,7 +157,8 @@ _pkg_config_opts() {
 		"UNSET_TIMESTAMP[don't include timestamps in package tar(1) archive]:boolean:(yes no)" \
 		'VALID_URL_SCHEME[valid URL schemes]:list' \
 		'VERSION_SOURCE[default database for comparing version numbers in pkg-version(8)]:database:(( I\:index P\:ports R\:remote ))' \
-		'VULNXML_SITE[specify URL to fetch vuln.xml vulnerability database from]: : _urls -F "( gopher:* file:* ftp:* )"' \
+		'VULNXML_SITE[specify URL to fetch freebsd-osv.json OSV JSON vulnerability database from. Please use OSVF_SITE for new installations!]: : _urls -F "( gopher:* file:* ftp:* )"' \
+		'OSVF_SITE[specify URL to fetch freebsd-osv.json OSV JSON vulnerability database from]: : _urls -F "( gopher:* file:* ftp:* )"' \
 		'WARN_SIZE_LIMIT[ask user when performing changes for more than this limit]:limit [1048576]' \
 		'WORKERS_COUNT[how many workers are used for pkg-repo]:workers:( {0..$(sysctl -n hw.ncpu)} )'
 }
