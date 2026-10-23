@@ -60,7 +60,7 @@ esac
 cc_check_tools ar ranlib strip
 
 define EXTRA_LIBS ""
-define LIBVERSION 4
+define LIBVERSION 5
 _soextver=$(get_define SH_SOEXTVER)
 _libversion=$(get_define LIBVERSION)
 # Format: replace %s with version number

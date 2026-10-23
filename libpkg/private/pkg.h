@@ -609,6 +609,7 @@ struct pkg_repo {
 	bool rwhich_database;
 
 	unsigned int priority;
+	int64_t fetch_workers;	/* Zero means no repository-specific limit. */
 
 	ip_version_t ip;
 	kvlist_t env;
@@ -746,6 +747,8 @@ int pkg_fetch_file_to_fd(struct pkg_repo *repo, int dest, struct fetch_item *,
     bool silent);
 int pkg_repo_open(struct pkg_repo *repo);
 int pkg_repo_fetch_package(struct pkg *pkg);
+int pkg_fetch_packages(struct pkg **pkgs, size_t count, bool mirror,
+    const char *destdir, bool symlink);
 int pkg_repo_mirror_package(struct pkg *pkg, const char *destdir, bool symlink);
 int pkg_repo_fetch_remote_extract_fd(struct pkg_repo *repo, struct pkg_repo_content *);
 int pkg_repo_meta_dump_fd(struct pkg_repo_meta *target, const int fd);
