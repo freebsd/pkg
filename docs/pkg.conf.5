@@ -228,6 +228,11 @@ each server in the list is tried this many times before advancing to
 the next one; the list is walked at most once.
 For a plain repository (a single server) this is the total number of
 retries before giving up.
+Package downloads scheduled by
+.Cm FETCH_WORKERS
+share host failures and may switch to an available mirror before retrying
+a host in cooldown, as described under
+.Cm FETCH_HOSTS .
 Default: 3.
 .It Cm FETCH_TIMEOUT: integer
 Maximum number of seconds to wait for any one file to download from the
@@ -235,6 +240,57 @@ network, either by SSH or any of the protocols supported by
 .Xr fetch 3
 functions.
 Default: 30.
+.It Cm FETCH_WORKERS: integer
+Maximum number of packages to download concurrently.
+Must be greater than zero.
+Set to 1 to download packages sequentially.
+This applies to package downloads for fetch, install, upgrade and mirror
+operations.
+Repository metadata is fetched separately.
+Downloads also respect
+.Cm FETCH_WORKERS_PER_HOST
+and
+.Cm FETCH_HOSTS .
+Default: 3.
+.It Cm FETCH_WORKERS_PER_HOST: integer
+Maximum number of concurrent package downloads per remote hostname.
+Must be greater than zero.
+The limit is shared across repositories, schemes and ports using the same
+hostname, including hosts discovered through SRV records or HTTP mirror lists.
+Different hostnames retain separate limits even when they resolve to the same IP.
+This setting does not restrict local file copies.
+Default: 1.
+.It Cm FETCH_HOSTS: object
+Overrides the per-host limit for individual hostnames.
+Each key is a hostname, with an object containing a positive integer
+.Cm fetch_workers
+value. An omitted value inherits
+.Cm FETCH_WORKERS_PER_HOST .
+Hostnames are compared without regard to case or a trailing DNS dot.
+URLs and hostname-and-port pairs are not accepted as keys; IP literals are
+also supported.
+The global
+.Cm FETCH_WORKERS
+limit always applies.
+For example:
+.Bd -literal -offset indent
+FETCH_HOSTS: {
+    "mirror.example.org": { fetch_workers: 2; };
+};
+.Ed
+.Pp
+Failed or persistently slow hosts are temporarily excluded across repositories.
+Retries use exponential backoff with jitter and honor HTTP Retry-After delays,
+including dates. Only one recovery probe is admitted after a host cooldown.
+A host is excluded for the rest of the operation after exhausting its
+.Cm FETCH_RETRY
+failure budget. An individual package also has a bounded attempt budget per
+endpoint. A zero retry setting permits one attempt per endpoint.
+When no transfer is active, waiting for hosts to recover is bounded to five
+minutes; a longer Retry-After causes failure rather than an early retry.
+HTTP redirects acquire the destination host's budget before connecting.
+Host failure state is discarded at the end of the download operation.
+Default: empty.
 .It Cm HANDLE_RC_SCRIPTS: boolean
 When enabled, this option will automatically perform start/stop of
 services during package installation and deinstallation.

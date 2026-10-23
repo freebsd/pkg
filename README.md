@@ -24,6 +24,34 @@ registration backends.
 It abstracts package management details such as registration, remote
 repositories, package creation, updating, etc.
 
+Package downloads run concurrently, with three workers by default. Set
+`FETCH_WORKERS` in `pkg.conf`, or use `pkg -o FETCH_WORKERS=5 fetch -a`, to
+change the limit. Setting it to `1` selects sequential downloads.
+On a terminal, each active download has its own progress line. Completed
+downloads appear above the active lines, numbered in completion order.
+Package names are padded to align the progress columns within the terminal;
+long names are displayed in full and may wrap onto additional lines.
+Downloads share a per-host limit of one by default, across all repositories
+and mirrors using the same hostname. Set `FETCH_WORKERS_PER_HOST` to change
+that default, or override individual FQDNs in `pkg.conf`:
+
+```ucl
+FETCH_WORKERS: 3;
+FETCH_WORKERS_PER_HOST: 1;
+FETCH_HOSTS: {
+    "mirror.example.org": { fetch_workers: 2; };
+};
+```
+
+Hostname matching ignores case and a trailing DNS dot. The same hostname
+shares its budget across ports and schemes; different hostnames have separate
+budgets even when they resolve to the same IP. SRV and HTTP mirrors are
+selected centrally. Failing or persistently slow hosts are suspended across
+repositories, with bounded retries, exponential backoff and `Retry-After`
+support. Cross-host redirects also acquire the destination host's slot.
+Host health is kept for the current download operation only. Repository
+`fetch_workers` settings have been replaced by the host configuration above.
+
 <a name="pkgfmt"></a>
 ### pkg package format
 
