@@ -9,6 +9,7 @@ SRCS=	backup_lib.c \
 	pkg_key.c \
 	pkgsign.c \
 	pkgsign_ecc.c \
+	pkgsign_mldsa.c \
 	pkgsign_ossl.c \
 	clean_cache.c \
 	metalog.c \

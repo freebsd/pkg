@@ -143,6 +143,13 @@ Backend using EdDSA with keys created by
 See
 .Sx Elliptic Curve Cryptography
 for more discussion.
+.It Sy mldsa
+Backend using ML-DSA-87 with keys created either by OpenSSL or by
+.Nm
+.Fl -create .
+Only available when
+.Xr pkg 8
+is built against OpenSSL 3.5 or later.
 .El
 .El
 .Ss Elliptic Curve Cryptography
