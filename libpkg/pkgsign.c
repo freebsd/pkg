@@ -30,6 +30,8 @@
 #include <stdlib.h>
 #include <string.h>
 
+#include <openssl/opensslv.h>
+
 #include "private/pkg.h"
 #include "private/pkgsign.h"
 #include "hash.h"
@@ -38,6 +40,10 @@
 /* Other parts of libpkg should use pkgsign instead of rsa directly. */
 extern const struct pkgsign_ops	pkgsign_ossl;
 extern const struct pkgsign_ops	pkgsign_ecc;
+
+#if OPENSSL_VERSION_NUMBER >= 0x30500000L
+extern const struct pkgsign_ops	pkgsign_mldsa;
+#endif
 
 static hash_t *pkgsign_verifiers;
 
@@ -68,6 +74,12 @@ static struct pkgsign_impl {
 		.pi_name = "eddsa",
 		.pi_ops = &pkgsign_ecc,
 	},
+#if OPENSSL_VERSION_NUMBER >= 0x30500000L
+	{
+		.pi_name = "mldsa",
+		.pi_ops = &pkgsign_mldsa,
+	},
+#endif
 };
 
 static int
