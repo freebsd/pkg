@@ -89,6 +89,13 @@ local: {
 EOF
 }
 
+# The signature must have been accepted, i.e. the catalogue was loaded.
+check_loaded() {
+	atf_check -o inline:"1\n" \
+		pkg -o REPOS_DIR="${TMPDIR}" \
+		-o PKG_CACHEDIR="${TMPDIR}" "$@" rquery -U %v test
+}
+
 fingerprint_ecc_body() {
 	setup "" "ecc"
 
@@ -97,6 +104,7 @@ fingerprint_ecc_body() {
 		-e match:".*extracting signature of repo.*" \
 		pkg -dd -o REPOS_DIR="${TMPDIR}" \
 		-o PKG_CACHEDIR="${TMPDIR}" update
+	check_loaded
 }
 
 fingerprint_mldsa_body() {
@@ -107,10 +115,7 @@ fingerprint_mldsa_body() {
 		-e match:".*extracting signature of repo.*" \
 		pkg -dd -o REPOS_DIR="${TMPDIR}" \
 		-o PKG_CACHEDIR="${TMPDIR}" update
-
-	atf_check -o inline:"1\n" \
-		pkg -o REPOS_DIR="${TMPDIR}" \
-		-o PKG_CACHEDIR="${TMPDIR}" rquery -U %v test
+	check_loaded
 }
 
 fingerprint_rsa_body() {
@@ -121,6 +126,7 @@ fingerprint_rsa_body() {
 		-e match:".*extracting signature of repo.*" \
 		pkg -dd -o REPOS_DIR="${TMPDIR}" \
 		-o PKG_CACHEDIR="${TMPDIR}" update
+	check_loaded
 }
 
 fingerprint_rootdir_body() {
@@ -131,4 +137,5 @@ fingerprint_rootdir_body() {
 		-e match:".*extracting signature of repo.*" \
 		pkg -dd -o REPOS_DIR="${TMPDIR}" \
 		-o PKG_CACHEDIR="${TMPDIR}" -r "${TMPDIR}/rootdir" update
+	check_loaded -r "${TMPDIR}/rootdir"
 }
