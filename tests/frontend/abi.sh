@@ -14,7 +14,6 @@ native_body() {
 	if [ "$thisarch" = "unknown" -o "${OS}" = "Darwin" ]; then
 		thisarch=$(uname -m)
 	fi
-	thisabi=$thisarch
 	case "${OS}" in
 		Linux)
 			version=$(readelf -n /bin/uname  | awk '/ABI: / { split($NF, a, "."); print a[1]"."a[2] }')
@@ -27,18 +26,19 @@ native_body() {
 		Darwin)
 			# without a hint, the first arch is selected, which happens to be consistently x86_64
 			thisarch="x86_64"
-			thisabi="x86_64"
 			version=$(uname -r | cut -d. -f1)
 			;;
 		FreeBSD)
 			version=$(freebsd-version -u | cut -d. -f1)
 			thisarch=$(echo "${thisarch}" | sed s/x86_64/amd64/)
-			thisabi=$(echo "${thisarch}" | sed 's/amd64/x86:64/; s/aarch64/aarch64:64/; s/loongarch64/loongarch:64/')
 			;;
 		*)
 			version=$(uname -r | cut -d. -f1)
 			;;
 	esac
+	# altabi uses the legacy arch names on every OS, not just FreeBSD
+	# (e.g. aarch64 on Linux); x86_64 is not translated.
+	thisabi=$(echo "${thisarch}" | sed 's/amd64/x86:64/; s/aarch64/aarch64:64/; s/loongarch64/loongarch:64/')
 	_expected="${OS}:${version}:${thisarch}\n"
 	atf_check \
 		-o inline:"${_expected}" \
