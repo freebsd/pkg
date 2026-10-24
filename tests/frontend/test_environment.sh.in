@@ -42,6 +42,15 @@ atf_skip_on() {
 	fi
 }
 
+# Skip if this build of pkg does not provide the named signer, e.g. mldsa
+# requires OpenSSL 3.5 or later.
+atf_require_signer() {
+	if pkg key --public -t "$1" /nonexistent 2>&1 | \
+	    grep -q "Failed to create key context"; then
+		atf_skip "signer '$1' is not available in this build"
+	fi
+}
+
 atf_require() {
 	if ! command -v "$1" 2>/dev/null >/dev/null; then
 		shift

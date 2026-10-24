@@ -4,6 +4,7 @@
 
 tests_init \
 	fingerprint_ecc \
+	fingerprint_mldsa \
 	fingerprint_rsa \
 	fingerprint_rootdir
 
@@ -12,6 +13,11 @@ setup() {
 	local _type=$2
 	local _fingerprint
 	local _typecmd
+	local _signcmd
+	local _repoargs
+
+	_signcmd=""
+	_repoargs="fakerepo signing_command: sh sign.sh"
 
 	case "$_type" in
 	rsa)
@@ -31,7 +37,18 @@ setup() {
 		keyform="-keyform DER"
 		_typecmd='printf "%s\n%s\n" "TYPE" "ecdsa"'
 		;;
+	mldsa)
+		atf_require_signer mldsa
+		atf_check -o save:repo.pub -e ignore \
+			pkg key --create -t mldsa repo.key
+		keyform=""
+		_typecmd='printf "%s\n%s\n" "TYPE" "mldsa"'
+		_signcmd='pkg key --sign -t mldsa repo.key'
+		# The signer type selects the digest passed to sign.sh.
+		_repoargs="--sign-type mldsa --sign-cmd 'sh sign.sh' fakerepo"
+		;;
 	esac
+	: ${_signcmd:="openssl dgst $keyform -sign repo.key -sha256 -binary"}
 
 	rm -rf ${TMPDIR}/keys || :
 	mkdir -p ${_root}/${TMPDIR}/keys/trusted
@@ -48,7 +65,7 @@ read -t 2 sum
 
 $_typecmd
 echo SIGNATURE
-echo -n \$sum | openssl dgst $keyform -sign repo.key -sha256 -binary
+echo -n \$sum | $_signcmd
 echo
 echo CERT
 cat repo.pub
@@ -59,8 +76,8 @@ EOF
 
 	atf_check -o ignore -e ignore \
 		pkg create -M test.ucl -o fakerepo
-	atf_check -o ignore \
-		pkg repo fakerepo signing_command: sh sign.sh
+	atf_check -o ignore -x \
+		pkg repo $_repoargs
 
 	cat >> repo.conf << EOF
 local: {
@@ -80,6 +97,20 @@ fingerprint_ecc_body() {
 		-e match:".*extracting signature of repo.*" \
 		pkg -dd -o REPOS_DIR="${TMPDIR}" \
 		-o PKG_CACHEDIR="${TMPDIR}" update
+}
+
+fingerprint_mldsa_body() {
+	setup "" "mldsa"
+
+	atf_check \
+		-o ignore \
+		-e match:".*extracting signature of repo.*" \
+		pkg -dd -o REPOS_DIR="${TMPDIR}" \
+		-o PKG_CACHEDIR="${TMPDIR}" update
+
+	atf_check -o inline:"1\n" \
+		pkg -o REPOS_DIR="${TMPDIR}" \
+		-o PKG_CACHEDIR="${TMPDIR}" rquery -U %v test
 }
 
 fingerprint_rsa_body() {
