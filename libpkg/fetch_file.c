@@ -159,8 +159,8 @@ stdio_fetch(struct pkg_repo *repo, int dest, struct fetch_item *fi)
 			pkg_dbg(PKG_DBG_FETCH, 1, "Read status: %jd over %jd", (intmax_t)done, (intmax_t)fi->size);
 		} else
 			pkg_dbg(PKG_DBG_FETCH, 1,  "Read status: %jd", (intmax_t)done);
-		if (fi->size > 0)
-			pkg_emit_progress_tick(done, fi->size);
+		if (fi->size > 0 && pkg_emit_progress_tick(done, fi->size))
+			return (EPKG_CANCEL);
 	}
 	if (fi->max_size > 0 && done == fi->max_size &&
 	    (fi->size == 0 || fi->size > fi->max_size)) {

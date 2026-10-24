@@ -24,6 +24,19 @@ registration backends.
 It abstracts package management details such as registration, remote
 repositories, package creation, updating, etc.
 
+Package downloads run concurrently, with three workers by default. Set
+`FETCH_WORKERS` in `pkg.conf`, or use `pkg -o FETCH_WORKERS=5 fetch -a`, to
+change the limit. Setting it to `1` selects sequential downloads.
+On a terminal, each active download has its own progress line. Completed
+downloads appear above the active lines, numbered in completion order.
+Package names are padded to align the progress columns within the terminal;
+long names are displayed in full and may wrap onto additional lines.
+Each repository can also set `fetch_workers: 2` alongside its `url` and
+`mirror_type` options. This caps that repository at two concurrent downloads
+while other repositories share the remaining global capacity. The repository
+default is `fetch_workers: 0`, meaning no repository-specific cap; the global
+`FETCH_WORKERS` limit still applies.
+
 <a name="pkgfmt"></a>
 ### pkg package format
 
