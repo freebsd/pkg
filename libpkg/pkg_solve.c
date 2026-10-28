@@ -1190,7 +1190,7 @@ pkg_solve_picosat_iter(struct pkg_solve_problem *problem, int iter __unused)
 				picosat_set_default_phase_lit(problem->sat, i + 1, 1);
 				picosat_set_more_important_lit(problem->sat, i + 1);
 			}
-			else if (pslice != NULL && pslice->count == 1) {
+			else {
 				/* Prefer not to install if have no local version */
 				picosat_set_default_phase_lit(problem->sat, i + 1, -1);
 				picosat_set_less_important_lit(problem->sat, i + 1);
