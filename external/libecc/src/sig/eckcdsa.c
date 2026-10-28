@@ -300,6 +300,7 @@ int _eckcdsa_sign_finalize(struct ec_sign_context *ctx, u8 *sig, u8 siglen)
 	unsigned int i;
 	nn e, tmp, s, k;
 	u8 hzm[MAX_DIGEST_SIZE];
+	u8 hzm_xor[MAX_DIGEST_SIZE];
 	u8 r[MAX_DIGEST_SIZE];
 	u8 tmp_buf[BYTECEIL(CURVES_MAX_P_BIT_LEN)];
 	hash_context r_ctx;
@@ -424,12 +425,20 @@ int _eckcdsa_sign_finalize(struct ec_sign_context *ctx, u8 *sig, u8 siglen)
 	ret = buf_lshift(r, hsize, shift); EG(ret, err);
 	dbg_buf_print("r post-mask", r, r_len);
 
-	/* 7. Compute e = OS2I(r XOR h) mod q */
+	/*
+	 * 7. Compute e = OS2I(r XOR h) mod q
+	 *
+	 * NOTE: 'hzm' holds the persistent (masked) H(z||m) and must stay
+	 * untouched across nonce-retry (goto restart) passes: XOR-ing and
+	 * clearing it in place would make a retry compute e from r alone
+	 * instead of r XOR H(z||m). The XOR result is computed into the
+	 * scratch buffer 'hzm_xor' instead.
+	 */
 	for (i = 0; i < r_len; i++) {
-		hzm[i] ^= r[i];
+		hzm_xor[i] = (u8)(hzm[i] ^ r[i]);
 	}
-	ret = nn_init_from_buf(&tmp, hzm, r_len); EG(ret, err);
-	ret = local_memset(hzm, 0, r_len); EG(ret, err);
+	ret = nn_init_from_buf(&tmp, hzm_xor, r_len); EG(ret, err);
+	ret = local_memset(hzm_xor, 0, r_len); EG(ret, err);
 	ret = nn_mod(&e, &tmp, q); EG(ret, err);
 	dbg_nn_print("e", &e);
 
@@ -471,6 +480,7 @@ int _eckcdsa_sign_finalize(struct ec_sign_context *ctx, u8 *sig, u8 siglen)
 	ret = nn_export_to_buf(sig + r_len, s_len, &s);
 
  err:
+	IGNORE_RET_VAL(local_memset(hzm, 0, sizeof(hzm)));
 	prj_pt_uninit(&kG);
 	nn_uninit(&e);
 	nn_uninit(&tmp);

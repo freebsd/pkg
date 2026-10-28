@@ -28,6 +28,53 @@
  * [0, 2^(8 * len)[. Provided length 'len' parameter must be less than or equal
  * to NN_MAX_BYTE_LEN. The function returns -1 on error and 0 on success.
  */
+/*
+ * Fill the first 'len' bytes of 'out' (already nn_init()'ed with at least
+ * that many bytes of storage) with random data, in an endianness-agnostic
+ * way.
+ *
+ * Full words: writing raw random bytes directly into out->val[i] is
+ * correct regardless of host endianness, since every byte of a
+ * fully-random word is independently uniform no matter which byte
+ * position it lands in.
+ *
+ * Partial final word (if any): its value is built arithmetically from a
+ * small scratch buffer instead of writing raw bytes into out->val's
+ * native memory layout.
+ */
+ATTRIBUTE_WARN_UNUSED_RET static int _nn_fill_random_bytes(nn_t out, u16 len)
+{
+	int ret;
+	u16 i;
+	u8 full_words, rem;
+
+	full_words = (u8)(len / WORD_BYTES);
+	rem = (u8)(len % WORD_BYTES);
+
+	for (i = 0; i < full_words; i++) {
+		ret = get_random((u8*)&(out->val[i]), WORD_BYTES); EG(ret, err);
+	}
+
+	if (rem) {
+		u8 rbuf[WORD_BYTES];
+		word_t w = 0;
+		u8 j;
+
+		ret = get_random(rbuf, rem); EG(ret, err);
+		for (j = 0; j < rem; j++) {
+			w = (word_t)((w << 8) | rbuf[j]);
+		}
+		out->val[full_words] = w;
+
+		IGNORE_RET_VAL(local_memset(rbuf, 0, sizeof(rbuf)));
+	}
+
+	ret = 0;
+
+err:
+	return ret;
+}
+
 int nn_get_random_len(nn_t out, u16 len)
 {
 	int ret;
@@ -35,7 +82,7 @@ int nn_get_random_len(nn_t out, u16 len)
 	MUST_HAVE((len <= NN_MAX_BYTE_LEN), ret, err);
 
 	ret = nn_init(out, len); EG(ret, err);
-	ret = get_random((u8*) out->val, len);
+	ret = _nn_fill_random_bytes(out, len);
 
 err:
 	return ret;
@@ -114,7 +161,7 @@ int nn_get_random_mod(nn_t out, nn_src_t q)
 
 	/* 2) generate a random value tmp_rand twice the size of q */
 	ret = nn_init(&tmp_rand, (u16)(2 * q_len)); EG(ret, err);
-	ret = get_random((u8 *)tmp_rand.val, (u16)(2 * q_len)); EG(ret, err);
+	ret = _nn_fill_random_bytes(&tmp_rand, (u16)(2 * q_len)); EG(ret, err);
 
 	/* 3) compute out = tmp_rand mod q' */
 	ret = nn_init(out, (u16)q_len); EG(ret, err);

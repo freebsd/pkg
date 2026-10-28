@@ -149,6 +149,9 @@ int nn_mul(nn_t out, nn_src_t in1, nn_src_t in2)
 {
 	int ret;
 
+        /* Sanity check */
+        MUST_HAVE(((in1->wlen + in2->wlen) <= NN_MAX_WORD_LEN), ret, err);
+
 	ret = nn_check_initialized(in1); EG(ret, err);
 	ret = nn_check_initialized(in2); EG(ret, err);
 	ret = nn_mul_low(out, in1, in2, (u8)(in1->wlen + in2->wlen));

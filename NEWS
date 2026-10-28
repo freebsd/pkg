@@ -2,6 +2,7 @@ Changes from 2.8.99.4 to 2.8.99.5
 - sqlite: update the bundled SQLite to 3.54.1
 - lua: update the bundled Lua to 5.4.9
 - libder: update to the latest upstream version
+- libecc: update to the latest upstream version
 - linenoise: update to the latest upstream version
 - yxml: update to the latest upstream version
 - utlist: update to 2.4.0

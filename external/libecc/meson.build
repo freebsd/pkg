@@ -111,7 +111,7 @@ if with_sig_blinding_opt
 endif
 
 with_complete_formulas_opt = get_option('with_complete_formulas')
-if with_complete_formulas_opt
+if not with_complete_formulas_opt
   build_args += '-DNO_USE_COMPLETE_FORMULAS'
 endif
 

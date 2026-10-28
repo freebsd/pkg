@@ -317,14 +317,14 @@ int _sm2_sign_finalize(struct ec_sign_context *ctx, u8 *sig, u8 siglen)
 	nn_src_t q, x;
 	prj_pt kG;
 	int ret, iszero, cmp;
-	nn k, r, s, tmp, tmp2, tmp3;
+	nn k, r, s, tmp, tmp2, tmp3, h_nn;
 #ifdef USE_SIG_BLINDING
 	nn b;        /* blinding mask */
 	b.magic = WORD(0);
 #endif
 
 	kG.magic = WORD(0);
-	k.magic = r.magic = s.magic = tmp.magic = tmp2.magic = tmp3.magic = WORD(0);
+	k.magic = r.magic = s.magic = tmp.magic = tmp2.magic = tmp3.magic = h_nn.magic = WORD(0);
 
 	/*
 	 * First, verify context has been initialized and private part too.
@@ -364,6 +364,16 @@ int _sm2_sign_finalize(struct ec_sign_context *ctx, u8 *sig, u8 siglen)
 	ret = ctx->h->hfunc_finalize(&(ctx->sign_data.sm2.h_ctx), hash); EG(ret, err);
 	dbg_buf_print("h", hash, hsize);
 
+	/*
+	 * Import H as OS2I(H) once and for all: h_nn is read-only from this
+	 * point on and must survive across nonce-retry (goto restart) passes.
+	 * Re-importing from 'hash' inside the loop after clearing it would
+	 * make a retry sign a zeroed message representative instead of the
+	 * real digest.
+	 */
+	ret = nn_init_from_buf(&h_nn, hash, hsize); EG(ret, err);
+	ret = local_memset(hash, 0, hsize); EG(ret, err);
+
  restart:
 
 	/* 3. Get a random value k in ]0,q[ */
@@ -390,10 +400,8 @@ int _sm2_sign_finalize(struct ec_sign_context *ctx, u8 *sig, u8 siglen)
 	dbg_nn_print("W_y", &(kG.Y.fp_val));
 
 	/* 5. Compute r = (OS2I(H) + Wx) mod q */
-	ret = nn_init_from_buf(&tmp, hash, hsize); EG(ret, err);
-	ret = local_memset(hash, 0, hsize); EG(ret, err);
-	dbg_nn_print("OS2I(H)", &tmp);
-	ret = nn_add(&tmp2, &tmp, &(kG.X.fp_val)); EG(ret, err);
+	dbg_nn_print("OS2I(H)", &h_nn);
+	ret = nn_add(&tmp2, &h_nn, &(kG.X.fp_val)); EG(ret, err);
 	ret = nn_mod(&r, &tmp2, q); EG(ret, err);
 	dbg_nn_print("r", &r);
 
@@ -462,6 +470,7 @@ err:
 	nn_uninit(&tmp);
 	nn_uninit(&tmp2);
 	nn_uninit(&tmp3);
+	nn_uninit(&h_nn);
 #ifdef USE_SIG_BLINDING
 	nn_uninit(&b);
 #endif

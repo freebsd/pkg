@@ -2311,7 +2311,8 @@ ATTRIBUTE_WARN_UNUSED_RET static int _eddsa_verify_batch_no_memory(const u8 **s,
 	z.magic = h.magic = WORD(0);
 
 	/* First, some sanity checks */
-	MUST_HAVE((s != NULL) && (pub_keys != NULL) && (m != NULL) && (adata != NULL), ret, err);
+	MUST_HAVE((s != NULL) && (s_len != NULL) && (pub_keys != NULL) &&
+		  (m != NULL) && (m_len != NULL) && (adata != NULL), ret, err);
 	/* We need at least one element in our batch data bags */
 	MUST_HAVE((num > 0), ret, err);
 
@@ -2400,6 +2401,7 @@ gen_z_again:
 		/* Check given signature length is the expected one */
 		siglen = s_len[i];
 		sig = s[i];
+		MUST_HAVE((sig != NULL), ret, err);
 		MUST_HAVE((siglen == EDDSA_SIGLEN(hsize)), ret, err);
 		MUST_HAVE((siglen == (EDDSA_R_LEN(hsize) + EDDSA_S_LEN(hsize))), ret, err);
 
@@ -2485,6 +2487,7 @@ gen_z_again:
 		ret = hm->hfunc_update(&h_ctx, hash, EDDSA_R_LEN(hsize)); EG(ret, err);
 		/* Finish our computation of h = H(R || A || M) */
 		/* Update the hash with the message or its hash for the PH versions */
+		MUST_HAVE(((m_len[i] == 0) || (m[i] != NULL)), ret, err);
 		if(use_message_pre_hash == 1){
 			ret = hm->hfunc_update(&h_ctx_pre_hash, m[i], m_len[i]); EG(ret, err);
 			ret = hm->hfunc_finalize(&h_ctx_pre_hash, hash); EG(ret, err);
@@ -2615,7 +2618,8 @@ ATTRIBUTE_WARN_UNUSED_RET static int _eddsa_verify_batch(const u8 **s, const u8 
 	S.magic = z.magic = crv_edwards.magic = WORD(0);
 
 	/* First, some sanity checks */
-	MUST_HAVE((s != NULL) && (pub_keys != NULL) && (m != NULL) && (adata != NULL), ret, err);
+	MUST_HAVE((s != NULL) && (s_len != NULL) && (pub_keys != NULL) &&
+		  (m != NULL) && (m_len != NULL) && (adata != NULL), ret, err);
 	MUST_HAVE((scratch_pad_area_len != NULL), ret, err);
 	MUST_HAVE(((2 * num) >= num), ret, err);
 	MUST_HAVE(((2 * num) + 1) >= num, ret, err);
@@ -2638,7 +2642,7 @@ ATTRIBUTE_WARN_UNUSED_RET static int _eddsa_verify_batch(const u8 **s, const u8 
 		}
 	}
 
-	expected_len = ((2 * num) + 1) * sizeof(verify_batch_scratch_pad);
+	expected_len = (u64)((2 * (u64)num) + 1) * (u64)sizeof(verify_batch_scratch_pad);
 	MUST_HAVE((expected_len < 0xffffffff), ret, err);
 
 	if(scratch_pad_area == NULL){
@@ -2736,6 +2740,7 @@ gen_z_again:
 		/* Check given signature length is the expected one */
 		siglen = s_len[i];
 		sig = s[i];
+		MUST_HAVE((sig != NULL), ret, err);
 		MUST_HAVE((siglen == EDDSA_SIGLEN(hsize)), ret, err);
 		MUST_HAVE((siglen == (EDDSA_R_LEN(hsize) + EDDSA_S_LEN(hsize))), ret, err);
 
@@ -2821,6 +2826,7 @@ gen_z_again:
 		ret = hm->hfunc_update(&h_ctx, hash, EDDSA_R_LEN(hsize)); EG(ret, err);
 		/* Finish our computation of h = H(R || A || M) */
 		/* Update the hash with the message or its hash for the PH versions */
+		MUST_HAVE(((m_len[i] == 0) || (m[i] != NULL)), ret, err);
 		if(use_message_pre_hash == 1){
 			ret = hm->hfunc_update(&h_ctx_pre_hash, m[i], m_len[i]); EG(ret, err);
 			ret = hm->hfunc_finalize(&h_ctx_pre_hash, hash); EG(ret, err);

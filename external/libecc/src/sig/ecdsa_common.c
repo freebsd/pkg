@@ -327,10 +327,15 @@ int __ecdsa_sign_finalize(struct ec_sign_context *ctx, u8 *sig, u8 siglen,
 	nn_src_t q, x;
 	u8 hsize, q_len;
 	nn k, r, e, tmp, s, kinv;
+	nn_src_t e_for_eq;
 #ifdef USE_SIG_BLINDING
 	/* b is the blinding mask */
 	nn b;
-	b.magic = WORD(0);
+	/* e_blind holds the per-attempt blinded copy of e, leaving the
+	 * persistent 'e' untouched across nonce-retry (goto restart) passes.
+	 */
+	nn e_blind;
+	b.magic = e_blind.magic = WORD(0);
 #endif
 
 	k.magic = r.magic = e.magic = WORD(0);
@@ -412,6 +417,9 @@ int __ecdsa_sign_finalize(struct ec_sign_context *ctx, u8 *sig, u8 siglen,
 	dbg_nn_print("h	  final import as nn", &e);
 	ret = nn_mod(&e, &e, q); EG(ret, err);
 	dbg_nn_print("e", &e);
+
+	/* By default (no blinding), the equations below use e as is */
+	e_for_eq = &e;
 
  restart:
 	/* 4. get a random value k in ]0,q[ */
@@ -503,8 +511,10 @@ int __ecdsa_sign_finalize(struct ec_sign_context *ctx, u8 *sig, u8 siglen,
 	/* Blind r with b */
 	ret = nn_mod_mul(&r, &r, &b, q); EG(ret, err);
 
-	/* Blind the message e */
-	ret = nn_mod_mul(&e, &e, &b, q); EG(ret, err);
+	/* Blind the message e into the per-attempt e_blind, leaving the
+	 * persistent e untouched in case this attempt is discarded below. */
+	ret = nn_mod_mul(&e_blind, &e, &b, q); EG(ret, err);
+	e_for_eq = &e_blind;
 #endif /* USE_SIG_BLINDING */
 
 	/* tmp = xr mod q */
@@ -512,7 +522,7 @@ int __ecdsa_sign_finalize(struct ec_sign_context *ctx, u8 *sig, u8 siglen,
 	dbg_nn_print("x*r mod q", &tmp);
 
 	/* 8. If e == rx, restart the process at step 4. */
-	ret = nn_cmp(&e, &tmp, &cmp); EG(ret, err);
+	ret = nn_cmp(e_for_eq, &tmp, &cmp); EG(ret, err);
 	if (!cmp) {
 		goto restart;
 	}
@@ -520,7 +530,7 @@ int __ecdsa_sign_finalize(struct ec_sign_context *ctx, u8 *sig, u8 siglen,
 	/* 9. Compute s = k^-1 * (xr + e) mod q */
 
 	/* tmp = (e + xr) mod q */
-	ret = nn_mod_add(&tmp, &tmp, &e, q); EG(ret, err);
+	ret = nn_mod_add(&tmp, &tmp, e_for_eq, q); EG(ret, err);
 	dbg_nn_print("(xr + e) mod q", &tmp);
 
 #ifdef USE_SIG_BLINDING
@@ -562,6 +572,7 @@ err:
 	prj_pt_uninit(&kG);
 #ifdef USE_SIG_BLINDING
 	nn_uninit(&b);
+	nn_uninit(&e_blind);
 #endif
 
 	/*

@@ -189,10 +189,15 @@ int _ecgdsa_sign_finalize(struct ec_sign_context *ctx, u8 *sig, u8 siglen)
 	prj_pt kG;
 	int ret, cmp, iszero;
 	nn tmp, s, e, kr, k, r;
+	nn_src_t e_for_eq;
 #ifdef USE_SIG_BLINDING
 	/* b is the blinding mask */
 	nn b, binv;
-	b.magic = binv.magic = WORD(0);
+	/* e_blind holds the per-attempt blinded copy of e, leaving the
+	 * persistent 'e' untouched across nonce-retry (goto restart) passes.
+	 */
+	nn e_blind;
+	b.magic = binv.magic = e_blind.magic = WORD(0);
 #endif
 
 	tmp.magic = s.magic = e.magic = WORD(0);
@@ -271,6 +276,9 @@ int _ecgdsa_sign_finalize(struct ec_sign_context *ctx, u8 *sig, u8 siglen)
 	ret = nn_mod(&tmp, &tmp, q); EG(ret, err);
 	ret = nn_mod_neg(&e, &tmp, q); EG(ret, err);
 
+	/* By default (no blinding), step 7 below uses e as is */
+	e_for_eq = &e;
+
  restart:
 	/* 3. Get a random value k in ]0,q[ */
 #ifdef NO_KNOWN_VECTORS
@@ -318,13 +326,17 @@ int _ecgdsa_sign_finalize(struct ec_sign_context *ctx, u8 *sig, u8 siglen)
 	ret = nn_export_to_buf(sig, r_len, &r); EG(ret, err);
 
 #ifdef USE_SIG_BLINDING
-	/* Blind e and r with b */
-	ret = nn_mod_mul(&e, &e, &b, q); EG(ret, err);
+	/* Blind e into the per-attempt e_blind, leaving the persistent e
+	 * untouched in case this attempt is discarded below; blind r with b
+	 * (r is regenerated fresh on every attempt, so blinding it in place
+	 * is safe). */
+	ret = nn_mod_mul(&e_blind, &e, &b, q); EG(ret, err);
+	e_for_eq = &e_blind;
 	ret = nn_mod_mul(&r, &r, &b, q); EG(ret, err);
 #endif /* USE_SIG_BLINDING */
 	/* 7. Compute s = x(kr + e) mod q */
 	ret = nn_mod_mul(&kr, &k, &r, q); EG(ret, err);
-	ret = nn_mod_add(&tmp, &kr, &e, q); EG(ret, err);
+	ret = nn_mod_add(&tmp, &kr, e_for_eq, q); EG(ret, err);
 	ret = nn_mod_mul(&s, x, &tmp, q); EG(ret, err);
 #ifdef USE_SIG_BLINDING
 	/* Unblind s */
@@ -356,6 +368,7 @@ int _ecgdsa_sign_finalize(struct ec_sign_context *ctx, u8 *sig, u8 siglen)
 #ifdef USE_SIG_BLINDING
 	nn_uninit(&b);
 	nn_uninit(&binv);
+	nn_uninit(&e_blind);
 #endif
 
 	/*

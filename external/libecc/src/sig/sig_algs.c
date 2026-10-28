@@ -718,7 +718,7 @@ int ec_structured_sig_import_from_buf(u8 *sig, u32 siglen,
 	 *	- One byte = the hash algorithm type
 	 *	- One byte = the curve type (FRP256V1, ...)
 	 */
-	MUST_HAVE((outlen <= (siglen + metadata_len)), ret, err);
+	MUST_HAVE((outlen >= (siglen + metadata_len)), ret, err);
 
 	*sig_type = (ec_alg_type)out_buf[0];
 	*hash_type = (hash_alg_type)out_buf[1];
@@ -1052,7 +1052,14 @@ err:
 int ec_verify_bos_coster(verify_batch_scratch_pad *elements, u32 num, bitcnt_t bits)
 {
 	int ret, check;
-	u32 i, index0, index1, max_bos_coster_iterations;
+	/*
+	 * index0/index1 are always set inside the while(active > 1) loop
+	 * before being read after it: the loop runs at least once because
+	 * MUST_HAVE(num > 1) below guarantees active (== num) > 1 on entry.
+	 * Zero-initialize them anyway to silence static analyzers that
+	 * cannot see across that MUST_HAVE-enforced invariant.
+	 */
+	u32 i, index0 = 0, index1 = 0, max_bos_coster_iterations, active;
 
 	MUST_HAVE((elements != NULL), ret, err);
 	MUST_HAVE((num > 1), ret, err);
@@ -1081,7 +1088,19 @@ int ec_verify_bos_coster(verify_batch_scratch_pad *elements, u32 num, bitcnt_t b
                 elements[i].index = i;
         }
 	i = 0;
-        do {
+	/*
+	 * 'active' tracks how many entries still have a nonzero scalar.
+	 * Real Bos-Coster only terminates once a single active entry
+	 * remains: every tie between the two currently largest entries
+	 * (check == 0 below) permanently zeroes one of them out, but with
+	 * more than 2 entries such a tie can happen while entries ranked
+	 * below the top two are still nonzero and have not been merged in
+	 * yet. Stopping at the first tie (as opposed to looping until only
+	 * one active entry is left) would silently drop those entries from
+	 * the accumulated sum.
+	 */
+	active = num;
+	while (active > 1) {
 		/* Sort the elements in descending order */
 		ret = _bubble_sort(elements, num); EG(ret, err);
                 /* Perform the addition */
@@ -1090,17 +1109,33 @@ int ec_verify_bos_coster(verify_batch_scratch_pad *elements, u32 num, bitcnt_t b
 		ret = prj_pt_add(&elements[index1].point, &elements[index0].point,
 				 &elements[index1].point); EG(ret, err);
                 /* Check the two first integers */
-		ret = nn_cmp(&elements[index0].number, &elements[index1].number, &check);
+		ret = nn_cmp(&elements[index0].number, &elements[index1].number, &check); EG(ret, err);
                 /* Subtract the two first numbers */
                 ret = nn_sub(&elements[index0].number, &elements[index0].number,
                              &elements[index1].number); EG(ret, err);
+		if(check == 0){
+			/* index0's scalar just reached exactly zero: one fewer active entry */
+			active--;
+		}
 		i++;
 		if(i > max_bos_coster_iterations){
 			/* Give up with specific error code */
 			ret = -2;
 			goto err;
 		}
-	} while(check > 0);
+	}
+
+	/*
+	 * The loop above exits when the two largest remaining entries (index0
+	 * and index1 from the last iteration) had equal scalars: index0's
+	 * scalar was just reduced to zero by the final nn_sub above, while
+	 * the correctly accumulated point - along with its still nonzero
+	 * scalar - now lives in index1. Swap the slot-0/slot-1 labels so
+	 * that elements[0].index designates the surviving entry, matching
+	 * what every caller of this function reads back.
+	 */
+	elements[0].index = index1;
+	elements[1].index = index0;
 
 	index0 = elements[0].index;
 	/* Proceed with the last scalar multiplication */

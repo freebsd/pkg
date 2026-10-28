@@ -19,7 +19,14 @@ int get_unsafe_random(unsigned char *buf, u16 len)
 {
         int ret;
         u64 a, b;
-        u16 i, j;
+        /*
+         * 'i' must be wide enough that i + sizeof(seed) cannot wrap back
+         * below 'len' for any u16 length: with i as u16, len in
+         * [65529, 65535] made i wrap to 0 right when it should have
+         * exceeded len, turning the loop below into an infinite loop.
+         */
+        u32 i;
+        u16 j;
         a = (u64)2862933555777941757;
         b = (u64)3037000493;
 
@@ -41,7 +48,7 @@ int get_unsafe_random(unsigned char *buf, u16 len)
                                 buf[i + j] = (u8)((seed >> (j * 8)) & 0xff);
                         }
                 }
-                i = (u16)(i + sizeof(seed));
+                i = i + (u32)sizeof(seed);
         }
 
         ret = 0;

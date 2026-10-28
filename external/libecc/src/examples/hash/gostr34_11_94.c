@@ -230,8 +230,9 @@ ATTRIBUTE_WARN_UNUSED_RET static inline int gostr34_11_94_state_psi(const u64 G[
 	 * (see the rationale above).
 	 */
 	gostr34_11_94_union G_copy;
+	gostr34_11_94_union G_copy_out;
 	gostr34_11_94_union *g  = &G_copy;
-	gostr34_11_94_union *g_ = (gostr34_11_94_union*)G_;
+	gostr34_11_94_union *g_ = &G_copy_out;
 
 	/* Better safe than sorry ... */
 	MUST_HAVE((sizeof(gostr34_11_94_union) == (sizeof(u64) * GOSTR34_11_94_STATE_SIZE)), ret, err);
@@ -246,6 +247,16 @@ ATTRIBUTE_WARN_UNUSED_RET static inline int gostr34_11_94_state_psi(const u64 G[
 		g_->B[i] = g->B[i + 1];
 	}
 	g_->B[15] = (u16)((g->B[0]) ^ (g->B[1]) ^ (g->B[2]) ^ (g->B[3]) ^ (g->B[12]) ^ (g->B[15]));
+
+	/*
+	 * Copy the result back out through memcpy (a byte-level copy is
+	 * always alias-safe) instead of writing through a pointer cast of
+	 * the caller's real u64[] object to our u16-member union type: G_
+	 * was never actually declared as gostr34_11_94_union, so accessing
+	 * it through that type would violate C's effective-type / strict-
+	 * aliasing rules and could let an optimizer reuse stale u64 values.
+	 */
+	ret = local_memcpy(G_, g_, sizeof(gostr34_11_94_union)); EG(ret, err);
 
 	ret = 0;
 

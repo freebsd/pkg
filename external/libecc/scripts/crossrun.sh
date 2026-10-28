@@ -28,7 +28,10 @@ run_triplet_wordsize(){
 	if [ "$triplet" = "i386-apple-darwin" ] || [ "$triplet" = "x86_64-apple-darwin" ] || [ "$triplet" = "x86_64h-apple-darwin" ]; then
 		echo "  [X] Testing MAC-OS binaries is futur work!"
 	fi
-	if [ "$triplet" = "i686-w64-mingw32" ] || [ "$triplet" = "x86_64-w64-mingw32" ]; then
+	#if [ "$triplet" = "i686-w64-mingw32" ] || [ "$triplet" = "x86_64-w64-mingw32" ]; then
+	# XXX: NOTE: wine32 is somehow broken in some distros, notabely the CI Ubuntu 20.04. This is why
+	# we restrict our tests to wine64 binaries ...
+	if [ "$triplet" = "x86_64-w64-mingw32" ]; then
 		echo "  [X] Using WINE"
 		wine $CROSSBUILD_OUTPUT/"$triplet"/word"$wordsize"/ec_self_tests_"$triplet"_word"$wordsize"_static vectors
 		wine $CROSSBUILD_OUTPUT/"$triplet"/word"$wordsize"/ec_self_tests_"$triplet"_word"$wordsize"_debug_static vectors

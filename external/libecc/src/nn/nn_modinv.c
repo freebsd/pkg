@@ -323,6 +323,9 @@ int nn_modinv_2exp(nn_t _out, nn_src_t x, bitcnt_t exp, int *x_isodd)
 	nn out;
 	out.magic = tmp_sqr.magic = tmp_mul.magic = WORD(0);
 
+	/* Sanity check on exp_wlen */
+	MUST_HAVE(exp_wlen > 0, ret, err);
+
 	MUST_HAVE((x_isodd != NULL), ret, err);
 	ret = nn_check_initialized(x); EG(ret, err);
 	ret = nn_check_initialized(_out); EG(ret, err);

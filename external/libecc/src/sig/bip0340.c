@@ -241,9 +241,15 @@ int _bip0340_sign(u8 *sig, u8 siglen, const ec_key_pair *key_pair,
 	/* NOTE: when we do not need self tests for known vectors,
 	 * we can be strict about random function handler!
 	 * This allows us to avoid the corruption of such a pointer.
+	 *
+	 * NOTE: rand == NULL is legitimate here: the public ec_sign() API
+	 * always passes NULL to request our default safe generator (see the
+	 * rand == NULL fallback below). Only reject a caller-supplied
+	 * callback that isn't our own safe generator.
 	 */
-	/* Sanity check on the handler before calling it */
-	MUST_HAVE((rand == nn_get_random_mod), ret, err);
+	if(rand != NULL){
+		MUST_HAVE((rand == nn_get_random_mod), ret, err);
+	}
 #endif
 	ret = nn_init(&e, 0); EG(ret, err);
 	ret = nn_one(&e); EG(ret, err);
@@ -810,6 +816,7 @@ static int _bip0340_verify_batch_no_memory(const u8 **s, const u8 *s_len, const 
 					   hash_alg_type hash_type, const u8 **adata, const u16 *adata_len)
 {
 	nn_src_t q = NULL;
+	nn_src_t gen_cofactor = NULL;
 	prj_pt_src_t G = NULL;
 	prj_pt_t R = NULL, Y = NULL;
 	prj_pt Tmp, R_sum, P_sum;
@@ -840,9 +847,19 @@ static int _bip0340_verify_batch_no_memory(const u8 **s, const u8 *s_len, const 
 	FORCE_USED_VAR(adata);
 
         /* First, some sanity checks */
-        MUST_HAVE((s != NULL) && (pub_keys != NULL) && (m != NULL), ret, err);
+        MUST_HAVE((s != NULL) && (s_len != NULL) && (pub_keys != NULL) &&
+		  (m != NULL) && (m_len != NULL), ret, err);
         /* We need at least one element in our batch data bags */
         MUST_HAVE((num > 0), ret, err);
+	/*
+	 * Validate every per-element pointer up front: the CSPRNG seed
+	 * helper below loops over the whole [0, num) range before the main
+	 * per-signature loop gets a chance to check each element.
+	 */
+	for(i = 0; i < num; i++){
+		MUST_HAVE((s[i] != NULL), ret, err);
+		MUST_HAVE(((m_len[i] == 0) || (m[i] != NULL)), ret, err);
+	}
 
 	/* Zeroize buffers */
 	ret = local_memset(hash, 0, sizeof(hash)); EG(ret, err);
@@ -871,6 +888,7 @@ static int _bip0340_verify_batch_no_memory(const u8 **s, const u8 *s_len, const 
 		MUST_HAVE((pub_key->params) == (pub_key0->params), ret, err);
 
 		q = &(pub_key->params->ec_gen_order);
+		gen_cofactor = &(pub_key->params->ec_gen_cofactor);
 		shortw_curve = &(pub_key->params->ec_curve);
 		pub_key_y = &(pub_key->y);
 		key_type = pub_key->key_type;
@@ -883,6 +901,7 @@ static int _bip0340_verify_batch_no_memory(const u8 **s, const u8 *s_len, const 
                 /* Check given signature length is the expected one */
 		siglen = s_len[i];
 		sig = s[i];
+		MUST_HAVE((sig != NULL), ret, err);
 		MUST_HAVE((siglen == BIP0340_SIGLEN(p_bit_len, q_bit_len)), ret, err);
 		MUST_HAVE((siglen == (BIP0340_R_LEN(p_bit_len) + BIP0340_S_LEN(q_bit_len))), ret, err);
 
@@ -998,6 +1017,16 @@ static int _bip0340_verify_batch_no_memory(const u8 **s, const u8 *s_len, const 
 	/* Add P_sum and R_sum */
 	ret = prj_pt_add(&Tmp, &Tmp, &R_sum); EG(ret, err);
 	ret = prj_pt_add(&Tmp, &Tmp, &P_sum); EG(ret, err);
+	/*
+	 * Cofactored check: each R_i was lifted from a raw x-coordinate with
+	 * only an on-curve solve (no subgroup check), so it may carry a
+	 * small-order torsion component. Multiplying the aggregate by the
+	 * curve cofactor annihilates any such component (its order divides
+	 * the cofactor) without affecting the result for a genuinely valid
+	 * batch, closing the small-subgroup cancellation attack across
+	 * multiple forged signatures.
+	 */
+	ret = _prj_pt_unprotected_mult(&Tmp, gen_cofactor, &Tmp); EG(ret, err);
 	/* The result should be point at infinity */
 	ret = prj_pt_iszero(&Tmp, &iszero); EG(ret, err);
 	ret = (iszero == 1) ? 0 : -1;
@@ -1030,6 +1059,7 @@ static int _bip0340_verify_batch(const u8 **s, const u8 *s_len, const ec_pub_key
 				 verify_batch_scratch_pad *scratch_pad_area, u32 *scratch_pad_area_len)
 {
 	nn_src_t q = NULL;
+	nn_src_t gen_cofactor = NULL;
 	prj_pt_src_t G = NULL;
 	prj_pt_t R = NULL, Y = NULL;
 	nn S, a;
@@ -1062,7 +1092,8 @@ static int _bip0340_verify_batch(const u8 **s, const u8 *s_len, const ec_pub_key
 	FORCE_USED_VAR(adata);
 
         /* First, some sanity checks */
-        MUST_HAVE((s != NULL) && (pub_keys != NULL) && (m != NULL), ret, err);
+        MUST_HAVE((s != NULL) && (s_len != NULL) && (pub_keys != NULL) &&
+		  (m != NULL) && (m_len != NULL), ret, err);
 
 	MUST_HAVE((scratch_pad_area_len != NULL), ret, err);
 	MUST_HAVE(((2 * num) >= num), ret, err);
@@ -1092,7 +1123,7 @@ static int _bip0340_verify_batch(const u8 **s, const u8 *s_len, const ec_pub_key
                 }
         }
 
-        expected_len = ((2 * num) + 1) * sizeof(verify_batch_scratch_pad);
+        expected_len = (u64)((2 * (u64)num) + 1) * (u64)sizeof(verify_batch_scratch_pad);
         MUST_HAVE((expected_len < 0xffffffff), ret, err);
 
         if(scratch_pad_area == NULL){
@@ -1128,6 +1159,7 @@ static int _bip0340_verify_batch(const u8 **s, const u8 *s_len, const ec_pub_key
 		MUST_HAVE((pub_key->params) == (pub_key0->params), ret, err);
 
 		q = &(pub_key->params->ec_gen_order);
+		gen_cofactor = &(pub_key->params->ec_gen_cofactor);
 		shortw_curve = &(pub_key->params->ec_curve);
 		pub_key_y = &(pub_key->y);
 		key_type = pub_key->key_type;
@@ -1140,6 +1172,7 @@ static int _bip0340_verify_batch(const u8 **s, const u8 *s_len, const ec_pub_key
                 /* Check given signature length is the expected one */
 		siglen = s_len[i];
 		sig = s[i];
+		MUST_HAVE((sig != NULL), ret, err);
 		MUST_HAVE((siglen == BIP0340_SIGLEN(p_bit_len, q_bit_len)), ret, err);
 		MUST_HAVE((siglen == (BIP0340_R_LEN(p_bit_len) + BIP0340_S_LEN(q_bit_len))), ret, err);
 
@@ -1249,6 +1282,8 @@ static int _bip0340_verify_batch(const u8 **s, const u8 *s_len, const ec_pub_key
         /* Sanity check */
         MUST_HAVE((q != NULL) && (G != NULL) && (q_bit_len != 0), ret, err);
 
+	ret = nn_mod_neg(&elements[(2 * num)].number, &elements[(2 * num)].number, q); EG(ret, err);
+
         /********************************************/
         /****** Bos-Coster algorithm ****************/
         ret = ec_verify_bos_coster(elements, (2 * num) + 1, q_bit_len);
@@ -1262,6 +1297,14 @@ static int _bip0340_verify_batch(const u8 **s, const u8 *s_len, const ec_pub_key
 		}
 		goto err;
 	}
+
+	/*
+	 * Cofactored check: annihilate any small-order torsion component
+	 * that could have been smuggled into an R_i (see the no_memory
+	 * variant above for the full rationale).
+	 */
+	ret = _prj_pt_unprotected_mult(&elements[elements[0].index].point, gen_cofactor,
+					&elements[elements[0].index].point); EG(ret, err);
 
         /* The first element should contain the sum: it should
          * be equal to zero. Reject the signature if this is not

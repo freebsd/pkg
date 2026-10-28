@@ -1,8 +1,6 @@
 name: libecc
-
 # Run this workflow every time a new commit pushed to your repository
 on: push
-
 jobs:
   compilation_tests:
     runs-on: ubuntu-22.04
@@ -23,13 +21,13 @@ jobs:
       # libecc compilation tests
       - name: libecc compilation tests
         env:
-          CC: ${{ matrix.cc }}
-          BLINDING: ${{ matrix.blinding }}
-          COMPLETE: ${{ matrix.complete }}
-          LADDER: ${{ matrix.ladder }}
-          CRYPTOFUZZ: ${{ matrix.cryptofuzz }}
-          EXTRA_LIB_CFLAGS: ${{ matrix.optflags }}
-          EXTRA_BIN_CFLAGS: ${{ matrix.optflags }}
+          CC: ${{ matrix.cc }}
+          BLINDING: ${{ matrix.blinding }}
+          COMPLETE: ${{ matrix.complete }}
+          LADDER: ${{ matrix.ladder }} 
+          CRYPTOFUZZ: ${{ matrix.cryptofuzz }}
+          EXTRA_LIB_CFLAGS: ${{ matrix.optflags }}
+          EXTRA_BIN_CFLAGS: ${{ matrix.optflags }}
         shell: bash
         run: |
           # Compilation tests of all cases

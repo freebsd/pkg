@@ -1,8 +1,6 @@
 name: libecc
-
 # Run this workflow every time a new commit pushed to your repository
 on: push
-
 jobs:
   runtime_tests:
     runs-on: ubuntu-22.04
@@ -21,9 +19,9 @@ jobs:
       # libecc runtime tests
       - name: libecc runtime tests
         env:
-          CC: ${{ matrix.cc }}
-          BLINDING: ${{ matrix.blinding }}
-          CRYPTOFUZZ: ${{ matrix.cryptofuzz }}
+          CC: ${{ matrix.cc }}
+          BLINDING: ${{ matrix.blinding }}
+          CRYPTOFUZZ: ${{ matrix.cryptofuzz }}
           ASSERT_PRINT: 1
           # We want to parallelize self tests
           OPENMP_SELF_TESTS: 1
