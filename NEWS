@@ -2,6 +2,8 @@ Changes from 2.8.99.4 to 2.8.99.5
 - libfetch: sync with FreeBSD-current, bringing buffered socket reads, the
   connect timeout, connection failure handling, and the fixes to the response
   line length, the credentials check and the redirect and 304 leaks
+- solve: do not install a package offered by several repositories when nothing
+  needs it
 
 Changes from 2.8.99.3 to 2.8.99.4
 - fix: a plist variable is matched on its full name, a name which is the
