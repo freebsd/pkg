@@ -21,6 +21,7 @@ tests_init \
 	upgrade_autoremove_flag \
 	symlink_to_dir_upgrade \
 	newpkgversion_two_repos \
+	multirepo_no_unrequested \
 	upgrade_disabled_repo \
 	upgrade_all_disabled_repos \
 	upgrade_vulnerable \
@@ -1031,6 +1032,53 @@ EOF
 		-e empty \
 		-s exit:0 \
 		pkg -C ./pkg.conf upgrade -y
+}
+
+multirepo_no_unrequested_body()
+{
+	atf_check -s exit:0 sh ${RESOURCEDIR}/test_subr.sh new_pkg clibs clibs 1.0
+	echo 'provides: [ zzz ]' >> clibs.ucl
+	atf_check -o ignore pkg register -M clibs.ucl
+
+	atf_check -s exit:0 sh ${RESOURCEDIR}/test_subr.sh new_pkg foo foo 1.0
+	echo 'requires: [ zzz ]' >> foo.ucl
+	echo 'deps: { clibs { origin: clibs, version: "1.0" } }' >> foo.ucl
+	atf_check -o ignore pkg register -M foo.ucl
+
+	mkdir repo1 repo2
+	atf_check -s exit:0 sh ${RESOURCEDIR}/test_subr.sh new_pkg foo2 foo 2.0
+	echo 'requires: [ zzz ]' >> foo2.ucl
+	atf_check -o ignore pkg create -M foo2.ucl -o ./repo1
+
+	# gmp also provides zzz and is offered by both repositories
+	atf_check -s exit:0 sh ${RESOURCEDIR}/test_subr.sh new_pkg gmp gmp 1.0
+	echo 'provides: [ zzz ]' >> gmp.ucl
+	atf_check -o ignore pkg create -M gmp.ucl -o ./repo1
+	atf_check cp repo1/gmp-1.0.pkg repo2/
+
+	atf_check -o ignore pkg repo ./repo1
+	atf_check -o ignore pkg repo ./repo2
+
+	cat << EOF > pkg.conf
+PKG_DBDIR=${TMPDIR}
+REPOS_DIR=[]
+repositories: {
+	repo1: { url : file://${TMPDIR}/repo1 }
+	repo2: { url : file://${TMPDIR}/repo2 }
+}
+EOF
+
+	atf_check -o ignore pkg -C ./pkg.conf update -f
+
+	# clibs already provides zzz, so gmp must not be installed
+	atf_check \
+		-o not-match:"gmp" \
+		-s exit:0 \
+		pkg -C ./pkg.conf upgrade -n -y
+	atf_check \
+		-o match:"foo: 1.0 -> 2.0" \
+		-s exit:0 \
+		pkg -C ./pkg.conf upgrade -n -y
 }
 
 # Verify that "pkg upgrade -r <repo>" works on a disabled repository,
