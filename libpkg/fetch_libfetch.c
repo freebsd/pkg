@@ -178,6 +178,7 @@ libfetch_open(struct pkg_repo *repo, struct fetch_item *fi)
 	struct http_mirror *http_current = NULL;
 	struct url_stat st;
 	time_t ims;
+	int retcode;
 	sb_t fetchOpts = sb_init();
 
 	max_retry = pkg_object_int(pkg_config_get("FETCH_RETRY"));
@@ -316,14 +317,12 @@ libfetch_open(struct pkg_repo *repo, struct fetch_item *fi)
 		free(opts);
 		if (repo->fh == NULL) {
 			if (fetchLastErrCode == FETCH_OK) {
-				u->doc = doc;
-				fetchFreeURL(u);
-				return (EPKG_UPTODATE);
+				retcode = EPKG_UPTODATE;
+				goto out;
 			}
 			if (fetchLastErrCode == FETCH_ABORT) {
-				u->doc = doc;
-				fetchFreeURL(u);
-				return (EPKG_CANCEL);
+				retcode = EPKG_CANCEL;
+				goto out;
 			}
 			if (fetchLastErrCode == FETCH_UNAVAIL) {
 				if (!repo->silent)
@@ -334,9 +333,8 @@ libfetch_open(struct pkg_repo *repo, struct fetch_item *fi)
 					    u->host,
 					    u->doc,
 					    fetchLastErrString);
-				u->doc = doc;
-				fetchFreeURL(u);
-				return (EPKG_ENOENT);
+				retcode = EPKG_ENOENT;
+				goto out;
 			}
 			if (fetchLastErrCode == FETCH_NETWORK ||
 			    fetchLastErrCode == FETCH_RESOLV ||
@@ -380,9 +378,8 @@ libfetch_open(struct pkg_repo *repo, struct fetch_item *fi)
 			pkg_dbg(PKG_DBG_FETCH, 1, "libfetch> %s: up to "
 			    "date (mtime %ld)", u->doc, (long)ims);
 			fh_close(repo);
-			u->doc = doc;
-			fetchFreeURL(u);
-			return (EPKG_UPTODATE);
+			retcode = EPKG_UPTODATE;
+			goto out;
 		}
 	}
 	if (repo->fh == NULL) {
@@ -394,15 +391,23 @@ libfetch_open(struct pkg_repo *repo, struct fetch_item *fi)
 			    u->host,
 			    u->doc,
 			    fetchLastErrString);
-		u->doc = doc;
-		fetchFreeURL(u);
-		return (EPKG_FATAL);
+		retcode = EPKG_FATAL;
+		goto out;
 	}
 	fi->size = st.size > 0 ? st.size : 0;
 	fi->mtime = st.mtime;
+	retcode = EPKG_OK;
+out:
+	/*
+	 * While a mirror is in use, u->doc aliases the on-stack docpath
+	 * buffer.  Hand libfetch back its own heap pointer before freeing:
+	 * every exit must go through here, because returning early with
+	 * the alias in place makes fetchFreeURL() free the stack (this was
+	 * a real crash with mirror_type "http" from 2.0 until 2.8.2).
+	 */
 	u->doc = doc;
 	fetchFreeURL(u);
-	return (EPKG_OK);
+	return (retcode);
 }
 
 int
