@@ -71,9 +71,9 @@ gelf_getsymshndx(Elf_Data *d, Elf_Data *id, int ndx, GElf_Sym *dst,
 		return (NULL);
 	}
 
-	msz = _libelf_msize(ELF_T_WORD, ec, e->e_version);
+	if ((msz = _libelf_msize(ELF_T_WORD, ec, e->e_version)) == 0)
+		return (NULL);
 
-	assert(msz > 0);
 	assert(ndx >= 0);
 
 	if (msz * (size_t) ndx >= id->d_size) {
@@ -123,9 +123,9 @@ gelf_update_symshndx(Elf_Data *d, Elf_Data *id, int ndx, GElf_Sym *gs,
 		return (0);
 	}
 
-	msz = _libelf_msize(ELF_T_WORD, ec, e->e_version);
+	if ((msz = _libelf_msize(ELF_T_WORD, ec, e->e_version)) == 0)
+		return (0);
 
-	assert(msz > 0);
 	assert(ndx >= 0);
 
 	if (msz * (size_t) ndx >= id->d_size) {

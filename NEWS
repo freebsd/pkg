@@ -3,6 +3,7 @@ Changes from 2.8.99.4 to 2.8.99.5
 - lua: update the bundled Lua to 5.4.9
 - libder: update to the latest upstream version
 - libecc: update to the latest upstream version
+- libelf: sync the bundled elftoolchain libelf with FreeBSD-current
 - linenoise: update to the latest upstream version
 - yxml: update to the latest upstream version
 - utlist: update to 2.4.0

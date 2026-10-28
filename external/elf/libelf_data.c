@@ -91,8 +91,14 @@ _libelf_xlate_shtype(uint32_t sht)
 		 * OS, processor and user-defined section types) are
 		 * legal, but since we do not know anything more about
 		 * their semantics, we return a type of ELF_T_BYTE.
+		 *
+		 * The ELF specification uses 32 bit unsigned values for
+		 * denoting section types, and defines SHT_HIUSER to be
+		 * 0xFFFFFFFFUL (i.e., UINT32_MAX). Consequently, we only
+		 * need to check that 'sht' is greater than or equal to
+		 * SHT_LOOS.
 		 */
-		if (sht >= SHT_LOOS && sht <= SHT_HIUSER)
+		if (sht >= SHT_LOOS)
 			return (ELF_T_BYTE);
 
 		/*

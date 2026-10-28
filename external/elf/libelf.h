@@ -30,7 +30,6 @@
 #define	_LIBELF_H_
 
 #include <sys/types.h>
-
 #include <elfdefinitions.h>
 
 /* Library private data structures */
@@ -162,6 +161,9 @@ enum Elf_Error {
 	ELF_E_SEQUENCE,	/* API calls out of sequence */
 	ELF_E_UNIMPL,	/* Feature is unimplemented */
 	ELF_E_VERSION,	/* Unknown API version */
+	ELF_E_INVALID_SECTION_FLAGS, /* Invalid ELF section header flags */
+	ELF_E_INVALID_SECTION_TYPE, /* Invalid ELF section header type */
+	ELF_E_NOT_COMPRESSED, /* Section is not compressed */
 	ELF_E_NUM	/* Max error number */
 };
 
@@ -176,8 +178,9 @@ enum Elf_Error {
 #define	ELF_F_ARCHIVE	   0x100U /* archive creation */
 #define	ELF_F_ARCHIVE_SYSV 0x200U /* SYSV style archive */
 
-#include <sys/cdefs.h>
-__BEGIN_DECLS
+#ifdef __cplusplus
+extern "C" {
+#endif
 Elf		*elf_begin(int _fd, Elf_Cmd _cmd, Elf *_elf);
 int		elf_cntl(Elf *_elf, Elf_Cmd _cmd);
 int		elf_end(Elf *_elf);
@@ -226,6 +229,7 @@ unsigned int	elf_version(unsigned int _version);
 long		elf32_checksum(Elf *_elf);
 size_t		elf32_fsize(Elf_Type _type, size_t _count,
 			unsigned int _version);
+Elf32_Chdr	*elf32_getchdr(Elf_Scn *_scn);
 Elf32_Ehdr	*elf32_getehdr(Elf *_elf);
 Elf32_Phdr	*elf32_getphdr(Elf *_elf);
 Elf32_Shdr	*elf32_getshdr(Elf_Scn *_scn);
@@ -239,6 +243,7 @@ Elf_Data	*elf32_xlatetom(Elf_Data *_dst, const Elf_Data *_src,
 long		elf64_checksum(Elf *_elf);
 size_t		elf64_fsize(Elf_Type _type, size_t _count,
 			unsigned int _version);
+Elf64_Chdr	*elf64_getchdr(Elf_Scn *_scn);
 Elf64_Ehdr	*elf64_getehdr(Elf *_elf);
 Elf64_Phdr	*elf64_getphdr(Elf *_elf);
 Elf64_Shdr	*elf64_getshdr(Elf_Scn *_scn);
@@ -248,6 +253,8 @@ Elf_Data	*elf64_xlatetof(Elf_Data *_dst, const Elf_Data *_src,
 			unsigned int _enc);
 Elf_Data	*elf64_xlatetom(Elf_Data *_dst, const Elf_Data *_src,
 			unsigned int _enc);
-__END_DECLS
+#ifdef __cplusplus
+}
+#endif
 
 #endif	/* _LIBELF_H_ */

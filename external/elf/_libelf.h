@@ -30,6 +30,13 @@
 #define	__LIBELF_H_
 
 #include <sys/queue.h>
+#if __has_include(<sys/tree.h>)
+#include <sys/tree.h>
+#elif __has_include(<bsd/sys/tree.h>)	/* libbsd, for Linux */
+#include <bsd/sys/tree.h>
+#else
+#error "<sys/tree.h> or libbsd is required for the RB tree macros"
+#endif
 
 #include "_libelf_config.h"
 
@@ -80,6 +87,9 @@ extern struct _libelf_globals _libelf;
 #define	LIBELF_F_SHDRS_LOADED	0x200000U /* whether all shdrs were read in */
 #define	LIBELF_F_SPECIAL_FILE	0x400000U /* non-regular file */
 
+RB_HEAD(scntree, _Elf_Scn);
+RB_PROTOTYPE(scntree, _Elf_Scn, e_scn, elfscn_cmp);
+
 struct _Elf {
 	int		e_activations;	/* activation count */
 	unsigned int	e_byteorder;	/* ELFDATA* */
@@ -90,7 +100,7 @@ struct _Elf {
 	Elf_Kind	e_kind;		/* ELF_K_* */
 	Elf		*e_parent; 	/* non-NULL for archive members */
 	unsigned char	*e_rawfile;	/* uninterpreted bytes */
-	size_t		e_rawsize;	/* size of uninterpreted bytes */
+	off_t		e_rawsize;	/* size of uninterpreted bytes */
 	unsigned int	e_version;	/* file version */
 
 	/*
@@ -122,7 +132,7 @@ struct _Elf {
 				Elf32_Phdr *e_phdr32;
 				Elf64_Phdr *e_phdr64;
 			} e_phdr;
-			STAILQ_HEAD(, _Elf_Scn)	e_scn;	/* section list */
+			struct scntree	e_scn;	/* sections */
 			size_t	e_nphdr;	/* number of Phdr entries */
 			size_t	e_nscn;		/* number of sections */
 			size_t	e_strndx;	/* string table section index */
@@ -147,7 +157,7 @@ struct _Elf_Scn {
 	} s_shdr;
 	STAILQ_HEAD(, _Libelf_Data) s_data;	/* translated data */
 	STAILQ_HEAD(, _Libelf_Data) s_rawdata;	/* raw data */
-	STAILQ_ENTRY(_Elf_Scn) s_next;
+	RB_ENTRY(_Elf_Scn) s_tree;
 	struct _Elf	*s_elf;		/* parent ELF descriptor */
 	unsigned int	s_flags;	/* flags for the section as a whole */
 	size_t		s_ndx;		/* index# for this section */
@@ -194,7 +204,12 @@ enum {
  * Function Prototypes.
  */
 
-__BEGIN_DECLS
+typedef int _libelf_translator_function(unsigned char *_dst, size_t dsz,
+    unsigned char *_src, size_t _cnt, int _byteswap);
+
+#ifdef __cplusplus
+extern "C" {
+#endif
 struct _Libelf_Data *_libelf_allocate_data(Elf_Scn *_s);
 Elf	*_libelf_allocate_elf(void);
 Elf_Scn	*_libelf_allocate_scn(Elf *_e, size_t _ndx);
@@ -205,31 +220,37 @@ Elf_Arsym *_libelf_ar_process_bsd_symtab(Elf *_ar, size_t *_dst);
 Elf_Arsym *_libelf_ar_process_svr4_symtab(Elf *_ar, size_t *_dst);
 long	 _libelf_checksum(Elf *_e, int _elfclass);
 void	*_libelf_ehdr(Elf *_e, int _elfclass, int _allocate);
+int	_libelf_elfmachine(Elf *_e);
 unsigned int _libelf_falign(Elf_Type _t, int _elfclass);
 size_t	_libelf_fsize(Elf_Type _t, int _elfclass, unsigned int _version,
     size_t count);
-int	(*_libelf_get_translator(Elf_Type _t, int _direction, int _elfclass))
-	    (unsigned char *_dst, size_t dsz, unsigned char *_src,
-	     size_t _cnt, int _byteswap);
+_libelf_translator_function *_libelf_get_translator(Elf_Type _t,
+    int _direction, int _elfclass, int _elfmachine);
+void	*_libelf_getchdr(Elf_Scn *_e, int _elfclass);
 void	*_libelf_getphdr(Elf *_e, int _elfclass);
 void	*_libelf_getshdr(Elf_Scn *_scn, int _elfclass);
 void	_libelf_init_elf(Elf *_e, Elf_Kind _kind);
+int	_libelf_is_mips64el(Elf *e);
 int	_libelf_load_section_headers(Elf *e, void *ehdr);
 unsigned int _libelf_malign(Elf_Type _t, int _elfclass);
 Elf	*_libelf_memory(unsigned char *_image, size_t _sz, int _reporterror);
 size_t	_libelf_msize(Elf_Type _t, int _elfclass, unsigned int _version);
 void	*_libelf_newphdr(Elf *_e, int _elfclass, size_t _count);
 Elf	*_libelf_open_object(int _fd, Elf_Cmd _c, int _reporterror);
+Elf64_Xword _libelf_mips64el_r_info_tof(Elf64_Xword r_info);
+Elf64_Xword _libelf_mips64el_r_info_tom(Elf64_Xword r_info);
 struct _Libelf_Data *_libelf_release_data(struct _Libelf_Data *_d);
-Elf	*_libelf_release_elf(Elf *_e);
+void	_libelf_release_elf(Elf *_e);
 Elf_Scn	*_libelf_release_scn(Elf_Scn *_s);
 int	_libelf_setphnum(Elf *_e, void *_eh, int _elfclass, size_t _phnum);
 int	_libelf_setshnum(Elf *_e, void *_eh, int _elfclass, size_t _shnum);
 int	_libelf_setshstrndx(Elf *_e, void *_eh, int _elfclass,
     size_t _shstrndx);
 Elf_Data *_libelf_xlate(Elf_Data *_d, const Elf_Data *_s,
-    unsigned int _encoding, int _elfclass, int _direction);
+    unsigned int _encoding, int _elfclass, int _elfmachine, int _direction);
 int	_libelf_xlate_shtype(uint32_t _sht);
-__END_DECLS
+#ifdef __cplusplus
+}
+#endif
 
 #endif	/* __LIBELF_H_ */

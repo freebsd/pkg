@@ -24,16 +24,14 @@
  * SUCH DAMAGE.
  */
 
+#include <sys/cdefs.h>
+
 #include <sys/param.h>
 
 #include <assert.h>
 #include <gelf.h>
 
 #include "_libelf.h"
-
-#ifndef roundup2
-#define	roundup2(x, y)	(((x)+((y)-1))&(~((y)-1))) /* if y is powers of two */
-#endif
 
 ELFTC_VCSID("$Id$");
 

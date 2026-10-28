@@ -1,5 +1,5 @@
 /*-
- * Copyright (c) 2006,2008 Joseph Koshy
+ * Copyright (c) 2006,2008,2018 Joseph Koshy
  * All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without
@@ -37,25 +37,29 @@ ELFTC_VCSID("$Id$");
 Elf_Data *
 elf32_xlatetof(Elf_Data *dst, const Elf_Data *src, unsigned int encoding)
 {
-	return _libelf_xlate(dst, src, encoding, ELFCLASS32, ELF_TOFILE);
+	return _libelf_xlate(dst, src, encoding, ELFCLASS32, EM_NONE,
+	    ELF_TOFILE);
 }
 
 Elf_Data *
 elf64_xlatetof(Elf_Data *dst, const Elf_Data *src, unsigned int encoding)
 {
-	return _libelf_xlate(dst, src, encoding, ELFCLASS64, ELF_TOFILE);
+	return _libelf_xlate(dst, src, encoding, ELFCLASS64, EM_NONE,
+	    ELF_TOFILE);
 }
 
 Elf_Data *
 elf32_xlatetom(Elf_Data *dst, const Elf_Data *src, unsigned int encoding)
 {
-	return _libelf_xlate(dst, src, encoding, ELFCLASS32, ELF_TOMEMORY);
+	return _libelf_xlate(dst, src, encoding, ELFCLASS32, EM_NONE,
+	    ELF_TOMEMORY);
 }
 
 Elf_Data *
 elf64_xlatetom(Elf_Data *dst, const Elf_Data *src, unsigned int encoding)
 {
-	return _libelf_xlate(dst, src, encoding, ELFCLASS64, ELF_TOMEMORY);
+	return _libelf_xlate(dst, src, encoding, ELFCLASS64, EM_NONE,
+	    ELF_TOMEMORY);
 }
 
 Elf_Data *
@@ -64,7 +68,7 @@ gelf_xlatetom(Elf *e, Elf_Data *dst, const Elf_Data *src,
 {
 	if (e != NULL)
 		return (_libelf_xlate(dst, src, encoding, e->e_class,
-		    ELF_TOMEMORY));
+		    _libelf_elfmachine(e), ELF_TOMEMORY));
 	LIBELF_SET_ERROR(ARGUMENT, 0);
 	return (NULL);
 }
@@ -75,7 +79,7 @@ gelf_xlatetof(Elf *e, Elf_Data *dst, const Elf_Data *src,
 {
 	if (e != NULL)
 		return (_libelf_xlate(dst, src, encoding, e->e_class,
-		    ELF_TOFILE));
+		    _libelf_elfmachine(e), ELF_TOFILE));
 	LIBELF_SET_ERROR(ARGUMENT, 0);
 	return (NULL);
 }

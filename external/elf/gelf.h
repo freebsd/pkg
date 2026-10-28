@@ -41,6 +41,7 @@ typedef Elf64_Sxword	GElf_Sxword;	/* Signed long words (64 bit) */
 typedef Elf64_Word	GElf_Word;	/* Unsigned words (32 bit) */
 typedef Elf64_Xword	GElf_Xword;	/* Unsigned long words (64 bit) */
 
+typedef Elf64_Chdr	GElf_Chdr;	/* Compressed section header */
 typedef Elf64_Dyn	GElf_Dyn;	/* ".dynamic" section entries */
 typedef Elf64_Ehdr	GElf_Ehdr;	/* ELF header */
 typedef Elf64_Phdr	GElf_Phdr;	/* Program header */
@@ -69,10 +70,13 @@ typedef Elf64_Syminfo	GElf_Syminfo;	/* Symbol information */
 #define	GELF_ST_TYPE			ELF64_ST_TYPE
 #define	GELF_ST_VISIBILITY		ELF64_ST_VISIBILITY
 
-__BEGIN_DECLS
+#ifdef __cplusplus
+extern "C" {
+#endif
 long		gelf_checksum(Elf *_elf);
 size_t		gelf_fsize(Elf *_elf, Elf_Type _type, size_t _count,
 			unsigned int _version);
+GElf_Chdr	*gelf_getchdr(Elf_Scn *_scn, GElf_Chdr *_dst);
 int		gelf_getclass(Elf *_elf);
 GElf_Dyn	*gelf_getdyn(Elf_Data *_data, int _index, GElf_Dyn *_dst);
 GElf_Ehdr	*gelf_getehdr(Elf *_elf, GElf_Ehdr *_dst);
@@ -103,6 +107,8 @@ GElf_Syminfo	*gelf_getsyminfo(Elf_Data *_src, int _index, GElf_Syminfo *_dst);
 int		gelf_update_cap(Elf_Data *_dst, int _index, GElf_Cap *_src);
 int		gelf_update_move(Elf_Data *_dst, int _index, GElf_Move *_src);
 int		gelf_update_syminfo(Elf_Data *_dst, int _index, GElf_Syminfo *_src);
-__END_DECLS
+#ifdef __cplusplus
+}
+#endif
 
 #endif	/* _GELF_H_ */

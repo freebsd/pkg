@@ -3074,6 +3074,26 @@ typedef struct {
 
 
 /*
+ * Compression headers (sections with the SHF_COMPRESSED flag).
+ */
+
+/* 32 bit Chdr. */
+typedef struct {
+	Elf32_Word	ch_type;     /* compression algorithm */
+	Elf32_Word	ch_size;     /* uncompressed size */
+	Elf32_Word	ch_addralign; /* uncompressed alignment */
+} Elf32_Chdr;
+
+/* 64 bit Chdr. */
+typedef struct {
+	Elf64_Word	ch_type;     /* compression algorithm */
+	Elf64_Word	ch_reserved; /* reserved */
+	Elf64_Xword	ch_size;     /* uncompressed size */
+	Elf64_Xword	ch_addralign; /* uncompressed alignment */
+} Elf64_Chdr;
+
+
+/*
  * Symbol table entries.
  */
 

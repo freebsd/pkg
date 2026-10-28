@@ -29,6 +29,7 @@
 #include <assert.h>
 #include <gelf.h>
 #include <limits.h>
+#include <stdint.h>
 
 #include "_libelf.h"
 
@@ -68,9 +69,9 @@ gelf_getrel(Elf_Data *ed, int ndx, GElf_Rel *dst)
 		return (NULL);
 	}
 
-	msz = _libelf_msize(ELF_T_REL, ec, e->e_version);
+	if ((msz = _libelf_msize(ELF_T_REL, ec, e->e_version)) == 0)
+		return (NULL);
 
-	assert(msz > 0);
 	assert(ndx >= 0);
 
 	if (msz * (size_t) ndx >= d->d_data.d_size) {
@@ -91,6 +92,9 @@ gelf_getrel(Elf_Data *ed, int ndx, GElf_Rel *dst)
 		rel64 = (Elf64_Rel *) d->d_data.d_buf + ndx;
 
 		*dst = *rel64;
+
+		if (_libelf_is_mips64el(e))
+			dst->r_info = _libelf_mips64el_r_info_tom(rel64->r_info);
 	}
 
 	return (dst);
@@ -130,9 +134,9 @@ gelf_update_rel(Elf_Data *ed, int ndx, GElf_Rel *dr)
 		return (0);
 	}
 
-	msz = _libelf_msize(ELF_T_REL, ec, e->e_version);
+	if ((msz = _libelf_msize(ELF_T_REL, ec, e->e_version)) == 0)
+		return (0);
 
-	assert(msz > 0);
 	assert(ndx >= 0);
 
 	if (msz * (size_t) ndx >= d->d_data.d_size) {
@@ -145,7 +149,7 @@ gelf_update_rel(Elf_Data *ed, int ndx, GElf_Rel *dr)
 
 		LIBELF_COPY_U32(rel32, dr, r_offset);
 
-		if (ELF64_R_SYM(dr->r_info) > ELF32_R_SYM(~0UL) ||
+		if (ELF64_R_SYM(dr->r_info) > ELF32_R_SYM(~0U) ||
 		    ELF64_R_TYPE(dr->r_info) > ELF32_R_TYPE(~0U)) {
 			LIBELF_SET_ERROR(RANGE, 0);
 			return (0);
@@ -157,6 +161,9 @@ gelf_update_rel(Elf_Data *ed, int ndx, GElf_Rel *dr)
 		rel64 = (Elf64_Rel *) d->d_data.d_buf + ndx;
 
 		*rel64 = *dr;
+
+		if (_libelf_is_mips64el(e))
+			rel64->r_info = _libelf_mips64el_r_info_tof(dr->r_info);
 	}
 
 	return (1);

@@ -10,7 +10,7 @@
 #endif
 
 #include <sys/types.h>
-#if __has_include(<sys/elf_common.h>) && !defined(__DragonFly__)
+#if __has_include(<sys/elf_common.h>) && !defined(__DragonFly__) && defined(HAVE_LIBELF)
 #include <sys/elf_common.h>
 #endif
 #include <sys/stat.h>

@@ -47,11 +47,12 @@ ELFTC_VCSID("$Id$");
 
 Elf_Data *
 _libelf_xlate(Elf_Data *dst, const Elf_Data *src, unsigned int encoding,
-    int elfclass, int direction)
+    int elfclass, int elfmachine, int direction)
 {
 	int byteswap;
 	size_t cnt, dsz, fsz, msz;
 	uintptr_t sb, se, db, de;
+	_libelf_translator_function *xlator;
 
 	if (encoding == ELFDATANONE)
 		encoding = LIBELF_PRIVATE(byteorder);
@@ -84,9 +85,8 @@ _libelf_xlate(Elf_Data *dst, const Elf_Data *src, unsigned int encoding,
 	    (src->d_type, (size_t) 1, src->d_version)) == 0)
 		return (NULL);
 
-	msz = _libelf_msize(src->d_type, elfclass, src->d_version);
-
-	assert(msz > 0);
+	if ((msz = _libelf_msize(src->d_type, elfclass, src->d_version)) == 0)
+		return (NULL);
 
 	if (src->d_size % (direction == ELF_TOMEMORY ? fsz : msz)) {
 		LIBELF_SET_ERROR(DATA, 0);
@@ -140,8 +140,9 @@ _libelf_xlate(Elf_Data *dst, const Elf_Data *src, unsigned int encoding,
 	    (db == sb && !byteswap && fsz == msz))
 		return (dst);	/* nothing more to do */
 
-	if (!(_libelf_get_translator(src->d_type, direction, elfclass))
-	    (dst->d_buf, dsz, src->d_buf, cnt, byteswap)) {
+	xlator = _libelf_get_translator(src->d_type, direction, elfclass,
+	    elfmachine);
+	if (!xlator(dst->d_buf, dsz, src->d_buf, cnt, byteswap)) {
 		LIBELF_SET_ERROR(DATA, 0);
 		return (NULL);
 	}

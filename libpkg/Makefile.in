@@ -152,7 +152,7 @@ LOCAL_LDFLAGS+=	-Wl,--version-script=$(top_srcdir)/libpkg/libpkg.ver
 @if libelf-internal
 LOCAL_CFLAGS+= -I$(top_srcdir)/external/elf
 STATIC_LIBS+=	$(top_builddir)/external/libelf/libelf.a
-LOCAL_LDFLAGS+=	-L$(top_builddir)/external/libelf -lelf
+LOCAL_LDFLAGS+=	-L$(top_builddir)/external/libelf -lelf_pic
 @endif
 
 @if libelf-external

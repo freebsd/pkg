@@ -62,5 +62,19 @@ elf_next(Elf *e)
 	parent->e_u.e_ar.e_next = (next >= (off_t) parent->e_rawsize) ?
 	    (off_t) 0 : next;
 
+	/*
+	 * Return an error if the 'e_next' field falls outside the current
+	 * file.
+	 *
+	 * This check is performed after updating the parent descriptor's
+	 * 'e_next' field so that the next call to elf_begin(3) will terminate
+	 * traversal of a too-small archive even if client code forgets to
+	 * check the return value from elf_next(3).
+	 */
+	if (next > (off_t) parent->e_rawsize) {
+		LIBELF_SET_ERROR(ARGUMENT, 0);
+		return (ELF_C_NULL);
+	}
+
 	return (ELF_C_READ);
 }

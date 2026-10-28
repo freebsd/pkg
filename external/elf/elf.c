@@ -24,15 +24,11 @@
  * SUCH DAMAGE.
  */
 
+#include <sys/cdefs.h>
+
 #include <libelf.h>
 
 #include "_libelf.h"
-
-#ifdef __OpenBSD__
- #ifndef EM_AMD64
-  #define EM_AMD64    62
- #endif
-#endif
 
 ELFTC_VCSID("$Id$");
 

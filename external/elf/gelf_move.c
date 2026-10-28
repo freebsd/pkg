@@ -29,6 +29,7 @@
 #include <assert.h>
 #include <gelf.h>
 #include <limits.h>
+#include <stdint.h>
 
 #include "_libelf.h"
 
@@ -68,9 +69,9 @@ gelf_getmove(Elf_Data *ed, int ndx, GElf_Move *dst)
 		return (NULL);
 	}
 
-	msz = _libelf_msize(ELF_T_MOVE, ec, e->e_version);
+	if ((msz = _libelf_msize(ELF_T_MOVE, ec, e->e_version)) == 0)
+		return (NULL);
 
-	assert(msz > 0);
 	assert(ndx >= 0);
 
 	if (msz * (size_t) ndx >= d->d_data.d_size) {
@@ -131,9 +132,9 @@ gelf_update_move(Elf_Data *ed, int ndx, GElf_Move *gm)
 		return (0);
 	}
 
-	msz = _libelf_msize(ELF_T_MOVE, ec, e->e_version);
+	if ((msz = _libelf_msize(ELF_T_MOVE, ec, e->e_version)) == 0)
+		return (0);
 
-	assert(msz > 0);
 	assert(ndx >= 0);
 
 	if (msz * (size_t) ndx >= d->d_data.d_size) {

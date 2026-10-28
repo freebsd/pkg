@@ -56,7 +56,7 @@ elf_getident(Elf *e, size_t *sz)
 		else if (e->e_kind == ELF_K_ELF)
 			*sz = EI_NIDENT;
 		else
-			*sz = e->e_rawsize;
+			*sz = (size_t) e->e_rawsize;
 	}
 
 	return ((char *) e->e_rawfile);
