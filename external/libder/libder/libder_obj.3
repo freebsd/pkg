@@ -1,14 +1,16 @@
 .\"
 .\" SPDX-Copyright-Identifier: BSD-2-Clause
 .\"
-.\" Copyright (C) 2024 Kyle Evans <kevans@FreeBSD.org>
+.\" Copyright (C) 2024, 2026 Kyle Evans <kevans@FreeBSD.org>
 .\"
-.Dd March 2, 2024
+.Dd June 4, 2026
 .Dt LIBDER_OBJ 3
 .Os
 .Sh NAME
 .Nm libder_obj ,
 .Nm libder_obj_alloc ,
+.Nm libder_obj_alloc_oid ,
+.Nm libder_obj_alloc_reloid ,
 .Nm libder_obj_alloc_simple ,
 .Nm libder_obj_free ,
 .Nm libder_obj_append ,
@@ -25,6 +27,10 @@
 .In libder.h
 .Ft struct libder_object *
 .Fn libder_obj_alloc "struct libder_ctx *ctx" "struct libder_tag *type" "const uint8_t *data" "size_t datasz"
+.Ft struct libder_object *
+.Fn libder_obj_alloc_oid "struct libder_ctx *ctx" "const char *oidstr"
+.Ft struct libder_object *
+.Fn libder_obj_alloc_reloid "struct libder_ctx *ctx" "const char *oidstr"
 .Ft struct libder_object *
 .Fn libder_obj_alloc_simple "struct libder_ctx *ctx" "uint8_t type" "const uint8_t *data" "size_t datasz"
 .Ft void
@@ -52,7 +58,7 @@ family of functions may be used by the application to create its own objects and
 object hierarchy, rather than reading them from an existing stream.
 .Pp
 The
-.Fn libder_obj_alloc
+.Fn libder_obj_alloc ,
 and
 .Fn libder_obj_alloc_simple
 functions allocate a new object with the specified
@@ -67,6 +73,14 @@ lifecycle and associated boilerplate.
 The base variant remains around for when
 .Xr libder_type 3
 grows the necessary API to create arbitrarily large tags.
+.Pp
+The
+.Fn libder_obj_alloc_oid
+function encodes the OID (e.g.,
+.Dq 1.2.3 )
+specified in
+.Fa oidstr ,
+and allocates a new basic OID object with the result.
 .Pp
 The
 .Fn libder_obj_append

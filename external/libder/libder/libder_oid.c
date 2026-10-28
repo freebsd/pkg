@@ -82,34 +82,37 @@ oid_root_sane(uint64_t root, uint64_t sec)
 }
 
 uint8_t *
-libder_oid_parse(const char *oidstr, size_t *outsz)
+libder_oid_parse(const char *oidstr, size_t *outsz, bool relative)
 {
-	unsigned long long root, sec;
 	FILE *oidf;
 	char *buf;
 	size_t oidsz;
 	int order = 0, serrno;
 
-	/* X.690 Encoding */
-	if (sscanf(oidstr, "%llu.%llu", &root, &sec) != 2) {
-		errno = EINVAL;
-		return (NULL);
-	} else if (!oid_root_sane(root, sec)) {
-		/* Covers overflow and invalid root values. */
-		errno = EINVAL;
-		return (NULL);
-	}
-
 	oidf = open_memstream(&buf, &oidsz);
 	if (oidf == NULL)
 		return (NULL);
 
-	/*
-	 * This will usually just be a single byte, but technically it can be
-	 * larger and must also be base-128 encoded.
-	 */
-	if (!arc_encode(oidf, (root * 40) + sec))
-		goto failed;
+	/* X.690 Encoding */
+	if (!relative) {
+		unsigned long long root, sec;
+
+		if (sscanf(oidstr, "%llu.%llu", &root, &sec) != 2) {
+			errno = EINVAL;
+			return (NULL);
+		} else if (!oid_root_sane(root, sec)) {
+			/* Covers overflow and invalid root values. */
+			errno = EINVAL;
+			return (NULL);
+		}
+
+		/*
+		 * This will usually just be a single byte, but technically it can be
+		 * larger and must also be base-128 encoded.
+		 */
+		if (!arc_encode(oidf, (root * 40) + sec))
+			goto failed;
+	}
 
 	for (size_t start = 0, nsep = strcspn(oidstr, "."); oidstr[start] != '\0';
 	    start = oidstr[nsep] == '\0' ? nsep : nsep + 1,
@@ -127,7 +130,7 @@ libder_oid_parse(const char *oidstr, size_t *outsz)
 			goto failed;
 		}
 
-		if (order < 2) {
+		if (!relative && order < 2) {
 			/* Skip the first two components. */
 			order++;
 			continue;
@@ -136,7 +139,7 @@ libder_oid_parse(const char *oidstr, size_t *outsz)
 		errno = 0;
 		oval = strtoull(&oidstr[start], &endp, 10);
 		if (errno != 0 || endp != &oidstr[nsep]) {
-			/*  overflow and invalid sequences. */
+			/* Handle overflow and invalid sequences. */
 			if (*endp != '.')
 				errno = EINVAL;
 			goto failed;
@@ -188,7 +191,7 @@ arc_decode_next(const uint8_t **oidp, size_t *oidszp, uint64_t *valp)
 }
 
 char *
-libder_oid_stringify(const uint8_t *oid, size_t oidsz)
+libder_oid_stringify(const uint8_t *oid, size_t oidsz, bool relative)
 {
 	FILE *oidstrf;
 	char *buf;
@@ -206,14 +209,20 @@ libder_oid_stringify(const uint8_t *oid, size_t oidsz)
 			goto failed;
 
 		if (!rooted) {
-			unsigned long long root, sec;
-
-			/* 2 is unbounded, 0-1 occupy no more than 0-39. */
-			root = MIN(val / 40, 2);
-			sec = val - (root * 40);
 			rooted = true;
 
-			fprintf(oidstrf, "%llu.%llu", root, sec);
+			if (relative) {
+				fprintf(oidstrf, "%llu", (unsigned long long)val);
+			} else {
+				unsigned long long root, sec;
+
+				/* 2 is unbounded, 0-1 occupy no more than 0-39. */
+				root = MIN(val / 40, 2);
+				sec = val - (root * 40);
+
+				fprintf(oidstrf, "%llu.%llu", root, sec);
+			}
+
 			continue;
 		}
 

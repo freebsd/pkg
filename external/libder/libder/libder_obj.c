@@ -85,19 +85,21 @@ libder_obj_alloc(struct libder_ctx *ctx, struct libder_tag *type,
 	return (obj);
 }
 
-struct libder_object *
-libder_obj_alloc_oid(struct libder_ctx *ctx, const char *oidstr)
+static struct libder_object *
+libder_obj_alloc_oid_internal(struct libder_ctx *ctx, const char *oidstr,
+    enum libder_ber_type oidtype)
 {
 	struct libder_object *obj;
 	struct libder_tag *type;
 	uint8_t *payload;
 	size_t payloadsz;
 
-	type = libder_type_alloc_simple(ctx, BT_OID);
+	assert(oidtype == BT_OID || oidtype == BT_RELOID);
+	type = libder_type_alloc_simple(ctx, oidtype);
 	if (type == NULL)
 		return (NULL);
 
-	payload = libder_oid_parse(oidstr, &payloadsz);
+	payload = libder_oid_parse(oidstr, &payloadsz, oidtype == BT_RELOID);
 	if (payload == NULL) {
 		libder_type_free(type);
 		return (NULL);
@@ -111,6 +113,18 @@ libder_obj_alloc_oid(struct libder_ctx *ctx, const char *oidstr)
 	}
 
 	return (obj);
+}
+
+struct libder_object *
+libder_obj_alloc_oid(struct libder_ctx *ctx, const char *oidstr)
+{
+	return (libder_obj_alloc_oid_internal(ctx, oidstr, BT_OID));
+}
+
+struct libder_object *
+libder_obj_alloc_reloid(struct libder_ctx *ctx, const char *oidstr)
+{
+	return (libder_obj_alloc_oid_internal(ctx, oidstr, BT_RELOID));
 }
 
 struct libder_object *
@@ -502,12 +516,14 @@ libder_obj_dump_internal(const struct libder_object *obj, FILE *fp, int lvl)
 				col += fprintf(fp, "%.02x ", printb);
 			}
 
-			if (libder_type_is(obj->type, BT_OID)) {
+			if (libder_type_is(obj->type, BT_OID) ||
+			    libder_type_is(obj->type, BT_RELOID)) {
 				char *oidstr;
 
 				fprintf(fp, "\n%.*s    ", lvl, spacer);
 
-				oidstr = libder_oid_stringify(obj->payload, obj->length);
+				oidstr = libder_oid_stringify(obj->payload, obj->length,
+				    libder_type_is(obj->type, BT_RELOID));
 				fprintf(fp, "\"%s\"", oidstr != NULL ? oidstr : "<INVALID>");
 				free(oidstr);
 			}
