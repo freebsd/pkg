@@ -11,6 +11,7 @@ lib$(LIB)$(LIBSOEXT): $(SHOBJS)
 	$(CC) $(SH_LDFLAGS) $(LDFLAGS) $(LOCAL_LDFLAGS) $(SH_PREFIX)$@ -o $@ $(SHOBJS)
 
 lib$(LIB).a: $(OBJS)
+	rm -f $@
 	$(AR) cr $@ $(OBJS) $(EXTRA_DEPS)
 	$(RANLIB) $@
 
