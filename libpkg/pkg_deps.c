@@ -155,39 +155,40 @@ pkg_deps_parse_formula(const char *in)
 			case '!':
 				p ++;
 				break;
-			default:
+			default: {
 				static const struct {
-				const char *op;
-				int len;
-				enum pkg_dep_version_op val;
-			} oplist[] = {
-				{">=", 2, VERSION_GE},
-				{"<=", 2, VERSION_LE},
-				{"!=", 2, VERSION_NOT},
-				{"==", 2, VERSION_EQ},
-				{">", 1, VERSION_GT},
-				{"<", 1, VERSION_LT},
-				{"!", 1, VERSION_NOT},
-				{"=", 1, VERSION_EQ},
-			};
-			int olen = p - c;
-			bool found = false;
-			for (size_t oi = 0; oi < NELEM(oplist); oi++) {
-				if (olen == oplist[oi].len &&
-				    memcmp(c, oplist[oi].op, olen) == 0) {
-					cur_op = oplist[oi].val;
-					found = true;
-					break;
+					const char *op;
+					int len;
+					enum pkg_dep_version_op val;
+				} oplist[] = {
+					{">=", 2, VERSION_GE},
+					{"<=", 2, VERSION_LE},
+					{"!=", 2, VERSION_NOT},
+					{"==", 2, VERSION_EQ},
+					{">", 1, VERSION_GT},
+					{"<", 1, VERSION_LT},
+					{"!", 1, VERSION_NOT},
+					{"=", 1, VERSION_EQ},
+				};
+				int olen = p - c;
+				bool found = false;
+				for (size_t oi = 0; oi < NELEM(oplist); oi++) {
+					if (olen == oplist[oi].len &&
+					    memcmp(c, oplist[oi].op, olen) == 0) {
+						cur_op = oplist[oi].val;
+						found = true;
+						break;
+					}
 				}
-			}
-			if (!found)
-				state = st_error;
+				if (!found)
+					state = st_error;
 
 				if (state != st_error) {
 					state = st_skip_spaces;
 					next_state = st_parse_after_op;
 				}
 				break;
+			}
 			}
 			break;
 		}
