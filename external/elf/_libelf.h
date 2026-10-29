@@ -32,10 +32,10 @@
 #include <sys/queue.h>
 #if __has_include(<sys/tree.h>)
 #include <sys/tree.h>
-#elif __has_include(<bsd/sys/tree.h>)	/* libbsd, for Linux */
+#elif __has_include(<bsd/sys/tree.h>)	/* libbsd, used on Linux */
 #include <bsd/sys/tree.h>
-#else
-#error "<sys/tree.h> or libbsd is required for the RB tree macros"
+#else					/* e.g. macOS, no libbsd */
+#include "libtree.h"
 #endif
 
 #include "_libelf_config.h"
