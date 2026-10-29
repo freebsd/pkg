@@ -529,6 +529,8 @@ set_blocking(int fd)
 */
 extern char **environ;
 
+#if defined(__linux__) || defined(__illumos__) || defined(__sun)
+
 static void
 pkg_closefrom_proc(int lowfd)
 {
@@ -548,6 +550,8 @@ pkg_closefrom_proc(int lowfd)
 	}
 	(void) closedir(dirp);
 }
+
+#endif	/* __linux__ || __illumos__ || __sun */
 
 void
 pkg_closefrom(int lowfd)
