@@ -3266,10 +3266,10 @@ pkgdb_init_proc(void)
 void
 pkgshell_opendb(const char **reponame)
 {
-	char		 localpath[MAXPATHLEN];
+	static char	 localpath[MAXPATHLEN];
 
 	snprintf(localpath, sizeof(localpath), "%s/local.sqlite", ctx.dbdir);
-	*reponame = xstrdup(localpath);
+	*reponame = localpath;
 }
 
 static int
