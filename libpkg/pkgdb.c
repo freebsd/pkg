@@ -1828,12 +1828,6 @@ run_pkg_prstmt(struct pkg *pkg)
 	return (ret);
 }
 
-static const char *
-_pkgdb_empty_str_null(const char *str)
-{
-	return (str[0] == '\0' ? NULL : str);
-}
-
 /*
  * Register a package in the database.  If successful, the caller is required to
  * call pkgdb_register_finale() in order to either commit or roll back the
