@@ -78,6 +78,7 @@ TESTS_SH= \
 	frontend/unregister.sh \
 	frontend/update.sh \
 	frontend/updating.sh \
+	frontend/upgradable.sh \
 	frontend/upgrade.sh \
 	frontend/issue1374.sh \
 	frontend/issue1425.sh \

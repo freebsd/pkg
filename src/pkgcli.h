@@ -139,6 +139,10 @@ int pkgcli_update(bool, bool, c_charv_t *);
 int exec_updating(int, char **);
 void usage_updating(void);
 
+/* pkg upgradable */
+int exec_upgradable(int, char **);
+void usage_upgradable(void);
+
 /* pkg upgrade */
 int exec_upgrade(int, char **);
 void usage_upgrade(void);
