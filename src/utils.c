@@ -1411,8 +1411,6 @@ print_repository(struct pkg_repo *repo, bool pad)
 	if (pkg_repo_mirror_type(repo) != NOMIRROR)
 		printf(",\n    %-16s: \"%s\"",
 				"mirror_type", mirror);
-	printf(",\n    %-16s: %" PRId64,
-	    "fetch_workers", pkg_repo_fetch_workers(repo));
 	printf(",\n    %-16s: \"%s\"", "signature_type", sig);
 	if (pkg_repo_fingerprints(repo) != NULL)
 		printf(",\n    %-16s: \"%s\"",

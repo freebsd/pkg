@@ -178,11 +178,6 @@ static struct config_entry c[] = {
 	},
 	{
 		PKG_INT,
-		"FETCH_WORKERS",
-		"3",
-	},
-	{
-		PKG_INT,
 		"FETCH_RETRY",
 		"3",
 	},
@@ -655,7 +650,6 @@ add_repo(const ucl_object_t *obj, struct pkg_repo *r, const char *rname, pkg_ini
 	bool has_signature_type = false;
 	int use_ipvx = 0;
 	int priority = 0;
-	int64_t fetch_workers = r != NULL ? r->fetch_workers : 0;
 
 #define repo_ucl_check_type(cur, expected, tname, key, rname) \
 	if ((cur)->type != (expected)) { \
@@ -702,14 +696,6 @@ add_repo(const ucl_object_t *obj, struct pkg_repo *r, const char *rname, pkg_ini
 		} else if (STRIEQ(key, "priority")) {
 			repo_ucl_check_type(cur, UCL_INT, "an integer", key, rname);
 			priority = ucl_object_toint(cur);
-		} else if (STRIEQ(key, "fetch_workers")) {
-			repo_ucl_check_type(cur, UCL_INT, "an integer", key, rname);
-			fetch_workers = ucl_object_toint(cur);
-			if (fetch_workers < 0) {
-				pkg_emit_error("fetch_workers must not be negative "
-				    "for the '%s' repo", rname);
-				return;
-			}
 		} else if (STRIEQ(key, "ssh_args")) {
 			repo_ucl_check_type(cur, UCL_STRING, "a string", key, rname);
 			ssh_args = ucl_object_tostring(cur);
@@ -769,7 +755,6 @@ add_repo(const ucl_object_t *obj, struct pkg_repo *r, const char *rname, pkg_ini
 	r->enable = enable;
 	r->rwhich_database = enable_rwhich;
 	r->priority = priority;
-	r->fetch_workers = fetch_workers;
 
 	if (mirror_type != NULL) {
 		if (STRIEQ(mirror_type, "srv"))
@@ -1940,12 +1925,6 @@ int
 pkg_repo_priority(struct pkg_repo *r)
 {
 	return (r->priority);
-}
-
-int64_t
-pkg_repo_fetch_workers(struct pkg_repo *r)
-{
-	return (r->fetch_workers);
 }
 
 unsigned int

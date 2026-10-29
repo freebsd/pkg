@@ -1389,17 +1389,8 @@ typedef enum {
 	PKG_EVENT_FILE_META_MISMATCH,
 	PKG_EVENT_DIR_META_MISMATCH,
 	PKG_EVENT_RC_SCRIPT,
-	PKG_EVENT_FETCH_PROGRESS,
 	PKG_EVENT_LAST,
 } pkg_event_t;
-
-/* Lifecycle of the concurrent package download display. */
-typedef enum {
-	PKG_FETCH_PROGRESS_START,
-	PKG_FETCH_PROGRESS_UPDATE,
-	PKG_FETCH_PROGRESS_FINISHED,
-	PKG_FETCH_PROGRESS_END,
-} pkg_fetch_progress_t;
 
 /**
  * rc script actions used by PKG_EVENT_RC_SCRIPT.
@@ -1444,19 +1435,10 @@ struct pkg_event {
 		} e_upd_remove;
 		struct {
 			const char *url;
-			bool concurrent;
 		} e_fetching;
 		struct {
 			struct pkg *pkg;
 		} e_pkg_fetching;
-		struct {
-			pkg_fetch_progress_t status;
-			/* NULL for the queue's START and END events. */
-			struct pkg *pkg;
-			int64_t current;
-			int64_t total;
-			size_t packages;
-		} e_fetch_progress;
 		struct {
 			struct pkg *pkg;
 		} e_already_installed;
@@ -1682,8 +1664,6 @@ bool pkg_repo_enabled(struct pkg_repo *r);
 bool pkg_repo_overridden(struct pkg_repo *r);
 mirror_t pkg_repo_mirror_type(struct pkg_repo *r);
 int pkg_repo_priority(struct pkg_repo *r);
-/* Repository limit, or zero for unlimited within the global limit. */
-int64_t pkg_repo_fetch_workers(struct pkg_repo *r);
 unsigned pkg_repo_ip_version(struct pkg_repo *r);
 struct pkg_repo *pkg_repo_find(const char *name);
 int pkg_repo_fetch_remote_tmp(struct pkg_repo *repo,

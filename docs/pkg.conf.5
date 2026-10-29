@@ -235,17 +235,6 @@ network, either by SSH or any of the protocols supported by
 .Xr fetch 3
 functions.
 Default: 30.
-.It Cm FETCH_WORKERS: integer
-Maximum number of packages to download concurrently.
-Must be greater than zero.
-Set to 1 to download packages sequentially.
-This applies to package downloads for fetch, install, upgrade and mirror
-operations.
-Repository metadata is fetched separately.
-Individual repositories can set a lower limit with their
-.Cm FETCH_WORKERS
-repository option.
-Default: 3.
 .It Cm HANDLE_RC_SCRIPTS: boolean
 When enabled, this option will automatically perform start/stop of
 services during package installation and deinstallation.
@@ -626,18 +615,6 @@ for the bundled
 per repository.
 .It Cm URL: string
 URL for this repository only.
-.It Cm FETCH_WORKERS: integer
-Maximum number of concurrent package downloads from this repository.
-Zero means unlimited for this repository.
-Negative values are not permitted.
-The global
-.Cm FETCH_WORKERS
-setting still limits the total number of concurrent downloads across all
-repositories, even when a repository specifies a higher limit.
-Omitting this option uses zero, so only the global limit applies.
-This limit covers the repository as a whole, including its SRV or HTTP mirrors;
-separate repository entries have separate limits even if they use the same host.
-Default: 0.
 .It Cm ENABLED: boolean
 The repository will be used only if this option is enabled.
 Default: YES.
@@ -867,7 +844,6 @@ FreeBSD-ports: {
     signature_type: "fingerprints",
     fingerprints: "/usr/share/keys/pkg",
     mirror_type: "srv"
-    fetch_workers: 2
 }
 .Ed
 .Pp

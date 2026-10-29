@@ -164,7 +164,6 @@ global:
 	pkg_repo_create_set_sign;
 	pkg_repo_enabled;
 	pkg_repo_fetch_remote_tmp;
-	pkg_repo_fetch_workers;
 	pkg_repo_find;
 	pkg_repo_fingerprints;
 	pkg_repo_ip_version;

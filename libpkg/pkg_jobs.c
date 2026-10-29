@@ -2347,8 +2347,6 @@ static int
 pkg_jobs_fetch(struct pkg_jobs *j)
 {
 	struct pkg *p = NULL;
-	struct pkg **pkgs;
-	size_t count = 0;
 	struct stat st;
 	struct statvfs fs;
 	int64_t dlsize = 0, fs_avail = -1;
@@ -2416,19 +2414,28 @@ pkg_jobs_fetch(struct pkg_jobs *j)
 	if ((j->flags & PKG_FLAG_DRY_RUN) == PKG_FLAG_DRY_RUN)
 		return (EPKG_OK); /* don't download anything */
 
-	/* Queue remote packages after the space and dry-run checks. */
-	pkgs = xcalloc(vec_len(&j->jobs), sizeof(*pkgs));
+	/* Fetch */
 	vec_foreach(j->jobs, i) {
 		struct pkg_solved *ps = j->jobs.d[i];
-		if (ps->type == PKG_SOLVED_DELETE || ps->type == PKG_SOLVED_UPGRADE_REMOVE)
-			continue;
-		p = ps->items[0]->pkg;
-		if (p->type == PKG_REMOTE)
-			pkgs[count++] = p;
+		if (ps->type != PKG_SOLVED_DELETE && ps->type != PKG_SOLVED_UPGRADE_REMOVE) {
+			p = ps->items[0]->pkg;
+			if (p->type != PKG_REMOTE)
+				continue;
+
+			if (mirror) {
+				retcode = pkg_repo_mirror_package(p, cachedir, symlink);
+				if (retcode != EPKG_OK)
+					return (retcode);
+			}
+			else {
+				retcode = pkg_repo_fetch_package(p);
+				if (retcode != EPKG_OK)
+					return (retcode);
+			}
+		}
 	}
-	retcode = pkg_fetch_packages(pkgs, count, mirror, cachedir, symlink);
-	free(pkgs);
-	return (retcode);
+
+	return (EPKG_OK);
 }
 
 #ifdef HAVE_CHFLAGSAT
