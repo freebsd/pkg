@@ -89,7 +89,6 @@ LOCAL_CFLAGS=	-I$(top_srcdir)/compat \
 		-I$(top_builddir)/libpkg/pkg \
 		-I$(top_srcdir) \
 		-I$(top_builddir) \
-		-Wl,--as-needed \
 		-Wno-pointer-sign \
 		-Wno-missing-field-initializers \
 		-Wno-sign-compare \
@@ -97,6 +96,7 @@ LOCAL_CFLAGS=	-I$(top_srcdir)/compat \
 		-DHAVE_CONFIG_H
 
 LOCAL_LDFLAGS=	@waflags@ \
+		-Wl,--as-needed \
 		@REPOS_LDFLAGS@ \
 		-L$(top_builddir)/external/libsqlite -lsqlite_pic \
 		-L$(top_builddir)/external/libucl -lucl_pic \
