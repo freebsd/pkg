@@ -112,7 +112,7 @@ pkg_script_get(struct pkg const * const p, pkg_script i)
 	if (p->scripts[i].len == 0)
 		return (NULL);
 
-	return (sb_str(&p->scripts[i]));
+	return (p->scripts[i].d);
 }
 
 /*
