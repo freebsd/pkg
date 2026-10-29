@@ -36,6 +36,7 @@ SRCS=	add.c \
 	unregister.c \
 	update.c \
 	updating.c \
+	upgradable.c \
 	upgrade.c \
 	utils.c \
 	version.c \

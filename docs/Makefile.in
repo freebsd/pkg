@@ -42,6 +42,7 @@ MAN8=	pkg-add.8 \
 	pkg-unregister.8 \
 	pkg-update.8 \
 	pkg-updating.8 \
+	pkg-upgradable.8 \
 	pkg-upgrade.8 \
 	pkg-version.8 \
 	pkg-which.8 \

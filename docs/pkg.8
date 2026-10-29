@@ -25,7 +25,7 @@
 .\"
 .\"     @(#)pkg.8
 .\"
-.Dd June 2, 2026
+.Dd November 6, 2026
 .Dt PKG 8
 .Os
 .\" ---------------------------------------------------------------------------
@@ -289,6 +289,8 @@ Update the available remote repositories as listed in
 .Xr pkg.conf 5 .
 .It Ic updating
 Display UPDATING entries of installed packages.
+.It Ic upgradable
+Queries whether updates are available.
 .It Ic upgrade
 Upgrade a package to a newer version.
 .It Ic version
@@ -340,6 +342,13 @@ Install a package:
 .Pp
 List installed packages:
 .Dl % pkg info
+.Pp
+Determine whether any installed packages have updates available:
+.Dl % pkg upgradable
+.Pp
+Determine which currently installed Python packages have updates
+available:
+.Dl % pkg upgradable -g 'py*'
 .Pp
 Upgrade from remote repository:
 .Dl % pkg upgrade
@@ -444,6 +453,7 @@ Check for DNS resolution
 .Xr pkg-unregister 8 ,
 .Xr pkg-update 8 ,
 .Xr pkg-updating 8 ,
+.Xr pkg-upgradable 8 ,
 .Xr pkg-upgrade 8 ,
 .Xr pkg-version 8 ,
 .Xr pkg-which 8
