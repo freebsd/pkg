@@ -392,4 +392,13 @@ extern const char *__progname;
 
 #endif	/* __OpenBSD__ */
 
+
+/*
+ * Some C libraries, like the one of Alpine Linux (musl), do not provide
+ * roundup2(3): it is defined here for the systems which lack it.
+ */
+#ifndef	roundup2
+#define	roundup2(x, y)	(((x) + ((y) - 1)) / (y) * (y))
+#endif
+
 #endif	/* _ELFTC_H */
