@@ -649,6 +649,8 @@ append_script(struct plist *p, pkg_script t, const char *cmd)
 	case PKG_SCRIPT_POST_DEINSTALL:
 		sb_printf(&p->post_deinstall_buf, "%s\n", cmd);
 		break;
+	default:
+		break;
 	}
 }
 
