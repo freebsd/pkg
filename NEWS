@@ -12,6 +12,9 @@ Changes from 2.8.99.4 to 2.8.99.5
   line length, the credentials check and the redirect and 304 leaks
 - solve: do not install a package offered by several repositories when nothing
   needs it
+- db: the read-only commands can read a database created by an older pkg(8),
+  it is upgraded when it can be written to, the tables and views added by the
+  pending migrations are otherwise exposed as temporary objects
 
 Changes from 2.8.99.3 to 2.8.99.4
 - fix: a plist variable is matched on its full name, a name which is the

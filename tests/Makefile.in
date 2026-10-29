@@ -91,6 +91,7 @@ TESTS_SH= \
 	frontend/triggers.sh \
 	frontend/info.sh \
 	frontend/force_reinstall_shlib.sh \
+	frontend/olddb.sh \
 	frontend/repositories.sh
 
 #

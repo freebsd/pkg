@@ -1076,6 +1076,91 @@ pkgdb_ro_probe_ok(sqlite3 *sqlite)
 	return (ok);
 }
 
+/*
+ * The schema of the database is older than the one expected by this
+ * libpkg(3), ie pkgdb_upgrade() has work to do.
+ */
+static bool
+pkgdb_needs_upgrade(sqlite3 *sqlite)
+{
+	int64_t db_version = -1;
+
+	if (get_pragma(sqlite, "PRAGMA user_version;", &db_version,
+	    false) != EPKG_OK)
+		return (false);
+
+	return (db_version < DBVERSION);
+}
+
+/*
+ * Report whether a table or a view exists in the main schema of the
+ * database.
+ */
+static bool
+pkgdb_object_exists(sqlite3 *sqlite, const char *name)
+{
+	static const char sql[] = ""
+	    "SELECT 1 FROM sqlite_master WHERE name = ?1";
+	sqlite3_stmt	*stmt = NULL;
+	bool		 exists = false;
+
+	if (sqlite3_prepare_v2(sqlite, sql, -1, &stmt, NULL) != SQLITE_OK)
+		return (false);
+
+	sqlite3_bind_text(stmt, 1, name, -1, SQLITE_STATIC);
+	if (sqlite3_step(stmt) == SQLITE_ROW)
+		exists = true;
+	sqlite3_finalize(stmt);
+
+	return (exists);
+}
+
+/*
+ * An outdated database opened read-only cannot be upgraded, while the
+ * statements pkg prepares refer to the tables and the views added by
+ * the pending migrations. Expose the missing ones as temporary objects
+ * so that those statements remain valid. A temporary object takes
+ * precedence over a main one of the same name, hence the existence
+ * check. Temporary tables hold no data, which matches a database old
+ * enough not to have them.
+ */
+static int
+pkgdb_compat_schema(struct pkgdb *db)
+{
+	if (!pkgdb_needs_upgrade(db->sqlite))
+		return (EPKG_OK);
+
+	if (!pkgdb_object_exists(db->sqlite, "pkg_shlibs_required_ignore") &&
+	    sql_exec(db->sqlite,
+	    "CREATE TEMP TABLE pkg_shlibs_required_ignore ("
+		"package_id INTEGER NOT NULL, "
+		"shlib_id INTEGER NOT NULL, "
+		"UNIQUE (package_id, shlib_id));") != EPKG_OK)
+		return (EPKG_FATAL);
+
+	if (!pkgdb_object_exists(db->sqlite, "pkg_shlibs_provided_ignore") &&
+	    sql_exec(db->sqlite,
+	    "CREATE TEMP TABLE pkg_shlibs_provided_ignore ("
+		"package_id INTEGER NOT NULL, "
+		"shlib_id INTEGER NOT NULL, "
+		"UNIQUE (package_id, shlib_id));") != EPKG_OK)
+		return (EPKG_FATAL);
+
+	if (!pkgdb_object_exists(db->sqlite, "flavors") &&
+	    sql_exec(db->sqlite,
+	    "CREATE TEMP VIEW flavors AS "
+		"SELECT package_id, value.annotation AS flavor "
+		"FROM pkg_annotation "
+		"LEFT JOIN annotation tag "
+		"ON pkg_annotation.tag_id = tag.annotation_id "
+		"LEFT JOIN annotation value "
+		"ON pkg_annotation.value_id = value.annotation_id "
+		"WHERE tag.annotation = 'flavor';") != EPKG_OK)
+		return (EPKG_FATAL);
+
+	return (EPKG_OK);
+}
+
 int
 pkgdb_open_all2(struct pkgdb **db_p, pkgdb_t type, c_charv_t *reponames)
 {
@@ -1171,6 +1256,20 @@ retry:
 				    &db->sqlite,
 				    SQLITE_OPEN_READONLY | SQLITE_OPEN_URI,
 				    NULL);
+			} else if (pkgdb_needs_upgrade(db->sqlite) &&
+			    faccessat(dbdirfd, "local.sqlite",
+			    W_OK, AT_EACCESS) == 0) {
+				/*
+				 * The schema has to be migrated before any
+				 * statement referring to the objects it adds
+				 * can be prepared. Reopen the database
+				 * read-write so that pkgdb_upgrade() runs,
+				 * even when the caller only asked for a
+				 * read-only access to the database.
+				 */
+				sqlite3_close(db->sqlite);
+				ret = sqlite3_open("/local.sqlite",
+				    &db->sqlite);
 			}
 		} else {
 			ret = sqlite3_open("/local.sqlite", &db->sqlite);
@@ -1249,6 +1348,10 @@ retry:
 				    "CREATE TEMP TABLE IF NOT EXISTS pkg_attr "
 				    "(name TEXT NOT NULL, key TEXT NOT NULL, "
 				    "value);");
+			if (pkgdb_compat_schema(db) != EPKG_OK) {
+				pkgdb_close(db);
+				return (EPKG_FATAL);
+			}
 		}
 
 		/*
