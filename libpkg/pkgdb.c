@@ -3236,8 +3236,8 @@ pkgdb_file_set_cksum(struct pkgdb *db, struct pkg_file *file,
  * Used both in the shell and pkgdb_open
  */
 int
-pkgdb_sqlcmd_init(sqlite3 *db, __unused const char **err,
-    __unused const void *noused)
+pkgdb_sqlcmd_init(sqlite3 *db, __unused char **err,
+    __unused const struct sqlite3_api_routines *api)
 {
 	sqlite3_create_function(db, "now", 0, SQLITE_ANY|SQLITE_DETERMINISTIC, NULL,
 	    pkgdb_now, NULL, NULL);

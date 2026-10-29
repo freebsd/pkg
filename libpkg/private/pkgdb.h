@@ -15,6 +15,12 @@
 #include "pkg/vec.h"
 #include "hash.h"
 
+/*
+ * Declared by sqlite3ext.h, which cannot be included here: it redefines the
+ * whole sqlite3 API to go through the loadable extension thunk.
+ */
+struct sqlite3_api_routines;
+
 typedef vec_t(struct pkg_repo *) repos_t;
 
 /*
@@ -166,7 +172,8 @@ int pkgdb_check_access(unsigned mode, const char *dbname);
 void pkgdb_regex(sqlite3_context *ctx, int argc, sqlite3_value **argv);
 void pkgdb_regex_delete(void *p);
 void pkgdb_now(sqlite3_context *ctx, int argc, __unused sqlite3_value **argv);
-int pkgdb_sqlcmd_init(sqlite3 *db, const char **err, const void *noused);
+int pkgdb_sqlcmd_init(sqlite3 *db, char **err,
+    const struct sqlite3_api_routines *api);
 int pkgdb_update_config_file_content(struct pkg *pkg, sqlite3 *s);
 void pkgdb_syscall_overload(void);
 void pkgdb_nfs_corruption(sqlite3 *s);
