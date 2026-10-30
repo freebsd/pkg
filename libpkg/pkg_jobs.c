@@ -2218,8 +2218,17 @@ pkg_jobs_execute(struct pkg_jobs *j)
 					    "Cannot delete vital package: %s!", p->name);
 					pkg_emit_error(
 					    "If you are sure you want to remove %s", p->name);
-					pkg_emit_error(
-					    "unset the 'vital' flag with: pkg set -v 0 %s", p->name);
+					/*
+					 * pkg set -v only controls the user's
+					 * override, it cannot clear a flag set by
+					 * the package itself.
+					 */
+					if (p->vital)
+						pkg_emit_error(
+						    "use: pkg delete -f %s", p->name);
+					else
+						pkg_emit_error(
+						    "unset the 'vital' flag with: pkg set -v 0 %s", p->name);
 					retcode = EPKG_FATAL;
 					goto cleanup;
 				}
