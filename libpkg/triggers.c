@@ -519,7 +519,7 @@ trigger_execute_lua_common(const char *script, bool sandbox, hash_t *args,
 			return (EPKG_FATAL );
 		}
 	}
-	if (WEXITSTATUS(pstat) != 0) {
+	if (!WIFEXITED(pstat) || WEXITSTATUS(pstat) != 0) {
 		pkg_emit_error("lua script failed");
 		return (EPKG_FATAL);
 	}

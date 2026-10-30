@@ -82,7 +82,8 @@ run_cmd(const char *program, const char **argv, bool quiet)
 			return (-1);
 	}
 
-	return (WEXITSTATUS(pstat));
+	/* a command killed by a signal has no exit status, report failure */
+	return (WIFEXITED(pstat) ? WEXITSTATUS(pstat) : -1);
 }
 
 /*

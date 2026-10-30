@@ -306,8 +306,13 @@ pkg_script_run_child(int pid, int *pstat, int inputfd, const char* script_name) 
 		} while (readsize > 0);
 	} while (wait_for_child);
 
-	if (WEXITSTATUS(*pstat) != 0) {
-		if (WEXITSTATUS(*pstat) == 3)
+	if (WIFSIGNALED(*pstat)) {
+		pkg_emit_error("%s script terminated by signal %d",
+		    script_name, WTERMSIG(*pstat));
+		return (EPKG_FATAL);
+	}
+	if (!WIFEXITED(*pstat) || WEXITSTATUS(*pstat) != 0) {
+		if (WIFEXITED(*pstat) && WEXITSTATUS(*pstat) == 3)
 			exit(0);
 
 		pkg_emit_error("%s script failed", script_name);

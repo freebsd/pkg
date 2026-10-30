@@ -172,7 +172,7 @@ lua_exec(lua_State *L)
 		}
 	}
 
-	if (WEXITSTATUS(pstat) != 0) {
+	if (!WIFEXITED(pstat) || WEXITSTATUS(pstat) != 0) {
 		lua_pushnil(L);
 		lua_pushstring(L, "Abnormal termination");
 		lua_pushinteger(L, r);
@@ -282,7 +282,8 @@ lua_exec_capture(lua_State *L)
 
 	lua_pushstring(L, sb_str(&out));
 	lua_pushstring(L, sb_str(&err));
-	lua_pushinteger(L, WEXITSTATUS(pstat));
+	/* a command killed by a signal has no exit status, report failure */
+	lua_pushinteger(L, WIFEXITED(pstat) ? WEXITSTATUS(pstat) : -1);
 	sb_fini(&out);
 	sb_fini(&err);
 	return 3;
