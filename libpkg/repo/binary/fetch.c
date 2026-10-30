@@ -150,10 +150,10 @@ pkg_repo_binary_try_fetch(struct pkg_repo *repo, struct pkg *pkg,
 	bool already_tried, bool mirror, const char *destdir, bool symlink)
 {
 	char dest[MAXPATHLEN];
-	char url[MAXPATHLEN];
 	char *dir = NULL;
 	char *alldir = NULL;
 	bool fetched = false;
+	bool local_repo;
 	struct stat st;
 	const char *packagesite = NULL;
 	ssize_t offset = -1;
@@ -162,6 +162,25 @@ pkg_repo_binary_try_fetch(struct pkg_repo *repo, struct pkg *pkg,
 	int retcode = EPKG_OK;
 
 	assert((pkg->type & PKG_REMOTE) == PKG_REMOTE);
+
+	/*
+	 * In multi-repos the remote URL is stored in pkg[PKG_REPOURL]
+	 * For a single attached database the repository URL should be
+	 * defined by URL.
+	 */
+	packagesite = pkg_repo_url(repo);
+
+	if (packagesite == NULL || packagesite[0] == '\0') {
+		pkg_emit_error("URL is not defined");
+		return (EPKG_FATAL);
+	}
+
+	/*
+	 * For a file:// repository the "cached" file is the repository's
+	 * own package file: it is never fetched, resumed or deleted, it
+	 * is only ever verified.
+	 */
+	local_repo = !mirror && strncasecmp(packagesite, "file:/", 6) == 0;
 
 	if (mirror) {
 		const char *cachedir;
@@ -175,6 +194,18 @@ pkg_repo_binary_try_fetch(struct pkg_repo *repo, struct pkg *pkg,
 	}
 	else
 		pkg_repo_binary_get_cached_name(repo, pkg, dest, sizeof(dest));
+
+	if (local_repo) {
+		if (stat(dest, &st) == -1) {
+			pkg_emit_error("cached package %s-%s: "
+			    "%s%s%s is missing from repo\n",
+			    pkg->name, pkg->version, packagesite,
+			    packagesite[strlen(packagesite) - 1] == '/' ?
+			    "" : "/", pkg->repopath);
+			return (EPKG_FATAL);
+		}
+		goto checksum;
+	}
 
 	/* If it is already in the local cachedir, dont bother to
 	 * download it */
@@ -193,35 +224,6 @@ pkg_repo_binary_try_fetch(struct pkg_repo *repo, struct pkg *pkg,
 	if ((retcode = pkg_mkdirs(dir)) != EPKG_OK)
 		goto cleanup;
 
-	/*
-	 * In multi-repos the remote URL is stored in pkg[PKG_REPOURL]
-	 * For a single attached database the repository URL should be
-	 * defined by URL.
-	 */
-	packagesite = pkg_repo_url(repo);
-
-	if (packagesite == NULL || packagesite[0] == '\0') {
-		pkg_emit_error("URL is not defined");
-		retcode = 1;
-		goto cleanup;
-	}
-
-	if (packagesite[strlen(packagesite) - 1] == '/')
-		pkg_snprintf(url, sizeof(url), "%S%R", packagesite, pkg);
-	else
-		pkg_snprintf(url, sizeof(url), "%S/%R", packagesite, pkg);
-
-	if (!mirror && strncasecmp(url, "file://", 7) == 0) {
-		free(dir);
-		if (access(url + strlen("file://"), F_OK) == 0) {
-			return (EPKG_OK);
-		}
-		pkg_emit_error("cached package %s-%s: "
-			       "%s is missing from repo\n",
-			       pkg->name, pkg->version, url);
-		return EPKG_FATAL;
-	}
-
 	pkg_emit_pkg_fetch_begin(pkg);
 	retcode = pkg_fetch_file(repo, pkg->repopath, dest, 0, offset, pkg->pkgsize);
 
@@ -235,7 +237,7 @@ checksum:
 	/*	checksum calculation is expensive, if size does not
 		match, skip it and assume failed checksum. */
 	if (stat(dest, &st) == -1 || pkg->pkgsize != st.st_size) {
-		if (already_tried) {
+		if (already_tried || local_repo) {
 			pkg_emit_error("cached package %s-%s: "
 			    "missing or size mismatch, cannot continue\n"
 			    "Consider running 'pkg update -f'",
@@ -258,7 +260,7 @@ checksum:
 			return EPKG_FATAL;
 	}
 	if (retval != 0) {
-		if (already_tried || fetched) {
+		if (already_tried || fetched || local_repo) {
 			pkg_emit_error("%s-%s failed checksum "
 			    "from repository", pkg->name, pkg->version);
 			retcode = EPKG_FATAL;
@@ -273,9 +275,10 @@ checksum:
 
 cleanup:
 
-	if (retcode != EPKG_OK)
-		unlink(dest);
-	else if (!mirror && dir != NULL) {
+	if (retcode != EPKG_OK) {
+		if (!local_repo)
+			unlink(dest);
+	} else if (!mirror && dir != NULL) {
 		(void)pkg_repo_binary_create_symlink(pkg, dest, dir);
 	}
 	else if (mirror && symlink && dir != NULL) {
