@@ -329,8 +329,13 @@ meta_file(struct plist *p, char *line, struct file_attr *a, bool is_config)
 
 	len = strlen(line);
 
-	while (isspace(line[len - 1]))
+	while (len > 0 && isspace((unsigned char)line[len - 1]))
 		line[--len] = '\0';
+
+	if (len == 0) {
+		pkg_emit_error("Empty path in plist");
+		return (EPKG_FATAL);
+	}
 
 	if (line[0] == '/')
 		snprintf(path, sizeof(path), "%s", line);
