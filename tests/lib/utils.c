@@ -30,6 +30,7 @@
 #include <private/utils.h>
 #include <private/add.h>
 #include <private/pkg.h>
+#include <private/pkg_abi.h>
 
 ATF_TC_WITHOUT_HEAD(hidden_tempfile);
 ATF_TC_WITHOUT_HEAD(random_suffix);
@@ -40,6 +41,7 @@ ATF_TC_WITHOUT_HEAD(str_ends_with);
 ATF_TC_WITHOUT_HEAD(match_paths);
 ATF_TC_WITHOUT_HEAD(arch_to_legacy);
 ATF_TC_WITHOUT_HEAD(safe_relative_path);
+ATF_TC_WITHOUT_HEAD(abi_from_string);
 
 ATF_TC_BODY(hidden_tempfile, tc) {
 	const char *filename = "plop";
@@ -226,6 +228,25 @@ ATF_TC_BODY(safe_relative_path, tc) {
 	ATF_REQUIRE(!pkg_is_safe_relative_path("All//../x.pkg"));
 }
 
+ATF_TC_BODY(abi_from_string, tc) {
+	struct pkg_abi abi;
+
+	ATF_REQUIRE(pkg_abi_from_string(&abi, "FreeBSD:14:amd64"));
+	ATF_REQUIRE_EQ(abi.os, PKG_OS_FREEBSD);
+	ATF_REQUIRE_EQ(abi.major, 14);
+	ATF_REQUIRE_EQ(abi.minor, 0);
+	ATF_REQUIRE(!pkg_abi_from_string(&abi, "FreeBSD:abc:amd64"));
+
+	/* OSes with a minor version must parse both parts */
+	ATF_REQUIRE(pkg_abi_from_string(&abi, "dragonfly:6.4:x86:64"));
+	ATF_REQUIRE_EQ(abi.os, PKG_OS_DRAGONFLY);
+	ATF_REQUIRE_EQ(abi.major, 6);
+	ATF_REQUIRE_EQ(abi.minor, 4);
+	ATF_REQUIRE(!pkg_abi_from_string(&abi, "dragonfly:abc.4:x86:64"));
+	ATF_REQUIRE(!pkg_abi_from_string(&abi, "dragonfly:6.abc:x86:64"));
+	ATF_REQUIRE(!pkg_abi_from_string(&abi, "dragonfly:6:x86:64"));
+}
+
 ATF_TP_ADD_TCS(tp)
 {
 	ATF_TP_ADD_TC(tp, hidden_tempfile);
@@ -237,6 +258,7 @@ ATF_TP_ADD_TCS(tp)
 	ATF_TP_ADD_TC(tp, match_paths);
 	ATF_TP_ADD_TC(tp, arch_to_legacy);
 	ATF_TP_ADD_TC(tp, safe_relative_path);
+	ATF_TP_ADD_TC(tp, abi_from_string);
 
 	return (atf_no_error());
 }

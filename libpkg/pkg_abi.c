@@ -228,8 +228,13 @@ pkg_abi_from_string(struct pkg_abi *abi, const char *string)
 		}
 
 		abi->major = strtonum(major, 1, INT_MAX, &errstr);
-		if (errstr != NULL) {
+		if (errstr == NULL)
 			abi->minor = strtonum(minor, 1, INT_MAX, &errstr);
+		if (errstr != NULL) {
+			/* strsep() consumed 'version', no wildcard possible here */
+			pkg_emit_error("Invalid version in ABI string '%s'",
+			    string);
+			goto out;
 		}
 	}
 	if (errstr != NULL) {
