@@ -162,19 +162,24 @@ pkg_repo_binary_group_it_next(struct pkg_repo_it *it, struct pkg **pkg_p, unsign
 	ucl_object_iter_t oit = NULL;
 
 	prg = it->data;
-	if (prg->index == ucl_array_size(prg->groups))
-		return (EPKG_END);
+	/* skip entries without a usable name, they cannot be referenced */
+	do {
+		if (prg->index == ucl_array_size(prg->groups))
+			return (EPKG_END);
+		el = ucl_array_find_index(prg->groups, prg->index);
+		prg->index++;
+		o = ucl_object_find_key(el, "name");
+	} while (o == NULL || ucl_object_type(o) != UCL_STRING);
 
-	el = ucl_array_find_index(prg->groups, prg->index);
-	prg->index++;
 	pkg_free(*pkg_p);
 	if ((ret = pkg_new(pkg_p, PKG_GROUP_REMOTE)) != EPKG_OK)
 		return (ret);
-	o = ucl_object_find_key(el, "name");
-	xasprintf(&(*pkg_p)->name, ucl_object_tostring(o));
+	/* the group data is untrusted: never use it as a format string */
+	(*pkg_p)->name = xstrdup(ucl_object_tostring(o));
 	xasprintf(&(*pkg_p)->uid, "@%s", (*pkg_p)->name);
 	o = ucl_object_find_key(el, "comment");
-	xasprintf(&(*pkg_p)->comment, ucl_object_tostring(o));
+	(*pkg_p)->comment = xstrdup(ucl_object_type(o) == UCL_STRING ?
+	    ucl_object_tostring(o) : "");
 	ar = ucl_object_find_key(el, "depends");
 	while ((o = ucl_iterate_object(ar, &oit, true))) {
 		pkg_adddep(*pkg_p, ucl_object_tostring(o), NULL, NULL, false);
