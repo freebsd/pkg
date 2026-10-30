@@ -27,6 +27,7 @@ TESTS=	\
 	rcscripts \
 	fetch_file \
 	fetch_http \
+	fetch_hosts \
 	reaper \
 	sb \
 	stringset
@@ -49,6 +50,7 @@ TESTS_SH= \
 	frontend/delete.sh \
 	frontend/extract.sh \
 	frontend/fetch.sh \
+	frontend/fetch_parallel.sh \
 	frontend/install.sh \
 	frontend/jpeg.sh \
 	frontend/key.sh \
@@ -152,6 +154,7 @@ pkg_repo_meta_OBJS=	lib/pkg_repo_meta.o
 rcscripts_OBJS=	lib/rcscripts.o
 fetch_file_OBJS=	lib/fetch_file.o
 fetch_http_OBJS=	lib/fetch_http.o
+fetch_hosts_OBJS=	lib/fetch_hosts.o
 reaper_OBJS=	lib/reaper.o
 sb_OBJS=	lib/sb.o
 stringset_OBJS=	lib/stringset.o
@@ -183,6 +186,7 @@ SRCS=	\
 	$(rcscripts_OBJS:.o=.c) \
 	$(fetch_file_OBJS:.o=.c) \
 	$(fetch_http_OBJS:.o=.c) \
+	$(fetch_hosts_OBJS:.o=.c) \
 	$(reaper_OBJS:.o=.c) \
 	$(sb_OBJS:.o=.c) \
 	$(stringset_OBJS:.o=.c)
@@ -192,6 +196,7 @@ include $(MK)/common.mk
 TESTS_SHELL=	$(TESTS_SH:.sh=)
 
 LOCAL_CFLAGS=	-I$(top_srcdir)/compat \
+		-I$(top_srcdir)/external/fetch \
 		-I$(top_srcdir)/external/libucl/include \
 		-I$(top_srcdir)/external/uthash \
 		-I$(top_srcdir)/external/include \

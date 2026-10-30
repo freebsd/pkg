@@ -469,6 +469,7 @@ typedef enum {
 	hdr_content_range,
 	hdr_last_modified,
 	hdr_location,
+	hdr_retry_after,
 	hdr_transfer_encoding,
 	hdr_www_authenticate,
 	hdr_proxy_authenticate,
@@ -484,6 +485,7 @@ static struct {
 	{ hdr_content_range,		"Content-Range" },
 	{ hdr_last_modified,		"Last-Modified" },
 	{ hdr_location,			"Location" },
+	{ hdr_retry_after,		"Retry-After" },
 	{ hdr_transfer_encoding,	"Transfer-Encoding" },
 	{ hdr_www_authenticate,		"WWW-Authenticate" },
 	{ hdr_proxy_authenticate,	"Proxy-Authenticate" },
@@ -1723,6 +1725,37 @@ http_request(struct url *URL, const char *op, struct url_stat *us,
 	return (http_request_body(URL, op, us, purl, flags, NULL, NULL));
 }
 
+/* Resolve a scheduler redirect without opening the destination connection. */
+static struct url *
+http_resolve_location(const struct url *base, const char *location)
+{
+	struct url *result;
+	char *absolute;
+	size_t prefix = 0;
+
+	if (strstr(location, "://") != NULL)
+		return (fetchParseURL(location));
+	if (location[0] == '/' && location[1] == '/') {
+		if (asprintf(&absolute, "%s:%s", base->scheme, location) < 0)
+			return (NULL);
+	} else {
+		if (location[0] != '/') {
+			prefix = strcspn(base->doc, location[0] == '#' ? "#" : "?#");
+			if (location[0] != '?' && location[0] != '#')
+				while (prefix && base->doc[prefix - 1] != '/')
+					prefix--;
+		}
+		if (asprintf(&absolute, "%s://%s%s%s:%d%.*s%s", base->scheme,
+		    strchr(base->host, ':') ? "[" : "", base->host,
+		    strchr(base->host, ':') ? "]" : "", base->port,
+		    (int)prefix, base->doc, location) < 0)
+			return (NULL);
+	}
+	result = fetchParseURL(absolute);
+	free(absolute);
+	return (result);
+}
+
 /*
  * Send a request and process the reply
  *
@@ -2020,10 +2053,13 @@ http_request_body(struct url *URL, const char *op, struct url_stat *us,
 			goto ouch;
 		default:
 			http_seterr(conn->err);
-			if (!verbose)
+			if (!verbose && fetchResponse == NULL)
 				goto ouch;
 			/* fall through so we can get the full error message */
 		}
+
+		if (fetchResponse != NULL)
+			fetchResponse->status = conn->err;
 
 		/* get headers. http_next_header expects one line readahead */
 		if (fetch_getln(conn) == -1) {
@@ -2047,6 +2083,21 @@ http_request_body(struct url *URL, const char *op, struct url_stat *us,
 			case hdr_last_modified:
 				http_parse_mtime(p, &mtime);
 				break;
+			case hdr_retry_after:
+				if (fetchResponse != NULL) {
+					char *end;
+					unsigned long long delay;
+					time_t date = 0, now = time(NULL);
+
+					errno = 0;
+					delay = strtoull(p, &end, 10);
+					if (isdigit((unsigned char)*p) && *end == '\0' &&
+					    errno == 0 && delay <= INT64_MAX)
+						fetchResponse->retry_after = (int64_t)delay;
+					else if (http_parse_mtime(p, &date) == 0 && date > now)
+						fetchResponse->retry_after = date - now;
+				}
+				break;
 			case hdr_location:
 				if (!HTTP_REDIRECT(conn->err))
 					break;
@@ -2066,7 +2117,9 @@ http_request_body(struct url *URL, const char *op, struct url_stat *us,
 				if (verbose)
 					fetch_info("%d redirect to %s",
 					    conn->err, p);
-				if (*p == '/')
+				if (fetchResponse != NULL)
+					loc = http_resolve_location(url, p);
+				else if (*p == '/')
 					/* absolute path */
 					loc = fetchMakeURL(url->scheme, url->host,
 					    url->port, p, url->user, url->pwd);
@@ -2115,6 +2168,34 @@ http_request_body(struct url *URL, const char *op, struct url_stat *us,
 				break;
 			}
 		} while (h > hdr_end);
+
+		if (fetchResponse != NULL && conn->err == HTTP_USE_PROXY) {
+			if (loc != NULL)
+				fetchFreeURL(loc);
+			http_seterr(conn->err);
+			goto ouch;
+		}
+
+		/* Return redirects to the scheduler before contacting another host. */
+		if (fetchResponse != NULL && HTTP_REDIRECT(conn->err) && loc != NULL) {
+			if (snprintf(fetchResponse->redirect, sizeof(fetchResponse->redirect),
+			    "%s://%s%s%s:%d%s", loc->scheme,
+			    strchr(loc->host, ':') != NULL ? "[" : "", loc->host,
+			    strchr(loc->host, ':') != NULL ? "]" : "",
+			    loc->port ? loc->port : fetch_default_port(loc->scheme),
+			    loc->doc) >= (int)sizeof(fetchResponse->redirect)) {
+				fetchResponse->redirect[0] = '\0';
+				http_seterr(HTTP_PROTOCOL_ERROR);
+			} else
+				http_seterr(conn->err);
+			fetchFreeURL(loc);
+			loc = NULL;
+			goto ouch;
+		}
+
+		if (fetchResponse != NULL && HTTP_ERROR(conn->err) &&
+		    conn->err != HTTP_NEED_AUTH && conn->err != HTTP_NEED_PROXY_AUTH)
+			goto ouch;
 
 		/* we need to provide authentication */
 		if (conn->err == HTTP_NEED_AUTH ||

@@ -55,3 +55,22 @@ int libfetch_fetch(struct pkg_repo *, int dest, struct fetch_item *);
 void libfetch_cleanup(struct pkg_repo *);
 void pkg_repo_http_mirror_append(struct pkg_repo *repo, const char *url,
     bool reldoc);
+
+/* Discovery returns repository-specific endpoints; host accounting is shared. */
+struct pkg_fetch_endpoint {
+	char *url;
+	bool fullpath;
+	unsigned int priority, weight;
+};
+typedef vec_t(struct pkg_fetch_endpoint) pkg_fetch_endpoints;
+int pkg_fetch_discover(struct pkg_repo *, pkg_fetch_endpoints *);
+struct url;
+char *pkg_fetch_url(const struct url *);
+
+struct pkg_fetch_plan;
+struct fetch_response;
+struct pkg_fetch_plan *pkg_fetch_plan_new(struct pkg **, char **, size_t);
+int pkg_fetch_plan_next(struct pkg_fetch_plan *, size_t *, const char **);
+int pkg_fetch_plan_result(struct pkg_fetch_plan *, size_t, int, int,
+    const struct fetch_response *, const char *);
+void pkg_fetch_plan_free(struct pkg_fetch_plan *);

@@ -13,6 +13,7 @@ SRCS=	add.c \
 	delete.c \
 	event.c \
 	fetch.c \
+	fetch_progress.c \
 	globals.c \
 	info.c \
 	install.c \
