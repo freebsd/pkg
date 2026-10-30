@@ -1142,19 +1142,17 @@ pkg_repo_open(struct pkg_repo *repo)
 int
 pkg_repo_fetch_meta(struct pkg_repo *repo, time_t *t)
 {
-	char filepath[MAXPATHLEN];
 	struct pkg_repo_meta *nmeta;
 	const struct pkgsign_ctx *sctx;
 	struct stat st;
 	unsigned char *map = NULL;
-	int fd, dbdirfd, metafd;
+	int fd, metafd;
 	int rc = EPKG_OK, ret;
 	hash_t *sc = NULL;
 	struct sig_cert *s;
 	struct pkg_repo_check_cbdata cbdata;
 	bool newscheme = false;
 
-	dbdirfd = pkg_get_dbdirfd();
 	sctx = NULL;
 	if (repo->dfd == -1) {
 		if (pkg_repo_open(repo) == EPKG_FATAL)
@@ -1202,7 +1200,7 @@ pkg_repo_fetch_meta(struct pkg_repo *repo, time_t *t)
 	if ((rc = pkg_repo_archive_extract_archive(fd, "meta", repo,
 	    metafd, &sc)) != EPKG_OK) {
 		close(metafd);
-		unlinkat(dbdirfd, filepath, 0);
+		unlinkat(repo->dfd, "meta", 0);
 		close (fd);
 		return (rc);
 	}
@@ -1317,8 +1315,9 @@ cleanup:
 	if (sc != NULL)
 		pkg_repo_signatures_free(sc);
 
+	/* never leave a meta file that failed verification behind */
 	if (rc != EPKG_OK)
-		unlinkat(dbdirfd, filepath, 0);
+		unlinkat(repo->dfd, "meta", 0);
 
 	return (rc);
 }
