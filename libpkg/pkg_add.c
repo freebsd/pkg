@@ -962,6 +962,16 @@ do_extract(struct archive *a, struct archive_entry *ae,
 		    pkg_config_get("FILES_IGNORE_GLOB"),
 		    pkg_config_get("FILES_IGNORE_REGEX")))
 			continue;
+		/*
+		 * The *at() calls below only protect the last component:
+		 * a symlink in a parent directory is followed by the kernel
+		 * from the process root, so with -r it would lead outside
+		 * of the target root, onto the host.
+		 */
+		if (pkg_path_leaves_rootdir(context->rootfd, path)) {
+			retcode = EPKG_FATAL;
+			goto cleanup;
+		}
 		switch (archive_entry_filetype(ae)) {
 		case AE_IFDIR:
 			extract_cb = do_extract_dir;

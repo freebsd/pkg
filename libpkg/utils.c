@@ -911,6 +911,139 @@ mkdirat_p(int fd, const char *path)
  * escaping it: it must be non-empty, relative and contain no ".."
  * component.
  */
+/*
+ * Number of directory levels below the root a relative path ends up at,
+ * resolving "." and ".." lexically.  -1 when it climbs above the root.
+ */
+static int
+lexical_depth(const char *path)
+{
+	const char *p = path, *next;
+	size_t clen;
+	int depth = 0;
+
+	while (*p != '\0') {
+		next = strchr(p, '/');
+		clen = next != NULL ? (size_t)(next - p) : strlen(p);
+		if (clen == 2 && p[0] == '.' && p[1] == '.') {
+			if (--depth < 0)
+				return (-1);
+		} else if (clen > 0 && !(clen == 1 && p[0] == '.')) {
+			depth++;
+		}
+		if (next == NULL)
+			break;
+		p = next + 1;
+	}
+	return (depth);
+}
+
+static bool
+path_escapes_root(int rootfd, const char *path, int depth, int level,
+    char *bad, size_t badlen)
+{
+	char prefix[MAXPATHLEN], target[MAXPATHLEN], resolved[MAXPATHLEN];
+	const char *p, *next, *slash;
+	struct stat st;
+	ssize_t len;
+	size_t clen;
+
+	path = RELATIVE_PATH(path);
+	if (level > 32) {
+		/* symlink loop */
+		strlcpy(bad, path, badlen);
+		return (true);
+	}
+
+	prefix[0] = '\0';
+	for (p = path; (next = strchr(p, '/')) != NULL; p = next + 1) {
+		clen = next - p;
+		if (clen == 0 || (clen == 1 && p[0] == '.'))
+			continue;
+		if (prefix[0] != '\0')
+			strlcat(prefix, "/", sizeof(prefix));
+		if (strlcat(prefix, p, sizeof(prefix)) >= sizeof(prefix))
+			return (false);
+		prefix[strlen(prefix) - strlen(next)] = '\0';
+		if (clen == 2 && p[0] == '.' && p[1] == '.') {
+			if (--depth < 0) {
+				strlcpy(bad, prefix, badlen);
+				return (true);
+			}
+			continue;
+		}
+		if (fstatat(rootfd, prefix, &st, AT_SYMLINK_NOFOLLOW) == -1)
+			return (false);	/* does not exist (yet) */
+		if (S_ISDIR(st.st_mode)) {
+			depth++;
+			continue;
+		}
+		if (!S_ISLNK(st.st_mode))
+			return (false);	/* the caller will fail on it */
+
+		len = readlinkat(rootfd, prefix, target, sizeof(target) - 1);
+		if (len == -1)
+			return (false);
+		target[len] = '\0';
+		if (target[0] == '/') {
+			strlcpy(bad, prefix, badlen);
+			return (true);
+		}
+		/*
+		 * The target is relative to the directory holding the link.
+		 * Check it with its own components as parents, then carry on
+		 * from where it leads.
+		 */
+		slash = strrchr(prefix, '/');
+		snprintf(resolved, sizeof(resolved), "%.*s%s%s/",
+		    slash != NULL ? (int)(slash - prefix) : 0, prefix,
+		    slash != NULL ? "/" : "", target);
+		if (path_escapes_root(rootfd, resolved, 0, level + 1, bad,
+		    badlen) || (depth = lexical_depth(resolved)) < 0) {
+			/* report the link itself, not where it led */
+			strlcpy(bad, prefix, badlen);
+			return (true);
+		}
+	}
+	return (false);
+}
+
+/*
+ * Check whether resolving 'path' below the directory 'rootfd' can leave
+ * that directory through a symlink in one of its parent components.  The
+ * kernel resolves an absolute symlink target, or one climbing above the
+ * root with "..", from the process root and not from rootfd, so when pkg
+ * operates on another root (-r) such a path reaches the host filesystem.
+ * Only the parents are examined; the last component is protected by the
+ * caller with O_EXCL or AT_SYMLINK_NOFOLLOW.  'bad' receives the
+ * offending component when the path escapes.
+ */
+bool
+pkg_path_escapes_root(int rootfd, const char *path, char *bad, size_t badlen)
+{
+	return (path_escapes_root(rootfd, path, 0, 0, bad, badlen));
+}
+
+/*
+ * When pkg operates on another root directory (-r), refuse to touch a
+ * path whose parents lead outside of it: the kernel would resolve them
+ * on the host.  Emits an error naming the offending symlink and returns
+ * true when the path must not be used.  Nothing can escape the real "/".
+ */
+bool
+pkg_path_leaves_rootdir(int rootfd, const char *path)
+{
+	char bad[MAXPATHLEN];
+
+	if (ctx.pkg_rootdir == NULL || STREQ(ctx.pkg_rootdir, "/"))
+		return (false);
+	if (!pkg_path_escapes_root(rootfd, path, bad, sizeof(bad)))
+		return (false);
+	pkg_emit_error("%s: the path leaves the root directory %s through "
+	    "the symlink %s", path, ctx.pkg_rootdir, bad);
+	return (true);
+}
+
 bool
 pkg_is_safe_relative_path(const char *path)
 {

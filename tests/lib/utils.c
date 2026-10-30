@@ -23,10 +23,12 @@
  * THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  */
 
+#include <sys/stat.h>
 #include <atf-c.h>
 #include <atf-c/macros.h>
 #include <err.h>
 #include <fcntl.h>
+#include <unistd.h>
 #include <private/utils.h>
 #include <private/add.h>
 #include <private/pkg.h>
@@ -42,6 +44,7 @@ ATF_TC_WITHOUT_HEAD(match_paths);
 ATF_TC_WITHOUT_HEAD(arch_to_legacy);
 ATF_TC_WITHOUT_HEAD(safe_relative_path);
 ATF_TC_WITHOUT_HEAD(abi_from_string);
+ATF_TC_WITHOUT_HEAD(path_escapes_root);
 
 ATF_TC_BODY(hidden_tempfile, tc) {
 	const char *filename = "plop";
@@ -247,6 +250,45 @@ ATF_TC_BODY(abi_from_string, tc) {
 	ATF_REQUIRE(!pkg_abi_from_string(&abi, "dragonfly:6:x86:64"));
 }
 
+ATF_TC_BODY(path_escapes_root, tc) {
+	char bad[MAXPATHLEN];
+	int rootfd;
+
+	ATF_REQUIRE(mkdir("root", 0755) == 0);
+	ATF_REQUIRE(mkdir("root/a", 0755) == 0);
+	ATF_REQUIRE(mkdir("root/a/b", 0755) == 0);
+	ATF_REQUIRE(symlink("/etc", "root/a/abs") == 0);
+	ATF_REQUIRE(symlink("b", "root/a/rel") == 0);
+	ATF_REQUIRE(symlink("../a/b", "root/a/sideways") == 0);
+	ATF_REQUIRE(symlink("../../..", "root/a/up") == 0);
+	ATF_REQUIRE(symlink("rel", "root/a/chain") == 0);
+	ATF_REQUIRE(symlink("abs", "root/a/badchain") == 0);
+	ATF_REQUIRE(symlink("loop2", "root/a/loop1") == 0);
+	ATF_REQUIRE(symlink("loop1", "root/a/loop2") == 0);
+	rootfd = open("root", O_DIRECTORY);
+	ATF_REQUIRE(rootfd != -1);
+
+	/* plain directories and symlinks staying below the root */
+	ATF_REQUIRE(!pkg_path_escapes_root(rootfd, "/a/b/file", bad, sizeof(bad)));
+	ATF_REQUIRE(!pkg_path_escapes_root(rootfd, "/a/rel/file", bad, sizeof(bad)));
+	ATF_REQUIRE(!pkg_path_escapes_root(rootfd, "/a/sideways/x/file", bad, sizeof(bad)));
+	ATF_REQUIRE(!pkg_path_escapes_root(rootfd, "/a/chain/file", bad, sizeof(bad)));
+	ATF_REQUIRE(!pkg_path_escapes_root(rootfd, "/a/missing/dir/file", bad, sizeof(bad)));
+	/* the last component is never resolved */
+	ATF_REQUIRE(!pkg_path_escapes_root(rootfd, "/a/abs", bad, sizeof(bad)));
+
+	/* absolute and climbing targets, directly or through a chain */
+	ATF_REQUIRE(pkg_path_escapes_root(rootfd, "/a/abs/file", bad, sizeof(bad)));
+	ATF_REQUIRE_STREQ(bad, "a/abs");
+	ATF_REQUIRE(pkg_path_escapes_root(rootfd, "/a/up/file", bad, sizeof(bad)));
+	ATF_REQUIRE_STREQ(bad, "a/up");
+	ATF_REQUIRE(pkg_path_escapes_root(rootfd, "/a/up/etc/periodic/file", bad, sizeof(bad)));
+	ATF_REQUIRE(pkg_path_escapes_root(rootfd, "/a/badchain/file", bad, sizeof(bad)));
+	ATF_REQUIRE(pkg_path_escapes_root(rootfd, "/a/loop1/file", bad, sizeof(bad)));
+	ATF_REQUIRE(pkg_path_escapes_root(rootfd, "/a/../../file", bad, sizeof(bad)));
+	close(rootfd);
+}
+
 ATF_TP_ADD_TCS(tp)
 {
 	ATF_TP_ADD_TC(tp, hidden_tempfile);
@@ -259,6 +301,7 @@ ATF_TP_ADD_TCS(tp)
 	ATF_TP_ADD_TC(tp, arch_to_legacy);
 	ATF_TP_ADD_TC(tp, safe_relative_path);
 	ATF_TP_ADD_TC(tp, abi_from_string);
+	ATF_TP_ADD_TC(tp, path_escapes_root);
 
 	return (atf_no_error());
 }

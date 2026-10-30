@@ -101,6 +101,8 @@ bool c_charv_contains(c_charv_t *, const char *, bool);
 bool charv_contains(charv_t *, const char *, bool);
 bool str_ends_with(const char *str, const char *end);
 bool pkg_is_safe_relative_path(const char *path);
+bool pkg_path_escapes_root(int rootfd, const char *path, char *bad, size_t badlen);
+bool pkg_path_leaves_rootdir(int rootfd, const char *path);
 int char_cmp(const void *a, const void *b);
 const char *charv_search(charv_t *, const char *);
 DEFINE_VEC_INSERT_SORTED_PROTO(charv_t, charv, char *);

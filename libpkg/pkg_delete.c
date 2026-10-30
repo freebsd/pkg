@@ -243,6 +243,9 @@ rmdir_p(struct pkgdb *db, struct pkg *pkg, char *dir, const char *prefix_r)
 	if (STREQ(prefix_r, fullpath + 1))
 		return;
 
+	if (pkg_path_leaves_rootdir(pkg->rootfd, dir))
+		return;
+
 	pkg_debug(1, "removing directory %s", fullpath);
 #ifdef HAVE_STRUCT_STAT_ST_FLAGS
 	if (fstatat(pkg->rootfd, dir, &st, AT_SYMLINK_NOFOLLOW) != -1) {
@@ -323,6 +326,9 @@ pkg_delete_file(struct pkg *pkg, struct pkg_file *file)
 	len = strlen(prefix_rel);
 	while (len > 0 && prefix_rel[len - 1] == '/')
 		len--;
+
+	if (pkg_path_leaves_rootdir(pkg->rootfd, path))
+		return;
 
 #ifdef HAVE_STRUCT_STAT_ST_FLAGS
 	if (fstatat(pkg->rootfd, path, &st, AT_SYMLINK_NOFOLLOW) != -1) {
