@@ -1553,7 +1553,7 @@ pkg_rollback_pkg(struct pkg *p)
 		    pkg_config_get("FILES_IGNORE_REGEX")))
 			continue;
 		if (f->temppath  != NULL) {
-			unlinkat(p->rootfd, f->temppath, 0);
+			unlinkat(p->rootfd, RELATIVE_PATH(f->temppath), 0);
 		}
 	}
 }
@@ -1758,8 +1758,21 @@ pkg_add_common(struct pkgdb *db, const char *path, int fd, unsigned flags,
 		retcode = do_extract(a, ae, nfiles, local, &tempdirs, &context);
 		pkg_unregister_cleanup_callback(pkg_rollback_cb, pkg);
 		if (retcode != EPKG_OK) {
-			/* If the add failed, clean up (silently) */
+			/*
+			 * If the add failed, clean up (silently): the files
+			 * extracted under their temporary names, and the
+			 * temporary directories with everything already
+			 * extracted into them.
+			 */
 			pkg_rollback_pkg(pkg);
+			vec_foreach(tempdirs, i) {
+				struct tempdir *t = tempdirs.d[i];
+
+				close_tempdir(t);
+				pkg_rmtree_at(pkg->rootfd, t->temp);
+				free(t);
+			}
+			vec_free(&tempdirs);
 			pkg_delete_dirs(db, pkg, NULL);
 			goto cleanup;
 		}

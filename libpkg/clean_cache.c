@@ -35,60 +35,35 @@
 #include "pkg.h"
 #include "private/pkg.h"
 #include "private/event.h"
+#include "private/utils.h"
 
-static void
-rm_rf(int basefd, const char *path)
-{
-	int dfd;
-	DIR *d;
-	struct dirent *e;
-	struct stat st;
-
-	if (basefd != -1) {
-		while (*path == '/')
-			path++;
-
-		dfd = openat(basefd, path, O_DIRECTORY|O_CLOEXEC);
-		if (dfd == -1) {
-			pkg_emit_errno("openat", path);
-			return;
-		}
-	} else {
-		dfd = dup(pkg_get_cachedirfd());
-		if (dfd == -1) {
-			pkg_emit_error("Cannot open the cache directory");
-			return;
-		}
-	}
-
-	d = fdopendir(dfd);
-	while ((e = readdir(d)) != NULL) {
-		if (STREQ(e->d_name, ".") || STREQ(e->d_name, ".."))
-			continue;
-		if (fstatat(dirfd(d), e->d_name, &st, AT_SYMLINK_NOFOLLOW) != 0) {
-			pkg_emit_errno("fstatat", path);
-			continue;
-		}
-		if (S_ISDIR(st.st_mode))
-			rm_rf(dirfd(d), e->d_name);
-		else
-			unlinkat(dirfd(d), e->d_name, 0);
-	}
-	closedir(d);
-	if (basefd == -1)
-		return;
-	if (fstatat(basefd, path, &st, AT_SYMLINK_NOFOLLOW) != 0)
-		return;
-	unlinkat(basefd, path, S_ISDIR(st.st_mode) ? AT_REMOVEDIR : 0);
-}
-
+/* Remove everything inside the cache directory, keeping the directory. */
 void
 pkg_cache_full_clean(void)
 {
+	DIR *d;
+	struct dirent *e;
+	int dfd;
 
 	if (!pkg_object_bool(pkg_config_get("AUTOCLEAN")))
 		return;
 
 	pkg_debug(1, "Cleaning up cachedir");
-	rm_rf(-1, NULL);
+	dfd = dup(pkg_get_cachedirfd());
+	if (dfd == -1) {
+		pkg_emit_error("Cannot open the cache directory");
+		return;
+	}
+	d = fdopendir(dfd);
+	if (d == NULL) {
+		pkg_emit_errno("fdopendir", "cachedir");
+		close(dfd);
+		return;
+	}
+	while ((e = readdir(d)) != NULL) {
+		if (STREQ(e->d_name, ".") || STREQ(e->d_name, ".."))
+			continue;
+		pkg_rmtree_at(dirfd(d), e->d_name);
+	}
+	closedir(d);
 }

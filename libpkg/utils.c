@@ -1044,6 +1044,44 @@ pkg_path_leaves_rootdir(int rootfd, const char *path)
 	return (true);
 }
 
+/*
+ * Recursively remove 'path' relative to 'basefd', never following
+ * symlinks.  Errors are reported but do not stop the removal.
+ */
+void
+pkg_rmtree_at(int basefd, const char *path)
+{
+	DIR *d;
+	struct dirent *e;
+	struct stat st;
+	int dfd;
+
+	path = RELATIVE_PATH(path);
+	if (fstatat(basefd, path, &st, AT_SYMLINK_NOFOLLOW) != 0)
+		return;
+	if (S_ISDIR(st.st_mode)) {
+		dfd = openat(basefd, path, O_DIRECTORY|O_CLOEXEC);
+		if (dfd == -1) {
+			pkg_emit_errno("openat", path);
+			return;
+		}
+		d = fdopendir(dfd);
+		if (d == NULL) {
+			pkg_emit_errno("fdopendir", path);
+			close(dfd);
+			return;
+		}
+		while ((e = readdir(d)) != NULL) {
+			if (STREQ(e->d_name, ".") || STREQ(e->d_name, ".."))
+				continue;
+			pkg_rmtree_at(dirfd(d), e->d_name);
+		}
+		closedir(d);
+	}
+	if (unlinkat(basefd, path, S_ISDIR(st.st_mode) ? AT_REMOVEDIR : 0) != 0)
+		pkg_emit_errno("unlinkat", path);
+}
+
 bool
 pkg_is_safe_relative_path(const char *path)
 {
