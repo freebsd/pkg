@@ -104,13 +104,12 @@ pkg_delete(struct pkg *pkg, struct pkg *rpkg, struct pkgdb *db, int flags,
 		ret = pkg_script_run(pkg, PKG_SCRIPT_PRE_DEINSTALL, false, noexec);
 		if (ret != EPKG_OK && (ctx.developer_mode || noexec))
 			return (ret);
+		/*
+		 * Execute per-package pre-deinstall triggers
+		 */
+		triggers_execute_perpackage(pkg, TRIGGER_PHASE_PRE_DEINSTALL,
+		    (flags & PKG_DELETE_UPGRADE) != 0);
 	}
-
-	/*
-	 * Execute per-package pre-deinstall triggers
-	 */
-	triggers_execute_perpackage(pkg, TRIGGER_PHASE_PRE_DEINSTALL,
-	    (flags & PKG_DELETE_UPGRADE) != 0);
 
 	if ((flags & PKG_DELETE_KEEPFILES) == 0) {
 		ret = pkg_delete_files(db, pkg, rpkg, flags, t);
@@ -126,13 +125,12 @@ pkg_delete(struct pkg *pkg, struct pkg *rpkg, struct pkgdb *db, int flags,
 		ret = pkg_script_run(pkg, PKG_SCRIPT_POST_DEINSTALL, false, noexec);
 		if (ret != EPKG_OK && (ctx.developer_mode || noexec))
 			return (ret);
+		/*
+		 * Execute per-package post-deinstall triggers
+		 */
+		triggers_execute_perpackage(pkg, TRIGGER_PHASE_POST_DEINSTALL,
+		    (flags & PKG_DELETE_UPGRADE) != 0);
 	}
-
-	/*
-	 * Execute per-package post-deinstall triggers
-	 */
-	triggers_execute_perpackage(pkg, TRIGGER_PHASE_POST_DEINSTALL,
-	    (flags & PKG_DELETE_UPGRADE) != 0);
 
 	if ((flags & PKG_DELETE_KEEPFILES) == 0) {
 		ret = pkg_delete_dirs(db, pkg, NULL);

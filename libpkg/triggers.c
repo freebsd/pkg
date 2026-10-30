@@ -512,6 +512,17 @@ trigger_execute_lua_common(const char *script, bool sandbox, hash_t *args,
 	return (EPKG_OK);
 }
 
+/*
+ * Triggers execute code shipped by packages, so they obey the same
+ * switches as the package scripts: PKG_TRIGGERS_ENABLE and RUN_SCRIPTS.
+ */
+static bool
+triggers_enabled(void)
+{
+	return (ctx.triggers &&
+	    pkg_object_bool(pkg_config_get("RUN_SCRIPTS")));
+}
+
 static int
 trigger_execute_lua(const char *script, bool sandbox, hash_t *args)
 {
@@ -551,6 +562,14 @@ triggers_execute(struct triggers *t)
 {
 	trigger_t *triggers;
 	int ret = EPKG_OK;
+
+	if (!triggers_enabled()) {
+		if (ctx.touched_dir_hash) {
+			stringset_destroy(ctx.touched_dir_hash);
+			ctx.touched_dir_hash = NULL;
+		}
+		return (EPKG_OK);
+	}
 
 	triggers = triggers_load(false);
 
@@ -678,6 +697,9 @@ triggers_execute_perpackage(struct pkg *pkg,
 	stringset_t *pkg_paths_hash = NULL;
 	int ret = EPKG_OK;
 	trigger_t *triggers;
+
+	if (!triggers_enabled())
+		return (EPKG_OK);
 
 	triggers = triggers_load_perpackage(phase);
 

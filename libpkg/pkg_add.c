@@ -1706,12 +1706,12 @@ pkg_add_common(struct pkgdb *db, const char *path, int fd, unsigned flags,
 		if ((retcode = pkg_script_run(pkg, PKG_SCRIPT_PRE_INSTALL, (local != NULL),
 			    ((flags & PKG_ADD_NOEXEC) == PKG_ADD_NOEXEC))) != EPKG_OK)
 			goto cleanup;
+		/*
+		 * Execute per-package pre-install triggers
+		 */
+		triggers_execute_perpackage(pkg, TRIGGER_PHASE_PRE_INSTALL,
+		    (local != NULL));
 	}
-
-	/*
-	 * Execute per-package pre-install triggers
-	 */
-	triggers_execute_perpackage(pkg, TRIGGER_PHASE_PRE_INSTALL, (local != NULL));
 
 	/* add the user and group if necessary */
 
@@ -1775,12 +1775,12 @@ pkg_add_common(struct pkgdb *db, const char *path, int fd, unsigned flags,
 		if (retcode != EPKG_OK && noexec)
 			goto cleanup;
 		retcode = EPKG_OK;
+		/*
+		 * Execute per-package post-install triggers
+		 */
+		triggers_execute_perpackage(pkg, TRIGGER_PHASE_POST_INSTALL,
+		    (local != NULL));
 	}
-
-	/*
-	 * Execute per-package post-install triggers
-	 */
-	triggers_execute_perpackage(pkg, TRIGGER_PHASE_POST_INSTALL, (local != NULL));
 
 	/*
 	 * Record rc scripts for (re)start at the end of the transaction,

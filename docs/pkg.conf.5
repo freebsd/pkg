@@ -359,7 +359,11 @@ will load plugins from.
 Default:
 .Pa /usr/local/lib/pkg .
 .It Cm PKG_TRIGGERS_ENABLE: boolean
-Enable or disable execution of triggers at the end of the transactions.
+Enable or disable execution of triggers, both the per-package ones and
+the ones run at the end of the transactions.
+Triggers are also not executed when
+.Cm RUN_SCRIPTS
+is disabled or when scripts are disabled on the command line.
 Default: YES.
 .It Cm PKG_TRIGGERS_DIR: array
 List of directories where triggers are stored.
@@ -411,7 +415,7 @@ or
 .Nm pkg version -R .
 Default: YES.
 .It Cm RUN_SCRIPTS: boolean
-Run pre-/post-installation action scripts.
+Run pre-/post-installation action scripts and triggers.
 Default: YES.
 .It Cm SAT_SOLVER: string
 Experimental: tells pkg to use an external SAT solver.
