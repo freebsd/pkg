@@ -446,6 +446,7 @@ create_dir(struct pkg_add_context *context, struct pkg_dir *d,
 	struct stat st;
 	struct tempdir *tmpdir;
 	const char *path;
+	bool existed;
 	int error, fd;
 
 	tmpdir = get_tempdir(context, d->path, tempdirs);
@@ -456,6 +457,10 @@ create_dir(struct pkg_add_context *context, struct pkg_dir *d,
 		fd = tmpdir->fd;
 		path = d->path + tmpdir->len;
 	}
+
+	/* remember whether the directory was there before we touched it */
+	existed = fstatat(fd, RELATIVE_PATH(path), &st, 0) == 0 &&
+	    S_ISDIR(st.st_mode);
 
 	if (mkdirat(fd, RELATIVE_PATH(path), 0755) == -1) {
 		if (!mkdirat_p(fd, RELATIVE_PATH(path))) {
@@ -497,6 +502,20 @@ create_dir(struct pkg_add_context *context, struct pkg_dir *d,
 	    (st.st_mode & ~S_IFMT) == (d->perm & ~S_IFMT)) {
 		d->noattrs = true;
 	}
+
+	/*
+	 * Only apply the package's ownership, mode and flags to a directory
+	 * created here.  A pre-existing directory may be shared with other
+	 * packages or belong to the system (/etc, /tmp, ...): a package must
+	 * not be able to alter it just by listing it, and a previous version
+	 * having listed it proves nothing either.
+	 */
+	if (existed && !d->noattrs) {
+		pkg_debug(1, "Keeping the attributes of the pre-existing "
+		    "directory %s", d->path);
+		d->noattrs = true;
+	}
+	d->extracted = true;
 
 	close_tempdir(tmpdir);
 	return (EPKG_OK);
@@ -1113,7 +1132,11 @@ pkg_extract_finalize(struct pkg *pkg, tempdirs_t *tempdirs)
 
 	while (pkg_dirs(pkg, &d) == EPKG_OK) {
 		append_touched_dir(d->path);
-		if (d->noattrs)
+		/*
+		 * A directory only listed in the manifest but absent from
+		 * the archive was never created by us: leave it alone.
+		 */
+		if (d->noattrs || !d->extracted)
 			continue;
 		if (set_attrsat(pkg->rootfd, d->path, d->perm,
 		    d->uid, d->gid, &d->time[0], &d->time[1]) != EPKG_OK)

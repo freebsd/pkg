@@ -220,7 +220,8 @@ struct pkg_dir {
 	u_long		 fflags;
 	uid_t		 uid;
 	gid_t		 gid;
-	bool		 noattrs;
+	bool		 noattrs;	/* leave ownership, mode and flags alone */
+	bool		 extracted;	/* went through the archive extraction */
 	struct timespec	 time[2];
 };
 

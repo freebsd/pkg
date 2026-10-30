@@ -22,7 +22,37 @@ tests_init	\
 		add_shlib_already_installed \
 		add_provides_requires \
 		add_shlib_stdin_skip \
-		add_shlib_dead_symlink
+		add_shlib_dead_symlink \
+		add_dir_attrs_preexisting
+
+add_dir_attrs_preexisting_body() {
+	# A package must not alter the mode (nor ownership or flags) of a
+	# directory it did not create, only of its own ones.
+	mkdir -p ${TMPDIR}/target/usr/local/etc
+	chmod 755 ${TMPDIR}/target/usr/local/etc
+	atf_check -s exit:0 sh ${RESOURCEDIR}/test_subr.sh new_pkg test test 1 /usr/local
+	mkdir -p usr/local/etc/newdir
+	cat << EOF > plist
+@dir(,,0777) /usr/local/etc
+@dir(,,0700) /usr/local/etc/newdir
+EOF
+	atf_check pkg create -M test.ucl -p plist -r .
+	atf_check pkg -o REPOS_DIR=/dev/null -r ${TMPDIR}/target install -qy ${TMPDIR}/test-1.pkg
+	atf_check -o match:"^drwxr-xr-x" ls -ld ${TMPDIR}/target/usr/local/etc
+	atf_check -o match:"^drwx------" ls -ld ${TMPDIR}/target/usr/local/etc/newdir
+
+	# Having listed a directory in a previous version does not grant a
+	# package the right to alter it later: pre-existing directories keep
+	# their attributes, even the package's own ones.
+	cat << EOF > plist
+@dir(,,0777) /usr/local/etc
+@dir(,,0750) /usr/local/etc/newdir
+EOF
+	atf_check pkg create -M test.ucl -p plist -r .
+	atf_check pkg -o REPOS_DIR=/dev/null -r ${TMPDIR}/target install -qfy ${TMPDIR}/test-1.pkg
+	atf_check -o match:"^drwxr-xr-x" ls -ld ${TMPDIR}/target/usr/local/etc
+	atf_check -o match:"^drwx------" ls -ld ${TMPDIR}/target/usr/local/etc/newdir
+}
 
 initialize_pkg() {
 	touch a
