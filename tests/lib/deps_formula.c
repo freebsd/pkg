@@ -72,7 +72,10 @@ ATF_TC_BODY(check_sql, tc)
 		"name = 1.0", "(name='name' AND vercmp('=',version,'1.0'))",
 		"name >= 1.0,1", "(name='name' AND vercmp('>=',version,'1.0,1'))",
 		"name1 | name2", "(name='name1') OR (name='name2')",
-		"name1 = 1.0 | name2 != 1.0", "(name='name1' AND vercmp('=',version,'1.0')) OR (name='name2' AND vercmp('!=',version,'1.0'))"
+		"name1 = 1.0 | name2 != 1.0", "(name='name1' AND vercmp('=',version,'1.0')) OR (name='name2' AND vercmp('!=',version,'1.0'))",
+		/* quotes in the manifest must stay inside the SQL literal */
+		"x')OR('1'='1", "(name='x'')OR(''1''=''1')",
+		"na'me = 1.0", "(name='na''me' AND vercmp('=',version,'1.0'))",
 	};
 	char *r;
 	unsigned int i;

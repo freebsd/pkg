@@ -37,6 +37,7 @@
 #include <stdlib.h>
 
 #include "pkg.h"
+#include "pkg/sb.h"
 #include "private/event.h"
 #include "private/pkg_deps.h"
 #include "xmalloc.h"
@@ -491,54 +492,48 @@ pkg_deps_formula_tostring(dep_formulav_t *f)
 	return (res);
 }
 
+/*
+ * Append 's' as the body of a single quoted SQL string literal, doubling
+ * the quotes it contains.  The formula comes from the package manifest
+ * and must not be able to break out of the literal.
+ */
+static void
+sb_cat_sql_quoted(sb_t *sb, const char *s)
+{
+	for (; *s != '\0'; s++) {
+		if (*s == '\'')
+			sb_cat_c(sb, '\'');
+		sb_cat_c(sb, *s);
+	}
+}
+
 char*
 pkg_deps_formula_tosql(dep_itemv_t *f)
 {
 	struct pkg_dep_formula_item *cit;
-	char *res = NULL, *p;
-
-	int rlen = 0, r;
+	sb_t sb = sb_init();
 
 	vec_foreach(*f, ii) {
 		cit = &f->d[ii];
-		rlen += sizeof("AND (name='' )");
-		rlen += strlen(cit->name);
+		sb_cat(&sb, "(name='");
+		sb_cat_sql_quoted(&sb, cit->name);
+		sb_cat_c(&sb, '\'');
 
 		vec_foreach(cit->versions, vi) {
-			rlen += sizeof(" AND vercmp(>=, version,'') ");
-			rlen += strlen(cit->versions.d[vi].ver);
+			sb_printf(&sb, " AND vercmp('%s',version,'",
+			    pkg_deps_op_tostring(cit->versions.d[vi].op));
+			sb_cat_sql_quoted(&sb, cit->versions.d[vi].ver);
+			sb_cat(&sb, "')");
 		}
-
-		rlen += sizeof(" OR ");
+		sb_cat(&sb, ii + 1 < f->len ? ") OR " : ")");
 	}
 
-	if (rlen == 0) {
+	if (sb.len == 0) {
+		sb_fini(&sb);
 		return (NULL);
 	}
 
-	res = xmalloc(rlen + 1);
-
-	p = res;
-
-	vec_foreach(*f, ii) {
-		cit = &f->d[ii];
-		r = snprintf(p, rlen, "(name='%s'", cit->name);
-		p += r;
-		rlen -= r;
-
-		vec_foreach(cit->versions, vi) {
-			r = snprintf(p, rlen, " AND vercmp('%s',version,'%s')",
-					pkg_deps_op_tostring(cit->versions.d[vi].op),
-					cit->versions.d[vi].ver);
-			p += r;
-			rlen -= r;
-		}
-		r = snprintf(p, rlen, ")%s", ii + 1 < f->len ? " OR " : "");
-		p += r;
-		rlen -= r;
-	}
-
-	return (res);
+	return (sb_get(&sb));
 }
 
 enum pkg_dep_version_op
