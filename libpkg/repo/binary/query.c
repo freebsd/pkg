@@ -1473,9 +1473,9 @@ pkg_repo_binary_groupsearch(struct pkg_repo *repo, const char *pattern, match_t 
 			}
 			break;
 		case MATCH_GLOB:
-			if (pkgdb_case_sensitive() != 0)
+			if (!pkgdb_case_sensitive())
 				flag = FNM_CASEFOLD;
-			if (fnmatch(cmp, pattern, flag) == FNM_NOMATCH)
+			if (fnmatch(pattern, cmp, flag) == FNM_NOMATCH)
 				continue;
 			break;
 		case MATCH_REGEX:
@@ -1483,7 +1483,7 @@ pkg_repo_binary_groupsearch(struct pkg_repo *repo, const char *pattern, match_t 
 				char *newpattern = NULL;
 				const char *pat = pattern;
 				flag = REG_EXTENDED | REG_NOSUB;
-				if (pkgdb_case_sensitive() != 0)
+				if (!pkgdb_case_sensitive())
 					flag |= REG_ICASE;
 				re = xmalloc(sizeof(regex_t));
 				if (start_with) {

@@ -732,7 +732,7 @@ pkg_repo_binary_update_proceed(const char *name, struct pkg_repo *repo,
 				continue;
 			}
 			if (jsmntok_stringeq(key, line, "groups")) {
-				dump_json(repo, line, value, "groups");
+				dump_json(repo, line, value, "groups.ucl");
 			} else if (jsmntok_stringeq(key, line, "expired_packages")) {
 				dump_json(repo, line, value, "expired_packages");
 			} else if (jsmntok_stringeq(key, line, "packages")) {
