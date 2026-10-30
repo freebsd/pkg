@@ -223,6 +223,16 @@ read_path(const int fd, const bool swap, const uint32_t loadcmdsize,
 
 	uint32_t name_ofs;
 	READ(u32, name_ofs);
+	/*
+	 * name_ofs is relative to the start of the load command, of which
+	 * the 12 header bytes (cmd, cmdsize, offset) have been consumed.
+	 * An offset outside the command would make the size arithmetic
+	 * below wrap around.
+	 */
+	if (name_ofs < 12 || name_ofs > loadcmdsize) {
+		errno = EINVAL;
+		return -1;
+	}
 	if (-1 == (x = lseek(fd, name_ofs - 12, SEEK_CUR))) {
 		return x;
 	}
@@ -254,6 +264,11 @@ read_dylib(const int fd, const bool swap, const uint32_t loadcmdsize,
 	READ(version, current_version);
 	READ(version, compatibility_version);
 
+	/* 24 header bytes consumed so far, see read_path() */
+	if (name_ofs < 24 || name_ofs > loadcmdsize) {
+		errno = EINVAL;
+		return -1;
+	}
 	if (-1 == (x = lseek(fd, name_ofs - 24, SEEK_CUR))) {
 		return x;
 	}
