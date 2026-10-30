@@ -165,6 +165,7 @@ ATF_TC_BODY(osvfparse, tc)
 {
 	static ucl_object_t *obj = NULL;
 	char buf[1024];
+	/* upper bound then lower bound of each range, in order */
 	char *version_strs[] =
 	{
 		"1.0.0",
@@ -172,19 +173,37 @@ ATF_TC_BODY(osvfparse, tc)
 		"1.1.0_1",
 		"1.0.9_1",
 		"c14e07db4",
-		"ae637a3ad"
+		"ae637a3ad",
+		/* two ranges from a single events list */
+		"1.5",
+		"1.0",
+		"2.3",
+		"2.0",
 	};
 	unsigned int version_types[] =
 	{
 		OSVF_EVENT_VERSION_SEMVER,
 		OSVF_EVENT_VERSION_ECOSYSTEM,
 		OSVF_EVENT_VERSION_GIT,
+		OSVF_EVENT_VERSION_ECOSYSTEM,
+		OSVF_EVENT_VERSION_ECOSYSTEM,
+	};
+	/* "fixed" and "limit" are exclusive, "last_affected" is inclusive */
+	int v2_types[] = { LT, LT, LT, LT, LTE };
+	int v2_osv_types[] =
+	{
+		OSVF_EVENT_FIXED,
+		OSVF_EVENT_FIXED,
+		OSVF_EVENT_FIXED,
+		OSVF_EVENT_FIXED,
+		OSVF_EVENT_LAST_AFFECTED,
 	};
 	char *name_strs[] =
 	{
 		"osvf-test-package10",
 		"osvf-test-package11",
-		"osvf-test-package12"
+		"osvf-test-package12",
+		"osvf-test-package13"
 	};
 	int reference_types[] =
 	{
@@ -236,15 +255,17 @@ ATF_TC_BODY(osvfparse, tc)
 		struct pkg_audit_package *p = &entry->packages.d[pi];
 		vec_foreach(p->versions, vi) {
 			struct pkg_audit_versions_range *vers = &p->versions.d[vi];
-			ATF_CHECK_INTEQ(vers->type, version_types[otherpos++]);
+			ATF_CHECK_INTEQ(vers->type, version_types[otherpos]);
 			ATF_CHECK_STREQ(vers->v2.version, version_strs[pos++]);
-			ATF_CHECK_INTEQ(vers->v2.type, LTE);
-			ATF_CHECK_INTEQ(vers->v2.osv_type, OSVF_EVENT_FIXED);
+			ATF_CHECK_INTEQ(vers->v2.type, v2_types[otherpos]);
+			ATF_CHECK_INTEQ(vers->v2.osv_type, v2_osv_types[otherpos]);
 			ATF_CHECK_STREQ(vers->v1.version, version_strs[pos++]);
 			ATF_CHECK_INTEQ(vers->v1.type, GTE);
 			ATF_CHECK_INTEQ(vers->v1.osv_type, OSVF_EVENT_INTRODUCED);
+			otherpos++;
 		}
 	}
+	ATF_CHECK_INTEQ(otherpos, 5);
 
 	/* Check names across all packages */
 	pos = 0;
@@ -268,13 +289,14 @@ ATF_TC_BODY(osvfparse, tc)
 
 		vec_foreach(p->versions, vi) {
 			struct pkg_audit_versions_range *vers = &p->versions.d[vi];
-			ATF_CHECK_INTEQ(vers->type, version_types[otherpos++]);
+			ATF_CHECK_INTEQ(vers->type, version_types[otherpos]);
 			ATF_CHECK_STREQ(vers->v2.version, version_strs[subpos++]);
-			ATF_CHECK_INTEQ(vers->v2.type, LTE);
-			ATF_CHECK_INTEQ(vers->v2.osv_type, OSVF_EVENT_FIXED);
+			ATF_CHECK_INTEQ(vers->v2.type, v2_types[otherpos]);
+			ATF_CHECK_INTEQ(vers->v2.osv_type, v2_osv_types[otherpos]);
 			ATF_CHECK_STREQ(vers->v1.version, version_strs[subpos++]);
 			ATF_CHECK_INTEQ(vers->v1.type, GTE);
 			ATF_CHECK_INTEQ(vers->v1.osv_type, OSVF_EVENT_INTRODUCED);
+			otherpos++;
 		}
 	}
 

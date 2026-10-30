@@ -122,6 +122,31 @@
           ]
         }
       ]
+    },
+    {
+      "package": {
+        "ecosystem": "FreeBSD:ports",
+        "name": "osvf-test-package13"
+      },
+      "ranges": [
+        {
+          "type": "ECOSYSTEM",
+          "events": [
+            {
+              "introduced": "1.0"
+            },
+            {
+              "fixed": "1.5"
+            },
+            {
+              "introduced": "2.0"
+            },
+            {
+              "last_affected": "2.3"
+            }
+          ]
+        }
+      ]
     }
   ],
   "database_specific": {

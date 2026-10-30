@@ -857,11 +857,29 @@ pkg_osvf_parse_package(struct pkg_audit_package *package, const ucl_object_t *pa
 	package->ecosystem = pkg_osvf_get_ecosystem(pkg_osvf_ucl_string(package_obj, "ecosystem"));
 }
 
+static struct pkg_audit_versions_range *
+pkg_osvf_new_range(audit_versv_t *versions, int type)
+{
+	vec_push(versions, ((struct pkg_audit_versions_range){0}));
+	versions->d[versions->len - 1].type = type;
+	return (&versions->d[versions->len - 1]);
+}
+
+/*
+ * Parse an OSV "events" array into version ranges.  The events are an
+ * ordered list where "introduced" opens a range and "fixed" (exclusive),
+ * "last_affected" (inclusive) or "limit" (exclusive) closes it.  A single
+ * ranges[] entry can therefore describe several affected intervals, each
+ * one becomes its own pkg_audit_versions_range.  A missing bound means
+ * the range is open on that side.
+ */
 static void
-pkg_osvf_parse_events(struct pkg_audit_versions_range *range, const ucl_object_t *event_array, const char *type)
+pkg_osvf_parse_events(audit_versv_t *versions, const ucl_object_t *event_array, const char *type)
 {
 	ucl_object_iter_t it = NULL;
 	const ucl_object_t *cur = NULL;
+	struct pkg_audit_versions_range *range = NULL;
+	int range_type;
 
 	if(!event_array || ucl_object_type(event_array) != UCL_ARRAY)
 	{
@@ -873,28 +891,55 @@ pkg_osvf_parse_events(struct pkg_audit_versions_range *range, const ucl_object_t
 		return;
 	}
 
-	range->type = pkg_osvf_get_event(type);
-
-	/* Parses package structure from events:
-	   {
-	     "fixed|introduced": "1.0.0"
-	   }
-	*/
+	range_type = pkg_osvf_get_event(type);
 
 	while ((cur = ucl_iterate_object(event_array, &it, true)))
 	{
-		if(ucl_object_find_key(cur, "fixed"))
+		const char *key;
+		int vtype, osv_type;
+
+		if(ucl_object_find_key(cur, "introduced"))
 		{
-			range->v2.version = xstrdup(pkg_osvf_ucl_string(cur, "fixed"));
-			range->v2.type = LTE;
-			range->v2.osv_type = OSVF_EVENT_FIXED;
-		}
-		else if(ucl_object_find_key(cur, "introduced"))
-		{
+			/* start a new range unless the current one has no lower bound yet */
+			if(range == NULL || range->v1.version != NULL)
+				range = pkg_osvf_new_range(versions, range_type);
 			range->v1.version = xstrdup(pkg_osvf_ucl_string(cur, "introduced"));
 			range->v1.type = GTE;
 			range->v1.osv_type = OSVF_EVENT_INTRODUCED;
+			continue;
 		}
+
+		if(ucl_object_find_key(cur, "fixed"))
+		{
+			key = "fixed";
+			vtype = LT;
+			osv_type = OSVF_EVENT_FIXED;
+		}
+		else if(ucl_object_find_key(cur, "last_affected"))
+		{
+			key = "last_affected";
+			vtype = LTE;
+			osv_type = OSVF_EVENT_LAST_AFFECTED;
+		}
+		else if(ucl_object_find_key(cur, "limit"))
+		{
+			key = "limit";
+			vtype = LT;
+			osv_type = OSVF_EVENT_LIMIT;
+		}
+		else
+		{
+			continue;
+		}
+
+		if(range == NULL)
+			range = pkg_osvf_new_range(versions, range_type);
+		/* a range has a single upper bound, the first one wins */
+		if(range->v2.version != NULL)
+			continue;
+		range->v2.version = xstrdup(pkg_osvf_ucl_string(cur, key));
+		range->v2.type = vtype;
+		range->v2.osv_type = osv_type;
 	}
 }
 
@@ -926,15 +971,21 @@ pkg_osvf_parse_ranges(audit_versv_t *versions, const ucl_object_t *range_array)
 
 	while ((cur = ucl_iterate_object(range_array, &it, true)))
 	{
-		vec_push(versions, ((struct pkg_audit_versions_range){0}));
-		struct pkg_audit_versions_range *range =
-		    &versions->d[versions->len - 1];
+		const char *type = pkg_osvf_ucl_string(cur, "type");
 
 		sub_obj = ucl_object_find_key(cur, "events");
 
-		if(sub_obj && ucl_object_type(sub_obj) == UCL_ARRAY)
+		if(sub_obj && ucl_object_type(sub_obj) == UCL_ARRAY &&
+		    ucl_array_size(sub_obj) > 0)
 		{
-			pkg_osvf_parse_events(range, ucl_object_find_key(cur, "events"), pkg_osvf_ucl_string(cur, "type"));
+			pkg_osvf_parse_events(versions, sub_obj, type);
+		}
+		else
+		{
+			/* no events: every version is affected */
+			pkg_osvf_new_range(versions,
+			    type != NULL ? pkg_osvf_get_event(type) :
+			    OSVF_EVENT_VERSION_UNKNOWN);
 		}
 	}
 }
