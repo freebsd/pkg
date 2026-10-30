@@ -1590,6 +1590,7 @@ pkg_add_common(struct pkgdb *db, const char *path, int fd, unsigned flags,
 	struct pkg_file		*f;
 	const char		*msgstr;
 	bool			 extract = true, openxact = false;
+	bool			 stop = false;
 	int			 retcode = EPKG_OK;
 	int			 ret;
 	int			 nfiles;
@@ -1772,7 +1773,9 @@ pkg_add_common(struct pkgdb *db, const char *path, int fd, unsigned flags,
 		pkg_lua_script_run(pkg, PKG_LUA_POST_INSTALL, (local != NULL));
 		retcode = pkg_script_run(pkg, PKG_SCRIPT_POST_INSTALL, (local != NULL),
 		    noexec);
-		if (retcode != EPKG_OK && noexec)
+		if (retcode == EPKG_STOP)
+			stop = true;
+		else if (retcode != EPKG_OK && noexec)
 			goto cleanup;
 		retcode = EPKG_OK;
 		/*
@@ -1844,6 +1847,10 @@ cleanup:
 	}
 
 	pkg_free(pkg);
+
+	/* the package is installed, the caller must stop after it */
+	if (retcode == EPKG_OK && stop)
+		retcode = EPKG_STOP;
 
 	return (retcode);
 }

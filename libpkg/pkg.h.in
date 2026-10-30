@@ -568,6 +568,11 @@ typedef enum {
 	 * No compat 32 support
 	 */
 	EPKG_NOCOMPAT32,
+	/**
+	 * The operation succeeded and a post-install script asked to stop
+	 * processing the remaining packages (exit status 3).
+	 */
+	EPKG_STOP,
 } pkg_error_t;
 
 /**

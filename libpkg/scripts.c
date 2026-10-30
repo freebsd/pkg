@@ -61,6 +61,7 @@ pkg_script_run(struct pkg * const pkg, pkg_script type, bool upgrade, bool noexe
 	const char *argv[4];
 	char **ep;
 	int ret = EPKG_OK;
+	bool stop = false;
 	int stdin_pipe[2] = {-1, -1};
 	posix_spawn_file_actions_t action;
 	bool use_pipe = 0;
@@ -225,6 +226,10 @@ pkg_script_run(struct pkg * const pkg, pkg_script type, bool upgrade, bool noexe
 
 			close(cur_pipe[0]);
 			cur_pipe[0] = -1;
+			if (ret == EPKG_STOP) {
+				stop = true;
+				ret = EPKG_OK;
+			}
 		}
 	}
 
@@ -242,6 +247,8 @@ cleanup:
 
 	pkg_reaper_release(&reaper);
 
+	if (ret == EPKG_OK && stop)
+		ret = EPKG_STOP;
 	return (ret);
 }
 
@@ -312,8 +319,16 @@ pkg_script_run_child(int pid, int *pstat, int inputfd, const char* script_name) 
 		return (EPKG_FATAL);
 	}
 	if (!WIFEXITED(*pstat) || WEXITSTATUS(*pstat) != 0) {
-		if (WIFEXITED(*pstat) && WEXITSTATUS(*pstat) == 3)
-			exit(0);
+		/*
+		 * A post-install script exiting with status 3 asks pkg to
+		 * stop processing the remaining packages once this one is
+		 * fully installed (the kernel package uses it to request a
+		 * reboot before the userland gets upgraded).  It is not a
+		 * failure, and it has no meaning in the other phases.
+		 */
+		if (WIFEXITED(*pstat) && WEXITSTATUS(*pstat) == 3 &&
+		    STREQ(script_name, "POST-INSTALL"))
+			return (EPKG_STOP);
 
 		pkg_emit_error("%s script failed", script_name);
 		return (EPKG_FATAL);

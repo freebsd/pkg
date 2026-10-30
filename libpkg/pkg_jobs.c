@@ -2244,6 +2244,21 @@ pkg_jobs_execute(struct pkg_jobs *j)
 		case PKG_SOLVED_UPGRADE_INSTALL:
 		case PKG_SOLVED_UPGRADE:
 			retcode = pkg_jobs_handle_install(ps, j);
+			if (retcode == EPKG_STOP) {
+				/*
+				 * The package is installed, its post-install
+				 * script asked us not to go further.  Finish
+				 * the transaction properly and report success.
+				 */
+				pkg_emit_notice("Stopping after %s-%s as "
+				    "requested by its post-install script, "
+				    "%zu action(s) not performed",
+				    ps->items[0]->pkg->name,
+				    ps->items[0]->pkg->version,
+				    total_actions - current_action);
+				retcode = EPKG_OK;
+				goto finish;
+			}
 			if (retcode != EPKG_OK)
 				goto cleanup;
 			break;
@@ -2255,6 +2270,7 @@ pkg_jobs_execute(struct pkg_jobs *j)
 
 	}
 
+finish:
 	pkg_plugins_hook_run(post, j, j->db);
 	triggers_execute(&j->triggers);
 	pkg_deferred_rc_execute(&j->rc);

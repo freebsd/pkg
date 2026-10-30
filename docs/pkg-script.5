@@ -34,6 +34,17 @@ run before removing the files on the system.
 run after removing the files on the system.
 .El
 .Pp
+A script exiting with a non-zero status is considered to have failed.
+The only exception is a
+.Cm post-install
+script exiting with status 3: the package is installed and registered
+normally, but
+.Xr pkg 8
+stops processing the remaining packages of the current operation and
+reports success.
+This allows for example a kernel package to request a reboot before the
+rest of the system gets upgraded.
+.Pp
 In the particular case of an upgrade the scripts are run in the following order:
 .Bl -enum -compact
 .It

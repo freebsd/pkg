@@ -6,7 +6,62 @@ tests_init \
 	basic \
 	message \
 	daemon \
-	upgrade
+	upgrade \
+	stop
+
+stop_body() {
+	# A post-install script exiting with 3 stops the operation after its
+	# package, which is installed; the operation is a success.
+	atf_check -s exit:0 sh ${RESOURCEDIR}/test_subr.sh new_pkg "a" "a" "1"
+	cat << EOF >> a.ucl
+scripts: {
+  post-install: <<EOS
+	echo stopping here
+	exit 3
+EOS
+}
+EOF
+	atf_check -s exit:0 sh ${RESOURCEDIR}/test_subr.sh new_pkg "b" "b" "1"
+	cat << EOF >> b.ucl
+deps: {
+  a: {
+    origin: "a",
+    version: "1"
+  }
+}
+EOF
+	atf_check pkg create -M a.ucl
+	atf_check pkg create -M b.ucl
+	mkdir ${TMPDIR}/target
+	atf_check -o match:"stopping here" \
+	    -o match:"Stopping after a-1 as requested by its post-install script" \
+	    -s exit:0 \
+	    pkg -o REPOS_DIR=/dev/null -r ${TMPDIR}/target install -fy ${TMPDIR}/b-1.pkg ${TMPDIR}/a-1.pkg
+	atf_check -o inline:"a-1\n" \
+	    pkg -o REPOS_DIR=/dev/null -r ${TMPDIR}/target info -q
+
+	# the same through pkg add
+	atf_check -o match:"stopping here" \
+	    -e match:"Stopping after .*a-1.pkg as requested by its post-install script" \
+	    -s exit:0 \
+	    pkg -o REPOS_DIR=/dev/null -r ${TMPDIR}/target add -f ${TMPDIR}/a-1.pkg ${TMPDIR}/b-1.pkg
+	atf_check -o inline:"a-1\n" \
+	    pkg -o REPOS_DIR=/dev/null -r ${TMPDIR}/target info -q
+
+	# in any other phase status 3 is a plain failure
+	atf_check -s exit:0 sh ${RESOURCEDIR}/test_subr.sh new_pkg "c" "c" "1"
+	cat << EOF >> c.ucl
+scripts: {
+  pre-install: <<EOS
+	exit 3
+EOS
+}
+EOF
+	atf_check pkg create -M c.ucl
+	atf_check -s not-exit:0 \
+	    -e match:"PRE-INSTALL script failed" \
+	    pkg -o REPOS_DIR=/dev/null -r ${TMPDIR}/target install -qfy ${TMPDIR}/c-1.pkg
+}
 
 basic_body() {
 	atf_check -s exit:0 sh ${RESOURCEDIR}/test_subr.sh new_pkg "test" "test" "1"

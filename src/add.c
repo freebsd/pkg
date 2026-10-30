@@ -74,6 +74,7 @@ exec_add(int argc, char **argv)
 	int i;
 	int failedpkgcount = 0;
 	int scriptnoexec = 0;
+	bool stop = false;
 	pkg_flags f = PKG_FLAG_NONE;
 	const char *location = NULL;
 
@@ -184,7 +185,15 @@ exec_add(int argc, char **argv)
 			retcode = pkg_add_fd(db, fd, f, location);
 		else
 			retcode = pkg_add(db, file, f, location);
-		if (retcode != EPKG_OK) {
+		if (retcode == EPKG_STOP) {
+			/* installed, and asked to stop processing the rest */
+			retcode = EPKG_OK;
+			stop = true;
+			if (i != argc - 1)
+				warnx("Stopping after %s as requested by its "
+				    "post-install script, %d package(s) not "
+				    "processed", argv[i], argc - i - 1);
+		} else if (retcode != EPKG_OK) {
 			sb_cat(&failedpkgs, argv[i]);
 			if (i != argc - 1)
 				sb_printf(&failedpkgs, ", ");
@@ -196,6 +205,8 @@ exec_add(int argc, char **argv)
 			fd = -1;
 		}
 
+		if (stop)
+			break;
 	}
 	pkgdb_release_lock(db, PKGDB_LOCK_EXCLUSIVE);
 	pkgdb_close(db);
