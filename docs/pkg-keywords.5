@@ -11,7 +11,7 @@
 .\"    notice, this list of conditions and the following disclaimer in the
 .\"    documentation and/or other materials provided with the distribution.
 .\"
-.Dd December 12, 2025
+.Dd October 30, 2026
 .Dt PKG-KEYWORDS 5
 .Os
 .Sh NAME
@@ -52,7 +52,18 @@ then pkg will make split it using spaces as token and make the argument availabl
 .It Cm actions
 Any action will now accept a number that will represent the argument passed to the action via parenthesis.
 .It Cm shell and lua scripts
-New variables will be available to scripts: \%%<number>.
+The arguments are made available to the scripts through a textual
+substitution of
+\%%<number>
+by the corresponding argument and of
+\%%@
+by the whole argument string.
+The substitution is applied to the script text itself, consequently a
+literal
+.Ql %1
+inside a lua string, e.g. as the replacement string of
+.Fn string.gsub ,
+is substituted as well and must be avoided.
 .El
 .It Cm attributes
 attributes that can be set to a file or a directory depending if actions has been set.

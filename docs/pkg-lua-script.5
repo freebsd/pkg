@@ -11,7 +11,7 @@
 .\"    notice, this list of conditions and the following disclaimer in the
 .\"    documentation and/or other materials provided with the distribution.
 .\"
-.Dd April 14, 2026
+.Dd October 30, 2026
 .Dt PKG-LUA-SCRIPT 5
 .Os
 .Sh NAME
@@ -76,6 +76,24 @@ has been disabled.
 .It Fn os.exit
 has been disabled.
 .El
+.Pp
+Paths are resolved relatively to the root directory, as specified by the
+.Fl r
+argument passed to
+.Xr pkg 8 ,
+by
+.Fn io.open ,
+.Fn os.remove ,
+.Fn os.rename ,
+.Fn pkg.stat
+and
+.Fn pkg.readdir .
+Other functions such as
+.Fn pkg.exec
+or
+.Fn pkg.exec_capture
+spawn programs on the host, the paths they are given are therefore host
+paths.
 .Pp
 The following variables are available defined to any lua scripts:
 .Bl -tag -width Ds
@@ -145,13 +163,35 @@ Copy a file preserving its attributes. return
 .Va -1
 if an error occurred
 .It Ft st Fn pkg.stat "file"
-return an object table
+Return an object table
 .Ft st
-with the following fields:
-.Va type ,
+describing
+.Ar file .
+Symbolic links are not followed and
+.Dv nil
+is returned if
+.Ar file
+does not exist.
+The
+.Va type
+field is one of
+.Va reg ,
+.Va dir ,
+.Va chr ,
+.Va lnk ,
+.Va sock ,
+.Va blk ,
+.Va fifo
+or
+.Va unknown ;
+the
 .Va size ,
-.Va uid ,
+.Va uid
+and
 .Va gid
+fields are the ones of the
+.Xr stat 2
+structure.
 .It Fn pkg.symlink "source" "destination"
 Create a symbolic link
 .Va destination
@@ -167,6 +207,8 @@ expected in the following form:
 .Sc
 .Pp
 The command inherits the parent's standard output and standard error.
+The program and its arguments are transmitted to the host as they are:
+they are not resolved relatively to the root directory.
 .It Ft "stdout, stderr, exitcode" Fn pkg.exec_capture arguments
 Will execute the command
 .Ar arguments
@@ -187,15 +229,19 @@ and
 .Va exitcode
 contains the error number.
 .It Ft res Fn pkg.readdir path
-Will return an
+Return an
 .Va ipair
 with the list of elements contained in the directory
-the special directory
+.Ar path .
+The special directories
 .Va So .
 .Sc
 and
 .Va Sq ..
-are be filtered out.
+are filtered out.
+Returns
+.Dv nil
+and an error message if the directory cannot be opened.
 .El
 .Sh SEE ALSO
 .Xr pkg_checksum 3 ,
