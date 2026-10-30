@@ -29,6 +29,7 @@
 #include <fcntl.h>
 #include <private/utils.h>
 #include <private/add.h>
+#include <private/pkg.h>
 
 ATF_TC_WITHOUT_HEAD(hidden_tempfile);
 ATF_TC_WITHOUT_HEAD(random_suffix);
@@ -37,6 +38,7 @@ ATF_TC_WITHOUT_HEAD(open_tempdir);
 ATF_TC_WITHOUT_HEAD(get_http_auth);
 ATF_TC_WITHOUT_HEAD(str_ends_with);
 ATF_TC_WITHOUT_HEAD(match_paths);
+ATF_TC_WITHOUT_HEAD(arch_to_legacy);
 
 ATF_TC_BODY(hidden_tempfile, tc) {
 	const char *filename = "plop";
@@ -170,6 +172,43 @@ ATF_TC_BODY(match_paths, tc) {
 	ATF_REQUIRE(!pkg_match_paths_list(list, "/a/b/c/d/e/f/g"));
 }
 
+ATF_TC_BODY(arch_to_legacy, tc) {
+	char dest[32];
+	char longabi[4096];
+
+	ATF_REQUIRE_EQ(pkg_arch_to_legacy("FreeBSD:14:amd64", dest,
+	    sizeof(dest)), 0);
+	ATF_REQUIRE_STREQ(dest, "freebsd:14:x86:64");
+	ATF_REQUIRE_EQ(pkg_arch_to_legacy("FreeBSD:14:whatever", dest,
+	    sizeof(dest)), 0);
+	ATF_REQUIRE_STREQ(dest, "freebsd:14:whatever");
+	ATF_REQUIRE_EQ(pkg_arch_to_legacy("FreeBSD", dest, sizeof(dest)), 0);
+	ATF_REQUIRE_STREQ(dest, "freebsd");
+
+	/* The result must fit exactly, one byte less is an overflow */
+	ATF_REQUIRE_EQ(pkg_arch_to_legacy("FreeBSD:14:amd64", dest,
+	    strlen("freebsd:14:x86:64") + 1), 0);
+	ATF_REQUIRE_STREQ(dest, "freebsd:14:x86:64");
+	ATF_REQUIRE_EQ(pkg_arch_to_legacy("FreeBSD:14:amd64", dest,
+	    strlen("freebsd:14:x86:64")), EPKG_FATAL);
+	ATF_REQUIRE_STREQ(dest, "");
+
+	/* Overlong OS, version and arch components must be rejected */
+	memset(longabi, 'A', sizeof(longabi) - 1);
+	longabi[sizeof(longabi) - 1] = '\0';
+	ATF_REQUIRE_EQ(pkg_arch_to_legacy(longabi, dest, sizeof(dest)),
+	    EPKG_FATAL);
+	ATF_REQUIRE_STREQ(dest, "");
+	snprintf(longabi, sizeof(longabi), "FreeBSD:%0*d:amd64", 100, 0);
+	ATF_REQUIRE_EQ(pkg_arch_to_legacy(longabi, dest, sizeof(dest)),
+	    EPKG_FATAL);
+	ATF_REQUIRE_STREQ(dest, "");
+	snprintf(longabi, sizeof(longabi), "FreeBSD:14:%0*d", 100, 0);
+	ATF_REQUIRE_EQ(pkg_arch_to_legacy(longabi, dest, sizeof(dest)),
+	    EPKG_FATAL);
+	ATF_REQUIRE_STREQ(dest, "");
+}
+
 ATF_TP_ADD_TCS(tp)
 {
 	ATF_TP_ADD_TC(tp, hidden_tempfile);
@@ -179,6 +218,7 @@ ATF_TP_ADD_TCS(tp)
 	ATF_TP_ADD_TC(tp, get_http_auth);
 	ATF_TP_ADD_TC(tp, str_ends_with);
 	ATF_TP_ADD_TC(tp, match_paths);
+	ATF_TP_ADD_TC(tp, arch_to_legacy);
 
 	return (atf_no_error());
 }

@@ -393,42 +393,63 @@ close_out:
 	return ret;
 }
 
+/*
+ * Convert an ABI string into its legacy (altabi) form.  'arch' may come
+ * from an untrusted manifest, so every write into 'dest' is bounded by
+ * 'sz'.  On overflow 'dest' is left empty and EPKG_FATAL is returned.
+ */
 int
 pkg_arch_to_legacy(const char *arch, char *dest, size_t sz)
 {
-	int i = 0;
+	size_t i = 0;
 
+	if (sz == 0)
+		return (EPKG_FATAL);
 	memset(dest, '\0', sz);
 	/* Lower case the OS */
 	while (arch[i] != ':' && arch[i] != '\0') {
+		if (i >= sz - 1)
+			goto overflow;
 		dest[i] = tolower(arch[i]);
 		i++;
 	}
 	if (arch[i] == '\0')
 		return (0);
 
+	if (i >= sz - 1)
+		goto overflow;
 	dest[i++] = ':';
 
 	/* Copy the version */
 	while (arch[i] != ':' && arch[i] != '\0') {
+		if (i >= sz - 1)
+			goto overflow;
 		dest[i] = arch[i];
 		i++;
 	}
 	if (arch[i] == '\0')
 		return (0);
 
+	if (i >= sz - 1)
+		goto overflow;
 	dest[i++] = ':';
 
 	for (int j = 0; j < nitems(machine_arch_translation); j++) {
 		if (STREQ(arch + i, machine_arch_translation[j].archid)) {
-			strlcpy(dest + i, machine_arch_translation[j].elftype,
-			    sz - (arch + i - dest));
+			if (strlcpy(dest + i, machine_arch_translation[j].elftype,
+			    sz - i) >= sz - i)
+				goto overflow;
 			return (0);
 		}
 	}
-	strlcpy(dest + i, arch + i, sz - (arch + i - dest));
+	if (strlcpy(dest + i, arch + i, sz - i) >= sz - i)
+		goto overflow;
 
 	return (0);
+
+overflow:
+	memset(dest, '\0', sz);
+	return (EPKG_FATAL);
 }
 
 void
