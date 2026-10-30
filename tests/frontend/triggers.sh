@@ -231,10 +231,21 @@ EOF
 	echo /usr/local/libdata/ldconfig/mylib.conf > plist
 	atf_check pkg create -M mylib.ucl -p plist -r .
 	unset PKG_TRIGGERS_DIR
+	unset PKG_DBDIR
+	# A non sandboxed trigger from the target root must not run on the
+	# host: it is deferred with its package context
+	atf_check -o not-match:"ldconfig: pre_install" \
+	    pkg -o REPOS_DIR=/dev/null -o PKG_TRIGGERS_DIR="/trigger_dir" -r ${TMPDIR}/target install -qfy ${TMPDIR}/mylib-1.0.pkg
+	atf_check -o match:"^--pkgname mylib$" \
+	    -o match:"^--pkgversion 1.0$" \
+	    -o not-match:"^--upgrade$" \
+	    -o match:"^-- /usr/local/libdata/ldconfig$" \
+	    cat ${TMPDIR}/target/var/db/pkg/triggers/*
 	atf_check -o match:"ldconfig: pre_install for mylib-1.0" \
 	    -o match:"upgrade: false" \
 	    -o match:"path: /usr/local/libdata/ldconfig" \
-	    pkg -o REPOS_DIR=/dev/null -o PKG_TRIGGERS_DIR="/trigger_dir" -r ${TMPDIR}/target install -qfy ${TMPDIR}/mylib-1.0.pkg
+	    pkg -o PKG_DBDIR=${TMPDIR}/target/var/db/pkg triggers
+	atf_check ls ${TMPDIR}/target/var/db/pkg/triggers
 }
 
 perpackage_post_install_body() {
@@ -261,10 +272,19 @@ EOF
 	echo /usr/local/libdata/ldconfig/mylib.conf > plist
 	atf_check pkg create -M mylib.ucl -p plist -r .
 	unset PKG_TRIGGERS_DIR
+	unset PKG_DBDIR
+	atf_check -o not-match:"ldconfig: post_install" \
+	    pkg -o REPOS_DIR=/dev/null -o PKG_TRIGGERS_DIR="/trigger_dir" -r ${TMPDIR}/target install -qfy ${TMPDIR}/mylib-1.0.pkg
 	atf_check -o match:"ldconfig: post_install for mylib-1.0" \
 	    -o match:"upgrade: false" \
 	    -o match:"path: /usr/local/libdata/ldconfig" \
+	    pkg -o PKG_DBDIR=${TMPDIR}/target/var/db/pkg triggers
+	# the same trigger is reported as an upgrade when reinstalling
+	atf_check -o not-match:"ldconfig: post_install" \
 	    pkg -o REPOS_DIR=/dev/null -o PKG_TRIGGERS_DIR="/trigger_dir" -r ${TMPDIR}/target install -qfy ${TMPDIR}/mylib-1.0.pkg
+	atf_check -o match:"ldconfig: post_install for mylib-1.0" \
+	    -o match:"upgrade: true" \
+	    pkg -o PKG_DBDIR=${TMPDIR}/target/var/db/pkg triggers
 }
 
 perpackage_pre_deinstall_body() {
@@ -290,11 +310,14 @@ EOF
 	echo /usr/local/libdata/ldconfig/mylib.conf > plist
 	atf_check pkg create -M mylib.ucl -p plist -r .
 	unset PKG_TRIGGERS_DIR
+	unset PKG_DBDIR
 	atf_check pkg -o REPOS_DIR=/dev/null -o PKG_TRIGGERS_DIR="/trigger_dir" -r ${TMPDIR}/target install -qfy ${TMPDIR}/mylib-1.0.pkg
+	atf_check -o not-match:"ldconfig: pre_deinstall" \
+	    pkg -o REPOS_DIR=/dev/null -o PKG_TRIGGERS_DIR="/trigger_dir" -r ${TMPDIR}/target delete -qy mylib
 	atf_check -o match:"ldconfig: pre_deinstall for mylib-1.0" \
 	    -o match:"upgrade: false" \
 	    -o match:"path: /usr/local/libdata/ldconfig" \
-	    pkg -o REPOS_DIR=/dev/null -o PKG_TRIGGERS_DIR="/trigger_dir" -r ${TMPDIR}/target delete -qy mylib
+	    pkg -o PKG_DBDIR=${TMPDIR}/target/var/db/pkg triggers
 }
 
 perpackage_post_deinstall_body() {
@@ -320,11 +343,14 @@ EOF
 	echo /usr/local/libdata/ldconfig/mylib.conf > plist
 	atf_check pkg create -M mylib.ucl -p plist -r .
 	unset PKG_TRIGGERS_DIR
+	unset PKG_DBDIR
 	atf_check pkg -o REPOS_DIR=/dev/null -o PKG_TRIGGERS_DIR="/trigger_dir" -r ${TMPDIR}/target install -qfy ${TMPDIR}/mylib-1.0.pkg
+	atf_check -o not-match:"ldconfig: post_deinstall" \
+	    pkg -o REPOS_DIR=/dev/null -o PKG_TRIGGERS_DIR="/trigger_dir" -r ${TMPDIR}/target delete -qy mylib
 	atf_check -o match:"ldconfig: post_deinstall for mylib-1.0" \
 	    -o match:"upgrade: false" \
 	    -o match:"path: /usr/local/libdata/ldconfig" \
-	    pkg -o REPOS_DIR=/dev/null -o PKG_TRIGGERS_DIR="/trigger_dir" -r ${TMPDIR}/target delete -qy mylib
+	    pkg -o PKG_DBDIR=${TMPDIR}/target/var/db/pkg triggers
 }
 
 perpackage_file_glob_body() {
@@ -348,8 +374,11 @@ EOF
 	echo /usr/local/share/omf/myhelp/myhelp-C.omf > plist
 	atf_check pkg create -M myhelp.ucl -p plist -r .
 	unset PKG_TRIGGERS_DIR
-	atf_check -o match:"omf: /usr/local/share/omf/myhelp/myhelp-C.omf" \
+	unset PKG_DBDIR
+	atf_check -o not-match:"omf:" \
 	    pkg -o REPOS_DIR=/dev/null -o PKG_TRIGGERS_DIR="/trigger_dir" -r ${TMPDIR}/target install -qfy ${TMPDIR}/myhelp-1.0.pkg
+	atf_check -o match:"omf: /usr/local/share/omf/myhelp/myhelp-C.omf" \
+	    pkg -o PKG_DBDIR=${TMPDIR}/target/var/db/pkg triggers
 }
 
 perpackage_file_regexp_body() {
@@ -373,6 +402,9 @@ EOF
 	echo /usr/local/etc/gconf/schemas/myapp.schemas > plist
 	atf_check pkg create -M myapp.ucl -p plist -r .
 	unset PKG_TRIGGERS_DIR
-	atf_check -o match:"schema: /usr/local/etc/gconf/schemas/myapp.schemas" \
+	unset PKG_DBDIR
+	atf_check -o not-match:"schema:" \
 	    pkg -o REPOS_DIR=/dev/null -o PKG_TRIGGERS_DIR="/trigger_dir" -r ${TMPDIR}/target install -qfy ${TMPDIR}/myapp-2.0.pkg
+	atf_check -o match:"schema: /usr/local/etc/gconf/schemas/myapp.schemas" \
+	    pkg -o PKG_DBDIR=${TMPDIR}/target/var/db/pkg triggers
 }

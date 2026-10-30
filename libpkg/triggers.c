@@ -375,8 +375,15 @@ get_random_name(char name[])
 	return (name);
 }
 
+/*
+ * Write a trigger that must not run on the host (see ctx.defer_triggers)
+ * into the target's db directory, to be executed by "pkg triggers" from
+ * inside the target.  The per-package context, when present, is stored
+ * in the header so it can be handed back to the script.
+ */
 static void
-save_trigger(const char *script, bool sandbox, hash_t *args)
+save_trigger(const char *script, bool sandbox, hash_t *args,
+    const char *pkgname, const char *pkgversion, bool upgrade)
 {
 	int db = ctx.pkg_dbdirfd;
 
@@ -414,9 +421,16 @@ save_trigger(const char *script, bool sandbox, hash_t *args)
 	}
 	if (sandbox)
 		fputs("--sandbox\n", f);
+	if (pkgname != NULL)
+		fprintf(f, "--pkgname %s\n", pkgname);
+	if (pkgversion != NULL)
+		fprintf(f, "--pkgversion %s\n", pkgversion);
+	if (upgrade)
+		fputs("--upgrade\n", f);
 	fputs("--begin args\n", f);
+	/* the matched paths are the keys, as used by the lua runner */
 	hash_foreach(args, it) {
-		fprintf(f, "-- %s\n", (char *)it.value);
+		fprintf(f, "-- %s\n", (char *)it.key);
 	}
 	fputs("--end args\n--\n", f);
 	fprintf(f, "%s\n", script);
@@ -431,7 +445,8 @@ trigger_execute_lua_common(const char *script, bool sandbox, hash_t *args,
 	int pstat;
 
 	if (defer && !sandbox && ctx.defer_triggers) {
-		save_trigger(script, sandbox, args);
+		save_trigger(script, sandbox, args, pkgname, pkgversion,
+		    upgrade);
 		return (EPKG_OK);
 	}
 
@@ -745,7 +760,7 @@ triggers_execute_perpackage(struct pkg *pkg,
 		pkg_emit_trigger(trig->name, false);
 		if (trig->script.type == SCRIPT_LUA) {
 			ret = trigger_execute_lua_common(trig->script.script,
-			    trig->script.sandbox, local_matched, false,
+			    trig->script.sandbox, local_matched, true,
 			    pkg->name, pkg->version, upgrade);
 		}
 		hash_destroy(local_matched);
@@ -789,6 +804,9 @@ static void
 exec_deferred(int dfd, const char *name)
 {
 	bool sandbox = false;
+	bool upgrade = false;
+	char *pkgname = NULL;
+	char *pkgversion = NULL;
 	hash_t *args = NULL;
 	sb_t script = sb_init();
 	sb_t *tgt = NULL;
@@ -811,10 +829,33 @@ exec_deferred(int dfd, const char *name)
 	char *walk;
 	bool inargs = false;
 	while ((linelen = getline(&line, &linecap, f)) > 0) {
-		walk = line;
-		walk += 2; /* '--' aka lua comments */
+		/* everything after the header is the script itself */
+		if (tgt != NULL) {
+			sb_cat(tgt, line);
+			continue;
+		}
+		if (line[linelen - 1] == '\n')
+			line[--linelen] = '\0';
+		/* header lines all start with '--' aka lua comments */
+		if (linelen < 2 || line[0] != '-' || line[1] != '-')
+			continue;
+		walk = line + 2;
 		if (strncmp(walk, "sandbox", 7) == 0) {
 			sandbox = true;
+			continue;
+		}
+		if (strncmp(walk, "pkgname ", 8) == 0) {
+			free(pkgname);
+			pkgname = xstrdup(walk + 8);
+			continue;
+		}
+		if (strncmp(walk, "pkgversion ", 11) == 0) {
+			free(pkgversion);
+			pkgversion = xstrdup(walk + 11);
+			continue;
+		}
+		if (strncmp(walk, "upgrade", 7) == 0) {
+			upgrade = true;
 			continue;
 		}
 		if (strncmp(walk, "begin args", 10) == 0) {
@@ -827,25 +868,27 @@ exec_deferred(int dfd, const char *name)
 			continue;
 		}
 		if (inargs) {
-			walk++; /* skip the space */
-			if (line[linelen -1] == '\n')
-				line[linelen -1] = '\0';
+			if (*walk == ' ')
+				walk++;
 			hash_safe_add(args, walk, NULL, NULL);
 		}
-		if (tgt != NULL)
-			sb_cat(tgt, line);
 	}
 	free(line);
 	fclose(f);
 	if (tgt == NULL) {
 		hash_destroy(args);
+		free(pkgname);
+		free(pkgversion);
 		return;
 	}
 	char *s = sb_get(&script);
-	if (trigger_execute_lua(s, sandbox, args) == EPKG_OK) {
+	if (trigger_execute_lua_common(s, sandbox, args, false, pkgname,
+	    pkgversion, upgrade) == EPKG_OK) {
 		unlinkat(dfd, name, 0);
 	}
 	free(s);
+	free(pkgname);
+	free(pkgversion);
 	hash_destroy(args);
 }
 
