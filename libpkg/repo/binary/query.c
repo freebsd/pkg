@@ -865,8 +865,14 @@ pkg_repo_binary_file_which_parse(FILE *fp, struct pkg_repo *repo,
 			} else if (strchr(line, ' ') != NULL && cur_pkgid == -1) {
 				/* Package header: "<name> <version>" */
 				char *sp = strchr(line, ' ');
-				strncpy(cur_pkgname, line, sp - line);
-				cur_pkgname[sp - line] = '\0';
+				size_t namelen = sp - line;
+				if (namelen == 0 ||
+				    namelen >= sizeof(cur_pkgname)) {
+					/* Malformed header, skip it */
+					continue;
+				}
+				memcpy(cur_pkgname, line, namelen);
+				cur_pkgname[namelen] = '\0';
 				const char *ver = sp + 1;
 
 				sqlite3_reset(id_stmt);
@@ -1017,8 +1023,14 @@ pkg_repo_binary_file_which_parse_glob(FILE *fp, struct pkg_repo *repo,
 				cur_dir = strtol(line + 1, NULL, 10);
 			} else if (strchr(line, ' ') != NULL && cur_pkgid == -1) {
 				char *sp = strchr(line, ' ');
-				strncpy(cur_pkgname, line, sp - line);
-				cur_pkgname[sp - line] = '\0';
+				size_t namelen = sp - line;
+				if (namelen == 0 ||
+				    namelen >= sizeof(cur_pkgname)) {
+					/* Malformed header, skip it */
+					continue;
+				}
+				memcpy(cur_pkgname, line, namelen);
+				cur_pkgname[namelen] = '\0';
 				const char *ver = sp + 1;
 
 				sqlite3_reset(id_stmt);
