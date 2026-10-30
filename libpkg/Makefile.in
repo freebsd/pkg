@@ -95,7 +95,7 @@ LOCAL_CFLAGS=	-I$(top_srcdir)/compat \
 		-DHAVE_CONFIG_H
 
 LOCAL_LDFLAGS=	@waflags@ \
-		-Wl,--as-needed \
+		@as-needed@ \
 		@REPOS_LDFLAGS@ \
 		-L$(top_builddir)/external/libsqlite -lsqlite_pic \
 		-L$(top_builddir)/external/libucl -lucl_pic \

@@ -186,6 +186,16 @@ if ! have_func dlclose; then
 	fi
 fi
 
+# The Mach-O linker does not know --as-needed
+printf 'Checking for the linker --as-needed option... '
+if cc_try_link 'int main(void) { return (0); }' "-Wl,--as-needed"; then
+	echo "yes"
+	define as-needed "-Wl,--as-needed"
+else
+	echo "no"
+	define as-needed ""
+fi
+
 # Darwin / libelf
 case "$_host" in
 	*-darwin*)
