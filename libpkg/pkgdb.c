@@ -3173,7 +3173,7 @@ pkgdb_replace(struct pkgdb *db, unsigned int field, const char *pattern, const c
 	const char *sql[PKG_SET_MAX] = {
 		[PKG_SET_NAME] = "update packages set name = replace(name, ?1, ?2) where name glob ?3",
 		[PKG_SET_ORIGIN] = "update packages set origin = replace(origin, ?1, ?2) where origin glob ?3",
-		[PKG_SET_DEPNAME] = "update deps set name = replace(name, ?1, ?2) where name glob '?3'",
+		[PKG_SET_DEPNAME] = "update deps set name = replace(name, ?1, ?2) where name glob ?3",
 		[PKG_SET_DEPORIGIN] = "update deps set origin = replace(origin, ?1, ?2) where origin glob ?3",
 	};
 
