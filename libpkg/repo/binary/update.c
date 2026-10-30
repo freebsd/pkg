@@ -414,6 +414,32 @@ pkg_repo_binary_register_conflicts(const char *origin, char **conflicts,
 	return (EPKG_OK);
 }
 
+/*
+ * The catalogue is untrusted and its path, name and version fields are
+ * used to build file names below the cache directory and the mirror
+ * destination, so none of them may be able to escape that directory.
+ */
+static bool
+pkg_repo_binary_check_paths(const struct pkg *pkg, const struct pkg_repo *repo)
+{
+	if (pkg->name == NULL || pkg->version == NULL ||
+	    strchr(pkg->name, '/') != NULL ||
+	    strchr(pkg->version, '/') != NULL) {
+		pkg_emit_error("repository %s contains a package with an "
+		    "invalid name or version: %s-%s", repo->name,
+		    pkg->name != NULL ? pkg->name : "(null)",
+		    pkg->version != NULL ? pkg->version : "(null)");
+		return (false);
+	}
+	if (!pkg_is_safe_relative_path(pkg->repopath)) {
+		pkg_emit_error("repository %s contains package %s-%s with an "
+		    "invalid path: %s", repo->name, pkg->name, pkg->version,
+		    pkg->repopath != NULL ? pkg->repopath : "(null)");
+		return (false);
+	}
+	return (true);
+}
+
 static int
 pkg_repo_binary_add_from_string(sqlite3 *sqlite, const char *str, size_t len, struct pkg_repo *repo)
 {
@@ -442,6 +468,10 @@ pkg_repo_binary_add_from_string(sqlite3 *sqlite, const char *str, size_t len, st
 		rc = EPKG_FATAL;
 		pkg_emit_error("repository %s contains packages for wrong OS "
 		    "version: %s", repo->name, abi);
+		goto cleanup;
+	}
+	if (!pkg_repo_binary_check_paths(pkg, repo)) {
+		rc = EPKG_FATAL;
 		goto cleanup;
 	}
 
@@ -486,6 +516,10 @@ pkg_repo_binary_add_from_manifest(const char *buf, sqlite3 *sqlite, size_t len,
 		rc = EPKG_FATAL;
 		pkg_emit_error("repository %s contains packages for wrong OS "
 		    "version: %s", repo->name, abi);
+		goto cleanup;
+	}
+	if (!pkg_repo_binary_check_paths(pkg, repo)) {
+		rc = EPKG_FATAL;
 		goto cleanup;
 	}
 

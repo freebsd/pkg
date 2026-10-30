@@ -72,6 +72,9 @@ pkg_repo_binary_get_cached_name(struct pkg_repo *repo, struct pkg *pkg,
 
 	if (pkg->repopath != NULL)
 		ext = strrchr(pkg->repopath, '.');
+	/* the extension belongs to the last path component only */
+	if (ext != NULL && strchr(ext, '/') != NULL)
+		ext = NULL;
 
 	if (ext != NULL) {
 		/*
@@ -162,6 +165,20 @@ pkg_repo_binary_try_fetch(struct pkg_repo *repo, struct pkg *pkg,
 	int retcode = EPKG_OK;
 
 	assert((pkg->type & PKG_REMOTE) == PKG_REMOTE);
+
+	/*
+	 * The catalogue is validated on update, but the fields below are
+	 * used to build paths under the cache directory, so refuse to
+	 * work with anything that could escape it.
+	 */
+	if (!pkg_is_safe_relative_path(pkg->repopath) ||
+	    strchr(pkg->name, '/') != NULL ||
+	    strchr(pkg->version, '/') != NULL) {
+		pkg_emit_error("%s-%s: invalid package path in repository "
+		    "%s: %s", pkg->name, pkg->version, repo->name,
+		    pkg->repopath != NULL ? pkg->repopath : "(null)");
+		return (EPKG_FATAL);
+	}
 
 	/*
 	 * In multi-repos the remote URL is stored in pkg[PKG_REPOURL]

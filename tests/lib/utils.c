@@ -39,6 +39,7 @@ ATF_TC_WITHOUT_HEAD(get_http_auth);
 ATF_TC_WITHOUT_HEAD(str_ends_with);
 ATF_TC_WITHOUT_HEAD(match_paths);
 ATF_TC_WITHOUT_HEAD(arch_to_legacy);
+ATF_TC_WITHOUT_HEAD(safe_relative_path);
 
 ATF_TC_BODY(hidden_tempfile, tc) {
 	const char *filename = "plop";
@@ -209,6 +210,22 @@ ATF_TC_BODY(arch_to_legacy, tc) {
 	ATF_REQUIRE_STREQ(dest, "");
 }
 
+ATF_TC_BODY(safe_relative_path, tc) {
+	ATF_REQUIRE(pkg_is_safe_relative_path("All/foo-1.0.pkg"));
+	ATF_REQUIRE(pkg_is_safe_relative_path("foo-1.0.pkg"));
+	ATF_REQUIRE(pkg_is_safe_relative_path("All/..foo/.hidden/a..b"));
+	ATF_REQUIRE(pkg_is_safe_relative_path("All/./foo.pkg"));
+
+	ATF_REQUIRE(!pkg_is_safe_relative_path(NULL));
+	ATF_REQUIRE(!pkg_is_safe_relative_path(""));
+	ATF_REQUIRE(!pkg_is_safe_relative_path("/etc/rc.local"));
+	ATF_REQUIRE(!pkg_is_safe_relative_path(".."));
+	ATF_REQUIRE(!pkg_is_safe_relative_path("../foo.pkg"));
+	ATF_REQUIRE(!pkg_is_safe_relative_path("All/../../etc/rc.local"));
+	ATF_REQUIRE(!pkg_is_safe_relative_path("All/x.pkg/.."));
+	ATF_REQUIRE(!pkg_is_safe_relative_path("All//../x.pkg"));
+}
+
 ATF_TP_ADD_TCS(tp)
 {
 	ATF_TP_ADD_TC(tp, hidden_tempfile);
@@ -219,6 +236,7 @@ ATF_TP_ADD_TCS(tp)
 	ATF_TP_ADD_TC(tp, str_ends_with);
 	ATF_TP_ADD_TC(tp, match_paths);
 	ATF_TP_ADD_TC(tp, arch_to_legacy);
+	ATF_TP_ADD_TC(tp, safe_relative_path);
 
 	return (atf_no_error());
 }

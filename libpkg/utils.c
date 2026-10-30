@@ -906,6 +906,27 @@ mkdirat_p(int fd, const char *path)
 	return (true);
 }
 
+/*
+ * Check that 'path' can be joined below a base directory without
+ * escaping it: it must be non-empty, relative and contain no ".."
+ * component.
+ */
+bool
+pkg_is_safe_relative_path(const char *path)
+{
+	const char *p;
+
+	if (path == NULL || path[0] == '\0' || path[0] == '/')
+		return (false);
+	for (p = path; *p != '\0'; p++) {
+		if (p[0] == '.' && p[1] == '.' &&
+		    (p == path || p[-1] == '/') &&
+		    (p[2] == '\0' || p[2] == '/'))
+			return (false);
+	}
+	return (true);
+}
+
 int
 pkg_namecmp(struct pkg *a, struct pkg *b)
 {
