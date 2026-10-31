@@ -9,7 +9,8 @@ tests_init \
 	update_all_disabled_repos \
 	update_override_disabled_repo \
 	update_nonexistent_repo \
-	failed_update_keeps_catalog
+	failed_update_keeps_catalog \
+	invalid_data_keeps_catalog
 
 update_error_body() {
 
@@ -336,4 +337,37 @@ EOF
 	# and updates work again as soon as the repository is back
 	mv repo.hide/* repo/
 	atf_check -o ignore pkg -C ./pkg.conf update
+}
+
+invalid_data_keeps_catalog_body()
+{
+	atf_check sh ${RESOURCEDIR}/test_subr.sh new_pkg "test" "test" "1"
+	atf_check pkg create -M test.ucl
+	mkdir repo
+	mv test-1.pkg repo/
+	atf_check -o ignore pkg repo repo
+
+	cat > pkg.conf << EOF
+PKG_DBDIR=${TMPDIR}
+PKG_CACHEDIR=${TMPDIR}/cache
+REPOS_DIR=[]
+repositories: {
+	local: { url: file://${TMPDIR}/repo }
+}
+EOF
+	atf_check -o ignore pkg -C ./pkg.conf update
+
+	# Publish a truncated catalogue
+	mkdir bad
+	echo '{"packages": [ {"name"' > bad/data
+	(cd bad && tar -cf ../repo/data.pkg data)
+	rm repo/packagesite.pkg
+	atf_check \
+		-o match:"Unable to update repository local" \
+		-e match:"Invalid data" \
+		-s exit:1 \
+		pkg -C ./pkg.conf update -f
+
+	# The previous catalogue must have been kept
+	atf_check -o match:"test 1" pkg -C ./pkg.conf rquery -U "%n %v"
 }

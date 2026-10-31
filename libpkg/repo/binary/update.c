@@ -708,6 +708,7 @@ pkg_repo_binary_update_proceed(const char *name, struct pkg_repo *repo,
 		int tokcount = jsmn_parse(&p, line, linelen, NULL, 0);
 		if (tokcount < 0) {
 			pkg_emit_error("Invalid data");
+			rc = EPKG_FATAL;
 			goto cleanup;
 		}
 		tok = xcalloc(tokcount, sizeof(*tok));
@@ -715,12 +716,15 @@ pkg_repo_binary_update_proceed(const char *name, struct pkg_repo *repo,
 		tokcount = jsmn_parse(&p, line, linelen, tok, tokcount);
 		if (tokcount < 0) {
 			pkg_emit_error("Invalid data");
+			free(tok);
+			rc = EPKG_FATAL;
 			goto cleanup;
 		}
 		tokcount = p.toknext;
 		if (tok->type != JSMN_OBJECT) {
 			pkg_emit_error("Invalid data (expecting a json object)");
 			free(tok);
+			rc = EPKG_FATAL;
 			goto cleanup;
 		}
 		int i = 0;
