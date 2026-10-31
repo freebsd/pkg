@@ -45,6 +45,10 @@ ATF_TC_WITHOUT_HEAD(arch_to_legacy);
 ATF_TC_WITHOUT_HEAD(safe_relative_path);
 ATF_TC_WITHOUT_HEAD(abi_from_string);
 ATF_TC_WITHOUT_HEAD(resolve_beneath);
+ATF_TC_WITHOUT_HEAD(platform_to_darwin);
+ATF_TC_WITHOUT_HEAD(file_to_buffer_missing);
+ATF_TC_WITHOUT_HEAD(hidden_tempfile_name_max);
+ATF_TC_WITHOUT_HEAD(tokenize_count);
 
 ATF_TC_BODY(hidden_tempfile, tc) {
 	const char *filename = "plop";
@@ -340,6 +344,69 @@ ATF_TC_BODY(resolve_beneath, tc) {
 	ctx.pkg_rootdir = NULL;
 }
 
+ATF_TC_BODY(platform_to_darwin, tc) {
+	macho_version_t darwin;
+	macho_version_t v;
+
+	/* exact table entries */
+	v = (macho_version_t){ 26, 0, 0 };
+	ATF_REQUIRE_EQ(map_platform_to_darwin(&darwin, PLATFORM_MACOS, v), 0);
+	ATF_REQUIRE_EQ(darwin.major, 25);
+	ATF_REQUIRE_EQ(darwin.minor, 0);
+	v = (macho_version_t){ 12, 0, 1 };
+	ATF_REQUIRE_EQ(darwin.major, 21);
+	ATF_REQUIRE_EQ(darwin.minor, 1);
+	/* versions between entries map to the closest older entry */
+	v = (macho_version_t){ 10, 15, 7 };
+	ATF_REQUIRE_EQ(darwin.major, 19);
+	ATF_REQUIRE_EQ(darwin.minor, 6);
+	v = (macho_version_t){ 15, 0, 1 };
+	ATF_REQUIRE_EQ(darwin.major, 24);
+	v = (macho_version_t){ 13, 4, 0 };
+	ATF_REQUIRE_EQ(map_platform_to_darwin(&darwin, PLATFORM_IOS, v), 0);
+	ATF_REQUIRE_EQ(darwin.minor, 3);
+	v = (macho_version_t){ 12, 4, 0 };
+	ATF_REQUIRE_EQ(darwin.major, 18);
+	ATF_REQUIRE_EQ(darwin.minor, 2);
+	/* watchOS moved to the year-based numbering shared with iOS */
+	v = (macho_version_t){ 10, 0, 0 };
+	ATF_REQUIRE_EQ(map_platform_to_darwin(&darwin, PLATFORM_WATCHOS, v), 0);
+	ATF_REQUIRE_EQ(darwin.major, 23);
+}
+ATF_TC_BODY(file_to_buffer_missing, tc) {
+	static char stale;
+	char *buf = &stale;	/* callers pass uninitialised pointers */
+	off_t sz;
+	ATF_REQUIRE_EQ(file_to_bufferat(AT_FDCWD, "missing", &buf, &sz),
+	    EPKG_FATAL);
+	ATF_REQUIRE(buf == NULL);
+ATF_TC_BODY(hidden_tempfile_name_max, tc) {
+	char path[MAXPATHLEN], buf[MAXPATHLEN];
+	const char *base;
+	size_t lens[] = { 200, 233, 236, 239, 240, 241, 245, 250, 252 };
+	for (size_t i = 0; i < NELEM(lens); i++) {
+		snprintf(path, sizeof(path), "/tmp/%0*d", (int)lens[i], 0);
+		hidden_tempfile(buf, sizeof(buf), path);
+		base = strrchr(buf, '/') + 1;
+		ATF_REQUIRE_MSG(strlen(base) <= NAME_MAX,
+		    "%zu chars: temporary name of %zu chars", lens[i],
+		    strlen(base));
+		ATF_REQUIRE_EQ(strncmp(buf, "/tmp/.", 6), 0);
+		ATF_REQUIRE(strcmp(buf, path) != 0);
+	}
+ATF_TC_BODY(tokenize_count, tc) {
+	const char *lines[] = { "a b c", "\"a\"\"b\"", "\"a\"b'c'", "'a''b''c'",
+	    "  a  ", "\"\"\"\"" };
+	for (size_t i = 0; i < NELEM(lines); i++) {
+		char *buf = xstrdup(lines[i]), *walk = buf;
+		int ntok = 0;
+		while (walk != NULL) {
+			pkg_utils_tokenize(&walk);
+			ntok++;
+		}
+		ATF_REQUIRE_MSG(ntok <= pkg_utils_count_spaces(lines[i]) + 1,
+		    "%s: %d tokens", lines[i], ntok);
+		free(buf);
 ATF_TP_ADD_TCS(tp)
 {
 	ATF_TP_ADD_TC(tp, hidden_tempfile);
@@ -353,6 +420,10 @@ ATF_TP_ADD_TCS(tp)
 	ATF_TP_ADD_TC(tp, safe_relative_path);
 	ATF_TP_ADD_TC(tp, abi_from_string);
 	ATF_TP_ADD_TC(tp, resolve_beneath);
+	ATF_TP_ADD_TC(tp, platform_to_darwin);
+	ATF_TP_ADD_TC(tp, file_to_buffer_missing);
+	ATF_TP_ADD_TC(tp, hidden_tempfile_name_max);
+	ATF_TP_ADD_TC(tp, tokenize_count);
 
 	return (atf_no_error());
 }

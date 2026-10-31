@@ -812,6 +812,11 @@ finish:
 	return (p_start);
 }
 
+/*
+ * Callers use this to size the array filled by pkg_utils_tokenize(), which
+ * returns at most one token more than this count.  A closing quote also ends
+ * a token ("a""b" gives two), so quotes are counted along with spaces.
+ */
 int
 pkg_utils_count_spaces(const char *args)
 {
@@ -819,7 +824,7 @@ pkg_utils_count_spaces(const char *args)
 	const char	*p;
 
 	for (spaces = 0, p = args; *p != '\0'; p++)
-		if (isspace(*p))
+		if (isspace(*p) || *p == '"' || *p == '\'')
 			spaces++;
 
 	return (spaces);
