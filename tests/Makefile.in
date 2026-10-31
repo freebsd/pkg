@@ -81,6 +81,7 @@ TESTS_SH= \
 	frontend/issue1425.sh \
 	frontend/issue1440.sh \
 	frontend/issue1445.sh \
+	frontend/symlink_rootdir.sh \
 	frontend/fingerprint.sh \
 	frontend/lua.sh \
 	frontend/shellscript.sh \
