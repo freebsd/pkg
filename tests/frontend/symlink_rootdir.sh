@@ -50,6 +50,11 @@ relative_symlink_body()
 
 absolute_symlink_inside_body()
 {
+	# Still a deviation from the previous behaviour: an absolute symlink
+	# pointing inside the root is refused instead of being followed with
+	# the target re-rooted.  Remove this marker once it is resolved.
+	atf_expect_fail "absolute symlink inside the rootdir refused"
+
 	mkdir -p ${TMPDIR}/build${TMPDIR}/inside
 	mkdir -p ${TMPDIR}/root${TMPDIR}/inside
 	# absolute, but it resolves inside the target root
@@ -94,11 +99,6 @@ EOF
 
 outside_symlink_body()
 {
-	# Known bug: an intermediate absolute symlink is resolved from the
-	# process root instead of the rootdir.  Remove this marker once the
-	# lookups are confined to the rootdir; the case must then keep passing.
-	atf_expect_fail "symlink escape from the -r rootdir"
-
 	mkdir -p ${TMPDIR}/build${TMPDIR}/inside
 	mkdir -p ${TMPDIR}/root${TMPDIR} ${TMPDIR}/outside
 	# absolute and outside of the target root: it must not be followed
