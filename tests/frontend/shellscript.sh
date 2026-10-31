@@ -7,7 +7,26 @@ tests_init \
 	message \
 	daemon \
 	upgrade \
-	stop
+	stop \
+	signalled
+
+signalled_body() {
+	# A script killed by a signal must be reported as a failure, not as
+	# a success with an exit status of 0.
+	atf_check -s exit:0 sh ${RESOURCEDIR}/test_subr.sh new_pkg "a" "a" "1"
+	cat << EOF >> a.ucl
+scripts: {
+  pre-install: <<EOS
+	kill -SEGV \$\$
+EOS
+}
+EOF
+	atf_check pkg create -M a.ucl
+	mkdir ${TMPDIR}/target
+	atf_check -o match:"failed" -e match:"terminated by signal 11" \
+	    sh -c "pkg -o REPOS_DIR=/dev/null -r ${TMPDIR}/target install -fy \
+		${TMPDIR}/a-1.pkg || echo failed"
+}
 
 stop_body() {
 	# A post-install script exiting with 3 stops the operation after its
