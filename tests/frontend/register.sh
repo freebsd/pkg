@@ -7,7 +7,8 @@ tests_init \
 	register_message \
 	prefix_is_a_symlink \
 	file_not_found \
-	no_pkg_register
+	no_pkg_register \
+	failed_register_no_post_install
 
 register_conflicts_body() {
 	mkdir -p teststage/${TMPDIR}
@@ -139,4 +140,21 @@ no_pkg_register_body()
 	test -f ${TMPDIR}/target/foo || atf_fail "foo file has not been installed"
 	atf_check \
 		pkg -r ${TMPDIR}/target info
+}
+
+failed_register_no_post_install_body() {
+	# A package whose files could not be installed must not run its
+	# post-install script
+	atf_check -s exit:0 sh ${RESOURCEDIR}/test_subr.sh new_pkg test test 1 ${TMPDIR}/prefix
+	cat >> test.ucl << EOF
+scripts: { post-install: "echo post-install ran" }
+files: { ${TMPDIR}/prefix/missing: "" }
+EOF
+	mkdir stage
+	atf_check \
+		-o not-match:"post-install ran" \
+		-e ignore \
+		-s exit:1 \
+		pkg register -i stage -M test.ucl
+	atf_check -s exit:1 pkg info -e test
 }
