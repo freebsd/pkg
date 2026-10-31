@@ -15,6 +15,7 @@ tests_init \
 	create_from_plist_bad_fflags \
 	create_from_plist_with_keyword_arguments \
 	create_from_plist_missing_file \
+	create_from_plist_empty_path \
 	create_from_manifest_and_plist \
 	create_from_manifest \
 	create_from_manifest_dir \
@@ -114,8 +115,19 @@ create_from_plist_body() {
 		bsdtar tvf test-1.pkg
 }
 
-create_from_plist_missing_file_body() {
-	# touch file1
+create_from_plist_empty_path_body() {
+	genmanifest
+	# a line made of blanks only reaches the parser as an empty path
+	printf ' \t \n' > test.plist
+
+	atf_check \
+		-o empty \
+		-e match:"Empty path in plist" \
+		-s exit:1 \
+		pkg create -o ${TMPDIR} -m . -p test.plist -r .
+}
+
+create_from_plist_missing_file_body() {	# touch file1
 	genmanifest
 	genplist "file1"
 
