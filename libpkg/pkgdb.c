@@ -1980,7 +1980,6 @@ pkgdb_register_pkg(struct pkgdb *db, struct pkg *pkg, int forced,
 
 	sql_arg_t dep_arg[] = {
 		SQL_ARG(pkg->origin),
-		SQL_ARG(pkg->version),
 		SQL_ARG(pkg->version ? pkg->version : ""),
 		SQL_ARG(pkg->name),
 	};

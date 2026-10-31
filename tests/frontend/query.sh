@@ -7,7 +7,8 @@ tests_init \
 	query_empty_multiline \
 	query_empty_provides_requires \
 	query_provides_requires \
-	query_purely_multiline_no_spurious
+	query_purely_multiline_no_spurious \
+	query_deps_follow_upgrade
 
 query_body() {
 	touch plop
@@ -443,4 +444,24 @@ EOF
 		-o inline:"hasdeps nodeps-1\nnodeps -\n" \
 		-s exit:0 \
 		pkg query "%n %dn-%dv"
+}
+
+query_deps_follow_upgrade_body() {
+	atf_check -s exit:0 sh ${RESOURCEDIR}/test_subr.sh new_pkg foo foo 1
+	atf_check -s exit:0 sh ${RESOURCEDIR}/test_subr.sh new_pkg bar bar 1
+	cat >> bar.ucl << EOF
+deps: {
+	foo: { origin: foo, version: "1" }
+}
+EOF
+	atf_check pkg create -M foo.ucl
+	atf_check pkg create -M bar.ucl
+	atf_check -o ignore pkg -o REPOS_DIR=/dev/null install -y ./foo-1.pkg ./bar-1.pkg
+
+	# upgrading foo, with a new origin, must update bar's dependency row
+	atf_check -s exit:0 sh ${RESOURCEDIR}/test_subr.sh new_pkgf foo foo cat/foo 2
+	atf_check pkg create -M foo.ucl
+	atf_check -o ignore pkg -o REPOS_DIR=/dev/null install -y ./foo-2.pkg
+	atf_check -o inline:"foo cat/foo 2\n" pkg query "%dn %do %dv" bar
+	atf_check -o inline:"bar\n" pkg query -e "%dv == 2" %n
 }
