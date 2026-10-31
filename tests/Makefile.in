@@ -8,7 +8,9 @@ TESTS=	\
 	pkg_add_dir_to_del \
 	pkg_cpe \
 	pkg_jobs_need_upgrade \
+	macho_bounds \
 	pkgdb_local \
+	pkgdb_replace \
 	pkg_printf \
 	pkg_repo_meta \
 	pkg_validation \
@@ -137,6 +139,8 @@ pkg_add_dir_to_del_OBJS=	lib/pkg_add_dir_to_del.o
 pkg_cpe_OBJS=	lib/pkg_cpe.o
 pkg_jobs_need_upgrade_OBJS=	lib/pkg_jobs_need_upgrade.o
 pkgdb_local_OBJS=	lib/pkgdb_local.o
+macho_bounds_OBJS=	lib/macho_bounds.o
+pkgdb_replace_OBJS=	lib/pkgdb_replace.o
 pkg_validation_OBJS=	lib/pkg_validation.o
 packing_OBJS=	lib/packing.o
 ssh_OBJS=	lib/ssh.o
@@ -169,6 +173,8 @@ SRCS=	\
 	$(pkg_cpe_OBJS:.o=.c) \
 	$(pkg_jobs_need_upgrade_OBJS:.o=.c) \
 	$(pkgdb_local_OBJS:.o=.c) \
+	$(macho_bounds_OBJS:.o=.c) \
+	$(pkgdb_replace_OBJS:.o=.c) \
 	$(pkg_validation_OBJS:.o=.c) \
 	$(pkg_osvf_OBJS:.o=.c) \
 	$(pkg_repo_meta_OBJS:.o=.c) \
