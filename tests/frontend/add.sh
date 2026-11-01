@@ -28,8 +28,9 @@ tests_init	\
 
 add_rootdir_symlink_escape_body() {
 	# Package b ships an absolute symlink and package a installs a file
-	# through it.  With -r the kernel resolves that symlink on the host,
-	# so pkg must refuse rather than write outside of the target root.
+	# through it.  With -r the kernel would resolve that symlink on the
+	# host, so pkg resolves it from the target root instead, as chroot
+	# would: the target is re-rooted and nothing is written on the host.
 	mkdir -p ${TMPDIR}/host/daily ${TMPDIR}/target
 	atf_check -s exit:0 sh ${RESOURCEDIR}/test_subr.sh new_pkg b b 1 /usr/local
 	mkdir -p usr/local/etc
@@ -45,12 +46,13 @@ add_rootdir_symlink_escape_body() {
 	atf_check -s exit:0 sh ${RESOURCEDIR}/test_subr.sh new_pkg a a 1 /usr/local
 	echo /usr/local/etc/periodic/daily/999.x > plist
 	atf_check pkg create -M a.ucl -p plist -r .
-	atf_check -s not-exit:0 \
-	    -e match:"leaves the root directory .* through the symlink usr/local/etc/periodic" \
+	atf_check -s exit:0 \
 	    pkg -o REPOS_DIR=/dev/null -r ${TMPDIR}/target install -qy ${TMPDIR}/a-1.pkg
 	test -e ${TMPDIR}/host/daily/999.x && atf_fail "file written outside of the root"
 	ls -A ${TMPDIR}/host/daily | grep -q pkgtemp && atf_fail "temporary file written outside of the root"
-	atf_check -o not-match:"^a-1" pkg -o REPOS_DIR=/dev/null -r ${TMPDIR}/target info -q
+	test -f ${TMPDIR}/target${TMPDIR}/host/daily/999.x || \
+	    atf_fail "file not installed inside the root"
+	atf_check -o match:"^a-1" pkg -o REPOS_DIR=/dev/null -r ${TMPDIR}/target info -q
 }
 
 add_dir_attrs_preexisting_body() {

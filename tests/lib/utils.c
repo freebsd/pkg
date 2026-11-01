@@ -44,7 +44,7 @@ ATF_TC_WITHOUT_HEAD(match_paths);
 ATF_TC_WITHOUT_HEAD(arch_to_legacy);
 ATF_TC_WITHOUT_HEAD(safe_relative_path);
 ATF_TC_WITHOUT_HEAD(abi_from_string);
-ATF_TC_WITHOUT_HEAD(path_escapes_root);
+ATF_TC_WITHOUT_HEAD(resolve_beneath);
 
 ATF_TC_BODY(hidden_tempfile, tc) {
 	const char *filename = "plop";
@@ -250,8 +250,10 @@ ATF_TC_BODY(abi_from_string, tc) {
 	ATF_REQUIRE(!pkg_abi_from_string(&abi, "dragonfly:6:x86:64"));
 }
 
-ATF_TC_BODY(path_escapes_root, tc) {
-	char bad[MAXPATHLEN];
+ATF_TC_BODY(resolve_beneath, tc) {
+	char dest[MAXPATHLEN];
+	char rootpath[MAXPATHLEN];
+	char target[MAXPATHLEN];
 	int rootfd;
 
 	ATF_REQUIRE(mkdir("root", 0755) == 0);
@@ -268,25 +270,74 @@ ATF_TC_BODY(path_escapes_root, tc) {
 	rootfd = open("root", O_DIRECTORY);
 	ATF_REQUIRE(rootfd != -1);
 
-	/* plain directories and symlinks staying below the root */
-	ATF_REQUIRE(!pkg_path_escapes_root(rootfd, "/a/b/file", bad, sizeof(bad)));
-	ATF_REQUIRE(!pkg_path_escapes_root(rootfd, "/a/rel/file", bad, sizeof(bad)));
-	ATF_REQUIRE(!pkg_path_escapes_root(rootfd, "/a/sideways/x/file", bad, sizeof(bad)));
-	ATF_REQUIRE(!pkg_path_escapes_root(rootfd, "/a/chain/file", bad, sizeof(bad)));
-	ATF_REQUIRE(!pkg_path_escapes_root(rootfd, "/a/missing/dir/file", bad, sizeof(bad)));
-	/* the last component is never resolved */
-	ATF_REQUIRE(!pkg_path_escapes_root(rootfd, "/a/abs", bad, sizeof(bad)));
+	/* no root directory in use: the path is only made relative */
+	ctx.pkg_rootdir = NULL;
+	ATF_REQUIRE_EQ(EPKG_OK,
+	    pkg_resolve_beneath(rootfd, "/a/abs/file", dest, sizeof(dest)));
+	ATF_REQUIRE_STREQ("/a/abs/file", dest);
 
-	/* absolute and climbing targets, directly or through a chain */
-	ATF_REQUIRE(pkg_path_escapes_root(rootfd, "/a/abs/file", bad, sizeof(bad)));
-	ATF_REQUIRE_STREQ(bad, "a/abs");
-	ATF_REQUIRE(pkg_path_escapes_root(rootfd, "/a/up/file", bad, sizeof(bad)));
-	ATF_REQUIRE_STREQ(bad, "a/up");
-	ATF_REQUIRE(pkg_path_escapes_root(rootfd, "/a/up/etc/periodic/file", bad, sizeof(bad)));
-	ATF_REQUIRE(pkg_path_escapes_root(rootfd, "/a/badchain/file", bad, sizeof(bad)));
-	ATF_REQUIRE(pkg_path_escapes_root(rootfd, "/a/loop1/file", bad, sizeof(bad)));
-	ATF_REQUIRE(pkg_path_escapes_root(rootfd, "/a/../../file", bad, sizeof(bad)));
+	ctx.pkg_rootdir = "root";
+
+	/* plain directories and symlinks staying below the root */
+	ATF_REQUIRE_EQ(EPKG_OK,
+	    pkg_resolve_beneath(rootfd, "/a/b/file", dest, sizeof(dest)));
+	ATF_REQUIRE_STREQ("/a/b/file", dest);
+	ATF_REQUIRE_EQ(EPKG_OK,
+	    pkg_resolve_beneath(rootfd, "/a/rel/file", dest, sizeof(dest)));
+	ATF_REQUIRE_STREQ("/a/rel/file", dest);
+	ATF_REQUIRE_EQ(EPKG_OK,
+	    pkg_resolve_beneath(rootfd, "/a/sideways/x/file", dest, sizeof(dest)));
+	ATF_REQUIRE_STREQ("/a/sideways/x/file", dest);
+	ATF_REQUIRE_EQ(EPKG_OK,
+	    pkg_resolve_beneath(rootfd, "/a/chain/file", dest, sizeof(dest)));
+	ATF_REQUIRE_STREQ("/a/chain/file", dest);
+	ATF_REQUIRE_EQ(EPKG_OK,
+	    pkg_resolve_beneath(rootfd, "/a/missing/dir/file", dest,
+	    sizeof(dest)));
+	ATF_REQUIRE_STREQ("/a/missing/dir/file", dest);
+	/* the last component is never resolved */
+	ATF_REQUIRE_EQ(EPKG_OK,
+	    pkg_resolve_beneath(rootfd, "/a/abs", dest, sizeof(dest)));
+	ATF_REQUIRE_STREQ("/a/abs", dest);
+
+	/* an absolute target is resolved from the root, never from "/" */
+	ATF_REQUIRE_EQ(EPKG_OK,
+	    pkg_resolve_beneath(rootfd, "/a/abs/file", dest, sizeof(dest)));
+	ATF_REQUIRE_STREQ("/etc/file", dest);
+	ATF_REQUIRE_EQ(EPKG_OK,
+	    pkg_resolve_beneath(rootfd, "/a/badchain/file", dest, sizeof(dest)));
+	ATF_REQUIRE_STREQ("/etc/file", dest);
+	/* climbing above the root stays at the root */
+	ATF_REQUIRE_EQ(EPKG_OK,
+	    pkg_resolve_beneath(rootfd, "/a/up/file", dest, sizeof(dest)));
+	ATF_REQUIRE_STREQ("/file", dest);
+	ATF_REQUIRE_EQ(EPKG_OK,
+	    pkg_resolve_beneath(rootfd, "/a/up/etc/periodic/file", dest,
+	    sizeof(dest)));
+	ATF_REQUIRE_STREQ("/etc/periodic/file", dest);
+	ATF_REQUIRE_EQ(EPKG_OK,
+	    pkg_resolve_beneath(rootfd, "/a/../../file", dest, sizeof(dest)));
+	ATF_REQUIRE_STREQ("/file", dest);
+
+	/* a symlink loop is reported, not resolved */
+	ATF_REQUIRE_EQ(EPKG_FATAL,
+	    pkg_resolve_beneath(rootfd, "/a/loop1/file", dest, sizeof(dest)));
+
+	/*
+	 * A target which already names a path inside of the root, as pkg
+	 * itself writes them, is used as is instead of being re-rooted.
+	 */
+	ATF_REQUIRE(realpath("root", rootpath) != NULL);
+	ATF_REQUIRE(snprintf(target, sizeof(target), "%s/a/b", rootpath) <
+	    (int)sizeof(target));
+	ATF_REQUIRE(symlink(target, "root/a/inside") == 0);
+	ctx.pkg_rootdir = rootpath;
+	ATF_REQUIRE_EQ(EPKG_OK, pkg_resolve_beneath(rootfd, "/a/inside/file",
+	    dest, sizeof(dest)));
+	ATF_REQUIRE_STREQ("/a/b/file", dest);
+
 	close(rootfd);
+	ctx.pkg_rootdir = NULL;
 }
 
 ATF_TP_ADD_TCS(tp)
@@ -301,7 +352,7 @@ ATF_TP_ADD_TCS(tp)
 	ATF_TP_ADD_TC(tp, arch_to_legacy);
 	ATF_TP_ADD_TC(tp, safe_relative_path);
 	ATF_TP_ADD_TC(tp, abi_from_string);
-	ATF_TP_ADD_TC(tp, path_escapes_root);
+	ATF_TP_ADD_TC(tp, resolve_beneath);
 
 	return (atf_no_error());
 }

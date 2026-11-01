@@ -797,6 +797,20 @@ retry:
 	return (fd);
 }
 
+/*
+ * Path of 'path' to use with the *at() calls on 'rootfd': the parents are
+ * resolved as if the root directory were the root of the file system, so
+ * that an absolute symlink target cannot lead outside of it.  'buf' holds
+ * the result, or NULL is returned when the path cannot be resolved.
+ */
+static const char *
+rooted_path(int rootfd, const char *path, char *buf, size_t buflen)
+{
+	if (pkg_resolve_beneath(rootfd, path, buf, buflen) != EPKG_OK)
+		return (NULL);
+	return (buf);
+}
+
 static int
 create_regfile(struct pkg_add_context *context, struct pkg_file *f, struct archive *a,
     struct archive_entry *ae, int fromfd, struct pkg *local, tempdirs_t *tempdirs)
@@ -804,12 +818,21 @@ create_regfile(struct pkg_add_context *context, struct pkg_file *f, struct archi
 	int fd = -1;
 	size_t len;
 	char buf[32768];
+	char rpath[MAXPATHLEN];
+	const char *rp;
 	struct tempdir *tmpdir = NULL;
+
+	rp = rooted_path(context->rootfd, f->path, rpath, sizeof(rpath));
+	if (rp == NULL) {
+		pkg_emit_error("Unable to resolve %s inside %s", f->path,
+		    ctx.pkg_rootdir);
+		return (EPKG_FATAL);
+	}
 
 	tmpdir = get_tempdir(context, f->path, tempdirs);
 	if (tmpdir == NULL && errno == 0) {
 		char temppath[MAXPATHLEN] = { 0 };
-		hidden_tempfile(temppath, sizeof(temppath), f->path);
+		hidden_tempfile(temppath, sizeof(temppath), rp);
 		f->temppath = xstrdup(temppath);
 	}
 
@@ -962,16 +985,6 @@ do_extract(struct archive *a, struct archive_entry *ae,
 		    pkg_config_get("FILES_IGNORE_GLOB"),
 		    pkg_config_get("FILES_IGNORE_REGEX")))
 			continue;
-		/*
-		 * The *at() calls below only protect the last component:
-		 * a symlink in a parent directory is followed by the kernel
-		 * from the process root, so with -r it would lead outside
-		 * of the target root, onto the host.
-		 */
-		if (pkg_path_leaves_rootdir(context->rootfd, path)) {
-			retcode = EPKG_FATAL;
-			goto cleanup;
-		}
 		switch (archive_entry_filetype(ae)) {
 		case AE_IFDIR:
 			extract_cb = do_extract_dir;
@@ -1060,6 +1073,7 @@ pkg_extract_finalize(struct pkg *pkg, tempdirs_t *tempdirs)
 	struct pkg_file *f = NULL;
 	struct pkg_dir *d = NULL;
 	char path[MAXPATHLEN + 8];
+	char rpath[MAXPATHLEN];
 	const char *fto;
 #ifdef HAVE_CHFLAGSAT
 	bool install_as_user;
@@ -1092,10 +1106,15 @@ pkg_extract_finalize(struct pkg *pkg, tempdirs_t *tempdirs)
 		append_touched_file(f->path);
 		if (f->temppath == NULL)
 			continue;
-		fto = f->path;
+		fto = rooted_path(pkg->rootfd, f->path, rpath, sizeof(rpath));
+		if (fto == NULL) {
+			pkg_emit_error("Unable to resolve %s inside %s",
+			    f->path, ctx.pkg_rootdir);
+			return (EPKG_FATAL);
+		}
 		if (f->config && f->config->status == MERGE_FAILED &&
 		    f->previous != PKG_FILE_NONE) {
-			snprintf(path, sizeof(path), "%s.pkgnew", f->path);
+			snprintf(path, sizeof(path), "%s.pkgnew", fto);
 			fto = path;
 		}
 
@@ -1126,7 +1145,7 @@ pkg_extract_finalize(struct pkg *pkg, tempdirs_t *tempdirs)
 		if (renameat(pkg->rootfd, RELATIVE_PATH(f->temppath),
 		    pkg->rootfd, RELATIVE_PATH(fto)) == -1) {
 			char pkgnew[MAXPATHLEN + 8];
-			snprintf(pkgnew, sizeof(pkgnew), "%s.pkgnew", f->path);
+			snprintf(pkgnew, sizeof(pkgnew), "%s.pkgnew", fto);
 			if (renameat(pkg->rootfd, RELATIVE_PATH(f->temppath),
 			    pkg->rootfd, RELATIVE_PATH(pkgnew)) == -1) {
 				pkg_fatal_errno("Failed to rename %s -> %s",

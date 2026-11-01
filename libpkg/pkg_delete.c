@@ -214,6 +214,7 @@ rmdir_p(struct pkgdb *db, struct pkg *pkg, char *dir, const char *prefix_r)
 	char *tmp;
 	int64_t cnt;
 	char fullpath[MAXPATHLEN];
+	char rdir[MAXPATHLEN];
 	size_t len;
 #ifdef HAVE_STRUCT_STAT_ST_FLAGS
 	struct stat st;
@@ -243,8 +244,9 @@ rmdir_p(struct pkgdb *db, struct pkg *pkg, char *dir, const char *prefix_r)
 	if (STREQ(prefix_r, fullpath + 1))
 		return;
 
-	if (pkg_path_leaves_rootdir(pkg->rootfd, dir))
+	if (pkg_resolve_beneath(pkg->rootfd, dir, rdir, sizeof(rdir)) != EPKG_OK)
 		return;
+	dir = rdir;
 
 	pkg_debug(1, "removing directory %s", fullpath);
 #ifdef HAVE_STRUCT_STAT_ST_FLAGS
@@ -309,6 +311,7 @@ pkg_delete_file(struct pkg *pkg, struct pkg_file *file)
 {
 	const char *path;
 	const char *prefix_rel;
+	char rpath[MAXPATHLEN];
 	size_t len;
 #ifdef HAVE_STRUCT_STAT_ST_FLAGS
 	struct stat st;
@@ -327,8 +330,9 @@ pkg_delete_file(struct pkg *pkg, struct pkg_file *file)
 	while (len > 0 && prefix_rel[len - 1] == '/')
 		len--;
 
-	if (pkg_path_leaves_rootdir(pkg->rootfd, path))
+	if (pkg_resolve_beneath(pkg->rootfd, path, rpath, sizeof(rpath)) != EPKG_OK)
 		return;
+	path = rpath;
 
 #ifdef HAVE_STRUCT_STAT_ST_FLAGS
 	if (fstatat(pkg->rootfd, path, &st, AT_SYMLINK_NOFOLLOW) != -1) {

@@ -12,6 +12,7 @@
 tests_init \
 	relative_symlink \
 	absolute_symlink_inside \
+	absolute_symlink_image \
 	dead_symlink \
 	outside_symlink
 
@@ -50,11 +51,6 @@ relative_symlink_body()
 
 absolute_symlink_inside_body()
 {
-	# Still a deviation from the previous behaviour: an absolute symlink
-	# pointing inside the root is refused instead of being followed with
-	# the target re-rooted.  Remove this marker once it is resolved.
-	atf_expect_fail "absolute symlink inside the rootdir refused"
-
 	mkdir -p ${TMPDIR}/build${TMPDIR}/inside
 	mkdir -p ${TMPDIR}/root${TMPDIR}/inside
 	# absolute, but it resolves inside the target root
@@ -71,6 +67,35 @@ absolute_symlink_inside_body()
 	test -h ${TMPDIR}/root${TMPDIR}/link || atf_fail "symlink replaced"
 	test -f ${TMPDIR}/root${TMPDIR}/inside/file || \
 		atf_fail "file not installed through the absolute symlink"
+}
+
+absolute_symlink_image_body()
+{
+	# Known limitation: when the host side of the absolute target does not
+	# exist at all, the temporary directory machinery replaces the symlink
+	# with a directory instead of following the re-rooted target.  Remove
+	# this marker once open_tempdir() keeps its name/len bookkeeping on a
+	# resolved path.
+	atf_expect_fail "absolute target absent on the host"
+
+	# The target of the symlink is an absolute path as seen from inside
+	# the target root; it has to be resolved there and not on the host.
+	mkdir -p ${TMPDIR}/build${TMPDIR}/inside
+	mkdir -p ${TMPDIR}/root${TMPDIR}/inside
+	ln -sf ${TMPDIR}/inside ${TMPDIR}/root${TMPDIR}/link
+	ln -sf ${TMPDIR}/build${TMPDIR}/inside ${TMPDIR}/link
+	echo content > ${TMPDIR}/link/file
+
+	_package_with_file_under_link
+
+	atf_check -o ignore -e ignore -s exit:0 \
+		pkg -o REPOS_DIR=/dev/null -r ${TMPDIR}/root install -qy \
+			${TMPDIR}/test-1.pkg
+
+	test -f ${TMPDIR}/root${TMPDIR}/inside/file || \
+		atf_fail "file not installed inside the rootdir"
+	test ! -e ${TMPDIR}/inside/file || \
+		atf_fail "file written on the host"
 }
 
 dead_symlink_body()

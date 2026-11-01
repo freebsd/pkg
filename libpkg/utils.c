@@ -907,141 +907,232 @@ mkdirat_p(int fd, const char *path)
 }
 
 /*
- * Check that 'path' can be joined below a base directory without
- * escaping it: it must be non-empty, relative and contain no ".."
- * component.
+ * Join 'name' to 'dir' into 'dest'.
  */
+static bool
+path_join(char *dest, size_t destlen, const char *dir, const char *name)
+{
+	int n;
+
+	if (dir[0] == '\0')
+		n = snprintf(dest, destlen, "%s", name);
+	else
+		n = snprintf(dest, destlen, "%s/%s", dir, name);
+
+	return (n >= 0 && (size_t)n < destlen);
+}
+
+/*
+ * Drop the last component of a relative path, staying at the root when
+ * there is none left.
+ */
+/*
+ * Store in 'dest' the resolved 'rel' path, keeping the form of the path the
+ * caller gave: absolute when it was absolute, relative otherwise.
+ */
+static bool
+store_resolved(char *dest, size_t destlen, const char *rel, bool absolute)
+{
+	int n;
+
+	if (absolute)
+		n = snprintf(dest, destlen, "/%s", rel);
+	else
+		n = snprintf(dest, destlen, "%s", rel);
+
+	return (n >= 0 && (size_t)n < destlen);
+}
+
+static void
+path_pop(char *path)
+{
+	char *slash = strrchr(path, '/');
+
+	if (slash == NULL)
+		path[0] = '\0';
+	else
+		*slash = '\0';
+}
+
 /*
  * Number of directory levels below the root a relative path ends up at,
  * resolving "." and ".." lexically.  -1 when it climbs above the root.
  */
 static int
-lexical_depth(const char *path)
+relative_depth(const char *path, int depth)
 {
-	const char *p = path, *next;
+	const char *p, *next;
 	size_t clen;
-	int depth = 0;
 
-	while (*p != '\0') {
+	for (p = path; *p != '\0'; p = next + 1) {
 		next = strchr(p, '/');
-		clen = next != NULL ? (size_t)(next - p) : strlen(p);
+		if (next == NULL)
+			next = p + strlen(p);
+		clen = next - p;
 		if (clen == 2 && p[0] == '.' && p[1] == '.') {
 			if (--depth < 0)
 				return (-1);
 		} else if (clen > 0 && !(clen == 1 && p[0] == '.')) {
 			depth++;
 		}
-		if (next == NULL)
+		if (*next == '\0')
 			break;
-		p = next + 1;
 	}
 	return (depth);
 }
 
-static bool
-path_escapes_root(int rootfd, const char *path, int depth, int level,
-    char *bad, size_t badlen)
+/*
+ * Resolve the parents of 'path' as if the directory 'rootfd' were the root
+ * of the file system, so that resolving the result never leaves it: an
+ * absolute symlink target, or one climbing above the root with "..", is
+ * re-rooted at 'rootfd' instead of being resolved from the process root.
+ * A target which already names a path inside of the root, as pkg itself
+ * writes them, is used as is.
+ *
+ * Only the parents are resolved; the last component is left alone, the
+ * caller protects it with O_NOFOLLOW or AT_SYMLINK_NOFOLLOW.
+ *
+ * 'dest' receives a path relative to 'rootfd'.  Nothing is rewritten when
+ * no root directory is in use.
+ */
+int
+pkg_resolve_beneath(int rootfd, const char *path, char *dest, size_t destlen)
 {
-	char prefix[MAXPATHLEN], target[MAXPATHLEN], resolved[MAXPATHLEN];
-	const char *p, *next, *slash;
-	struct stat st;
-	ssize_t len;
-	size_t clen;
+	char		cur[MAXPATHLEN], todo[MAXPATHLEN], next[MAXPATHLEN];
+	char		comp[NAME_MAX + 1], leaf[MAXPATHLEN];
+	char		candidate[MAXPATHLEN], target[MAXPATHLEN];
+	const char	*root, *p, *end, *rest, *trel;
+	struct stat	st;
+	ssize_t		len;
+	size_t		rootlen, clen;
+	int		hops = 0;
+	bool		absolute, expanded, rewritten;
 
-	path = RELATIVE_PATH(path);
-	if (level > 32) {
-		/* symlink loop */
-		strlcpy(bad, path, badlen);
-		return (true);
+	root = ctx.pkg_rootdir;
+	if (rootfd < 0 || root == NULL || STREQ(root, "/")) {
+		if (strlcpy(dest, path, destlen) >= destlen)
+			return (EPKG_FATAL);
+		return (EPKG_OK);
 	}
 
-	prefix[0] = '\0';
-	for (p = path; (next = strchr(p, '/')) != NULL; p = next + 1) {
-		clen = next - p;
-		if (clen == 0 || (clen == 1 && p[0] == '.'))
-			continue;
-		if (prefix[0] != '\0')
-			strlcat(prefix, "/", sizeof(prefix));
-		if (strlcat(prefix, p, sizeof(prefix)) >= sizeof(prefix))
-			return (false);
-		prefix[strlen(prefix) - strlen(next)] = '\0';
-		if (clen == 2 && p[0] == '.' && p[1] == '.') {
-			if (--depth < 0) {
-				strlcpy(bad, prefix, badlen);
-				return (true);
+	absolute = (path[0] == '/');
+
+	rootlen = strlen(root);
+	while (rootlen > 0 && root[rootlen - 1] == '/')
+		rootlen--;
+
+	if (strlcpy(todo, RELATIVE_PATH(path), sizeof(todo)) >= sizeof(todo))
+		return (EPKG_FATAL);
+
+	/* the last component is never resolved */
+	end = strrchr(todo, '/');
+	if (end == NULL)
+		return (store_resolved(dest, destlen, todo, absolute) ?
+		    EPKG_OK : EPKG_FATAL);
+	if (strlcpy(leaf, end + 1, sizeof(leaf)) >= sizeof(leaf))
+		return (EPKG_FATAL);
+	todo[end - todo] = '\0';
+
+	rewritten = false;
+	cur[0] = '\0';
+	for (;;) {
+		expanded = false;
+		for (p = todo; *p != '\0'; p = rest) {
+			end = strchr(p, '/');
+			clen = end != NULL ? (size_t)(end - p) : strlen(p);
+			rest = end != NULL ? end + 1 : p + clen;
+
+			if (clen == 0 || (clen == 1 && p[0] == '.'))
+				continue;
+			if (clen == 2 && p[0] == '.' && p[1] == '.') {
+				if (cur[0] == '\0')
+					rewritten = true;
+				path_pop(cur);
+				continue;
 			}
-			continue;
-		}
-		if (fstatat(rootfd, prefix, &st, AT_SYMLINK_NOFOLLOW) == -1)
-			return (false);	/* does not exist (yet) */
-		if (S_ISDIR(st.st_mode)) {
-			depth++;
-			continue;
-		}
-		if (!S_ISLNK(st.st_mode))
-			return (false);	/* the caller will fail on it */
+			if (clen >= sizeof(comp))
+				return (EPKG_FATAL);
+			memcpy(comp, p, clen);
+			comp[clen] = '\0';
+			if (!path_join(candidate, sizeof(candidate), cur, comp))
+				return (EPKG_FATAL);
 
-		len = readlinkat(rootfd, prefix, target, sizeof(target) - 1);
-		if (len == -1)
-			return (false);
-		target[len] = '\0';
-		if (target[0] == '/') {
-			strlcpy(bad, prefix, badlen);
-			return (true);
+			if (fstatat(rootfd, candidate, &st,
+			    AT_SYMLINK_NOFOLLOW) == -1) {
+				/*
+				 * The rest does not exist yet: there is
+				 * nothing left to resolve.
+				 */
+				if (*rest == '\0')
+					strlcpy(cur, candidate, sizeof(cur));
+				else if (!path_join(cur, sizeof(cur),
+				    candidate, rest))
+					return (EPKG_FATAL);
+				todo[0] = '\0';
+				break;
+			}
+			if (!S_ISLNK(st.st_mode)) {
+				strlcpy(cur, candidate, sizeof(cur));
+				continue;
+			}
+			if (++hops > 40) {
+				errno = ELOOP;
+				return (EPKG_FATAL);
+			}
+			len = readlinkat(rootfd, candidate, target,
+			    sizeof(target) - 1);
+			if (len <= 0)
+				return (EPKG_FATAL);
+			target[len] = '\0';
+			if (target[0] == '/') {
+				const char *tp = target;
+
+				cur[0] = '\0';
+				if (root[0] == '/' && rootlen > 0 &&
+				    strncmp(target, root, rootlen) == 0 &&
+				    (target[rootlen] == '\0' ||
+				    target[rootlen] == '/'))
+					tp = target + rootlen;
+				trel = RELATIVE_PATH(tp);
+				rewritten = true;
+			} else {
+				/*
+				 * Relative to the directory holding the
+				 * link.  It is expanded to keep inspecting
+				 * the components it leads to, but it only
+				 * rewrites the path when it climbs above
+				 * the root: the kernel resolves the others
+				 * correctly.
+				 */
+				trel = target;
+				if (relative_depth(target,
+				    relative_depth(cur, 0)) < 0)
+					rewritten = true;
+			}
+			if (*rest == '\0') {
+				if (strlcpy(next, trel, sizeof(next)) >=
+				    sizeof(next))
+					return (EPKG_FATAL);
+			} else if (!path_join(next, sizeof(next), trel, rest))
+				return (EPKG_FATAL);
+			strlcpy(todo, next, sizeof(todo));
+			expanded = true;
+			break;
 		}
-		/*
-		 * The target is relative to the directory holding the link.
-		 * Check it with its own components as parents, then carry on
-		 * from where it leads.
-		 */
-		slash = strrchr(prefix, '/');
-		snprintf(resolved, sizeof(resolved), "%.*s%s%s/",
-		    slash != NULL ? (int)(slash - prefix) : 0, prefix,
-		    slash != NULL ? "/" : "", target);
-		if (path_escapes_root(rootfd, resolved, 0, level + 1, bad,
-		    badlen) || (depth = lexical_depth(resolved)) < 0) {
-			/* report the link itself, not where it led */
-			strlcpy(bad, prefix, badlen);
-			return (true);
-		}
+		if (!expanded)
+			break;
 	}
-	return (false);
-}
 
-/*
- * Check whether resolving 'path' below the directory 'rootfd' can leave
- * that directory through a symlink in one of its parent components.  The
- * kernel resolves an absolute symlink target, or one climbing above the
- * root with "..", from the process root and not from rootfd, so when pkg
- * operates on another root (-r) such a path reaches the host filesystem.
- * Only the parents are examined; the last component is protected by the
- * caller with O_EXCL or AT_SYMLINK_NOFOLLOW.  'bad' receives the
- * offending component when the path escapes.
- */
-bool
-pkg_path_escapes_root(int rootfd, const char *path, char *bad, size_t badlen)
-{
-	return (path_escapes_root(rootfd, path, 0, 0, bad, badlen));
-}
-
-/*
- * When pkg operates on another root directory (-r), refuse to touch a
- * path whose parents lead outside of it: the kernel would resolve them
- * on the host.  Emits an error naming the offending symlink and returns
- * true when the path must not be used.  Nothing can escape the real "/".
- */
-bool
-pkg_path_leaves_rootdir(int rootfd, const char *path)
-{
-	char bad[MAXPATHLEN];
-
-	if (ctx.pkg_rootdir == NULL || STREQ(ctx.pkg_rootdir, "/"))
-		return (false);
-	if (!pkg_path_escapes_root(rootfd, path, bad, sizeof(bad)))
-		return (false);
-	pkg_emit_error("%s: the path leaves the root directory %s through "
-	    "the symlink %s", path, ctx.pkg_rootdir, bad);
-	return (true);
+	if (!rewritten) {
+		if (strlcpy(dest, path, destlen) >= destlen)
+			return (EPKG_FATAL);
+		return (EPKG_OK);
+	}
+	if (!path_join(next, sizeof(next), cur, leaf))
+		return (EPKG_FATAL);
+	if (!store_resolved(dest, destlen, next, absolute))
+		return (EPKG_FATAL);
+	return (EPKG_OK);
 }
 
 /*
