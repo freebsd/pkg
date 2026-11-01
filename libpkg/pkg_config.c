@@ -1007,7 +1007,11 @@ pkg_compiled_for_same_os_major(void)
 	    pkg_object_bool(pkg_config_get("IGNORE_OSMAJOR")))
 		return (true);
 
-	return (ctx.abi.major == OSMAJOR);
+	/*
+	 * OSMAJOR is the major of the OS pkg was built for; comparing it
+	 * with the major of an ABI describing another OS says nothing.
+	 */
+	return (ctx.abi.os != PKG_OS_FREEBSD || ctx.abi.major == OSMAJOR);
 #else
 	return (true);		/* Can't tell, so assume yes  */
 #endif
