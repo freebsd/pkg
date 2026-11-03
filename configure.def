@@ -155,7 +155,11 @@ cc_with "-includes sys/stat.h" cc_check_members "struct stat.st_flags"
 cc_check_functions arc4random arc4random_stir chflagsat \
 	closefrom fopencookie funopen getprogname \
 	strtofflags strtonum __res_setservers \
-	fflagstostr strchrnul copy_file_range
+	fflagstostr strchrnul copy_file_range \
+	newlocale strptime_l strftime_l
+
+# per locale date parsing and formatting, see the bundled libfetch
+cc_check_includes xlocale.h
 
 # humanize_number declaration
 cc_with "-includes libutil.h" cc_check_decls humanize_number

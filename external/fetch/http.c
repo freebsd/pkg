@@ -82,6 +82,9 @@
 #include <string.h>
 #include <time.h>
 #include <unistd.h>
+#ifdef HAVE_XLOCALE_TIME
+#include <xlocale.h>
+#endif
 
 #ifdef WITH_SSL
 #include <openssl/md5.h>
@@ -146,6 +149,28 @@ http_cache_flush(void)
 			    || (xyz) == HTTP_SEE_OTHER)
 
 #define HTTP_ERROR(xyz) ((xyz) >= 400 && (xyz) <= 599)
+
+#ifdef HAVE_XLOCALE_TIME
+/*
+ * The dates of the protocol are always written in the C locale: keep one
+ * instance of it so that parsing and formatting do not depend on, nor
+ * change, the locale of the process.
+ */
+static locale_t
+fetch_time_locale(void)
+{
+	static locale_t loc;
+
+	if (loc == NULL)
+		loc = newlocale(LC_TIME_MASK, "C", NULL);
+	return (loc);
+}
+
+#define http_strptime(s, f, tm) \
+	strptime_l(s, f, tm, fetch_time_locale())
+#else
+#define http_strptime(s, f, tm) strptime(s, f, tm)
+#endif
 
 
 /*****************************************************************************
@@ -966,21 +991,28 @@ out:
 static int
 http_parse_mtime(const char *p, time_t *mtime)
 {
-	char locale[64], *r;
 	struct tm tm;
+	char *r;
+#ifndef HAVE_XLOCALE_TIME
+	char locale[64];
+#endif
 
 	memset(&tm, 0, sizeof(tm));
+#ifndef HAVE_XLOCALE_TIME
 	strlcpy(locale, setlocale(LC_TIME, NULL), sizeof(locale));
 	setlocale(LC_TIME, "C");
-	r = strptime(p, "%a, %d %b %Y %H:%M:%S GMT", &tm);
+#endif
+	r = http_strptime(p, "%a, %d %b %Y %H:%M:%S GMT", &tm);
 	/*
 	 * Some proxies use UTC in response, but it should still be
 	 * parsed. RFC2616 states GMT and UTC are exactly equal for HTTP.
 	 */
 	if (r == NULL)
-		r = strptime(p, "%a, %d %b %Y %H:%M:%S UTC", &tm);
-	/* XXX should add support for date-2 and date-3 */
+		r = http_strptime(p, "%a, %d %b %Y %H:%M:%S UTC", &tm);
+#ifndef HAVE_XLOCALE_TIME
 	setlocale(LC_TIME, locale);
+#endif
+	/* XXX should add support for date-2 and date-3 */
 	if (r == NULL)
 		return (-1);
 	DEBUGF("last modified: [%04d-%02d-%02d %02d:%02d:%02d]\n",
@@ -1816,8 +1848,13 @@ http_request_body(struct url *URL, const char *op, struct url_stat *us,
 
 		if (ims && url->ims_time) {
 			timestruct = gmtime((time_t *)&url->ims_time);
+#ifdef HAVE_XLOCALE_TIME
+			(void)strftime_l(timebuf, 80, "%a, %d %b %Y %T GMT",
+			    timestruct, fetch_time_locale());
+#else
 			(void)strftime(timebuf, 80, "%a, %d %b %Y %T GMT",
 			    timestruct);
+#endif
 			if (verbose)
 				fetch_info("If-Modified-Since: %s", timebuf);
 			http_cmd(conn, "If-Modified-Since: %s", timebuf);

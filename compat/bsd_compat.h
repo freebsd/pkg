@@ -58,6 +58,15 @@
 #include <bsd/stdlib.h>
 #endif
 
+/*
+ * Parsing and formatting a date in a given locale, used by the bundled
+ * libfetch so that it does not have to change the locale of the process.
+ */
+#if defined(HAVE_XLOCALE_H) && defined(HAVE_NEWLOCALE) && \
+    defined(HAVE_STRPTIME_L) && defined(HAVE_STRFTIME_L)
+#define HAVE_XLOCALE_TIME 1
+#endif
+
 #if __has_include(<bsd/unistd.h>)
 #include <bsd/unistd.h>
 #endif
