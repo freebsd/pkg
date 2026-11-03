@@ -1,3 +1,49 @@
+Changes from 2.8.99.5 to 2.8.99.6
+- abi: an overlong string coming from a manifest or a catalogue is rejected
+  instead of overflowing the stack, and the minor OS version is parsed, it was
+  only read when the major one failed
+- rwhich: reject an oversized package name in the file index
+- plist: a line holding only blanks is reported as an error
+- macho: reject a load command string offset pointing outside of the command
+- utils: fix an overflow when tokenizing adjacent quoted arguments
+- repo: checksum the packages of a file:// repository, reject a catalogue path
+  which escapes the cache directory, and no longer install an empty repository
+  when the catalogue cannot be parsed
+- repo: group names and comments coming from a repository are no longer used as
+  format strings, and the groups file written by pkg update is read again so
+  that group search works
+- repo: do not keep a meta file which failed its verification
+- fetch: restore every overridden environment variable, and no longer take a
+  lost or garbled ssh:// or tcp:// reply as a success, nor fetch the catalogue
+  of those repositories on every update
+- triggers: honour RUN_SCRIPTS, the -I flag and PKG_TRIGGERS_ENABLE, and defer
+  the per-package triggers of a -r target like the other ones
+- scripts: a script killed by a signal is reported as a failure, a failing
+  script is no longer masked by a later successful one, and PKG_UPGRADE is only
+  set for the package being upgraded
+- scripts: a post-install script asking to stop no longer exits in the middle
+  of the transaction
+- pkg set -n: rename the dependency rows as well; pkg set -v: clear the vital
+  flag of a package which has one
+- pkg register: do not run the post-install scripts after a failed installation
+- pkgdb: quote the dependency formula names in the query, and update the reverse
+  dependency rows when a package is upgraded
+- pkg add: do not change the attributes of a directory pkg did not create
+- pkg add: remove the temporary files and directories left by a failed
+  extraction
+- pkg add: resolve a symlink of a -r target inside the target instead of
+  following it on the host
+- libfetch: parse and format the dates of the HTTP protocol in the C locale
+  without changing the locale of the process
+- config: do not warn about an OS upgrade when the ABI describes another OS
+- osvf: keep every range of a version interval
+- db: do not leak the path of the shell database
+- build: only pass -Wl,--as-needed when the linker knows it, and build the
+  bundled libelf on the systems without roundup2(3) or with a C library which
+  does not provide __uintptr_t
+- sqlite: declare the extension entry point with the signature sqlite expects
+- docs: document how the paths of the lua scripts are rooted
+
 Changes from 2.8.99.4 to 2.8.99.5
 - sqlite: update the bundled SQLite to 3.54.1
 - lua: update the bundled Lua to 5.4.9
