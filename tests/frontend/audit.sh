@@ -294,7 +294,7 @@ audit_multiple_vulns_body() {
                                 "introduced": "1.0"
                             },
                             {
-                                "fixed": "1.5"
+                                "last_affected": "1.5"
                             }
                         ],
                         "type": "ECOSYSTEM"
