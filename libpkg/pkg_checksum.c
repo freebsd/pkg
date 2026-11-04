@@ -493,7 +493,6 @@ pkg_checksum_hash_sha256_file(int fd, unsigned char **out, size_t *outlen)
 	while ((r = read(fd, buffer, sizeof(buffer))) > 0)
 		sha256_update(&sign_ctx, buffer, r);
 	if (r < 0) {
-		pkg_emit_errno(__func__, "read failed");
 		free(*out);
 		*out = NULL;
 		*outlen = 0;
@@ -545,7 +544,6 @@ pkg_checksum_hash_sha512_file(int fd, unsigned char **out, size_t *outlen)
 	while ((r = read(fd, buffer, sizeof(buffer))) > 0)
 		sha512_update(&sign_ctx, buffer, r);
 	if (r < 0) {
-		pkg_emit_errno(__func__, "read failed");
 		free(*out);
 		*out = NULL;
 		*outlen = 0;
@@ -593,7 +591,6 @@ pkg_checksum_hash_blake2_file(int fd, unsigned char **out, size_t *outlen)
 	while ((r = read(fd, buffer, sizeof(buffer))) > 0)
 		blake2b_update(&st, buffer, r);
 	if (r < 0) {
-		pkg_emit_errno(__func__, "read failed");
 		*out = NULL;
 		*outlen = 0;
 		return;
@@ -641,7 +638,6 @@ pkg_checksum_hash_blake2s_file(int fd, unsigned char **out, size_t *outlen)
 	while ((r = read(fd, buffer, sizeof(buffer))) > 0)
 		blake2s_update(&st, buffer, r);
 	if (r < 0) {
-		pkg_emit_errno(__func__, "read failed");
 		*out = NULL;
 		*outlen = 0;
 		return;
@@ -883,17 +879,24 @@ pkg_checksum_data(const unsigned char *in, size_t inlen,
 unsigned char *
 pkg_checksum_fileat(int rootfd, const char *path, pkg_checksum_type_t type)
 {
-	int fd;
+	int fd, e;
 	unsigned char *ret;
 
 	if ((fd = openat(rootfd, path, O_RDONLY)) == -1) {
-		pkg_emit_errno("open", path);
+		pkg_emit_error("Unable to open %s: %s", path,
+		    strerror(errno));
 		return (NULL);
 	}
 
 	ret = pkg_checksum_fd(fd, type);
+	e = errno;
 
 	close(fd);
+
+	if (ret == NULL) {
+		pkg_emit_error("Unable to compute the checksum of %s: %s",
+		    path, strerror(e));
+	}
 
 	return (ret);
 }
