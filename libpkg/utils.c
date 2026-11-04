@@ -1006,6 +1006,7 @@ pkg_resolve_beneath(int rootfd, const char *path, char *dest, size_t destlen)
 	char		cur[MAXPATHLEN], todo[MAXPATHLEN], next[MAXPATHLEN];
 	char		comp[NAME_MAX + 1], leaf[MAXPATHLEN];
 	char		candidate[MAXPATHLEN], target[MAXPATHLEN];
+	char		canon[MAXPATHLEN];
 	const char	*root, *p, *end, *rest, *trel;
 	struct stat	st;
 	ssize_t		len;
@@ -1091,7 +1092,6 @@ pkg_resolve_beneath(int rootfd, const char *path, char *dest, size_t destlen)
 			target[len] = '\0';
 			if (target[0] == '/') {
 				const char *tp = target;
-				char canon[MAXPATHLEN];
 
 				cur[0] = '\0';
 				/*
