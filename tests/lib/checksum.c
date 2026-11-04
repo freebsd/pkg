@@ -23,8 +23,11 @@
  * THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  */
 
+#include <sys/stat.h>
+
 #include <atf-c.h>
 #include <err.h>
+#include <fcntl.h>
 #include <unistd.h>
 #include <errno.h>
 #include <pkg.h>
@@ -37,6 +40,7 @@ ATF_TC_WITHOUT_HEAD(check_validity);
 ATF_TC_WITHOUT_HEAD(check_zbase32);
 ATF_TC_WITHOUT_HEAD(check_hex);
 ATF_TC_WITHOUT_HEAD(check_sha512);
+ATF_TC_WITHOUT_HEAD(check_unreadable);
 
 ATF_TC_BODY(check_validity, tc)
 {
@@ -261,6 +265,24 @@ ATF_TC_BODY(check_sha512, tc)
 	free(sum);
 }
 
+ATF_TC_BODY(check_unreadable, tc)
+{
+	pkg_checksum_type_t type;
+	int fd;
+
+	/* A directory can be opened but not read: every digest must fail */
+	ATF_REQUIRE(mkdir("unreadable", 0755) == 0);
+	fd = open("unreadable", O_RDONLY);
+	ATF_REQUIRE(fd != -1);
+
+	for (type = 0; type < PKG_HASH_TYPE_UNKNOWN; type++)
+		ATF_CHECK(pkg_checksum_fd(fd, type) == NULL);
+
+	close(fd);
+	ATF_CHECK(pkg_checksum_file("unreadable", PKG_HASH_TYPE_BLAKE2_BASE32) == NULL);
+	ATF_CHECK(pkg_checksum_file("unreadable", PKG_HASH_TYPE_SHA256_BASE32) == NULL);
+}
+
 ATF_TC_BODY(check_zbase32, tc)
 {
 	FILE *f;
@@ -340,6 +362,7 @@ ATF_TP_ADD_TCS(tp)
 	ATF_TP_ADD_TC(tp, check_zbase32);
 	ATF_TP_ADD_TC(tp, check_hex);
 	ATF_TP_ADD_TC(tp, check_sha512);
+	ATF_TP_ADD_TC(tp, check_unreadable);
 
 	return (atf_no_error());
 }

@@ -16,6 +16,7 @@ tests_init \
 	create_from_plist_with_keyword_arguments \
 	create_from_plist_missing_file \
 	create_from_plist_empty_path \
+	create_from_plist_directory \
 	create_from_manifest_and_plist \
 	create_from_manifest \
 	create_from_manifest_dir \
@@ -123,6 +124,18 @@ create_from_plist_empty_path_body() {
 	atf_check \
 		-o empty \
 		-e match:"Empty path in plist" \
+		-s exit:1 \
+		pkg create -o ${TMPDIR} -m . -p test.plist -r .
+}
+
+create_from_plist_directory_body() {
+	genmanifest
+	mkdir dir1
+	printf '/dir1\n' > test.plist
+
+	atf_check \
+		-o empty \
+		-e match:"Is a directory" \
 		-s exit:1 \
 		pkg create -o ${TMPDIR} -m . -p test.plist -r .
 }

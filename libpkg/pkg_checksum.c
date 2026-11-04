@@ -496,6 +496,7 @@ pkg_checksum_hash_sha256_file(int fd, unsigned char **out, size_t *outlen)
 		pkg_emit_errno(__func__, "read failed");
 		free(*out);
 		*out = NULL;
+		*outlen = 0;
 		return;
 	}
 	sha256_final(&sign_ctx, *out);
@@ -547,6 +548,7 @@ pkg_checksum_hash_sha512_file(int fd, unsigned char **out, size_t *outlen)
 		pkg_emit_errno(__func__, "read failed");
 		free(*out);
 		*out = NULL;
+		*outlen = 0;
 		return;
 	}
 	sha512_final(&sign_ctx, *out);
@@ -592,8 +594,8 @@ pkg_checksum_hash_blake2_file(int fd, unsigned char **out, size_t *outlen)
 		blake2b_update(&st, buffer, r);
 	if (r < 0) {
 		pkg_emit_errno(__func__, "read failed");
-		free(*out);
 		*out = NULL;
+		*outlen = 0;
 		return;
 	}
 	*out = xmalloc(BLAKE2B_OUTBYTES);
@@ -640,8 +642,8 @@ pkg_checksum_hash_blake2s_file(int fd, unsigned char **out, size_t *outlen)
 		blake2s_update(&st, buffer, r);
 	if (r < 0) {
 		pkg_emit_errno(__func__, "read failed");
-		free(*out);
 		*out = NULL;
+		*outlen = 0;
 		return;
 	}
 	*out = xmalloc(BLAKE2S_OUTBYTES);
@@ -906,8 +908,8 @@ unsigned char *
 pkg_checksum_fd(int fd, pkg_checksum_type_t type)
 {
 	const struct _pkg_cksum_type *cksum;
-	unsigned char *out, *res = NULL;
-	size_t outlen;
+	unsigned char *out = NULL, *res = NULL;
+	size_t outlen = 0;
 
 	if (type >= PKG_HASH_TYPE_UNKNOWN || fd < 0)
 		return (NULL);

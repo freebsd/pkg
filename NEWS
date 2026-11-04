@@ -1,3 +1,7 @@
+Changes from 2.9.0 to 2.9.99.1
+- create: a plist entry pointing at a directory is reported as an error
+  instead of crashing pkg
+
 Changes from 2.8.99.5 to 2.8.99.6
 - abi: an overlong string coming from a manifest or a catalogue is rejected
   instead of overflowing the stack, and the minor OS version is parsed, it was
