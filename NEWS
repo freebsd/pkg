@@ -1,3 +1,8 @@
+Changes from 2.8.99.6 to 2.9.0
+- pkg add: resolve the paths of a package whose -r target is reached through
+  a symlink instead of failing on them
+- build: do not stop configuring when the C library has no xlocale.h
+
 Changes from 2.8.99.5 to 2.8.99.6
 - abi: an overlong string coming from a manifest or a catalogue is rejected
   instead of overflowing the stack, and the minor OS version is parsed, it was
