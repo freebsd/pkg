@@ -1249,10 +1249,13 @@ select_provider_from_dir(const char *dirpath, const char *ext)
 		entries.d[0] = NULL;
 	}
 
+	char *symlink_path = NULL;
 	char *result = NULL;
 	if (selected != NULL) {
-		xasprintf(&result, "%s/%s", dirpath, selected);
+		xasprintf(&symlink_path, "%s/%s", dirpath, selected);
 		free(selected);
+		result = realpath(symlink_path, NULL);
+		free(symlink_path);
 	}
 
 	vec_autofree(&entries);
