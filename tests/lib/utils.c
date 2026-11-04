@@ -255,6 +255,7 @@ ATF_TC_BODY(resolve_beneath, tc) {
 	char dest[MAXPATHLEN];
 	char rootpath[MAXPATHLEN];
 	char target[MAXPATHLEN];
+	char cwd[MAXPATHLEN];
 	int rootfd;
 
 	ATF_REQUIRE(mkdir("root", 0755) == 0);
@@ -334,6 +335,20 @@ ATF_TC_BODY(resolve_beneath, tc) {
 	ATF_REQUIRE(symlink(target, "root/a/inside") == 0);
 	ctx.pkg_rootdir = rootpath;
 	ATF_REQUIRE_EQ(EPKG_OK, pkg_resolve_beneath(rootfd, "/a/inside/file",
+	    dest, sizeof(dest)));
+	ATF_REQUIRE_STREQ("/a/b/file", dest);
+
+	/*
+	 * The root is canonical but a target naming a path inside of it can
+	 * be spelled through a symlink: it is the canonical form of the
+	 * target which is compared.
+	 */
+	ATF_REQUIRE(getcwd(cwd, sizeof(cwd)) != NULL);
+	ATF_REQUIRE(symlink(rootpath, "rootlink") == 0);
+	ATF_REQUIRE(snprintf(target, sizeof(target), "%s/rootlink/a/b", cwd) <
+	    (int)sizeof(target));
+	ATF_REQUIRE(symlink(target, "root/a/noncanon") == 0);
+	ATF_REQUIRE_EQ(EPKG_OK, pkg_resolve_beneath(rootfd, "/a/noncanon/file",
 	    dest, sizeof(dest)));
 	ATF_REQUIRE_STREQ("/a/b/file", dest);
 

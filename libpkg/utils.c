@@ -1091,13 +1091,26 @@ pkg_resolve_beneath(int rootfd, const char *path, char *dest, size_t destlen)
 			target[len] = '\0';
 			if (target[0] == '/') {
 				const char *tp = target;
+				char canon[MAXPATHLEN];
 
 				cur[0] = '\0';
-				if (root[0] == '/' && rootlen > 0 &&
-				    strncmp(target, root, rootlen) == 0 &&
-				    (target[rootlen] == '\0' ||
-				    target[rootlen] == '/'))
-					tp = target + rootlen;
+				/*
+				 * The root directory is canonical while a
+				 * target naming a path inside of it may be
+				 * spelled through a symlink: the two forms
+				 * do not compare equal, look at both.
+				 */
+				if (root[0] == '/' && rootlen > 0) {
+					if (realpath(target, canon) != NULL &&
+					    strncmp(canon, root, rootlen) == 0 &&
+					    (canon[rootlen] == '\0' ||
+					    canon[rootlen] == '/'))
+						tp = canon + rootlen;
+					else if (strncmp(target, root, rootlen) == 0 &&
+					    (target[rootlen] == '\0' ||
+					    target[rootlen] == '/'))
+						tp = target + rootlen;
+				}
 				trel = RELATIVE_PATH(tp);
 				rewritten = true;
 			} else {
