@@ -533,7 +533,6 @@ static const char osvf_schema_str[] = "{"
                                       "  \"additionalProperties\": false"
                                       "}";
 
-
 struct pkg_osvf_hash
 {
 	unsigned int value;
@@ -893,6 +892,12 @@ pkg_osvf_parse_events(audit_versv_t *versions, const ucl_object_t *event_array, 
 	}
 
 	range_type = pkg_osvf_get_event(type);
+
+	/* Parses package structure from events:
+	   {
+	     "introduced|fixed|last_affected|limit": "1.0.0"
+	   }
+	*/
 
 	while ((cur = ucl_iterate_object(event_array, &it, true)))
 	{
