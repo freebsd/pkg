@@ -27,6 +27,7 @@
  */
 
 #include <errno.h>
+#include <pthread.h>
 #if __has_include(<vis.h>)
 #include <vis.h>
 #elif __has_include(<bsd/vis.h>)
@@ -41,16 +42,21 @@
 #define METALOG_ESCAPE_LEN	(MAXPATHLEN * 4 + 1)
 
 static FILE *metalogfp = NULL;
+static pthread_mutex_t metalog_mutex = PTHREAD_MUTEX_INITIALIZER;
 static char *metalog_escape_path(char *, size_t, const char *, int);
 
 int
 metalog_open(const char *metalog)
 {
+	pthread_mutex_lock(&metalog_mutex);
 	metalogfp = fopen(metalog, "ae");
-	if (metalogfp == NULL)
+	if (metalogfp == NULL) {
+		pthread_mutex_unlock(&metalog_mutex);
 		pkg_fatal_errno("Unable to open metalog '%s'", metalog);
+	}
 	/* Package install scripts may add entries, so avoid interleaving. */
 	setvbuf(metalogfp, NULL, _IOLBF, 0);
+	pthread_mutex_unlock(&metalog_mutex);
 	return (EPKG_OK);
 }
 
@@ -63,6 +69,7 @@ metalog_add(int type, const char *path, const char *uname, const char *gname,
 	char *fflags_buffer = NULL;
 	int ret = EPKG_FATAL;
 
+	pthread_mutex_lock(&metalog_mutex);
 	if (metalogfp == NULL)
 		goto out;
 
@@ -112,15 +119,19 @@ metalog_add(int type, const char *path, const char *uname, const char *gname,
 
 out:
 	free(fflags_buffer);
+	pthread_mutex_unlock(&metalog_mutex);
 	return (ret);
 }
 
 void
 metalog_close(void)
 {
+	pthread_mutex_lock(&metalog_mutex);
 	if (metalogfp != NULL) {
 		fclose(metalogfp);
+		metalogfp = NULL;
 	}
+	pthread_mutex_unlock(&metalog_mutex);
 }
 
 static char *
