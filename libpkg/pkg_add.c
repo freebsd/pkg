@@ -20,6 +20,7 @@
 #include <errno.h>
 #include <fcntl.h>
 #include <glob.h>
+#include <pthread.h>
 #include <pwd.h>
 #include <grp.h>
 #include <sys/time.h>
@@ -1238,15 +1239,22 @@ append_pkg_if_newer(pkgs_t *localpkgs, struct pkg *p)
 }
 
 static charv_t system_shlibs_cache = vec_init();
-static bool system_shlibs_scanned = false;
+static pthread_once_t system_shlibs_once = PTHREAD_ONCE_INIT;
 
+static void
+scan_system_shlibs_once(void)
+{
+	scan_system_shlibs(&system_shlibs_cache, ctx.pkg_rootdir);
+}
+
+/*
+ * The cache is filled once and only read afterwards, the initialisation
+ * is serialised so that concurrent callers cannot build it twice.
+ */
 static charv_t *
 get_system_shlibs(void)
 {
-	if (!system_shlibs_scanned) {
-		scan_system_shlibs(&system_shlibs_cache, ctx.pkg_rootdir);
-		system_shlibs_scanned = true;
-	}
+	pthread_once(&system_shlibs_once, scan_system_shlibs_once);
 	return (&system_shlibs_cache);
 }
 
