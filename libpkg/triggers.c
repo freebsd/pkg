@@ -389,10 +389,6 @@ save_trigger(const char *script, bool sandbox, hash_t *args,
 		return;
 	}
 
-#ifndef HAVE_ARC4RANDOM
-	srand(time(NULL));
-#endif
-
 	int fd;
 	for (;;) {
 		char name[] = "XXXXXXXXXX";
