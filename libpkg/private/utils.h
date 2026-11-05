@@ -114,8 +114,18 @@ charv_insert_or_free(charv_t *v, char *el)
 		free(el);
 }
 
-uid_t get_uid_from_uname(const char *);
-gid_t get_gid_from_gname(const char *);
+/* last user and group looked up, carried by the structure that walks the
+ * entries of one package, so that the lookups are not repeated for the
+ * names it shares */
+struct pkg_id_cache {
+	char uname[64];
+	uid_t uid;
+	char gname[64];
+	gid_t gid;
+};
+
+uid_t get_uid_from_uname(const char *, struct pkg_id_cache *);
+gid_t get_gid_from_gname(const char *, struct pkg_id_cache *);
 unsigned int pkg_random_uniform(unsigned int);
 
 ucl_object_t *ucl_parse_fd(int fd, const char *name);

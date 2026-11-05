@@ -1457,13 +1457,14 @@ pkg_stat(const char *path, struct stat *st, char *symlink_target,
 static unsigned
 pkg_check_meta(struct stat *st, const char *uname, const char *gname,
 	       mode_t perm, u_long fflags, time_t mtime_sec,
-	       char *db_symlink_target, char *fs_symlink_target)
+	       char *db_symlink_target, char *fs_symlink_target,
+	       struct pkg_id_cache *ids)
 {
 	unsigned file_status = FILE_OK;
 
-	if (uname != NULL && get_uid_from_uname(uname) != st->st_uid)
+	if (uname != NULL && get_uid_from_uname(uname, ids) != st->st_uid)
 		file_status |= FILE_META_MISMATCH_UNAME;
-	if (gname != NULL && get_gid_from_gname(gname) != st->st_gid)
+	if (gname != NULL && get_gid_from_gname(gname, ids) != st->st_gid)
 		file_status |= FILE_META_MISMATCH_GNAME;
 	if (perm != 0 && perm != (st->st_mode & ~S_IFMT))
 		file_status |= FILE_META_MISMATCH_MODE;
@@ -1510,7 +1511,8 @@ stat_type_tostring(mode_t mode) {
 }
 
 static int
-pkg_check_file(struct pkg *pkg, struct pkg_file *f, bool metadata, unsigned file_status)
+pkg_check_file(struct pkg *pkg, struct pkg_file *f, bool metadata,
+    unsigned file_status, struct pkg_id_cache *ids)
 {
 	int rc = EPKG_OK;
 	int ret;
@@ -1532,7 +1534,7 @@ pkg_check_file(struct pkg *pkg, struct pkg_file *f, bool metadata, unsigned file
 	if (metadata) {
 		file_status |= pkg_check_meta(&st, f->uname, f->gname, f->perm, f->fflags,
 					      f->time[1].tv_sec, f->symlink_target,
-					      symlink_target);
+					      symlink_target, ids);
 
 		if (!S_ISREG(st.st_mode) && !S_ISLNK(st.st_mode))
 			file_status |= FILE_META_MISMATCH_TYPE;
@@ -1611,7 +1613,8 @@ emit_status:
 
 
 static int
-pkg_check_dir(struct pkg *pkg, struct pkg_dir *d, unsigned file_status)
+pkg_check_dir(struct pkg *pkg, struct pkg_dir *d, unsigned file_status,
+    struct pkg_id_cache *ids)
 {
 	int rc = EPKG_OK;
 	int err;
@@ -1631,7 +1634,7 @@ pkg_check_dir(struct pkg *pkg, struct pkg_dir *d, unsigned file_status)
 
 	file_status |= pkg_check_meta(&st, d->uname, d->gname, d->perm, d->fflags,
 				      d->time[1].tv_sec, db_symlink_target,
-				      symlink_target);
+				      symlink_target, ids);
 
 	if (!S_ISDIR(st.st_mode))
 		file_status |= FILE_META_MISMATCH_TYPE;
@@ -1686,6 +1689,7 @@ pkg_check_files(struct pkg *pkg, bool checksum, bool metadata)
 {
 	struct pkg_file *f = NULL;
 	struct pkg_dir *d = NULL;
+	struct pkg_id_cache ids = { 0 };
 	int rc = EPKG_OK;
 	int ret;
 	unsigned file_status;
@@ -1709,7 +1713,7 @@ pkg_check_files(struct pkg *pkg, bool checksum, bool metadata)
 			}
 		}
 
-		ret = pkg_check_file(pkg, f, metadata, file_status);
+		ret = pkg_check_file(pkg, f, metadata, file_status, &ids);
 		if (ret != EPKG_OK)
 			rc = EPKG_FATAL;
 	}
@@ -1717,7 +1721,7 @@ pkg_check_files(struct pkg *pkg, bool checksum, bool metadata)
 	if (metadata) {
 		while (pkg_dirs(pkg, &d) == EPKG_OK) {
 			file_status = FILE_OK;
-			ret = pkg_check_dir(pkg, d, file_status);
+			ret = pkg_check_dir(pkg, d, file_status, &ids);
 			if (ret != EPKG_OK)
 				rc = EPKG_FATAL;
 		}

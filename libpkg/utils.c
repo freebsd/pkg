@@ -1513,74 +1513,92 @@ charv_search(charv_t *v, const char *el)
 	return *res;
 }
 
-uid_t
-get_uid_from_uname(const char *uname)
+static uid_t
+lookup_uname(const char *uname)
 {
-	static struct passwd pwent;
-	struct passwd *result;
-	static char *user_buffer = NULL;
-	size_t bufsize;
-	int err;
+	struct passwd pwent, *result = NULL;
+	char *buf;
+	size_t bufsize = 1024;
+	int err = 0;
+	uid_t uid = 0;
+
+	for (;;) {
+		buf = xcalloc(1, bufsize);
+		err = getpwnam_r(uname, &pwent, buf, bufsize, &result);
+		if (err != ERANGE)
+			break;
+		free(buf);
+		bufsize *= 2;
+	}
+	if (err != 0)
+		pkg_emit_error("getpwnam_r(%s): %s", uname, strerror(err));
+	else if (result != NULL)
+		uid = pwent.pw_uid;
+	free(buf);
+
+	return (uid);
+}
+
+uid_t
+get_uid_from_uname(const char *uname, struct pkg_id_cache *cache)
+{
 	const char *testuname = uname ? uname : "";
 
-	if (pwent.pw_name != NULL && STREQ(testuname, pwent.pw_name))
-		goto out;
-	pwent.pw_name = NULL;
-	bufsize = 1024;
+	if (cache->uname[0] != '\0' && STREQ(testuname, cache->uname))
+		return (cache->uid);
+
+	cache->uname[0] = '\0';
+	cache->uid = lookup_uname(testuname);
+	/* a name too long for the cache is simply not cached */
+	if (strlcpy(cache->uname, testuname, sizeof(cache->uname)) >=
+	    sizeof(cache->uname))
+		cache->uname[0] = '\0';
+
+	return (cache->uid);
+}
+
+static gid_t
+lookup_gname(const char *gname)
+{
+	struct group grent, *result = NULL;
+	char *buf;
+	size_t bufsize = 1024;
+	int err = 0;
+	gid_t gid = 0;
+
 	for (;;) {
-		free(user_buffer);
-		user_buffer = xcalloc(1, bufsize);
-		err = getpwnam_r(testuname, &pwent, user_buffer, bufsize,
-		    &result);
-		if (err == ERANGE) {
-			bufsize *= 2;
-			continue;
-		}
-		break;
+		buf = xcalloc(1, bufsize);
+		err = getgrnam_r(gname, &grent, buf, bufsize, &result);
+		if (err != ERANGE)
+			break;
+		free(buf);
+		bufsize *= 2;
 	}
-	if (err != 0) {
-		pkg_emit_error("getpwnam_r(%s): %s", testuname, strerror(err));
-		return (0);
-	}
-	if (result == NULL)
-		return (0);
-out:
-	return (pwent.pw_uid);
+	if (err != 0)
+		pkg_emit_error("getgrnam_r(%s): %s", gname, strerror(err));
+	else if (result != NULL)
+		gid = grent.gr_gid;
+	free(buf);
+
+	return (gid);
 }
 
 gid_t
-get_gid_from_gname(const char *gname)
+get_gid_from_gname(const char *gname, struct pkg_id_cache *cache)
 {
-	static struct group grent;
-	struct group *result;
-	static char *group_buffer = NULL;
-	size_t bufsize;
-	int err;
 	const char *testgname = gname ? gname : "";
 
-	if (grent.gr_name != NULL && STREQ(testgname, grent.gr_name))
-		goto out;
-	grent.gr_name = NULL;
-	bufsize = 1024;
-	for (;;) {
-		free(group_buffer);
-		group_buffer = xcalloc(1, bufsize);
-		err = getgrnam_r(testgname, &grent, group_buffer, bufsize,
-		    &result);
-		if (err == ERANGE) {
-			bufsize *= 2;
-			continue;
-		}
-		break;
-	}
-	if (err != 0) {
-		pkg_emit_error("getgrnam_r(%s): %s", testgname, strerror(err));
-		return (0);
-	}
-	if (result == NULL)
-		return (0);
-out:
-	return (grent.gr_gid);
+	if (cache->gname[0] != '\0' && STREQ(testgname, cache->gname))
+		return (cache->gid);
+
+	cache->gname[0] = '\0';
+	cache->gid = lookup_gname(testgname);
+	/* a name too long for the cache is simply not cached */
+	if (strlcpy(cache->gname, testgname, sizeof(cache->gname)) >=
+	    sizeof(cache->gname))
+		cache->gname[0] = '\0';
+
+	return (cache->gid);
 }
 
 const char *
