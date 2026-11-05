@@ -907,11 +907,8 @@ pkgdb_open_repos(struct pkgdb *db, const char *reponame)
 static const char*
 _dbdir_trim_path(const char*path)
 {
-	static size_t l = 0;
+	size_t l = strlen(ctx.dbdir);
 	const char *p;
-
-	if (l == 0)
-		l = strlen(ctx.dbdir);
 
 	if (strncmp(ctx.dbdir, path, l) == 0) {
 		p = path + l;
