@@ -27,6 +27,7 @@
  * THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  */
 
+#include <pthread.h>
 #include <ucl.h>
 
 #include "pkg.h"
@@ -39,6 +40,8 @@
 
 static ucl_object_t *repo_meta_schema_v1 = NULL;
 static ucl_object_t *repo_meta_schema_v2 = NULL;
+static pthread_once_t repo_meta_schema_v1_once = PTHREAD_ONCE_INIT;
+static pthread_once_t repo_meta_schema_v2_once = PTHREAD_ONCE_INIT;
 
 static void
 pkg_repo_meta_set_default(struct pkg_repo_meta *meta)
@@ -118,7 +121,7 @@ pkg_repo_meta_free(struct pkg_repo_meta *meta)
 }
 
 static ucl_object_t*
-pkg_repo_meta_open_schema_v1(void)
+pkg_repo_meta_parse_schema_v1(void)
 {
 	static const char meta_schema_str_v1[] = ""
 			"{"
@@ -156,17 +159,26 @@ pkg_repo_meta_open_schema_v1(void)
 			"required = [version]\n"
 			"}";
 
-	if (repo_meta_schema_v1 != NULL)
-		return (repo_meta_schema_v1);
+	return (ucl_parse_buf(meta_schema_str_v1,
+	    sizeof(meta_schema_str_v1) - 1, "repo meta schema v1"));
+}
 
-	repo_meta_schema_v1 = ucl_parse_buf(meta_schema_str_v1,
-	    sizeof(meta_schema_str_v1) - 1, "repo meta schema v1");
+static void
+repo_meta_load_schema_v1(void)
+{
+	repo_meta_schema_v1 = pkg_repo_meta_parse_schema_v1();
+}
+
+static ucl_object_t*
+pkg_repo_meta_open_schema_v1(void)
+{
+	pthread_once(&repo_meta_schema_v1_once, repo_meta_load_schema_v1);
 
 	return (repo_meta_schema_v1);
 }
 
 static ucl_object_t*
-pkg_repo_meta_open_schema_v2(void)
+pkg_repo_meta_parse_schema_v2(void)
 {
 	static const char meta_schema_str_v2[] = ""
 			"{"
@@ -206,11 +218,20 @@ pkg_repo_meta_open_schema_v2(void)
 			"required = [version]\n"
 			"}";
 
-	if (repo_meta_schema_v2 != NULL)
-		return (repo_meta_schema_v2);
+	return (ucl_parse_buf(meta_schema_str_v2,
+	    sizeof(meta_schema_str_v2) - 1, "repo meta schema v2"));
+}
 
-	repo_meta_schema_v2 = ucl_parse_buf(meta_schema_str_v2,
-	    sizeof(meta_schema_str_v2) - 1, "repo meta schema v2");
+static void
+repo_meta_load_schema_v2(void)
+{
+	repo_meta_schema_v2 = pkg_repo_meta_parse_schema_v2();
+}
+
+static ucl_object_t*
+pkg_repo_meta_open_schema_v2(void)
+{
+	pthread_once(&repo_meta_schema_v2_once, repo_meta_load_schema_v2);
 
 	return (repo_meta_schema_v2);
 }
