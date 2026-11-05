@@ -3,7 +3,9 @@
 . $(atf_get_srcdir)/test_environment.sh
 
 tests_init \
-	create_from_bin
+	create_from_bin \
+	create_from_bin_note_padding \
+	create_from_bin_note_abi
 
 genmanifest() {
     local PKG_NAME="$1"
@@ -126,6 +128,41 @@ do_check() {
         -e empty \
         -s exit:0 \
         pkg info -R --raw-format=ucl -F ${PKG_NAME}-1.pkg
+}
+
+# The note section of the fixture ends with padding shorter than a note
+# header, or with an ABI note whose descriptor does not fit: parsing it
+# must not read past the section data.
+note_fixture_body() {
+	local file1=$(atf_get_srcdir)/$1
+
+	cat << EOF > note.manifest
+name: notetest
+origin: test/notetest
+version: "1.0"
+maintainer: test
+categories: [test]
+comment: a test
+www: http://test
+prefix: /
+desc: Yet another test
+files: { /$1: "" }
+EOF
+
+	atf_check \
+		-o empty \
+		-e empty \
+		-s exit:0 \
+		pkg -o IGNORE_OSMAJOR=1 -o ABI_FILE=${file1} \
+		create -M ./note.manifest -r $(atf_get_srcdir) -o ${TMPDIR}
+}
+
+create_from_bin_note_padding_body() {
+	note_fixture_body note-padding.bin
+}
+
+create_from_bin_note_abi_body() {
+	note_fixture_body note-abi.bin
 }
 
 create_from_bin_body() {

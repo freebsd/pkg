@@ -514,30 +514,52 @@ elf_note_analyse(Elf_Data *data, GElf_Ehdr *elfhdr, struct pkg_abi *abi)
 	};
 	uint32_t version = 0;
 	int version_style = 1;
+	uintptr_t end, desc;
+	uint64_t namesz, descsz;
+	bool found = false;
 
 	src = data->d_buf;
+	end = (uintptr_t)src + data->d_size;
 
-	while ((uintptr_t)src < ((uintptr_t)data->d_buf + data->d_size)) {
+	/*
+	 * A note is only readable when a whole header is left, and its name
+	 * and descriptor must lie inside the section too: the last note of a
+	 * section is commonly followed by padding to the section alignment.
+	 */
+	while ((uintptr_t)src + sizeof(Elf_Note) <= end) {
 		memcpy(&note, src, sizeof(Elf_Note));
 		src += sizeof(Elf_Note);
-		if ((strncmp ((const char *) src, "FreeBSD", note.n_namesz) == 0) ||
-		    (strncmp ((const char *) src, "DragonFly", note.n_namesz) == 0) ||
-		    (strncmp ((const char *) src, "NetBSD", note.n_namesz) == 0) ||
+
+		namesz = roundup2((uint64_t)note.n_namesz, 4);
+		descsz = roundup2((uint64_t)note.n_descsz, 4);
+		if (namesz > end - (uintptr_t)src)
+			break;
+		if (descsz > end - (uintptr_t)src - namesz)
+			break;
+		desc = (uintptr_t)src + namesz;
+
+		if ((strncmp((const char *)src, "FreeBSD", note.n_namesz) == 0) ||
+		    (strncmp((const char *)src, "DragonFly", note.n_namesz) == 0) ||
+		    (strncmp((const char *)src, "NetBSD", note.n_namesz) == 0) ||
 		    (note.n_namesz == 0)) {
-			if (note.n_type == NT_VERSION) {
+			if (note.n_type == NT_VERSION &&
+			    sizeof(version) <= end - desc) {
 				version_style = 1;
+				found = true;
 				break;
 			}
 		}
-		if (strncmp ((const char *) src, "GNU", note.n_namesz) == 0) {
-			if (note.n_type == NT_GNU_ABI_TAG) {
+		if (strncmp((const char *)src, "GNU", note.n_namesz) == 0) {
+			if (note.n_type == NT_GNU_ABI_TAG &&
+			    sizeof(gnu_abi_tag) <= end - desc) {
 				version_style = 2;
+				found = true;
 				break;
 			}
 		}
-		src += roundup2(note.n_namesz + note.n_descsz, 4);
+		src += namesz + descsz;
 	}
-	if ((uintptr_t)src >= ((uintptr_t)data->d_buf + data->d_size)) {
+	if (!found) {
 		return (false);
 	}
 	if (version_style == 2) {
@@ -550,7 +572,7 @@ elf_note_analyse(Elf_Data *data, GElf_Ehdr *elfhdr, struct pkg_abi *abi)
 		 * word 2: minor version of the ABI
 		 * word 3: subminor version of the ABI
 		 */
-		src += roundup2(note.n_namesz, 4);
+		src += namesz;
 		if (elfhdr->e_ident[EI_DATA] == ELFDATA2MSB) {
 			for (int wdndx = 0; wdndx < 4; wdndx++) {
 				gnu_abi_tag[wdndx] = pkg_be32dec(src);
@@ -571,14 +593,14 @@ elf_note_analyse(Elf_Data *data, GElf_Ehdr *elfhdr, struct pkg_abi *abi)
 		if (note.n_namesz == 0) {
 			abi->os = PKG_OS_UNKNOWN;
 		} else {
-			if (STREQ(src, "FreeBSD"))
+			if (strncmp(src, "FreeBSD", note.n_namesz) == 0)
 				abi->os = PKG_OS_FREEBSD;
-			else if (STREQ(src, "DragonFly"))
+			else if (strncmp(src, "DragonFly", note.n_namesz) == 0)
 				abi->os = PKG_OS_DRAGONFLY;
-			else if (STREQ(src, "NetBSD"))
+			else if (strncmp(src, "NetBSD", note.n_namesz) == 0)
 				abi->os = PKG_OS_NETBSD;
 		}
-		src += roundup2(note.n_namesz, 4);
+		src += namesz;
 		if (elfhdr->e_ident[EI_DATA] == ELFDATA2MSB)
 			version = pkg_be32dec(src);
 		else
