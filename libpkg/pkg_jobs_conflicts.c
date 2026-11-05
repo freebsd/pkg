@@ -29,6 +29,7 @@
 #include <sys/param.h>
 #include <sys/types.h>
 #include <assert.h>
+#include <pthread.h>
 #include <stdbool.h>
 #include <stdlib.h>
 #include <string.h>
@@ -89,17 +90,21 @@ conflict_items_insert(conflict_itemv_t *v, struct pkg_jobs_conflict_item item)
 	v->len++;
 }
 
+static struct sipkey kinit;
+static pthread_once_t kinit_once = PTHREAD_ONCE_INIT;
+
+static void
+pkg_conflicts_sipkey_init_once(void)
+{
+	arc4random_buf((unsigned char *)&kinit, sizeof(kinit));
+}
+
 static struct sipkey *
 pkg_conflicts_sipkey_init(void)
 {
-	static struct sipkey *kinit;
+	pthread_once(&kinit_once, pkg_conflicts_sipkey_init_once);
 
-	if (kinit == NULL) {
-		kinit = xmalloc(sizeof(*kinit));
-		arc4random_buf((unsigned char*)kinit, sizeof(*kinit));
-	}
-
-	return (kinit);
+	return (&kinit);
 }
 
 static int
