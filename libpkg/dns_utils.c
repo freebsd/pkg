@@ -352,7 +352,39 @@ set_nameserver(const char *nsname) {
 }
 #else
 
-static ldns_resolver *lres = NULL;
+/* nameserver configured at startup, NULL for the system ones */
+static char *nameserver = NULL;
+
+/*
+ * Build a resolver for a single lookup, with the configured nameserver
+ * prepended when there is one.  A resolver is never shared between
+ * lookups, so concurrent ones cannot disturb each other.
+ */
+static ldns_resolver *
+new_resolver(void)
+{
+	ldns_resolver *r;
+	ldns_rdf *rdf;
+
+	if (ldns_resolver_new_frm_file(&r, NULL) != LDNS_STATUS_OK)
+		return (NULL);
+
+	if (nameserver != NULL) {
+		rdf = ldns_rdf_new_frm_str(LDNS_RDF_TYPE_A, nameserver);
+		if (rdf == NULL)
+			rdf = ldns_rdf_new_frm_str(LDNS_RDF_TYPE_AAAA,
+			    nameserver);
+		if (rdf == NULL ||
+		    ldns_resolver_push_nameserver(r, rdf) != LDNS_STATUS_OK) {
+			ldns_rdf_deep_free(rdf);
+			ldns_resolver_deep_free(r);
+			return (NULL);
+		}
+		ldns_rdf_deep_free(rdf);
+	}
+
+	return (r);
+}
 
 static void
 compute_weight(struct dns_srvinfo *d, int first, int last)
@@ -391,16 +423,19 @@ dns_getsrvinfo(const char *zone)
 	ldns_pkt *p;
 	ldns_rr_list *srv;
 	struct dns_srvinfo *res;
+	ldns_resolver *lres;
 	int ancount, i;
 	int f, l;
 
+	lres = new_resolver();
 	if (lres == NULL)
-		if (ldns_resolver_new_frm_file(&lres, NULL) != LDNS_STATUS_OK)
-			return (NULL);
+		return (NULL);
 
 	domain = ldns_dname_new_frm_str(zone);
-	if (domain == NULL)
+	if (domain == NULL) {
+		ldns_resolver_deep_free(lres);
 		return (NULL);
+	}
 
 	p = ldns_resolver_query(lres, domain,
 	    LDNS_RR_TYPE_SRV,
@@ -408,6 +443,7 @@ dns_getsrvinfo(const char *zone)
 	    LDNS_RD);
 
 	ldns_rdf_deep_free(domain);
+	ldns_resolver_deep_free(lres);
 
 	if (p == NULL)
 		return (NULL);
@@ -475,6 +511,7 @@ set_nameserver(const char *nsname)
 	 */
 	ldns_rdf *rdf;
 
+	/* only remember a valid address, it is pushed on every lookup */
 	rdf = ldns_rdf_new_frm_str(LDNS_RDF_TYPE_A, nsname);
 	if (rdf == NULL)
 		rdf = ldns_rdf_new_frm_str(LDNS_RDF_TYPE_AAAA, nsname);
@@ -482,12 +519,10 @@ set_nameserver(const char *nsname)
 	if (rdf == NULL)
 		return (EPKG_FATAL);
 
-	if (lres == NULL)
-		if (ldns_resolver_new_frm_file(&lres, NULL) != LDNS_STATUS_OK)
-			return (EPKG_FATAL);
+	ldns_rdf_deep_free(rdf);
 
-	if (ldns_resolver_push_nameserver(lres, rdf) != LDNS_STATUS_OK)
-		return (EPKG_FATAL);
+	free(nameserver);
+	nameserver = xstrdup(nsname);
 
 	return (EPKG_OK);
 }
