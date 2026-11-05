@@ -35,6 +35,7 @@
 #include <sys/wait.h>
 
 #include <assert.h>
+#include <pthread.h>
 #include <ctype.h>
 #include <errno.h>
 #include <regex.h>
@@ -53,6 +54,7 @@
 #include "private/lua.h"
 
 static ucl_object_t *keyword_schema = NULL;
+static pthread_once_t keyword_schema_once = PTHREAD_ONCE_INIT;
 
 static int override_prefix(struct plist *, char *, struct file_attr *);
 static int setprefix(struct plist *, char *, struct file_attr *);
@@ -94,7 +96,7 @@ static struct action_cmd {
 };
 
 static ucl_object_t *
-keyword_open_schema(void)
+keyword_parse_schema(void)
 {
 	static const char keyword_schema_str[] = ""
 		"{"
@@ -141,11 +143,20 @@ keyword_open_schema(void)
 		"  }"
 		"}";
 
-	if (keyword_schema != NULL)
-		return (keyword_schema);
+	return (ucl_parse_buf(keyword_schema_str,
+	    sizeof(keyword_schema_str) - 1, "keyword schema"));
+}
 
-	keyword_schema = ucl_parse_buf(keyword_schema_str,
-	    sizeof(keyword_schema_str) - 1, "keyword schema");
+static void
+keyword_load_schema(void)
+{
+	keyword_schema = keyword_parse_schema();
+}
+
+static ucl_object_t *
+keyword_open_schema(void)
+{
+	pthread_once(&keyword_schema_once, keyword_load_schema);
 
 	return (keyword_schema);
 }
