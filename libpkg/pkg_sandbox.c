@@ -242,11 +242,12 @@ pkg_handle_sandboxed_get_string(pkg_sandbox_cb func, char **result, int64_t *len
 void
 pkg_drop_privileges(void)
 {
-	struct passwd *nobody;
+	struct passwd pwd, *nobody = NULL;
+	char pwbuf[1024];
 
 	if (geteuid() == 0) {
-		nobody = getpwnam("nobody");
-		if (nobody == NULL)
+		if (getpwnam_r("nobody", &pwd, pwbuf, sizeof(pwbuf),
+		    &nobody) != 0 || nobody == NULL)
 			errx(EXIT_FAILURE, "Unable to drop privileges: no 'nobody' user");
 		setgroups(1, &nobody->pw_gid);
 		/* setgid also sets egid and setuid also sets euid */
