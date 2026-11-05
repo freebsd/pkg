@@ -761,6 +761,7 @@ pkg_osvf_get_ecosystem(const char *ecosystem)
 	char ecosystem_delimiter[] = ":";
 	char *ecosystem_copy = NULL;
 	char *ecosystem_token = NULL;
+	char *ecosystem_saveptr = NULL;
 	struct pkg_audit_ecosystem *rtn_ecosystem = NULL;
 
 	if(!ecosystem)
@@ -769,7 +770,8 @@ pkg_osvf_get_ecosystem(const char *ecosystem)
 	}
 
 	ecosystem_copy = xstrdup(ecosystem);
-	ecosystem_token = strtok(ecosystem_copy, ecosystem_delimiter);
+	ecosystem_token = strtok_r(ecosystem_copy, ecosystem_delimiter,
+	    &ecosystem_saveptr);
 
 	if(!ecosystem_token)
 	{
@@ -798,7 +800,8 @@ pkg_osvf_get_ecosystem(const char *ecosystem)
 	 */
 	while(ecosystem_token)
 	{
-		ecosystem_token = strtok(NULL, ecosystem_delimiter);
+		ecosystem_token = strtok_r(NULL, ecosystem_delimiter,
+		    &ecosystem_saveptr);
 		if(ecosystem_token)
 		{
 			ucl_array_append(rtn_ecosystem->params, ucl_object_fromstring(ecosystem_token));

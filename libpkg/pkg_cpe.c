@@ -177,6 +177,7 @@ pkg_cpe_parse(const char *cpe_str)
 	char cpe_atoi[2] = {0x00, 0x00};
 	char *cpe_copy = NULL;
 	char *cpe_token = NULL;
+	char *cpe_saveptr = NULL;
 	struct pkg_audit_cpe *rtn_cpe = NULL;
 	unsigned int loc = 0;
 	bool is_error = false;
@@ -192,7 +193,7 @@ pkg_cpe_parse(const char *cpe_str)
 	}
 
 	cpe_copy = xstrdup(cpe_str);
-	cpe_token = strtok(cpe_copy, cpe_delimiter);
+	cpe_token = strtok_r(cpe_copy, cpe_delimiter, &cpe_saveptr);
 
 	if(!cpe_token)
 	{
@@ -296,7 +297,7 @@ pkg_cpe_parse(const char *cpe_str)
 
 
 		loc ++;
-		cpe_token = strtok(NULL, cpe_delimiter);
+		cpe_token = strtok_r(NULL, cpe_delimiter, &cpe_saveptr);
 
 		if(loc >= 13 && cpe_token)
 		{
