@@ -360,17 +360,10 @@ static char *
 get_random_name(char name[])
 {
 	char *pos;
-	int r;
 
 	pos = name;
-	while (*pos == 'X') {
-#ifndef HAVE_ARC4RANDOM
-		r = rand() % (sizeof(litchar) -1);
-#else
-		r = arc4random_uniform(sizeof(litchar) -1);
-#endif
-		*pos++ = litchar[r];
-	}
+	while (*pos == 'X')
+		*pos++ = litchar[pkg_random_uniform(sizeof(litchar) - 1)];
 
 	return (name);
 }

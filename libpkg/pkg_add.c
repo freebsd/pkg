@@ -970,10 +970,6 @@ do_extract(struct archive *a, struct archive_entry *ae,
 	    struct archive_entry *ae, const char *path, struct pkg *local,
 	    tempdirs_t *tempdirs);
 
-#ifndef HAVE_ARC4RANDOM
-	srand(time(NULL));
-#endif
-
 	if (nfiles == 0)
 		return (EPKG_OK);
 

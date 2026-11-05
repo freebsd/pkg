@@ -116,6 +116,7 @@ charv_insert_or_free(charv_t *v, char *el)
 
 uid_t get_uid_from_uname(const char *);
 gid_t get_gid_from_gname(const char *);
+unsigned int pkg_random_uniform(unsigned int);
 
 ucl_object_t *ucl_parse_fd(int fd, const char *name);
 ucl_object_t *ucl_parse_buf(const char *buf, size_t len, const char *name);

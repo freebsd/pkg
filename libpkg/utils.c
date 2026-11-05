@@ -45,7 +45,9 @@
 #include <errno.h>
 #include <fcntl.h>
 #include <limits.h>
+#include <pthread.h>
 #include <stdlib.h>
+#include <time.h>
 #include <unistd.h>
 #include <string.h>
 #include <ucl.h>
@@ -1321,12 +1323,40 @@ pkg_copy_file(int from, int to)
 static const unsigned char litchar[] =
 "0123456789ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz";
 
+/*
+ * Uniform value in [0, max), used to build names from random characters.
+ * The system generator is used where there is one, otherwise a generator
+ * seeded once and serialised so that concurrent callers cannot share its
+ * state.
+ */
+unsigned int
+pkg_random_uniform(unsigned int max)
+{
+#ifdef HAVE_ARC4RANDOM
+	return (arc4random_uniform(max));
+#else
+	static pthread_mutex_t m = PTHREAD_MUTEX_INITIALIZER;
+	static unsigned int seed;
+	unsigned int r;
+
+	if (max == 0)
+		return (0);
+
+	pthread_mutex_lock(&m);
+	if (seed == 0)
+		seed = (unsigned int)(time(NULL) ^ getpid());
+	r = (unsigned int)rand_r(&seed) % max;
+	pthread_mutex_unlock(&m);
+
+	return (r);
+#endif
+}
+
 void
 append_random_suffix(char *buf, int buflen, int suflen)
 {
 	int nchars = strlen(buf);
 	char *pos;
-	int r;
 
 	/* 2 being the "." and the \0 */
 	if (nchars + suflen > buflen - 2) {
@@ -1338,14 +1368,8 @@ append_random_suffix(char *buf, int buflen, int suflen)
 	buf[nchars++] = '.';
 	pos = buf + nchars;
 
-	while(suflen --) {
-#ifndef HAVE_ARC4RANDOM
-		r = rand() % (sizeof(litchar) - 1);
-#else
-		r = arc4random_uniform(sizeof(litchar) - 1);
-#endif
-		*pos++ = litchar[r];
-	}
+	while(suflen --)
+		*pos++ = litchar[pkg_random_uniform(sizeof(litchar) - 1)];
 
 	*pos = '\0';
 }
