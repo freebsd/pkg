@@ -50,6 +50,22 @@
 
 extern char **environ;
 
+/*
+ * Variables exported for the scripts only: they must not be kept in the
+ * environment of the calling process.
+ */
+static void
+script_unsetenv(void)
+{
+	unsetenv("PKG_UPGRADE");
+	unsetenv("PKG_NAME");
+	unsetenv("PKG_PREFIX");
+	unsetenv("PKG_ROOTDIR");
+	unsetenv("PKG_METALOG");
+	unsetenv("PKG_CHROOTED");
+	unsetenv("PKG_MSGFD");
+}
+
 int
 pkg_script_run(struct pkg * const pkg, pkg_script type, bool upgrade, bool noexec)
 {
@@ -222,7 +238,7 @@ pkg_script_run(struct pkg * const pkg, pkg_script type, bool upgrade, bool noexe
 				close(stdin_pipe[1]);
 			}
 
-			unsetenv("PKG_PREFIX");
+			script_unsetenv();
 
 			close(cur_pipe[1]);
 			cur_pipe[1] = -1;
@@ -239,6 +255,7 @@ pkg_script_run(struct pkg * const pkg, pkg_script type, bool upgrade, bool noexe
 	}
 
 cleanup:
+	script_unsetenv();
 
 	sb_fini(&script_cmd);
 	if (stdin_pipe[0] != -1)

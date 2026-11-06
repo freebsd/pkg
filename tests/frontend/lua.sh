@@ -20,8 +20,37 @@ tests_init \
 	script_sample_exists \
 	script_stat \
 	script_arguments \
+	script_env_isolation \
 	script_metalog_add \
 	script_exec_capture
+
+script_env_isolation_body() {
+	# The variables exported for a script must not leak into the next one
+	atf_check -s exit:0 sh ${RESOURCEDIR}/test_subr.sh new_pkg "one" "one" "1" "/"
+	cat << EOF >> one.ucl
+scripts: {
+  post-install: "echo one"
+}
+EOF
+	atf_check -s exit:0 sh ${RESOURCEDIR}/test_subr.sh new_pkg "two" "two" "1" "/"
+	cat << EOF >> two.ucl
+lua_scripts: {
+  post-install: [
+  'print("leaked=" .. tostring(os.getenv("PKG_NAME")))',
+  ]
+}
+EOF
+	atf_check -o ignore -s exit:0 pkg create -M one.ucl
+	atf_check -o ignore -s exit:0 pkg create -M two.ucl
+
+	mkdir ${TMPDIR}/target
+	atf_check \
+		-o match:"leaked=nil" \
+		-e empty \
+		-s exit:0 \
+		pkg -o REPOS_DIR=/dev/null -r ${TMPDIR}/target add \
+		${TMPDIR}/one-1.pkg ${TMPDIR}/two-1.pkg
+}
 
 script_arguments_body() {
 	atf_check -s exit:0 sh ${RESOURCEDIR}/test_subr.sh new_pkg "test" "test" "1" "/"
