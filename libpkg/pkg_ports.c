@@ -1489,7 +1489,7 @@ include_plist(struct plist *p, char *name, struct file_attr *a __unused)
 {
 	FILE *f;
 	int fd;
-	int rc;
+	int rc = EPKG_FATAL;
 
 	if (p->in_include) {
 		pkg_emit_error("Inside in @include it is not allowed to reuse @include");
@@ -1500,18 +1500,20 @@ include_plist(struct plist *p, char *name, struct file_attr *a __unused)
 	fd = openat(p->plistdirfd, name, O_RDONLY);
 	if (fd == -1) {
 		pkg_emit_errno("Unable to include", name);
-		return (EPKG_FATAL);
+		goto out;
 	}
 	f = fdopen(fd, "r");
 	if (f == NULL) {
 		pkg_emit_errno("Unable to include", name);
 		close(fd);
-		return (EPKG_FATAL);
+		goto out;
 	}
 
 	rc = plist_parse(p, f);
 
 	fclose(f);
+out:
+	p->in_include = false;
 	return (rc);
 }
 

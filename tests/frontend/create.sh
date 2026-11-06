@@ -24,6 +24,7 @@ tests_init \
 	create_from_plist_hash \
 	create_from_plist_with_keyword_and_message \
 	create_from_plist_include \
+	create_from_plist_include_twice \
 	create_with_hardlink \
 	create_no_clobber \
 	time \
@@ -760,6 +761,32 @@ create_no_clobber_body()
 	atf_check pkg create -nM test.ucl
 	after=$(ls -l test-1.pkg)
 	[ "$before" = "$after" ] || atf_fail "Package was recreated \"$before\" vs \"$after\""
+}
+
+create_from_plist_include_twice_body()
+{
+	genmanifest
+	cat << EOF >> test.plist
+file1
+@include other-plist
+file2
+@include third-plist
+file3
+EOF
+	cat << EOF >> other-plist
+file4
+EOF
+	cat << EOF >> third-plist
+file5
+EOF
+	touch file1 file2 file3 file4 file5
+
+	atf_check \
+		-s exit:0 \
+		pkg create -o ${TMPDIR} -m . -p test.plist -r .
+
+	atf_check -o inline:"/file1\n/file2\n/file3\n/file4\n/file5\n" \
+	    pkg info -ql -F test*.pkg
 }
 
 create_from_plist_include_body()
