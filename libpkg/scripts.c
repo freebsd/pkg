@@ -143,11 +143,15 @@ pkg_script_run(struct pkg * const pkg, pkg_script type, bool upgrade, bool noexe
 			posix_spawn_file_actions_init(&action);
 			if (get_socketpair(cur_pipe) == -1) {
 				pkg_emit_errno("pkg_script_run", "socketpair");
+				posix_spawn_file_actions_destroy(&action);
+				ret = EPKG_FATAL;
 				goto cleanup;
 			}
 
 			if (fcntl(cur_pipe[0], F_SETFL, O_NONBLOCK) == -1) {
 				pkg_emit_errno("pkg_script_run", "fcntl");
+				posix_spawn_file_actions_destroy(&action);
+				ret = EPKG_FATAL;
 				goto cleanup;
 			}
 
