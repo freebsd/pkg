@@ -132,6 +132,8 @@ pkg_lua_script_run(struct pkg * const pkg, pkg_lua_script type, bool upgrade)
 		close(cur_pipe[1]);
 
 		ret = pkg_script_run_child(pid, &pstat, cur_pipe[0], "lua");
+
+		close(cur_pipe[0]);
 	}
 
 
