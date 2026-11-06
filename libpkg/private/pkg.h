@@ -376,7 +376,6 @@ struct trigger {
 typedef vec_t(struct trigger *) trigger_t;
 
 struct triggers {
-	ucl_object_t *schema;
 	int dfd;
 	trigger_t *cleanup;
 };

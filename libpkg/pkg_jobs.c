@@ -195,8 +195,6 @@ pkg_jobs_free(struct pkg_jobs *j)
 	}
 	if (j->triggers.dfd != -1)
 		close(j->triggers.dfd);
-	if (j->triggers.schema != NULL)
-		ucl_object_unref(j->triggers.schema);
 	pkg_deferred_rc_free(&j->rc);
 	stringset_destroy(j->orphaned);
 	stringset_destroy(j->notorphaned);

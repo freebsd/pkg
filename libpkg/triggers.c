@@ -19,6 +19,7 @@
 #include <errno.h>
 #include <fcntl.h>
 #include <paths.h>
+#include <pthread.h>
 #include <spawn.h>
 #include <pkg/sb.h>
 
@@ -42,7 +43,7 @@ get_script_type(const char *str)
 }
 
 static ucl_object_t *
-trigger_open_schema(void)
+trigger_parse_schema(void)
 {
 	ucl_object_t *trigger_schema;
 	static const char trigger_schema_str[] = ""
@@ -105,6 +106,23 @@ trigger_open_schema(void)
 	trigger_schema = ucl_parse_buf(trigger_schema_str,
 	    sizeof(trigger_schema_str) - 1, "trigger schema");
 	return (trigger_schema);
+}
+
+static ucl_object_t *trigger_schema_cache = NULL;
+
+static void
+trigger_load_schema(void)
+{
+	trigger_schema_cache = trigger_parse_schema();
+}
+
+static ucl_object_t *
+trigger_open_schema(void)
+{
+	static pthread_once_t once = PTHREAD_ONCE_INIT;
+
+	pthread_once(&once, trigger_load_schema);
+	return (trigger_schema_cache);
 }
 
 static bool
@@ -216,9 +234,6 @@ trigger_is_it_a_cleanup(struct triggers *t, const char *path)
 	if (t == NULL)
 		return;
 
-	if (t->schema == NULL)
-		t->schema = trigger_open_schema();
-
 	/* Check if the file was installed in a trigger directory. */
 	it = NULL;
 	trigger_name = NULL;
@@ -247,7 +262,8 @@ trigger_is_it_a_cleanup(struct triggers *t, const char *path)
 		}
 	}
 
-	trig = trigger_load(t->dfd, RELATIVE_PATH(trigger_name), true, t->schema);
+	trig = trigger_load(t->dfd, RELATIVE_PATH(trigger_name), true,
+	    trigger_open_schema());
 	if (trig != NULL) {
 		if (t->cleanup == NULL)
 			t->cleanup = xcalloc(1, sizeof(*t->cleanup));
@@ -311,28 +327,43 @@ triggers_load_from(trigger_t *triggers, bool cleanup_only, const char *dir)
 	}
 
 	closedir(d);
-	ucl_object_unref(schema);
 }
 
 /*
  * Load triggers from PKG_TRIGGERS_DIR.
  */
+static void
+triggers_load_all(trigger_t *triggers, bool cleanup_only, const char *subdir)
+{
+	const pkg_object *dirs, *cur;
+	pkg_iter it = NULL;
+	const char *dir;
+	char path[MAXPATHLEN];
+
+	dirs = pkg_config_get("PKG_TRIGGERS_DIR");
+	while ((cur = pkg_object_iterate(dirs, &it))) {
+		dir = RELATIVE_PATH(pkg_object_string(cur));
+		if (subdir == NULL) {
+			triggers_load_from(triggers, cleanup_only, dir);
+			continue;
+		}
+		if ((size_t)snprintf(path, sizeof(path), "%s/%s", dir,
+		    subdir) >= sizeof(path)) {
+			pkg_emit_error("Path too long for the triggers of %s",
+			    dir);
+			continue;
+		}
+		triggers_load_from(triggers, false, path);
+	}
+}
+
 trigger_t *
 triggers_load(bool cleanup_only)
 {
 	trigger_t *ret;
-	const pkg_object *dirs, *cur;
-	pkg_iter it = NULL;
 
 	ret = xcalloc(1, sizeof(*ret));
-
-	dirs = pkg_config_get("PKG_TRIGGERS_DIR");
-	while ((cur = pkg_object_iterate(dirs, &it))) {
-		const char *dir;
-
-		dir = RELATIVE_PATH(pkg_object_string(cur));
-		triggers_load_from(ret, cleanup_only, dir);
-	}
+	triggers_load_all(ret, cleanup_only, NULL);
 
 	return (ret);
 }
@@ -656,25 +687,9 @@ static trigger_t *
 triggers_load_perpackage(trigger_phase_t phase)
 {
 	trigger_t *ret;
-	const pkg_object *dirs, *cur;
-	pkg_iter it = NULL;
-	char path[MAXPATHLEN];
 
 	ret = xcalloc(1, sizeof(*ret));
-
-	dirs = pkg_config_get("PKG_TRIGGERS_DIR");
-	while ((cur = pkg_object_iterate(dirs, &it))) {
-		const char *dir;
-
-		dir = RELATIVE_PATH(pkg_object_string(cur));
-		if ((size_t)snprintf(path, sizeof(path), "%s/%s", dir,
-		    trigger_phase_dirs[phase]) >= sizeof(path)) {
-			pkg_emit_error("Path too long for the triggers of %s",
-			    dir);
-			continue;
-		}
-		triggers_load_from(ret, false, path);
-	}
+	triggers_load_all(ret, false, trigger_phase_dirs[phase]);
 
 	return (ret);
 }
