@@ -33,7 +33,7 @@ pkg_lua_script_run(struct pkg * const pkg, pkg_lua_script type, bool upgrade)
 	int cur_pipe[2];
 	char *line = NULL;
 
-	if (vec_len(&pkg->lua_scripts[type]) == 0)
+	if (vec_len(&pkg->scripts[type].lua) == 0)
 		return (EPKG_OK);
 
 	if (!pkg_object_bool(pkg_config_get("RUN_SCRIPTS"))) {
@@ -42,8 +42,8 @@ pkg_lua_script_run(struct pkg * const pkg, pkg_lua_script type, bool upgrade)
 
 	pkg_reaper_acquire(&reaper);
 
-	vec_foreach(pkg->lua_scripts[type], i) {
-		char *script = pkg->lua_scripts[type].d[i];
+	vec_foreach(pkg->scripts[type].lua, i) {
+		char *script = pkg->scripts[type].lua.d[i];
 		if (get_socketpair(cur_pipe) == -1) {
 			pkg_emit_errno("pkg_lua_script_script", "socketpair");
 			goto cleanup;
@@ -169,7 +169,7 @@ pkg_lua_script_from_ucl(struct pkg *pkg, const ucl_object_t *obj, pkg_lua_script
 			pkg_emit_error("lua scripts must be strings");
 			return (EPKG_FATAL);
 		}
-		vec_push(&pkg->lua_scripts[type], xstrdup(ucl_object_tostring(cur)));
+		vec_push(&pkg->scripts[type].lua, xstrdup(ucl_object_tostring(cur)));
 	}
 	return (EPKG_OK);
 }

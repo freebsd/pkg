@@ -109,10 +109,10 @@ pkg_dir_free(struct pkg_dir *dir)
 const char *
 pkg_script_get(struct pkg const * const p, pkg_script i)
 {
-	if (p->scripts[i].len == 0)
+	if (p->scripts[i].shell.len == 0)
 		return (NULL);
 
-	return (p->scripts[i].d);
+	return (p->scripts[i].shell.d);
 }
 
 /*

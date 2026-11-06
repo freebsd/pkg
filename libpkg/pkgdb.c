@@ -2312,10 +2312,10 @@ pkgdb_insert_lua_scripts(struct pkg *pkg, int64_t package_id, sqlite3 *s)
 	int64_t			 i;
 
 	for (i = 0; i < PKG_LUA_UNKNOWN; i++) {
-		vec_foreach(pkg->lua_scripts[i], j) {
-			sql_arg_t arg1[] = { SQL_ARG(pkg->lua_scripts[i].d[j]) };
+		vec_foreach(pkg->scripts[i].lua, j) {
+			sql_arg_t arg1[] = { SQL_ARG(pkg->scripts[i].lua.d[j]) };
 			sql_arg_t arg2[] = {
-				SQL_ARG(pkg->lua_scripts[i].d[j]),
+				SQL_ARG(pkg->scripts[i].lua.d[j]),
 				SQL_ARG(package_id),
 				SQL_ARG(i),
 			};

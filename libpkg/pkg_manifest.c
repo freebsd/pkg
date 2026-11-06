@@ -1272,26 +1272,9 @@ pkg_emit_object(struct pkg *pkg, short flags)
 			if (pkg_script_get(pkg, i) == NULL)
 				continue;
 
-			switch (i) {
-			case PKG_SCRIPT_PRE_INSTALL:
-				script_types = "pre-install";
-				break;
-			case PKG_SCRIPT_INSTALL:
-				script_types = "install";
-				break;
-			case PKG_SCRIPT_POST_INSTALL:
-				script_types = "post-install";
-				break;
-			case PKG_SCRIPT_PRE_DEINSTALL:
-				script_types = "pre-deinstall";
-				break;
-			case PKG_SCRIPT_DEINSTALL:
-				script_types = "deinstall";
-				break;
-			case PKG_SCRIPT_POST_DEINSTALL:
-				script_types = "post-deinstall";
-				break;
-			}
+			script_types = pkg_script_key(i);
+			if (script_types == NULL)
+				continue;
 			urlencode(pkg_script_get(pkg, i), &tmpsbuf);
 			if (map == NULL)
 				map = ucl_object_typed_new(UCL_OBJECT);
@@ -1306,26 +1289,15 @@ pkg_emit_object(struct pkg *pkg, short flags)
 		dbg(4, "Emitting lua scripts");
 		map = NULL;
 		for (int i = 0; i < PKG_LUA_UNKNOWN; i++) {
-			if (vec_len(&pkg->lua_scripts[i]) == 0)
+			if (vec_len(&pkg->scripts[i].lua) == 0)
 				continue;
-			switch(i) {
-			case PKG_LUA_PRE_INSTALL:
-				script_types = "pre-install";
-				break;
-			case PKG_LUA_POST_INSTALL:
-				script_types = "post-install";
-				break;
-			case PKG_LUA_PRE_DEINSTALL:
-				script_types = "pre-deinstall";
-				break;
-			case PKG_LUA_POST_DEINSTALL:
-				script_types = "post-deinstall";
-				break;
-			}
+			script_types = pkg_script_key((pkg_script)i);
+			if (script_types == NULL)
+				continue;
 			if (map == NULL)
 				map = ucl_object_typed_new(UCL_OBJECT);
 			ucl_object_insert_key(map,
-			    pkg_lua_script_to_ucl(&pkg->lua_scripts[i]),
+			    pkg_lua_script_to_ucl(&pkg->scripts[i].lua),
 				    script_types, 0, true);
 		}
 		if (map)

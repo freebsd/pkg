@@ -49,6 +49,33 @@
 
 extern char **environ;
 
+_Static_assert(PKG_LUA_PRE_INSTALL == PKG_SCRIPT_PRE_INSTALL &&
+    PKG_LUA_POST_INSTALL == PKG_SCRIPT_POST_INSTALL &&
+    PKG_LUA_PRE_DEINSTALL == PKG_SCRIPT_PRE_DEINSTALL &&
+    PKG_LUA_POST_DEINSTALL == PKG_SCRIPT_POST_DEINSTALL,
+    "the lua scripts are indexed like the shell ones");
+
+const char *
+pkg_script_key(pkg_script type)
+{
+	switch (type) {
+	case PKG_SCRIPT_PRE_INSTALL:
+		return ("pre-install");
+	case PKG_SCRIPT_INSTALL:
+		return ("install");
+	case PKG_SCRIPT_POST_INSTALL:
+		return ("post-install");
+	case PKG_SCRIPT_PRE_DEINSTALL:
+		return ("pre-deinstall");
+	case PKG_SCRIPT_DEINSTALL:
+		return ("deinstall");
+	case PKG_SCRIPT_POST_DEINSTALL:
+		return ("post-deinstall");
+	default:
+		return (NULL);
+	}
+}
+
 /*
  * Variables exported for the scripts only: they must not be kept in the
  * environment of the calling process.

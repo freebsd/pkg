@@ -255,6 +255,11 @@ struct pkg_dep {
 
 typedef vec_t(struct pkg_dep) pkg_depv_t;
 
+struct pkg_scripts {
+	sb_t shell;
+	charv_t lua;
+};
+
 struct pkg {
 	bool		 direct;
 	bool		 locked;
@@ -262,8 +267,7 @@ struct pkg {
 	bool		 vital;
 	bool		 user_vital;
 	int64_t		 id;
-	sb_t scripts[PKG_SCRIPT_UNKNOWN];
-	charv_t	 lua_scripts[PKG_LUA_UNKNOWN];
+	struct pkg_scripts scripts[PKG_SCRIPT_UNKNOWN];
 	char			*name;
 	char			*origin;
 	char			*version;
@@ -915,6 +919,7 @@ char *extract_keywords(char *line, char **keyword, struct file_attr **attr);
 int parse_keyword_args(char *args, char *keyword, struct file_attr **);
 void plist_free(struct plist *);
 int pkg_appendscript(struct pkg *pkg, const char *cmd, pkg_script type);
+const char *pkg_script_key(pkg_script type);
 void free_file_attr(struct file_attr *a);
 
 int pkg_add_lua_script(struct pkg *pkg, const char *data, pkg_lua_script type);
