@@ -109,7 +109,7 @@ trigger_open_schema(void)
 
 static bool
 parse_trigger_script_block(const ucl_object_t *block, const char *block_name,
-    const char *trigger_name, char **out_script, int *out_type, bool *out_sandbox)
+    const char *trigger_name, struct trigger_script *ts)
 {
 	const ucl_object_t *o;
 
@@ -118,8 +118,8 @@ parse_trigger_script_block(const ucl_object_t *block, const char *block_name,
 		pkg_emit_error("%s %s doesn't have a script type", block_name, trigger_name);
 		return (false);
 	}
-	*out_type = get_script_type(ucl_object_tostring(o));
-	if (*out_type == SCRIPT_UNKNOWN) {
+	ts->type = get_script_type(ucl_object_tostring(o));
+	if (ts->type == SCRIPT_UNKNOWN) {
 		pkg_emit_error("Unknown script type for %s in %s", block_name, trigger_name);
 		return (false);
 	}
@@ -128,9 +128,9 @@ parse_trigger_script_block(const ucl_object_t *block, const char *block_name,
 		pkg_emit_error("No script in %s %s", block_name, trigger_name);
 		return (false);
 	}
-	*out_script = xstrdup(ucl_object_tostring(o));
+	ts->script = xstrdup(ucl_object_tostring(o));
 	o = ucl_object_find_key(block, "sandbox");
-	*out_sandbox = (o == NULL) ? true : ucl_object_toboolean(o);
+	ts->sandbox = (o == NULL) ? true : ucl_object_toboolean(o);
 	return (true);
 }
 
@@ -168,7 +168,7 @@ trigger_load(int dfd, const char *name, bool cleanup_only, ucl_object_t *schema)
 		if (block == NULL)
 			goto err;
 		if (!parse_trigger_script_block(block, "cleanup", name,
-		    &t->cleanup.script, &t->cleanup.type, &t->cleanup.sandbox))
+		    &t->cleanup))
 			goto err;
 		ucl_object_unref(obj);
 		return (t);
@@ -176,7 +176,7 @@ trigger_load(int dfd, const char *name, bool cleanup_only, ucl_object_t *schema)
 
 	block = ucl_object_find_key(obj, "trigger");
 	if (!parse_trigger_script_block(block, "trigger", name,
-	    &t->script.script, &t->script.type, &t->script.sandbox))
+	    &t->script))
 		goto err;
 
 	/* Load path patterns (required for any non-cleanup block) */
@@ -200,17 +200,7 @@ trigger_load(int dfd, const char *name, bool cleanup_only, ucl_object_t *schema)
 	return (t);
 
 err:
-	if (t) {
-		if (t->path != NULL)
-			ucl_object_unref(t->path);
-		if (t->path_glob != NULL)
-			ucl_object_unref(t->path_glob);
-		if (t->path_regexp != NULL)
-			ucl_object_unref(t->path_regexp);
-		free(t->script.script);
-		free(t->cleanup.script);
-		free(t);
-	}
+	trigger_free(t);
 	ucl_object_unref(obj);
 	return (NULL);
 }

@@ -358,21 +358,19 @@ typedef enum {
 	TRIGGER_PHASE_POST_DEINSTALL,
 } trigger_phase_t;
 
+struct trigger_script {
+	char *script;
+	int type;
+	bool sandbox;
+};
+
 struct trigger {
 	char *name;
 	ucl_object_t *path;
 	ucl_object_t *path_glob;
 	ucl_object_t *path_regexp;
-	struct {
-		char *script;
-		int type;
-		bool sandbox;
-	} script;
-	struct {
-		char *script;
-		int type;
-		bool sandbox;
-	} cleanup;
+	struct trigger_script script;
+	struct trigger_script cleanup;
 	hash_t *matched;
 };
 typedef vec_t(struct trigger *) trigger_t;
