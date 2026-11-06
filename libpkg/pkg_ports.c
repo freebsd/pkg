@@ -197,20 +197,28 @@ override_prefix(struct plist *p, char *line, struct file_attr *a __unused)
 	return (EPKG_OK);
 }
 
+static void
+plist_set_prefix(struct plist *p, const char *prefix)
+{
+	size_t len;
+
+	if (prefix == NULL)
+		p->prefix[0] = '\0';
+	else
+		strlcpy(p->prefix, prefix, sizeof(p->prefix));
+
+	len = strlen(p->prefix);
+	p->slash = (len > 0 && p->prefix[len - 1] == '/') ? "" : "/";
+}
+
 static int
 setprefix(struct plist *p, char *line, struct file_attr *a __unused)
 {
-	/* if no arguments then set default prefix */
-	if (line[0] == '\0') {
-		strlcpy(p->prefix, p->pkg->prefix, sizeof(p->prefix));
-	}
-	else
-		strlcpy(p->prefix, line, sizeof(p->prefix));
+	/* without argument the prefix of the package is kept */
+	plist_set_prefix(p, line[0] == '\0' ? p->pkg->prefix : line);
 
-	if (p->pkg->prefix == NULL)
+	if (p->pkg->prefix == NULL && line[0] != '\0')
 		p->pkg->prefix = xstrdup(line);
-
-	p->slash = p->prefix[strlen(p->prefix) -1] == '/' ? "" : "/";
 
 	sb_printf(&p->post_install_buf, "cd %s\n", p->prefix);
 	sb_printf(&p->pre_deinstall_buf, "cd %s\n", p->prefix);
@@ -1085,9 +1093,7 @@ plist_new(struct pkg *pkg, const char *stage)
 	}
 
 	p->pkg = pkg;
-	if (pkg->prefix != NULL)
-		strlcpy(p->prefix, pkg->prefix, sizeof(p->prefix));
-	p->slash = *p->prefix != '\0' && p->prefix[strlen(p->prefix) - 1] == '/' ? "" : "/";
+	plist_set_prefix(p, pkg->prefix);
 	p->stage = stage;
 
 	p->uname = xstrdup("root");

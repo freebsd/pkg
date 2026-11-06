@@ -193,6 +193,12 @@ ATF_TC_BODY(parse_plist, tc)
 	ATF_REQUIRE(plist->pkg == p);
 	ATF_REQUIRE_EQ(plist->prefix[0], '\0');
 
+	/* @cwd without argument and no prefix in the package is not an error */
+	strlcpy(buf, "@cwd", BUFSIZ);
+	ATF_REQUIRE_EQ(EPKG_OK, plist_parse_line(plist, buf));
+	ATF_REQUIRE_EQ(plist->prefix[0], '\0');
+	ATF_REQUIRE_STREQ(plist->slash, "/");
+
 	strlcpy(buf, "@name name1", BUFSIZ);
 	ATF_REQUIRE_EQ(EPKG_FATAL, plist_parse_line(plist, buf));
 
