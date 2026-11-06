@@ -125,9 +125,8 @@ pkg_script_run(struct pkg * const pkg, pkg_script type, bool upgrade, bool noexe
 			}
 			setenv("PKG_NAME", pkg->name, 1);
 			setenv("PKG_PREFIX", pkg->prefix, 1);
-			if (ctx.pkg_rootdir == NULL)
-				ctx.pkg_rootdir = "/";
-			setenv("PKG_ROOTDIR", ctx.pkg_rootdir, 1);
+			setenv("PKG_ROOTDIR", ctx.pkg_rootdir != NULL ?
+			    ctx.pkg_rootdir : "/", 1);
 			if (ctx.metalog != NULL)
 				setenv("PKG_METALOG", ctx.metalog, 1);
 			if (ctx.ischrooted)
