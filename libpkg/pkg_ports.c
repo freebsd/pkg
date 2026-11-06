@@ -810,6 +810,11 @@ external_keyword(struct plist *plist, char *keyword, char *line, struct file_att
 	const ucl_object_t *obj;
 	struct ucl_schema_error err;
 
+	if (strchr(keyword, '/') != NULL) {
+		pkg_emit_error("Invalid keyword name: %s", keyword);
+		return (EPKG_FATAL);
+	}
+
 	keyword_dir = pkg_object_string(pkg_config_get("PLIST_KEYWORDS_DIR"));
 	if (keyword_dir == NULL) {
 		keyword_dir = pkg_object_string(pkg_config_get("PORTSDIR"));
@@ -1495,9 +1500,13 @@ include_plist(struct plist *p, char *name, struct file_attr *a __unused)
 		pkg_emit_error("Inside in @include it is not allowed to reuse @include");
 		return (EPKG_FATAL);
 	}
+	if (!pkg_is_safe_relative_path(name)) {
+		pkg_emit_error("Invalid path in @include: %s", name);
+		return (EPKG_FATAL);
+	}
 	p->in_include = true;
 
-	fd = openat(p->plistdirfd, name, O_RDONLY);
+	fd = openat(p->plistdirfd, name, O_RDONLY | O_CLOEXEC);
 	if (fd == -1) {
 		pkg_emit_errno("Unable to include", name);
 		goto out;

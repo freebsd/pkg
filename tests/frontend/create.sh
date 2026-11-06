@@ -25,6 +25,8 @@ tests_init \
 	create_from_plist_with_keyword_and_message \
 	create_from_plist_include \
 	create_from_plist_include_twice \
+	create_from_plist_include_escape \
+	create_from_plist_keyword_escape \
 	create_with_hardlink \
 	create_no_clobber \
 	time \
@@ -787,6 +789,41 @@ EOF
 
 	atf_check -o inline:"/file1\n/file2\n/file3\n/file4\n/file5\n" \
 	    pkg info -ql -F test*.pkg
+}
+
+create_from_plist_include_escape_body()
+{
+	genmanifest
+	cat << EOF >> test.plist
+file1
+@include ../outside-plist
+EOF
+	cat << EOF >> ${TMPDIR}/outside-plist
+file2
+EOF
+	touch file1 file2
+
+	atf_check \
+		-o ignore \
+		-e match:"Invalid path in @include: ../outside-plist" \
+		-s exit:1 \
+		pkg create -o ${TMPDIR} -m . -p test.plist -r .
+}
+
+create_from_plist_keyword_escape_body()
+{
+	genmanifest
+	cat << EOF >> test.plist
+@../../escape
+file1
+EOF
+	touch file1
+
+	atf_check \
+		-o ignore \
+		-e match:"Invalid keyword name: ../../escape" \
+		-s exit:1 \
+		pkg create -o ${TMPDIR} -m . -p test.plist -r .
 }
 
 create_from_plist_include_body()
