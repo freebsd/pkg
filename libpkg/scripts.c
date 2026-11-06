@@ -33,7 +33,6 @@
 #include <sys/procctl.h>
 #endif
 
-#include <assert.h>
 #include <errno.h>
 #include <fcntl.h>
 #include <paths.h>
@@ -106,8 +105,10 @@ pkg_script_run(struct pkg * const pkg, pkg_script type, bool upgrade, bool noexe
 		if (map[i].a == type)
 			break;
 	}
-
-	assert(i < NELEM(map));
+	if (i == NELEM(map)) {
+		pkg_emit_error("Unknown script type: %d", type);
+		return (EPKG_FATAL);
+	}
 
 	pkg_reaper_acquire(&reaper);
 	for (j = 0; j < PKG_NUM_SCRIPTS; j++) {
