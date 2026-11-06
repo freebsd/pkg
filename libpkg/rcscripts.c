@@ -159,6 +159,16 @@ rc_dir_path(const struct pkg *pkg, char *buf, size_t len)
 	return (true);
 }
 
+static int
+rc_report(const char *action, const char *name, int status)
+{
+	if (status == 0)
+		return (EPKG_OK);
+
+	pkg_emit_error("Failed to %s the service %s", action, name);
+	return (EPKG_FATAL);
+}
+
 int
 pkg_start_stop_rc_scripts(struct pkg *pkg, pkg_rc_attr attr)
 {
@@ -166,7 +176,7 @@ pkg_start_stop_rc_scripts(struct pkg *pkg, pkg_rc_attr attr)
 	char rc_d_path[PATH_MAX];
 	const char *rcfile;
 	size_t len = 0;
-	int ret = 0;
+	int ret = EPKG_OK;
 	bool handle_rc;
 
 	handle_rc = pkg_object_bool(pkg_config_get("HANDLE_RC_SCRIPTS"));
@@ -188,11 +198,15 @@ pkg_start_stop_rc_scripts(struct pkg *pkg, pkg_rc_attr attr)
 			switch (attr) {
 			case PKG_RC_ATTR_START:
 				pkg_emit_rc_script(rcfile, PKG_RC_START);
-				ret += rc_start(rcfile);
+				if (rc_report("start", rcfile,
+				    rc_start(rcfile)) != EPKG_OK)
+					ret = EPKG_FATAL;
 				break;
 			case PKG_RC_ATTR_STOP:
 				pkg_emit_rc_script(rcfile, PKG_RC_STOP);
-				ret += rc_stop(rcfile);
+				if (rc_report("stop", rcfile,
+				    rc_stop(rcfile)) != EPKG_OK)
+					ret = EPKG_FATAL;
 				break;
 			}
 		}
@@ -385,7 +399,7 @@ pkg_deferred_rc_add(struct deferred_rc *rc, struct pkg *pkg, pkg_rc_attr attr)
 int
 pkg_deferred_rc_execute(struct deferred_rc *rc)
 {
-	int ret = 0;
+	int ret = EPKG_OK;
 
 	if (rc->to_stop.len == 0 && rc->to_start.len == 0)
 		return (ret);
@@ -400,13 +414,19 @@ pkg_deferred_rc_execute(struct deferred_rc *rc)
 		struct deferred_rc_stop *s = &rc->to_stop.d[i];
 		if (stringset_contains(rc->seen_start, s->name)) {
 			pkg_emit_rc_script(s->name, PKG_RC_RESTART);
-			ret += service_cmd(s->name, "restart");
+			if (rc_report("restart", s->name,
+			    service_cmd(s->name, "restart")) != EPKG_OK)
+				ret = EPKG_FATAL;
 		} else {
 			pkg_emit_rc_script(s->name, PKG_RC_STOP);
 			if (s->oldpath != NULL) {
-				ret += rc_stop_with_script(s->oldpath);
+				if (rc_report("stop", s->name,
+				    rc_stop_with_script(s->oldpath)) != EPKG_OK)
+					ret = EPKG_FATAL;
 			} else {
-				ret += rc_stop(s->name);
+				if (rc_report("stop", s->name,
+				    rc_stop(s->name)) != EPKG_OK)
+					ret = EPKG_FATAL;
 			}
 		}
 	}
@@ -417,7 +437,8 @@ pkg_deferred_rc_execute(struct deferred_rc *rc)
 		if (stringset_contains(rc->seen_stop, name))
 			continue;
 		pkg_emit_rc_script(name, PKG_RC_START);
-		ret += rc_start(name);
+		if (rc_report("start", name, rc_start(name)) != EPKG_OK)
+			ret = EPKG_FATAL;
 	}
 
 	if (rc->tmpdir != NULL)
