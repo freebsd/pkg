@@ -914,14 +914,15 @@ external_keyword(struct plist *plist, char *keyword, char *line, struct file_att
 	return (ret);
 }
 
- struct file_attr *
-parse_keyword_args(char *args, char *keyword)
+int
+parse_keyword_args(char *args, char *keyword, struct file_attr **attr)
 {
-	struct file_attr *attr;
+	struct file_attr *a;
 	char *owner, *group, *permstr, *fflags;
 	void *set = NULL;
 	u_long fset = 0;
 
+	*attr = NULL;
 	owner = group = permstr = fflags = NULL;
 
 	/* remove last ')' */
@@ -944,7 +945,7 @@ parse_keyword_args(char *args, char *keyword)
 			fflags = args;
 			break;
 		} else {
-			return (NULL);
+			return (EPKG_FATAL);
 		}
 	} while ((args = strchr(args, ',')) != NULL);
 
@@ -953,7 +954,7 @@ parse_keyword_args(char *args, char *keyword)
 		if (strtofflags(&fflags, &fset, NULL) != 0) {
 			pkg_emit_error("Malformed keyword '%s', wrong fflags",
 			    keyword);
-			return (NULL);
+			return (EPKG_FATAL);
 		}
 #else
 		pkg_emit_error("Malformed keyword '%s', maximum 3 arguments "
@@ -965,24 +966,28 @@ parse_keyword_args(char *args, char *keyword)
 		if ((set = parse_mode(permstr)) == NULL) {
 			pkg_emit_error("Malformed keyword '%s', wrong mode "
 			    "section", keyword);
-			return (NULL);
+			return (EPKG_FATAL);
 		}
 	}
-	if (owner == NULL && group == NULL && set == NULL)
-		return (NULL);
+	if (owner == NULL && group == NULL && set == NULL) {
+		pkg_emit_error("Malformed keyword '%s', empty attributes",
+		    keyword);
+		return (EPKG_FATAL);
+	}
 
-	attr = xcalloc(1, sizeof(struct file_attr));
+	a = xcalloc(1, sizeof(struct file_attr));
 	if (owner != NULL && *owner != '\0')
-		attr->owner = xstrdup(rtrimspace(owner));
+		a->owner = xstrdup(rtrimspace(owner));
 	if (group != NULL && *group != '\0')
-		attr->group = xstrdup(rtrimspace(group));
+		a->group = xstrdup(rtrimspace(group));
 	if (set != NULL) {
-		attr->mode = getmode(set, 0);
+		a->mode = getmode(set, 0);
 		free(set);
 	}
-	attr->fflags = fset;
+	a->fflags = fset;
+	*attr = a;
 
-	return (attr);
+	return (EPKG_OK);
 }
 
 static int
@@ -1040,11 +1045,8 @@ extract_keywords(char *line, char **keyword, struct file_attr **attr)
 	if ((tmp = strchr(k, '(')) != NULL && k[strlen(k) -1] != ')')
 		return (NULL);
 
-	if (tmp != NULL) {
-		a = parse_keyword_args(tmp, k);
-		if (a == NULL)
-			return (NULL);
-	}
+	if (tmp != NULL && parse_keyword_args(tmp, k, &a) != EPKG_OK)
+		return (NULL);
 
 	*attr = a;
 	*keyword = k;

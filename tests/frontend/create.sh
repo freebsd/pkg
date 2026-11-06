@@ -36,6 +36,7 @@ tests_init \
 	create_from_plist_keyword_validation \
 	create_from_plist_keyword_integer_mode \
 	create_from_plist_keyword_bad_mode \
+	create_from_plist_keyword_empty_attributes \
 	create_from_plist_keyword_real_args \
 	create_from_plist_keyword_lua_actions \
 	create_from_plist_keyword_deprecated \
@@ -340,6 +341,23 @@ EOF
 		-e ignore \
 		-s exit:0 \
 		bsdtar tvf test-1.pkg
+}
+
+create_from_plist_keyword_empty_attributes_body()
+{
+	genmanifest
+	touch file1
+	genplist "@kw() file1"
+
+	cat << EOF > kw.ucl
+actions = [ file ];
+EOF
+
+	atf_check \
+		-o ignore \
+		-e match:"Malformed keyword 'kw()', empty attributes" \
+		-s exit:1 \
+		pkg -o PLIST_KEYWORDS_DIR=. create -o ${TMPDIR} -m . -p test.plist -r .
 }
 
 create_from_plist_keyword_bad_mode_body()

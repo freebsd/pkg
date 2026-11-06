@@ -65,22 +65,26 @@ ATF_TC_BODY(parse_keyword_attributes, tc)
 	struct file_attr *a;
 
 	strlcpy(buf, "()", BUFSIZ);
-	ATF_REQUIRE(parse_keyword_args(buf, "plop") == NULL);
+	ATF_REQUIRE_EQ(EPKG_FATAL, parse_keyword_args(buf, "plop", &a));
+	ATF_REQUIRE(a == NULL);
 
 	strlcpy(buf, "(root, wheel)", BUFSIZ);
-	ATF_REQUIRE((a = parse_keyword_args(buf, "plop")) != NULL);
+	ATF_REQUIRE_EQ(EPKG_OK, parse_keyword_args(buf, "plop", &a));
+	ATF_REQUIRE(a != NULL);
 	ATF_REQUIRE_STREQ(a->owner, "root");
 	ATF_REQUIRE_STREQ(a->group, "wheel");
 	free_file_attr(a);
 
 	strlcpy(buf, "(root, wheel, 0755)", BUFSIZ);
-	ATF_REQUIRE((a = parse_keyword_args(buf, "plop")) != NULL);
+	ATF_REQUIRE_EQ(EPKG_OK, parse_keyword_args(buf, "plop", &a));
+	ATF_REQUIRE(a != NULL);
 	ATF_REQUIRE_STREQ(a->owner, "root");
 	ATF_REQUIRE_STREQ(a->group, "wheel");
 	free_file_attr(a);
 
 	strlcpy(buf, "(root, wheel, 0755,)", BUFSIZ);
-	ATF_REQUIRE((a = parse_keyword_args(buf, "plop")) != NULL);
+	ATF_REQUIRE_EQ(EPKG_OK, parse_keyword_args(buf, "plop", &a));
+	ATF_REQUIRE(a != NULL);
 	ATF_REQUIRE_STREQ(a->owner, "root");
 	ATF_REQUIRE_STREQ(a->group, "wheel");
 	free_file_attr(a);
@@ -97,6 +101,7 @@ ATF_TC_HEAD(parse_keyword, tc)
 ATF_TC_BODY(parse_keyword, tc)
 {
 	char *keyword;
+	struct file_attr *a;
 	struct file_attr *attr;
 	char buf[BUFSIZ];
 
@@ -160,7 +165,9 @@ ATF_TC_BODY(parse_keyword, tc)
 	ATF_REQUIRE_EQ(attr->owner, NULL);
 
 	strlcpy(buf, "(, wheel ,perm,ffags,)", BUFSIZ);
-	ATF_REQUIRE_EQ(parse_keyword_args(buf, "plop"), NULL);
+	a = NULL;
+	ATF_REQUIRE_EQ(EPKG_FATAL, parse_keyword_args(buf, "plop", &a));
+	ATF_REQUIRE(a == NULL);
 }
 
 ATF_TC(parse_plist);
