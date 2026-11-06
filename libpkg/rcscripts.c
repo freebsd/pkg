@@ -58,9 +58,9 @@ run_cmd(const char *program, const char **argv, bool quiet)
 	if (quiet) {
 		if ((error = posix_spawn_file_actions_init(&actions)) != 0 ||
 		    (error = posix_spawn_file_actions_addopen(&actions,
-		    STDOUT_FILENO, "/dev/null", O_RDONLY, 0)) != 0 ||
+		    STDOUT_FILENO, "/dev/null", O_WRONLY, 0)) != 0 ||
 		    (error = posix_spawn_file_actions_addopen(&actions,
-		    STDERR_FILENO, "/dev/null", O_RDONLY, 0)) != 0) {
+		    STDERR_FILENO, "/dev/null", O_WRONLY, 0)) != 0) {
 			posix_spawn_file_actions_destroy(&actions);
 			errno = error;
 			return (-1);
