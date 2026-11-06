@@ -546,8 +546,8 @@ trigger_execute_lua(const char *script, bool sandbox, hash_t *args)
 	    true, NULL, NULL, false));
 }
 
-static void
-trigger_check_match(struct trigger *t, char *dir)
+static bool
+trigger_check_match(struct trigger *t, const char *dir, hash_t **matched)
 {
 	const ucl_object_t *cur;
 	ucl_object_iter_t it;
@@ -556,15 +556,18 @@ trigger_check_match(struct trigger *t, char *dir)
 		it = NULL;
 		while ((cur = ucl_iterate_object(t->path, &it, true))) {
 			if (STREQ(dir, ucl_object_tostring(cur))) {
-				hash_safe_add(t->matched, dir, dir, NULL);
-				return;
+				hash_safe_add(*matched, dir, NULL, NULL);
+				return (true);
 			}
 		}
 	}
 
 	if (match_ucl_lists(dir, t->path_glob, t->path_regexp)) {
-		hash_safe_add(t->matched, dir, dir, NULL);
+		hash_safe_add(*matched, dir, NULL, NULL);
+		return (true);
 	}
+
+	return (false);
 }
 
 /*
@@ -610,7 +613,8 @@ triggers_execute(struct triggers *t)
 		const char *dir;
 		stringset_foreach(ctx.touched_dir_hash, dir) {
 			vec_foreach(*triggers, i)
-				trigger_check_match(triggers->d[i], (char *)dir);
+				trigger_check_match(triggers->d[i], dir,
+				    &triggers->d[i]->matched);
 		}
 	}
 
@@ -643,28 +647,6 @@ triggers_execute(struct triggers *t)
 /*
  * Match a dir against a trigger's path patterns, adding to local_matched.
  */
-static bool
-trigger_check_match_local(struct trigger *t, const char *dir, hash_t **matched)
-{
-	const ucl_object_t *cur;
-	ucl_object_iter_t it;
-
-	if (t->path != NULL) {
-		it = NULL;
-		while ((cur = ucl_iterate_object(t->path, &it, true))) {
-			if (STREQ(dir, ucl_object_tostring(cur))) {
-				hash_safe_add(*matched, dir, NULL, NULL);
-				return (true);
-			}
-		}
-	}
-
-	if (match_ucl_lists(dir, t->path_glob, t->path_regexp)) {
-		hash_safe_add(*matched, dir, NULL, NULL);
-		return (true);
-	}
-	return (false);
-}
 
 /*
  * Per-package trigger subdirectory names, indexed by trigger_phase_t.
@@ -762,7 +744,7 @@ triggers_execute_perpackage(struct pkg *pkg,
 		hash_t *local_matched = NULL;
 		const char *path;
 		stringset_foreach(pkg_paths_hash, path)
-			trigger_check_match_local(trig, path, &local_matched);
+			trigger_check_match(trig, path, &local_matched);
 
 		if (local_matched == NULL)
 			continue;
