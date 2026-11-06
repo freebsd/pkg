@@ -144,6 +144,21 @@ rc_start(const char *rc_file)
 	return (service_cmd(rc_file, "start"));
 }
 
+static bool
+rc_dir_path(const struct pkg *pkg, char *buf, size_t len)
+{
+	int n;
+
+	n = snprintf(buf, len, "%s/etc/rc.d/", pkg->prefix);
+	if (n < 0 || (size_t)n >= len) {
+		pkg_emit_error("Path too long for the rc scripts of %s",
+		    pkg->name);
+		return (false);
+	}
+
+	return (true);
+}
+
 int
 pkg_start_stop_rc_scripts(struct pkg *pkg, pkg_rc_attr attr)
 {
@@ -162,7 +177,8 @@ pkg_start_stop_rc_scripts(struct pkg *pkg, pkg_rc_attr attr)
 	if (ctx.pkg_rootdir != NULL)
 		return (ret);
 
-	snprintf(rc_d_path, sizeof(rc_d_path), "%s/etc/rc.d/", pkg->prefix);
+	if (!rc_dir_path(pkg, rc_d_path, sizeof(rc_d_path)))
+		return (ret);
 	len = strlen(rc_d_path);
 
 	while (pkg_files(pkg, &file) == EPKG_OK) {
@@ -326,7 +342,8 @@ pkg_deferred_rc_add(struct deferred_rc *rc, struct pkg *pkg, pkg_rc_attr attr)
 	if (ctx.pkg_rootdir != NULL && strcmp(ctx.pkg_rootdir, "/") != 0)
 		return;
 
-	snprintf(rc_d_path, sizeof(rc_d_path), "%s/etc/rc.d/", pkg->prefix);
+	if (!rc_dir_path(pkg, rc_d_path, sizeof(rc_d_path)))
+		return;
 
 	while (pkg_files(pkg, &file) == EPKG_OK) {
 		if (!STARTS_WITH(file->path, rc_d_path))
