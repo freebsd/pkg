@@ -49,10 +49,10 @@
 
 extern char **environ;
 
-_Static_assert(PKG_LUA_PRE_INSTALL == PKG_SCRIPT_PRE_INSTALL &&
-    PKG_LUA_POST_INSTALL == PKG_SCRIPT_POST_INSTALL &&
-    PKG_LUA_PRE_DEINSTALL == PKG_SCRIPT_PRE_DEINSTALL &&
-    PKG_LUA_POST_DEINSTALL == PKG_SCRIPT_POST_DEINSTALL,
+_Static_assert((int)PKG_LUA_PRE_INSTALL == (int)PKG_SCRIPT_PRE_INSTALL &&
+    (int)PKG_LUA_POST_INSTALL == (int)PKG_SCRIPT_POST_INSTALL &&
+    (int)PKG_LUA_PRE_DEINSTALL == (int)PKG_SCRIPT_PRE_DEINSTALL &&
+    (int)PKG_LUA_POST_DEINSTALL == (int)PKG_SCRIPT_POST_DEINSTALL,
     "the lua scripts are indexed like the shell ones");
 
 const char *
@@ -76,20 +76,70 @@ pkg_script_key(pkg_script type)
 	}
 }
 
-/*
- * Variables exported for the scripts only: they must not be kept in the
- * environment of the calling process.
- */
-static void
-script_unsetenv(void)
+static const char * const script_env_names[] = {
+	"PKG_UPGRADE",
+	"PKG_NAME",
+	"PKG_PREFIX",
+	"PKG_ROOTDIR",
+	"PKG_METALOG",
+	"PKG_CHROOTED",
+	"PKG_MSGFD",
+};
+
+static bool
+script_env_is_ours(const char *line)
 {
-	unsetenv("PKG_UPGRADE");
-	unsetenv("PKG_NAME");
-	unsetenv("PKG_PREFIX");
-	unsetenv("PKG_ROOTDIR");
-	unsetenv("PKG_METALOG");
-	unsetenv("PKG_CHROOTED");
-	unsetenv("PKG_MSGFD");
+	for (size_t i = 0; i < NELEM(script_env_names); i++) {
+		size_t len = strlen(script_env_names[i]);
+
+		if (strncmp(line, script_env_names[i], len) == 0 &&
+		    line[len] == '=')
+			return (true);
+	}
+
+	return (false);
+}
+
+static void
+script_env_add(charv_t *env, const char *name, const char *value)
+{
+	char *line = NULL;
+
+	if (value == NULL)
+		return;
+
+	xasprintf(&line, "%s=%s", name, value);
+	vec_push(env, line);
+}
+
+/*
+ * Environment of the script: ours on top of the one of the process, which is
+ * left untouched.  The vector ends with the NULL expected by posix_spawn().
+ */
+static charv_t
+script_env(const struct pkg *pkg, bool upgrade)
+{
+	charv_t env = vec_init();
+
+	for (char **e = environ; *e != NULL; e++) {
+		if (!script_env_is_ours(*e))
+			vec_push(&env, xstrdup(*e));
+	}
+
+	if (upgrade)
+		script_env_add(&env, "PKG_UPGRADE", "true");
+	script_env_add(&env, "PKG_NAME", pkg->name);
+	script_env_add(&env, "PKG_PREFIX", pkg->prefix);
+	script_env_add(&env, "PKG_ROOTDIR", ctx.pkg_rootdir != NULL ?
+	    ctx.pkg_rootdir : "/");
+	script_env_add(&env, "PKG_METALOG", ctx.metalog);
+	if (ctx.ischrooted)
+		script_env_add(&env, "PKG_CHROOTED", "true");
+	script_env_add(&env, "PKG_MSGFD", "4");
+
+	vec_push(&env, NULL);
+
+	return (env);
 }
 
 int
@@ -112,6 +162,7 @@ pkg_script_run(struct pkg * const pkg, pkg_script type, bool upgrade, bool noexe
 	long argmax;
 	int cur_pipe[2] = {-1, -1};
 	struct pkg_reaper reaper;
+	charv_t env = vec_init();
 	struct {
 		const char * const arg;
 		const pkg_script b;
@@ -137,6 +188,7 @@ pkg_script_run(struct pkg * const pkg, pkg_script type, bool upgrade, bool noexe
 		return (EPKG_FATAL);
 	}
 
+	env = script_env(pkg, upgrade);
 	pkg_reaper_acquire(&reaper);
 	for (j = 0; j < PKG_SCRIPT_UNKNOWN; j++) {
 		if (pkg_script_get(pkg, j) == NULL)
@@ -148,17 +200,6 @@ pkg_script_run(struct pkg * const pkg, pkg_script type, bool upgrade, bool noexe
 		}
 		if (j == map[i].a || j == map[i].b) {
 			sb_reset(&script_cmd);
-			if (upgrade) {
-				setenv("PKG_UPGRADE", "true", 1);
-			}
-			setenv("PKG_NAME", pkg->name, 1);
-			setenv("PKG_PREFIX", pkg->prefix, 1);
-			setenv("PKG_ROOTDIR", ctx.pkg_rootdir != NULL ?
-			    ctx.pkg_rootdir : "/", 1);
-			if (ctx.metalog != NULL)
-				setenv("PKG_METALOG", ctx.metalog, 1);
-			if (ctx.ischrooted)
-				setenv("PKG_CHROOTED", "true", 1);
 			debug = pkg_object_bool(pkg_config_get("DEBUG_SCRIPTS"));
 			if (debug)
 				sb_printf(&script_cmd, "set -x\n");
@@ -169,7 +210,7 @@ pkg_script_run(struct pkg * const pkg, pkg_script type, bool upgrade, bool noexe
 				sb_printf(&script_cmd, " %s", map[i].arg);
 			}
 
-			sb_printf(&script_cmd, "\n%s", sb_str(&pkg->scripts[j]));
+			sb_printf(&script_cmd, "\n%s", sb_str(&pkg->scripts[j].shell));
 
 			/* Determine the maximum argument length for the given
 			   script to determine if /bin/sh -c can be used, or
@@ -197,8 +238,6 @@ pkg_script_run(struct pkg * const pkg, pkg_script type, bool upgrade, bool noexe
 				ret = EPKG_FATAL;
 				goto cleanup;
 			}
-
-			setenv("PKG_MSGFD", "4", 1);
 
 			posix_spawn_file_actions_adddup2(&action, cur_pipe[1], 4);
 			posix_spawn_file_actions_addclose(&action, cur_pipe[0]);
@@ -239,8 +278,7 @@ pkg_script_run(struct pkg * const pkg, pkg_script type, bool upgrade, bool noexe
 			}
 
 			if ((error = posix_spawn(&pid, _PATH_BSHELL, &action,
-			    NULL, __DECONST(char **, argv),
-			    environ)) != 0) {
+			    NULL, __DECONST(char **, argv), env.d)) != 0) {
 				errno = error;
 				pkg_errno("Cannot run script %s", map[i].arg);
 				posix_spawn_file_actions_destroy(&action);
@@ -265,8 +303,6 @@ pkg_script_run(struct pkg * const pkg, pkg_script type, bool upgrade, bool noexe
 				close(stdin_pipe[1]);
 			}
 
-			script_unsetenv();
-
 			close(cur_pipe[1]);
 			cur_pipe[1] = -1;
 
@@ -282,9 +318,8 @@ pkg_script_run(struct pkg * const pkg, pkg_script type, bool upgrade, bool noexe
 	}
 
 cleanup:
-	script_unsetenv();
-
 	sb_fini(&script_cmd);
+	vec_free_and_free(&env, free);
 	if (stdin_pipe[0] != -1)
 		close(stdin_pipe[0]);
 	if (stdin_pipe[1] != -1)
