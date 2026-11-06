@@ -287,6 +287,38 @@ lua_file(lua_State *L) {
 }
 
 
+/*
+ * Build the path of a plist entry, relative to the prefix when the entry is
+ * not absolute, and report the entries which do not fit.
+ */
+static int
+plist_entry_path(const struct plist *p, const char *line, bool is_dir,
+    char *buf, size_t len)
+{
+	int n;
+
+	if (is_dir) {
+		if (line[0] == '/')
+			n = snprintf(buf, len, "%s/", line);
+		else
+			n = snprintf(buf, len, "%s%s%s/", p->prefix,
+			    p->slash, line);
+	} else {
+		if (line[0] == '/')
+			n = snprintf(buf, len, "%s", line);
+		else
+			n = snprintf(buf, len, "%s%s%s", p->prefix,
+			    p->slash, line);
+	}
+
+	if (n < 0 || (size_t)n >= len) {
+		pkg_emit_error("Plist error, path too long: %.64s", line);
+		return (EPKG_FATAL);
+	}
+
+	return (EPKG_OK);
+}
+
 static int
 dir(struct plist *p, char *line, struct file_attr *a)
 {
@@ -301,11 +333,8 @@ dir(struct plist *p, char *line, struct file_attr *a)
 		cp--;
 	}
 
-	if (line[0] == '/')
-		snprintf(path, sizeof(path), "%s/", line);
-	else
-		snprintf(path, sizeof(path), "%s%s%s/", p->prefix, p->slash,
-		    line);
+	if (plist_entry_path(p, line, true, path, sizeof(path)) != EPKG_OK)
+		return (EPKG_FATAL);
 
 	if (fstatat(p->stagefd, RELATIVE_PATH(path), &st, AT_SYMLINK_NOFOLLOW)
 	    == -1) {
@@ -356,11 +385,8 @@ meta_file(struct plist *p, char *line, struct file_attr *a, bool is_config)
 		return (EPKG_FATAL);
 	}
 
-	if (line[0] == '/')
-		snprintf(path, sizeof(path), "%s", line);
-	else
-		snprintf(path, sizeof(path), "%s%s%s", p->prefix,
-		    p->slash, line);
+	if (plist_entry_path(p, line, false, path, sizeof(path)) != EPKG_OK)
+		return (EPKG_FATAL);
 
 	if (fstatat(p->stagefd, RELATIVE_PATH(path), &st, AT_SYMLINK_NOFOLLOW)
 	    == -1) {
@@ -805,6 +831,7 @@ external_keyword(struct plist *plist, char *keyword, char *line, struct file_att
 	struct ucl_parser *parser;
 	const char *keyword_dir = NULL;
 	char keyfile_path[MAXPATHLEN];
+	int len;
 	int ret = EPKG_UNKNOWN, fd;
 	ucl_object_t *o, *schema;
 	const ucl_object_t *obj;
@@ -818,11 +845,15 @@ external_keyword(struct plist *plist, char *keyword, char *line, struct file_att
 	keyword_dir = pkg_object_string(pkg_config_get("PLIST_KEYWORDS_DIR"));
 	if (keyword_dir == NULL) {
 		keyword_dir = pkg_object_string(pkg_config_get("PORTSDIR"));
-		snprintf(keyfile_path, sizeof(keyfile_path),
+		len = snprintf(keyfile_path, sizeof(keyfile_path),
 		    "%s/Keywords/%s.ucl", keyword_dir, keyword);
 	} else {
-		snprintf(keyfile_path, sizeof(keyfile_path),
+		len = snprintf(keyfile_path, sizeof(keyfile_path),
 		    "%s/%s.ucl", keyword_dir, keyword);
+	}
+	if (len < 0 || (size_t)len >= sizeof(keyfile_path)) {
+		pkg_emit_error("Keyword path too long: %s", keyword);
+		return (EPKG_FATAL);
 	}
 
 	fd = open(keyfile_path, O_RDONLY);

@@ -28,6 +28,7 @@ tests_init \
 	create_from_plist_include_escape \
 	create_from_plist_include_symlink_escape \
 	create_from_plist_include_directory \
+	create_from_plist_path_too_long \
 	create_from_plist_keyword_escape \
 	create_with_hardlink \
 	create_no_clobber \
@@ -791,6 +792,19 @@ EOF
 
 	atf_check -o inline:"/file1\n/file2\n/file3\n/file4\n/file5\n" \
 	    pkg info -ql -F test*.pkg
+}
+
+create_from_plist_path_too_long_body()
+{
+	genmanifest
+	awk 'BEGIN { printf "/"; for (i = 0; i < 1100; i++) printf "a"; printf "\n" }' \
+	    > test.plist
+
+	atf_check \
+		-o ignore \
+		-e match:"Plist error, path too long" \
+		-s exit:1 \
+		pkg create -o ${TMPDIR} -m . -p test.plist -r .
 }
 
 create_from_plist_include_directory_body()
