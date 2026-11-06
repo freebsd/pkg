@@ -27,6 +27,7 @@ tests_init \
 	create_from_plist_include_twice \
 	create_from_plist_include_escape \
 	create_from_plist_include_symlink_escape \
+	create_from_plist_include_directory \
 	create_from_plist_keyword_escape \
 	create_with_hardlink \
 	create_no_clobber \
@@ -790,6 +791,23 @@ EOF
 
 	atf_check -o inline:"/file1\n/file2\n/file3\n/file4\n/file5\n" \
 	    pkg info -ql -F test*.pkg
+}
+
+create_from_plist_include_directory_body()
+{
+	genmanifest
+	mkdir incdir
+	cat << EOF >> test.plist
+@include incdir
+file1
+EOF
+	touch file1
+
+	atf_check \
+		-o ignore \
+		-e match:"Unable to read the plist: Is a directory" \
+		-s exit:1 \
+		pkg create -o ${TMPDIR} -m . -p test.plist -r .
 }
 
 create_from_plist_include_symlink_escape_body()

@@ -1225,6 +1225,11 @@ plist_parse(struct plist *pplist, FILE *f)
 		if (ret != EPKG_OK && rc == EPKG_OK)
 			rc = ret;
 	}
+	if (ferror(f)) {
+		pkg_emit_error("Unable to read the plist: %s", strerror(errno));
+		if (rc == EPKG_OK)
+			rc = EPKG_FATAL;
+	}
 	free(line);
 
 	return (rc);
