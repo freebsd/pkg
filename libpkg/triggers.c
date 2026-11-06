@@ -688,8 +688,12 @@ triggers_load_perpackage(trigger_phase_t phase)
 		const char *dir;
 
 		dir = RELATIVE_PATH(pkg_object_string(cur));
-		snprintf(path, sizeof(path), "%s/%s",
-		    dir, trigger_phase_dirs[phase]);
+		if ((size_t)snprintf(path, sizeof(path), "%s/%s", dir,
+		    trigger_phase_dirs[phase]) >= sizeof(path)) {
+			pkg_emit_error("Path too long for the triggers of %s",
+			    dir);
+			continue;
+		}
 		triggers_load_from(ret, false, path);
 	}
 
