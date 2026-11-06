@@ -54,7 +54,7 @@ int
 pkg_script_run(struct pkg * const pkg, pkg_script type, bool upgrade, bool noexec)
 {
 	sb_t script_cmd = sb_init();
-	size_t i, j;
+	size_t i, j, len;
 	int error, pstat;
 	pid_t pid;
 	const char *script_cmd_p;
@@ -207,16 +207,17 @@ pkg_script_run(struct pkg * const pkg, pkg_script type, bool upgrade, bool noexe
 
 			if (use_pipe) {
 				script_cmd_p = script_cmd.d;
-				while (script_cmd.len > 0) {
-					if ((bytes_written = write(stdin_pipe[1], script_cmd_p,
-					    script_cmd.len)) == -1) {
+				len = script_cmd.len;
+				while (len > 0) {
+					if ((bytes_written = write(stdin_pipe[1],
+					    script_cmd_p, len)) == -1) {
 						if (errno == EINTR)
 							continue;
 						ret = EPKG_FATAL;
 						goto cleanup;
 					}
 					script_cmd_p += bytes_written;
-					script_cmd.len -= bytes_written;
+					len -= bytes_written;
 				}
 				close(stdin_pipe[1]);
 			}
