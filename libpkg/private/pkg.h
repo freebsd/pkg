@@ -42,8 +42,6 @@ static inline void fd_closep(int *fd) { if (*fd != -1) close(*fd); }
 #define fd_autoclose
 #endif
 
-#define PKG_NUM_SCRIPTS 9
-#define PKG_NUM_LUA_SCRIPTS 5
 
 #define PKG_HASH_SEP '~'
 #define PKG_HASH_SEPSTR "~"
@@ -264,8 +262,8 @@ struct pkg {
 	bool		 vital;
 	bool		 user_vital;
 	int64_t		 id;
-	sb_t scripts[PKG_NUM_SCRIPTS];
-	charv_t	 lua_scripts[PKG_NUM_LUA_SCRIPTS];
+	sb_t scripts[PKG_SCRIPT_UNKNOWN];
+	charv_t	 lua_scripts[PKG_LUA_UNKNOWN];
 	char			*name;
 	char			*origin;
 	char			*version;

@@ -43,7 +43,7 @@ LLVMFuzzerTestOneInput(const uint8_t *data, size_t size)
 		return (0);
 	}
 
-	for (int i = 0; i < PKG_NUM_LUA_SCRIPTS; i++)
+	for (int i = 0; i < PKG_LUA_UNKNOWN; i++)
 		pkg_lua_script_from_ucl(pkg, obj, i);
 
 	pkg_free(pkg);

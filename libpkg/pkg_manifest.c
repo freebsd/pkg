@@ -1268,7 +1268,7 @@ pkg_emit_object(struct pkg *pkg, short flags)
 
 		dbg(4, "Emitting scripts");
 		map = NULL;
-		for (int i = 0; i < PKG_NUM_SCRIPTS; i++) {
+		for (int i = 0; i < PKG_SCRIPT_UNKNOWN; i++) {
 			if (pkg_script_get(pkg, i) == NULL)
 				continue;
 
@@ -1305,7 +1305,7 @@ pkg_emit_object(struct pkg *pkg, short flags)
 
 		dbg(4, "Emitting lua scripts");
 		map = NULL;
-		for (int i = 0; i < PKG_NUM_LUA_SCRIPTS; i++) {
+		for (int i = 0; i < PKG_LUA_UNKNOWN; i++) {
 			if (vec_len(&pkg->lua_scripts[i]) == 0)
 				continue;
 			switch(i) {

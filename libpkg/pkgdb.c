@@ -2284,7 +2284,7 @@ pkgdb_insert_scripts(struct pkg *pkg, int64_t package_id, sqlite3 *s)
 	const char	*script;
 	int64_t		 i;
 
-	for (i = 0; i < PKG_NUM_SCRIPTS; i++) {
+	for (i = 0; i < PKG_SCRIPT_UNKNOWN; i++) {
 		script = pkg_script_get(pkg, i);
 
 		if (script == NULL)
@@ -2311,7 +2311,7 @@ pkgdb_insert_lua_scripts(struct pkg *pkg, int64_t package_id, sqlite3 *s)
 {
 	int64_t			 i;
 
-	for (i = 0; i < PKG_NUM_LUA_SCRIPTS; i++) {
+	for (i = 0; i < PKG_LUA_UNKNOWN; i++) {
 		vec_foreach(pkg->lua_scripts[i], j) {
 			sql_arg_t arg1[] = { SQL_ARG(pkg->lua_scripts[i].d[j]) };
 			sql_arg_t arg2[] = {

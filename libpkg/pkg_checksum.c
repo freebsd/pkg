@@ -344,12 +344,12 @@ pkg_checksum_generate(struct pkg *pkg, char *dest, size_t destlen,
 	}
 
 	if (inc_scripts) {
-		for (int i = 0; i < PKG_NUM_SCRIPTS; i++) {
+		for (int i = 0; i < PKG_SCRIPT_UNKNOWN; i++) {
 			if (pkg->scripts[i].len != 0) {
 				vec_push(&entries, ((struct kv){ "script", sb_str(&pkg->scripts[i]) }));
 			}
 		}
-		for (int i = 0; i < PKG_NUM_LUA_SCRIPTS; i++) {
+		for (int i = 0; i < PKG_LUA_UNKNOWN; i++) {
 			vec_foreach(pkg->lua_scripts[i], j)
 				vec_push(&entries, ((struct kv){ "lua_script", pkg->lua_scripts[i].d[j] }));
 		}

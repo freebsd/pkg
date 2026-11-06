@@ -111,7 +111,7 @@ pkg_script_run(struct pkg * const pkg, pkg_script type, bool upgrade, bool noexe
 	}
 
 	pkg_reaper_acquire(&reaper);
-	for (j = 0; j < PKG_NUM_SCRIPTS; j++) {
+	for (j = 0; j < PKG_SCRIPT_UNKNOWN; j++) {
 		if (pkg_script_get(pkg, j) == NULL)
 			continue;
 		if (noexec) {

@@ -78,9 +78,9 @@ pkg_free(struct pkg *pkg)
 	free(pkg->rootpath);
 	free(pkg->rwhich_path);
 
-	for (int i = 0; i < PKG_NUM_SCRIPTS; i++)
+	for (int i = 0; i < PKG_SCRIPT_UNKNOWN; i++)
 		sb_fini(&pkg->scripts[i]);
-	for (int i = 0; i < PKG_NUM_LUA_SCRIPTS; i++)
+	for (int i = 0; i < PKG_LUA_UNKNOWN; i++)
 		vec_autofree(&pkg->lua_scripts[i]);
 
 	pkg_list_free(pkg, PKG_DEPS);
