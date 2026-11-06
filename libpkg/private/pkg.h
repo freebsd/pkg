@@ -381,7 +381,6 @@ struct triggers {
 	ucl_object_t *schema;
 	int dfd;
 	trigger_t *cleanup;
-	trigger_t *post_transaction;
 };
 
 /*
