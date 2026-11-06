@@ -685,7 +685,7 @@ apply_keyword_file(ucl_object_t *obj, struct plist *p, char *line, struct file_a
 	const ucl_object_t *o, *cur, *elt;
 	ucl_object_iter_t it = NULL;
 	struct pkg_message *msg;
-	char *cmd;
+	char *cmd = NULL;
 	const char *l = line;
 	char *formated_line = NULL;
 	char **args = NULL;
@@ -720,6 +720,7 @@ apply_keyword_file(ucl_object_t *obj, struct plist *p, char *line, struct file_a
 				goto keywords_cleanup;
 			append_script(p, script_mapping[i].type, cmd);
 			free(cmd);
+			cmd = NULL;
 		}
 	}
 
@@ -731,9 +732,9 @@ apply_keyword_file(ucl_object_t *obj, struct plist *p, char *line, struct file_a
 				goto keywords_cleanup;
 			pkg_add_lua_script(p->pkg, cmd, lua_mapping[i].type);
 			free(cmd);
+			cmd = NULL;
 		}
 	}
-	free(formated_line);
 
 	if ((o = ucl_object_find_key(obj, "messages"))) {
 		while ((cur = ucl_iterate_object(o, &it, true))) {
@@ -791,6 +792,9 @@ apply_keyword_file(ucl_object_t *obj, struct plist *p, char *line, struct file_a
 	}
 
 keywords_cleanup:
+	free(formated_line);
+	free_file_attr(freeattr);
+	free(cmd);
 	free(args);
 	free(tofree);
 	return (ret);
