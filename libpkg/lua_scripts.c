@@ -96,8 +96,10 @@ pkg_lua_script_run(struct pkg * const pkg, pkg_lua_script type, bool upgrade)
 				int spaces, argc = 0;
 				char **args = NULL;
 
-				walk = strchr(script, '\n');
 				begin = script + strlen("-- args: ");
+				walk = strchr(begin, '\n');
+				if (walk == NULL)
+					walk = begin + strlen(begin);
 				cline = xstrndup(begin, walk - begin);
 				spaces = pkg_utils_count_spaces(cline);
 				args = xmalloc((spaces + 1)* sizeof(char *));
