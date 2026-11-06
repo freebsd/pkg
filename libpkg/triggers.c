@@ -793,16 +793,6 @@ append_touched_file(const char *path)
 	free(newpath);
 }
 
-static bool
-trigger_header_is(const char *walk, const char *name)
-{
-	size_t len = strlen(name);
-
-	if (strncmp(walk, name, len) != 0)
-		return (false);
-
-	return (walk[len] == '\0' || walk[len] == ' ');
-}
 
 static void
 exec_deferred(int dfd, const char *name)
@@ -830,7 +820,7 @@ exec_deferred(int dfd, const char *name)
 	char *line = NULL;
 	size_t linecap = 0;
 	ssize_t linelen;
-	char *walk;
+	char *walk, *value;
 	bool inargs = false;
 	while ((linelen = getline(&line, &linecap, f)) > 0) {
 		/* everything after the header is the script itself */
@@ -844,38 +834,34 @@ exec_deferred(int dfd, const char *name)
 		if (linelen < 2 || line[0] != '-' || line[1] != '-')
 			continue;
 		walk = line + 2;
-		if (trigger_header_is(walk, "sandbox")) {
-			sandbox = true;
-			continue;
-		}
-		if (strncmp(walk, "pkgname ", 8) == 0) {
-			free(pkgname);
-			pkgname = xstrdup(walk + 8);
-			continue;
-		}
-		if (strncmp(walk, "pkgversion ", 11) == 0) {
-			free(pkgversion);
-			pkgversion = xstrdup(walk + 11);
-			continue;
-		}
-		if (trigger_header_is(walk, "upgrade")) {
-			upgrade = true;
-			continue;
-		}
-		if (trigger_header_is(walk, "begin args")) {
+		/* those two headers are made of two words */
+		if (STREQ(walk, "begin args")) {
 			inargs = true;
 			continue;
 		}
-		if (trigger_header_is(walk, "end args")) {
+		if (STREQ(walk, "end args")) {
 			inargs = false;
 			tgt = &script;
 			continue;
 		}
-		if (inargs) {
-			if (*walk == ' ')
-				walk++;
-			hash_safe_add(args, walk, NULL, NULL);
+		/* the other ones are written "--name value" */
+		value = strchr(walk, ' ');
+		if (value != NULL) {
+			*value = '\0';
+			value++;
 		}
+		if (STREQ(walk, "sandbox"))
+			sandbox = true;
+		else if (STREQ(walk, "upgrade"))
+			upgrade = true;
+		else if (value != NULL && STREQ(walk, "pkgname")) {
+			free(pkgname);
+			pkgname = xstrdup(value);
+		} else if (value != NULL && STREQ(walk, "pkgversion")) {
+			free(pkgversion);
+			pkgversion = xstrdup(value);
+		} else if (inargs && value != NULL && *walk == '\0')
+			hash_safe_add(args, value, NULL, NULL);
 	}
 	free(line);
 	fclose(f);
