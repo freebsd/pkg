@@ -576,6 +576,7 @@ trigger_check_match(struct trigger *t, char *dir)
 int
 triggers_execute(struct triggers *t)
 {
+	struct trigger *trig;
 	trigger_t *triggers;
 	int ret = EPKG_OK;
 
@@ -592,13 +593,16 @@ triggers_execute(struct triggers *t)
 	pkg_emit_triggers_begin();
 	if (t != NULL && t->cleanup != NULL) {
 		vec_foreach(*t->cleanup, i) {
-			pkg_emit_trigger(t->cleanup->d[i]->name, true);
-			if (t->cleanup->d[i]->cleanup.type == SCRIPT_LUA) {
-				ret = trigger_execute_lua(t->cleanup->d[i]->cleanup.script,
-				    t->cleanup->d[i]->cleanup.sandbox, NULL);
+			trig = t->cleanup->d[i];
+			pkg_emit_trigger(trig->name, true);
+			if (trig->cleanup.type != SCRIPT_LUA)
+				continue;
+			if (trigger_execute_lua(trig->cleanup.script,
+			    trig->cleanup.sandbox, NULL) != EPKG_OK) {
+				pkg_emit_error("cleanup trigger %s failed, "
+				    "continuing", trig->name);
+				ret = EPKG_FATAL;
 			}
-			if (ret != EPKG_OK)
-				goto cleanup;
 		}
 	}
 
@@ -611,19 +615,21 @@ triggers_execute(struct triggers *t)
 	}
 
 	vec_foreach(*triggers, i) {
-		if (triggers->d[i]->matched == NULL)
+		trig = triggers->d[i];
+		if (trig->matched == NULL)
 			continue;
-		pkg_emit_trigger(triggers->d[i]->name, false);
-		if (triggers->d[i]->script.type == SCRIPT_LUA) {
-			ret = trigger_execute_lua(triggers->d[i]->script.script,
-			    triggers->d[i]->script.sandbox, triggers->d[i]->matched);
+		pkg_emit_trigger(trig->name, false);
+		if (trig->script.type != SCRIPT_LUA)
+			continue;
+		if (trigger_execute_lua(trig->script.script, trig->script.sandbox,
+		    trig->matched) != EPKG_OK) {
+			pkg_emit_error("trigger %s failed, continuing",
+			    trig->name);
+			ret = EPKG_FATAL;
 		}
-		if (ret != EPKG_OK)
-			goto cleanup;
 	}
 	pkg_emit_triggers_finished();
 
-cleanup:
 	vec_autofree(triggers);
 	free(triggers);
 	if (ctx.touched_dir_hash) {
@@ -708,25 +714,24 @@ triggers_load_perpackage(trigger_phase_t phase)
  * reloaded from disk each time so that triggers installed or removed
  * by earlier packages in the same transaction are picked up.
  */
-int
+void
 triggers_execute_perpackage(struct pkg *pkg,
     trigger_phase_t phase, bool upgrade)
 {
 	struct pkg_file *f = NULL;
 	struct pkg_dir *d = NULL;
 	stringset_t *pkg_paths_hash = NULL;
-	int ret = EPKG_OK;
 	trigger_t *triggers;
 
 	if (!triggers_enabled())
-		return (EPKG_OK);
+		return;
 
 	triggers = triggers_load_perpackage(phase);
 
 	if (triggers->len == 0) {
 		vec_autofree(triggers);
 		free(triggers);
-		return (EPKG_OK);
+		return;
 	}
 
 	/* Build set of file paths and their parent directories */
@@ -748,7 +753,7 @@ triggers_execute_perpackage(struct pkg *pkg,
 	if (pkg_paths_hash == NULL) {
 		vec_autofree(triggers);
 		free(triggers);
-		return (EPKG_OK);
+		return;
 	}
 
 	/* Match and execute */
@@ -763,23 +768,19 @@ triggers_execute_perpackage(struct pkg *pkg,
 			continue;
 
 		pkg_emit_trigger(trig->name, false);
-		if (trig->script.type == SCRIPT_LUA) {
-			ret = trigger_execute_lua_common(trig->script.script,
-			    trig->script.sandbox, local_matched, true,
-			    pkg->name, pkg->version, upgrade);
-		}
-		hash_destroy(local_matched);
-		if (ret != EPKG_OK) {
+		if (trig->script.type == SCRIPT_LUA &&
+		    trigger_execute_lua_common(trig->script.script,
+		    trig->script.sandbox, local_matched, true,
+		    pkg->name, pkg->version, upgrade) != EPKG_OK) {
 			pkg_emit_error("per-package trigger %s failed "
 			    "for %s, continuing", trig->name, pkg->name);
-			ret = EPKG_OK;
 		}
+		hash_destroy(local_matched);
 	}
 
 	stringset_destroy(pkg_paths_hash);
 	vec_autofree(triggers);
 	free(triggers);
-	return (ret);
 }
 
 void

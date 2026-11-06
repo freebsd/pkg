@@ -218,7 +218,7 @@ EOF
 	atf_check pkg create -M test.ucl -p plist
 	mkdir target
 	unset PKG_TRIGGERS_DIR
-	atf_check -e inline:"pkg: Failed to execute lua trigger: [string \"pkg.exec({\"echo\", \"plop\"})\"]:1: pkg.exec not available in sandbox\npkg: lua script failed\n" pkg -o REPOS_DIR=/dev/null -o PKG_TRIGGERS_DIR="${TMPDIR}/trigger_dir" install -qfy ${TMPDIR}/test-1.pkg
+	atf_check -e inline:"pkg: Failed to execute lua trigger: [string \"pkg.exec({\"echo\", \"plop\"})\"]:1: pkg.exec not available in sandbox\npkg: lua script failed\npkg: trigger trigger.ucl failed, continuing\n" pkg -o REPOS_DIR=/dev/null -o PKG_TRIGGERS_DIR="${TMPDIR}/trigger_dir" install -qfy ${TMPDIR}/test-1.pkg
 }
 
 pkg_exec_no_sandbox_body() {
