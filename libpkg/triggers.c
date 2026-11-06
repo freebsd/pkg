@@ -452,7 +452,8 @@ trigger_execute_lua_common(const char *script, bool sandbox, hash_t *args,
 
 	pid_t pid = fork();
 	if (pid == 0) {
-		L = luaL_newstate();
+		if ((L = luaL_newstate()) == NULL)
+			err(1, "luaL_newstate");
 		luaL_openlibs(L);
 		lua_override_ios(L, sandbox);
 		static const luaL_Reg pkg_lib[] = {
@@ -503,7 +504,7 @@ trigger_execute_lua_common(const char *script, bool sandbox, hash_t *args,
 					"%s", lua_tostring(L, -1));
 			_exit(1);
 		}
-		if (lua_tonumber(L, -1) != 0) {
+		if (lua_gettop(L) > 0 && lua_tonumber(L, -1) != 0) {
 			lua_close(L);
 			_exit(1);
 		}
