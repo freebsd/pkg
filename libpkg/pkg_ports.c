@@ -1494,6 +1494,7 @@ include_plist(struct plist *p, char *name, struct file_attr *a __unused)
 {
 	FILE *f;
 	int fd;
+	int flags = O_RDONLY | O_CLOEXEC;
 	int rc = EPKG_FATAL;
 
 	if (p->in_include) {
@@ -1506,8 +1507,18 @@ include_plist(struct plist *p, char *name, struct file_attr *a __unused)
 	}
 	p->in_include = true;
 
-	fd = openat(p->plistdirfd, name, O_RDONLY | O_CLOEXEC);
+#ifdef O_RESOLVE_BENEATH
+	flags |= O_RESOLVE_BENEATH;
+#endif
+	fd = openat(p->plistdirfd, name, flags);
 	if (fd == -1) {
+#ifdef O_RESOLVE_BENEATH
+		if (errno == EXDEV || errno == ENOTCAPABLE ||
+		    errno == ECAPMODE) {
+			pkg_emit_error("Invalid path in @include: %s", name);
+			goto out;
+		}
+#endif
 		pkg_emit_errno("Unable to include", name);
 		goto out;
 	}

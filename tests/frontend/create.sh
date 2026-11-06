@@ -26,6 +26,7 @@ tests_init \
 	create_from_plist_include \
 	create_from_plist_include_twice \
 	create_from_plist_include_escape \
+	create_from_plist_include_symlink_escape \
 	create_from_plist_keyword_escape \
 	create_with_hardlink \
 	create_no_clobber \
@@ -789,6 +790,29 @@ EOF
 
 	atf_check -o inline:"/file1\n/file2\n/file3\n/file4\n/file5\n" \
 	    pkg info -ql -F test*.pkg
+}
+
+create_from_plist_include_symlink_escape_body()
+{
+	atf_skip_on Linux "O_RESOLVE_BENEATH is FreeBSD only"
+	atf_skip_on Darwin "O_RESOLVE_BENEATH is FreeBSD only"
+
+	genmanifest
+	ln -s ../outside-plist inc-link
+	cat << EOF >> test.plist
+file1
+@include inc-link
+EOF
+	cat << EOF >> ${TMPDIR}/outside-plist
+file2
+EOF
+	touch file1 file2
+
+	atf_check \
+		-o ignore \
+		-e match:"Invalid path in @include: inc-link" \
+		-s exit:1 \
+		pkg create -o ${TMPDIR} -m . -p test.plist -r .
 }
 
 create_from_plist_include_escape_body()
