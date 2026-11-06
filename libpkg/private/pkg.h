@@ -620,14 +620,7 @@ struct pkg_repo {
 	void *priv;
 };
 
-typedef vec_t(struct action *) actions_t;
-
 typedef struct forloop_frame forloop_frame_t;
-
-struct keyword {
-	char *keyword;
-	actions_t actions;
-};
 
 struct plist {
 	char last_file[MAXPATHLEN];
@@ -644,7 +637,6 @@ struct plist {
 	int64_t flatsize;
 	hardlinks_t hardlinks;
 	mode_t perm;
-	hash_t *keywords;
 	kvlist_t variables;
 	bool in_for_loop;
 	forloop_frame_t *forloop_stack;
@@ -662,10 +654,6 @@ struct file_attr {
 	char *group;
 	mode_t mode;
 	u_long fflags;
-};
-
-struct action {
-	int (*perform)(struct plist *, char *, struct file_attr *);
 };
 
 /* sql helpers */

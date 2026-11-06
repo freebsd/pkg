@@ -567,36 +567,6 @@ static struct script_map {
 	{ "post-deinstall", PKG_SCRIPT_POST_DEINSTALL },
 };
 
-static void keyword_free(struct keyword *k);
-
-static void
-populate_keywords(struct plist *p)
-{
-	struct keyword *k;
-	struct action *a;
-	int i;
-
-	for (i = 0; keyacts[i].key != NULL; i++) {
-		k = xcalloc(1, sizeof(struct keyword));
-		a = xmalloc(sizeof(struct action));
-		k->keyword = xstrdup(keyacts[i].key);
-		a->perform = keyacts[i].action;
-		vec_push(&k->actions, a);
-		/* A duplicated keyword is dropped: free it, the table owns the
-		 * first one. */
-		if (!hash_safe_add(p->keywords, k->keyword, k, NULL))
-			keyword_free(k);
-	}
-}
-
-static void
-keyword_free(struct keyword *k)
-{
-	free(k->keyword);
-	vec_free_and_free(&k->actions, free);
-	free(k);
-}
-
 static int
 parse_actions(const ucl_object_t *o, struct plist *p,
     char *line, struct file_attr *a, int argc, char **argv)
@@ -980,21 +950,13 @@ static int
 parse_keywords(struct plist *plist, char *keyword,
     char *line, struct file_attr *attr)
 {
-	struct keyword *k = NULL;
-	int ret = EPKG_FATAL;
-
 	/* if keyword is empty consider it as a file */
 	if (*keyword == '\0')
 		return (file(plist, line, attr));
 
-	k = hash_get_value(plist->keywords, keyword);
-	if (k != NULL) {
-		vec_foreach(k->actions, i) {
-			ret = k->actions.d[i]->perform(plist, line, attr);
-			if (ret != EPKG_OK)
-				break;
-		}
-		return (ret);
+	for (int i = 0; keyacts[i].key != NULL; i++) {
+		if (STREQ(keyword, keyacts[i].key))
+			return (keyacts[i].action(plist, line, attr));
 	}
 
 	/*
@@ -1135,8 +1097,6 @@ plist_new(struct pkg *pkg, const char *stage)
 	p->uname = xstrdup("root");
 	p->gname = xstrdup("wheel");
 
-	populate_keywords(p);
-
 	return (p);
 }
 
@@ -1150,11 +1110,6 @@ plist_free(struct plist *p)
 		close(p->stagefd);
 	if (p->plistdirfd != -1)
 		close(p->plistdirfd);
-
-	hash_foreach(p->keywords, it)
-		keyword_free((struct keyword *)it.value);
-	hash_destroy(p->keywords);
-	p->keywords = NULL;
 
 	free(p->uname);
 	free(p->gname);
