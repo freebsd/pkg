@@ -4,6 +4,7 @@
 
 tests_init \
 	cleanup_lua \
+	cleanup_prefix \
 	deferred \
 	deferred_malformed \
 	glob_trigger \
@@ -44,6 +45,37 @@ EOF
 	unset PKG_TRIGGERS_DIR
 	atf_check pkg -o REPOS_DIR=/dev/null -o PKG_TRIGGERS_DIR="${TMPDIR}/trigger_dir" install -qfy ${TMPDIR}/test-1.pkg
 	atf_check -o inline:"Cleaning up\n" pkg -o REPOS_DIR=/dev/null -o PKG_TRIGGERS_DIR="${TMPDIR}/trigger_dir" delete -qy test
+}
+
+cleanup_prefix_body() {
+	# a directory which merely starts with the trigger directory name is not
+	# a trigger directory
+	atf_check -s exit:0 sh ${RESOURCEDIR}/test_subr.sh new_pkg "test" "test" "1" "/"
+	mkdir trigger_dirfoo/
+	cat << EOF >> trigger_dirfoo/trigger.ucl
+path: [ "/" ]
+cleanup: {
+	type: lua
+	script: <<EOS
+	print "Cleaning up"
+EOS
+}
+trigger: {
+	type: lua
+	script: <<EOS
+	return 0
+EOS
+}
+EOF
+	echo ${TMPDIR}/trigger_dirfoo/trigger.ucl > plist
+	atf_check pkg create -M test.ucl -p plist
+	unset PKG_TRIGGERS_DIR
+	atf_check pkg -o REPOS_DIR=/dev/null install -qfy ${TMPDIR}/test-1.pkg
+	atf_check \
+		-o empty \
+		-e empty \
+		pkg -o REPOS_DIR=/dev/null -o PKG_TRIGGERS_DIR="${TMPDIR}/trigger_dir" \
+		delete -qy test
 }
 
 deferred_malformed_body() {

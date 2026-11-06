@@ -223,6 +223,9 @@ trigger_is_it_a_cleanup(struct triggers *t, const char *path)
 	struct trigger *trig;
 	pkg_iter it;
 
+	if (t == NULL)
+		return;
+
 	if (t->schema == NULL)
 		t->schema = trigger_open_schema();
 
@@ -236,8 +239,8 @@ trigger_is_it_a_cleanup(struct triggers *t, const char *path)
 		dir = pkg_object_string(cur);
 		len = strlen(dir);
 
-		if (strncmp(path, dir, len) == 0) {
-			trigger_name = path + strlen(dir);
+		if (strncmp(path, dir, len) == 0 && path[len] == '/') {
+			trigger_name = path + len;
 			break;
 		}
 	}
@@ -245,8 +248,14 @@ trigger_is_it_a_cleanup(struct triggers *t, const char *path)
 	if (trigger_name == NULL)
 		return;
 
-	if (t->dfd == -1)
-		t->dfd = openat(ctx.rootfd, RELATIVE_PATH(dir), O_DIRECTORY);
+	if (t->dfd == -1) {
+		t->dfd = openat(ctx.rootfd, RELATIVE_PATH(dir),
+		    O_DIRECTORY | O_CLOEXEC);
+		if (t->dfd == -1) {
+			pkg_errno("Unable to open the trigger directory %s", dir);
+			return;
+		}
+	}
 
 	trig = trigger_load(t->dfd, RELATIVE_PATH(trigger_name), true, t->schema);
 	if (trig != NULL) {
