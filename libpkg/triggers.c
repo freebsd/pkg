@@ -383,7 +383,7 @@ save_trigger(const char *script, bool sandbox, hash_t *args,
 	if (!mkdirat_p(db, "triggers"))
 		return;
 
-	int trigfd = openat(db, "triggers", O_DIRECTORY);
+	int trigfd = openat(db, "triggers", O_DIRECTORY | O_CLOEXEC);
 	if (trigfd == -1) {
 		pkg_errno("Failed to open '%s' as a directory", "triggers");
 		return;
@@ -393,12 +393,13 @@ save_trigger(const char *script, bool sandbox, hash_t *args,
 	for (;;) {
 		char name[] = "XXXXXXXXXX";
 		fd = openat(trigfd, get_random_name(name),
-		    O_CREAT|O_RDWR|O_EXCL, 0644);
+		    O_CREAT|O_RDWR|O_EXCL|O_CLOEXEC, 0644);
 		if (fd != -1)
 			break;
 		if (errno == EEXIST)
 			continue;
 		pkg_errno("Can't create deferred triggers %s", name);
+		close(trigfd);
 		return;
 	}
 	close(trigfd);
@@ -423,7 +424,8 @@ save_trigger(const char *script, bool sandbox, hash_t *args,
 	}
 	fputs("--end args\n--\n", f);
 	fprintf(f, "%s\n", script);
-	fclose(f);
+	if (fclose(f) != 0)
+		pkg_errno("Can't write the deferred trigger for %s", "recording");
 }
 
 static int
@@ -789,6 +791,17 @@ append_touched_file(const char *path)
 	free(newpath);
 }
 
+static bool
+trigger_header_is(const char *walk, const char *name)
+{
+	size_t len = strlen(name);
+
+	if (strncmp(walk, name, len) != 0)
+		return (false);
+
+	return (walk[len] == '\0' || walk[len] == ' ');
+}
+
 static void
 exec_deferred(int dfd, const char *name)
 {
@@ -829,7 +842,7 @@ exec_deferred(int dfd, const char *name)
 		if (linelen < 2 || line[0] != '-' || line[1] != '-')
 			continue;
 		walk = line + 2;
-		if (strncmp(walk, "sandbox", 7) == 0) {
+		if (trigger_header_is(walk, "sandbox")) {
 			sandbox = true;
 			continue;
 		}
@@ -843,15 +856,15 @@ exec_deferred(int dfd, const char *name)
 			pkgversion = xstrdup(walk + 11);
 			continue;
 		}
-		if (strncmp(walk, "upgrade", 7) == 0) {
+		if (trigger_header_is(walk, "upgrade")) {
 			upgrade = true;
 			continue;
 		}
-		if (strncmp(walk, "begin args", 10) == 0) {
+		if (trigger_header_is(walk, "begin args")) {
 			inargs = true;
 			continue;
 		}
-		if (strncmp(walk, "end args", 8) == 0) {
+		if (trigger_header_is(walk, "end args")) {
 			inargs = false;
 			tgt = &script;
 			continue;
@@ -865,6 +878,9 @@ exec_deferred(int dfd, const char *name)
 	free(line);
 	fclose(f);
 	if (tgt == NULL) {
+		pkg_emit_error("Ignoring the malformed deferred trigger '%s'",
+		    name);
+		unlinkat(dfd, name, 0);
 		hash_destroy(args);
 		free(pkgname);
 		free(pkgversion);
@@ -873,7 +889,8 @@ exec_deferred(int dfd, const char *name)
 	char *s = sb_get(&script);
 	if (trigger_execute_lua_common(s, sandbox, args, false, pkgname,
 	    pkgversion, upgrade) == EPKG_OK) {
-		unlinkat(dfd, name, 0);
+		if (unlinkat(dfd, name, 0) != 0)
+			pkg_errno("Unable to remove the trigger '%s'", name);
 	}
 	free(s);
 	free(pkgname);
@@ -888,7 +905,7 @@ pkg_execute_deferred_triggers(void)
 	struct stat st;
 	int dbdir = pkg_get_dbdirfd();
 
-	int trigfd = openat(dbdir, "triggers", O_DIRECTORY);
+	int trigfd = openat(dbdir, "triggers", O_DIRECTORY | O_CLOEXEC);
 	if (trigfd == -1)
 		return (EPKG_OK);
 
@@ -906,7 +923,7 @@ pkg_execute_deferred_triggers(void)
 		/* only regular files are considered */
 		if (fstatat(dirfd(d), e->d_name, &st, AT_SYMLINK_NOFOLLOW) != 0) {
 			pkg_emit_errno("fstatat", e->d_name);
-			return (EPKG_FATAL);
+			continue;
 		}
 		exec_deferred(trigfd, e->d_name);
 	}

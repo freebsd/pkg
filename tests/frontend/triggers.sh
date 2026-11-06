@@ -5,6 +5,7 @@
 tests_init \
 	cleanup_lua \
 	deferred \
+	deferred_malformed \
 	glob_trigger \
 	regexp_trigger \
 	path_trigger \
@@ -43,6 +44,40 @@ EOF
 	unset PKG_TRIGGERS_DIR
 	atf_check pkg -o REPOS_DIR=/dev/null -o PKG_TRIGGERS_DIR="${TMPDIR}/trigger_dir" install -qfy ${TMPDIR}/test-1.pkg
 	atf_check -o inline:"Cleaning up\n" pkg -o REPOS_DIR=/dev/null -o PKG_TRIGGERS_DIR="${TMPDIR}/trigger_dir" delete -qy test
+}
+
+deferred_malformed_body() {
+	atf_check -s exit:0 sh ${RESOURCEDIR}/test_subr.sh new_pkg "test" "test" "1" "/"
+	mkdir trigger_dir/
+	cat << EOF >> trigger_dir/trigger.ucl
+path_glob: [ "/*" ]
+trigger: {
+	type: lua
+	sandbox: false
+	script: <<EOS
+	print("deferred " .. arg[1])
+EOS
+}
+EOF
+	echo trigger_dir/trigger.ucl > plist
+	atf_check pkg create -M test.ucl -p plist -r .
+	mkdir target
+	unset PKG_TRIGGERS_DIR
+	unset PKG_DBDIR
+	atf_check pkg -o REPOS_DIR=/dev/null -o PKG_TRIGGERS_DIR="/trigger_dir" \
+	    -r ${TMPDIR}/target install -qfy ${TMPDIR}/test-1.pkg
+
+	# a deferred trigger which never ends its headers is dropped
+	cat << EOF > ${TMPDIR}/target/var/db/pkg/triggers/broken
+--pkgname test
+print("never run")
+EOF
+	atf_check \
+		-o ignore \
+		-e match:"Ignoring the malformed deferred trigger 'broken'" \
+		-s exit:0 \
+		pkg -o PKG_DBDIR=${TMPDIR}/target/var/db/pkg triggers
+	atf_check ls ${TMPDIR}/target/var/db/pkg/triggers
 }
 
 deferred_body() {
