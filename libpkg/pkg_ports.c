@@ -469,6 +469,7 @@ setmod(struct plist *p, char *line, struct file_attr *a __unused)
 		return (EPKG_FATAL);
 	}
 	p->perm = getmode(set, 0);
+	free(set);
 	return (EPKG_OK);
 }
 
