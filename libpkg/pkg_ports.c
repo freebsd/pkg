@@ -643,7 +643,7 @@ parse_actions(const ucl_object_t *o, struct plist *p,
 	return (rc);
 }
 
-static void
+static int
 parse_attributes(const ucl_object_t *o, struct file_attr **a)
 {
 	const ucl_object_t *cur;
@@ -668,19 +668,25 @@ parse_attributes(const ucl_object_t *o, struct file_attr **a)
 			continue;
 		}
 		if (STRIEQ(key, "mode")) {
-			if (cur->type == UCL_STRING) {
-				void *set;
-				if ((set = parse_mode(ucl_object_tostring(cur))) == NULL) {
-					pkg_emit_error("Bad format for the mode attribute: %s", ucl_object_tostring(cur));
-					return;
-				}
-				(*a)->mode = getmode(set, 0);
-				free(set);
-			} else {
-				pkg_emit_error("Expecting a string for the mode attribute, ignored");
+			void *set;
+			const char *mode;
+
+			if (cur->type != UCL_STRING && cur->type != UCL_INT) {
+				pkg_emit_error("Invalid mode attribute");
+				return (EPKG_FATAL);
 			}
+			mode = ucl_object_tostring_forced(cur);
+			if ((set = parse_mode(mode)) == NULL) {
+				pkg_emit_error("Bad format for the mode "
+				    "attribute: %s", mode);
+				return (EPKG_FATAL);
+			}
+			(*a)->mode = getmode(set, 0);
+			free(set);
 		}
 	}
+
+	return (EPKG_OK);
 }
 
 static void
@@ -728,8 +734,9 @@ apply_keyword_file(ucl_object_t *obj, struct plist *p, char *line, struct file_a
 		}
 	}
 
-	if ((o = ucl_object_find_key(obj,  "attributes")))
-		parse_attributes(o, attr != NULL ? &attr : &freeattr);
+	if ((o = ucl_object_find_key(obj,  "attributes")) &&
+	    parse_attributes(o, attr != NULL ? &attr : &freeattr) != EPKG_OK)
+		goto keywords_cleanup;
 
 	if ((o = ucl_object_find_key(obj,  "preformat_arguments")) &&
 	    ucl_object_toboolean(o)) {
@@ -782,7 +789,8 @@ apply_keyword_file(ucl_object_t *obj, struct plist *p, char *line, struct file_a
 
 	ret = EPKG_OK;
 	if ((o = ucl_object_find_key(obj,  "actions")))
-		ret = parse_actions(o, p, line, attr, argc, args);
+		ret = parse_actions(o, p, line, attr != NULL ? attr : freeattr,
+		    argc, args);
 
 	if (ret == EPKG_OK && (o = ucl_object_find_key(obj, "prepackaging"))) {
 		lua_State *L = luaL_newstate();

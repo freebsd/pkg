@@ -34,6 +34,8 @@ tests_init \
 	create_no_clobber \
 	time \
 	create_from_plist_keyword_validation \
+	create_from_plist_keyword_integer_mode \
+	create_from_plist_keyword_bad_mode \
 	create_from_plist_keyword_real_args \
 	create_from_plist_keyword_lua_actions \
 	create_from_plist_keyword_deprecated \
@@ -316,6 +318,44 @@ mkdir target
 	atf_check \
 		-o inline:"yes\nfile1\nyes\nA\nB\nC\nD\n" \
 		pkg -o REPOS_DIR=/dev/null -r ${TMPDIR}/target install -qfy ${TMPDIR}/test-1.pkg
+}
+
+create_from_plist_keyword_integer_mode_body()
+{
+	preparetestcredentials "intmode"
+
+	cat << EOF > intmode.ucl
+attributes = { mode = 0755 };
+actions = [ file ];
+EOF
+
+	atf_check \
+		-o empty \
+		-e empty \
+		-s exit:0 \
+		pkg -o PLIST_KEYWORDS_DIR=. create -o ${TMPDIR} -m . -p test.plist -r .
+
+	atf_check \
+		-o match:"-rwxr-xr-x .* /file1$" \
+		-e ignore \
+		-s exit:0 \
+		bsdtar tvf test-1.pkg
+}
+
+create_from_plist_keyword_bad_mode_body()
+{
+	preparetestcredentials "badmode"
+
+	cat << EOF > badmode.ucl
+attributes = { mode = "bad" };
+actions = [ file ];
+EOF
+
+	atf_check \
+		-o ignore \
+		-e match:"Bad format for the mode attribute: bad" \
+		-s exit:1 \
+		pkg -o PLIST_KEYWORDS_DIR=. create -o ${TMPDIR} -m . -p test.plist -r .
 }
 
 create_from_plist_keyword_validation_body() {
