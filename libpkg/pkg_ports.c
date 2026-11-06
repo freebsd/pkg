@@ -378,6 +378,12 @@ meta_file(struct plist *p, char *line, struct file_attr *a, bool is_config)
 	buf = NULL;
 	regular = false;
 
+	if (S_ISDIR(st.st_mode)) {
+		pkg_emit_error("Plist error, directory listed as a file: %s",
+		    line);
+		return (EPKG_FATAL);
+	}
+
 	if (S_ISREG(st.st_mode)) {
 		if (st.st_nlink > 1)
 			regular = !check_for_hardlink(&p->hardlinks, &st);
@@ -413,13 +419,6 @@ meta_file(struct plist *p, char *line, struct file_attr *a, bool is_config)
 			}
 			free(content);
 		}
-	}
-
-	if (S_ISDIR(st.st_mode)) {
-		pkg_emit_error("Plist error, directory listed as a file: %s",
-		    line);
-		free(buf);
-		return (EPKG_FATAL);
 	}
 
 	if (a != NULL) {

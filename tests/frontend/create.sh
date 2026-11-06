@@ -135,7 +135,7 @@ create_from_plist_directory_body() {
 
 	atf_check \
 		-o empty \
-		-e match:"Unable to compute the checksum of .*dir1: Is a directory" \
+		-e match:"Plist error, directory listed as a file: .*dir1" \
 		-s exit:1 \
 		pkg create -o ${TMPDIR} -m . -p test.plist -r .
 }
