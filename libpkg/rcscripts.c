@@ -172,47 +172,12 @@ rc_report(const char *action, const char *name, int status)
 int
 pkg_start_stop_rc_scripts(struct pkg *pkg, pkg_rc_attr attr)
 {
-	struct pkg_file *file = NULL;
-	char rc_d_path[PATH_MAX];
-	const char *rcfile;
-	size_t len = 0;
-	int ret = EPKG_OK;
-	bool handle_rc;
+	struct deferred_rc rc;
 
-	handle_rc = pkg_object_bool(pkg_config_get("HANDLE_RC_SCRIPTS"));
-	if (!handle_rc)
-		return (ret);
+	pkg_deferred_rc_init(&rc);
+	pkg_deferred_rc_add(&rc, pkg, attr);
 
-	/* Do not manage rc scripts when operating on an alternate rootdir */
-	if (ctx.pkg_rootdir != NULL)
-		return (ret);
-
-	if (!rc_dir_path(pkg, rc_d_path, sizeof(rc_d_path)))
-		return (ret);
-	len = strlen(rc_d_path);
-
-	while (pkg_files(pkg, &file) == EPKG_OK) {
-		if (strncmp(rc_d_path, file->path, len) == 0) {
-			rcfile = file->path;
-			rcfile += len;
-			switch (attr) {
-			case PKG_RC_ATTR_START:
-				pkg_emit_rc_script(rcfile, PKG_RC_START);
-				if (rc_report("start", rcfile,
-				    rc_start(rcfile)) != EPKG_OK)
-					ret = EPKG_FATAL;
-				break;
-			case PKG_RC_ATTR_STOP:
-				pkg_emit_rc_script(rcfile, PKG_RC_STOP);
-				if (rc_report("stop", rcfile,
-				    rc_stop(rcfile)) != EPKG_OK)
-					ret = EPKG_FATAL;
-				break;
-			}
-		}
-	}
-
-	return (ret);
+	return (pkg_deferred_rc_execute(&rc));
 }
 
 static int
