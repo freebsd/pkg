@@ -220,9 +220,9 @@ setprefix(struct plist *p, char *line, struct file_attr *a __unused)
 	if (p->pkg->prefix == NULL && line[0] != '\0')
 		p->pkg->prefix = xstrdup(line);
 
-	sb_printf(&p->post_install_buf, "cd %s\n", p->prefix);
-	sb_printf(&p->pre_deinstall_buf, "cd %s\n", p->prefix);
-	sb_printf(&p->post_deinstall_buf, "cd %s\n", p->prefix);
+	sb_printf(&p->scripts[PKG_SCRIPT_POST_INSTALL], "cd %s\n", p->prefix);
+	sb_printf(&p->scripts[PKG_SCRIPT_PRE_DEINSTALL], "cd %s\n", p->prefix);
+	sb_printf(&p->scripts[PKG_SCRIPT_POST_DEINSTALL], "cd %s\n", p->prefix);
 
 	return (EPKG_OK);
 }
@@ -692,22 +692,8 @@ parse_attributes(const ucl_object_t *o, struct file_attr **a)
 static void
 append_script(struct plist *p, pkg_script t, const char *cmd)
 {
-	switch (t) {
-	case PKG_SCRIPT_PRE_INSTALL:
-		sb_printf(&p->pre_install_buf, "%s\n", cmd);
-		break;
-	case PKG_SCRIPT_POST_INSTALL:
-		sb_printf(&p->post_install_buf, "%s\n", cmd);
-		break;
-	case PKG_SCRIPT_PRE_DEINSTALL:
-		sb_printf(&p->pre_deinstall_buf, "%s\n", cmd);
-		break;
-	case PKG_SCRIPT_POST_DEINSTALL:
-		sb_printf(&p->post_deinstall_buf, "%s\n", cmd);
-		break;
-	default:
-		break;
-	}
+	if (t >= 0 && t < PKG_SCRIPT_UNKNOWN)
+		sb_printf(&p->scripts[t], "%s\n", cmd);
 }
 
 static int
@@ -1175,10 +1161,8 @@ plist_free(struct plist *p)
 	vec_free_and_free(&p->hardlinks, free);
 	vec_free_and_free(&p->variables, pkg_kv_free);
 
-	sb_fini(&p->post_deinstall_buf);
-	sb_fini(&p->post_install_buf);
-	sb_fini(&p->pre_deinstall_buf);
-	sb_fini(&p->pre_install_buf);
+	for (size_t i = 0; i < PKG_SCRIPT_UNKNOWN; i++)
+		sb_fini(&p->scripts[i]);
 
 	forloop_free_stack(p);
 	free(p);
@@ -1612,14 +1596,8 @@ ports_parse_plist(struct pkg *pkg, const char *plist, const char *stage)
 
 	pkg->flatsize = pplist->flatsize;
 
-	flush_script_buffer(&pplist->pre_install_buf, pkg,
-	    PKG_SCRIPT_PRE_INSTALL);
-	flush_script_buffer(&pplist->post_install_buf, pkg,
-	    PKG_SCRIPT_POST_INSTALL);
-	flush_script_buffer(&pplist->pre_deinstall_buf, pkg,
-	    PKG_SCRIPT_PRE_DEINSTALL);
-	flush_script_buffer(&pplist->post_deinstall_buf, pkg,
-	    PKG_SCRIPT_POST_DEINSTALL);
+	for (size_t i = 0; i < PKG_SCRIPT_UNKNOWN; i++)
+		flush_script_buffer(&pplist->scripts[i], pkg, i);
 
 	fclose(plist_f);
 

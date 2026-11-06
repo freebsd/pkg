@@ -636,10 +636,7 @@ struct plist {
 	bool in_include;
 	int plistdirfd;
 	char prefix[MAXPATHLEN];
-	sb_t pre_install_buf;
-	sb_t post_install_buf;
-	sb_t pre_deinstall_buf;
-	sb_t post_deinstall_buf;
+	sb_t scripts[PKG_SCRIPT_UNKNOWN];
 	struct pkg *pkg;
 	char *uname;
 	char *gname;
