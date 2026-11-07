@@ -299,7 +299,6 @@ static const char * const scripts[] = {
 	"+INSTALL",
 	"+PRE_INSTALL",
 	"+POST_INSTALL",
-	"+POST_INSTALL",
 	"+DEINSTALL",
 	"+PRE_DEINSTALL",
 	"+POST_DEINSTALL",
