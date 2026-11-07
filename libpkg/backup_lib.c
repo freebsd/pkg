@@ -84,6 +84,20 @@ backup_pkg_new(struct pkgdb *db, struct pkg *orig, const char *libname)
 	return (pkg);
 }
 
+static void
+backup_remove_file_entry(struct pkg *pkg, const char *libname)
+{
+	for (size_t i = 0; i < vec_len(&pkg->files); i++) {
+		const char *fname = strrchr(pkg->files.d[i].path, '/');
+
+		if (fname == NULL || strcmp(fname + 1, libname) != 0)
+			continue;
+		pkg_file_free_content(&pkg->files.d[i]);
+		vec_remove(&pkg->files, i);
+		return;
+	}
+}
+
 static int
 register_backup(struct pkgdb *db, struct pkg *orig, int fd, const char *libname)
 {
@@ -114,16 +128,7 @@ register_backup(struct pkgdb *db, struct pkg *orig, int fd, const char *libname)
 		free(sum);
 		return (EPKG_FATAL);
 	}
-	/* Remove any existing file entry for this library.  Match
-	 * by the trailing library name rather than the full key. */
-	vec_foreach(pkg->files, _fi) {
-		const char *fname = strrchr(pkg->files.d[_fi].path, '/');
-		if (fname != NULL && strcmp(fname + 1, libname) == 0) {
-			pkg_file_free_content(&pkg->files.d[_fi]);
-			vec_remove(&pkg->files, _fi);
-			break;
-		}
-	}
+	backup_remove_file_entry(pkg, libname);
 	xasprintf(&lpath, "%s/%s", backup_library_relative_path(), libname);
 	if (pkg_addfile(pkg, lpath, sum, false) != EPKG_OK) {
 		pkg_emit_error("Unable to register the backup of %s", libname);
