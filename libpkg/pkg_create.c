@@ -408,16 +408,22 @@ hash_file(struct pkg *pkg)
 	char filename[MAXPATHLEN];
 
 	/* Find the hash and rename the file and create a symlink */
-	pkg_snprintf(filename, sizeof(filename), "%n-%v.pkg",
-			pkg, pkg);
+	if ((size_t)pkg_snprintf(filename, sizeof(filename), "%n-%v.pkg",
+	    pkg, pkg) >= sizeof(filename)) {
+		pkg_emit_error("Package name too long");
+		return (EPKG_FATAL);
+	}
 	pkg->sum = pkg_checksum_generate_file(filename,
 			PKG_HASH_TYPE_BLAKE2_BASE32);
 	if (pkg->sum == NULL) {
 		pkg_emit_error("cannot generate package checksum");
 		return (EPKG_FATAL);
 	}
-	pkg_snprintf(hash_dest, sizeof(hash_dest), "%n-%v-%z.pkg",
-			pkg, pkg, pkg);
+	if ((size_t)pkg_snprintf(hash_dest, sizeof(hash_dest),
+	    "%n-%v-%z.pkg", pkg, pkg, pkg) >= sizeof(hash_dest)) {
+		pkg_emit_error("Package name too long");
+		return (EPKG_FATAL);
+	}
 
 	pkg_debug(1, "Rename the pkg file from: %s to: %s",
 			filename, hash_dest);
