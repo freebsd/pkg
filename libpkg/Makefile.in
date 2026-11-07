@@ -47,6 +47,8 @@ SRCS=	backup_lib.c \
 	pkg_status.c \
 	plugins.c \
 	utils.c fetch.c \
+	fetch_workers.c \
+	fetch_hosts.c \
 	pkg_sandbox.c \
 	pkg_attributes.c \
 	pkg_delete.c \

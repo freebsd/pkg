@@ -164,6 +164,118 @@ pkg_repo_http_mirror_append(struct pkg_repo *repo, const char *url,
 	LL_APPEND(repo->http, m);
 }
 
+/* Serialize credentials without reinterpreting reserved URL characters. */
+static void
+url_userinfo(sb_t *buf, const char *value)
+{
+	for (const unsigned char *p = (const unsigned char *)value; *p; p++) {
+		if (isalnum(*p) || strchr("-._~", *p) != NULL)
+			sb_cat_c(buf, *p);
+		else
+			sb_printf(buf, "%%%02X", *p);
+	}
+}
+
+char *
+pkg_fetch_url(const struct url *u)
+{
+	sb_t buf = sb_init();
+
+	sb_printf(&buf, "%s://", u->scheme);
+	if (u->user[0] || u->pwd[0]) {
+		url_userinfo(&buf, u->user);
+		sb_cat_c(&buf, ':');
+		url_userinfo(&buf, u->pwd);
+		sb_cat_c(&buf, '@');
+	}
+	sb_printf(&buf, "%s%s%s", strchr(u->host, ':') ? "[" : "",
+	    u->host, strchr(u->host, ':') ? "]" : "");
+	if (u->port)
+		sb_printf(&buf, ":%d", u->port);
+	sb_cat(&buf, u->doc);
+	return (sb_get(&buf));
+}
+
+int
+pkg_fetch_discover(struct pkg_repo *repo, pkg_fetch_endpoints *endpoints)
+{
+	struct url *u;
+	struct pkg_fetch_endpoint ep = {0};
+	const char *url = repo->url;
+	char zone[MAXHOSTNAMELEN + 24];
+	kvlist_t saved = vec_init();
+	c_charv_t unset = vec_init();
+
+	/* Mirror-list requests need the same repository environment as transfers. */
+	vec_foreach(repo->env, i) {
+		struct pkg_kv *kv = repo->env.d[i], *old;
+		const char *value = getenv(kv->key);
+		if (value != NULL) {
+			old = xcalloc(1, sizeof(*old));
+			old->key = xstrdup(kv->key);
+			old->value = xstrdup(value);
+			vec_push(&saved, old);
+		} else
+			vec_push(&unset, kv->key);
+		setenv(kv->key, kv->value, 1);
+	}
+	if (strncmp(url, "pkg+", 4) == 0) {
+		if (repo->mirror_type != SRV) {
+			pkg_emit_error("pkg+ URL requires SRV mirror_type");
+			goto out;
+		}
+		url += 4;
+	}
+	u = fetchParseURL(url);
+	if (u == NULL)
+		goto out;
+	fetchTimeout = (int)MIN(pkg_object_int(pkg_config_get("FETCH_TIMEOUT")), INT_MAX);
+	if (repo->mirror_type == SRV && strncmp(u->scheme, "http", 4) == 0) {
+		snprintf(zone, sizeof(zone), "_%s._tcp.%s", u->scheme, u->host);
+		if (repo->srv == NULL)
+			repo->srv = dns_getsrvinfo(zone);
+		for (struct dns_srvinfo *srv = repo->srv; srv; srv = srv->next) {
+			strlcpy(u->host, srv->host, sizeof(u->host));
+			u->port = srv->port;
+			ep.url = pkg_fetch_url(u);
+			ep.priority = srv->priority;
+			ep.weight = srv->weight;
+			vec_push(endpoints, ep);
+		}
+	} else if (repo->mirror_type == HTTP && strncmp(u->scheme, "http", 4) == 0) {
+		snprintf(zone, sizeof(zone), "%s://%s%s%s:%d", u->scheme,
+		    strchr(u->host, ':') ? "[" : "", u->host,
+		    strchr(u->host, ':') ? "]" : "", u->port ? u->port :
+		    strcmp(u->scheme, "https") == 0 ? 443 : 80);
+		if (repo->http == NULL)
+			gethttpmirrors(repo, zone, false);
+		if (repo->http == NULL)
+			gethttpmirrors(repo, repo->url, true);
+		for (struct http_mirror *m = repo->http; m; m = m->next) {
+			ep.url = pkg_fetch_url(m->url);
+			ep.fullpath = !m->reldoc;
+			vec_push(endpoints, ep);
+		}
+	}
+	if (endpoints->len == 0) {
+		ep.url = xstrdup(url);
+		vec_push(endpoints, ep);
+	}
+	fetchFreeURL(u);
+out:
+	vec_foreach(saved, i) {
+		setenv(saved.d[i]->key, saved.d[i]->value, 1);
+		free(saved.d[i]->key);
+		free(saved.d[i]->value);
+		free(saved.d[i]);
+	}
+	vec_free(&saved);
+	vec_foreach(unset, i)
+		unsetenv(unset.d[i]);
+	vec_free(&unset);
+	return (endpoints->len ? EPKG_OK : EPKG_FATAL);
+}
+
 int
 libfetch_open(struct pkg_repo *repo, struct fetch_item *fi)
 {
@@ -181,6 +293,36 @@ libfetch_open(struct pkg_repo *repo, struct fetch_item *fi)
 	int retcode;
 	sb_t fetchOpts = sb_init();
 
+	/* The parent selected this endpoint and owns retries and redirects. */
+	if (repo->fetch_target != NULL) {
+		u = fetchParseURL(fi->url);
+		if (u == NULL)
+			return (EPKG_FATAL);
+		u->offset = MAX(fi->offset, 0);
+		u->ims_time = fi->mtime;
+		fetchTimeout = (int)MIN(pkg_object_int(pkg_config_get("FETCH_TIMEOUT")), INT_MAX);
+		fetchSpeedLimit = 2 * 1024;
+		fetchSpeedTime = fetchTimeout;
+		const char *auth = get_http_auth();
+		if (auth != NULL && strchr(auth, ':') != NULL) {
+			const char *colon = strchr(auth, ':');
+			snprintf(u->user, sizeof(u->user), "%.*s", (int)(colon - auth), auth);
+			strlcpy(u->pwd, colon + 1, sizeof(u->pwd));
+		}
+		sb_cat(&fetchOpts, "ic");
+		if (repo->ip == IPV4)
+			sb_cat(&fetchOpts, "4");
+		else if (repo->ip == IPV6)
+			sb_cat(&fetchOpts, "6");
+		repo->fh = fetchXGet(u, &st, sb_str(&fetchOpts));
+		sb_fini(&fetchOpts);
+		fetchFreeURL(u);
+		if (repo->fh == NULL)
+			return (fetchLastErrCode == FETCH_OK ? EPKG_UPTODATE : EPKG_FATAL);
+		fi->size = MAX(st.size, 0);
+		fi->mtime = st.mtime;
+		return (EPKG_OK);
+	}
 	max_retry = pkg_object_int(pkg_config_get("FETCH_RETRY"));
 	if (max_retry < 0)
 		max_retry = 0;

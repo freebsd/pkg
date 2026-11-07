@@ -50,6 +50,7 @@ int	 fetchTimeout;
 int	 fetchRestartCalls = 1;
 int	 fetchDebug;
 const char	*fetchCustomHTTPHeaders;
+struct fetch_response *fetchResponse;
 int	 fetchSpeedLimit;
 int	 fetchSpeedTime;
 

@@ -291,6 +291,13 @@ void pkgcli_autoremove(struct pkgdb *db, bool flag);
 void progressbar_start(const char *pmsg);
 void progressbar_tick(int64_t current, int64_t total);
 void progressbar_stop(void);
+bool fetch_progress_active(void);
+void fetch_progress_clear(void);
+void fetch_progress_draw(bool force);
+void fetch_progress_event(struct pkg_event *ev);
+void fetch_progress_serial_start(const char *label);
+void fetch_progress_serial_tick(int64_t current, int64_t total, bool force);
+void fetch_progress_serial_stop(void);
 
 extern sb_t *messages;
 
