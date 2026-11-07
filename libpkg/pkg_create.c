@@ -274,8 +274,11 @@ pkg_create_archive(struct pkg *pkg, struct pkg_create *pc, unsigned required_fla
 	/*
 	 * Ensure that we have all the information we need
 	 */
-	if (pkg->type != PKG_OLD_FILE)
-		assert((pkg->flags & required_flags) == required_flags);
+	if (pkg->type != PKG_OLD_FILE &&
+	    (pkg->flags & required_flags) != required_flags) {
+		pkg_emit_error("Package %s data are not fully loaded", pkg->name);
+		return (NULL);
+	}
 
 	if (pkg_mkdirs(pc->outdir) != EPKG_OK)
 		return NULL;
