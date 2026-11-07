@@ -58,6 +58,19 @@ static void counter_end(void);
 extern struct pkg_ctx ctx;
 
 static int
+stage_path(char *buf, size_t len, const char *root, const char *relocation,
+    const char *path)
+{
+	if ((size_t)snprintf(buf, len, "%s%s%s", root != NULL ? root : "",
+	    relocation, path) >= len) {
+		pkg_emit_error("Path too long for '%s'", path);
+		return (EPKG_FATAL);
+	}
+
+	return (EPKG_OK);
+}
+
+int
 pkg_create_from_dir(struct pkg *pkg, const char *root,
 		    struct pkg_create *pc, struct packing *pkg_archive,
 		    bool trust_filesystem)
@@ -95,8 +108,11 @@ pkg_create_from_dir(struct pkg *pkg, const char *root,
 
 	while (pkg_files(pkg, &file) == EPKG_OK) {
 
-		snprintf(fpath, sizeof(fpath), "%s%s%s", root ? root : "",
-		    relocation, file->path);
+		if (stage_path(fpath, sizeof(fpath), root, relocation,
+		    file->path) != EPKG_OK) {
+			vec_free_and_free(&hardlinks, free);
+			return (EPKG_FATAL);
+		}
 
 		if (lstat(fpath, &st) == -1) {
 			pkg_emit_error("file '%s' is missing", fpath);
@@ -156,8 +172,9 @@ pkg_create_from_dir(struct pkg *pkg, const char *root,
 	vec_free_and_free(&hardlinks, free);
 
 	while (pkg_dirs(pkg, &dir) == EPKG_OK) {
-		snprintf(fpath, sizeof(fpath), "%s%s%s", root ? root : "",
-			 relocation, dir->path);
+		if (stage_path(fpath, sizeof(fpath), root, relocation,
+		    dir->path) != EPKG_OK)
+			return (EPKG_FATAL);
 
 		if (lstat(fpath, &st) == -1) {
 			pkg_emit_error("dir '%s' is missing", fpath);
@@ -214,8 +231,9 @@ pkg_create_from_dir(struct pkg *pkg, const char *root,
 			}
 		}
 
-		snprintf(fpath, sizeof(fpath), "%s%s%s", root ? root : "",
-		    relocation, file->path);
+		if (stage_path(fpath, sizeof(fpath), root, relocation,
+		    file->path) != EPKG_OK)
+			return (EPKG_FATAL);
 
 		ret = packing_append_file_attr(pkg_archive, fpath, dp,
 		    file->uname, file->gname, file->perm, file->fflags);
@@ -230,8 +248,9 @@ pkg_create_from_dir(struct pkg *pkg, const char *root,
 	counter_init("packing directories", nfiles);
 
 	while (pkg_dirs(pkg, &dir) == EPKG_OK) {
-		snprintf(fpath, sizeof(fpath), "%s%s%s", root ? root : "",
-		    relocation, dir->path);
+		if (stage_path(fpath, sizeof(fpath), root, relocation,
+		    dir->path) != EPKG_OK)
+			return (EPKG_FATAL);
 
 		ret = packing_append_file_attr(pkg_archive, fpath, dir->path,
 		    dir->uname, dir->gname, dir->perm, dir->fflags);
