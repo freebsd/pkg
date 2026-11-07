@@ -120,6 +120,7 @@ packing_init(struct packing **pack, const char *path, pkg_formats format, int cl
 		return EPKG_FATAL;
 	}
 
+	(*pack)->path = xstrdup(archive_path);
 	(*pack)->resolver = archive_entry_linkresolver_new();
 	archive_entry_linkresolver_set_strategy((*pack)->resolver,
 	    archive_format((*pack)->awrite));
@@ -314,6 +315,7 @@ packing_finish(struct packing *pack)
 	archive_write_close(pack->awrite);
 	archive_write_free(pack->awrite);
 
+	free(pack->path);
 	free(pack);
 }
 

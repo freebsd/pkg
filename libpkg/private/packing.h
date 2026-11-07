@@ -35,6 +35,7 @@ struct packing {
 	struct archive *awrite;
 	struct archive_entry_linkresolver *resolver;
 	time_t timestamp;
+	char *path;
 };
 
 const char *packing_set_format(struct archive *a, pkg_formats format, int clevel, int threads);

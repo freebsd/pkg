@@ -43,6 +43,7 @@
 #include "pkg.h"
 #include "private/event.h"
 #include "private/pkg.h"
+#include "private/packing.h"
 #include "private/pkg_abi.h"
 #include "xmalloc.h"
 
@@ -460,6 +461,7 @@ pkg_create_i(struct pkg_create *pc, struct pkg *pkg, bool hash)
 
 	if ((ret = pkg_create_from_dir(pkg, NULL, pc, pkg_archive, false)) != EPKG_OK) {
 		pkg_emit_error("package creation failed");
+		unlink(pkg_archive->path);
 	}
 	packing_finish(pkg_archive);
 
