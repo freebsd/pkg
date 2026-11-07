@@ -219,7 +219,7 @@ pkg_create_from_dir(struct pkg *pkg, const char *root,
 
 		ret = packing_append_file_attr(pkg_archive, fpath, dp,
 		    file->uname, file->gname, file->perm, file->fflags);
-		if (ctx.developer_mode && ret != EPKG_OK)
+		if (ret != EPKG_OK)
 			return (ret);
 		counter_count();
 	}
@@ -235,7 +235,7 @@ pkg_create_from_dir(struct pkg *pkg, const char *root,
 
 		ret = packing_append_file_attr(pkg_archive, fpath, dir->path,
 		    dir->uname, dir->gname, dir->perm, dir->fflags);
-		if (ctx.developer_mode && ret != EPKG_OK)
+		if (ret != EPKG_OK)
 			return (ret);
 		counter_count();
 	}
@@ -404,7 +404,6 @@ hash_file(struct pkg *pkg)
 			filename, hash_dest);
 	if (rename(filename, hash_dest) == -1) {
 		pkg_emit_errno("rename", hash_dest);
-		unlink(hash_dest);
 		return (EPKG_FATAL);
 	}
 	if (symlink(hash_dest, filename) == -1) {
