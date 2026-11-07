@@ -94,6 +94,7 @@ static struct commands {
 	{ "unregister", "Deletes only packages entries from the database", exec_unregister, usage_unregister},
 	{ "update", "Updates package repository catalogues", exec_update, usage_update},
 	{ "updating", "Displays UPDATING information for a package", exec_updating, usage_updating},
+	{ "upgradable", "Checks whether packages are upgradable", exec_upgradable, usage_upgradable},
 	{ "upgrade", "Performs upgrades of packaged software distributions", exec_upgrade, usage_upgrade},
 	{ "version", "Displays the versions of installed packages", exec_version, usage_version},
 	{ "which", "Displays which package installed a specific file", exec_which, usage_which},
