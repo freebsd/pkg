@@ -35,7 +35,6 @@
 
 #include <assert.h>
 #include <errno.h>
-#include <regex.h>
 #include <fcntl.h>
 
 #include <bsd_compat.h>
@@ -568,9 +567,6 @@ static int
 load_metadata(struct pkg *pkg, const char *metadata, const char *plist,
     const char *rootdir)
 {
-	regex_t preg;
-	regmatch_t pmatch[2];
-	size_t size;
 	int fd, i;
 
 	/* Let's see if we have a directory or a manifest */
@@ -586,7 +582,6 @@ load_metadata(struct pkg *pkg, const char *metadata, const char *plist,
 		close(fd);
 		return (EPKG_FATAL);
 	}
-	/* ensure the uid is properly */
 	free(pkg->uid);
 	pkg->uid = xstrdup(pkg->name);
 
@@ -615,15 +610,7 @@ load_metadata(struct pkg *pkg, const char *metadata, const char *plist,
 			pkg_emit_error("No www or desc defined in manifest");
 			return (EPKG_FATAL);
 		}
-		regcomp(&preg, "^WWW:[[:space:]]*(.*)$",
-		    REG_EXTENDED|REG_ICASE|REG_NEWLINE);
-		if (regexec(&preg, pkg->desc, 2, pmatch, 0) == 0) {
-			size = pmatch[1].rm_eo - pmatch[1].rm_so;
-			pkg->www = xstrndup(&pkg->desc[pmatch[1].rm_so], size);
-		} else {
-			pkg->www = xstrdup("UNKNOWN");
-		}
-		regfree(&preg);
+		pkg->www = xstrdup("UNKNOWN");
 	}
 
 	return (EPKG_OK);
