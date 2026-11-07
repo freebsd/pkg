@@ -146,7 +146,6 @@ backup_library(struct pkgdb *db, struct pkg *p, const char *path)
 {
 	const char *libname;
 	const char *bkpath;
-	const char *rootdir;
 	int from, to, backupdir;
 
 	if ((libname = strrchr(path, '/')) == NULL)
@@ -158,7 +157,7 @@ backup_library(struct pkgdb *db, struct pkg *p, const char *path)
 	to = -1;
 	bkpath = backup_library_relative_path();
 
-	from = openat(p->rootfd, RELATIVE_PATH(path), O_RDONLY);
+	from = openat(p->rootfd, RELATIVE_PATH(path), O_RDONLY | O_CLOEXEC);
 	if (from == -1) {
 		pkg_emit_notice("Unable to backup library %s: %s",
 		    path, strerror(errno));
@@ -170,7 +169,7 @@ backup_library(struct pkgdb *db, struct pkg *p, const char *path)
 		return;
 	}
 	backupdir = openat(p->rootfd, RELATIVE_PATH(bkpath),
-	    O_DIRECTORY);
+	    O_DIRECTORY | O_CLOEXEC);
 	if (backupdir == -1) {
 		pkg_emit_error("Unable to open the library backup "
 		    "directory %s", bkpath);
@@ -183,13 +182,10 @@ backup_library(struct pkgdb *db, struct pkg *p, const char *path)
 	 * still be in use if the process is interrupted.
 	 */
 	char tmpname[MAXPATHLEN];
-	char tmppath[MAXPATHLEN];
-	rootdir = ctx.pkg_rootdir != NULL ? ctx.pkg_rootdir : "";
-	snprintf(tmpname, sizeof(tmpname), ".%s.XXXXXX", libname);
-	snprintf(tmppath, sizeof(tmppath), "%s%s/%s", rootdir, bkpath, tmpname);
-	to = mkstemp(tmppath);
-	/* Update tmpname with the resolved XXXXXX suffix */
-	strlcpy(tmpname, strrchr(tmppath, '/') + 1, sizeof(tmpname));
+
+	hidden_tempfile(tmpname, sizeof(tmpname), libname);
+	to = openat(backupdir, tmpname,
+	    O_CREAT | O_EXCL | O_WRONLY | O_CLOEXEC, 0644);
 	if (to == -1) {
 		pkg_emit_errno("Unable to create temporary backup library",
 		    libname);
