@@ -48,6 +48,42 @@ backup_library_relative_path(void)
 	return (path);
 }
 
+static struct pkg *
+backup_pkg_new(struct pkgdb *db, struct pkg *orig, const char *libname)
+{
+	struct pkg *pkg;
+	char *origin;
+
+	if (pkg_new(&pkg, PKG_FILE) != EPKG_OK)
+		return (NULL);
+
+	xasprintf(&pkg->name, "%s-backup-%s", orig->name, libname);
+	xasprintf(&origin, "%s-backup-%s", orig->origin, libname);
+	pkg->origin = origin;
+	pkg->comment = xstrdup(
+	    "Compatibility libraries saved during package upgrade");
+	pkg->desc = xstrdup(
+	    "Compatibility libraries saved during package upgrade\n");
+	pkg->maintainer = xstrdup("root@localhost");
+	pkg->www = xstrdup("N/A");
+	pkg->prefix = xstrdup("/");
+	pkg->abi = orig->abi ? xstrdup(orig->abi) : NULL;
+
+	if (pkgdb_ensure_loaded(db, orig, PKG_LOAD_SHLIBS_PROVIDED_IGNORE |
+	    PKG_LOAD_SHLIBS_REQUIRED_IGNORE) != EPKG_OK) {
+		pkg_free(pkg);
+		return (NULL);
+	}
+	vec_foreach(orig->shlibs_provided_ignore, i)
+		pkg_addshlib_provided_ignore(pkg,
+		    orig->shlibs_provided_ignore.d[i]);
+	vec_foreach(orig->shlibs_required_ignore, i)
+		pkg_addshlib_required_ignore(pkg,
+		    orig->shlibs_required_ignore.d[i]);
+
+	return (pkg);
+}
+
 static int
 register_backup(struct pkgdb *db, struct pkg *orig, int fd, const char *libname)
 {
@@ -72,41 +108,11 @@ register_backup(struct pkgdb *db, struct pkg *orig, int fd, const char *libname)
 		pkgdb_it_next(it, &pkg, PKG_LOAD_BASIC|PKG_LOAD_FILES);
 		pkgdb_it_free(it);
 	}
-	if (pkg == NULL) {
-		char *origin;
+	free(name);
 
-		if (pkg_new(&pkg, PKG_FILE) != EPKG_OK) {
-			free(sum);
-			free(name);
-			return (EPKG_FATAL);
-		}
-		pkg->name = name;
-		(void)xasprintf(&origin, "%s-backup-%s", orig->origin, libname);
-		pkg->origin = origin;
-		pkg->comment = xstrdup(
-		    "Compatibility libraries saved during package upgrade");
-		pkg->desc = xstrdup(
-		    "Compatibility libraries saved during package upgrade\n");
-		pkg->maintainer = xstrdup("root@localhost");
-		pkg->www = xstrdup("N/A");
-		pkg->prefix = xstrdup("/");
-		pkg->abi = orig->abi ? xstrdup(orig->abi) : NULL;
-
-		if (pkgdb_ensure_loaded(db, orig, PKG_LOAD_SHLIBS_PROVIDED_IGNORE |
-		    PKG_LOAD_SHLIBS_REQUIRED_IGNORE) != EPKG_OK) {
-			free(sum);
-			pkg_free(pkg);
-			return (EPKG_FATAL);
-		}
-		vec_foreach(orig->shlibs_provided_ignore, i) {
-			pkg_addshlib_provided_ignore(pkg, orig->shlibs_provided_ignore.d[i]);
-		}
-		vec_foreach(orig->shlibs_required_ignore, i) {
-			pkg_addshlib_required_ignore(pkg, orig->shlibs_required_ignore.d[i]);
-		}
-	} else {
-		free(name);
-		name = NULL;
+	if (pkg == NULL && (pkg = backup_pkg_new(db, orig, libname)) == NULL) {
+		free(sum);
+		return (EPKG_FATAL);
 	}
 	/* Remove any existing file entry for this library.  Match
 	 * by the trailing library name rather than the full key. */
