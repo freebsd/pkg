@@ -51,9 +51,14 @@
 static int load_metadata(struct pkg *pkg, const char *metadata, const char *plist,
     const char *rootdir);
 static void fixup_abi(struct pkg *pkg, const char *rootdir, bool testing);
-static void counter_init(const char *what, int64_t max);
-static void counter_count(void);
-static void counter_end(void);
+struct create_progress {
+	int64_t count;
+	int64_t maxcount;
+};
+
+static void counter_init(struct create_progress *, const char *, int64_t);
+static void counter_count(struct create_progress *);
+static void counter_end(struct create_progress *);
 
 extern struct pkg_ctx ctx;
 
@@ -79,12 +84,13 @@ create_checksums(struct pkg *pkg, const char *root, const char *relocation,
 	struct stat	 st;
 	int64_t		 flatsize = 0;
 	hardlinks_t	 hardlinks = vec_init();
+	struct create_progress counter;
 	ssize_t		 linklen;
 
 	/*
 	 * Get / compute size / checksum if not provided in the manifest
 	 */
-	counter_init("file sizes/checksums", pkg->files.len);
+	counter_init(&counter, "file sizes/checksums", pkg->files.len);
 
 	while (pkg_files(pkg, &file) == EPKG_OK) {
 		if (stage_path(fpath, sizeof(fpath), root, relocation,
@@ -146,11 +152,11 @@ create_checksums(struct pkg *pkg, const char *root, const char *relocation,
 			}
 		}
 
-		counter_count();
+		counter_count(&counter);
 	}
 	vec_free_and_free(&hardlinks, free);
 
-	counter_end();
+	counter_end(&counter);
 	*flatsizep = flatsize;
 
 	return (EPKG_OK);
@@ -218,9 +224,10 @@ pack_files(struct pkg *pkg, const char *root, const char *relocation,
 {
 	char		 fpath[MAXPATHLEN];
 	struct pkg_file	*file = NULL;
+	struct create_progress counter;
 	int		 ret;
 
-	counter_init("packing files", pkg->files.len);
+	counter_init(&counter, "packing files", pkg->files.len);
 
 	while (pkg_files(pkg, &file) == EPKG_OK) {
 		char dpath[MAXPATHLEN];
@@ -244,10 +251,10 @@ pack_files(struct pkg *pkg, const char *root, const char *relocation,
 		    file->uname, file->gname, file->perm, file->fflags);
 		if (ret != EPKG_OK)
 			return (ret);
-		counter_count();
+		counter_count(&counter);
 	}
 
-	counter_end();
+	counter_end(&counter);
 
 	return (EPKG_OK);
 }
@@ -258,9 +265,10 @@ pack_dirs(struct pkg *pkg, const char *root, const char *relocation,
 {
 	char		 fpath[MAXPATHLEN];
 	struct pkg_dir	*dir = NULL;
+	struct create_progress counter;
 	int		 ret;
 
-	counter_init("packing directories", pkg->dirs.len);
+	counter_init(&counter, "packing directories", pkg->dirs.len);
 
 	while (pkg_dirs(pkg, &dir) == EPKG_OK) {
 		if (stage_path(fpath, sizeof(fpath), root, relocation,
@@ -271,10 +279,10 @@ pack_dirs(struct pkg *pkg, const char *root, const char *relocation,
 		    dir->uname, dir->gname, dir->perm, dir->fflags);
 		if (ret != EPKG_OK)
 			return (ret);
-		counter_count();
+		counter_count(&counter);
 	}
 
-	counter_end();
+	counter_end(&counter);
 
 	return (EPKG_OK);
 }
@@ -682,10 +690,6 @@ pkg_load_metadata(struct pkg *pkg, const char *mfile, const char *md_dir,
 	return (ret);
 }
 
-static int64_t	count;
-static int64_t  maxcount;
-static const char *what;
-
 static int magnitude(int64_t num)
 {
 	int oom;
@@ -702,31 +706,30 @@ static int magnitude(int64_t num)
 }
 
 static void
-counter_init(const char *count_what, int64_t max)
+counter_init(struct create_progress *p, const char *count_what, int64_t max)
 {
-	count = 0;
-	what = count_what;
-	maxcount = max;
-	pkg_emit_progress_start("%-20s%*s[%jd]", what,
-	    6 - magnitude(maxcount), " ", (intmax_t)maxcount);
+	p->count = 0;
+	p->maxcount = max;
+	pkg_emit_progress_start("%-20s%*s[%jd]", count_what,
+	    6 - magnitude(p->maxcount), " ", (intmax_t)p->maxcount);
 
 	return;
 }
 
 static void
-counter_count(void)
+counter_count(struct create_progress *p)
 {
-	count++;
+	p->count++;
 
-	if (count % TICK == 0)
-		pkg_emit_progress_tick(count, maxcount);
+	if (p->count % TICK == 0)
+		pkg_emit_progress_tick(p->count, p->maxcount);
 
 	return;
 }
 
 static void
-counter_end(void)
+counter_end(struct create_progress *p)
 {
-	pkg_emit_progress_tick(count, maxcount);
+	pkg_emit_progress_tick(p->count, p->maxcount);
 	return;
 }
