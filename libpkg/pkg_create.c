@@ -297,30 +297,6 @@ pkg_create_archive(struct pkg *pkg, struct pkg_create *pc, unsigned required_fla
 	return pkg_archive;
 }
 
-static const char * const scripts[] = {
-	"+INSTALL",
-	"+PRE_INSTALL",
-	"+POST_INSTALL",
-	"+DEINSTALL",
-	"+PRE_DEINSTALL",
-	"+POST_DEINSTALL",
-	"pkg-install",
-	"pkg-pre-install",
-	"pkg-post-install",
-	"pkg-deinstall",
-	"pkg-pre-deinstall",
-	"pkg-post-deinstall",
-	NULL
-};
-
-static const char * const lua_scripts[] = {
-	"pkg-pre-install.lua",
-	"pkg-post-install.lua",
-	"pkg-pre-deinstall.lua",
-	"pkg-post-deinstall.lua",
-	NULL
-};
-
 struct pkg_create *
 pkg_create_new(void)
 {
@@ -582,14 +558,16 @@ load_metadata(struct pkg *pkg, const char *metadata, const char *plist,
 	if (pkg->desc == NULL)
 		pkg_set_from_fileat(fd, pkg, PKG_ATTR_DESC, "+DESC", false);
 
-	for (i = 0; scripts[i] != NULL; i++) {
-		if (faccessat(fd, scripts[i], F_OK, 0) == 0)
-			pkg_addscript_fileat(fd, pkg, scripts[i]);
+	for (i = 0; pkg_script_files[i].name != NULL; i++) {
+		if (faccessat(fd, pkg_script_files[i].name, F_OK, 0) == 0)
+			pkg_addscript_fileat(fd, pkg,
+			    pkg_script_files[i].name);
 	}
 
-	for (i = 0; lua_scripts[i] != NULL; i++) {
-		if (faccessat(fd, lua_scripts[i], F_OK, 0) == 0)
-			pkg_addluascript_fileat(fd, pkg, lua_scripts[i]);
+	for (i = 0; pkg_lua_script_files[i].name != NULL; i++) {
+		if (faccessat(fd, pkg_lua_script_files[i].name, F_OK, 0) == 0)
+			pkg_addluascript_fileat(fd, pkg,
+			    pkg_lua_script_files[i].name);
 	}
 
 	if (plist != NULL && ports_parse_plist(pkg, plist, rootdir) != EPKG_OK) {

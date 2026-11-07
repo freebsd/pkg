@@ -920,6 +920,19 @@ void free_file_attr(struct file_attr *a);
 
 int pkg_add_lua_script(struct pkg *pkg, const char *data, pkg_lua_script type);
 int pkg_addscript(struct pkg *pkg, const char *data, pkg_script type);
+
+struct pkg_script_file {
+	const char *name;
+	pkg_script type;
+};
+
+struct pkg_lua_script_file {
+	const char *name;
+	pkg_lua_script type;
+};
+
+extern const struct pkg_script_file pkg_script_files[];
+extern const struct pkg_lua_script_file pkg_lua_script_files[];
 int pkg_addfile(struct pkg *pkg, const char *path, const char *sha256,
     bool check_duplicates);
 int pkg_addfile_attr(struct pkg *pkg, const char *path, const char *sha256,

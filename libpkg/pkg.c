@@ -749,6 +749,7 @@ pkg_addluascript_fileat(int fd, struct pkg *pkg, const char *filename)
 	pkg_lua_script type;
 	int ret = EPKG_OK;
 	off_t sz = 0;
+	size_t i;
 
 	assert(pkg != NULL);
 	assert(filename != NULL);
@@ -758,25 +759,46 @@ pkg_addluascript_fileat(int fd, struct pkg *pkg, const char *filename)
 	if ((ret = file_to_bufferat(fd, filename, &data, &sz)) != EPKG_OK)
 		return (ret);
 
-	if (STREQ(filename, "pkg-pre-install.lua")) {
-		type = PKG_LUA_PRE_INSTALL;
-	} else if (STREQ(filename, "pkg-post-install.lua")) {
-		type = PKG_LUA_POST_INSTALL;
-	} else if (STREQ(filename, "pkg-pre-deinstall.lua")) {
-		type = PKG_LUA_PRE_DEINSTALL;
-	} else if (STREQ(filename, "pkg-post-deinstall.lua")) {
-		type = PKG_LUA_POST_DEINSTALL;
-	} else {
+	for (i = 0; pkg_lua_script_files[i].name != NULL; i++) {
+		if (STREQ(filename, pkg_lua_script_files[i].name))
+			break;
+	}
+	if (pkg_lua_script_files[i].name == NULL) {
 		pkg_emit_error("unknown lua script '%s'", filename);
 		ret = EPKG_FATAL;
 		goto cleanup;
 	}
+	type = pkg_lua_script_files[i].type;
 
 	ret = pkg_add_lua_script(pkg, data, type);
 cleanup:
 	free(data);
 	return (ret);
 }
+
+const struct pkg_script_file pkg_script_files[] = {
+	{ "+INSTALL", PKG_SCRIPT_INSTALL },
+	{ "+PRE_INSTALL", PKG_SCRIPT_PRE_INSTALL },
+	{ "+POST_INSTALL", PKG_SCRIPT_POST_INSTALL },
+	{ "+DEINSTALL", PKG_SCRIPT_DEINSTALL },
+	{ "+PRE_DEINSTALL", PKG_SCRIPT_PRE_DEINSTALL },
+	{ "+POST_DEINSTALL", PKG_SCRIPT_POST_DEINSTALL },
+	{ "pkg-install", PKG_SCRIPT_INSTALL },
+	{ "pkg-pre-install", PKG_SCRIPT_PRE_INSTALL },
+	{ "pkg-post-install", PKG_SCRIPT_POST_INSTALL },
+	{ "pkg-deinstall", PKG_SCRIPT_DEINSTALL },
+	{ "pkg-pre-deinstall", PKG_SCRIPT_PRE_DEINSTALL },
+	{ "pkg-post-deinstall", PKG_SCRIPT_POST_DEINSTALL },
+	{ NULL, PKG_SCRIPT_UNKNOWN },
+};
+
+const struct pkg_lua_script_file pkg_lua_script_files[] = {
+	{ "pkg-pre-install.lua", PKG_LUA_PRE_INSTALL },
+	{ "pkg-post-install.lua", PKG_LUA_POST_INSTALL },
+	{ "pkg-pre-deinstall.lua", PKG_LUA_PRE_DEINSTALL },
+	{ "pkg-post-deinstall.lua", PKG_LUA_POST_DEINSTALL },
+	{ NULL, PKG_LUA_UNKNOWN },
+};
 
 int
 pkg_addscript_fileat(int fd, struct pkg *pkg, const char *filename)
@@ -785,6 +807,7 @@ pkg_addscript_fileat(int fd, struct pkg *pkg, const char *filename)
 	pkg_script type;
 	int ret = EPKG_OK;
 	off_t sz = 0;
+	size_t i;
 
 	assert(pkg != NULL);
 	assert(filename != NULL);
@@ -794,29 +817,16 @@ pkg_addscript_fileat(int fd, struct pkg *pkg, const char *filename)
 	if ((ret = file_to_bufferat(fd, filename, &data, &sz)) != EPKG_OK)
 		return (ret);
 
-	if (STREQ(filename, "pkg-pre-install") ||
-			STREQ(filename, "+PRE_INSTALL")) {
-		type = PKG_SCRIPT_PRE_INSTALL;
-	} else if (STREQ(filename, "pkg-post-install") ||
-			STREQ(filename, "+POST_INSTALL")) {
-		type = PKG_SCRIPT_POST_INSTALL;
-	} else if (STREQ(filename, "pkg-install") ||
-			STREQ(filename, "+INSTALL")) {
-		type = PKG_SCRIPT_INSTALL;
-	} else if (STREQ(filename, "pkg-pre-deinstall") ||
-			STREQ(filename, "+PRE_DEINSTALL")) {
-		type = PKG_SCRIPT_PRE_DEINSTALL;
-	} else if (STREQ(filename, "pkg-post-deinstall") ||
-			STREQ(filename, "+POST_DEINSTALL")) {
-		type = PKG_SCRIPT_POST_DEINSTALL;
-	} else if (STREQ(filename, "pkg-deinstall") ||
-			STREQ(filename, "+DEINSTALL")) {
-		type = PKG_SCRIPT_DEINSTALL;
-	} else {
+	for (i = 0; pkg_script_files[i].name != NULL; i++) {
+		if (STREQ(filename, pkg_script_files[i].name))
+			break;
+	}
+	if (pkg_script_files[i].name == NULL) {
 		pkg_emit_error("unknown script '%s'", filename);
 		ret = EPKG_FATAL;
 		goto cleanup;
 	}
+	type = pkg_script_files[i].type;
 
 	ret = pkg_addscript(pkg, data, type);
 cleanup:
