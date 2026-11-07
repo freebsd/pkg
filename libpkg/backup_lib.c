@@ -165,13 +165,9 @@ backup_library(struct pkgdb *db, struct pkg *p, const char *path)
 		return;
 	}
 
-	if (mkdirat(p->rootfd, RELATIVE_PATH(bkpath), 0755) == -1) {
-		if (!mkdirat_p(p->rootfd, RELATIVE_PATH(bkpath))) {
-			pkg_emit_errno("Unable to create the library backup "
-			    "directory", bkpath);
-			close(from);
-			return;
-		}
+	if (!mkdirat_p(p->rootfd, RELATIVE_PATH(bkpath))) {
+		close(from);
+		return;
 	}
 	backupdir = openat(p->rootfd, RELATIVE_PATH(bkpath),
 	    O_DIRECTORY);
@@ -205,8 +201,10 @@ backup_library(struct pkgdb *db, struct pkg *p, const char *path)
 		goto out;
 	}
 
-	if (!pkg_copy_file(from, to))
+	if (!pkg_copy_file(from, to)) {
+		pkg_emit_errno("Unable to copy the library to backup", libname);
 		goto out;
+	}
 	if (close(to) < 0) {
 		to = -1;
 		goto out;
