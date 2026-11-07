@@ -440,17 +440,12 @@ hash_file(struct pkg *pkg)
 	return (EPKG_OK);
 }
 
-int
-pkg_create_i(struct pkg_create *pc, struct pkg *pkg, bool hash)
+static int
+pkg_create_common(struct pkg_create *pc, struct pkg *pkg, const char *rootdir,
+    bool trust_filesystem, unsigned required_flags, bool hash)
 {
-	struct packing *pkg_archive = NULL;
+	struct packing *pkg_archive;
 	int ret;
-
-	unsigned required_flags = PKG_LOAD_DEPS | PKG_LOAD_FILES |
-		PKG_LOAD_CATEGORIES | PKG_LOAD_DIRS | PKG_LOAD_SCRIPTS |
-		PKG_LOAD_OPTIONS | PKG_LOAD_LICENSES | PKG_LOAD_LUA_SCRIPTS;
-
-	assert(pkg->type == PKG_INSTALLED || pkg->type == PKG_OLD_FILE);
 
 	pkg_archive = pkg_create_archive(pkg, pc, required_flags);
 	if (pkg_archive == NULL) {
@@ -460,7 +455,8 @@ pkg_create_i(struct pkg_create *pc, struct pkg *pkg, bool hash)
 		return (EPKG_FATAL);
 	}
 
-	if ((ret = pkg_create_from_dir(pkg, NULL, pc, pkg_archive, false)) != EPKG_OK) {
+	if ((ret = pkg_create_from_dir(pkg, rootdir, pc, pkg_archive,
+	    trust_filesystem)) != EPKG_OK) {
 		pkg_emit_error("package creation failed");
 		unlink(pkg_archive->path);
 	}
@@ -473,11 +469,22 @@ pkg_create_i(struct pkg_create *pc, struct pkg *pkg, bool hash)
 }
 
 int
+pkg_create_i(struct pkg_create *pc, struct pkg *pkg, bool hash)
+{
+	unsigned required_flags = PKG_LOAD_DEPS | PKG_LOAD_FILES |
+		PKG_LOAD_CATEGORIES | PKG_LOAD_DIRS | PKG_LOAD_SCRIPTS |
+		PKG_LOAD_OPTIONS | PKG_LOAD_LICENSES | PKG_LOAD_LUA_SCRIPTS;
+
+	assert(pkg->type == PKG_INSTALLED || pkg->type == PKG_OLD_FILE);
+
+	return (pkg_create_common(pc, pkg, NULL, false, required_flags, hash));
+}
+
+int
 pkg_create(struct pkg_create *pc, const char *metadata, const char *plist,
     bool hash)
 {
 	struct pkg *pkg = NULL;
-	struct packing *pkg_archive = NULL;
 	int ret = EPKG_FATAL;
 
 	pkg_debug(1, "Creating package");
@@ -491,24 +498,10 @@ pkg_create(struct pkg_create *pc, const char *metadata, const char *plist,
 	}
 	fixup_abi(pkg, pc->rootdir, false);
 
-	pkg_archive = pkg_create_archive(pkg, pc, 0);
-	if (pkg_archive == NULL) {
-		if (errno == EEXIST) {
-			pkg_emit_notice("%s-%s already packaged, skipping...\n",
-			    pkg->name, pkg->version);
-			pkg_free(pkg);
-			return (EPKG_EXIST);
-		}
-		pkg_free(pkg);
-		return (EPKG_FATAL);
-	}
-
-	if ((ret = pkg_create_from_dir(pkg, pc->rootdir, pc, pkg_archive, true)) != EPKG_OK)
-		pkg_emit_error("package creation failed");
-
-	packing_finish(pkg_archive);
-	if (hash && ret == EPKG_OK)
-		ret = hash_file(pkg);
+	ret = pkg_create_common(pc, pkg, pc->rootdir, true, 0, hash);
+	if (ret == EPKG_EXIST)
+		pkg_emit_notice("%s-%s already packaged, skipping...\n",
+		    pkg->name, pkg->version);
 
 	pkg_free(pkg);
 	return (ret);
