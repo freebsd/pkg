@@ -62,8 +62,10 @@ register_backup(struct pkgdb *db, struct pkg *orig, int fd, const char *libname)
 
 	sum = pkg_checksum_generate_fileat(fd, RELATIVE_PATH(libname),
 	    PKG_HASH_TYPE_BLAKE2_BASE32);
+	if (sum == NULL)
+		return (EPKG_FATAL);
 
-	(void)xasprintf(&name, "%s-backup-%s", orig->name, libname);
+	xasprintf(&name, "%s-backup-%s", orig->name, libname);
 
 	it = pkgdb_query(db, name, MATCH_EXACT);
 	if (it != NULL) {
@@ -117,7 +119,13 @@ register_backup(struct pkgdb *db, struct pkg *orig, int fd, const char *libname)
 		}
 	}
 	xasprintf(&lpath, "%s/%s", backup_library_relative_path(), libname);
-	pkg_addfile(pkg, lpath, sum, false);
+	if (pkg_addfile(pkg, lpath, sum, false) != EPKG_OK) {
+		pkg_emit_error("Unable to register the backup of %s", libname);
+		free(lpath);
+		free(sum);
+		pkg_free(pkg);
+		return (EPKG_FATAL);
+	}
 	free(lpath);
 	free(sum);
 
