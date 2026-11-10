@@ -57,6 +57,37 @@
 #define NOCHANGESFLAGS	(UF_IMMUTABLE | UF_APPEND | SF_IMMUTABLE | SF_APPEND)
 #endif
 
+/*
+ * Run the pre or post deinstall scripts and the per-package triggers of the
+ * matching phase.  A failure is only fatal when the caller asked for it
+ * (developer mode or noexec) as the removal itself can still go on.
+ */
+static int
+pkg_delete_scripts(struct pkg *pkg, pkg_lua_script lua, pkg_script shell,
+    trigger_phase_t phase, int flags)
+{
+	bool	 noexec;
+	int	 ret;
+
+	noexec = ((flags & PKG_DELETE_NOEXEC) == PKG_DELETE_NOEXEC);
+
+	if (pkg_open_root_fd(pkg) != EPKG_OK)
+		return (EPKG_FATAL);
+
+	ret = pkg_lua_script_run(pkg, lua, false);
+	if (ret != EPKG_OK && ctx.developer_mode)
+		return (ret);
+
+	ret = pkg_script_run(pkg, shell, false, noexec);
+	if (ret != EPKG_OK && (ctx.developer_mode || noexec))
+		return (ret);
+
+	triggers_execute_perpackage(pkg, phase,
+	    (flags & PKG_DELETE_UPGRADE) != 0);
+
+	return (EPKG_OK);
+}
+
 int
 pkg_delete(struct pkg *pkg, struct pkg *rpkg, struct pkgdb *db, int flags,
     struct triggers *t, struct deferred_rc *rc)
@@ -95,22 +126,11 @@ pkg_delete(struct pkg *pkg, struct pkg *rpkg, struct pkgdb *db, int flags,
 			pkg_start_stop_rc_scripts(pkg, PKG_RC_ATTR_STOP);
 	}
 
-	if ((flags & PKG_DELETE_NOSCRIPT) == 0) {
-		bool noexec = ((flags & PKG_DELETE_NOEXEC) == PKG_DELETE_NOEXEC);
-		if (pkg_open_root_fd(pkg) != EPKG_OK)
-			return (EPKG_FATAL);
-		ret = pkg_lua_script_run(pkg, PKG_LUA_PRE_DEINSTALL, false);
-		if (ret != EPKG_OK && ctx.developer_mode)
-			return (ret);
-		ret = pkg_script_run(pkg, PKG_SCRIPT_PRE_DEINSTALL, false, noexec);
-		if (ret != EPKG_OK && (ctx.developer_mode || noexec))
-			return (ret);
-		/*
-		 * Execute per-package pre-deinstall triggers
-		 */
-		triggers_execute_perpackage(pkg, TRIGGER_PHASE_PRE_DEINSTALL,
-		    (flags & PKG_DELETE_UPGRADE) != 0);
-	}
+	if ((flags & PKG_DELETE_NOSCRIPT) == 0 &&
+	    pkg_delete_scripts(pkg, PKG_LUA_PRE_DEINSTALL,
+	    PKG_SCRIPT_PRE_DEINSTALL, TRIGGER_PHASE_PRE_DEINSTALL,
+	    flags) != EPKG_OK)
+		return (EPKG_FATAL);
 
 	if ((flags & PKG_DELETE_KEEPFILES) == 0) {
 		ret = pkg_delete_files(db, pkg, rpkg, flags, t);
@@ -120,18 +140,11 @@ pkg_delete(struct pkg *pkg, struct pkg *rpkg, struct pkgdb *db, int flags,
 			return (ret);
 	}
 
-	if ((flags & PKG_DELETE_NOSCRIPT) == 0) {
-		bool noexec = ((flags & PKG_DELETE_NOEXEC) == PKG_DELETE_NOEXEC);
-		pkg_lua_script_run(pkg, PKG_LUA_POST_DEINSTALL, false);
-		ret = pkg_script_run(pkg, PKG_SCRIPT_POST_DEINSTALL, false, noexec);
-		if (ret != EPKG_OK && (ctx.developer_mode || noexec))
-			return (ret);
-		/*
-		 * Execute per-package post-deinstall triggers
-		 */
-		triggers_execute_perpackage(pkg, TRIGGER_PHASE_POST_DEINSTALL,
-		    (flags & PKG_DELETE_UPGRADE) != 0);
-	}
+	if ((flags & PKG_DELETE_NOSCRIPT) == 0 &&
+	    pkg_delete_scripts(pkg, PKG_LUA_POST_DEINSTALL,
+	    PKG_SCRIPT_POST_DEINSTALL, TRIGGER_PHASE_POST_DEINSTALL,
+	    flags) != EPKG_OK)
+		return (EPKG_FATAL);
 
 	if ((flags & PKG_DELETE_KEEPFILES) == 0) {
 		ret = pkg_delete_dirs(db, pkg, NULL);
