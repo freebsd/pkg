@@ -46,6 +46,7 @@ ATF_TC_WITHOUT_HEAD(safe_relative_path);
 ATF_TC_WITHOUT_HEAD(abi_from_string);
 ATF_TC_WITHOUT_HEAD(resolve_beneath);
 ATF_TC_WITHOUT_HEAD(tokenize_count);
+ATF_TC_WITHOUT_HEAD(absolutepath);
 
 ATF_TC_BODY(hidden_tempfile, tc) {
 	const char *filename = "plop";
@@ -374,6 +375,38 @@ ATF_TC_BODY(tokenize_count, tc) {
 	}
 }
 
+ATF_TC_BODY(absolutepath, tc)
+{
+	char path[MAXPATHLEN];
+
+	/* a relative path is rooted with a single separator */
+	ATF_REQUIRE(pkg_absolutepath("usr/local/plop", path, sizeof(path),
+	    true) != NULL);
+	ATF_REQUIRE_STREQ(path, "/usr/local/plop");
+
+	/* an absolute path is left alone */
+	ATF_REQUIRE(pkg_absolutepath("/usr/local/plop", path, sizeof(path),
+	    true) != NULL);
+	ATF_REQUIRE_STREQ(path, "/usr/local/plop");
+
+	/* a trailing separator is not doubled */
+	ATF_REQUIRE(pkg_absolutepath("usr/local/plop/", path, sizeof(path),
+	    true) != NULL);
+	ATF_REQUIRE_STREQ(path, "/usr/local/plop");
+
+	/* the parents are collapsed */
+	ATF_REQUIRE(pkg_absolutepath("usr/local/../share/./plop", path,
+	    sizeof(path), true) != NULL);
+	ATF_REQUIRE_STREQ(path, "/usr/share/plop");
+
+	/* an empty path is the root */
+	ATF_REQUIRE(pkg_absolutepath("", path, sizeof(path), true) != NULL);
+	ATF_REQUIRE_STREQ(path, "/");
+
+	/* a path which does not fit is refused */
+	ATF_REQUIRE(pkg_absolutepath("usr/local/plop", path, 5, true) == NULL);
+}
+
 ATF_TP_ADD_TCS(tp)
 {
 	ATF_TP_ADD_TC(tp, hidden_tempfile);
@@ -388,6 +421,7 @@ ATF_TP_ADD_TCS(tp)
 	ATF_TP_ADD_TC(tp, abi_from_string);
 	ATF_TP_ADD_TC(tp, resolve_beneath);
 	ATF_TP_ADD_TC(tp, tokenize_count);
+	ATF_TP_ADD_TC(tp, absolutepath);
 
 	return (atf_no_error());
 }

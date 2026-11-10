@@ -871,9 +871,15 @@ pkg_absolutepath(const char *src, char *dest, size_t dest_size, bool fromroot) {
 			continue;
 		}
 
-		if (dest_len + 1 + cur_len >= dest_size)
-			return (NULL);
-		dest[dest_len++] = '/';
+		/* a relative path already starts with its separator */
+		if (dest_len > 0 && dest[dest_len - 1] == '/') {
+			if (dest_len + cur_len >= dest_size)
+				return (NULL);
+		} else {
+			if (dest_len + 1 + cur_len >= dest_size)
+				return (NULL);
+			dest[dest_len++] = '/';
+		}
 		(void)memcpy(dest + dest_len, cur, cur_len);
 		dest_len += cur_len;
 		dest[dest_len] = '\0';
