@@ -1324,6 +1324,24 @@ select_provider_from_dir(const char *dirpath, const char *ext)
 	return (result);
 }
 
+/*
+ * Report the packages of the current installation chain which lead back
+ * to name.
+ */
+static void
+pkg_add_emit_cycle(const charv_t *in_progress, const char *name)
+{
+	sb_t chain = sb_init();
+
+	vec_foreach(*in_progress, i) {
+		sb_cat(&chain, in_progress->d[i]);
+		sb_cat(&chain, " -> ");
+	}
+	sb_cat(&chain, name);
+	pkg_emit_error("dependency cycle detected: %s", sb_str(&chain));
+	sb_fini(&chain);
+}
+
 static int
 pkg_add_check_pkg_archive(struct pkgdb *db, struct pkg *pkg,
 	const char *path, int flags, const char *location,
@@ -1704,7 +1722,7 @@ pkg_add_common(struct pkgdb *db, const char *path, int fd, unsigned flags,
 		pkgs_in_progress = &local_in_progress;
 	vec_foreach(*pkgs_in_progress, i) {
 		if (STREQ(pkgs_in_progress->d[i], pkg->name)) {
-			pkg_emit_error("dependency cycle detected");
+			pkg_add_emit_cycle(pkgs_in_progress, pkg->name);
 			retcode = EPKG_FATAL;
 			goto cleanup;
 		}
