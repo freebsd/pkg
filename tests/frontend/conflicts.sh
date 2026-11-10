@@ -141,7 +141,7 @@ Checking integrity... done (0 conflicting)
 The following 3 package(s) will be affected (of 0 checked):
 
 New packages to be INSTALLED:
-	bar1: 1.1
+	bar1: 1.1 (required by foo)
 
 Installed packages to be UPGRADED:
 	foo: 1.0 -> 1.0_1
@@ -343,7 +343,7 @@ The following 5 package(s) will be affected (of 0 checked):
 
 New packages to be INSTALLED:
 	arp: 1.0_1
-	bar1: 1.1
+	bar1: 1.1 (required by arp, foo)
 
 Installed packages to be UPGRADED:
 	foo: 1.0 -> 1.0_1
@@ -580,7 +580,7 @@ Checking integrity... done (0 conflicting)
 The following 3 package(s) will be affected (of 0 checked):
 
 New packages to be INSTALLED:
-	testa-lib: 2.0
+	testa-lib: 2.0 (required by testb)
 
 Installed packages to be UPGRADED:
 	testa: 2.0 -> 2.1
@@ -701,7 +701,7 @@ Checking integrity... done (0 conflicting)
 The following 3 package(s) will be affected (of 0 checked):
 
 New packages to be INSTALLED:
-	testa-lib: 2.0
+	testa-lib: 2.0 (required by testb)
 
 Installed packages to be UPGRADED:
 	testa: 2.0 -> 2.1

@@ -22,6 +22,7 @@ tests_init \
 	symlink_to_dir_upgrade \
 	newpkgversion_two_repos \
 	multirepo_no_unrequested \
+	new_dep_explained \
 	upgrade_disabled_repo \
 	upgrade_all_disabled_repos \
 	upgrade_vulnerable \
@@ -357,7 +358,7 @@ local: {
 EOF
 
 	atf_check \
-		-o match:"^[[:space:]]+pkg_b: 1_1$" \
+		-o match:"^[[:space:]]+pkg_b: 1_1 \\(required by pkg_a\\)$" \
 		-e ignore \
 		-s exit:0 \
 		pkg -o REPOS_DIR="$TMPDIR/repoconf" -o PKG_CACHEDIR="$TMPDIR" upgrade -yx '^pkg_'
@@ -1032,6 +1033,69 @@ EOF
 		-e empty \
 		-s exit:0 \
 		pkg -C ./pkg.conf upgrade -y
+}
+
+new_dep_explained_body()
+{
+	atf_check -s exit:0 sh ${RESOURCEDIR}/test_subr.sh new_pkg "testa" "testa" "1.0"
+	atf_check pkg create -M testa.ucl -o ./repo
+
+	atf_check -s exit:0 sh ${RESOURCEDIR}/test_subr.sh new_pkg "testb" "testb" "1.0"
+	atf_check pkg create -M testb.ucl -o ./repo
+
+	cat << EOF > pkg.conf
+PKG_DBDIR=${TMPDIR}
+REPOS_DIR=[]
+repositories: {
+	local: { url : file://${TMPDIR}/repo }
+}
+EOF
+	atf_check \
+		-o inline:"Creating repository in ./repo:  done\nPacking files for repository:  done\n" \
+		-e empty \
+		-s exit:0 \
+		pkg -C ./pkg.conf repo ./repo
+
+	atf_check \
+		-o ignore \
+		-s exit:0 \
+		pkg -C ./pkg.conf update -f
+
+	atf_check \
+		pkg -C ./pkg.conf install -qy testb
+
+	rm -r ./repo
+
+	atf_check pkg create -M testa.ucl -o ./repo
+
+	atf_check -s exit:0 sh ${RESOURCEDIR}/test_subr.sh new_pkg "testb" "testb" "2.0"
+	cat << EOF >> testb.ucl
+deps: {
+	testa: {
+		origin: "testa",
+	}
+}
+EOF
+	atf_check pkg create -M testb.ucl -o ./repo
+
+	atf_check \
+		-o inline:"Creating repository in ./repo:  done\nPacking files for repository:  done\n" \
+		-e empty \
+		-s exit:0 \
+		pkg -C ./pkg.conf repo ./repo
+
+	atf_check \
+		-o ignore \
+		-s exit:0 \
+		pkg -C ./pkg.conf update -f
+
+	# the upgrade brings a new dependency in, the summary says which
+	# package requires it
+	atf_check \
+		-o match:"testa: 1.0 \\(required by testb\\)" \
+		-e empty \
+		-s exit:0 \
+		pkg -C ./pkg.conf upgrade -n -y
 }
 
 multirepo_no_unrequested_body()

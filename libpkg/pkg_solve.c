@@ -1867,6 +1867,97 @@ pkg_solve_insert_res_job (solve_var_slice_t *slice,
 	}
 }
 
+/*
+ * Does the package dependent need the package provider, by name, by
+ * provides/requires or by shared library?
+ */
+static bool
+pkg_solve_pkg_needs(struct pkg *dependent, struct pkg *provider)
+{
+	vec_foreach(dependent->depends, i) {
+		if (STREQ(dependent->depends.d[i].uid, provider->uid))
+			return (true);
+	}
+
+	vec_foreach(dependent->requires, i) {
+		if (charv_search(&provider->provides,
+		    dependent->requires.d[i]) != NULL)
+			return (true);
+	}
+
+	vec_foreach(dependent->shlibs_required, i) {
+		if (charv_search(&provider->shlibs_provided,
+		    dependent->shlibs_required.d[i]) != NULL)
+			return (true);
+	}
+
+	return (false);
+}
+
+static int
+pkg_solve_name_cmp(const void *a, const void *b)
+{
+	return (strcmp(*(const char * const *)a, *(const char * const *)b));
+}
+
+/*
+ * Record which packages bring a package which was not requested in, so
+ * that the summary can tell why it is installed.
+ */
+static void
+pkg_solve_explain_installs(struct pkg_solve_problem *problem)
+{
+	struct pkg_solved *res;
+	struct pkg *pkg;
+	solve_var_slice_t *slice;
+	charv_t dependents = vec_init();
+	sb_t why = sb_init();
+
+	vec_foreach(problem->j->jobs, i) {
+		res = problem->j->jobs.d[i];
+		if (res->type != PKG_SOLVED_INSTALL)
+			continue;
+		pkg = res->items[0]->pkg;
+		if (hash_get(problem->j->request_add, pkg->uid) != NULL)
+			continue;
+
+		vec_free(&dependents);
+		hash_foreach(problem->variables_by_uid, it) {
+			slice = it.value;
+			for (size_t vi = 0; vi < slice->count; vi++) {
+				struct pkg *dependent;
+
+				dependent = slice->begin[vi].unit->pkg;
+				if (!(slice->begin[vi].flags & PKG_VAR_INSTALL))
+					continue;
+				if (dependent == pkg ||
+				    !pkg_solve_pkg_needs(dependent, pkg))
+					continue;
+				vec_push(&dependents, dependent->name);
+			}
+		}
+
+		if (dependents.len == 0)
+			continue;
+
+		qsort(dependents.d, dependents.len, sizeof(char *),
+		    pkg_solve_name_cmp);
+
+		sb_reset(&why);
+		vec_foreach(dependents, j) {
+			if (j > 0)
+				sb_cat(&why, ", ");
+			sb_cat(&why, dependents.d[j]);
+		}
+
+		free(pkg->reason);
+		xasprintf(&pkg->reason, "required by %s", sb_str(&why));
+	}
+
+	sb_fini(&why);
+	vec_free(&dependents);
+}
+
 int
 pkg_solve_sat_to_jobs(struct pkg_solve_problem *problem)
 {
@@ -1876,6 +1967,8 @@ pkg_solve_sat_to_jobs(struct pkg_solve_problem *problem)
 		dbg(4, "check variable with uid %s", slice->begin[0].uid);
 		pkg_solve_insert_res_job(slice, problem);
 	}
+
+	pkg_solve_explain_installs(problem);
 
 	return (EPKG_OK);
 }

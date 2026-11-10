@@ -957,9 +957,12 @@ display_summary_item(struct pkg_solved_display *it, int64_t dlsize)
 		putchar('\n');
 		break;
 	case PKG_DISPLAY_INSTALL:
+		pkg_get(it->new, PKG_ATTR_REASON, &why);
 		pkg_printf("\t%n: %v", it->new, it->new);
 		if (pkg_repos_total_count() > 1)
 			pkg_printf(" [%N]", it->new);
+		if (why != NULL)
+			printf(" (%s)", why);
 		if (it->vulnerable)
 			printf(" (vulnerable!)");
 		putchar('\n');

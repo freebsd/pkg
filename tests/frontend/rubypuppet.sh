@@ -268,7 +268,7 @@ Checking integrity... done (0 conflicting)
 The following 6 package(s) will be affected (of 0 checked):
 
 New packages to be INSTALLED:
-	ruby21-gems: 1.0
+	ruby21-gems: 1.0 (required by rubygem-hiera, rubygem-ruby-augeas)
 
 Installed packages to be UPGRADED:
 	ruby: 2.0 -> 2.1
