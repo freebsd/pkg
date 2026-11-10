@@ -566,10 +566,16 @@ pkg_addfile_attr(struct pkg *pkg, const char *path, const char *sum,
 	struct pkg_file f;
 	char abspath[MAXPATHLEN];
 
+	const char *origpath = path;
+
 	assert(pkg != NULL);
 	assert(path != NULL && path[0] != '\0');
 
 	path = pkg_absolutepath(path, abspath, sizeof(abspath), false);
+	if (path == NULL) {
+		pkg_emit_error("Path too long for a file: '%.64s'", origpath);
+		return (EPKG_FATAL);
+	}
 	dbg(3, "add new file '%s'", path);
 
 	memset(&f, 0, sizeof(f));
@@ -621,8 +627,15 @@ pkg_addconfig_file(struct pkg *pkg, const char *path, const char *content)
 {
 	struct pkg_config_file f;
 	char abspath[MAXPATHLEN];
+	const char *origpath;
 
+	origpath = path;
 	path = pkg_absolutepath(path, abspath, sizeof(abspath), false);
+	if (path == NULL) {
+		pkg_emit_error("Path too long for a configuration file: '%.64s'",
+		    origpath);
+		return (EPKG_FATAL);
+	}
 	dbg(3, "add new config file '%s'", path);
 
 	memset(&f, 0, sizeof(f));
@@ -675,6 +688,7 @@ pkg_adddir_attr(struct pkg *pkg, const char *path, const char *uname,
 {
 	struct pkg_dir d;
 	char abspath[MAXPATHLEN];
+	const char *origpath;
 
 	assert(pkg != NULL);
 	assert(path != NULL && path[0] != '\0');
@@ -683,7 +697,12 @@ pkg_adddir_attr(struct pkg *pkg, const char *path, const char *uname,
 		pkg_emit_error("skipping useless directory: '%s'\n", path);
 		return (EPKG_OK);
 	}
+	origpath = path;
 	path = pkg_absolutepath(path, abspath, sizeof(abspath), false);
+	if (path == NULL) {
+		pkg_emit_error("Path too long for a directory: '%.64s'", origpath);
+		return (EPKG_FATAL);
+	}
 	dbg(3, "add new directory '%s'", path);
 
 	memset(&d, 0, sizeof(d));

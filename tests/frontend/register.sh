@@ -4,11 +4,60 @@
 
 tests_init \
 	register_conflicts \
+	overlong_path \
 	register_message \
 	prefix_is_a_symlink \
 	file_not_found \
 	no_pkg_register \
 	failed_register_no_post_install
+
+overlong_path_body() {
+	# a manifest listing a path which does not fit in MAXPATHLEN must be
+	# reported, not crash the parser
+	pathmax=$(getconf PATH_MAX / 2>/dev/null || echo 4096)
+	long=$(awk -v n=$((pathmax + 100)) \
+	    'BEGIN { for (i = 0; i < n; i++) printf "a" }')
+
+	cat > overlong.ucl << EOF
+name: "overlong"
+origin: "test/overlong"
+version: "1"
+maintainer: "test"
+comment: "test"
+www: "http://test"
+prefix: /usr/local
+desc: "test"
+directories: {
+	"/usr/local/${long}": {}
+}
+EOF
+
+	atf_check \
+		-o ignore \
+		-e match:"Path too long for a directory" \
+		-s exit:0 \
+		pkg register -M overlong.ucl
+
+	cat > overlongfile.ucl << EOF
+name: "overlongfile"
+origin: "test/overlongfile"
+version: "1"
+maintainer: "test"
+comment: "test"
+www: "http://test"
+prefix: /usr/local
+desc: "test"
+files: {
+	"/usr/local/${long}": ""
+}
+EOF
+
+	atf_check \
+		-o ignore \
+		-e match:"Path too long for a file" \
+		-s exit:0 \
+		pkg register -M overlongfile.ucl
+}
 
 register_conflicts_body() {
 	mkdir -p teststage/${TMPDIR}
