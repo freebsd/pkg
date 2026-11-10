@@ -838,8 +838,11 @@ retry:
 static const char *
 rooted_path(int rootfd, const char *path, char *buf, size_t buflen)
 {
-	if (pkg_resolve_beneath(rootfd, path, buf, buflen) != EPKG_OK)
+	if (pkg_resolve_beneath(rootfd, path, buf, buflen) != EPKG_OK) {
+		pkg_emit_error("Unable to resolve %s inside %s", path,
+		    ctx.pkg_rootdir);
 		return (NULL);
+	}
 	return (buf);
 }
 
@@ -855,11 +858,8 @@ create_regfile(struct pkg_add_context *context, struct pkg_file *f, struct archi
 	struct tempdir *tmpdir = NULL;
 
 	rp = rooted_path(context->rootfd, f->path, rpath, sizeof(rpath));
-	if (rp == NULL) {
-		pkg_emit_error("Unable to resolve %s inside %s", f->path,
-		    ctx.pkg_rootdir);
+	if (rp == NULL)
 		return (EPKG_FATAL);
-	}
 
 	tmpdir = get_tempdir(context, f->path, tempdirs);
 	if (tmpdir == NULL && errno == 0) {
@@ -1121,11 +1121,8 @@ pkg_extract_finalize(struct pkg *pkg, tempdirs_t *tempdirs)
 		if (f->temppath == NULL)
 			continue;
 		fto = rooted_path(pkg->rootfd, f->path, rpath, sizeof(rpath));
-		if (fto == NULL) {
-			pkg_emit_error("Unable to resolve %s inside %s",
-			    f->path, ctx.pkg_rootdir);
+		if (fto == NULL)
 			return (EPKG_FATAL);
-		}
 		if (f->config && f->config->status == MERGE_FAILED &&
 		    f->previous != PKG_FILE_NONE) {
 			snprintf(path, sizeof(path), "%s.pkgnew", fto);
