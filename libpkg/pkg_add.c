@@ -486,11 +486,9 @@ create_dir(struct pkg_add_context *context, struct pkg_dir *d)
 	existed = fstatat(fd, RELATIVE_PATH(path), &st, 0) == 0 &&
 	    S_ISDIR(st.st_mode);
 
-	if (mkdirat(fd, RELATIVE_PATH(path), 0755) == -1) {
-		if (!mkdirat_p(fd, RELATIVE_PATH(path))) {
-			close_tempdir(tmpdir);
-			return (EPKG_FATAL);
-		}
+	if (!mkdirat_p(fd, RELATIVE_PATH(path))) {
+		close_tempdir(tmpdir);
+		return (EPKG_FATAL);
 	}
 
 	if (fstatat(fd, RELATIVE_PATH(path), &st, 0) == -1) {
@@ -506,15 +504,9 @@ create_dir(struct pkg_add_context *context, struct pkg_dir *d)
 			    d->path);
 		}
 		if (mkdirat(fd, RELATIVE_PATH(path), 0755) == -1) {
-			if (tmpdir != NULL) {
-				close_tempdir(tmpdir);
-				pkg_fatal_errno(
-				    "Failed to create directory %s/%s",
-				    tmpdir->temp, path);
-			} else {
-				pkg_fatal_errno("Failed to create directory %s",
-				    path);
-			}
+			close_tempdir(tmpdir);
+			pkg_fatal_errno("Failed to create directory %s",
+			    d->path);
 		}
 		if (fstatat(fd, RELATIVE_PATH(path), &st, 0) == -1) {
 			close_tempdir(tmpdir);
