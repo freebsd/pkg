@@ -311,7 +311,7 @@ pkg_effective_rmdir(struct pkgdb *db, struct pkg *pkg)
 {
 	char prefix_r[MAXPATHLEN];
 
-	snprintf(prefix_r, sizeof(prefix_r), "%s", pkg->prefix[0] ? pkg->prefix + 1 : "");
+	snprintf(prefix_r, sizeof(prefix_r), "%s", RELATIVE_PATH(pkg->prefix));
 	vec_foreach(pkg->dir_to_del, i) {
 		rmdir_p(db, pkg, pkg->dir_to_del.d[i], prefix_r);
 	}
@@ -333,11 +333,8 @@ pkg_delete_file(struct pkg *pkg, struct pkg_file *file)
 	if (pkg_open_root_fd(pkg) != EPKG_OK)
 		return;
 
-	path = file->path;
-	path++;
-
-	prefix_rel = pkg->prefix;
-	prefix_rel++;
+	path = RELATIVE_PATH(file->path);
+	prefix_rel = RELATIVE_PATH(pkg->prefix);
 	len = strlen(prefix_rel);
 	while (len > 0 && prefix_rel[len - 1] == '/')
 		len--;
@@ -442,12 +439,8 @@ pkg_delete_dir(struct pkg *pkg, struct pkg_dir *dir)
 	if (pkg_open_root_fd(pkg) != EPKG_OK)
 		return;
 
-	path = dir->path;
-	/* remove the first / */
-	path++;
-
-	prefix_rel = pkg->prefix;
-	prefix_rel++;
+	path = RELATIVE_PATH(dir->path);
+	prefix_rel = RELATIVE_PATH(pkg->prefix);
 	len = strlen(prefix_rel);
 	while (len > 0 && prefix_rel[len - 1] == '/')
 		len--;
