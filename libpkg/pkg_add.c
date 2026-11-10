@@ -287,10 +287,10 @@ ret:
 }
 
 static int
-set_chflags(int fd, const char *path, u_long fflags)
+set_chflags(int fd, const char *path, u_long fflags, bool install_as_user)
 {
 #ifdef HAVE_CHFLAGSAT
-	if (getenv("INSTALL_AS_USER"))
+	if (install_as_user)
 		return (EPKG_OK);
 	if (fflags == 0)
 		return (EPKG_OK);
@@ -302,19 +302,16 @@ set_chflags(int fd, const char *path, u_long fflags)
 }
 int
 set_attrsat(int fd, const char *path, mode_t perm, uid_t uid, gid_t gid,
-    const struct timespec *ats, const struct timespec *mts)
+    const struct timespec times[2], bool install_as_user)
 {
 	struct stat st;
-	struct timespec times[2];
 
-	times[0] = *ats;
-	times[1] = *mts;
 	if (utimensat(fd, RELATIVE_PATH(path), times,
 	    AT_SYMLINK_NOFOLLOW) == -1 && errno != EOPNOTSUPP){
 		pkg_fatal_errno("Failed to set time on %s", path);
 	}
 
-	if (getenv("INSTALL_AS_USER") == NULL) {
+	if (!install_as_user) {
 		if (fchownat(fd, RELATIVE_PATH(path), uid, gid,
 				AT_SYMLINK_NOFOLLOW) == -1) {
 			if (errno == ENOTSUP) {
@@ -367,17 +364,13 @@ set_attrsat(int fd, const char *path, mode_t perm, uid_t uid, gid_t gid,
  */
 static int
 set_attr_tofd(int fd, const char *path, mode_t perm, uid_t uid, gid_t gid,
-    const struct timespec *ats, const struct timespec *mts, u_long fflags)
+    struct timespec times[2], u_long fflags, bool install_as_user)
 {
-	struct timespec times[2];
-
-	times[0] = *ats;
-	times[1] = *mts;
 	if (futimens(fd, times) == -1 && errno != EOPNOTSUPP) {
 		pkg_fatal_errno("Failed to set time on %s", path);
 	}
 
-	if (getenv("INSTALL_AS_USER") == NULL) {
+	if (!install_as_user) {
 		if (fchown(fd, uid, gid) == -1) {
 			pkg_fatal_errno("Failed to chown %s", path);
 		}
@@ -389,7 +382,7 @@ set_attr_tofd(int fd, const char *path, mode_t perm, uid_t uid, gid_t gid,
 	}
 
 #ifdef HAVE_CHFLAGSAT
-	if (getenv("INSTALL_AS_USER") == NULL && fflags != 0) {
+	if (!install_as_user && fflags != 0) {
 		if (fchflags(fd, fflags) == -1) {
 			pkg_fatal_errno("Failed to chflags %s", path);
 		}
@@ -662,13 +655,13 @@ retry:
 		pkg_fatal_errno("Failed to create symlink: %s", path);
 	}
 
-	if (set_attrsat(fd, path, f->perm, f->uid, f->gid,
-	    &f->time[0], &f->time[1]) != EPKG_OK) {
+	if (set_attrsat(fd, path, f->perm, f->uid, f->gid, f->time,
+	    context->install_as_user) != EPKG_OK) {
 		close_tempdir(tmpdir);
 		return (EPKG_FATAL);
 	}
 	if (tmpdir != NULL)
-		set_chflags(fd, path, f->fflags);
+		set_chflags(fd, path, f->fflags, context->install_as_user);
 	close_tempdir(tmpdir);
 
 	return (EPKG_OK);
@@ -936,8 +929,8 @@ create_regfile(struct pkg_add_context *context, struct pkg_file *f, struct archi
 	}
 	if (fd != -1) {
 		if (set_attr_tofd(fd, f->path, f->perm, f->uid, f->gid,
-		    &f->time[0], &f->time[1],
-		    tmpdir != NULL ? f->fflags : 0) != EPKG_OK) {
+		    f->time, tmpdir != NULL ? f->fflags : 0,
+		    context->install_as_user) != EPKG_OK) {
 			close(fd);
 			close_tempdir(tmpdir);
 			return (EPKG_FATAL);
@@ -1096,11 +1089,9 @@ pkg_extract_finalize(struct pkg *pkg, tempdirs_t *tempdirs)
 	char path[MAXPATHLEN + 8];
 	char rpath[MAXPATHLEN];
 	const char *fto;
-#ifdef HAVE_CHFLAGSAT
 	bool install_as_user;
 
 	install_as_user = (getenv("INSTALL_AS_USER") != NULL);
-#endif
 
 
 	if (tempdirs != NULL) {
@@ -1173,7 +1164,8 @@ pkg_extract_finalize(struct pkg *pkg, tempdirs_t *tempdirs)
 					"installed as %s", f->path, pkgnew);
 		}
 
-		if (set_chflags(pkg->rootfd, fto, f->fflags) != EPKG_OK)
+		if (set_chflags(pkg->rootfd, fto, f->fflags,
+		    install_as_user) != EPKG_OK)
 			return (EPKG_FATAL);
 	}
 
@@ -1186,9 +1178,10 @@ pkg_extract_finalize(struct pkg *pkg, tempdirs_t *tempdirs)
 		if (d->noattrs || !d->extracted)
 			continue;
 		if (set_attrsat(pkg->rootfd, d->path, d->perm,
-		    d->uid, d->gid, &d->time[0], &d->time[1]) != EPKG_OK)
+		    d->uid, d->gid, d->time, install_as_user) != EPKG_OK)
 			return (EPKG_FATAL);
-		if (set_chflags(pkg->rootfd, d->path, d->fflags) != EPKG_OK)
+		if (set_chflags(pkg->rootfd, d->path, d->fflags,
+		    install_as_user) != EPKG_OK)
 			return (EPKG_FATAL);
 	}
 	if (tempdirs != NULL)
@@ -1684,6 +1677,7 @@ pkg_add_common(struct pkgdb *db, const char *path, int fd, unsigned flags,
 	bool			 pushed = false;
 
 	memset(&context, 0, sizeof(context));
+	context.install_as_user = (getenv("INSTALL_AS_USER") != NULL);
 
 	if (path == NULL && fd == -1) {
 		pkg_emit_error("pkg_add_common: no package path provided");

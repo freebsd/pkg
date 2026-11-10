@@ -14,5 +14,6 @@ struct pkg_add_context {
 	struct pkg *pkg;
 	struct pkg *localpkg;
 	struct pkg_id_cache ids;
+	bool install_as_user;
 };
 struct tempdir *open_tempdir(struct pkg_add_context *, const char *path);

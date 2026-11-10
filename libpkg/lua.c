@@ -341,7 +341,7 @@ lua_pkg_copy(lua_State *L)
 	ts[1] = s1.st_mtim;
 
 	if (set_attrsat(rootfd, RELATIVE_PATH(dst), s1.st_mode, s1.st_uid,
-	  s1.st_gid, &ts[0], &ts[1]) != EPKG_OK) {
+	  s1.st_gid, ts, install_as_user) != EPKG_OK) {
 		lua_pushinteger(L, -1);
 		return (1);
 	}

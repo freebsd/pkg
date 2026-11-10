@@ -1012,7 +1012,7 @@ const char *pkg_adddep_chain(const char *chain_name,
 void pkg_maybe_backup_library(struct pkgdb *db, struct pkg *pkg,
     const char *path);
 int suggest_arch(struct pkg *, bool);
-int set_attrsat(int fd, const char *path, mode_t perm, uid_t uid, gid_t gid, const struct timespec *ats, const struct timespec *mts);
+int set_attrsat(int fd, const char *path, mode_t perm, uid_t uid, gid_t gid, const struct timespec times[2], bool install_as_user);
 
 trigger_t *triggers_load(bool cleanup_only);
 int triggers_execute(struct triggers *t);
