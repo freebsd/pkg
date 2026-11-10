@@ -97,7 +97,8 @@ pkg_delete(struct pkg *pkg, struct pkg *rpkg, struct pkgdb *db, int flags,
 
 	if ((flags & PKG_DELETE_NOSCRIPT) == 0) {
 		bool noexec = ((flags & PKG_DELETE_NOEXEC) == PKG_DELETE_NOEXEC);
-		pkg_open_root_fd(pkg);
+		if (pkg_open_root_fd(pkg) != EPKG_OK)
+			return (EPKG_FATAL);
 		ret = pkg_lua_script_run(pkg, PKG_LUA_PRE_DEINSTALL, false);
 		if (ret != EPKG_OK && ctx.developer_mode)
 			return (ret);
@@ -322,7 +323,8 @@ pkg_delete_file(struct pkg *pkg, struct pkg_file *file)
 	int fd;
 #endif
 #endif
-	pkg_open_root_fd(pkg);
+	if (pkg_open_root_fd(pkg) != EPKG_OK)
+		return;
 
 	path = file->path;
 	path++;
@@ -430,7 +432,8 @@ pkg_delete_dir(struct pkg *pkg, struct pkg_dir *dir)
 	const char *prefix_rel;
 	size_t len;
 
-	pkg_open_root_fd(pkg);
+	if (pkg_open_root_fd(pkg) != EPKG_OK)
+		return;
 
 	path = dir->path;
 	/* remove the first / */

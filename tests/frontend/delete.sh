@@ -26,12 +26,18 @@ tests_init \
 	delete_autoremove \
 	delete_autoremove_flag \
 	delete_exclude_glob \
-	delete_overlong_directory
+	delete_overlong_directory \
+	delete_unreachable_rootdir
 
 delete_overlong_directory_body() {
 	# a directory whose path does not fit in the buffer used to remove it
-	# must be reported instead of being removed through a truncated name
-	long=$(awk 'BEGIN { for (i = 0; i < 1012; i++) printf "a" }')
+	# must be reported instead of being removed through a truncated name;
+	# the buffer is MAXPATHLEN, which is not the same on every platform
+	pathmax=$(getconf PATH_MAX / 2>/dev/null || echo 4096)
+	# the longest directory the manifest accepts, so that adding the leading
+	# slash when removing it does not fit anymore
+	long=$(awk -v n=$((pathmax - 12)) \
+	    'BEGIN { for (i = 0; i < n; i++) printf "a" }')
 
 	cat > overlong.ucl << EOF
 name: "overlong"
@@ -54,6 +60,38 @@ EOF
 		-e match:"Path too long, not removing" \
 		-s exit:0 \
 		pkg delete -y overlong
+}
+
+delete_unreachable_rootdir_body() {
+	# when the root directory of a package cannot be opened, nothing can be
+	# removed: it must not be unregistered either
+	cat > unreachable.ucl << EOF
+name: "unreachable"
+origin: "test/unreachable"
+version: "1"
+maintainer: "test"
+comment: "test"
+www: "http://test"
+prefix: /usr/local
+desc: "test"
+annotations: {
+	relocated: "/nonexistent-root"
+}
+EOF
+
+	atf_check -o ignore -e empty -s exit:0 pkg register -M unreachable.ucl
+
+	atf_check \
+		-o ignore \
+		-e match:"No such file or directory" \
+		-s not-exit:0 \
+		pkg delete -y unreachable
+
+	atf_check \
+		-o inline:"unreachable\n" \
+		-e empty \
+		-s exit:0 \
+		pkg query "%n"
 }
 
 delete_all_body() {
