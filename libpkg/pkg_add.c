@@ -392,15 +392,6 @@ set_attr_tofd(int fd, const char *path, mode_t perm, uid_t uid, gid_t gid,
 	return (EPKG_OK);
 }
 
-static void
-fill_timespec_buf(const struct stat *aest, struct timespec tspec[2])
-{
-	tspec[0].tv_sec = aest->st_atim.tv_sec;
-	tspec[0].tv_nsec = 0;
-	tspec[1].tv_sec = aest->st_mtim.tv_sec;
-	tspec[1].tv_nsec = 0;
-}
-
 static bool
 reopen_tempdir(int rootfd, struct tempdir *t)
 {
@@ -560,7 +551,8 @@ do_extract_dir(struct pkg_add_context* context, struct archive *a __unused, stru
 	d->uname = xstrdup(archive_entry_uname(ae));
 	free(d->gname);
 	d->gname = xstrdup(archive_entry_gname(ae));
-	fill_timespec_buf(aest, d->time);
+	d->time[0] = aest->st_atim;
+	d->time[1] = aest->st_mtim;
 	archive_entry_fflags(ae, &d->fflags, &clear);
 
 	if (create_dir(context, d) == EPKG_FATAL) {
@@ -610,8 +602,10 @@ file_from_entry(struct pkg_add_context *context, struct pkg_file *f,
 	/* Only use the archive entry times if the manifest did not already
 	 * provide an mtime: the manifest is the source of truth, the archive
 	 * entry may carry a different timestamp */
-	if (f->time[1].tv_sec == 0)
-		fill_timespec_buf(aest, f->time);
+	if (f->time[1].tv_sec == 0) {
+		f->time[0] = aest->st_atim;
+		f->time[1] = aest->st_mtim;
+	}
 	archive_entry_fflags(ae, &f->fflags, &clear);
 }
 
