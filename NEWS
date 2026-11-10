@@ -1,4 +1,6 @@
 Changes from 2.9.0 to 2.9.99.1
+- upgrade: the summary tells which packages require a new package it is
+  about to install
 - elf: do not read past the note section data when it ends with padding or
   with an ABI note whose descriptor does not fit, which crashed pkg create
   on some objects

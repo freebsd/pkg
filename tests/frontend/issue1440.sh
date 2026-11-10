@@ -202,9 +202,9 @@ The following 4 package(s) will be affected (of 0 checked):
 
 New packages to be INSTALLED:
 	pkgA: 1.0 [repoB]
-	pkgB: 1.0 [repoB]
-	pkgC: 1.0 [repoB]
-	pkgD: 1.0 [repoB]
+	pkgB: 1.0 [repoB] (required by pkgA)
+	pkgC: 1.0 [repoB] (required by pkgB)
+	pkgD: 1.0 [repoB] (required by pkgC)
 
 Number of packages to be installed: 4
 ${JAILED}[1/4] Installing pkgD-1.0...
