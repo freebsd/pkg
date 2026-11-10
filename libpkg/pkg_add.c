@@ -401,12 +401,14 @@ fill_timespec_buf(const struct stat *aest, struct timespec tspec[2])
 	tspec[1].tv_nsec = 0;
 }
 
-static void
+static bool
 reopen_tempdir(int rootfd, struct tempdir *t)
 {
 	if (t->fd != -1)
-		return;
-	t->fd = openat(rootfd, RELATIVE_PATH(t->temp), O_DIRECTORY|O_CLOEXEC);
+		return (true);
+	t->fd = openat(rootfd, RELATIVE_PATH(t->temp), O_DIRECTORY | O_CLOEXEC);
+
+	return (t->fd != -1);
 }
 
 /*
@@ -421,11 +423,14 @@ find_tempdir(struct pkg_add_context *context, const char *path)
 		tmpdir = context->tempdirs.d[i];
 		if (strncmp(tmpdir->name, path, tmpdir->len) == 0 &&
 		    path[tmpdir->len] == '/') {
-			reopen_tempdir(context->rootfd, tmpdir);
+			if (!reopen_tempdir(context->rootfd, tmpdir))
+				return (NULL);
 			return (tmpdir);
 		}
 	}
 
+	/* no temporary directory needed, not an error */
+	errno = 0;
 	return (NULL);
 }
 
@@ -435,7 +440,7 @@ get_tempdir(struct pkg_add_context *context, const char *path)
 	struct tempdir *tmpdir;
 
 	tmpdir = find_tempdir(context, path);
-	if (tmpdir == NULL) {
+	if (tmpdir == NULL && errno == 0) {
 		tmpdir = open_tempdir(context, path);
 		if (tmpdir != NULL)
 			vec_push(&context->tempdirs, tmpdir);
@@ -464,6 +469,11 @@ create_dir(struct pkg_add_context *context, struct pkg_dir *d)
 	int error, fd;
 
 	tmpdir = get_tempdir(context, d->path);
+	if (tmpdir == NULL && errno != 0) {
+		pkg_errno("Failed to reopen the temporary directory of %s",
+		    d->path);
+		return (EPKG_FATAL);
+	}
 	if (tmpdir == NULL) {
 		fd = context->rootfd;
 		path = d->path;
@@ -623,6 +633,11 @@ create_symlinks(struct pkg_add_context *context, struct pkg_file *f,
 	bool tried_mkdir = false;
 
 	tmpdir = get_tempdir(context, f->path);
+	if (tmpdir == NULL && errno != 0) {
+		pkg_errno("Failed to reopen the temporary directory of %s",
+		    f->path);
+		return (EPKG_FATAL);
+	}
 	if (tmpdir == NULL && errno == 0) {
 		char temppath[MAXPATHLEN] = { 0 };
 		hidden_tempfile(temppath, sizeof(temppath), f->path);
@@ -705,6 +720,11 @@ create_hardlink(struct pkg_add_context *context, struct pkg_file *f,
 	struct tempdir *tmphdir = NULL;
 
 	tmpdir = get_tempdir(context, f->path);
+	if (tmpdir == NULL && errno != 0) {
+		pkg_errno("Failed to reopen the temporary directory of %s",
+		    f->path);
+		return (EPKG_FATAL);
+	}
 	if (tmpdir == NULL && errno == 0) {
 		char temppath[MAXPATHLEN] = { 0 };
 		hidden_tempfile(temppath, sizeof(temppath), f->path);
@@ -854,6 +874,11 @@ create_regfile(struct pkg_add_context *context, struct pkg_file *f, struct archi
 		return (EPKG_FATAL);
 
 	tmpdir = get_tempdir(context, f->path);
+	if (tmpdir == NULL && errno != 0) {
+		pkg_errno("Failed to reopen the temporary directory of %s",
+		    f->path);
+		return (EPKG_FATAL);
+	}
 	if (tmpdir == NULL && errno == 0) {
 		char temppath[MAXPATHLEN] = { 0 };
 		hidden_tempfile(temppath, sizeof(temppath), rp);
