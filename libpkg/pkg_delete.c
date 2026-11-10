@@ -216,6 +216,41 @@ pkg_add_dir_to_del(struct pkg *pkg, const char *file, const char *dir)
 	vec_push(&pkg->dir_to_del, xstrdup(path));
 }
 
+/*
+ * Clear the flags which prevent the removal of path.  When drop_all is set
+ * every flag is cleared, otherwise the others are preserved.
+ */
+static void
+clear_blocking_flags(struct pkg *pkg __unused, const char *path __unused,
+    bool drop_all __unused)
+{
+#ifdef HAVE_STRUCT_STAT_ST_FLAGS
+	struct stat st;
+	u_long flags;
+#if !defined(HAVE_CHFLAGSAT)
+	int fd;
+#endif
+
+	if (fstatat(pkg->rootfd, path, &st, AT_SYMLINK_NOFOLLOW) == -1)
+		return;
+	if ((st.st_flags & NOCHANGESFLAGS) == 0)
+		return;
+
+	flags = drop_all ? 0 : (st.st_flags & ~NOCHANGESFLAGS);
+#ifdef HAVE_CHFLAGSAT
+	if (chflagsat(pkg->rootfd, path, flags, AT_SYMLINK_NOFOLLOW) == -1)
+		pkg_debug(1, "Unable to clear the flags of '%s'", path);
+#else
+	fd = openat(pkg->rootfd, path, O_NOFOLLOW | O_CLOEXEC);
+	if (fd < 0)
+		return;
+	if (fchflags(fd, flags) == -1)
+		pkg_debug(1, "Unable to clear the flags of '%s'", path);
+	close(fd);
+#endif
+#endif
+}
+
 static void
 rmdir_p(struct pkgdb *db, struct pkg *pkg, char *dir, const char *prefix_r)
 {
@@ -224,12 +259,6 @@ rmdir_p(struct pkgdb *db, struct pkg *pkg, char *dir, const char *prefix_r)
 	char fullpath[MAXPATHLEN];
 	char rdir[MAXPATHLEN];
 	size_t len;
-#ifdef HAVE_STRUCT_STAT_ST_FLAGS
-	struct stat st;
-#if !defined(HAVE_CHFLAGSAT)
-	int fd;
-#endif
-#endif
 
 	len = strlen(dir) + 1;
 	if (len >= sizeof(fullpath)) {
@@ -260,22 +289,7 @@ rmdir_p(struct pkgdb *db, struct pkg *pkg, char *dir, const char *prefix_r)
 	dir = rdir;
 
 	pkg_debug(1, "removing directory %s", fullpath);
-#ifdef HAVE_STRUCT_STAT_ST_FLAGS
-	if (fstatat(pkg->rootfd, dir, &st, AT_SYMLINK_NOFOLLOW) != -1) {
-		if (st.st_flags & NOCHANGESFLAGS) {
-#ifdef HAVE_CHFLAGSAT
-			/* Disable all flags*/
-			chflagsat(pkg->rootfd, dir, 0, AT_SYMLINK_NOFOLLOW);
-#else
-			fd = openat(pkg->rootfd, dir, O_NOFOLLOW);
-			if (fd > 0) {
-				fchflags(fd, 0);
-				close(fd);
-			}
-#endif
-		}
-	}
-#endif
+	clear_blocking_flags(pkg, dir, true);
 
 	if (unlinkat(pkg->rootfd, dir, AT_REMOVEDIR) == -1) {
 		if (errno != ENOTEMPTY && errno != EBUSY)
@@ -324,12 +338,7 @@ pkg_delete_file(struct pkg *pkg, struct pkg_file *file)
 	const char *prefix_rel;
 	char rpath[MAXPATHLEN];
 	size_t len;
-#ifdef HAVE_STRUCT_STAT_ST_FLAGS
-	struct stat st;
-#if !defined(HAVE_CHFLAGSAT)
-	int fd;
-#endif
-#endif
+
 	if (pkg_open_root_fd(pkg) != EPKG_OK)
 		return;
 
@@ -343,23 +352,7 @@ pkg_delete_file(struct pkg *pkg, struct pkg_file *file)
 		return;
 	path = rpath;
 
-#ifdef HAVE_STRUCT_STAT_ST_FLAGS
-	if (fstatat(pkg->rootfd, path, &st, AT_SYMLINK_NOFOLLOW) != -1) {
-		if (st.st_flags & NOCHANGESFLAGS) {
-#ifdef HAVE_CHFLAGSAT
-			chflagsat(pkg->rootfd, path,
-			    st.st_flags & ~NOCHANGESFLAGS,
-			    AT_SYMLINK_NOFOLLOW);
-#else
-			fd = openat(pkg->rootfd, path, O_NOFOLLOW);
-			if (fd > 0) {
-				fchflags(fd, st.st_flags & ~NOCHANGESFLAGS);
-				close(fd);
-			}
-#endif
-		}
-	}
-#endif
+	clear_blocking_flags(pkg, path, false);
 	pkg_debug(1, "Deleting file: '%s'", path);
 	if (unlinkat(pkg->rootfd, path, 0) == -1) {
 		if (errno == ENOENT)
