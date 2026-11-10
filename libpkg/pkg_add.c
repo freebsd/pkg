@@ -47,7 +47,7 @@ static int
 pkg_add_common(struct pkgdb *db, const char *path, int fd, unsigned flags,
     const char *reloc, struct pkg *remote,
     struct pkg *local, struct triggers *t, struct deferred_rc *rc,
-    stringset_t *pkgs_already_added);
+    charv_t *pkgs_in_progress);
 
 struct external_merge_tmp_file {
 	int fd;
@@ -1327,7 +1327,7 @@ select_provider_from_dir(const char *dirpath, const char *ext)
 static int
 pkg_add_check_pkg_archive(struct pkgdb *db, struct pkg *pkg,
 	const char *path, int flags, const char *location,
-	stringset_t *pkgs_already_added)
+	charv_t *pkgs_in_progress)
 {
 	const char	*arch;
 	int	ret, retcode;
@@ -1433,7 +1433,7 @@ pkg_add_check_pkg_archive(struct pkgdb *db, struct pkg *pkg,
 		if ((flags & PKG_ADD_UPGRADE) == 0 &&
 				access(dpath, F_OK) == 0) {
 			ret = pkg_add_common(db, dpath, -1, PKG_ADD_AUTOMATIC,
-			    location, NULL, NULL, NULL, NULL, pkgs_already_added);
+			    location, NULL, NULL, NULL, NULL, pkgs_in_progress);
 
 			if (ret != EPKG_OK)
 				goto cleanup;
@@ -1480,7 +1480,7 @@ pkg_add_check_pkg_archive(struct pkgdb *db, struct pkg *pkg,
 				continue;
 			}
 			ret = pkg_add_common(db, provider, -1, PKG_ADD_AUTOMATIC,
-			    location, NULL, NULL, NULL, NULL, pkgs_already_added);
+			    location, NULL, NULL, NULL, NULL, pkgs_in_progress);
 			free(provider);
 			if (ret != EPKG_OK && ret != EPKG_INSTALLED)
 				goto cleanup;
@@ -1511,7 +1511,7 @@ pkg_add_check_pkg_archive(struct pkgdb *db, struct pkg *pkg,
 				continue;
 			}
 			ret = pkg_add_common(db, provider, -1, PKG_ADD_AUTOMATIC,
-			    location, NULL, NULL, NULL, NULL, pkgs_already_added);
+			    location, NULL, NULL, NULL, NULL, pkgs_in_progress);
 			free(provider);
 			if (ret != EPKG_OK && ret != EPKG_INSTALLED)
 				goto cleanup;
@@ -1648,7 +1648,7 @@ int
 pkg_add_common(struct pkgdb *db, const char *path, int fd, unsigned flags,
     const char *reloc, struct pkg *remote,
     struct pkg *local, struct triggers *t, struct deferred_rc *rc,
-    stringset_t *pkgs_already_added)
+    charv_t *pkgs_in_progress)
 {
 	struct archive		*a = NULL;
 	struct archive_entry	*ae = NULL;
@@ -1664,7 +1664,8 @@ pkg_add_common(struct pkgdb *db, const char *path, int fd, unsigned flags,
 	int			 nfiles;
 	tempdirs_t		 tempdirs = vec_init();
 	struct pkg_add_context	 context;
-	bool free_pkgs_already_added = (pkgs_already_added == NULL);
+	charv_t			 local_in_progress = vec_init();
+	bool			 pushed = false;
 
 	memset(&context, 0, sizeof(context));
 
@@ -1699,12 +1700,17 @@ pkg_add_common(struct pkgdb *db, const char *path, int fd, unsigned flags,
 		goto cleanup;
 	}
 
-	if (stringset_contains(pkgs_already_added, pkg->name)) {
-		pkg_emit_error("dependency cycle detected");
-		retcode = EPKG_FATAL;
-		goto cleanup;
+	if (pkgs_in_progress == NULL)
+		pkgs_in_progress = &local_in_progress;
+	vec_foreach(*pkgs_in_progress, i) {
+		if (STREQ(pkgs_in_progress->d[i], pkg->name)) {
+			pkg_emit_error("dependency cycle detected");
+			retcode = EPKG_FATAL;
+			goto cleanup;
+		}
 	}
-	stringset_safe_add(&pkgs_already_added, pkg->name);
+	vec_push(pkgs_in_progress, pkg->name);
+	pushed = true;
 
 	if (flags & PKG_ADD_AUTOMATIC)
 		pkg->automatic = true;
@@ -1717,7 +1723,7 @@ pkg_add_common(struct pkgdb *db, const char *path, int fd, unsigned flags,
 	 */
 	if (remote == NULL) {
 		ret = pkg_add_check_pkg_archive(db, pkg, path, flags, reloc,
-		    pkgs_already_added);
+		    pkgs_in_progress);
 		if (ret != EPKG_OK) {
 			/* Do not return error on installed package */
 			retcode = (ret == EPKG_INSTALLED ? EPKG_OK : ret);
@@ -1935,8 +1941,9 @@ cleanup:
 		archive_read_close(a);
 		archive_read_free(a);
 	}
-	if (free_pkgs_already_added)
-		stringset_destroy(pkgs_already_added);
+	if (pushed)
+		vec_pop(pkgs_in_progress);
+	vec_free(&local_in_progress);
 
 	pkg_free(pkg);
 
