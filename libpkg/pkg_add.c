@@ -47,7 +47,7 @@ static int
 pkg_add_common(struct pkgdb *db, const char *path, int fd, unsigned flags,
     const char *reloc, struct pkg *remote,
     struct pkg *local, struct triggers *t, struct deferred_rc *rc,
-    charv_t *pkgs_in_progress);
+    stringset_t *pkgs_in_progress);
 
 struct external_merge_tmp_file {
 	int fd;
@@ -1324,28 +1324,11 @@ select_provider_from_dir(const char *dirpath, const char *ext)
 	return (result);
 }
 
-/*
- * Report the packages of the current installation chain which lead back
- * to name.
- */
-static void
-pkg_add_emit_cycle(const charv_t *in_progress, const char *name)
-{
-	sb_t chain = sb_init();
-
-	vec_foreach(*in_progress, i) {
-		sb_cat(&chain, in_progress->d[i]);
-		sb_cat(&chain, " -> ");
-	}
-	sb_cat(&chain, name);
-	pkg_emit_error("dependency cycle detected: %s", sb_str(&chain));
-	sb_fini(&chain);
-}
 
 static int
 pkg_add_check_pkg_archive(struct pkgdb *db, struct pkg *pkg,
 	const char *path, int flags, const char *location,
-	charv_t *pkgs_in_progress)
+	stringset_t *pkgs_in_progress)
 {
 	const char	*arch;
 	int	ret, retcode;
@@ -1666,7 +1649,7 @@ int
 pkg_add_common(struct pkgdb *db, const char *path, int fd, unsigned flags,
     const char *reloc, struct pkg *remote,
     struct pkg *local, struct triggers *t, struct deferred_rc *rc,
-    charv_t *pkgs_in_progress)
+    stringset_t *pkgs_in_progress)
 {
 	struct archive		*a = NULL;
 	struct archive_entry	*ae = NULL;
@@ -1682,7 +1665,7 @@ pkg_add_common(struct pkgdb *db, const char *path, int fd, unsigned flags,
 	int			 nfiles;
 	tempdirs_t		 tempdirs = vec_init();
 	struct pkg_add_context	 context;
-	charv_t			 local_in_progress = vec_init();
+	bool			 owned = (pkgs_in_progress == NULL);
 	bool			 pushed = false;
 
 	memset(&context, 0, sizeof(context));
@@ -1718,16 +1701,12 @@ pkg_add_common(struct pkgdb *db, const char *path, int fd, unsigned flags,
 		goto cleanup;
 	}
 
-	if (pkgs_in_progress == NULL)
-		pkgs_in_progress = &local_in_progress;
-	vec_foreach(*pkgs_in_progress, i) {
-		if (STREQ(pkgs_in_progress->d[i], pkg->name)) {
-			pkg_add_emit_cycle(pkgs_in_progress, pkg->name);
-			retcode = EPKG_FATAL;
-			goto cleanup;
-		}
+	if (stringset_contains(pkgs_in_progress, pkg->name)) {
+		pkg_emit_error("dependency cycle detected");
+		retcode = EPKG_FATAL;
+		goto cleanup;
 	}
-	vec_push(pkgs_in_progress, pkg->name);
+	stringset_safe_add(&pkgs_in_progress, pkg->name);
 	pushed = true;
 
 	if (flags & PKG_ADD_AUTOMATIC)
@@ -1960,8 +1939,9 @@ cleanup:
 		archive_read_free(a);
 	}
 	if (pushed)
-		vec_pop(pkgs_in_progress);
-	vec_free(&local_in_progress);
+		stringset_del(pkgs_in_progress, pkg->name);
+	if (owned)
+		stringset_destroy(pkgs_in_progress);
 
 	pkg_free(pkg);
 
