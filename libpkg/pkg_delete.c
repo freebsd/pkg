@@ -175,10 +175,17 @@ pkg_add_dir_to_del(struct pkg *pkg, const char *file, const char *dir)
 	char *tmp;
 	size_t len, len2;
 
-	strlcpy(path, file != NULL ? file : dir, MAXPATHLEN);
+	if (strlcpy(path, file != NULL ? file : dir, sizeof(path)) >=
+	    sizeof(path)) {
+		pkg_emit_error("Path too long, not scheduling the removal of a "
+		    "directory below '%.64s'", file != NULL ? file : dir);
+		return;
+	}
 
 	if (file != NULL) {
 		tmp = strrchr(path, '/');
+		if (tmp == NULL)
+			return;
 		tmp[1] = '\0';
 	}
 
