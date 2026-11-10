@@ -492,20 +492,25 @@ pkg_obj(struct pkg *pkg, const ucl_object_t *obj, uint32_t attr)
 			if (cur->type != UCL_OBJECT)
 				pkg_emit_error("Skipping malformed dirs %s",
 				    key);
-			else
-				pkg_set_dirs_from_object(pkg, cur);
+			else if (pkg_set_dirs_from_object(pkg, cur) != EPKG_OK)
+				return (EPKG_FATAL);
 			break;
 		case MANIFEST_DIRECTORIES:
 			if (cur->type == UCL_BOOLEAN) {
 				char *t = url_decode(key, 0);
-				pkg_adddir(pkg, t, false);
+				bool ok = (pkg_adddir(pkg, t, false) == EPKG_OK);
 				free(t);
+				if (!ok)
+					return (EPKG_FATAL);
 			} else if (cur->type == UCL_OBJECT) {
-				pkg_set_dirs_from_object(pkg, cur);
+				if (pkg_set_dirs_from_object(pkg, cur) != EPKG_OK)
+					return (EPKG_FATAL);
 			} else if (cur->type == UCL_STRING) {
 				char *t = url_decode(key, 0);
-				pkg_adddir(pkg, t, false);
+				bool ok = (pkg_adddir(pkg, t, false) == EPKG_OK);
 				free(t);
+				if (!ok)
+					return (EPKG_FATAL);
 			} else {
 				pkg_emit_error("Skipping malformed directories %s",
 				    key);
@@ -514,12 +519,18 @@ pkg_obj(struct pkg *pkg, const ucl_object_t *obj, uint32_t attr)
 		case MANIFEST_FILES:
 			if (cur->type == UCL_STRING) {
 				char *t = url_decode(key, 0);
+				bool ok;
+
 				buf = ucl_object_tolstring(cur, &len);
-				pkg_addfile(pkg, t, len >= 2 ? buf : NULL, false);
+				ok = (pkg_addfile(pkg, t, len >= 2 ? buf : NULL,
+				    false) == EPKG_OK);
 				free(t);
-			} else if (cur->type == UCL_OBJECT)
-				pkg_set_files_from_object(pkg, cur);
-			else
+				if (!ok)
+					return (EPKG_FATAL);
+			} else if (cur->type == UCL_OBJECT) {
+				if (pkg_set_files_from_object(pkg, cur) != EPKG_OK)
+					return (EPKG_FATAL);
+			} else
 				pkg_emit_error("Skipping malformed files %s",
 				   key);
 			break;
@@ -587,6 +598,7 @@ pkg_set_files_from_object(struct pkg *pkg, const ucl_object_t *obj)
 	const ucl_object_t *cur;
 	ucl_object_iter_t it = NULL;
 	const char *sum = NULL;
+	int ret;
 	const char *uname = NULL;
 	const char *gname = NULL;
 	const char *symlink_target = NULL;
@@ -650,11 +662,11 @@ pkg_set_files_from_object(struct pkg *pkg, const ucl_object_t *obj)
 		}
 	}
 
-	pkg_addfile_attr(pkg, fname, sum, uname, gname, perm, fflags,
+	ret = pkg_addfile_attr(pkg, fname, sum, uname, gname, perm, fflags,
 			 mtime, symlink_target, false);
 	free(fname);
 
-	return (EPKG_OK);
+	return (ret);
 }
 
 static int
@@ -662,6 +674,7 @@ pkg_set_dirs_from_object(struct pkg *pkg, const ucl_object_t *obj)
 {
 	const ucl_object_t *cur;
 	ucl_object_iter_t it = NULL;
+	int ret;
 	const char *uname = NULL;
 	const char *gname = NULL;
 	mode_t perm = 0;
@@ -712,10 +725,10 @@ pkg_set_dirs_from_object(struct pkg *pkg, const ucl_object_t *obj)
 		}
 	}
 
-	pkg_adddir_attr(pkg, dirname, uname, gname, perm, fflags, false);
+	ret = pkg_adddir_attr(pkg, dirname, uname, gname, perm, fflags, false);
 	free(dirname);
 
-	return (EPKG_OK);
+	return (ret);
 }
 
 static int

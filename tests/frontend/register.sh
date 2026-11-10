@@ -35,7 +35,7 @@ EOF
 	atf_check \
 		-o ignore \
 		-e match:"Path too long for a directory" \
-		-s exit:0 \
+		-s not-exit:0 \
 		pkg register -M overlong.ucl
 
 	cat > overlongfile.ucl << EOF
@@ -55,8 +55,15 @@ EOF
 	atf_check \
 		-o ignore \
 		-e match:"Path too long for a file" \
-		-s exit:0 \
+		-s not-exit:0 \
 		pkg register -M overlongfile.ucl
+
+	# a manifest which cannot be fully loaded must not register anything
+	atf_check \
+		-o empty \
+		-e match:"No packages installed" \
+		-s exit:0 \
+		pkg query "%n"
 }
 
 register_conflicts_body() {
