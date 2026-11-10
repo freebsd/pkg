@@ -1131,9 +1131,14 @@ backup_file_if_needed(struct pkg *p, struct pkg_file *f)
 		free(sum);
 	}
 
-	snprintf(path, sizeof(path), "%s.pkgsave", f->path);
-	renameat(p->rootfd, RELATIVE_PATH(f->path),
-	    p->rootfd, RELATIVE_PATH(path));
+	if ((size_t)snprintf(path, sizeof(path), "%s.pkgsave", f->path) >=
+	    sizeof(path)) {
+		pkg_emit_error("Path too long to back up %s", f->path);
+		return;
+	}
+	if (renameat(p->rootfd, RELATIVE_PATH(f->path), p->rootfd,
+	    RELATIVE_PATH(path)) == -1)
+		pkg_errno("Failed to back up %s", f->path);
 }
 
 static int
