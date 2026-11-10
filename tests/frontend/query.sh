@@ -4,6 +4,7 @@
 
 tests_init \
 	query \
+	query_repository \
 	query_empty_multiline \
 	query_empty_provides_requires \
 	query_provides_requires \
@@ -290,6 +291,31 @@ EOF
 		-e empty \
 		-s exit:0 \
 		pkg query -F ./plop-1.pkg '%c'
+}
+
+query_repository_body() {
+	atf_check -s exit:0 sh ${RESOURCEDIR}/test_subr.sh new_pkg test test 1
+	atf_check -o ignore -e empty pkg register -M test.ucl
+
+	# no repository annotation: the documented fallback
+	atf_check \
+		-o inline:"unknown-repository\n" \
+		-e empty \
+		-s exit:0 \
+		pkg query "%R" test
+
+	# the annotation recorded when the package was installed
+	atf_check \
+		-o ignore \
+		-e empty \
+		-s exit:0 \
+		pkg annotate -y -A test repository myrepo
+
+	atf_check \
+		-o inline:"myrepo\n" \
+		-e empty \
+		-s exit:0 \
+		pkg query "%R" test
 }
 
 query_empty_multiline_body() {

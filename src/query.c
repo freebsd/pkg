@@ -114,7 +114,7 @@ format_str(struct pkg *pkg, sb_t *dest, const char *qstr, const void *data)
 				pkg_sb_cat(dest, PKG_ATTR_ORIGIN, pkg);
 				break;
 			case 'R':
-				pkg_sb_cat(dest, PKG_ATTR_REPONAME, pkg);
+				pkg_sb_printf(dest, "%N", pkg);
 				break;
 			case 'p':
 				pkg_sb_cat(dest, PKG_ATTR_PREFIX, pkg);
