@@ -416,22 +416,38 @@ reopen_tempdir(int rootfd, struct tempdir *t)
 	t->fd = openat(rootfd, RELATIVE_PATH(t->temp), O_DIRECTORY|O_CLOEXEC);
 }
 
+/*
+ * Find the temporary directory path is extracted in, if any.
+ */
 static struct tempdir *
-get_tempdir(struct pkg_add_context *context, const char *path, tempdirs_t *tempdirs)
+find_tempdir(struct pkg_add_context *context, const char *path,
+    tempdirs_t *tempdirs)
 {
-	struct tempdir *tmpdir = NULL;
+	struct tempdir *tmpdir;
 
 	vec_foreach(*tempdirs, i) {
 		tmpdir = tempdirs->d[i];
-		if (strncmp(tmpdir->name, path, tmpdir->len) == 0 && path[tmpdir->len] == '/') {
+		if (strncmp(tmpdir->name, path, tmpdir->len) == 0 &&
+		    path[tmpdir->len] == '/') {
 			reopen_tempdir(context->rootfd, tmpdir);
 			return (tmpdir);
 		}
 	}
 
-	tmpdir = open_tempdir(context, path);
-	if (tmpdir != NULL)
-		vec_push(tempdirs, tmpdir);
+	return (NULL);
+}
+
+static struct tempdir *
+get_tempdir(struct pkg_add_context *context, const char *path, tempdirs_t *tempdirs)
+{
+	struct tempdir *tmpdir;
+
+	tmpdir = find_tempdir(context, path, tempdirs);
+	if (tmpdir == NULL) {
+		tmpdir = open_tempdir(context, path);
+		if (tmpdir != NULL)
+			vec_push(tempdirs, tmpdir);
+	}
 
 	return (tmpdir);
 }
@@ -714,16 +730,8 @@ create_hardlink(struct pkg_add_context *context, struct pkg_file *f, const char 
 		    " hardlinked to %s", f->path, path);
 		return (EPKG_FATAL);
 	}
-	if (fh->temppath == NULL) {
-		vec_foreach(*tempdirs, i) {
-			if (strncmp(tempdirs->d[i]->name, fh->path, tempdirs->d[i]->len) == 0 &&
-			    fh->path[tempdirs->d[i]->len] == '/' ) {
-				tmphdir = tempdirs->d[i];
-				reopen_tempdir(context->rootfd, tmphdir);
-				break;
-			}
-		}
-	}
+	if (fh->temppath == NULL)
+		tmphdir = find_tempdir(context, fh->path, tempdirs);
 	if (tmpdir == NULL) {
 		if (f->temppath == NULL) {
 			close_tempdir(tmpdir);
