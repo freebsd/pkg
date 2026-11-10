@@ -579,6 +579,33 @@ try_mkdir(int fd, const char *path)
 	return (true);
 }
 
+/*
+ * Fill the manifest entry of a file with the permissions, ownership and
+ * timestamps the archive entry carries.
+ */
+static void
+file_from_entry(struct pkg_add_context *context, struct pkg_file *f,
+    struct archive_entry *ae)
+{
+	const struct stat *aest;
+	unsigned long clear;
+
+	aest = archive_entry_stat(ae);
+	f->perm = aest->st_mode;
+	f->uid = get_uid_from_uname(archive_entry_uname(ae), &context->ids);
+	f->gid = get_gid_from_gname(archive_entry_gname(ae), &context->ids);
+	free(f->uname);
+	f->uname = xstrdup(archive_entry_uname(ae));
+	free(f->gname);
+	f->gname = xstrdup(archive_entry_gname(ae));
+	/* Only use the archive entry times if the manifest did not already
+	 * provide an mtime: the manifest is the source of truth, the archive
+	 * entry may carry a different timestamp */
+	if (f->time[1].tv_sec == 0)
+		fill_timespec_buf(aest, f->time);
+	archive_entry_fflags(ae, &f->fflags, &clear);
+}
+
 static int
 create_symlinks(struct pkg_add_context *context, struct pkg_file *f, const char *target, tempdirs_t *tempdirs)
 {
@@ -639,7 +666,6 @@ do_extract_symlink(struct pkg_add_context *context, struct archive *a __unused,
 {
 	struct pkg_file *f;
 	const struct stat *aest;
-	unsigned long clear;
 
 	f = pkg_get_file(context->pkg, path);
 	if (f == NULL) {
@@ -648,16 +674,7 @@ do_extract_symlink(struct pkg_add_context *context, struct archive *a __unused,
 	}
 
 	aest = archive_entry_stat(ae);
-	f->uid = get_uid_from_uname(archive_entry_uname(ae), &context->ids);
-	f->gid = get_gid_from_gname(archive_entry_gname(ae), &context->ids);
-	free(f->uname);
-	f->uname = xstrdup(archive_entry_uname(ae));
-	free(f->gname);
-	f->gname = xstrdup(archive_entry_gname(ae));
-	f->perm = aest->st_mode;
-	if (f->time[1].tv_sec == 0)
-		fill_timespec_buf(aest, f->time);
-	archive_entry_fflags(ae, &f->fflags, &clear);
+	file_from_entry(context, f, ae);
 
 	if (create_symlinks(context, f, archive_entry_symlink(ae), tempdirs) == EPKG_FATAL)
 		return (EPKG_FATAL);
@@ -930,7 +947,6 @@ do_extract_regfile(struct pkg_add_context *context, struct archive *a, struct ar
 {
 	struct pkg_file *f;
 	const struct stat *aest;
-	unsigned long clear;
 
 	f = pkg_get_file(context->pkg, path);
 	if (f == NULL) {
@@ -939,20 +955,7 @@ do_extract_regfile(struct pkg_add_context *context, struct archive *a, struct ar
 	}
 
 	aest = archive_entry_stat(ae);
-	f->perm = aest->st_mode;
-	f->uid = get_uid_from_uname(archive_entry_uname(ae), &context->ids);
-	f->gid = get_gid_from_gname(archive_entry_gname(ae), &context->ids);
-	free(f->uname);
-	f->uname = xstrdup(archive_entry_uname(ae));
-	free(f->gname);
-	f->gname = xstrdup(archive_entry_gname(ae));
-	/* Only use the archive entry times if the manifest did not
-	 * already provide an mtime.  The manifest is the source of truth;
-	 * the archive entry may carry a different timestamp (e.g. when
-	 * staged files were copied without preserving mtime). */
-	if (f->time[1].tv_sec == 0)
-		fill_timespec_buf(aest, f->time);
-	archive_entry_fflags(ae, &f->fflags, &clear);
+	file_from_entry(context, f, ae);
 
 	if (create_regfile(context, f, a, ae, -1, local, tempdirs) == EPKG_FATAL)
 		return (EPKG_FATAL);
