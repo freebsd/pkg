@@ -911,23 +911,40 @@ create_regfile(struct pkg_add_context *context, struct pkg_file *f, struct archi
 		f->config = pkg_get_config_file(context->pkg, f->path);
 		if (f->config) {
 			const char *cfdata;
+			ssize_t	 nread;
 			bool merge = pkg_object_bool(pkg_config_get("AUTOMERGE"));
 			const char *merge_tool = pkg_object_string(pkg_config_get("MERGETOOL"));
 
 			pkg_debug(1, "Populating config_file %s", f->path);
 			if (archive_entry_size(ae) < 0) {
 				pkg_emit_error("Invalid config file size for %s", f->path);
+				close(fd);
+				close_tempdir(tmpdir);
 				return (EPKG_FATAL);
 			}
 			len = archive_entry_size(ae);
 			f->config->content = xmalloc(len + 1);
-			archive_read_data(a, f->config->content, len);
+			nread = archive_read_data(a, f->config->content, len);
+			if (nread < 0 || (size_t)nread != len) {
+				pkg_emit_error("Failed to read the configuration "
+				    "file %s from the package", f->path);
+				close(fd);
+				close_tempdir(tmpdir);
+				return (EPKG_FATAL);
+			}
 			f->config->content[len] = '\0';
 			cfdata = f->config->content;
 			attempt_to_merge(context->rootfd, f->config, local, merge, merge_tool);
 			if (f->config->status == MERGE_SUCCESS)
 				cfdata = f->config->newcontent;
-			dprintf(fd, "%s", cfdata);
+			if (dprintf(fd, "%s", cfdata) < 0) {
+				if (f->config->newcontent != NULL)
+					free(f->config->newcontent);
+				close(fd);
+				close_tempdir(tmpdir);
+				pkg_fatal_errno("Failed to write the configuration "
+				    "file %s", f->path);
+			}
 			if (f->config->newcontent != NULL)
 				free(f->config->newcontent);
 		} else {
@@ -946,10 +963,21 @@ create_regfile(struct pkg_add_context *context, struct pkg_file *f, struct archi
 			return (EPKG_FATAL);
 		}
 	} else {
-		while ((len = read(fromfd, buf, sizeof(buf))) > 0)
-			if (write(fd, buf, len) == -1) {
-				pkg_errno("Failed to write file: %s", f->temppath);
+		ssize_t written;
+
+		while ((len = read(fromfd, buf, sizeof(buf))) > 0) {
+			written = write(fd, buf, len);
+			if (written < 0 || (size_t)written != len) {
+				close(fd);
+				close_tempdir(tmpdir);
+				pkg_fatal_errno("Failed to copy %s", f->path);
 			}
+		}
+		if (len < 0) {
+			close(fd);
+			close_tempdir(tmpdir);
+			pkg_fatal_errno("Failed to read %s", f->path);
+		}
 	}
 	if (fd != -1) {
 		if (set_attr_tofd(fd, f->path, f->perm, f->uid, f->gid,
