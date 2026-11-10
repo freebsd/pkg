@@ -975,6 +975,24 @@ do_extract_regfile(struct pkg_add_context *context, struct archive *a, struct ar
 	return (EPKG_OK);
 }
 
+/*
+ * Function handling the extraction of one kind of archive entry.
+ */
+struct extract_handler {
+	mode_t			 type;
+	int			(*extract)(struct pkg_add_context *,
+				    struct archive *, struct archive_entry *,
+				    const char *, struct pkg *, tempdirs_t *);
+};
+
+static const struct extract_handler extract_handlers[] = {
+	{ AE_IFDIR,	do_extract_dir },
+	{ AE_IFLNK,	do_extract_symlink },
+	{ 0,		do_extract_hardlink },
+	{ AE_IFREG,	do_extract_regfile },
+	{ 0,		NULL },
+};
+
 static int
 do_extract(struct archive *a, struct archive_entry *ae,
     int nfiles, struct pkg *local, tempdirs_t *tempdirs,
@@ -986,6 +1004,7 @@ do_extract(struct archive *a, struct archive_entry *ae,
 	int (*extract_cb)(struct pkg_add_context *context, struct archive *a,
 	    struct archive_entry *ae, const char *path, struct pkg *local,
 	    tempdirs_t *tempdirs);
+	const struct extract_handler *h;
 
 	if (nfiles == 0)
 		return (EPKG_OK);
@@ -999,29 +1018,17 @@ do_extract(struct archive *a, struct archive_entry *ae,
 		    pkg_config_get("FILES_IGNORE_GLOB"),
 		    pkg_config_get("FILES_IGNORE_REGEX")))
 			continue;
-		switch (archive_entry_filetype(ae)) {
-		case AE_IFDIR:
-			extract_cb = do_extract_dir;
-			break;
-		case AE_IFLNK:
-			extract_cb = do_extract_symlink;
-			break;
-		case 0: /* HARDLINKS */
-			extract_cb = do_extract_hardlink;
-			break;
-		case AE_IFREG:
-			extract_cb = do_extract_regfile;
-			break;
-		case AE_IFMT:
-		case AE_IFSOCK:
-		case AE_IFCHR:
-		case AE_IFIFO:
-		case AE_IFBLK:
-		default:
-			pkg_emit_error("Archive contains an unsupported filetype (%d): %s", archive_entry_filetype(ae), path);
+		for (h = extract_handlers; h->extract != NULL; h++)
+			if (h->type == archive_entry_filetype(ae))
+				break;
+		if (h->extract == NULL) {
+			pkg_emit_error("Archive contains an unsupported "
+			    "filetype (%d): %s", archive_entry_filetype(ae),
+			    path);
 			retcode = EPKG_FATAL;
 			goto cleanup;
 		}
+		extract_cb = h->extract;
 
 		if (extract_cb(context, a, ae, path, local, tempdirs) != EPKG_OK) {
 			retcode = EPKG_FATAL;
