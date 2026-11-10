@@ -854,8 +854,14 @@ EOF
 
 create_from_plist_path_too_long_body()
 {
+	local pathmax
+
 	genmanifest
-	awk 'BEGIN { printf "/"; for (i = 0; i < 1100; i++) printf "a"; printf "\n" }' \
+	# the buffer pkg stages a path in is MAXPATHLEN, which is not the same
+	# on every platform
+	pathmax=$(getconf PATH_MAX / 2>/dev/null || echo 4096)
+	awk -v n=$((pathmax + 100)) \
+	    'BEGIN { printf "/"; for (i = 0; i < n; i++) printf "a"; printf "\n" }' \
 	    > test.plist
 
 	atf_check \
