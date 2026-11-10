@@ -22,6 +22,7 @@ tests_init	\
 		add_shlib_already_installed \
 		add_provides_requires \
 		add_interleaved_requires_depends \
+		add_overlong_archive_path \
 		add_circular_depends \
 		add_diamond_depends \
 		add_circular_shlib_requires \
@@ -703,6 +704,36 @@ EOF
 		-e empty \
 		-s exit:0 \
 		pkg add $(pwd)/All/pkg1-1.pkg
+}
+
+add_overlong_archive_path_body() {
+	# an archive entry whose path does not fit in MAXPATHLEN must be
+	# reported, not extracted under a truncated name
+	pathmax=$(getconf PATH_MAX / 2>/dev/null || echo 4096)
+	long=$(awk -v n=$((pathmax + 100)) \
+	    'BEGIN { for (i = 0; i < n; i++) printf "a" }')
+
+	atf_check -s exit:0 sh ${RESOURCEDIR}/test_subr.sh new_pkg test test 1
+	cat << EOF >> test.ucl
+files: {
+	/usr/local/share/ok: ""
+}
+EOF
+	mkdir -p stage/usr/local/share
+	: > stage/usr/local/share/ok
+	atf_check -o ignore -s exit:0 pkg create -M test.ucl -r stage -o .
+
+	mkdir ext
+	atf_check -o ignore -e ignore -s exit:0 bsdtar -xf test-1.pkg -C ext
+	: > ext/x
+	atf_check -o ignore -e ignore -s exit:0 bsdtar --format pax -cf test-long.pkg \
+	    -s "|^x\$|/usr/local/${long}|" -C ext +MANIFEST x
+
+	atf_check \
+		-o ignore \
+		-e match:"Path too long in the archive" \
+		-s not-exit:0 \
+		pkg add $(pwd)/test-long.pkg
 }
 
 add_circular_depends_body() {

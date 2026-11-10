@@ -1003,7 +1003,13 @@ do_extract(struct archive *a, struct archive_entry *ae,
 	pkg_emit_progress_start(NULL);
 
 	do {
-		pkg_absolutepath(archive_entry_pathname(ae), path, sizeof(path), true);
+		if (pkg_absolutepath(archive_entry_pathname(ae), path,
+		    sizeof(path), true) == NULL) {
+			pkg_emit_error("Path too long in the archive: %s",
+			    archive_entry_pathname(ae));
+			retcode = EPKG_FATAL;
+			goto cleanup;
+		}
 		if (match_ucl_lists(path,
 		    pkg_config_get("FILES_IGNORE_GLOB"),
 		    pkg_config_get("FILES_IGNORE_REGEX")))
@@ -1622,7 +1628,12 @@ populate_config_file_contents(struct archive *a, struct archive_entry *ae,
 			continue;
 		}
 
-		pkg_absolutepath(archive_entry_pathname(ae), path, sizeof(path), true);
+		if (pkg_absolutepath(archive_entry_pathname(ae), path,
+		    sizeof(path), true) == NULL) {
+			pkg_emit_error("Path too long in the archive: %s",
+			    archive_entry_pathname(ae));
+			return (EPKG_FATAL);
+		}
 
 		struct pkg_config_file *config = pkg_get_config_file(pkg, path);
 		if (config == NULL) {
