@@ -1693,6 +1693,14 @@ pkg_add_common(struct pkgdb *db, const char *path, int fd, unsigned flags,
 		retcode = ret;
 		goto cleanup;
 	}
+	if (stringset_contains(pkgs_in_progress, pkg->name)) {
+		pkg_emit_error("dependency cycle detected");
+		retcode = EPKG_FATAL;
+		goto cleanup;
+	}
+	stringset_safe_add(&pkgs_in_progress, pkg->name);
+	pushed = true;
+
 	if ((flags & (PKG_ADD_UPGRADE | PKG_ADD_SPLITTED_UPGRADE)) !=
 	    PKG_ADD_UPGRADE)
 		pkg_emit_install_begin(pkg);
@@ -1704,14 +1712,6 @@ pkg_add_common(struct pkgdb *db, const char *path, int fd, unsigned flags,
 		retcode = EPKG_FATAL;
 		goto cleanup;
 	}
-
-	if (stringset_contains(pkgs_in_progress, pkg->name)) {
-		pkg_emit_error("dependency cycle detected");
-		retcode = EPKG_FATAL;
-		goto cleanup;
-	}
-	stringset_safe_add(&pkgs_in_progress, pkg->name);
-	pushed = true;
 
 	if (flags & PKG_ADD_AUTOMATIC)
 		pkg->automatic = true;
