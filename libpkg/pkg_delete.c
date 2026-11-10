@@ -293,6 +293,10 @@ pkg_dir_to_del_prune(struct pkg *pkg)
 	struct pkg_dir_to_del *entry, *last = NULL;
 	size_t w = 0;
 
+	/* nothing to sort nor to prune */
+	if (pkg->dir_to_del.len < 2)
+		return;
+
 	qsort(pkg->dir_to_del.d, pkg->dir_to_del.len,
 	    sizeof(struct pkg_dir_to_del), dir_to_del_cmp);
 
