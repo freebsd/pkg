@@ -255,6 +255,13 @@ struct pkg_dep {
 
 typedef vec_t(struct pkg_dep) pkg_depv_t;
 
+struct pkg_dir_to_del {
+	char	*path;
+	bool	 under_prefix;
+};
+
+typedef vec_t(struct pkg_dir_to_del) pkg_dir_to_delv_t;
+
 struct pkg_scripts {
 	sb_t shell;
 	charv_t lua;
@@ -316,7 +323,7 @@ struct pkg {
 	unsigned			flags;
 	int		rootfd;
 	char		*rootpath;
-	charv_t	dir_to_del;
+	pkg_dir_to_delv_t	dir_to_del;
 	pkg_t		 type;
 	struct pkg_repo		*repo;
 	char			*rwhich_path;
@@ -909,6 +916,7 @@ void pkg_delete_dir(struct pkg *pkg, struct pkg_dir *dir);
 void pkg_delete_file(struct pkg *pkg, struct pkg_file *file);
 int pkg_open_root_fd(struct pkg *pkg);
 void pkg_add_dir_to_del(struct pkg *pkg, const char *file, const char *dir);
+void pkg_dir_to_del_prune(struct pkg *pkg);
 struct plist *plist_new(struct pkg *p, const char *stage);
 int plist_parse_line(struct plist *p, char *line);
 char *extract_keywords(char *line, char **keyword, struct file_attr **attr);

@@ -115,7 +115,9 @@ pkg_free(struct pkg *pkg)
 	vec_autofree(&pkg->message);
 	vec_autofree(&pkg->annotations);
 
-	vec_autofree(&pkg->dir_to_del);
+	vec_foreach(pkg->dir_to_del, i)
+		free(pkg->dir_to_del.d[i].path);
+	vec_free(&pkg->dir_to_del);
 
 	if (pkg->rootfd != -1)
 		close(pkg->rootfd);

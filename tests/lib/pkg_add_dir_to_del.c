@@ -39,17 +39,40 @@ ATF_TC_BODY(pkg_add_dir_to_del, tc)
 
 	ATF_REQUIRE_EQ(vec_len(&p->dir_to_del), 0);
 
+	/* the parent of a file is queued with a trailing slash */
 	pkg_add_dir_to_del(p, "/usr/local/plop/bla", NULL);
-
-	ATF_REQUIRE_STREQ(vec_last(&p->dir_to_del), "/usr/local/plop/");
-
-	pkg_add_dir_to_del(p, NULL, "/usr/local/plop");
-
 	ATF_REQUIRE_EQ(vec_len(&p->dir_to_del), 1);
+	ATF_REQUIRE_STREQ(p->dir_to_del.d[0].path, "/usr/local/plop/");
+	ATF_REQUIRE(p->dir_to_del.d[0].under_prefix);
 
+	/* a directory out of the prefix is queued too, but kept aside */
 	pkg_add_dir_to_del(p, NULL, "/var/run/yeah");
+	ATF_REQUIRE_EQ(vec_len(&p->dir_to_del), 2);
+	ATF_REQUIRE_STREQ(p->dir_to_del.d[1].path, "/var/run/yeah/");
+	ATF_REQUIRE(!p->dir_to_del.d[1].under_prefix);
 
-	ATF_REQUIRE_STREQ(vec_last(&p->dir_to_del), "/var/run/yeah/");
+	/* a queued ancestor is dropped in favour of its descendants, a
+	 * directory out of the prefix is never dropped */
+	pkg_add_dir_to_del(p, NULL, "/usr/local/plop");
+	pkg_add_dir_to_del(p, NULL, "/usr/local");
+	pkg_dir_to_del_prune(p);
+
+	ATF_REQUIRE_EQ(vec_len(&p->dir_to_del), 2);
+	ATF_REQUIRE_STREQ(p->dir_to_del.d[0].path, "/var/run/yeah/");
+	ATF_REQUIRE_STREQ(p->dir_to_del.d[1].path, "/usr/local/plop/");
+
+	/* a deeper directory replaces the queued one */
+	pkg_add_dir_to_del(p, NULL, "/usr/local/plop/other");
+	pkg_dir_to_del_prune(p);
+
+	ATF_REQUIRE_EQ(vec_len(&p->dir_to_del), 2);
+	ATF_REQUIRE_STREQ(p->dir_to_del.d[1].path, "/usr/local/plop/other/");
+
+	/* the same directory queued twice is only kept once */
+	pkg_add_dir_to_del(p, NULL, "/usr/local/plop/other");
+	pkg_dir_to_del_prune(p);
+
+	ATF_REQUIRE_EQ(vec_len(&p->dir_to_del), 2);
 
 	pkg_free(p);
 }

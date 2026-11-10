@@ -181,12 +181,24 @@ pkg_delete(struct pkg *pkg, struct pkg *rpkg, struct pkgdb *db, int flags,
 	return (cancel ? EPKG_CANCEL : ret);
 }
 
+/*
+ * Both paths are directories ending with a slash: tell whether parent is one
+ * of the ancestors of dir, or dir itself.
+ */
+static bool
+dir_is_parent(const char *parent, const char *dir)
+{
+	return (strncmp(parent, dir, strlen(parent)) == 0);
+}
+
 void
 pkg_add_dir_to_del(struct pkg *pkg, const char *file, const char *dir)
 {
+	struct pkg_dir_to_del entry;
 	char path[MAXPATHLEN];
+	const char *prefix;
 	char *tmp;
-	size_t len, len2;
+	size_t len, prefix_len;
 
 	if (strlcpy(path, file != NULL ? file : dir, sizeof(path)) >=
 	    sizeof(path)) {
@@ -203,31 +215,23 @@ pkg_add_dir_to_del(struct pkg *pkg, const char *file, const char *dir)
 	}
 
 	len = strlen(path);
-
-	/* make sure to finish by a / */
-	if (len > 0 && path[len - 1] != '/' && len < MAXPATHLEN) {
+	if (len > 0 && path[len - 1] != '/' && len < sizeof(path) - 1) {
 		path[len] = '/';
+		path[len + 1] = '\0';
 		len++;
-		path[len] = '\0';
 	}
 
-	vec_foreach(pkg->dir_to_del, i) {
-		len2 = strlen(pkg->dir_to_del.d[i]);
-		if (len2 >= len && strncmp(path, pkg->dir_to_del.d[i], len) == 0)
-			return;
+	prefix = RELATIVE_PATH(pkg->prefix);
+	prefix_len = strlen(prefix);
+	while (prefix_len > 0 && prefix[prefix_len - 1] == '/')
+		prefix_len--;
 
-		if (strncmp(path, pkg->dir_to_del.d[i], len2) == 0) {
-			pkg_debug(1, "Replacing in deletion %s with %s",
-			    pkg->dir_to_del.d[i], path);
-			free(pkg->dir_to_del.d[i]);
-			pkg->dir_to_del.d[i] = xstrdup(path);
-			return;
-		}
-	}
-
-	pkg_debug(1, "Adding to deletion %s", path);
-	vec_push(&pkg->dir_to_del, xstrdup(path));
+	entry.path = xstrdup(path);
+	entry.under_prefix = (strncmp(prefix, RELATIVE_PATH(path), prefix_len) ==
+	    0 && RELATIVE_PATH(path)[prefix_len] == '/');
+	vec_push(&pkg->dir_to_del, entry);
 }
+
 
 /*
  * Clear the flags which prevent the removal of path.  When drop_all is set
@@ -262,6 +266,52 @@ clear_blocking_flags(struct pkg *pkg __unused, const char *path __unused,
 	close(fd);
 #endif
 #endif
+}
+
+static int
+dir_to_del_cmp(const void *a, const void *b)
+{
+	const struct pkg_dir_to_del *da = a;
+	const struct pkg_dir_to_del *db = b;
+
+	/* deepest first: rmdir_p() does not walk up the parents of the
+	 * directories out of the prefix, they have to be removed before
+	 * their own parents */
+	return (strcmp(db->path, da->path));
+}
+
+/*
+ * Only the deepest directories have to be removed: rmdir_p() walks up the
+ * parents of the directory it removed, so queueing a parent as well would
+ * either remove it twice or, when a child survives, make the removal of the
+ * whole branch fail.  The directories out of the prefix are kept, rmdir_p()
+ * does not walk up their parents.
+ */
+void
+pkg_dir_to_del_prune(struct pkg *pkg)
+{
+	struct pkg_dir_to_del *entry, *last = NULL;
+	size_t w = 0;
+
+	qsort(pkg->dir_to_del.d, pkg->dir_to_del.len,
+	    sizeof(struct pkg_dir_to_del), dir_to_del_cmp);
+
+	for (size_t i = 0; i < pkg->dir_to_del.len; i++) {
+		entry = &pkg->dir_to_del.d[i];
+
+		/* a queued descendant already covers this ancestor */
+		if (entry->under_prefix && last != NULL &&
+		    dir_is_parent(entry->path, last->path)) {
+			free(entry->path);
+			continue;
+		}
+
+		pkg->dir_to_del.d[w] = *entry;
+		if (entry->under_prefix)
+			last = &pkg->dir_to_del.d[w];
+		w++;
+	}
+	pkg->dir_to_del.len = w;
 }
 
 static void
@@ -339,8 +389,10 @@ pkg_effective_rmdir(struct pkgdb *db, struct pkg *pkg)
 	char prefix_r[MAXPATHLEN];
 
 	snprintf(prefix_r, sizeof(prefix_r), "%s", RELATIVE_PATH(pkg->prefix));
+	pkg_dir_to_del_prune(pkg);
+
 	vec_foreach(pkg->dir_to_del, i) {
-		rmdir_p(db, pkg, pkg->dir_to_del.d[i], prefix_r);
+		rmdir_p(db, pkg, pkg->dir_to_del.d[i].path, prefix_r);
 	}
 }
 
@@ -451,11 +503,7 @@ pkg_delete_dir(struct pkg *pkg, struct pkg_dir *dir)
 	while (len > 0 && prefix_rel[len - 1] == '/')
 		len--;
 
-	if ((strncmp(prefix_rel, path, len) == 0) && path[len] == '/') {
-		pkg_add_dir_to_del(pkg, NULL, path);
-	} else {
-		vec_push(&pkg->dir_to_del, xstrdup(path));
-	}
+	pkg_add_dir_to_del(pkg, NULL, path);
 }
 
 int
