@@ -25,7 +25,36 @@ tests_init \
 	delete_dry_run_no_remove \
 	delete_autoremove \
 	delete_autoremove_flag \
-	delete_exclude_glob
+	delete_exclude_glob \
+	delete_overlong_directory
+
+delete_overlong_directory_body() {
+	# a directory whose path does not fit in the buffer used to remove it
+	# must be reported instead of being removed through a truncated name
+	long=$(awk 'BEGIN { for (i = 0; i < 1012; i++) printf "a" }')
+
+	cat > overlong.ucl << EOF
+name: "overlong"
+origin: "test/overlong"
+version: "1"
+maintainer: "test"
+comment: "test"
+www: "http://test"
+prefix: /usr/local
+desc: "test"
+directories: {
+	"/usr/local/${long}": {}
+}
+EOF
+
+	atf_check -o ignore -e empty -s exit:0 pkg register -M overlong.ucl
+
+	atf_check \
+		-o ignore \
+		-e match:"Path too long, not removing" \
+		-s exit:0 \
+		pkg delete -y overlong
+}
 
 delete_all_body() {
 	atf_check -s exit:0 sh ${RESOURCEDIR}/test_subr.sh new_pkg "foo" "foo" "1"

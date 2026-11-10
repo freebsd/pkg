@@ -223,11 +223,14 @@ rmdir_p(struct pkgdb *db, struct pkg *pkg, char *dir, const char *prefix_r)
 #endif
 #endif
 
-	len = snprintf(fullpath, sizeof(fullpath), "/%s", dir);
-	while (fullpath[len -1] == '/') {
-		fullpath[len - 1] = '\0';
-		len--;
+	len = strlen(dir) + 1;
+	if (len >= sizeof(fullpath)) {
+		pkg_emit_error("Path too long, not removing '%.64s'", dir);
+		return;
 	}
+	snprintf(fullpath, sizeof(fullpath), "/%s", dir);
+	while (len > 1 && fullpath[len - 1] == '/')
+		fullpath[--len] = '\0';
 	if (pkgdb_is_dir_used(db, pkg, fullpath, &cnt) != EPKG_OK)
 		return;
 
