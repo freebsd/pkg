@@ -23,6 +23,7 @@ tests_init	\
 		add_provides_requires \
 		add_interleaved_requires_depends \
 		add_circular_depends \
+		add_diamond_depends \
 		add_circular_shlib_requires \
 		add_circular_shlib_requires_depends \
 		add_shlib_stdin_skip \
@@ -745,9 +746,54 @@ EOF
 		pkg add $(pwd)/All/pkg1-1.pkg
 }
 
+add_diamond_depends_body() {
+	# A dependency graph which is not a cycle: a -> b, a -> c, b -> d and
+	# c -> d.  d is reached twice, which must not be reported as a cycle.
+	setup_provider_layout
+
+	for pkg in a b c d; do
+		atf_check -s exit:0 sh ${RESOURCEDIR}/test_subr.sh new_pkg \
+		    ${pkg} ${pkg} 1 /usr/local
+		case ${pkg} in
+		a)
+			cat << EOF >> ${pkg}.ucl
+deps: {
+	b: { origin: "b", version: "1" }
+	c: { origin: "c", version: "1" }
+}
+EOF
+			;;
+		b|c)
+			cat << EOF >> ${pkg}.ucl
+deps: {
+	d: { origin: "d", version: "1" }
+}
+EOF
+			;;
+		esac
+		atf_check -o ignore -e empty -s exit:0 \
+		    pkg create -M ${pkg}.ucl
+		mv ${pkg}-1.pkg All/
+	done
+
+	atf_check \
+		-o ignore \
+		-e empty \
+		-s exit:0 \
+		pkg add $(pwd)/All/a-1.pkg
+
+	atf_check \
+		-o inline:"a\nb\nc\nd\n" \
+		-e empty \
+		-s exit:0 \
+		sh -c 'pkg query %n | sort'
+}
+
 add_circular_shlib_requires_body() {
 	# Same as add_circular_depends(), but both packages depend on each other
 	# via shlib "requires".
+	atf_skip_on Darwin "The macOS linker uses different flags"
+	atf_skip_on Linux "On Linux (debian-like) the library are not on the scanned path for shlibs"
 	setup_provider_layout
 	rm All/provider-1.pkg
 	rm -rf shlibs/libtest.so.1
@@ -811,6 +857,8 @@ EOF
 add_circular_shlib_requires_depends_body() {
 	# Same as add_circular_depends(), but one package depends via "deps" and
 	# the other one depends via "requires".
+	atf_skip_on Darwin "The macOS linker uses different flags"
+	atf_skip_on Linux "On Linux (debian-like) the library are not on the scanned path for shlibs"
 	setup_provider_layout
 	rm All/provider-1.pkg
 	rm -rf shlibs/libtest.so.1
