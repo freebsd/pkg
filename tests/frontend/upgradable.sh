@@ -82,16 +82,18 @@ upgradable_body() {
 	atf_check -o save:conf/test.conf \
 		  echo "test: { url: file:///$TMPDIR/test, enabled: true }"
 
+	# From here on out, we'll use the UK spelling...
+
 	# With auto-update disabled, the result has not changed
 	atf_check -s exit:1 \
-		  pkg upgradable -q -U b
+		  pkg upgradeable -q -U b
 
 	# With auto-update enabled, we should see the update happen,
 	# and b should now be upgradable
 	atf_check -s exit:0 \
 		  -o match:'Updating test repo' \
 		  -o match:'b: 2\.72 -> 3\.14' \
-		  pkg upgradable b
+		  pkg upgradeable b
 
 	# Now an explicit package; a is still upgradable but should
 	# not be listed
@@ -100,7 +102,7 @@ upgradable_body() {
 		  -o match:'b: 2\.72 -> 3\.14' \
 		  -o not-match:'c:' \
 		  -o not-match:'d:' \
-		  pkg upgradable -r test -U b
+		  pkg upgradeable -r test -U b
 
 	# Test again without explicit repository
 	atf_check -s exit:0 \
@@ -108,6 +110,6 @@ upgradable_body() {
 		  -o match:'b: 2\.72 -> 3\.14' \
 		  -o not-match:'c:' \
 		  -o not-match:'d:' \
-		  pkg upgradable -U
+		  pkg upgradeable -U
 	atf_check -s exit:0 -o empty pkg upgradable -U -q
 }
