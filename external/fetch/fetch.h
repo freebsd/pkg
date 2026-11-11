@@ -131,6 +131,15 @@ void		 fetchFreeURL(struct url *);
 }
 #endif
 
+/* Optional scheduler response metadata. Redirects are returned without following
+ * them when this pointer is set. The caller owns and resets the object. */
+struct fetch_response {
+	int status;
+	int64_t retry_after;
+	char redirect[PATH_MAX];
+};
+extern struct fetch_response *fetchResponse;
+
 /* Authentication */
 typedef int (*auth_t)(struct url *);
 extern auth_t		 fetchAuthMethod;

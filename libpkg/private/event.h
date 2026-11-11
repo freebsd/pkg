@@ -44,6 +44,8 @@
 #endif
 #endif
 void pkg_emit_errno(const char *func, const char *arg);
+int pkg_emit_event(struct pkg_event *ev);
+void pkg_event_register_fetch(pkg_event_cb cb, void *data);
 void pkg_emit_pkg_errno(pkg_error_t err, const char *func, const char *arg);
 
 #define pkg_errno(fmt, ...) \

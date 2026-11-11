@@ -178,6 +178,21 @@ static struct config_entry c[] = {
 	},
 	{
 		PKG_INT,
+		"FETCH_WORKERS",
+		"3",
+	},
+	{
+		PKG_INT,
+		"FETCH_WORKERS_PER_HOST",
+		"1",
+	},
+	{
+		PKG_OBJECT,
+		"FETCH_HOSTS",
+		NULL,
+	},
+	{
+		PKG_INT,
 		"FETCH_RETRY",
 		"3",
 	},

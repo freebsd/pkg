@@ -41,6 +41,8 @@
 
 static pkg_event_cb _cb = NULL;
 static void *_data = NULL;
+static pkg_event_cb fetch_cb;
+static void *fetch_data;
 
 static void
 pipe_errno(struct pkg_event *ev, sb_t *msg)
@@ -125,6 +127,23 @@ pipe_fetch_finished(struct pkg_event *ev, sb_t *msg)
 	    "}}",
 	    json_escape(ev->e_fetching.url)
 	    );
+}
+
+static void
+pipe_fetch_progress(struct pkg_event *ev, sb_t *msg)
+{
+	const char *name = "", *version = "";
+
+	if (ev->e_fetch_progress.pkg != NULL) {
+		pkg_get(ev->e_fetch_progress.pkg, PKG_ATTR_NAME, &name);
+		pkg_get(ev->e_fetch_progress.pkg, PKG_ATTR_VERSION, &version);
+	}
+	sb_printf(msg, "{ \"type\": \"FETCH_PROGRESS\", \"data\": {"
+	    "\"status\": %d, \"pkgname\": \"%s\", \"pkgversion\": \"%s\", "
+	    "\"current\": %jd, \"total\": %jd, \"packages\": %zu}}",
+	    ev->e_fetch_progress.status, json_escape(name), json_escape(version),
+	    (intmax_t)ev->e_fetch_progress.current,
+	    (intmax_t)ev->e_fetch_progress.total, ev->e_fetch_progress.packages);
 }
 
 static void
@@ -552,6 +571,7 @@ static const pipe_handler_fn pipe_handlers[PKG_EVENT_LAST] = {
 	[PKG_EVENT_TRIGGER] = pipe_trigger,
 	[PKG_EVENT_TRIGGERS_FINISHED] = pipe_triggers_finished,
 	[PKG_EVENT_RC_SCRIPT] = pipe_rc_script,
+	[PKG_EVENT_FETCH_PROGRESS] = pipe_fetch_progress,
 };
 _Static_assert(NELEM(pipe_handlers) == PKG_EVENT_LAST,
     "pipe_handlers table size does not match pkg_event_t enum");
@@ -578,10 +598,20 @@ pkg_event_register(pkg_event_cb cb, void *data)
 	_data = data;
 }
 
-static int
+void
+pkg_event_register_fetch(pkg_event_cb cb, void *data)
+{
+	fetch_cb = cb;
+	fetch_data = data;
+}
+
+int
 pkg_emit_event(struct pkg_event *ev)
 {
 	int ret = 0;
+	/* Workers relay events before invoking plugins or frontend callbacks. */
+	if (fetch_cb != NULL)
+		return (fetch_cb(fetch_data, ev));
 	pkg_plugins_hook_run(PKG_PLUGIN_HOOK_EVENT, ev, NULL);
 	if (_cb != NULL)
 		ret = _cb(_data, ev);
@@ -681,6 +711,7 @@ pkg_emit_fetch_begin(const char *url)
 
 	ev.type = PKG_EVENT_FETCH_BEGIN;
 	ev.e_fetching.url = url;
+	ev.e_fetching.concurrent = false;
 
 	pkg_emit_event(&ev);
 }
@@ -692,6 +723,7 @@ pkg_emit_fetch_finished(const char *url)
 
 	ev.type = PKG_EVENT_FETCH_FINISHED;
 	ev.e_fetching.url = url;
+	ev.e_fetching.concurrent = false;
 
 	pkg_emit_event(&ev);
 }

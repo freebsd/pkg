@@ -182,6 +182,8 @@ pkg_fetch_file(struct pkg_repo *repo, const char *url, char *dest, time_t t,
 		fi.url = url;
 	}
 
+	if (repo != NULL && repo->fetch_target != NULL)
+		fi.url = repo->fetch_target;
 	fi.offset = offset;
 	fi.size = size;
 	fi.max_size = 0;

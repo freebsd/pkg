@@ -47,19 +47,13 @@
 #include <string.h>
 #include <unistd.h>
 #include <errno.h>
-#include <time.h>
 #include <signal.h>
-#if __has_include(<libutil.h>)
-#include <libutil.h>
-#endif
 
 #include <bsd_compat.h>
 
 #include "pkg.h"
 #include "pkgcli.h"
 #include "xmalloc.h"
-
-#define STALL_TIME 5
 
 sb_t *messages  = NULL;
 sb_t conflicts = sb_init();
@@ -75,20 +69,13 @@ static int last_progress_percent = -1;
 static bool progress_started = false;
 static bool progress_interrupted = false;
 static bool progress_debit = false;
-static int64_t last_tick = 0;
-static int64_t stalled;
-static int64_t bytes_per_second;
-static time_t last_update;
-static time_t begin = 0;
+static bool progress_transfer = false;
 static int add_deps_depth;
 static vec_t(struct cleanup *) cleanup_list = vec_init();
 static bool signal_handler_installed = false;
 static size_t nbactions = 0;
 static size_t nbdigits = 0;
 static size_t nbdone = 0;
-
-/* units for format_size */
-static const char *unit_SI[] = { " ", "k", "M", "G", "T", };
 
 static void draw_progressbar(int64_t current, int64_t total);
 
@@ -103,6 +90,7 @@ cleanup_handler(int sig)
 		kill(getpid(), sig);
 		_exit(128 + sig);
 	}
+	/* Leave the last progress frame visible above the cleanup message. */
 	write(STDERR_FILENO, msg, sizeof(msg) - 1);
 	vec_foreach(cleanup_list, i) {
 		ev = cleanup_list.d[i];
@@ -111,24 +99,6 @@ cleanup_handler(int sig)
 	signal(sig, SIG_DFL);
 	kill(getpid(), sig);
 	_exit(128 + sig);
-}
-
-static void
-format_rate_SI(char *buf, int size, off_t bytes)
-{
-	int i;
-
-	bytes *= 100;
-	for (i = 0; bytes >= 100*1000 && unit_SI[i][0] != 'T'; i++)
-		bytes = (bytes + 500) / 1000;
-	if (i == 0) {
-		i++;
-		bytes = (bytes + 500) / 1000;
-	}
-	snprintf(buf, size, "%3lld.%1lld %sB",
-	    (long long) (bytes + 5) / 100,
-	    (long long) (bytes + 5) / 10 % 10,
-	    unit_SI[i]);
 }
 
 void
@@ -206,6 +176,9 @@ job_status_begin(sb_t *msg)
 void
 progressbar_start(const char *pmsg)
 {
+	if (progress_transfer)
+		fetch_progress_serial_stop();
+	progress_transfer = false;
 	if (progress_message) {
 		free(progress_message);
 		progress_message = NULL;
@@ -220,14 +193,13 @@ progressbar_start(const char *pmsg)
 		progress_message = xstrdup(sb_str(&msg_buf));
 	}
 	last_progress_percent = -1;
-	last_tick = 0;
-	begin = last_update = time(NULL);
-	bytes_per_second = 0;
-	stalled = 0;
+	progress_transfer = progress_debit && isatty(STDOUT_FILENO);
 
 	progress_started = true;
 	progress_interrupted = false;
-	if (!isatty(STDOUT_FILENO))
+	if (progress_transfer)
+		fetch_progress_serial_start(progress_message);
+	else if (!isatty(STDOUT_FILENO))
 		printf("%s: ", progress_message);
 	else
 		printf("%s:   0%%", progress_message);
@@ -239,7 +211,11 @@ progressbar_tick(int64_t current, int64_t total)
 	int percent;
 
 	if (!quiet && progress_started) {
-		if (isatty(STDOUT_FILENO))
+		if (progress_transfer) {
+			fetch_progress_serial_tick(current, total, progress_interrupted);
+			if (current >= total)
+				progressbar_stop();
+		} else if (isatty(STDOUT_FILENO))
 			draw_progressbar(current, total);
 		else {
 			if (progress_interrupted) {
@@ -263,10 +239,15 @@ void
 progressbar_stop(void)
 {
 	if (progress_started) {
-		if (!isatty(STDOUT_FILENO))
-			printf(" done");
-		putchar('\n');
+		if (progress_transfer)
+			fetch_progress_serial_stop();
+		else {
+			if (!isatty(STDOUT_FILENO))
+				printf(" done");
+			putchar('\n');
+		}
 	}
+	progress_transfer = false;
 	last_progress_percent = -1;
 	progress_started = false;
 	progress_interrupted = false;
@@ -276,113 +257,14 @@ static void
 draw_progressbar(int64_t current, int64_t total)
 {
 	int percent;
-	int64_t transferred;
-	time_t elapsed = 0, now = 0;
-	char buf[9];
-	int64_t bytes_left;
-	int cur_speed;
-	int hours, minutes, seconds;
-	float age_factor;
 
-	if (!progress_started) {
-		progressbar_stop();
+	if (!progress_started)
 		return;
-	}
-
-	if (progress_debit) {
-		now = time(NULL);
-		elapsed = (now >= last_update) ? now - last_update : 0;
-	}
-
 	percent = (total != 0) ? (current * 100. / total) : 100;
-
-	/**
-	 * Wait for interval for debit bars to keep calc per second.
-	 * If not debit, show on every % change, or if ticking after
-	 * an interruption (which removed our progressbar output).
-	 */
-	if (current >= total || (progress_debit && elapsed >= 1) ||
-	    (!progress_debit &&
-	    (percent != last_progress_percent || progress_interrupted))) {
+	if (current >= total || percent != last_progress_percent ||
+	    progress_interrupted) {
 		last_progress_percent = percent;
-
 		printf("\r%s: %3d%%", progress_message, percent);
-		if (progress_debit) {
-			transferred = current - last_tick;
-			last_tick = current;
-			bytes_left = total - current;
-			if (bytes_left <= 0) {
-				elapsed = now - begin;
-				/* Always show at least 1 second at end. */
-				if (elapsed == 0)
-					elapsed = 1;
-				/* Calculate true total speed when done */
-				transferred = total;
-				bytes_per_second = 0;
-			}
-
-			if (elapsed != 0)
-				cur_speed = (transferred / elapsed);
-			else
-				cur_speed = transferred;
-
-#define AGE_FACTOR_SLOW_START 3
-			if (now - begin <= AGE_FACTOR_SLOW_START)
-				age_factor = 0.4;
-			else
-				age_factor = 0.9;
-
-			if (bytes_per_second != 0) {
-				bytes_per_second =
-				    (bytes_per_second * age_factor) +
-				    (cur_speed * (1.0 - age_factor));
-			} else
-				bytes_per_second = cur_speed;
-
-			humanize_number(buf, sizeof(buf),
-			    current,"B", HN_AUTOSCALE, HN_IEC_PREFIXES);
-			printf(" %*s", (int)sizeof(buf), buf);
-
-			if (bytes_left > 0)
-				format_rate_SI(buf, sizeof(buf), transferred);
-			else /* Show overall speed when done */
-				format_rate_SI(buf, sizeof(buf),
-				    bytes_per_second);
-			printf(" %s/s ", buf);
-
-			if (!transferred)
-				stalled += elapsed;
-			else
-				stalled = 0;
-
-			if (stalled >= STALL_TIME)
-				printf(" - stalled -");
-			else if (bytes_per_second == 0 && bytes_left > 0)
-				printf("   --:-- ETA");
-			else {
-				if (bytes_left > 0)
-					seconds = bytes_left / bytes_per_second;
-				else
-					seconds = elapsed;
-
-				hours = seconds / 3600;
-				seconds -= hours * 3600;
-				minutes = seconds / 60;
-				seconds -= minutes * 60;
-
-				if (hours != 0)
-					printf("%02d:%02d:%02d", hours,
-					    minutes, seconds);
-				else
-					printf("   %02d:%02d", minutes, seconds);
-
-				if (bytes_left > 0)
-					printf(" ETA");
-				else
-					printf("    ");
-			}
-			last_update = now;
-		}
 		fflush(stdout);
 	}
 	if (current >= total)
@@ -456,6 +338,8 @@ event_cb_fetch_begin(struct pkg_event *ev, int *debug __unused)
 {
 	const char *filename, *tmp;
 
+	if (ev->e_fetching.concurrent)
+		return (0);
 	if (nbtodl > 0)
 		nbdone++;
 	if (quiet)
@@ -489,9 +373,10 @@ event_cb_fetch_begin(struct pkg_event *ev, int *debug __unused)
 }
 
 static int
-event_cb_fetch_finished(struct pkg_event *ev __unused, int *debug __unused)
+event_cb_fetch_finished(struct pkg_event *ev, int *debug __unused)
 {
-	progress_debit = false;
+	if (!ev->e_fetching.concurrent)
+		progress_debit = false;
 	return (0);
 }
 
@@ -875,6 +760,8 @@ event_cb_sandbox_get_string(struct pkg_event *ev, int *debug __unused)
 static int
 event_cb_progress_start(struct pkg_event *ev, int *debug __unused)
 {
+	if (fetch_progress_active())
+		return (0);
 	progressbar_start(ev->e_progress_start.msg);
 	return (0);
 }
@@ -882,8 +769,28 @@ event_cb_progress_start(struct pkg_event *ev, int *debug __unused)
 static int
 event_cb_progress_tick(struct pkg_event *ev, int *debug __unused)
 {
+	if (fetch_progress_active()) {
+		fetch_progress_draw(false);
+		return (0);
+	}
 	progressbar_tick(ev->e_progress_tick.current,
 	    ev->e_progress_tick.total);
+	return (0);
+}
+
+static int
+event_cb_fetch_progress(struct pkg_event *ev, int *debug __unused)
+{
+	if (ev->e_fetch_progress.status == PKG_FETCH_PROGRESS_START) {
+		progressbar_stop();
+		progress_debit = false;
+	}
+	fetch_progress_event(ev);
+	if (ev->e_fetch_progress.status == PKG_FETCH_PROGRESS_END) {
+		nbtodl = 0;
+		nbdone = 0;
+		nbdigits = 0;
+	}
 	return (0);
 }
 
@@ -1066,6 +973,7 @@ static const event_handler_fn event_handlers[PKG_EVENT_LAST] = {
 	[PKG_EVENT_FILE_META_MISMATCH]           = event_cb_file_meta_mismatch,
 	[PKG_EVENT_DIR_META_MISMATCH]            = event_cb_dir_meta_mismatch,
 	[PKG_EVENT_RC_SCRIPT]                    = event_cb_rc_script,
+	[PKG_EVENT_FETCH_PROGRESS]               = event_cb_fetch_progress,
 };
 _Static_assert(NELEM(event_handlers) == PKG_EVENT_LAST,
     "event_handlers table size does not match pkg_event_t enum");
@@ -1074,18 +982,38 @@ int
 event_callback(void *data, struct pkg_event *ev)
 {
 	int *debug = data;
+	int ret = 0;
+	bool interrupt_fetch;
+
+	interrupt_fetch = fetch_progress_active() &&
+	    ev->type != PKG_EVENT_FETCH_PROGRESS &&
+	    ev->type != PKG_EVENT_PROGRESS_START &&
+	    ev->type != PKG_EVENT_PROGRESS_TICK &&
+	    ev->type != PKG_EVENT_FETCH_BEGIN &&
+	    ev->type != PKG_EVENT_FETCH_FINISHED &&
+	    ev->type != PKG_EVENT_PKG_FETCH_BEGIN;
+	if (interrupt_fetch)
+		fetch_progress_clear();
 
 	/* Interrupt progressbar for most event types */
 	if (progress_started && ev->type != PKG_EVENT_PROGRESS_TICK &&
+	    ev->type != PKG_EVENT_PKG_FETCH_BEGIN &&
+	    !((ev->type == PKG_EVENT_FETCH_BEGIN ||
+	    ev->type == PKG_EVENT_FETCH_FINISHED) && ev->e_fetching.concurrent) &&
 	    ev->type != PKG_EVENT_FILE_META_OK &&
 	    ev->type != PKG_EVENT_DIR_META_OK &&
 	    !progress_interrupted) {
-		putchar('\n');
+		if (progress_transfer)
+			fetch_progress_clear();
+		else
+			putchar('\n');
 		progress_interrupted = true;
 	}
 
 	if (ev->type < PKG_EVENT_LAST && event_handlers[ev->type] != NULL)
-		return (event_handlers[ev->type](ev, debug));
+		ret = event_handlers[ev->type](ev, debug);
+	if (interrupt_fetch)
+		fetch_progress_draw(true);
 
-	return (0);
+	return (ret);
 }
