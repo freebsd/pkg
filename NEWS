@@ -1,3 +1,6 @@
+Changes from 2.9.1 to 2.9.2
+- query: fix %X computes the digest of a package
+
 Changes from 2.9.0 to 2.9.1
 - pkg add: detect the dependency cycles and report them with the chain
   of packages involved instead of recursing until the memory is exhausted
