@@ -1,4 +1,10 @@
 Changes from 2.9.0 to 2.9.1
+- pkg add: detect the dependency cycles and report them with the chain
+  of packages involved instead of recursing until the memory is exhausted
+- pkg add: reach the packages kept in the shlibs directory again when it
+  recurses through a shared library requirement
+- plugins: the name, description and version of a plugin are recorded again,
+  and its configuration file is read, they were all silently ignored
 - fetch: use a monotonic clock for the connect and SSL handshake timeouts,
   which the handshake now honours, and build with OpenSSL 4.1
 - query: %R reports the repository recorded at installation time again,
