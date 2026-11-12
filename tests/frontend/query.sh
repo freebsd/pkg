@@ -5,6 +5,7 @@
 tests_init \
 	query \
 	query_repository \
+	query_digest \
 	query_empty_multiline \
 	query_empty_provides_requires \
 	query_provides_requires \
@@ -316,6 +317,22 @@ query_repository_body() {
 		-e empty \
 		-s exit:0 \
 		pkg query "%R" test
+}
+
+query_digest_body() {
+	atf_check -s exit:0 sh ${RESOURCEDIR}/test_subr.sh new_pkg test test 1
+	atf_check -o ignore -s exit:0 pkg create -M test.ucl -o .
+	atf_check -o ignore -e ignore -s exit:0 pkg add $(pwd)/test-1.pkg
+
+	# %X computes the digest of a package which does not carry one, and the
+	# result matches what the installed package reports
+	atf_check \
+		-o ignore \
+		-e empty \
+		-s exit:0 \
+		sh -c 'f=$(pkg query -F ./test-1.pkg "%X");
+		    i=$(pkg query "%X" test);
+		    test -n "${f}" && test "${f}" = "${i}"'
 }
 
 query_empty_multiline_body() {

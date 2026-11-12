@@ -351,7 +351,7 @@ format_str(struct pkg *pkg, sb_t *dest, const char *qstr, const void *data)
 				sb_printf(dest, "%d", vital);
 				break;
 			case 'X':
-				pkg_sb_cat(dest, PKG_ATTR_DIGEST, pkg);
+				pkg_sb_printf(dest, "%X", pkg);
 				break;
 			case '%':
 				sb_cat_c(dest, '%');
