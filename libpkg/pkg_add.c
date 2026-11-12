@@ -2133,6 +2133,7 @@ pkg_add_fromdir(struct pkg *pkg, const char *src, struct pkgdb *db __unused)
 	memset(&context, 0, sizeof(context));
 
 	install_as_user = (getenv("INSTALL_AS_USER") != NULL);
+	context.install_as_user = install_as_user;
 
 	fromfd = open(src, O_DIRECTORY);
 	if (fromfd == -1) {
