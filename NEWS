@@ -1,4 +1,6 @@
 Changes from 2.9.0 to 2.9.1
+- fetch: use a monotonic clock for the connect and SSL handshake timeouts,
+  which the handshake now honours, and build with OpenSSL 4.1
 - query: %R reports the repository recorded at installation time again,
   and unknown-repository when the package does not carry it
 - elf: do not read past the note section data when it ends with padding or
