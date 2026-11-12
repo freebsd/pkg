@@ -1,0 +1,170 @@
+.\"
+.\" SPDX-License-Identifier: BSD-2-Clause
+.\"
+.\" Copyright (c) 2026 The FreeBSD Foundation
+.\"
+.\" This software was developed by Klara, Inc. under sponsorship from the
+.\" FreeBSD Foundation and the Sovereign Tech Agency.
+.\"
+.Dd November 6, 2026
+.Dt PKG-UPGRADABLE 8
+.Os
+.Sh NAME
+.Nm "pkg upgradable"
+.Nd queries whether updates are available
+.Sh SYNOPSIS
+.Nm
+.Op Fl fqU
+.Op Fl r Ar reponame ...
+.Op Fl Cgix
+.Op Ar <pkg-origin|pkg-name|pkg-name-version> ...
+.Pp
+.Nm
+.Op Cm --{quiet,no-repo-update}
+.Op Cm --repository Ar reponame ...
+.Op Cm --{case-sensitive,glob,case-insensitive,regex}
+.Op Ar <pkg-origin|pkg-name|pkg-name-version> ...
+.Sh DESCRIPTION
+.Nm
+is used to query whether a given package is upgradable, or list all
+upgradable packages.
+.Pp
+A package is considered upgradable if it is installed, not locked
+(unless the
+.Fl f
+option was specified),
+and a newer version than the one currently installed is available from
+one of the configured package repositories.
+.Pp
+.Nm
+will print a line of information for each upgradable package
+(unless the
+.Fl q
+option was specified),
+and exit with a zero status if and only if at least one package was
+found to be upgradable.
+.Pp
+Note that even if a package is upgradable,
+.Xr pkg-upgrade 8
+may still choose not to upgrade it, for instance if doing so would
+result in a conflict.
+.Pp
+Package repository catalogues will be automatically updated whenever
+.Nm
+is run by a user ID with write access to the package database,
+unless disabled by the
+.Fl U
+flag or setting
+.Cm REPO_AUTOUPDATE
+to
+.Sy NO
+in
+.Xr pkg.conf 5 .
+.Sh OPTIONS
+The following options are supported by
+.Nm :
+.Bl -tag -width repository
+.It Fl C , Cm --case-sensitive
+Make the standard or the regular expression
+.Fl ( x )
+matching against
+.Ar pkg-name
+case sensitive.
+This is the default, unless modified by setting
+.Ev CASE_SENSITIVE_MATCH
+to false in
+.Pa pkg.conf .
+.It Fl f , Cm --force
+Do not skip locked packages.
+.It Fl g , Cm --glob
+Treat the package names as shell glob patterns.
+.It Fl i , Cm --case-insensitive
+Make the standard or the regular expression
+.Fl ( x )
+matching against
+.Ar pkg-name
+case insensitive.
+.It Fl q , Cm --quiet
+Force quiet output.
+.It Fl r Ar reponame , Cm --repository Ar reponame
+Install packages from only the named repository.
+This option can be specified multiple times to use several repositories.
+Packages will be fetched from the named repositories only, irrespective of the configured
+.Dq enabled
+status from
+.Pa repo.conf .
+.It Fl U , Cm --no-repo-update
+Suppress the automatic update of the local copy of the repository catalogue
+from remote.
+Automatic repository catalogue updates are only attempted when the
+effective UID of the process has write access to the package database.
+Otherwise they are silently ignored.
+.It Fl x , Cm --regex
+Treat the package names as regular expressions according to the
+"modern" or "extended" syntax of
+.Xr re_format 7 .
+.El
+.Sh ENVIRONMENT
+The following environment variables affect the execution of
+.Nm .
+See
+.Xr pkg.conf 5
+for further description.
+.Bl -tag -width ".Ev NO_DESCRIPTIONS"
+.It Ev PKG_CACHEDIR
+.It Ev PKG_DBDIR
+.It Ev REPO_AUTOUPDATE
+.El
+.Sh FILES
+See
+.Xr pkg.conf 5 .
+.Sh SEE ALSO
+.Xr pkg_checksum 3 ,
+.Xr pkg_create 3 ,
+.Xr pkg_printf 3 ,
+.Xr pkg_repo_create 3 ,
+.Xr pkg_repos 3 ,
+.Xr pkg-keywords 5 ,
+.Xr pkg-lua-script 5 ,
+.Xr pkg-repository 5 ,
+.Xr pkg-script 5 ,
+.Xr pkg-triggers 5 ,
+.Xr pkg.conf 5 ,
+.Xr pkg 8 ,
+.Xr pkg-add 8 ,
+.Xr pkg-alias 8 ,
+.Xr pkg-annotate 8 ,
+.Xr pkg-audit 8 ,
+.Xr pkg-autoremove 8 ,
+.Xr pkg-check 8 ,
+.Xr pkg-checksum 8 ,
+.Xr pkg-clean 8 ,
+.Xr pkg-config 8 ,
+.Xr pkg-create 8 ,
+.Xr pkg-delete 8 ,
+.Xr pkg-fetch 8 ,
+.Xr pkg-help 8 ,
+.Xr pkg-info 8 ,
+.Xr pkg-install 8 ,
+.Xr pkg-key 8 ,
+.Xr pkg-lock 8 ,
+.Xr pkg-plugins 8 ,
+.Xr pkg-query 8 ,
+.Xr pkg-register 8 ,
+.Xr pkg-repo 8 ,
+.Xr pkg-repositories 8 ,
+.Xr pkg-rquery 8 ,
+.Xr pkg-rwhich 8 ,
+.Xr pkg-search 8 ,
+.Xr pkg-set 8 ,
+.Xr pkg-shell 8 ,
+.Xr pkg-shlib 8 ,
+.Xr pkg-ssh 8 ,
+.Xr pkg-stats 8 ,
+.Xr pkg-triggers 8 ,
+.Xr pkg-unregister 8 ,
+.Xr pkg-update 8 ,
+.Xr pkg-updating 8 ,
+.Xr pkg-upgrade 8 ,
+.Xr pkg-version 8 ,
+.Xr pkg-which 8
