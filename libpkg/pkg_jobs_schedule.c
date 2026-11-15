@@ -332,11 +332,13 @@ pkg_jobs_schedule_cmp_available(struct pkg_solved *a, struct pkg_solved *b)
 
 /*
  * Topological sort based on Kahn's algorithm with a tiebreaker.  All the jobs
- * of a strongly connected component are scheduled as a single unit, so that
- * jobs of other components are never interleaved between them.
+ * of a group are scheduled as a single unit, so that jobs of other groups are
+ * never interleaved between them.  Returns false without scheduling anything
+ * when the groups form a cycle.
  */
-static void
-pkg_jobs_schedule_topological_sort(pkg_solved_list *jobs, size_t ngroups)
+static bool
+pkg_jobs_schedule_topological_sort(pkg_solved_list *jobs, int *group,
+    size_t ngroups)
 {
 	pkg_solved_list result = vec_init();
 	size_t n = jobs->len;
@@ -349,21 +351,21 @@ pkg_jobs_schedule_topological_sort(pkg_solved_list *jobs, size_t ngroups)
 	if (n == 0) {
 		vec_free(jobs);
 		*jobs = result;
-		return;
+		return (true);
 	}
 
 	indeg = xcalloc(ngroups, sizeof(int));
 	best = xcalloc(ngroups, sizeof(int));
 	done = xcalloc(n, sizeof(bool));
 
-	/* In-degree of every component in the condensation of the graph. */
+	/* In-degree of every group in the condensation of the graph. */
 	for (i = 0; i < n; i++) {
 		for (j = 0; j < n; j++) {
-			if (jobs->d[i]->scc == jobs->d[j]->scc)
+			if (group[i] == group[j])
 				continue;
 			if (pkg_jobs_schedule_graph_edge(jobs->d[i],
 			    jobs->d[j]) != PKG_SCHEDULE_EDGE_NONE)
-				indeg[jobs->d[j]->scc]++;
+				indeg[group[j]]++;
 		}
 	}
 
@@ -378,21 +380,21 @@ pkg_jobs_schedule_topological_sort(pkg_solved_list *jobs, size_t ngroups)
 		if (!remaining)
 			break;
 
-		/* Find the best not yet scheduled job of every component. */
+		/* Find the best not yet scheduled job of every group. */
 		for (i = 0; i < ngroups; i++)
 			best[i] = -1;
 		for (i = 0; i < n; i++) {
 			if (done[i])
 				continue;
-			j = jobs->d[i]->scc;
+			j = group[i];
 			if (best[j] == -1 ||
 			    pkg_jobs_schedule_cmp_available(jobs->d[i],
 			    jobs->d[best[j]]) > 0)
 				best[j] = i;
 		}
 
-		/* Pick the component with no pending predecessor whose best
-		 * job has the highest priority. */
+		/* Pick the group with no pending predecessor whose best job has
+		 * the highest priority. */
 		chosen = -1;
 		for (i = 0; i < ngroups; i++) {
 			if (best[i] == -1 || indeg[i] != 0)
@@ -403,17 +405,22 @@ pkg_jobs_schedule_topological_sort(pkg_solved_list *jobs, size_t ngroups)
 				chosen = i;
 		}
 
-		/* The graph is acyclic, so a component is always available as
-		 * long as some job remains; all cycles must have been
-		 * eliminated by splitting upgrade jobs before this point. */
-		assert(chosen != -1);
+		/* The groups are acyclic, so a group is always available as long
+		 * as some job remains. */
+		if (chosen == -1) {
+			free(indeg);
+			free(best);
+			free(done);
+			vec_free(&result);
+			return (false);
+		}
 
-		/* Schedule every job of the component, best first, and unblock
-		 * its successors. */
+		/* Schedule every job of the group, best first, and unblock its
+		 * successors. */
 		for (;;) {
 			int b = -1;
 			for (i = 0; i < n; i++) {
-				if (done[i] || jobs->d[i]->scc != chosen)
+				if (done[i] || group[i] != chosen)
 					continue;
 				if (b == -1 ||
 				    pkg_jobs_schedule_cmp_available(jobs->d[i],
@@ -425,11 +432,11 @@ pkg_jobs_schedule_topological_sort(pkg_solved_list *jobs, size_t ngroups)
 			done[b] = true;
 			vec_push(&result, jobs->d[b]);
 			for (i = 0; i < n; i++) {
-				if (done[i] || jobs->d[i]->scc == chosen)
+				if (done[i] || group[i] == chosen)
 					continue;
 				if (pkg_jobs_schedule_graph_edge(jobs->d[b],
 				    jobs->d[i]) != PKG_SCHEDULE_EDGE_NONE)
-					indeg[jobs->d[i]->scc]--;
+					indeg[group[i]]--;
 			}
 		}
 	} while (true);
@@ -442,6 +449,8 @@ pkg_jobs_schedule_topological_sort(pkg_solved_list *jobs, size_t ngroups)
 	free(indeg);
 	free(best);
 	free(done);
+
+	return (true);
 }
 
 /*
@@ -527,16 +536,30 @@ pkg_jobs_schedule_install_edge(struct pkg_solved *a, struct pkg_solved *b)
 	    pkg_jobs_schedule_depends_provides(b_new, a_new));
 }
 
+typedef bool (*pkg_jobs_schedule_edge_fn)(struct pkg_solved *,
+    struct pkg_solved *);
+
+/*
+ * Returns true if the schedule must execute job a before job b, that is if
+ * there is any kind of edge from a to b.
+ */
+static bool
+pkg_jobs_schedule_ordering_edge(struct pkg_solved *a, struct pkg_solved *b)
+{
+	return (pkg_jobs_schedule_graph_edge(a, b) != PKG_SCHEDULE_EDGE_NONE);
+}
+
 /*
  * Install dependencies can be cyclic.  For example FreeBSD-runtime provides
  * libraries required by FreeBSD-libarchive and in turn requires a library
  * provided by it.  Such a cycle cannot be broken by splitting upgrade jobs,
- * so the ordering only constrains jobs that belong to different strongly
- * connected components of the install graph.  The components are computed
+ * so the cycle detection ignores the install edges inside a strongly
+ * connected component of the install graph.  The components are computed
  * with Tarjan's algorithm.
  */
 struct pkg_jobs_schedule_scc {
 	pkg_solved_list *jobs;
+	pkg_jobs_schedule_edge_fn edge;
 	int *index;
 	int *low;
 	int *comp;
@@ -555,8 +578,7 @@ pkg_jobs_schedule_scc_visit(struct pkg_jobs_schedule_scc *ctx, int v)
 	ctx->onstack[v] = true;
 
 	for (int w = 0; w < (int)ctx->jobs->len; w++) {
-		if (!pkg_jobs_schedule_install_edge(ctx->jobs->d[v],
-		    ctx->jobs->d[w]))
+		if (!ctx->edge(ctx->jobs->d[v], ctx->jobs->d[w]))
 			continue;
 		if (ctx->index[w] < 0) {
 			pkg_jobs_schedule_scc_visit(ctx, w);
@@ -578,10 +600,15 @@ pkg_jobs_schedule_scc_visit(struct pkg_jobs_schedule_scc *ctx, int v)
 	}
 }
 
+/*
+ * Computes the components of the graph defined by edge, the component of
+ * every job is stored in comp.
+ */
 static size_t
-pkg_jobs_schedule_scc(pkg_solved_list *jobs)
+pkg_jobs_schedule_scc(pkg_solved_list *jobs, pkg_jobs_schedule_edge_fn edge,
+    int *comp)
 {
-	struct pkg_jobs_schedule_scc ctx = { .jobs = jobs };
+	struct pkg_jobs_schedule_scc ctx = { .jobs = jobs, .edge = edge };
 	size_t n = jobs->len;
 
 	if (n == 0)
@@ -600,7 +627,7 @@ pkg_jobs_schedule_scc(pkg_solved_list *jobs)
 			pkg_jobs_schedule_scc_visit(&ctx, i);
 	}
 	for (size_t i = 0; i < n; i++)
-		jobs->d[i]->scc = ctx.comp[i];
+		comp[i] = ctx.comp[i];
 
 	free(ctx.index);
 	free(ctx.low);
@@ -611,11 +638,36 @@ pkg_jobs_schedule_scc(pkg_solved_list *jobs)
 	return (ctx.next_comp);
 }
 
-int pkg_jobs_schedule(struct pkg_jobs *j)
+/*
+ * Stores the component of the install graph of every job and returns their
+ * number.  These components are the groups the jobs are scheduled by.
+ */
+static size_t
+pkg_jobs_schedule_install_scc(pkg_solved_list *jobs)
 {
 	size_t ngroups;
+	int *comp;
 
-	pkg_jobs_schedule_scc(&j->jobs);
+	if (jobs->len == 0)
+		return (0);
+
+	comp = xcalloc(jobs->len, sizeof(int));
+	ngroups = pkg_jobs_schedule_scc(jobs, pkg_jobs_schedule_install_edge,
+	    comp);
+	for (size_t i = 0; i < jobs->len; i++)
+		jobs->d[i]->scc = comp[i];
+	free(comp);
+
+	return (ngroups);
+}
+
+int pkg_jobs_schedule(struct pkg_jobs *j)
+{
+	int *group;
+	size_t ngroups;
+	bool scheduled;
+
+	pkg_jobs_schedule_install_scc(&j->jobs);
 	pkg_jobs_schedule_debug_dot_file(&j->jobs);
 
 	while (true) {
@@ -717,10 +769,34 @@ int pkg_jobs_schedule(struct pkg_jobs *j)
 		vec_push(&j->jobs, new);
 	}
 
-	/* Splitting upgrade jobs added jobs, so recompute the components
-	 * before scheduling the jobs of each component together. */
-	ngroups = pkg_jobs_schedule_scc(&j->jobs);
-	pkg_jobs_schedule_topological_sort(&j->jobs, ngroups);
+	if (j->jobs.len > 0) {
+		/* Splitting upgrade jobs added jobs. */
+		ngroups = pkg_jobs_schedule_install_scc(&j->jobs);
+		/* The jobs of a dependency cycle are grouped together, they
+		 * cannot be ordered. */
+		group = xcalloc(j->jobs.len, sizeof(int));
+		for (size_t i = 0; i < j->jobs.len; i++)
+			group[i] = j->jobs.d[i]->scc;
+		scheduled = pkg_jobs_schedule_topological_sort(&j->jobs, group,
+		    ngroups);
+		/* Such a group cannot always be scheduled as a whole: the
+		 * cycle detection ignores the install edges inside it, so the
+		 * remaining edges can still form a cycle between the groups.
+		 * Group the jobs by the components of the schedule graph in
+		 * that case, which is acyclic by definition. */
+		if (!scheduled) {
+			dbg(2, "grouping jobs by schedule graph components");
+			ngroups = pkg_jobs_schedule_scc(&j->jobs,
+			    pkg_jobs_schedule_ordering_edge, group);
+			scheduled = pkg_jobs_schedule_topological_sort(&j->jobs,
+			    group, ngroups);
+		}
+		free(group);
+		if (!scheduled) {
+			pkg_emit_error("failed to schedule the jobs");
+			return (EPKG_FATAL);
+		}
+	}
 
 	dbg(3, "finished job scheduling");
 

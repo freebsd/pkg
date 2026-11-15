@@ -6,6 +6,7 @@ tests_init \
 	provides_order \
 	provides_mutual \
 	provides_scc_contiguous \
+	provides_upgrade_cycle \
 	shlibs_order \
 	shlibs_mutual
 
@@ -179,4 +180,61 @@ EOF
 
 	atf_check -o inline:"aaa\nccc\nbbb\n" sh -c \
 	    "grep Installing ${TMPDIR}/out | sed -e 's/.*Installing //' -e 's/-1.0.*//'"
+}
+
+# aaa and ccc require each other's provides, so they form a cycle in the install
+# graph.  The new ccc also requires the provide of bbb, while the old aaa
+# depends on bbb: the jobs of the cycle cannot be scheduled as a single unit,
+# as bbb must come after aaa and before ccc.  The ordering that can be
+# satisfied must be honoured instead of aborting.
+provides_upgrade_cycle_body()
+{
+	atf_check -s exit:0 sh ${RESOURCEDIR}/test_subr.sh new_pkg aaa aaa 1.0
+	cat << EOF >> aaa.ucl
+deps: {
+	bbb {
+		origin: bbb,
+		version: "1.0"
+	}
+}
+EOF
+	atf_check -s exit:0 sh ${RESOURCEDIR}/test_subr.sh new_pkg bbb bbb 1.0
+	atf_check -s exit:0 sh ${RESOURCEDIR}/test_subr.sh new_pkg ccc ccc 1.0
+	for p in aaa bbb ccc; do
+		atf_check -o ignore -e empty -s exit:0 pkg create -M ./${p}.ucl
+	done
+	setup_repo
+
+	atf_check -e ignore -s exit:0 -o ignore \
+	    pkg -o REPOS_DIR="${TMPDIR}/reposconf" install -y aaa bbb ccc
+
+	atf_check -s exit:0 sh ${RESOURCEDIR}/test_subr.sh new_pkg aaa aaa 2.0
+	cat << EOF >> aaa.ucl
+provides: [liba-1]
+requires: [libz-1]
+EOF
+	atf_check -s exit:0 sh ${RESOURCEDIR}/test_subr.sh new_pkg bbb bbb 2.0
+	cat << EOF >> bbb.ucl
+provides: [libb-1]
+EOF
+	atf_check -s exit:0 sh ${RESOURCEDIR}/test_subr.sh new_pkg ccc ccc 2.0
+	cat << EOF >> ccc.ucl
+provides: [libz-1]
+requires: [liba-1, libb-1]
+EOF
+	for p in aaa bbb ccc; do
+		atf_check -o ignore -e empty -s exit:0 pkg create -M ./${p}.ucl
+	done
+	# A catalogue rebuilt within the same second keeps the same mtime and
+	# the file:// fetcher would answer EPKG_UPTODATE, keeping the packages
+	# of the first run only.
+	sleep 1
+	atf_check -o ignore -e empty -s exit:0 pkg repo .
+
+	atf_check -e ignore -s exit:0 -o save:${TMPDIR}/out \
+	    pkg -o REPOS_DIR="${TMPDIR}/reposconf" upgrade -y
+
+	atf_check -o inline:"aaa\nbbb\nccc\n" sh -c \
+	    "grep -E 'Upgrading|Installing' ${TMPDIR}/out |
+	    sed -e 's/.*Upgrading //' -e 's/.*Installing //' -e 's/[- ].*//'"
 }
