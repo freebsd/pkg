@@ -1,3 +1,7 @@
+Changes from 2.9.2 to 2.9.3
+- upgrade: no longer aborts when the packages of a dependency cycle cannot be
+  scheduled as a group, the jobs are ordered instead
+
 Changes from 2.9.1 to 2.9.2
 - query: fix %X computes the digest of a package
 
