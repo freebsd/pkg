@@ -910,10 +910,11 @@ pkg_jobs_universe_select_same_repo(universe_itemv_t *chain,
 
 			if (cur->pkg->reponame) {
 				repo = pkg_repo_find(cur->pkg->reponame);
-				if (repo == local_repo) {
+				if (repo == local_repo &&
+				    (res == NULL ||
+				     pkg_version_cmp(res->pkg->version,
+				     cur->pkg->version) < 0))
 					res = cur;
-					break;
-				}
 			}
 		}
 	}

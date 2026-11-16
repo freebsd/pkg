@@ -899,6 +899,69 @@ pkg_solve_add_keep_assumptions(struct pkg_solve_problem *problem)
 	}
 }
 
+/* Returns the repository the package was installed from, if known. */
+static const char *
+pkg_solve_reponame(struct pkg *p)
+{
+	if (p->reponame != NULL)
+		return (p->reponame);
+
+	return (pkg_kv_get(&p->annotations, "repository"));
+}
+
+/*
+ * Returns the variable to assume for an install request.  The first item of
+ * the request is used by default.  The request items are in universe order,
+ * not in version order, so when the default item is older than the installed
+ * package, the newest candidate of the repository the package was installed
+ * from is used instead, and the installed package is kept when none of the
+ * candidates is an upgrade.
+ */
+static struct pkg_solve_variable *
+pkg_solve_preferred_var(struct pkg_solve_problem *problem,
+    solve_var_slice_t *slice, struct pkg_solve_variable *fallback)
+{
+	const char *crepo, *local_repo;
+	struct pkg_solve_variable *cand, *local = NULL, *best;
+
+	if (fallback->unit->pkg->type == PKG_INSTALLED)
+		return (fallback);
+
+	for (size_t vi = 0; vi < slice->count; vi++) {
+		if (slice->begin[vi].unit->pkg->type == PKG_INSTALLED) {
+			local = &slice->begin[vi];
+			break;
+		}
+	}
+
+	if (local == NULL ||
+	    pkg_version_cmp(fallback->unit->pkg->version,
+	    local->unit->pkg->version) >= 0)
+		return (fallback);
+
+	local_repo = pkg_solve_reponame(local->unit->pkg);
+	best = local;
+	for (size_t vi = 0; vi < slice->count; vi++) {
+		cand = &slice->begin[vi];
+		if (cand->unit->pkg->type == PKG_INSTALLED)
+			continue;
+		crepo = pkg_solve_reponame(cand->unit->pkg);
+		if (local_repo != NULL &&
+		    (crepo == NULL || !STREQ(crepo, local_repo)))
+			continue;
+		if (best == local ||
+		    pkg_version_cmp(best->unit->pkg->version,
+		    cand->unit->pkg->version) < 0)
+			best = cand;
+	}
+
+	if (best != local && !pkg_jobs_need_upgrade(&problem->j->system_shlibs,
+	    best->unit->pkg, local->unit->pkg))
+		best = local;
+
+	return (best);
+}
+
 static int
 pkg_solve_add_request_rule(struct pkg_solve_problem *problem,
 	struct pkg_solve_variable *var, struct pkg_job_request *req, int inverse)
@@ -911,11 +974,15 @@ pkg_solve_add_request_rule(struct pkg_solve_problem *problem,
 		inverse < 0 ? "delete" : "install", var->uid, var->digest);
 
 	/*
-	 * Get the suggested item
+	 * Get the suggested item.  The items of the request are in the order
+	 * of the universe, which is not the version order, so an install
+	 * request must check what it assumes before installing it.
 	 */
 	solve_var_slice_t *reqslice = hash_get_value(problem->variables_by_uid, req->items.d[0].pkg->uid);
 	var = pkg_solve_find_var_in_chain(reqslice, req->items.d[0].unit);
 	assert(var != NULL);
+	if (inverse > 0)
+		var = pkg_solve_preferred_var(problem, reqslice, var);
 	/*
 	 * Assume the most significant variable, at the priority of the kind
 	 * of request it is

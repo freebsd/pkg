@@ -33,7 +33,8 @@ tests_init \
 	confirm_removal \
 	hold_back \
 	hold_back_force \
-	removal_automatic
+	removal_automatic \
+	multiple_versions
 
 # bar-1.0 owns ${TMPDIR}/file1 and is installed, either explicitly or, when no
 # is passed as first argument, as an automatic package.  The repository then
@@ -1359,4 +1360,60 @@ EOF
 		-s exit:0 \
 		pkg -o REPOS_DIR="${TMPDIR}/repoconf" \
 		-o PKG_CACHEDIR="${TMPDIR}" upgrade -n
+}
+
+# Several versions of the same package are published in a single repository,
+# with the intermediate one installed.  The upgrade must pick the newest one,
+# never an older one, whatever the order of the catalogue (issue #1757).
+multiple_versions_body()
+{
+	# Install the intermediate version from the repository.
+	atf_check sh ${RESOURCEDIR}/test_subr.sh new_pkg test test 0.1.10
+	atf_check -o ignore pkg create -M test.ucl
+	atf_check -o ignore pkg repo .
+
+	mkdir repoconf
+	cat <<EOF > repoconf/repo.conf
+local: {
+	url: "file://${TMPDIR}",
+	enabled: true
+}
+EOF
+
+	atf_check -o ignore pkg -o REPOS_DIR="${TMPDIR}/repoconf" \
+		-o PKG_CACHEDIR="${TMPDIR}" update
+	atf_check -o ignore pkg -o REPOS_DIR="${TMPDIR}/repoconf" \
+		-o PKG_CACHEDIR="${TMPDIR}" install -y -r local test-0.1.10
+
+	# Publish an older and two newer versions as well.
+	rm -f test-0.1.10.pkg
+	for v in 0.1.11 0.1.9.1 0.1.10.1; do
+		atf_check sh ${RESOURCEDIR}/test_subr.sh new_pkg test test ${v}
+		atf_check -o ignore pkg create -M test.ucl
+	done
+	sleep 1
+	atf_check -o ignore pkg repo .
+	atf_check -o ignore pkg -o REPOS_DIR="${TMPDIR}/repoconf" \
+		-o PKG_CACHEDIR="${TMPDIR}" update -f
+
+	atf_check \
+		-o match:"test: 0.1.10 -> 0.1.11" \
+		-o not-match:"0.1.9.1" \
+		-s exit:0 \
+		pkg -o REPOS_DIR="${TMPDIR}/repoconf" \
+		-o PKG_CACHEDIR="${TMPDIR}" upgrade -n -y
+
+	# With only an older version left, the installed package is kept.
+	rm -f ${TMPDIR}/test-0.1.11.pkg ${TMPDIR}/test-0.1.10.1.pkg
+	sleep 1
+	atf_check -o ignore pkg repo .
+	atf_check -o ignore pkg -o REPOS_DIR="${TMPDIR}/repoconf" \
+		-o PKG_CACHEDIR="${TMPDIR}" update -f
+
+	atf_check \
+		-o match:"up to date" \
+		-o not-match:"0.1.9.1" \
+		-s exit:0 \
+		pkg -o REPOS_DIR="${TMPDIR}/repoconf" \
+		-o PKG_CACHEDIR="${TMPDIR}" upgrade -n -y
 }
