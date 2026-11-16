@@ -66,9 +66,9 @@ extern "C" {
 
 #define PKG_PORTVERSION "@VERSION@"
 
-/* The OS major version at the time of compilation */
+/* The major version of the OS pkg is built for */
 #ifdef __FreeBSD__
-#define OSMAJOR	__FreeBSD__
+#define OSMAJOR	@OSMAJOR@
 #endif
 
 /* Not supported under DragonFly */
