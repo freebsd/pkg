@@ -83,6 +83,31 @@ fi
 
 _host=$(get_define host)
 
+# The major version of the OS pkg is built for.  It is taken from the
+# target headers instead of the compiler builtin, which describes the
+# compiler target and would report the host version when a cross compiler
+# is used.  The value must be a literal, it is also used to build the
+# default INDEX file name.
+case "$_host" in
+	*-freebsd*)
+		_osversion=$(printf '#include <sys/param.h>\n__FreeBSD_version\n' |
+		    $(get_define CC) -E -x c - 2>/dev/null | tail -n 1)
+		case "$_osversion" in
+			""|*[!0-9]*) define OSMAJOR __FreeBSD__ ;;
+			*)
+				if [ "$_osversion" -ge 100000 ]; then
+					define OSMAJOR "$(( _osversion / 100000 ))"
+				else
+					define OSMAJOR __FreeBSD__
+				fi
+				;;
+		esac
+		;;
+	*)
+		define OSMAJOR __FreeBSD__
+		;;
+esac
+
 # Platform-specific: Linux needs libbsd
 case "$_host" in
 	*-linux*)
