@@ -559,10 +559,6 @@ do_extract_dir(struct pkg_add_context* context, struct archive *a __unused, stru
 		return (EPKG_FATAL);
 	}
 
-	metalog_add(PKG_METALOG_DIR, RELATIVE_PATH(path),
-	    archive_entry_uname(ae), archive_entry_gname(ae),
-	    aest->st_mode & ~S_IFDIR, d->fflags, NULL);
-
 	return (EPKG_OK);
 }
 
@@ -1024,6 +1020,112 @@ static const struct extract_handler extract_handlers[] = {
 	{ 0,		NULL },
 };
 
+/* Number of path components, used to sort the parents before the children. */
+static int
+path_depth(const char *path)
+{
+	int depth = 0;
+
+	for (; *path != '\0'; path++)
+		if (*path == '/')
+			depth++;
+
+	return (depth);
+}
+
+static int
+path_depth_cmp(const void *a, const void *b)
+{
+	const char *pa = *(const char * const *)a;
+	const char *pb = *(const char * const *)b;
+	int da = path_depth(pa);
+	int db = path_depth(pb);
+
+	if (da != db)
+		return (da < db ? -1 : 1);
+
+	return (strcmp(pa, pb));
+}
+
+/* Appends a copy of every parent directory of path to dirs. */
+static void
+collect_parents(charv_t *dirs, const char *path)
+{
+	char buf[MAXPATHLEN];
+	char *slash;
+
+	if (strlcpy(buf, path, sizeof(buf)) >= sizeof(buf))
+		return;
+
+	while ((slash = strrchr(buf, '/')) != NULL) {
+		*slash = '\0';
+		if (buf[0] == '\0')
+			break;
+		vec_push(dirs, xstrdup(buf));
+	}
+}
+
+/*
+ * Emits the metalog entries of the directories of the package: the ones it
+ * declares and the ones needed to hold its files.  A directory which is not
+ * declared and already exists is not logged: it belongs to the system or to
+ * another package.
+ *
+ * The directories are sorted from the parents to the children, as required
+ * by a mtree specification, whatever the order of the archive entries.
+ */
+static void
+log_dirs(struct pkg_add_context *context)
+{
+	struct pkg_file *f = NULL;
+	struct pkg_dir *d = NULL;
+	struct stat st;
+	charv_t dirs = vec_init();
+
+	if (ctx.metalog == NULL)
+		return;
+
+	while (pkg_files(context->pkg, &f) == EPKG_OK) {
+		if (match_ucl_lists(f->path,
+		    pkg_config_get("FILES_IGNORE_GLOB"),
+		    pkg_config_get("FILES_IGNORE_REGEX")))
+			continue;
+		collect_parents(&dirs, f->path);
+	}
+	while (pkg_dirs(context->pkg, &d) == EPKG_OK) {
+		collect_parents(&dirs, d->path);
+		vec_push(&dirs, xstrdup(d->path));
+	}
+
+	if (dirs.len == 0) {
+		vec_free(&dirs);
+		return;
+	}
+
+	qsort(dirs.d, dirs.len, sizeof(char *), path_depth_cmp);
+
+	for (size_t i = 0; i < dirs.len; i++) {
+		if (i > 0 && STREQ(dirs.d[i], dirs.d[i - 1]))
+			continue;
+		d = pkg_get_dir(context->pkg, dirs.d[i]);
+		if (d == NULL) {
+			/* implicit directory, only log the ones pkg creates */
+			if (fstatat(context->rootfd, RELATIVE_PATH(dirs.d[i]),
+			    &st, 0) == 0)
+				continue;
+			metalog_add(PKG_METALOG_DIR, RELATIVE_PATH(dirs.d[i]),
+			    "root", "wheel", 0755, 0, NULL);
+			continue;
+		}
+		metalog_add(PKG_METALOG_DIR, RELATIVE_PATH(dirs.d[i]),
+		    d->uname != NULL ? d->uname : "root",
+		    d->gname != NULL ? d->gname : "wheel",
+		    d->perm != 0 ? d->perm : 0755, d->fflags, NULL);
+	}
+
+	vec_free_and_free(&dirs, free);
+}
+
 static int
 do_extract(struct archive *a, struct archive_entry *ae,
     int nfiles, struct pkg *local, struct pkg_add_context *context)
@@ -1037,6 +1139,8 @@ do_extract(struct archive *a, struct archive_entry *ae,
 
 	if (nfiles == 0)
 		return (EPKG_OK);
+
+	log_dirs(context);
 
 	pkg_emit_extract_begin(context->pkg);
 	pkg_emit_progress_start(NULL);
@@ -2143,6 +2247,8 @@ pkg_add_fromdir(struct pkg *pkg, const char *src, struct pkgdb *db __unused)
 	context.pkg = pkg;
 	context.rootfd = pkg->rootfd;
 
+	log_dirs(&context);
+
 	while (pkg_dirs(pkg, &d) == EPKG_OK) {
 		if (fstatat(fromfd, RELATIVE_PATH(d->path), &st, 0) == -1) {
 			close(fromfd);
@@ -2361,20 +2467,8 @@ open_tempdir(struct pkg_add_context *context, const char *path)
 
 			flag = localpkg == NULL ? 0 : AT_SYMLINK_NOFOLLOW;
 			if (fstatat(rootfd, RELATIVE_PATH(walk), &st,
-			    flag) == -1) {
-				/*
-				 * A hack to ensure that intermediate
-				 * directories not registered with a package are
-				 * still logged in the metalog.  This is not
-				 * really the right place, but to implement this
-				 * properly we need to clean up uses of
-				 * try_mkdir().
-				 */
-				metalog_add(PKG_METALOG_DIR,
-				    RELATIVE_PATH(walk),
-				    "root", "wheel", 0755, 0, NULL);
+			    flag) == -1)
 				continue;
-			}
 			if (S_ISLNK(st.st_mode) &&
 			    localpkg != NULL &&
 			    !pkg_has_file(localpkg, walk) &&
