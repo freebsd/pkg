@@ -4,6 +4,7 @@
 
 tests_init \
 	metalog \
+	metalog_directories \
 	reinstall \
 	pre_script_fail \
 	post_script_ignored \
@@ -101,6 +102,45 @@ EOF
 		-o match:"./testdir1/foo/bar/baz type=dir uname=root gname=wheel mode=755" \
 		-o match:"./testdir2 type=dir uname=daemon gname=wheel mode=750" \
 		cat ${TMPDIR}/METALOG
+}
+
+# The directories needed to hold the files of a package but not declared by
+# it must be logged in the metalog, from the parents to the children, even
+# when the directory already holds a file.
+metalog_directories_body()
+{
+	atf_check sh ${RESOURCEDIR}/test_subr.sh new_pkg test test 1 /
+	atf_check mkdir -p ${TMPDIR}/rootdir/foo/bar/baz
+	atf_check touch ${TMPDIR}/rootdir/foo/bar.sh
+	atf_check touch ${TMPDIR}/rootdir/foo/bar/baz.sh
+	atf_check touch ${TMPDIR}/rootdir/foo/bar/baz/qux.sh
+	cat > test.plist << EOF
+@(root,wheel,0755,) /foo/bar.sh
+@(root,wheel,0755,) /foo/bar/baz.sh
+@(root,wheel,0755,) /foo/bar/baz/qux.sh
+EOF
+
+	atf_check \
+		-o ignore \
+		pkg create -r ${TMPDIR}/rootdir -M test.ucl -p test.plist
+
+	atf_check \
+		-o ignore \
+		mkdir ${TMPDIR}/target
+
+	atf_check \
+		-o ignore \
+		-e ignore \
+		pkg -o METALOG=${TMPDIR}/METALOG -r ${TMPDIR}/target add ${TMPDIR}/test-1.pkg
+
+	atf_check -o inline:"\
+./foo type=dir uname=root gname=wheel mode=755
+./foo/bar type=dir uname=root gname=wheel mode=755
+./foo/bar/baz type=dir uname=root gname=wheel mode=755
+./foo/bar.sh type=file uname=root gname=wheel mode=755
+./foo/bar/baz.sh type=file uname=root gname=wheel mode=755
+./foo/bar/baz/qux.sh type=file uname=root gname=wheel mode=755
+" cat ${TMPDIR}/METALOG
 }
 
 reinstall_body()
