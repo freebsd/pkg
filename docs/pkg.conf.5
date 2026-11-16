@@ -179,8 +179,19 @@ Set the number of threads to use during compression and decompression
 (only functional for txz and tzst).
 Default: -1 (automatic).
 .It Cm CONSERVATIVE_UPGRADE: boolean
-Ensure in multi repository mode that the priority is given as much as possible
-to the repository where a package was first installed from.
+In multi repository mode, when more than one repository offers a candidate
+for an installed package, prefer the candidate from the repository with
+the highest priority when repository priorities are set, and the newest
+version otherwise.
+When disabled, prefer the newest version and use the repository priority
+only to choose between repositories proposing the same version.
+This does not decide whether a package may be upgraded from another
+repository: an installed package is always upgraded from the repository
+it was installed from, as recorded in its
+.Sy repository
+annotation.
+See
+.Xr pkg-repository 5 .
 Default: YES.
 .It Cm CUDF_SOLVER: string
 Experimental: tells pkg to use an external CUDF solver.
@@ -773,14 +784,19 @@ earlier ones.
 Packages are selected preferentially out of all the repositories that contain
 them from the repository with the highest priority, so long as they are
 suitable to solve the necessary dependency requirements.
-However, this preference may be overruled when
-.Sy CONSERVATIVE_UPGRADE
-is set to
-.Dv true ,
-in which case a package will as far as possible always be upgraded from the
-same repository the older installed version came from, as given in the
+An installed package is upgraded from the repository it was installed from,
+as given in the
 .Sy repository
-annotation of the installed package.
+annotation of the installed package, and never from another repository even
+when that one offers a newer version.
+To move it to another repository, restrict the upgrade or the installation to
+that repository, or change the annotation directly:
+.Bd -literal -offset indent
+pkg upgrade -r <reponame> <pkg-name>
+pkg install -f -r <reponame> <pkg-name>
+pkg annotate -M <pkg-name> repository <reponame>
+.Ed
+.Pp
 See
 .Xr pkg-repository 5
 for details.
