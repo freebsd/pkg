@@ -944,12 +944,13 @@ pkg_emit_missing_dep(struct pkg *p, struct pkg_dep *d)
 }
 
 void
-pkg_emit_locked(struct pkg *p)
+pkg_emit_locked(struct pkg *p, const char *version)
 {
 	struct pkg_event ev;
 
 	ev.type = PKG_EVENT_LOCKED;
 	ev.e_locked.pkg = p;
+	ev.e_locked.version = version;
 
 	pkg_emit_event(&ev);
 }

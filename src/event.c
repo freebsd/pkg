@@ -668,7 +668,12 @@ event_cb_locked(struct pkg_event *ev, int *debug __unused)
 	struct pkg *pkg;
 
 	pkg = ev->e_locked.pkg;
-	pkg_printf("\n%n-%v is locked and may not be modified\n", pkg, pkg);
+	if (ev->e_locked.version != NULL)
+		pkg_printf("\n%n-%v is locked and may not be modified "
+		    "(%S is available)\n", pkg, pkg, ev->e_locked.version);
+	else
+		pkg_printf("\n%n-%v is locked and may not be modified\n",
+		    pkg, pkg);
 	return (0);
 }
 

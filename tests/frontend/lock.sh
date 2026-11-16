@@ -6,6 +6,7 @@ tests_init \
 	lock \
 	lock_delete \
 	lock_install_force \
+	lock_upgrade_available \
 	unlock_all \
 	lock_already_locked \
 	unlock_already_unlocked
@@ -125,7 +126,8 @@ lock_install_force_body() {
 	# should warn that the package is locked instead of silently doing
 	# nothing or printing a misleading message.
 
-	atf_check -s exit:0 sh ${RESOURCEDIR}/test_subr.sh new_pkg test test 1 /usr/local
+	atf_check -s exit:0 sh ${RESOURCEDIR}/test_subr.sh \
+		new_pkg test test 1 /usr/local
 
 	# Create package and repo
 	atf_check \
@@ -231,4 +233,44 @@ unlock_already_unlocked_body()
 		-e empty \
 		-s exit:0 \
 		pkg unlock -qy test
+}
+
+# A locked package which the repository can upgrade must be reported as locked
+# along with the version available, instead of pretending that it is up to
+# date (issue #2698).
+lock_upgrade_available_body()
+{
+	atf_check -s exit:0 sh ${RESOURCEDIR}/test_subr.sh \
+		new_pkg test test 1 /usr/local
+	atf_check -o ignore pkg create -M test.ucl
+	atf_check -o ignore pkg repo .
+
+	mkdir reposconf
+	cat <<EOF > reposconf/repo.conf
+local: {
+	url: file:///${TMPDIR},
+	enabled: true
+}
+EOF
+
+	atf_check -o ignore pkg -o REPOS_DIR="${TMPDIR}/reposconf" \
+		-o PKG_CACHEDIR="${TMPDIR}" update
+	atf_check -o ignore pkg -o REPOS_DIR="${TMPDIR}/reposconf" \
+		-o PKG_CACHEDIR="${TMPDIR}" install -y test
+	atf_check -o ignore pkg lock -y test
+
+	# A newer version is published.
+	atf_check -s exit:0 sh ${RESOURCEDIR}/test_subr.sh \
+		new_pkg test test 2 /usr/local
+	atf_check -o ignore pkg create -M test.ucl
+	sleep 1
+	atf_check -o ignore pkg repo .
+	atf_check -o ignore pkg -o REPOS_DIR="${TMPDIR}/reposconf" \
+		-o PKG_CACHEDIR="${TMPDIR}" update -f
+
+	atf_check \
+		-o match:"test-1 is locked and may not be modified \(2 is available\)" \
+		-s exit:0 \
+		pkg -o REPOS_DIR="${TMPDIR}/reposconf" \
+		-o PKG_CACHEDIR="${TMPDIR}" upgrade -n
 }

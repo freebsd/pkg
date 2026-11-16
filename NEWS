@@ -24,6 +24,8 @@ Changes from 2.9.0 to 2.9.99.1
 - upgrade: when a repository publishes several versions of the same package,
   the newest one is picked instead of whichever came first in the catalogue,
   which could be a downgrade
+- upgrade: a locked package which could be upgraded is reported as locked
+  along with the version available, instead of pretending it is up to date
 
 Changes from 2.8.99.5 to 2.8.99.6
 - abi: an overlong string coming from a manifest or a catalogue is rejected

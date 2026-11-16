@@ -106,7 +106,7 @@ void pkg_emit_deinstall_finished(struct pkg *p);
 void pkg_emit_upgrade_begin(struct pkg *new, struct pkg *old);
 void pkg_emit_upgrade_finished(struct pkg *new, struct pkg *old);
 void pkg_emit_missing_dep(struct pkg *p, struct pkg_dep *d);
-void pkg_emit_locked(struct pkg *p);
+void pkg_emit_locked(struct pkg *p, const char *version);
 void pkg_emit_required(struct pkg *p, int force);
 void pkg_emit_integritycheck_begin(void);
 void pkg_emit_integritycheck_finished(int);

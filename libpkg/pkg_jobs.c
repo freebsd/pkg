@@ -400,6 +400,38 @@ pkg_jobs_add_req_from_universe(hash_t **head, universe_itemv_t *uv,
 	return (&req->items.d[0]);
 }
 
+/*
+ * Reports a package which cannot be modified because it is locked, along with
+ * the version which would be installed otherwise, when the repositories
+ * provide one.
+ */
+static void
+pkg_jobs_emit_locked(struct pkg_jobs *j, struct pkg *lp)
+{
+	struct pkgdb_it *it;
+	struct pkg *pkg = NULL, *best = NULL;
+
+	if ((it = pkgdb_repo_query2(j->db, lp->uid, MATCH_INTERNAL,
+	    j->reponames)) != NULL) {
+		while (pkgdb_it_next(it, &pkg, PKG_LOAD_BASIC) == EPKG_OK) {
+			if (pkg_version_change_between(pkg, lp) == PKG_UPGRADE &&
+			    (best == NULL ||
+			    pkg_version_cmp(best->version, pkg->version) < 0)) {
+				pkg_free(best);
+				best = pkg;
+			}
+			else {
+				pkg_free(pkg);
+			}
+			pkg = NULL;
+		}
+		pkgdb_it_free(it);
+	}
+
+	pkg_emit_locked(lp, best != NULL ? best->version : NULL);
+	pkg_free(best);
+}
+
 static struct pkg_job_request_item*
 pkg_jobs_add_req(struct pkg_jobs *j, struct pkg *pkg)
 {
@@ -455,7 +487,7 @@ pkg_jobs_add_req(struct pkg_jobs *j, struct pkg *pkg)
 	}
 
 	if (pkg->locked) {
-		pkg_emit_locked(pkg);
+		pkg_jobs_emit_locked(j, pkg);
 		return (NULL);
 	}
 
@@ -803,7 +835,9 @@ pkg_jobs_process_remote_pkg(struct pkg_jobs *j, struct pkg *rp,
 	if (j->type != PKG_JOBS_FETCH) {
 		lp = pkg_jobs_universe_get_local(j->universe, rp->uid, 0);
 		if (lp && lp->locked) {
-			pkg_emit_locked(lp);
+			pkg_emit_locked(lp,
+			    pkg_version_change_between(rp, lp) == PKG_UPGRADE ?
+			    rp->version : NULL);
 			if (!pkg_in_universe(j->universe, lp))
 				pkg_free(lp);
 			return (EPKG_LOCKED);
@@ -1079,7 +1113,9 @@ pkg_jobs_need_upgrade(charv_t *system_shlibs, struct pkg *rp, struct pkg *lp)
 
 	/* Do not upgrade locked packages */
 	if (lp->locked) {
-		pkg_emit_locked(lp);
+		pkg_emit_locked(lp, rp != NULL &&
+		    pkg_version_change_between(rp, lp) == PKG_UPGRADE ?
+		    rp->version : NULL);
 		return (false);
 	}
 
@@ -1722,7 +1758,7 @@ jobs_solve_fetch(struct pkg_jobs *j)
 
 		while (pkgdb_it_next(it, &pkg, PKG_LOAD_BASIC) == EPKG_OK) {
 			if(pkg->locked) {
-				pkg_emit_locked(pkg);
+				pkg_jobs_emit_locked(j, pkg);
 			}
 			else {
 				/* Do not test we ignore what doesn't exists remotely */

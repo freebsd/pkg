@@ -1517,7 +1517,7 @@ pkg_add_check_pkg_archive(struct pkgdb *db, struct pkg *pkg,
 			return (EPKG_INSTALLED);
 		}
 		if (pkg_inst->locked) {
-			pkg_emit_locked(pkg_inst);
+			pkg_emit_locked(pkg_inst, NULL);
 			pkg_free(pkg_inst);
 			pkg_inst = NULL;
 			return (EPKG_LOCKED);

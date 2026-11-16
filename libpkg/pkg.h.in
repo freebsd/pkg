@@ -1492,6 +1492,7 @@ struct pkg_event {
 		} e_missing_dep;
 		struct {
 			struct pkg *pkg;
+			const char *version; /* the version available, may be NULL */
 		} e_locked;
 		struct {
 			struct pkg *pkg;

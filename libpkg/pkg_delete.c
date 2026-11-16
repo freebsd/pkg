@@ -110,7 +110,7 @@ pkg_delete(struct pkg *pkg, struct pkg *rpkg, struct pkgdb *db, int flags,
 
 	/* If the package is locked */
 	if (pkg->locked) {
-		pkg_emit_locked(pkg);
+		pkg_emit_locked(pkg, NULL);
 		return (EPKG_LOCKED);
 	}
 
