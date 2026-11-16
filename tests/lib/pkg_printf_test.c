@@ -2284,6 +2284,27 @@ ATF_TC_BODY(parse_format, tc)
 	free_percent_esc(p);
 }
 
+ATF_TC(asprintf_empty_output);
+ATF_TC_HEAD(asprintf_empty_output, tc)
+{
+	atf_tc_set_md_var(tc, "descr",
+			  "Testing pkg_asprintf() with an empty output");
+}
+ATF_TC_BODY(asprintf_empty_output, tc)
+{
+	char	 dummy;
+	char	*ret = &dummy;
+
+	/* An empty output is a failure and the pointer must be cleared. */
+	ATF_REQUIRE_EQ(-1, pkg_asprintf(&ret, ""));
+	ATF_REQUIRE(ret == NULL);
+
+	/* The output is stored in the pointer, which is set on success. */
+	ATF_REQUIRE_EQ(3, pkg_asprintf(&ret, "abc"));
+	ATF_REQUIRE_STREQ("abc", ret);
+	free(ret);
+}
+
 
 
 ATF_TP_ADD_TCS(tp)
@@ -2297,6 +2318,7 @@ ATF_TP_ADD_TCS(tp)
 	ATF_TP_ADD_TC(tp, mode_val);
 	ATF_TP_ADD_TC(tp, liclog_val);
 	ATF_TP_ADD_TC(tp, list_count);
+	ATF_TP_ADD_TC(tp, asprintf_empty_output);
 
 	/* Format string parsing routines */
 	ATF_TP_ADD_TC(tp, maybe_read_hex_byte);

@@ -2816,13 +2816,13 @@ int
 pkg_vprintf(const char * restrict format, va_list ap)
 {
 	sb_t buf = sb_init();
+	int count = -1;
 
-	if (pkg_sb_vprintf(&buf, format, ap) > 0) {
-		int count = printf("%s", buf.d);
-		sb_fini(&buf);
-		return (count);
-	}
-	return (-1);
+	if (pkg_sb_vprintf(&buf, format, ap) > 0)
+		count = printf("%s", buf.d);
+	sb_fini(&buf);
+
+	return (count);
 }
 
 /**
@@ -2854,13 +2854,13 @@ int
 pkg_vfprintf(FILE * restrict stream, const char * restrict format, va_list ap)
 {
 	sb_t buf = sb_init();
+	int count = -1;
 
-	if (pkg_sb_vprintf(&buf, format, ap) > 0) {
-		int count = fprintf(stream, "%s", buf.d);
-		sb_fini(&buf);
-		return (count);
-	}
-	return (-1);
+	if (pkg_sb_vprintf(&buf, format, ap) > 0)
+		count = fprintf(stream, "%s", buf.d);
+	sb_fini(&buf);
+
+	return (count);
 }
 
 /**
@@ -2896,13 +2896,13 @@ int
 pkg_vdprintf(int fd, const char * restrict format, va_list ap)
 {
 	sb_t buf = sb_init();
+	int count = -1;
 
-	if (pkg_sb_vprintf(&buf, format, ap) > 0) {
-		int count = dprintf(fd, "%s", buf.d);
-		sb_fini(&buf);
-		return (count);
-	}
-	return (-1);
+	if (pkg_sb_vprintf(&buf, format, ap) > 0)
+		count = dprintf(fd, "%s", buf.d);
+	sb_fini(&buf);
+
+	return (count);
 }
 
 /**
@@ -2943,13 +2943,13 @@ pkg_vsnprintf(char * restrict str, size_t size, const char * restrict format,
 	     va_list ap)
 {
 	sb_t buf = sb_init();
+	int count = -1;
 
-	if (pkg_sb_vprintf(&buf, format, ap) > 0) {
-		int count = snprintf(str, size, "%s", buf.d);
-		sb_fini(&buf);
-		return (count);
-	}
-	return (-1);
+	if (pkg_sb_vprintf(&buf, format, ap) > 0)
+		count = snprintf(str, size, "%s", buf.d);
+	sb_fini(&buf);
+
+	return (count);
 }
 
 /**
@@ -2987,13 +2987,15 @@ int
 pkg_vasprintf(char **ret, const char * restrict format, va_list ap)
 {
 	sb_t buf = sb_init();
+	int count = -1;
 
-	if (pkg_sb_vprintf(&buf, format, ap) > 0) {
-		int count = xasprintf(ret, "%s", buf.d);
-		sb_fini(&buf);
-		return (count);
-	}
-	return (-1);
+	if (pkg_sb_vprintf(&buf, format, ap) > 0)
+		count = xasprintf(ret, "%s", buf.d);
+	else
+		*ret = NULL;
+	sb_fini(&buf);
+
+	return (count);
 }
 
 /**
@@ -3127,13 +3129,13 @@ pkg_fprintf_pkg(FILE * restrict stream, const char * restrict format,
     struct pkg *pkg)
 {
 	sb_t buf = sb_init();
+	int count = -1;
 
-	if (pkg_sb_printf_set(&buf, format, pkg) > 0) {
-		int count = fprintf(stream, "%s", buf.d);
-		sb_fini(&buf);
-		return (count);
-	}
-	return (-1);
+	if (pkg_sb_printf_set(&buf, format, pkg) > 0)
+		count = fprintf(stream, "%s", buf.d);
+	sb_fini(&buf);
+
+	return (count);
 }
 /*
  * That's All Folks!
