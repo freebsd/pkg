@@ -155,7 +155,12 @@ Do not perform installation of packages, merely fetch packages that should be
 upgraded and detect possible conflicts.
 .It Fl f , Cm --force
 Force the reinstallation or upgrade of the whole set of packages.
-To reinstall a single specific package, prefer using
+Every installed package is then upgraded to the version offered by the
+repositories, even when that version is older than the installed one, in
+which case the package is downgraded.
+This is the way to move a package to the version the repositories provide
+when the installed one is no longer available.
+To reinstall or downgrade a single specific package, prefer using
 .Nm pkg install Fl f
 instead.
 See
