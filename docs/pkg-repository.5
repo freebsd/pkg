@@ -427,14 +427,29 @@ select the repository with the appropriate version:
 pkg install -r repo-a example-1.0.0
 .Ed
 .Pp
-and then to make updates to that package
+Updates to that package are then
 .Dq sticky
-to the same repository, set the value
-.Cm CONSERVATIVE_UPGRADE
-to
-.Sy true
-in
-.Pa pkg.conf .
+to the same repository: once installed, a package is always upgraded from
+the repository it was installed from, as recorded in its
+.Sy repository
+annotation, whatever the value of
+.Cm CONSERVATIVE_UPGRADE .
+To move the package to another repository later, restrict the upgrade to
+that repository:
+.Bd -literal -offset indent
+pkg upgrade -r repo-b example
+.Ed
+.Pp
+or install it again from that repository, which records the new repository
+in its annotation:
+.Bd -literal -offset indent
+pkg install -f -r repo-b example
+.Ed
+.Pp
+The annotation can also be changed directly:
+.Bd -literal -offset indent
+pkg annotate -M example repository repo-b
+.Ed
 .Sh SEE ALSO
 .Xr pkg_checksum 3 ,
 .Xr pkg_create 3 ,
