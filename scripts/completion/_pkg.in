@@ -49,6 +49,7 @@ _pkg_subcommands() {
 		'audit:report vulnerable packages'
 		'autoremove:remove orphaned packages'
 		'check:check for missing dependencies and database consistency'
+		'checksum:compute or validate file checksums'
 		'clean:clean old packages from the cache'
 		'config:display value of a configuration option'
 		'create:create software package distributions'
@@ -57,18 +58,23 @@ _pkg_subcommands() {
 		'help:display help information'
 		'info:display information about installed packages'
 		'install:install packages from remote package repositories'
+		'key:signing key operations'
 		'lock:lock package against modifications or deletion'
 		'query:query information about installed packages'
 		'plugins:list available plugins'
 		'register:register a package with the local database'
 		'repo:create a package repository catalogue'
+		'repositories:display and manage package repositories'
 		'rquery:query information in repository catalogues'
+		'rwhich:find which package provides a specific file'
 		'search:perform a search of package repository catalogues'
 		'set:modify information about packages in the local database'
 		'shell:open a debug shell'
 		'shlib:list packages that link against a specific shared library'
 		'stats:display package database statistics'
+		'triggers:execute deferred triggers'
 		'unlock:unlock a package, allowing modification or deletion'
+		'unregister:delete package records from the database'
 		'update:update package repository catalogues'
 		'updating:display UPDATING information for a package'
 		'upgrade:perform upgrades of packaged software distributions'
@@ -105,13 +111,23 @@ _pkg_subcommands() {
 }
 
 _pkg_config_opts() {
-	_values 'configuration option' \
+	local -a keys ca_args
+	zparseopts -D -a ca_args k=keys J: V: 1 2 n o: x: X: M+: P: S: r: R: q F:
+	(( $#keys )) && keys=( -S ' ' )
+	_values "$keys[@]" 'configuration option' \
 		'ABI[ABI of package you want to install]:string' \
+		'AUDIT_IGNORE_GLOB=[glob patterns for package names to ignore during pkg-audit(8)]:list (comma-separated)' \
+		'AUDIT_IGNORE_REGEX=[regex for package names to ignore during pkg-audit(8)]:list (comma-separated)' \
 		'ALIAS[define local aliases for various pkg(8) standard command lines]:key/value list' \
 		'AUTOCLEAN[cleanout content of cache directory after upgrades or installations]:boolean:(yes no)' \
 		'AUTOMERGE[automatically merge configuration files]:boolean:(yes no)' \
+		'AUTOREMOVE[automatically remove orphaned packages after install/delete/upgrade]:boolean:(yes no)' \
 		'DEFAULT_ALWAYS_YES[default to "yes" for all questions requiring user confirmation]:boolean:(yes no)' \
 		'ASSUME_ALWAYS_YES[assume "yes" to all questions requiring user confirmation]:boolean:(yes no)' \
+		'BACKUP_LIBRARIES[create backup if an upgrade will remove a library]:boolean:(yes no)' \
+		'BACKUP_LIBRARY_PATH[directory for library backups]:directory:_files -/' \
+		'COMPRESSION_FORMAT[set the compression format]:format:(tzst txz tbz tar)' \
+		'COMPRESSION_LEVEL[set the compression level]:level' \
 		'CONSERVATIVE_UPGRADE[give priority to repo where a package was first installed from]:boolean:(yes no)' \
 		'CUDF_SOLVER[experimental\: use an external CUDF solver]:CUDF solver:_files' \
 		'CASE_SENSITIVE_MATCH[case-sensitive package matching]:boolean:(yes no)' \
@@ -122,14 +138,19 @@ _pkg_config_opts() {
 		'EVENT_PIPE[send all event messages to specified FIFO or UNIX socket]:event pipe:_files' \
 		'FETCH_RETRY[number of times to retry a failed fetch of a file]:number of retries' \
 		'FETCH_TIMEOUT[time to wait for a file to download]:timeout (seconds)' \
+		'FILES_IGNORE_GLOB[glob patterns for files to ignore during package installation]:list (comma-separated)' \
+		'FILES_IGNORE_REGEX[regex for files to ignore during package installation]:list (comma-separated)' \
+		'FORCE_CAN_REMOVE_VITAL[with -f override the protection on vital packages]:boolean:(yes no)' \
 		'HANDLE_RC_SCRIPTS[automatically perform start/stop of service on install/removal]:boolean:(yes no)' \
 		'HTTP_USER_AGENT[define User-agent HTTP header to send]:user agent' \
+		'IGNORE_OSMAJOR[ignore FreeBSD major OS version check]:boolean:(yes no)' \
 		'IGNORE_OSVERSION[ignore FreeBSD OS version check]:boolean:(yes no)' \
 		'INDEXDIR[directory to search for ports index file in]:directory:_files -/' \
 		'INDEXFILE[ports index file]:index file:_files' \
 		'IP_VERSION[restrict network access to specified IP version]:IP version:((0\:"system default" 4\:IPv4 6\:IPv6 ))' \
 		'LOCK_RETRIES[number of retries to obtain a lock]:retries' \
 		'LOCK_WAIT[wait time to regain a lock]:wait time (seconds):' \
+		'MERGETOOL[external tool command to use for merging configuration files]:tool:_command_names -e' \
 		'METALOG[if set, write a METALOG of the extracted files]:string' \
 		'NAMESERVER[hostname or IPv\[46\] address of a nameserver for DNS resolution]:name server:_hosts' \
 		'OSVERSION[FreeBSD OS version]:version' \
@@ -137,10 +158,14 @@ _pkg_config_opts() {
 		'PKG_CACHEDIR[specify cache directory for packages]:directory:_files -/' \
 		'PKG_CREATE_VERBOSE[make pkg_create(8) use verbose mode]:boolean:(yes no)' \
 		'PKG_DBDIR[specify directory to use for storing package database files]:directory:_files -/' \
+		'PKG_DEBUG_FLAGS[control which debug subsystems produce output]:subsystem:(all)' \
 		'PKG_ENABLE_PLUGINS[activate plugin support]:boolean:(yes no)' \
 		'PKG_ENV[key/value pair of environment variables]:key/value list' \
 		'PKG_PLUGINS_DIR[specify directory for plugins]:directory:_files -/' \
+		'PKG_REINSTALL_ON_OPTIONS_CHANGE[reinstall packages if options changed]:boolean:(yes no)' \
 		'PKG_SSH_ARGS[extra arguments for ssh(1)]:ssh(1) arguments' \
+		'PKG_TRIGGERS_ENABLE[execute triggers at the end of transactions]:boolean:(yes no)' \
+		'PKG_TRIGGERS_DIR[list of directories where triggers are stored]:directory:_files -/' \
 		'PLIST_KEYWORDS_DIR[directory containing definitions of plist keywords]:directory:_files -/' \
 		'PLUGINS[list of plugins pkg(8) should load]:plugins' \
 		'PLUGINS_CONF_DIR[directory containing per-plugin configurations files]:directory:_files -/' \
@@ -148,6 +173,7 @@ _pkg_config_opts() {
 		'READ_LOCK[use read locking for query database]:boolean:(yes no)' \
 		'REPOS_DIR[list of directories to search for repository configuration files]: : _sequence _directories' \
 		'REPOSITORIES[repository config in pkg.conf]:value' \
+		'REPO_ACCEPT_LEGACY_PKG[accept packages in the legacy package format]:boolean:(yes no)' \
 		'REPO_AUTOUPDATE[automatically check for repo.sqlsite updates]:boolean:(yes no)' \
 		'RUN_SCRIPTS[run pre-/post-installation action scripts]:boolean:(yes no)' \
 		'SAT_SOLVER[experimental\: use an external SAT solver]:SAT solver:_files' \
@@ -168,11 +194,11 @@ _pkg() {
 		'(-j --jail)'{-j+,--jail=}'[execute pkg(8) inside a jail(8)]:jail:_jails' \
 		'(-c --chroot)'{-c+,--chroot=}'[execute pkg(8) inside a chroot(8)]:chroot:_files -/' \
 		\*{-o+,--option=}'[set configuration option]:option:_pkg_config_opts' \
-		'(-C --config)'{-C,--config}'[use the specified configuration file]:configuration file:_files' \
+		'(-C --config)'{-C+,--config=}'[use the specified configuration file]:configuration file:_files' \
 		'(- 1 *)'{-l,--list}'[list available commands and exit]' \
 		'(- 1 *)'{-v,--version}'[display pkg(8) version]' \
 		'-N[test if pkg(8) is activated and avoid auto-activation]' \
-		'(-R --repo-conf-dir)'{-R,--repo-conf-dir}'[specify directory for per-repository configuration files]: : _files' \
+		'(-R --repo-conf-dir)'{-R+,--repo-conf-dir=}'[specify directory for per-repository configuration files]: :_files' \
 		'-4[use IPv4 for fetching repository and packages]' \
 		'-6[use IPv6 for fetching repository and packages]' \
 		'1:sub command:_pkg_subcommands' \
@@ -195,6 +221,7 @@ _pkg_args() {
 				'(-I --no-scripts)'{-I,--no-scripts}'[ignore pre-/post-install scripts]' \
 				'(-M --accept-missing)'{-M,--accept-missing}'[ignore missing dependencies when installing]' \
 				'(-q --quiet)'{-q,--quiet}'[force quiet output]' \
+				"--script-no-exec[don't execute the pre-/post-install scripts but still log them]" \
 				'*:package:->packages' && ret=0
 
 			if [[ $state[1] == packages ]]; then
@@ -208,7 +235,7 @@ _pkg_args() {
 			_arguments -A '-*' -s \
 				'(-l --list)'{-l,--list}'[list aliases]' \
 				'(-q --quiet)'{-q,--quiet}'[quiet]' \
-				'*:aliases:_pkg_aliases'
+				'*:alias:_pkg_aliases'
 			return
 			;;
 		(annotate)
@@ -231,15 +258,18 @@ _pkg_args() {
 			;;
 		(audit)
 			_arguments -A '-*' -s \
+				'(-d --directory)'{-d+,--directory=}'[audit packages in specified directory]:directory:_directories' \
 				'(-F --fetch)'{-F,--fetch}'[fetch database before checking]' \
 				'(-q --quiet)'{-q,--quiet}'[quiet]' \
 				'(-r --recursive)'{-r,--recursive}'[print packages that depend on vulnerable packages]' \
 				'(-f --file)'{-f+,--file=}'[local copy of the vulnerability database]:audit file:_files' \
+				'(-R --raw)'{-R,--raw=}'-[specify output format]::format [ucl]:(json json-compact ucl yaml)' \
 				'*:package:_pkg_installed'
 			return
 			;;
 		(autoremove)
 			_arguments -s \
+				'(-D --no-scripts)'{-D,--no-scripts}"[don't execute deinstallation scripts]" \
 				'(-q --quiet)'{-q,--quiet}'[force quiet output]' \
 				'(-y --yes -n --dry-run)'{-y,--yes}'[assume yes when asked for confirmation]' \
 				'(-y --yes -n --dry-run)'{-n,--dry-run}'[assume no (dry run) when asked for confirmation]'
@@ -249,6 +279,7 @@ _pkg_args() {
 			_arguments -A '-*' -s \
 				'(-B --shlibs)'{-B,--shlibs}'[reanalyze the shared libraries]' \
 				'(-d --dependencies)'{-d,--dependencies}'[check for and install missing dependencies]' \
+				'(-m --metadata)'{-m,--metadata}'[check for metadata discrepancies]' \
 				'(-r --recompute)'{-r,--recompute}'[recompute sizes and checksums of installed packages]' \
 				'(-s --checksums)'{-s,--checksums}'[find invalid checksums]' \
 				'(-v --verbose)'{-v,--verbose}'[be verbose]' \
@@ -265,6 +296,19 @@ _pkg_args() {
 				'*:available package:_pkg_installed'
 			return
 			;;
+		(checksum)
+			_arguments -C -A '-*' -s \
+				'(-q --quiet)'{-q,--quiet}'[quiet output]' \
+				'(-c --check -t --type)'{-c+,--check=}'[validate file against the given hash]:hash' \
+				'(-t --type -c --check)'{-t+,--type=}'[select checksum algorithm and encoding]: :->algorithms' \
+				'*:file:_files' && ret=0
+
+			if [[ $state == algorithms ]]; then
+				_description algorithms expl "algorithm [blake2_base32]"
+				compadd "$expl[@]" - ${${(s., .)${(M)${(f)"$(_call_program algorithms _pkg_cmd checksum 2>&1)"}:#Types: *}##*: }% *} && ret=0
+			fi
+			return ret
+			;;
 		(clean)
 			_arguments -s \
 				'(-a --all)'{-a,--all}'[delete all packages]' \
@@ -273,15 +317,22 @@ _pkg_args() {
 				'(-y --yes)'{-y,--yes}'[assume yes for confirmations]'
 			return
 			;;
+		(config)
+			_arguments ': :_pkg_config_opts -k'
+			return
+			;;
 		(create)
 			_arguments -A '-*' -s \
 				'(-q --quiet)'{-q,--quiet}'[force quiet output]' \
 				'(-v --verbose)'{-v,--verbose}'[be verbose]' \
 				'(-n --no-clobber)'{-n,--no-clobber}"[don't overwrite existing packages]" \
+				'(-e --expand-manifest)'{-e,--expand-manifest}'[expand manifest in pkg to readable UCL format]' \
 				'(-f --format)'{-f+,--format=}'[specify package output format]:format:(tar tgz tbz txz tzst)' \
+				'(-h --hash)'{-h,--hash}'[append hash of package contents to package filename]' \
 				'(-l --level)'{-l+,--level=}'[specify compression level]:level:(integer fast best)' \
 				'(-o --out-dir)'{-o+,--out-dir=}'[output directory]:outdir:_files -/' \
 				'(-r --root-dir)'{-r+,--root-dir=}'[specify root directory]:rootdir:_files -/' \
+				'-T+[specify number of threads to use during compression]:threads' \
 				- '(manifest)' \
 				{-M+,--manifest=}'[specify manifest file]:manifest file:_files' \
 				- metadata \
@@ -296,12 +347,19 @@ _pkg_args() {
 			return
 			;;
 		(delete|remove)
-			_arguments -A '-*' -s \
+			args=(
+				'(-D --no-scripts)'{-D,--no-scripts}"[don't execute deinstallation scripts]"
+				\*{-G+,--exclude-glob=}'[exclude packages whose names match the given shell glob]:package name (glob)'
+				'--autoremove[also remove newly orphaned packages]'
+				"--script-no-exec[don't execute the pre-/post-deinstall scripts but still log them]"
+			)
+			;&
+		(unregister)
+			_arguments -A '-*' -s $args \
 				'(-q --quiet)'{-q,--quiet}'[force quiet output]' \
 				'(-n --dry-run -y --yes)'{-y,--yes}'[assume yes when asked for confirmation]' \
 				'(-y --yes -n --dry-run)'{-n,--dry-run}'[assume no (dry run) when asked for confirmation]' \
 				'(-f --force)'{-f,--force}'[force the package(s) to be removed]' \
-				'(-D --no-scripts)'{-D,--no-scripts}"[don't execute deinstallation scripts]" \
 				'(-R --recursive)'{-R,--recursive}'[delete all packages that require the list packages as well]' \
 				- '(all)' \
 				{-a,--all}'[process all packages]' \
@@ -314,12 +372,13 @@ _pkg_args() {
 			return
 			;;
 		(fetch)
-			_arguments -A '-*' -s \
+			_arguments -C -A '-*' -s \
 				'(-y --yes)'{-y,--yes}'[assume yes when asked for confirmation]' \
 				'(-r --repository)'{-r+,--repository=}'[specify the repository to fetch from]:repository:->repositories' \
 				'(-q --quiet)'{-q,--quiet}'[force quiet output]' \
 				'(-o --output)'{-o+,--output=}'[place files in a subdirectory named `All'\'' of the specified directory]: : _files -/' \
 				'(-d --dependencies)'{-d,--dependencies}'[fetch dependencies as well]' \
+				'(-s --symlink)'{-s,--symlink}'[create symlink to package in the All directory when using -o]' \
 				'(-U --no-repo-update)'{-U,--no-repo-update}'[suppress the automatic update of the repo catalogue]' \
 				- '(all)' \
 				'(-i --case-insensitive -C --case-sensitive)'{-a,--all}'[process all packages]' \
@@ -344,6 +403,7 @@ _pkg_args() {
 				'(-q --quiet)'{-q,--quiet}'[force quiet output]' \
 				'--raw-format=[output format for raw output]:format:(json json-compact yaml)' \
 				'(-f --full)'{-f,--full}'[display full information]' \
+				'(-E --show-name-only)'{-E,--show-name-only}'[hide full package output and only shows the package name]' \
 				${mutexopts}{-e,--exists}'[return 0 if specified package is installed]' \
 				${mutexopts}{-R,--raw}'[display the full manifest]' \
 				'(-d --dependencies)'{-d,--dependencies}'[display the dependencies]' \
@@ -370,7 +430,7 @@ _pkg_args() {
 			return
 			;;
 		(install)
-			_arguments -A '-*' -s \
+			_arguments -C -A '-*' -s \
 				'(-A --automatic)'{-A,--automatic}'[mark the installed packages as automatic]' \
 				'(-r --repository)'{-r+,--repository=}'[specify the repository to install packages from]:repository:->repositories' \
 				'(-U --no-repo-update)'{-U,--no-repo-update}'[suppress the automatic update of the repo catalogue]' \
@@ -383,14 +443,25 @@ _pkg_args() {
 				'(-F --fetch-only)'{-F,--fetch-only}"[don't perform actual installation of packages]" \
 				'(-q --quiet)'{-q,--quiet}'[quiet output]' \
 				'(-R --recursive)'{-R,--recursive}'[reinstall every package depending on matching expressions]' \
-				- '(all)' \
-				{-a,--all}'[process all packages]' \
+				'(-X --register-only)'{-X,--register-only}"[record installation in the database but don't extract any files]" \
+				'(-l --local-only)'{-l,--local-only}'[only install from local archives]' \
+				'--autoremove[also remove orphaned packages]' \
+				"--script-no-exec[don't execute the pre-/post-install scripts but still log them]" \
 				- patterns \
 				'(-i --case-insensitive -C --case-sensitive)'{-i,--case-insensitive}'[case insensitive pattern matching]' \
 				'(-i --case-insensitive -C --case-sensitive)'{-C,--case-sensitive}'[case sensitive pattern matching]' \
 				'(-g --glob -x --regex)'{-g,--glob}'[process packages that match a glob pattern]' \
 				'(-g --glob -x --regex)'{-x,--regex}'[process packages that match a regex pattern]' \
 				'*:available package:_pkg_available' && ret=0
+			;;
+		(key)
+			_arguments -A '-*' \
+				'--create[create named key]' \
+				'--public[write public key to stdout]' \
+				'--sign[sign data from stdin with named keyfile]' \
+				'-t+[specify type of signer]:type [rsa]:(rsa ecc ecdsa eddsa mldsa)' \
+				':keyfile:_files'
+
 			;;
 		(lock)
 			args=( '--has-locked-packages[return 0 if at least one package is locked]' )
@@ -412,7 +483,7 @@ _pkg_args() {
 			return
 			;;
 		(plugins)
-			_arguments -A '-*' '-l' '*:plugin'
+			_arguments -A '-*' '(-)'{-l,--list-only} '*:plugin'
 			return
 			;;
 		(query)
@@ -429,7 +500,7 @@ _pkg_args() {
 				- '(eval)' \
 				{-e+,--evaluate=}'[process packages that match an evaluation]:evaluation:->evaluation' \
 				- '(files)' \
-				{-F,--file}'[process the specified package]:package:_files -g "*.t?z(-.)"' \
+				{-F+,--file=}'[process the specified package]:package:_files -g "*.t?z(-.)"' \
 				&& ret=0
 			;;
 		(register)
@@ -437,6 +508,7 @@ _pkg_args() {
 				'(-A --automatic)'{-A,--automatic}'[mark the package to be automatically removed if no other packages depend on it]' \
 				'(-l --legacy)'{-l,--legacy}'[register as a legacy format]' \
 				'(-d --debug)'{-d,--debug}'[mark the package as an automatic dependency]' \
+				'(-N --no-registration)'{-N,--no-registration}'[install files, execute script but disable registration]' \
 				'(-t --test)'{-t,--test}'[enable testing mode]' \
 				- metadatadir \
 				'(-f --plist)'{-f+,--plist=}'[packing list file]:packing list file:_files' \
@@ -449,15 +521,28 @@ _pkg_args() {
 			;;
 		(repo)
 			_arguments -A '-*' -s \
-				'(-h --hash)'{-h,--hash}'[Rename repo files with a short hash appended]' \
+				'(-g --groups)'{-g+,--groups=}'[set group ownership of the repository files]:group:_groups' \
+				'(-h --hash)'{-h,--hash}'[rename repo files with a short hash appended]' \
 				'(-l --list-files)'{-l,--list-files}'[generate list of all files in repo as filesite.txz archive]' \
 				'(-q --quiet)'{-q,--quiet}'[force quiet output]' \
 				'(-o --output-dir)'{-o+,--output-dir=}'[specify the location of the new repo]:repo location:_files -/' \
 				'(-m --meta-file)'{-m+,--meta-file=}'[use specified file as repository meta file instead of the defaults]:meta file:_files' \
-				'(-s --symlink)'{-s,--symlink}'[Create a symlink between the hashed and regular filename]' \
+				'(-s --symlink)'{-s,--symlink}'[create a symlink between the hashed and regular filename]' \
+				'(-c --sign-cmd)'{-c+,--sign-cmd=}'[specify command to sign repository]:command:_cmdstring' \
+				'(-k --sign-key)'{-k+,--sign-key=}'[specify signing key]:keyfile:_files' \
+				'(-t --sign-type)'{-t+,--sign-type=}'[specify signing key type]:type:(rsa ecdsa eddsa mldsa)' \
 				':repository path:_files -/' \
 				':RSA key: _alternative "files\:RSA key\:_files" "commands\:commands\:_cmdstring"'
 			return
+			;;
+		(repositories)
+			_arguments -C -A '-*' -s \
+				'(-l --list 2)'{-l,--list}'[print only repository names]' \
+				'1:repository:->repositories' \
+				+ '(action)' \
+				{-d,--disabled}'[print disabled repositories only]' \
+				{-e,--enabled}'[print enabled repositories only]' \
+				'2:action:(enable disable reset)' && ret=0
 			;;
 		(rquery)
 			_arguments -A '-*' -C -s \
@@ -477,6 +562,13 @@ _pkg_args() {
 				{-e+,--evaluate=}'[process packages that match an evaluation]:evaluation:->evaluation' \
 				&& ret=0
 			;;
+		(rwhich)
+			_arguments -C -A '-*' -s \
+				'(-q --glob)'{-g,--glob}'[treat file as a glob pattern]' \
+				'(-q --quiet)'{-q,--quiet}'[only print the package name and version]' \
+				'(-r --repository)'{-r+,--repository=}'[limit search to named repository]:repository:->repositories' \
+				':file:_files -P / -W /' && ret=0
+			;;
 		(search)
 			local -a label_opts modifier_opts
 			label_opts=(comment description name origin pkg-name)
@@ -485,7 +577,7 @@ _pkg_args() {
 			licenses maintainer name options pkg-size prefix repository
 			required-by shared-libs-{required,provided} size url version www
 			)
-			_arguments -A '-*' -s \
+			_arguments -C -A '-*' -s \
 				'(-x --regex -g --glob -e --exact)'{-g,--glob}'[process packages that match the glob pattern]' \
 				'(-x --regex -g --glob -e --exact)'{-x,--regex}'[process packages that match the regex pattern]' \
 				'(-x --regex -g --glob -e --exact)'{-e,--exact}'[process packages that match the string exactly]' \
@@ -514,9 +606,10 @@ _pkg_args() {
 			local mutexopts='(-o --change-origin -A --automatic -n --change-name)'
 			_arguments -A '-*' -s \
 				${mutexopts}{-A+,--automatic=}'[mark as automatic or not]:flag:((1\:automatic 0\:not\ automatic))' \
-				'-v+[mark as vital or not]:flag:((1\:vital 0\:not\ vital))' \
+				'(-v --vital)'{-v+,--vital=}'[mark as vital or not]:flag:((1\:vital 0\:not\ vital))' \
 				${mutexopts}{-o+,--change-origin=}'[change the origin]:oldorigin\:neworigin' \
 				${mutexopts}{-n+,--change-name=}'[change the name]:oldname\:newname' \
+				'(-p --partial)'{-p,--partial}'[replace substrings with -o/-n]' \
 				'(-y --yes)'{-y,--yes}'[assume yes when asked for confirmation]' \
 				- '(all)' \
 				{-a,--all}'[process all packages]' \
@@ -534,12 +627,17 @@ _pkg_args() {
 			return
 			;;
 		(shlib)
-			_arguments -A '-*' -s \
+			_arguments -C -A '-*' -s \
 				'(-q --quiet)'{-q,--quiet}'[force quiet output]' \
-				'(-P --provides)'{-P,--provides}'[show the package which provides the library]' \
-				'(-R --requires)'{-R,--requires}'[show installed packages which requires the library]' \
-				':library:'
-			return
+				'(-P --provides -R --requires)'{-P,--provides}'[show the package which provides the library]' \
+				'(-R --requires -P --provides)'{-R,--requires}'[show installed packages which requires the library]' \
+				':library:->shlibs' && ret=0
+
+			if [[ $state == shlibs ]]; then
+				_description libraries expl library
+				compadd "$expl[@]" - $(_call_program libraries _pkg_cmd query "%b") && ret=0
+			fi
+			return ret
 			;;
 		(stats)
 			_arguments -A '-*' -s \
@@ -552,8 +650,12 @@ _pkg_args() {
 				{-b,--bytes}'[display space usage, in bytes]'
 			return
 			;;
+		(triggers)
+			_arguments -A '-*' '(-)'{-q,--quiet}'[quiet output]'
+			return
+			;;
 		(update)
-			_arguments -A '-*' -s \
+			_arguments -C -A '-*' -s \
 				'(-f --force)'{-f,--force}'[force update]' \
 				'(-q --quiet)'{-q,--quiet}'[be quiet]' \
 				'(-r --repository)'{-r+,--repository=}'[specify the repository to update from]:repository:->repositories' && ret=0
@@ -569,7 +671,8 @@ _pkg_args() {
 			return
 			;;
 		(upgrade)
-			_arguments -A '-*' -s \
+			_arguments -C -A '-*' -s \
+				'--autoremove[also remove orphaned packages]' \
 				"(-F --fetch-only)"{-F,--fetch-only}"[don't install packages, merely fetch them]" \
 				'(-y --yes -n --dry-run)'{-n,--dry-run}'[assume no (dry run) when asked for confirmation]' \
 				'(-n --dry-run -y --yes)'{-y,--yes}'[assume yes when asked for confirmation]' \
@@ -581,12 +684,14 @@ _pkg_args() {
 				'(-N --no-remove)'{-N,--no-remove}'[refuse to remove packages that were not explicitly requested]' \
 				'(-q --quiet)'{-q,--quiet}'[be quiet]' \
 				'(-r --repository)'{-r+,--repository=}'[specify the repository to upgrade from]:repository:->repositories' \
+				"--script-no-exec[don't execute the pre-/post-install scripts but still log them]" \
+				'--vulnerable[upgrade packages which are known to be vulnerable]' \
 				'(-g --glob -x --regex)'{-g,--glob}'[process packages that match a glob pattern]' \
 				'(-g --glob -x --regex)'{-x,--regex}'[process packages that match a regex pattern]' \
 				'*:available package:_pkg_installed' && ret=0
 			;;
 		(version)
-			_arguments -A '-*' -s \
+			_arguments -C -A '-*' -s \
 				- '(testversion)' \
 				{-t+,--test-version=}'[test a pair of version number strings]: : _message -e values "version string": : _message -e values "version string"' \
 				- '(testpattern)' \
@@ -641,7 +746,7 @@ _pkg_args() {
 	if [[ $state = repositories ]]; then
 		local -U repos
 		repos=( $(_call_program repositories _pkg_cmd repositories -l) )
-		_wanted -x repositories expl repository compadd -a repos
+		_wanted repositories expl repository compadd -a repos
 		return
 	fi
 	local -a specs elements
