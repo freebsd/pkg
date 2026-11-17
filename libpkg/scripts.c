@@ -52,8 +52,29 @@ extern char **environ;
 _Static_assert((int)PKG_LUA_PRE_INSTALL == (int)PKG_SCRIPT_PRE_INSTALL &&
     (int)PKG_LUA_POST_INSTALL == (int)PKG_SCRIPT_POST_INSTALL &&
     (int)PKG_LUA_PRE_DEINSTALL == (int)PKG_SCRIPT_PRE_DEINSTALL &&
-    (int)PKG_LUA_POST_DEINSTALL == (int)PKG_SCRIPT_POST_DEINSTALL,
+    (int)PKG_LUA_POST_DEINSTALL == (int)PKG_SCRIPT_POST_DEINSTALL &&
+    (int)PKG_LUA_PRE_TRANSACTION == (int)PKG_SCRIPT_PRE_TRANSACTION,
     "the lua scripts are indexed like the shell ones");
+
+/*
+ * Runs the pre-transaction scripts of a package, before anything is modified.
+ * They are meant to check that the system is in a state where the package can
+ * be installed, so a failure aborts the installation.
+ */
+int
+pkg_pre_transaction_run(struct pkg *pkg, bool upgrade)
+{
+	if (pkg_script_get(pkg, PKG_SCRIPT_PRE_TRANSACTION) == NULL &&
+	    vec_len(&pkg->scripts[PKG_SCRIPT_PRE_TRANSACTION].lua) == 0)
+		return (EPKG_OK);
+
+	if (pkg_lua_script_run(pkg, PKG_LUA_PRE_TRANSACTION,
+	    upgrade) != EPKG_OK)
+		return (EPKG_FATAL);
+
+	return (pkg_script_run(pkg, PKG_SCRIPT_PRE_TRANSACTION, upgrade,
+	    false));
+}
 
 const char *
 pkg_script_key(pkg_script type)
@@ -71,6 +92,8 @@ pkg_script_key(pkg_script type)
 		return ("deinstall");
 	case PKG_SCRIPT_POST_DEINSTALL:
 		return ("post-deinstall");
+	case PKG_SCRIPT_PRE_TRANSACTION:
+		return ("pre-transaction");
 	default:
 		return (NULL);
 	}
@@ -173,6 +196,8 @@ pkg_script_run(struct pkg * const pkg, pkg_script type, bool upgrade, bool noexe
 		{"POST-INSTALL",   PKG_SCRIPT_INSTALL,   PKG_SCRIPT_POST_INSTALL},
 		{"DEINSTALL",      PKG_SCRIPT_DEINSTALL, PKG_SCRIPT_PRE_DEINSTALL},
 		{"POST-DEINSTALL", PKG_SCRIPT_DEINSTALL, PKG_SCRIPT_POST_DEINSTALL},
+		{"PRE-TRANSACTION", PKG_SCRIPT_UNKNOWN,
+		    PKG_SCRIPT_PRE_TRANSACTION},
 	};
 
 	if (!pkg_object_bool(pkg_config_get("RUN_SCRIPTS"))) {

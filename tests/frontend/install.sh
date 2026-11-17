@@ -7,6 +7,9 @@ tests_init \
 	metalog_directories \
 	reinstall \
 	pre_script_fail \
+	pre_transaction_fail \
+	pre_transaction_lua_fail \
+	pre_transaction_upgrade \
 	post_script_ignored \
 	install_missing_dep \
 	install_register_only \
@@ -820,4 +823,121 @@ install_local_file_upgrade_body()
 
 	atf_check -s exit:0 pkg info -e test
 	atf_check -o match:"2" pkg query "%v" test
+}
+
+# A pre-transaction script runs before the transaction starts: if it fails,
+# nothing is installed, whatever the package does later.
+pre_transaction_fail_body()
+{
+	atf_check sh ${RESOURCEDIR}/test_subr.sh new_pkg test test 1
+	cat << EOF >> test.ucl
+scripts: {
+   pre-transaction: "exit 1"
+}
+EOF
+	mkdir repo
+	atf_check -o ignore pkg create -o repo -M test.ucl
+	atf_check -o ignore pkg repo repo
+
+	cat > pkg.conf << EOF
+PKG_DBDIR=${TMPDIR}
+PKG_CACHEDIR=${TMPDIR}/cache
+REPOS_DIR=[]
+repositories: {
+	local: { url: "file://${TMPDIR}/repo" }
+}
+EOF
+	atf_check -o ignore pkg -C ./pkg.conf update
+	atf_check \
+		-e match:"PRE-TRANSACTION script failed" \
+		-o ignore \
+		-s exit:3 \
+		pkg -C ./pkg.conf install -y test
+	atf_check -s exit:1 pkg info -e test
+}
+
+# Same with a lua pre-transaction script.
+pre_transaction_lua_fail_body()
+{
+	atf_check sh ${RESOURCEDIR}/test_subr.sh new_pkg test test 1
+	cat << EOF >> test.ucl
+lua_scripts: {
+   pre-transaction: [ 'error("no way")' ]
+}
+EOF
+	mkdir repo
+	atf_check -o ignore pkg create -o repo -M test.ucl
+	atf_check -o ignore pkg repo repo
+
+	cat > pkg.conf << EOF
+PKG_DBDIR=${TMPDIR}
+PKG_CACHEDIR=${TMPDIR}/cache
+REPOS_DIR=[]
+repositories: {
+	local: { url: "file://${TMPDIR}/repo" }
+}
+EOF
+	atf_check -o ignore pkg -C ./pkg.conf update
+	atf_check \
+		-e match:"lua script failed" \
+		-o ignore \
+		-s exit:3 \
+		pkg -C ./pkg.conf install -y test
+	atf_check -s exit:1 pkg info -e test
+}
+
+# The lua script runs before the shell one, and both know whether the package
+# is being installed or upgraded.
+pre_transaction_upgrade_body()
+{
+	atf_check sh ${RESOURCEDIR}/test_subr.sh new_pkg test test 1
+	cat << EOF >> test.ucl
+scripts: {
+   pre-transaction: "echo shell-\${PKG_UPGRADE}"
+}
+lua_scripts: {
+   pre-transaction: [ 'print("lua-" .. tostring(pkg_upgrade))' ]
+}
+EOF
+	mkdir repo
+	atf_check -o ignore pkg create -o repo -M test.ucl
+	atf_check -o ignore pkg repo repo
+
+	cat > pkg.conf << EOF
+PKG_DBDIR=${TMPDIR}
+PKG_CACHEDIR=${TMPDIR}/cache
+REPOS_DIR=[]
+repositories: {
+	local: { url: "file://${TMPDIR}/repo" }
+}
+EOF
+	atf_check -o ignore pkg -C ./pkg.conf update
+	atf_check \
+		-o save:${TMPDIR}/out \
+		-s exit:0 \
+		pkg -C ./pkg.conf install -y test
+	atf_check -o inline:"lua-false\nshell-\n" sh -c \
+		"grep -E '^(lua|shell)-' ${TMPDIR}/out"
+
+	# A newer version, installed over the old one
+	atf_check -o ignore rm ${TMPDIR}/repo/test-1.pkg
+	atf_check sh ${RESOURCEDIR}/test_subr.sh new_pkg test test 2
+	cat << EOF >> test.ucl
+scripts: {
+   pre-transaction: "echo shell-\${PKG_UPGRADE}"
+}
+lua_scripts: {
+   pre-transaction: [ 'print("lua-" .. tostring(pkg_upgrade))' ]
+}
+EOF
+	atf_check -o ignore pkg create -o repo -M test.ucl
+	sleep 1
+	atf_check -o ignore pkg repo repo
+	atf_check -o ignore pkg -C ./pkg.conf update -f
+	atf_check \
+		-o save:${TMPDIR}/out2 \
+		-s exit:0 \
+		pkg -C ./pkg.conf upgrade -y
+	atf_check -o inline:"lua-true\nshell-true\n" sh -c \
+		"grep -E '^(lua|shell)-' ${TMPDIR}/out2"
 }

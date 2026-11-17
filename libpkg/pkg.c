@@ -800,12 +800,14 @@ cleanup:
 const struct pkg_script_file pkg_script_files[] = {
 	{ "+INSTALL", PKG_SCRIPT_INSTALL },
 	{ "+PRE_INSTALL", PKG_SCRIPT_PRE_INSTALL },
+	{ "+PRE_TRANSACTION", PKG_SCRIPT_PRE_TRANSACTION },
 	{ "+POST_INSTALL", PKG_SCRIPT_POST_INSTALL },
 	{ "+DEINSTALL", PKG_SCRIPT_DEINSTALL },
 	{ "+PRE_DEINSTALL", PKG_SCRIPT_PRE_DEINSTALL },
 	{ "+POST_DEINSTALL", PKG_SCRIPT_POST_DEINSTALL },
 	{ "pkg-install", PKG_SCRIPT_INSTALL },
 	{ "pkg-pre-install", PKG_SCRIPT_PRE_INSTALL },
+	{ "pkg-pre-transaction", PKG_SCRIPT_PRE_TRANSACTION },
 	{ "pkg-post-install", PKG_SCRIPT_POST_INSTALL },
 	{ "pkg-deinstall", PKG_SCRIPT_DEINSTALL },
 	{ "pkg-pre-deinstall", PKG_SCRIPT_PRE_DEINSTALL },
@@ -815,6 +817,7 @@ const struct pkg_script_file pkg_script_files[] = {
 
 const struct pkg_lua_script_file pkg_lua_script_files[] = {
 	{ "pkg-pre-install.lua", PKG_LUA_PRE_INSTALL },
+	{ "pkg-pre-transaction.lua", PKG_LUA_PRE_TRANSACTION },
 	{ "pkg-post-install.lua", PKG_LUA_POST_INSTALL },
 	{ "pkg-pre-deinstall.lua", PKG_LUA_PRE_DEINSTALL },
 	{ "pkg-post-deinstall.lua", PKG_LUA_POST_DEINSTALL },

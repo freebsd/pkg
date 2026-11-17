@@ -2198,6 +2198,42 @@ pkg_jobs_handle_delete(struct pkg_solved *ps, struct pkg_jobs *j)
 	    &j->triggers, &j->rc));
 }
 
+/*
+ * Runs the pre-transaction scripts of the packages which are going to be
+ * installed or upgraded, before anything is modified.  A failing script
+ * aborts the whole transaction, which is then left untouched.
+ */
+static int
+pkg_jobs_run_pre_transaction_scripts(struct pkg_jobs *j)
+{
+	struct pkg_solved *ps;
+	struct pkg *p;
+	bool upgrade;
+
+	vec_foreach(j->jobs, i) {
+		ps = j->jobs.d[i];
+		switch (ps->type) {
+		case PKG_SOLVED_INSTALL:
+			upgrade = false;
+			break;
+		case PKG_SOLVED_UPGRADE:
+		case PKG_SOLVED_UPGRADE_INSTALL:
+			upgrade = true;
+			break;
+		default:
+			continue;
+		}
+
+		p = ps->items[0]->pkg;
+		pkgdb_ensure_loaded(j->db, p, PKG_LOAD_SCRIPTS|
+		    PKG_LOAD_LUA_SCRIPTS);
+		if (pkg_pre_transaction_run(p, upgrade) != EPKG_OK)
+			return (EPKG_FATAL);
+	}
+
+	return (EPKG_OK);
+}
+
 static int
 pkg_jobs_execute(struct pkg_jobs *j)
 {
@@ -2233,6 +2269,11 @@ pkg_jobs_execute(struct pkg_jobs *j)
 		return (retcode);
 
 	pkg_plugins_hook_run(pre, j, j->db);
+
+	/* Nothing has been modified yet: a failure here aborts cleanly */
+	retcode = pkg_jobs_run_pre_transaction_scripts(j);
+	if (retcode != EPKG_OK)
+		return (retcode);
 
 	retcode = pkg_jobs_schedule(j);
 	if (retcode != EPKG_OK)
@@ -2615,7 +2656,9 @@ pkg_jobs_check_conflicts(struct pkg_jobs *j)
 			p = ps->items[0]->pkg;
 
 			if (p->type == PKG_REMOTE)
-				pkgdb_ensure_loaded(j->db, p, PKG_LOAD_FILES|PKG_LOAD_DIRS);
+				pkgdb_ensure_loaded(j->db, p,
+				    PKG_LOAD_FILES|PKG_LOAD_DIRS|PKG_LOAD_SCRIPTS|
+				    PKG_LOAD_LUA_SCRIPTS);
 		}
 		uv = pkg_jobs_universe_find(j->universe, ps->items[0]->pkg->uid);
 		if ((res = pkg_conflicts_append_chain(uv, j)) != EPKG_OK)

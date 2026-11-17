@@ -993,6 +993,7 @@ int pkg_lua_script_from_ucl(struct pkg *pkg, const ucl_object_t *obj, pkg_lua_sc
 char* pkg_message_to_str(struct pkg *pkg);
 
 int metalog_open(const char *metalog);
+int pkg_pre_transaction_run(struct pkg *pkg, bool upgrade);
 int metalog_add(int type, const char *path, const char *uname,
     const char *gname, int mode, unsigned long fflags, const char *link);
 void metalog_close(void);

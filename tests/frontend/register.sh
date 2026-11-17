@@ -10,7 +10,9 @@ tests_init \
 	file_not_found \
 	no_pkg_register \
 	failed_register_no_post_install \
-	failed_pre_install
+	failed_pre_install \
+	failed_pre_transaction \
+	failed_pre_transaction_file
 
 overlong_path_body() {
 	# a manifest listing a path which does not fit in MAXPATHLEN must be
@@ -228,5 +230,46 @@ EOF
 		-e match:"PRE-INSTALL script failed" \
 		-s exit:1 \
 		pkg register -M test.ucl
+	atf_check -s exit:1 pkg info -e test
+}
+
+failed_pre_transaction_body() {
+	# The pre-transaction script checks that the system is ready before
+	# anything is done: pkg register must not register the package when it
+	# fails
+	atf_check -s exit:0 sh ${RESOURCEDIR}/test_subr.sh new_pkg test test 1 ${TMPDIR}/prefix
+	cat >> test.ucl << EOF
+scripts: { pre-transaction: "exit 1" }
+EOF
+	atf_check \
+		-o ignore \
+		-e match:"PRE-TRANSACTION script failed" \
+		-s exit:1 \
+		pkg register -M test.ucl
+	atf_check -s exit:1 pkg info -e test
+}
+
+failed_pre_transaction_file_body() {
+	# The pre-transaction script can also be shipped as a lua file next to
+	# the manifest, as the other scripts are
+	mkdir meta
+	cat > meta/+MANIFEST << EOF
+name: "test"
+origin: "test"
+version: "1"
+comment: "a test"
+www: "http://test"
+prefix: "${TMPDIR}/prefix"
+abi: "*"
+maintainer: "test"
+desc: "This is a test"
+categories: [ "test" ]
+EOF
+	echo 'error("not ready")' > meta/pkg-pre-transaction.lua
+	atf_check \
+		-o ignore \
+		-e match:"lua script failed" \
+		-s exit:1 \
+		pkg register -m meta
 	atf_check -s exit:1 pkg info -e test
 }

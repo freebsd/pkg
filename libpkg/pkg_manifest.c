@@ -265,6 +265,7 @@ lua_script_type_str(const char *str)
 		{ "post-install",   PKG_LUA_POST_INSTALL },
 		{ "pre-deinstall",  PKG_LUA_PRE_DEINSTALL },
 		{ "pre-install",    PKG_LUA_PRE_INSTALL },
+		{ "pre-transaction", PKG_LUA_PRE_TRANSACTION },
 	};
 
 	for (size_t i = 0; i < NELEM(lua_types); i++) {
@@ -287,6 +288,7 @@ script_type_str(const char *str)
 		{ "post-install",  PKG_SCRIPT_POST_INSTALL },
 		{ "pre-deinstall", PKG_SCRIPT_PRE_DEINSTALL },
 		{ "pre-install",   PKG_SCRIPT_PRE_INSTALL },
+		{ "pre-transaction", PKG_SCRIPT_PRE_TRANSACTION },
 	};
 
 	for (size_t i = 0; i < NELEM(scr_types); i++) {

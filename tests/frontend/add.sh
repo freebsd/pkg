@@ -6,6 +6,7 @@ tests_init	\
 		add_automatic \
 		add_noscript \
 		add_noscript \
+		add_pre_transaction_fail \
 		add_force \
 		add_accept_missing \
 		add_quiet \
@@ -1007,4 +1008,43 @@ EOF
 		-e empty \
 		-s exit:0 \
 		pkg add $(pwd)/All/consumer-1.pkg
+}
+
+# The pre-transaction script runs before anything is installed, from the
+# archive of the package being added
+add_pre_transaction_fail_body()
+{
+	atf_check sh ${RESOURCEDIR}/test_subr.sh new_pkg test test 1
+	cat << EOF >> test.ucl
+scripts: {
+   pre-transaction: "exit 1"
+}
+lua_scripts: {
+   pre-transaction: [ 'error("not ready")' ]
+}
+EOF
+	atf_check -o ignore pkg create -M test.ucl
+
+	# the lua script runs first and fails
+	atf_check \
+		-o ignore \
+		-e match:"lua script failed" \
+		-s exit:1 \
+		pkg add test-1.pkg
+	atf_check -s exit:1 pkg info -e test
+
+	# the shell script failure aborts too
+	atf_check sh ${RESOURCEDIR}/test_subr.sh new_pkg test test 1
+	cat << EOF >> test.ucl
+scripts: {
+   pre-transaction: "exit 1"
+}
+EOF
+	atf_check -o ignore pkg create -M test.ucl
+	atf_check \
+		-o ignore \
+		-e match:"PRE-TRANSACTION script failed" \
+		-s exit:1 \
+		pkg add test-1.pkg
+	atf_check -s exit:1 pkg info -e test
 }

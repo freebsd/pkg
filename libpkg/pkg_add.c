@@ -47,7 +47,7 @@ static int
 pkg_add_common(struct pkgdb *db, const char *path, int fd, unsigned flags,
     const char *reloc, struct pkg *remote,
     struct pkg *local, struct triggers *t, struct deferred_rc *rc,
-    stringset_t *pkgs_in_progress);
+    stringset_t *pkgs_in_progress, bool pre_transaction);
 
 struct external_merge_tmp_file {
 	int fd;
@@ -1591,7 +1591,8 @@ pkg_add_check_pkg_archive(struct pkgdb *db, struct pkg *pkg,
 		if ((flags & PKG_ADD_UPGRADE) == 0 &&
 				access(dpath, F_OK) == 0) {
 			ret = pkg_add_common(db, dpath, -1, PKG_ADD_AUTOMATIC,
-			    location, NULL, NULL, NULL, NULL, pkgs_in_progress);
+			    location, NULL, NULL, NULL, NULL, pkgs_in_progress,
+			    true);
 
 			if (ret != EPKG_OK)
 				goto cleanup;
@@ -1638,7 +1639,8 @@ pkg_add_check_pkg_archive(struct pkgdb *db, struct pkg *pkg,
 				continue;
 			}
 			ret = pkg_add_common(db, provider, -1, PKG_ADD_AUTOMATIC,
-			    location, NULL, NULL, NULL, NULL, pkgs_in_progress);
+			    location, NULL, NULL, NULL, NULL, pkgs_in_progress,
+			    true);
 			free(provider);
 			if (ret != EPKG_OK && ret != EPKG_INSTALLED)
 				goto cleanup;
@@ -1669,7 +1671,8 @@ pkg_add_check_pkg_archive(struct pkgdb *db, struct pkg *pkg,
 				continue;
 			}
 			ret = pkg_add_common(db, provider, -1, PKG_ADD_AUTOMATIC,
-			    location, NULL, NULL, NULL, NULL, pkgs_in_progress);
+			    location, NULL, NULL, NULL, NULL, pkgs_in_progress,
+			    true);
 			free(provider);
 			if (ret != EPKG_OK && ret != EPKG_INSTALLED)
 				goto cleanup;
@@ -1811,7 +1814,7 @@ int
 pkg_add_common(struct pkgdb *db, const char *path, int fd, unsigned flags,
     const char *reloc, struct pkg *remote,
     struct pkg *local, struct triggers *t, struct deferred_rc *rc,
-    stringset_t *pkgs_in_progress)
+    stringset_t *pkgs_in_progress, bool pre_transaction)
 {
 	struct archive		*a = NULL;
 	struct archive_entry	*ae = NULL;
@@ -1876,6 +1879,16 @@ pkg_add_common(struct pkgdb *db, const char *path, int fd, unsigned flags,
 
 	if (flags & PKG_ADD_REGISTER_ONLY)
 		extract = false;
+
+	/*
+	 * Check the system before anything is modified.  When the package is
+	 * installed as part of a transaction, pkg_jobs_execute() has already
+	 * run the pre-transaction scripts of the whole transaction.
+	 */
+	if (pre_transaction && pkg_pre_transaction_run(pkg, false) != EPKG_OK) {
+		retcode = EPKG_FATAL;
+		goto cleanup;
+	}
 
 	/*
 	 * Additional checks for non-remote package
@@ -2119,14 +2132,14 @@ pkg_add(struct pkgdb *db, const char *path, unsigned flags,
     const char *location)
 {
 	return pkg_add_common(db, path, -1, flags, location, NULL, NULL, NULL,
-	    NULL, NULL);
+	    NULL, NULL, true);
 }
 
 int
 pkg_add_fd(struct pkgdb *db, int fd, unsigned flags, const char *location)
 {
 	return pkg_add_common(db, "-", fd, flags, location, NULL, NULL, NULL,
-	    NULL, NULL);
+	    NULL, NULL, true);
 }
 
 int
@@ -2135,7 +2148,7 @@ pkg_add_from_remote(struct pkgdb *db, const char *path, unsigned flags,
     struct deferred_rc *rc)
 {
 	return pkg_add_common(db, path, -1, flags, location, rp, NULL, t, rc,
-	    NULL);
+	    NULL, false);
 }
 
 int
@@ -2144,7 +2157,7 @@ pkg_add_from_remote_fd(struct pkgdb *db, int fd, unsigned flags,
     struct deferred_rc *rc)
 {
 	return pkg_add_common(db, "-", fd, flags, location, rp, NULL, t, rc,
-	    NULL);
+	    NULL, false);
 }
 
 int
@@ -2158,7 +2171,7 @@ pkg_add_upgrade(struct pkgdb *db, const char *path, unsigned flags,
 		return (EPKG_FATAL);
 
 	return pkg_add_common(db, path, -1, flags, location, rp, lp, t, rc,
-	    NULL);
+	    NULL, false);
 }
 
 int
@@ -2171,7 +2184,7 @@ pkg_add_upgrade_fd(struct pkgdb *db, int fd, unsigned flags,
 		return (EPKG_FATAL);
 
 	return pkg_add_common(db, "-", fd, flags, location, rp, lp, t, rc,
-	    NULL);
+	    NULL, false);
 }
 
 static int

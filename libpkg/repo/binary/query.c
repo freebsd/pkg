@@ -1530,7 +1530,8 @@ pkg_repo_binary_ensure_loaded(struct pkg_repo *repo,
 
 	if (pkg->type == PKG_GROUP_REMOTE)
 		return (EPKG_OK);
-	flags &= PKG_LOAD_FILES|PKG_LOAD_DIRS;
+	flags &= PKG_LOAD_FILES|PKG_LOAD_DIRS|PKG_LOAD_SCRIPTS|
+	    PKG_LOAD_LUA_SCRIPTS;
 	/*
 	 * If info is already present, done.
 	 */
@@ -1578,8 +1579,22 @@ pkg_repo_binary_ensure_loaded(struct pkg_repo *repo,
 	pkg->dirs = cached->dirs;
 	memset(&cached->dirs, 0, sizeof(cached->dirs));
 
+	/*
+	 * The manifest of the archive holds the scripts as well, keep them
+	 * with the files and the directories.
+	 */
+	for (int i = 0; i < PKG_SCRIPT_UNKNOWN; i++) {
+		pkg->scripts[i].shell = cached->scripts[i].shell;
+		memset(&cached->scripts[i].shell, 0,
+		    sizeof(cached->scripts[i].shell));
+		pkg->scripts[i].lua = cached->scripts[i].lua;
+		memset(&cached->scripts[i].lua, 0,
+		    sizeof(cached->scripts[i].lua));
+	}
+
 	pkg_free(cached);
-	pkg->flags |= flags;
+	pkg->flags |= PKG_LOAD_FILES|PKG_LOAD_DIRS|PKG_LOAD_SCRIPTS|
+	    PKG_LOAD_LUA_SCRIPTS;
 
 	return EPKG_OK;
 }

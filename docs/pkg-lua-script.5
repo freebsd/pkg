@@ -24,6 +24,12 @@ run scripts at given phases of the process it is running.
 .Pp
 The phases are the following:
 .Bl -tag -width Ds
+.It Cm pre-transaction :
+run before the transaction which installs or upgrades the package starts,
+along with the ones of the other packages of the transaction, before any
+file of any package is modified.
+The failure of such a script aborts the whole transaction, so it is meant to
+check that the system is in a state where the package can be installed.
 .It Cm pre-install :
 run before installing the files on the system.
 .It Cm post-install :

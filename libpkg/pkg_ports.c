@@ -1583,6 +1583,15 @@ pkg_add_port(struct pkgdb *db, struct pkg *pkg, const char *input_path,
 	if (ctx.pkg_rootdir == NULL && location != NULL)
 		pkg_kv_add(&pkg->annotations, "relocated", location, "annotation");
 
+	/*
+	 * Check the system before anything is modified: the registration is
+	 * rolled back if the check fails.
+	 */
+	if (!testing && pkg_pre_transaction_run(pkg, false) != EPKG_OK) {
+		rc = EPKG_FATAL;
+		goto cleanup;
+	}
+
 	pkg_emit_install_begin(pkg);
 
 	if (db != NULL) {
