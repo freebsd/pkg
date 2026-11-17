@@ -28,6 +28,8 @@ Changes from 2.9.0 to 2.9.99.1
   along with the version available, instead of pretending it is up to date
 - fetch: the URLs of the diagnostics of a failed fetch include the port
   again, so a repository served on a non default port is shown as it is used
+- register: a failing pre-install script or lua file aborts the registration
+  instead of registering the package anyway
 
 Changes from 2.8.99.5 to 2.8.99.6
 - abi: an overlong string coming from a manifest or a catalogue is rejected

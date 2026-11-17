@@ -1597,9 +1597,18 @@ pkg_add_port(struct pkgdb *db, struct pkg *pkg, const char *input_path,
 		triggers_execute_perpackage(pkg, TRIGGER_PHASE_PRE_INSTALL,
 		    false);
 
-		/* Execute pre-install scripts */
-		pkg_lua_script_run(pkg, PKG_LUA_PRE_INSTALL, false);
-		pkg_script_run(pkg, PKG_SCRIPT_PRE_INSTALL, false, false);
+		/*
+		 * Execute pre-install scripts.  Their failure must prevent the
+		 * package from being installed, as it does with pkg add: the
+		 * registration is still in a transaction at this point and is
+		 * rolled back by pkgdb_register_finale().
+		 */
+		if ((rc = pkg_lua_script_run(pkg, PKG_LUA_PRE_INSTALL,
+		    false)) != EPKG_OK)
+			goto cleanup;
+		if ((rc = pkg_script_run(pkg, PKG_SCRIPT_PRE_INSTALL, false,
+		    false)) != EPKG_OK)
+			goto cleanup;
 
 		if (input_path != NULL) {
 			pkg_register_cleanup_callback(pkg_rollback_cb, pkg);

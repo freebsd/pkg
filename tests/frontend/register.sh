@@ -9,7 +9,8 @@ tests_init \
 	prefix_is_a_symlink \
 	file_not_found \
 	no_pkg_register \
-	failed_register_no_post_install
+	failed_register_no_post_install \
+	failed_pre_install
 
 overlong_path_body() {
 	# a manifest listing a path which does not fit in MAXPATHLEN must be
@@ -212,5 +213,20 @@ EOF
 		-e ignore \
 		-s exit:1 \
 		pkg register -i stage -M test.ucl
+	atf_check -s exit:1 pkg info -e test
+}
+
+failed_pre_install_body() {
+	# A failing pre-install script must abort the registration, as it does
+	# with pkg add, and must not leave the package registered
+	atf_check -s exit:0 sh ${RESOURCEDIR}/test_subr.sh new_pkg test test 1 ${TMPDIR}/prefix
+	cat >> test.ucl << EOF
+scripts: { pre-install: "exit 1" }
+EOF
+	atf_check \
+		-o ignore \
+		-e match:"PRE-INSTALL script failed" \
+		-s exit:1 \
+		pkg register -M test.ucl
 	atf_check -s exit:1 pkg info -e test
 }
