@@ -2,14 +2,16 @@
 
 . $(atf_get_srcdir)/test_environment.sh
 
-CLEANUP="simple_fetch simple_repo simple_audit server_ignores_ims server_sends_304"
+CLEANUP="simple_fetch simple_repo simple_audit \
+	server_ignores_ims server_sends_304 missing_pkg_port"
 
 tests_init \
 	simple_fetch \
 	simple_repo \
 	simple_audit \
 	server_ignores_ims \
-	server_sends_304
+	server_sends_304 \
+	missing_pkg_port
 
 
 httpd_startup() {
@@ -247,6 +249,45 @@ EOF
 }
 
 server_sends_304_cleanup()
+{
+    httpd_cleanup
+}
+
+# The diagnostics must show the URL as it is used, port included: a repository
+# served on a non default port must not be reported without it (issue #1953).
+missing_pkg_port_body()
+{
+	atf_require python3 "Requires python3 to run this test"
+
+	atf_check sh ${RESOURCEDIR}/test_subr.sh new_pkg test test 1
+	mkdir repo
+	atf_check -o ignore pkg create -o repo -M test.ucl
+	atf_check -o ignore pkg repo repo
+
+	httpd_startup ${TMPDIR}/repo
+
+	cat > pkg.conf << EOF
+PKG_DBDIR=${TMPDIR}
+PKG_CACHEDIR=${TMPDIR}/cache
+REPOS_DIR=[]
+repositories: {
+	local: { url: ${url} }
+}
+EOF
+	atf_check -o ignore \
+		pkg -C ./pkg.conf update
+
+	# The catalogue still references the package, the archive is gone
+	atf_check -o ignore rm ${TMPDIR}/repo/test-1.pkg
+
+	atf_check \
+		-o ignore \
+		-e match:"${url}/test-1.pkg: Not Found" \
+		-s ignore \
+		pkg -C ./pkg.conf install -y test
+}
+
+missing_pkg_port_cleanup()
 {
     httpd_cleanup
 }

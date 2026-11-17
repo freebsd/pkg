@@ -164,6 +164,24 @@ pkg_repo_http_mirror_append(struct pkg_repo *repo, const char *url,
 	LL_APPEND(repo->http, m);
 }
 
+/*
+ * Formats the URL of a fetch item for the diagnostics.  libfetch keeps the
+ * port apart from the host, so rebuilding the URL from its components must
+ * not forget it.
+ */
+static const char *
+libfetch_format_url(struct url *u, char *buf, size_t len)
+{
+	if (u->port != 0)
+		snprintf(buf, len, "%s://%s%s%s:%d%s", u->scheme, u->user,
+		    u->user[0] != '\0' ? "@" : "", u->host, u->port, u->doc);
+	else
+		snprintf(buf, len, "%s://%s%s%s%s", u->scheme, u->user,
+		    u->user[0] != '\0' ? "@" : "", u->host, u->doc);
+
+	return (buf);
+}
+
 int
 libfetch_open(struct pkg_repo *repo, struct fetch_item *fi)
 {
@@ -172,6 +190,7 @@ libfetch_open(struct pkg_repo *repo, struct fetch_item *fi)
 	int64_t max_retry, retry;
 	int64_t fetch_timeout;
 	char docpath[MAXPATHLEN];
+	char urlbuf[MAXPATHLEN + MAXHOSTNAMELEN + 64];
 	char zone[MAXHOSTNAMELEN + 24];
 	char *doc, *reldoc, *opts;
 	struct dns_srvinfo *srv_current = NULL;
@@ -305,13 +324,8 @@ libfetch_open(struct pkg_repo *repo, struct fetch_item *fi)
 
 		opts = sb_get(&fetchOpts);
 		pkg_dbg(PKG_DBG_FETCH, 1,
-		    "libfetch> fetching from: %s://%s%s%s%s with opts \"%s\"",
-		    u->scheme,
-		    u->user,
-		    u->user[0] != '\0' ? "@" : "",
-		    u->host,
-		    u->doc,
-		    opts);
+		    "libfetch> fetching from: %s with opts \"%s\"",
+		    libfetch_format_url(u, urlbuf, sizeof(urlbuf)), opts);
 
 		repo->fh = fetchXGet(u, &st, opts);
 		free(opts);
@@ -326,12 +340,9 @@ libfetch_open(struct pkg_repo *repo, struct fetch_item *fi)
 			}
 			if (fetchLastErrCode == FETCH_UNAVAIL) {
 				if (!repo->silent)
-					pkg_emit_error("%s://%s%s%s%s: %s",
-					    u->scheme,
-					    u->user,
-					    u->user[0] != '\0' ? "@" : "",
-					    u->host,
-					    u->doc,
+					pkg_emit_error("%s: %s",
+					    libfetch_format_url(u, urlbuf,
+					    sizeof(urlbuf)),
 					    fetchLastErrString);
 				retcode = EPKG_ENOENT;
 				goto out;
@@ -384,12 +395,8 @@ libfetch_open(struct pkg_repo *repo, struct fetch_item *fi)
 	}
 	if (repo->fh == NULL) {
 		if (!repo->silent)
-			pkg_emit_error("%s://%s%s%s%s: %s",
-			    u->scheme,
-			    u->user,
-			    u->user[0] != '\0' ? "@" : "",
-			    u->host,
-			    u->doc,
+			pkg_emit_error("%s: %s",
+			    libfetch_format_url(u, urlbuf, sizeof(urlbuf)),
 			    fetchLastErrString);
 		retcode = EPKG_FATAL;
 		goto out;
