@@ -57,6 +57,9 @@
 
 ATF_TC_WITHOUT_HEAD(readdir);
 ATF_TC_WITHOUT_HEAD(stat);
+#ifdef __FreeBSD__
+ATF_TC_WITHOUT_HEAD(sysctl);
+#endif
 ATF_TC_WITHOUT_HEAD(print_msg);
 ATF_TC_WITHOUT_HEAD(execute);
 ATF_TC_WITHOUT_HEAD(override);
@@ -160,6 +163,70 @@ ATF_TC_BODY(stat, tc)
 	lua_getglobal(L, "res");
 	ATF_REQUIRE(lua_isnil(L, -1));
 }
+
+#ifdef __FreeBSD__
+ATF_TC_BODY(sysctl, tc)
+{
+	lua_State *L = luaL_newstate();
+	static const luaL_Reg test_lib[] = {
+		{ "sysctl", lua_sysctl },
+		{ NULL, NULL },
+	};
+	luaL_openlibs(L);
+	lua_override_ios(L, false);
+	luaL_newlib(L, test_lib);
+	lua_setglobal(L, "test");
+
+	ATF_REQUIRE(luaL_dostring(L, "test.sysctl()") != 0);
+	ATF_REQUIRE_STREQ(lua_tostring(L, -1), "[string \"test.sysctl()\"]:1: bad argument #0 to 'sysctl' (pkg.sysctl takes exactly one argument)");
+	ATF_REQUIRE_EQ(lua_tonumber(L, -1), 0);
+
+	ATF_REQUIRE(luaL_dostring(L, "test.sysctl(1, 2)") != 0);
+	ATF_REQUIRE_STREQ(lua_tostring(L, -1), "[string \"test.sysctl(1, 2)\"]:1: bad argument #2 to 'sysctl' (pkg.sysctl takes exactly one argument)");
+	ATF_REQUIRE_EQ(lua_tonumber(L, -1), 0);
+
+	ATF_REQUIRE(luaL_dostring(L, "res = test.sysctl(\"kern.ostype\")") == 0);
+	lua_getglobal(L, "res");
+	ATF_REQUIRE(lua_isstring(L, -1));
+	ATF_REQUIRE_STREQ(lua_tostring(L, -1), "FreeBSD");
+
+	ATF_REQUIRE(luaL_dostring(L, "res = test.sysctl(\"kern.osreldate\")") == 0);
+	lua_getglobal(L, "res");
+	ATF_REQUIRE(lua_isinteger(L, -1));
+	ATF_REQUIRE(lua_tointeger(L, -1) > 0);
+
+	/* a node exposes no value */
+	ATF_REQUIRE(luaL_dostring(L, "res, err, kind = test.sysctl(\"kern.proc\")") == 0);
+	lua_getglobal(L, "res");
+	ATF_REQUIRE(lua_isnil(L, -1));
+	lua_getglobal(L, "err");
+	ATF_REQUIRE(lua_isstring(L, -1));
+	lua_getglobal(L, "kind");
+	ATF_REQUIRE(lua_isnil(L, -1));
+
+	/* an array of integers is returned as a table */
+	ATF_REQUIRE(luaL_dostring(L, "res = test.sysctl(\"kern.cp_time\")") == 0);
+	lua_getglobal(L, "res");
+	ATF_REQUIRE(lua_istable(L, -1));
+	ATF_REQUIRE(luaL_len(L, -1) > 1);
+	lua_rawgeti(L, -1, 1);
+	ATF_REQUIRE(lua_isinteger(L, -1));
+
+	/* an opaque value is returned as a raw string */
+	ATF_REQUIRE(luaL_dostring(L, "res = test.sysctl(\"kern.boottime\")") == 0);
+	lua_getglobal(L, "res");
+	ATF_REQUIRE(lua_isstring(L, -1));
+
+	/* a failure is nil, a message and no unsupported marker */
+	ATF_REQUIRE(luaL_dostring(L, "res, err, kind = test.sysctl(\"pkg.does.not.exist\")") == 0);
+	lua_getglobal(L, "res");
+	ATF_REQUIRE(lua_isnil(L, -1));
+	lua_getglobal(L, "err");
+	ATF_REQUIRE(lua_isstring(L, -1));
+	lua_getglobal(L, "kind");
+	ATF_REQUIRE(lua_isnil(L, -1));
+}
+#endif
 
 ATF_TC_BODY(print_msg, tc)
 {
@@ -511,6 +578,9 @@ ATF_TP_ADD_TCS(tp)
 {
 	ATF_TP_ADD_TC(tp, readdir);
 	ATF_TP_ADD_TC(tp, stat);
+#ifdef __FreeBSD__
+	ATF_TP_ADD_TC(tp, sysctl);
+#endif
 	ATF_TP_ADD_TC(tp, print_msg);
 	ATF_TP_ADD_TC(tp, execute);
 	ATF_TP_ADD_TC(tp, override);

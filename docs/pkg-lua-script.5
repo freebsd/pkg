@@ -11,7 +11,7 @@
 .\"    notice, this list of conditions and the following disclaimer in the
 .\"    documentation and/or other materials provided with the distribution.
 .\"
-.Dd October 30, 2026
+.Dd November 19, 2026
 .Dt PKG-LUA-SCRIPT 5
 .Os
 .Sh NAME
@@ -198,6 +198,20 @@ and
 fields are the ones of the
 .Xr stat 2
 structure.
+.It Ft val Fn pkg.sysctl "name"
+Return the value of the
+.Xr sysctl 8
+named
+.Ar name
+as a number, a table of numbers for arrays, or a string for string and opaque
+values.
+Returns
+.Dv nil
+and an error message on failure.
+Only defined on
+.Fx ;
+a script which may run elsewhere must test for its presence with
+.Ql if pkg.sysctl then .
 .It Fn pkg.symlink "source" "destination"
 Create a symbolic link
 .Va destination

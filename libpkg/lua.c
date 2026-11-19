@@ -38,6 +38,9 @@
 #include <sys/stat.h>
 #include <sys/mman.h>
 #include <sys/wait.h>
+#ifdef __FreeBSD__
+#include <sys/sysctl.h>
+#endif
 
 #include <dirent.h>
 #include <errno.h>
@@ -503,6 +506,203 @@ lua_stat(lua_State *L)
 
 	return (1);
 }
+
+#ifdef __FreeBSD__
+static int
+lua_sysctl_kind(const char *name, u_int *kind)
+{
+	int mib[CTL_MAXNAME];
+	int qoid[CTL_MAXNAME + 2];
+	u_char buf[BUFSIZ];
+	size_t len = sizeof(mib) / sizeof(mib[0]);
+	size_t buflen = sizeof(buf);
+
+	if (sysctlnametomib(name, mib, &len) == -1)
+		return (-1);
+	qoid[0] = CTL_SYSCTL;
+	qoid[1] = CTL_SYSCTL_OIDFMT;
+	memcpy(qoid + 2, mib, len * sizeof(int));
+	if (sysctl(qoid, len + 2, buf, &buflen, NULL, 0) == -1)
+		return (-1);
+	memcpy(kind, buf, sizeof(*kind));
+	return (0);
+}
+
+static int64_t
+lua_sysctl_signed(const void *p, size_t size)
+{
+	int8_t s8;
+	int16_t s16;
+	int32_t s32;
+	int64_t s64;
+
+	switch (size) {
+	case 1:
+		memcpy(&s8, p, sizeof(s8));
+		return (s8);
+	case 2:
+		memcpy(&s16, p, sizeof(s16));
+		return (s16);
+	case 4:
+		memcpy(&s32, p, sizeof(s32));
+		return (s32);
+	case 8:
+		memcpy(&s64, p, sizeof(s64));
+		return (s64);
+	}
+	return (0);
+}
+
+static uint64_t
+lua_sysctl_unsigned(const void *p, size_t size)
+{
+	uint8_t u8;
+	uint16_t u16;
+	uint32_t u32;
+	uint64_t u64;
+
+	switch (size) {
+	case 1:
+		memcpy(&u8, p, sizeof(u8));
+		return (u8);
+	case 2:
+		memcpy(&u16, p, sizeof(u16));
+		return (u16);
+	case 4:
+		memcpy(&u32, p, sizeof(u32));
+		return (u32);
+	case 8:
+		memcpy(&u64, p, sizeof(u64));
+		return (u64);
+	}
+	return (0);
+}
+#endif
+
+#ifdef __FreeBSD__
+int
+lua_sysctl(lua_State *L)
+{
+	int n = lua_gettop(L);
+	luaL_argcheck(L, n == 1, n > 1 ? 2 : n,
+	    "pkg.sysctl takes exactly one argument");
+	const char *name = luaL_checkstring(L, 1);
+	u_int kind;
+	size_t len = 0;
+	void *val;
+	size_t size;
+	bool is_signed, numeric = true;
+
+	if (lua_sysctl_kind(name, &kind) == -1)
+		goto fail;
+	if ((kind & CTLTYPE) == CTLTYPE_NODE) {
+		lua_pushnil(L);
+		lua_pushstring(L, "node is not a value");
+		return (2);
+	}
+	if (sysctlbyname(name, NULL, &len, NULL, 0) == -1)
+		goto fail;
+	if (len == 0) {
+		if ((kind & CTLTYPE) == CTLTYPE_STRING ||
+		    (kind & CTLTYPE) == CTLTYPE_OPAQUE)
+			lua_pushstring(L, "");
+		else
+			lua_pushnil(L);
+		return (1);
+	}
+	val = xmalloc(len);
+	if (sysctlbyname(name, val, &len, NULL, 0) == -1) {
+		free(val);
+		goto fail;
+	}
+	switch (kind & CTLTYPE) {
+	case CTLTYPE_INT:
+		size = sizeof(int);
+		is_signed = true;
+		break;
+	case CTLTYPE_UINT:
+		size = sizeof(u_int);
+		is_signed = false;
+		break;
+	case CTLTYPE_LONG:
+		size = sizeof(long);
+		is_signed = true;
+		break;
+	case CTLTYPE_ULONG:
+		size = sizeof(u_long);
+		is_signed = false;
+		break;
+	case CTLTYPE_S64:
+		size = sizeof(int64_t);
+		is_signed = true;
+		break;
+	case CTLTYPE_U64:
+		size = sizeof(uint64_t);
+		is_signed = false;
+		break;
+	case CTLTYPE_S8:
+		size = sizeof(int8_t);
+		is_signed = true;
+		break;
+	case CTLTYPE_S16:
+		size = sizeof(int16_t);
+		is_signed = true;
+		break;
+	case CTLTYPE_S32:
+		size = sizeof(int32_t);
+		is_signed = true;
+		break;
+	case CTLTYPE_U8:
+		size = sizeof(uint8_t);
+		is_signed = false;
+		break;
+	case CTLTYPE_U16:
+		size = sizeof(uint16_t);
+		is_signed = false;
+		break;
+	case CTLTYPE_U32:
+		size = sizeof(uint32_t);
+		is_signed = false;
+		break;
+	default:
+		numeric = false;
+		break;
+	}
+	if (numeric) {
+		size_t cnt = len / size, i;
+		if (cnt == 1) {
+			lua_pushinteger(L, is_signed ?
+			    lua_sysctl_signed(val, size) :
+			    (lua_Integer)lua_sysctl_unsigned(val, size));
+		} else {
+			lua_createtable(L, cnt, 0);
+			for (i = 0; i < cnt; i++) {
+				void *p = (char *)val + i * size;
+				lua_pushinteger(L, is_signed ?
+				    lua_sysctl_signed(p, size) :
+				    (lua_Integer)lua_sysctl_unsigned(p, size));
+				lua_rawseti(L, -2, i + 1);
+			}
+		}
+	} else if ((kind & CTLTYPE) == CTLTYPE_STRING) {
+		lua_pushlstring(L, val, strnlen(val, len));
+	} else if ((kind & CTLTYPE) == CTLTYPE_OPAQUE) {
+		lua_pushlstring(L, val, len);
+	} else {
+		free(val);
+		lua_pushnil(L);
+		lua_pushfstring(L, "unsupported sysctl type %d",
+		    kind & CTLTYPE);
+		return (2);
+	}
+	free(val);
+	return (1);
+fail:
+	lua_pushnil(L);
+	lua_pushstring(L, strerror(errno));
+	return (2);
+}
+#endif
 
 /* stolen from lua.c */
 void

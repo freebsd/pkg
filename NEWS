@@ -33,6 +33,7 @@ Changes from 2.9.0 to 2.9.99.1
 - install: new pre-transaction scripts, in shell and lua, run before the
   transaction starts so that a package can check that the system is ready and
   abort before anything is modified
+- lua: new pkg.sysctl function returning the value of a sysctl
 
 Changes from 2.8.99.5 to 2.8.99.6
 - abi: an overlong string coming from a manifest or a catalogue is rejected

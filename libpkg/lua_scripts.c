@@ -56,6 +56,9 @@ pkg_lua_script_run(struct pkg * const pkg, pkg_lua_script type, bool upgrade)
 				{ "filecmp", lua_pkg_filecmp },
 				{ "copy", lua_pkg_copy },
 				{ "stat", lua_stat },
+#ifdef __FreeBSD__
+				{ "sysctl", lua_sysctl },
+#endif
 				{ "readdir", lua_readdir },
 				{ "exec", lua_exec },
 				{ "exec_capture", lua_exec_capture },

@@ -19,6 +19,7 @@ tests_init \
 	script_sample_not_exists_two_files \
 	script_sample_exists \
 	script_stat \
+	script_sysctl \
 	script_arguments \
 	script_env_isolation \
 	script_metalog_add \
@@ -780,6 +781,47 @@ EOF
 	mkdir ${TMPDIR}/target
 	atf_check \
 		-o inline:"zero\nreg\n" \
+		-e empty \
+		-s exit:0 \
+		pkg -o REPOS_DIR=/dev/null -r ${TMPDIR}/target install -qfy ${TMPDIR}/test-1.pkg
+}
+
+script_sysctl_body() {
+	atf_check -s exit:0 sh ${RESOURCEDIR}/test_subr.sh new_pkg "test" "test" "1" "/"
+	cat << EOF >> test.ucl
+lua_scripts: {
+  post-install: [ <<EOS
+if pkg.sysctl == nil then
+	print("unsupported")
+else
+	local v, err = pkg.sysctl("kern.ostype")
+	print(v .. ":" .. tostring(err))
+	local v2, err2 = pkg.sysctl("pkg.does.not.exist")
+	if v2 == nil and err2 ~= nil then
+		print("error")
+	else
+		print("unexpected")
+	end
+end
+EOS
+, ]
+}
+EOF
+	atf_check \
+		-o empty \
+		-e empty \
+		-s exit:0 \
+		pkg create -M test.ucl
+
+	if [ "$(uname -s)" = "FreeBSD" ]; then
+		expected="FreeBSD:nil
+error"
+	else
+		expected="unsupported"
+	fi
+	mkdir ${TMPDIR}/target
+	atf_check \
+		-o inline:"${expected}\n" \
 		-e empty \
 		-s exit:0 \
 		pkg -o REPOS_DIR=/dev/null -r ${TMPDIR}/target install -qfy ${TMPDIR}/test-1.pkg

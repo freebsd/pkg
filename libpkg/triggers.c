@@ -482,6 +482,9 @@ trigger_execute_lua_common(const char *script, bool sandbox, hash_t *args,
 			{ "filecmp", lua_pkg_filecmp },
 			{ "copy", lua_pkg_copy },
 			{ "stat", lua_stat },
+#ifdef __FreeBSD__
+			{ "sysctl", lua_sysctl },
+#endif
 			{ "readdir", lua_readdir },
 			{ "exec", lua_exec },
 			{ "exec_capture", lua_exec_capture },
