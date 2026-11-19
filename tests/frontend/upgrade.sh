@@ -22,6 +22,7 @@ tests_init \
 	symlink_to_dir_upgrade \
 	newpkgversion_two_repos \
 	multirepo_no_unrequested \
+	multirepo_new_dependency \
 	new_dep_explained \
 	upgrade_disabled_repo \
 	upgrade_all_disabled_repos \
@@ -1144,6 +1145,65 @@ EOF
 		-o match:"foo: 1.0 -> 2.0" \
 		-s exit:0 \
 		pkg -C ./pkg.conf upgrade -n -y
+}
+
+# A package is upgraded to a version which depends on a new package, but a
+# lower-priority repository still carries the old version of that package:
+# the new dependency must be installed, not silently skipped.
+multirepo_new_dependency_body()
+{
+	mkdir primary secondary
+
+	cat << EOF > pkg.conf
+PKG_DBDIR=${TMPDIR}
+REPOS_DIR=[]
+repositories: {
+	primary: {
+		url: file://${TMPDIR}/primary,
+		priority: 15
+	}
+	secondary: {
+		url: file://${TMPDIR}/secondary,
+		priority: 10
+	}
+}
+EOF
+
+	# pkg repo refuses to create an empty repository
+	atf_check -s exit:0 sh ${RESOURCEDIR}/test_subr.sh new_pkg unrelated unrelated 1.0
+	atf_check -o ignore pkg create -M unrelated.ucl -o ./secondary
+
+	atf_check -s exit:0 sh ${RESOURCEDIR}/test_subr.sh new_pkg a a 1.0
+	atf_check -o ignore pkg create -M a.ucl -o ./primary
+
+	atf_check -o ignore pkg repo ./primary
+	atf_check -o ignore pkg repo ./secondary
+	atf_check -o ignore pkg -C ./pkg.conf update -f
+	atf_check -o ignore pkg -C ./pkg.conf install -y a
+
+	# The primary repository moves on: a 1.1 depends on a new package b
+	rm -f primary/*
+	atf_check -s exit:0 sh ${RESOURCEDIR}/test_subr.sh new_pkg a a 1.1
+	echo 'deps: { b { origin: b, version: "1.0" } }' >> a.ucl
+	atf_check -o ignore pkg create -M a.ucl -o ./primary
+
+	atf_check -s exit:0 sh ${RESOURCEDIR}/test_subr.sh new_pkg b b 1.0
+	atf_check -o ignore pkg create -M b.ucl -o ./primary
+
+	# The secondary repository still carries the old a
+	atf_check -s exit:0 sh ${RESOURCEDIR}/test_subr.sh new_pkg a_old a 1.0
+	atf_check -o ignore pkg create -M a_old.ucl -o ./secondary
+
+	atf_check -o ignore pkg repo ./primary
+	atf_check -o ignore pkg repo ./secondary
+	atf_check -o ignore pkg -C ./pkg.conf update -f
+
+	atf_check -o ignore -s exit:0 pkg -C ./pkg.conf upgrade -y -U
+
+	# a is upgraded and its new dependency b is installed
+	atf_check -o inline:"1.1\n" pkg -C ./pkg.conf query "%v" a
+	atf_check -o inline:"1.0\n" pkg -C ./pkg.conf query "%v" b
+	atf_check -o ignore -s exit:0 pkg -C ./pkg.conf check -d
 }
 
 # Verify that "pkg upgrade -r <repo>" works on a disabled repository,

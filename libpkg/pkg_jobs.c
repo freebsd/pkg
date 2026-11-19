@@ -1623,14 +1623,19 @@ jobs_solve_full_upgrade(struct pkg_jobs *j)
 			jcount);
 	elt_num = 0;
 
+	/*
+	 * Select the candidate to process for each upgrade chain before
+	 * expanding the dependencies: the request may have been reduced to
+	 * a candidate whose dependencies were not seen yet.
+	 */
+	pkg_jobs_universe_process_upgrade_chains(j);
+
 	hash_foreach(j->request_add, hit) {
 		req = hit.value;
 		pkg_emit_progress_tick(++elt_num, jcount);
 		pkg_jobs_universe_process(j->universe, req->items.d[0].pkg);
 	}
 	pkg_emit_progress_tick(jcount, jcount);
-
-	pkg_jobs_universe_process_upgrade_chains(j);
 
 	return (EPKG_OK);
 }
