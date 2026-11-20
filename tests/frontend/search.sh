@@ -4,6 +4,7 @@
 
 tests_init \
 	search \
+	search_glob_fallback \
 	search_invalid_regex \
 	search_multiple_json_compact \
 	search_options \
@@ -195,13 +196,13 @@ repoB: {
 }
 EOF
 
-	# 'pkg search' matches a regular expression by default: '*rust' is not
-	# a valid one.
+	# An explicitly requested regular expression which does not compile is
+	# reported once, and not retried as a glob.
 	atf_check \
 		-o empty \
 		-e save:stderr \
 		-s exit:1 \
-		pkg -o REPOS_DIR="${TMPDIR}/reposconf" search '*rust'
+		pkg -o REPOS_DIR="${TMPDIR}/reposconf" search -x '*rust'
 
 	atf_check -o inline:"1\n" -e empty -s exit:0 \
 		grep -c "Invalid regular expression" stderr
@@ -219,4 +220,63 @@ EOF
 
 	atf_check -o inline:"1\n" -e empty -s exit:0 \
 		grep -c "Invalid regular expression" stderr
+}
+
+search_glob_fallback_body() {
+	# A pattern which looks like a shell glob but is not a valid regular
+	# expression is matched as a glob when no match mode is requested.
+
+	for p in rust rustup py-rust mysql80-client; do
+		cat << EOF > ${p}.ucl
+name: "${p}"
+origin: "misc/${p}"
+version: "1.0"
+maintainer: test
+categories: [test]
+comment: a test
+www: http://test
+prefix: /usr/local
+desc: <<EOD
+a test
+EOD
+EOF
+		atf_check -o ignore pkg create -o ${TMPDIR}/repo -M ./${p}.ucl
+	done
+	atf_check -o ignore pkg repo -o ${TMPDIR}/repo ${TMPDIR}/repo
+
+	mkdir reposconf
+	cat << EOF > reposconf/repos.conf
+repo: {
+	url: file://${TMPDIR}/repo,
+	enabled: true
+}
+EOF
+
+	# '*rust' is not a valid regular expression, so it is matched as a
+	# glob: the packages whose name ends with rust.
+	atf_check \
+		-o inline:"py-rust-1.0\nrust-1.0\n" \
+		-e empty \
+		-s exit:0 \
+		pkg -o REPOS_DIR="${TMPDIR}/reposconf" search -q '*rust'
+
+	# A pattern which is a valid regular expression keeps its meaning.
+	atf_check \
+		-o match:"rustup" \
+		-e empty \
+		-s exit:0 \
+		pkg -o REPOS_DIR="${TMPDIR}/reposconf" search -q 'rust*'
+
+	# The package name is matched, and not only the name and the version.
+	atf_check \
+		-o inline:"rust-1.0\n" \
+		-e empty \
+		-s exit:0 \
+		pkg -o REPOS_DIR="${TMPDIR}/reposconf" search -q -e rust
+
+	atf_check \
+		-o inline:"py-rust-1.0\nrust-1.0\n" \
+		-e empty \
+		-s exit:0 \
+		pkg -o REPOS_DIR="${TMPDIR}/reposconf" search -q -g '*rust'
 }

@@ -61,6 +61,8 @@ The
 is a regular expression matched anywhere in the package name: use
 .Fl g
 to match a shell glob instead.
+When no match mode is requested, a pattern which looks like a shell glob but
+which is not a valid regular expression is matched as a glob.
 Available packages can also be matched by comment, description, origin,
 or version.
 It returns the name, version, and comment by default,

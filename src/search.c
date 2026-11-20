@@ -32,6 +32,7 @@
 
 #include <err.h>
 #include <getopt.h>
+#include <regex.h>
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
@@ -251,6 +252,33 @@ usage_search(void)
 	fprintf(stderr, "For more information see 'pkg help search'.\n");
 }
 
+/*
+ * Check whether a pattern which does not compile as a regular expression can
+ * be used as a shell glob instead.  pkg search matches regular expressions by
+ * default, and a pattern like '*rust' is meant as a glob, not as a broken
+ * regular expression.
+ */
+static bool
+search_glob_fallback(const char *pattern)
+{
+	regex_t	re;
+	int	flags;
+
+	if (strpbrk(pattern, "*?[") == NULL)
+		return (false);
+
+	flags = REG_EXTENDED | REG_NOSUB;
+	if (!pkgdb_case_sensitive())
+		flags |= REG_ICASE;
+
+	if (regcomp(&re, pattern, flags) == 0) {
+		regfree(&re);
+		return (false);
+	}
+
+	return (true);
+}
+
 int
 exec_search(int argc, char **argv)
 {
@@ -259,6 +287,7 @@ exec_search(int argc, char **argv)
 	int		 flags;
 	uint64_t	 opt = 0;
 	match_t		 match = MATCH_REGEX;
+	bool		 explicit_match = false;
 	pkgdb_field	 search = FIELD_NONE;
 	pkgdb_field	 label = FIELD_NONE;
 	struct pkgdb	*db = NULL;
@@ -308,12 +337,14 @@ exec_search(int argc, char **argv)
 			break;
 		case 'e':
 			match = MATCH_EXACT;
+			explicit_match = true;
 			break;
 		case 'f':	/* Same as -Q full */
 			opt |= modifier_opt("full");
 			break;
 		case 'g':
 			match = MATCH_GLOB;
+			explicit_match = true;
 			break;
 		case 'i':
 			pkgdb_set_case_sensitivity(false);
@@ -350,6 +381,7 @@ exec_search(int argc, char **argv)
 			break;
 		case 'x':
 			match = MATCH_REGEX;
+			explicit_match = true;
 			break;
 		case 1:
 			if (STRIEQ(optarg, "json"))
@@ -384,6 +416,9 @@ exec_search(int argc, char **argv)
 		fprintf(stderr, "Pattern must not be empty.\n");
 		return (EXIT_FAILURE);
 	}
+	if (!explicit_match && match == MATCH_REGEX &&
+	    search_glob_fallback(pattern))
+		match = MATCH_GLOB;
 	if (search == FIELD_NONE) {
 		if (strchr(pattern, '/') != NULL) {
 			if (strchr(pattern, '@') != NULL)

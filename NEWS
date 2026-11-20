@@ -39,6 +39,11 @@ Changes from 2.9.0 to 2.9.99.1
 - search: an invalid regular expression is reported once as a user error
   instead of once per repository by the SQL layer, and the same for every
   command which matches a pattern as a regular expression
+- search: a pattern which looks like a shell glob but is not a valid regular
+  expression is matched as a glob when no match mode is requested, so that
+  '*rust' finds the packages whose name ends with rust
+- search: the remote queries match the package name as well as the name and
+  the version, like the local ones, so -e and -g on a package name find it
 
 Changes from 2.8.99.5 to 2.8.99.6
 - abi: an overlong string coming from a manifest or a catalogue is rejected

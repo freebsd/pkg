@@ -1317,7 +1317,20 @@ pkg_repo_binary_build_search_query(sb_t *sql, match_t match,
 		break;
 	}
 
-	if (field == FIELD_COMMENT_DESC && how != NULL) {
+	if (field == FIELD_NAMEVER && how != NULL && match != MATCH_INTERNAL) {
+		/*
+		 * Match the package name as well as the name and the version,
+		 * like the queries on the local database do: a version is
+		 * always part of the latter, so a pattern which is meant to
+		 * match the name alone would never match with a glob or an
+		 * exact match.
+		 */
+		sb_printf(sql, "(");
+		sb_printf(sql, how, "p.name");
+		sb_printf(sql, " OR ");
+		sb_printf(sql, how, "p.name || '-' || version");
+		sb_printf(sql, ")");
+	} else if (field == FIELD_COMMENT_DESC && how != NULL) {
 		sb_printf(sql, "(");
 		sb_printf(sql, how, "comment");
 		sb_printf(sql, " OR ");
