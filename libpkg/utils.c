@@ -1519,6 +1519,54 @@ charv_search(charv_t *v, const char *el)
 	return *res;
 }
 
+/*
+ * Look a name up in the user or group database of the root directory pkg
+ * installs into.  The ids of the target are the ones its files must be given,
+ * and they are not necessarily the ones the host resolves the name to, nor
+ * does the host necessarily know the name at all.
+ *
+ * The file is read as a plain database: "name:password:id:..." per line.
+ * Returns false when pkg installs into the host or when the name is not found
+ * there, so that the caller falls back on the host resolution.
+ */
+static bool
+lookup_id_in_rootdir(const char *name, const char *database, unsigned long *id)
+{
+	char	 path[MAXPATHLEN];
+	char	*line = NULL, *end;
+	size_t	 linecap = 0, len;
+	FILE	*f;
+	bool	 found = false;
+
+	if (ctx.pkg_rootdir == NULL || name == NULL || name[0] == '\0')
+		return (false);
+
+	snprintf(path, sizeof(path), "%s/etc/%s", ctx.pkg_rootdir, database);
+	if ((f = fopen(path, "re")) == NULL)
+		return (false);
+
+	len = strlen(name);
+	while (getline(&line, &linecap, f) != -1) {
+		if (strncmp(line, name, len) != 0 || line[len] != ':')
+			continue;
+
+		/* Skip the password, then read the id. */
+		end = strchr(line, ':');
+		end = end != NULL ? strchr(end + 1, ':') : NULL;
+		if (end == NULL)
+			continue;
+
+		*id = strtoul(end + 1, NULL, 10);
+		found = true;
+		break;
+	}
+
+	free(line);
+	fclose(f);
+
+	return (found);
+}
+
 static uid_t
 lookup_uname(const char *uname)
 {
@@ -1527,6 +1575,11 @@ lookup_uname(const char *uname)
 	size_t bufsize = 1024;
 	int err = 0;
 	uid_t uid = 0;
+	unsigned long rootuid;
+
+	if (lookup_id_in_rootdir(uname, "passwd", &rootuid)) {
+		return ((uid_t)rootuid);
+	}
 
 	for (;;) {
 		buf = xcalloc(1, bufsize);
@@ -1571,6 +1624,11 @@ lookup_gname(const char *gname)
 	size_t bufsize = 1024;
 	int err = 0;
 	gid_t gid = 0;
+	unsigned long rootgid;
+
+	if (lookup_id_in_rootdir(gname, "group", &rootgid)) {
+		return ((gid_t)rootgid);
+	}
 
 	for (;;) {
 		buf = xcalloc(1, bufsize);

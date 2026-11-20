@@ -9,7 +9,8 @@ tests_init \
 	setuid_hardlinks \
 	chflags \
 	chflags_schg \
-	symlinks
+	symlinks \
+	rootdir_ownership
 
 basic_body()
 {
@@ -277,4 +278,46 @@ EOF
 		-s exit:0 \
 		pkg -o REPOS_DIR=/dev/null -r ${TMPDIR}/target install -qfy \
 			${TMPDIR}/test-1.pkg
+}
+
+# The users and groups of a package are resolved in the root directory pkg
+# installs into, which is the system whose ownership matters, and not on the
+# host: it does not necessarily know them, nor with the same ids (issue #2179).
+rootdir_ownership_body()
+{
+	test $(id -u) = 0 || atf_skip "Can only be run as root"
+
+	unset INSTALL_AS_USER
+	touch ${TMPDIR}/a
+	atf_check -s exit:0 sh ${RESOURCEDIR}/test_subr.sh new_pkg "test" "test" "1"
+	echo "@(pkgtest,pkggroup,0644,) ${TMPDIR}/a" > test.plist
+	atf_check \
+		-o empty \
+		-e empty \
+		-s exit:0 \
+		pkg create -M test.ucl -p test.plist
+
+	mkdir -p ${TMPDIR}/target/etc
+	cat > ${TMPDIR}/target/etc/passwd <<EOF
+root:*:0:0:Charlie &:/root:/bin/sh
+pkgtest:*:1234:1234:pkg test:/nonexistent:/bin/sh
+EOF
+	cat > ${TMPDIR}/target/etc/group <<EOF
+wheel:*:0:root
+pkggroup:*:5678:
+EOF
+
+	atf_check \
+		-o ignore \
+		-e empty \
+		-s exit:0 \
+		pkg -o REPOS_DIR=/dev/null -r ${TMPDIR}/target install -qfy \
+		    ${TMPDIR}/test-1.pkg
+
+	# Neither the user nor the group exist on the host.
+	atf_check \
+		-o match:" 1234 5678 " \
+		-e empty \
+		-s exit:0 \
+		ls -ln ${TMPDIR}/target${TMPDIR}/a
 }

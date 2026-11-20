@@ -48,6 +48,10 @@ Changes from 2.9.0 to 2.9.99.1
   downloaded, in the summary and in the confirmation, and no longer claims
   that the operation will free or require disk space
 - libpkg: new pkg_jobs_get_flags() returning the flags of a job set
+- install: when installing into a root directory, the users and groups of the
+  files and directories are resolved with the database of that root directory
+  instead of the one of the host, which does not necessarily know them nor with
+  the same ids
 
 Changes from 2.8.99.5 to 2.8.99.6
 - abi: an overlong string coming from a manifest or a catalogue is rejected
