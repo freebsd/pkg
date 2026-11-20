@@ -1129,6 +1129,10 @@ int pkg_jobs_set_repositories(struct pkg_jobs *j, c_charv_t *names);
 const char* pkg_jobs_destdir(struct pkg_jobs *j);
 int pkg_jobs_set_destdir(struct pkg_jobs *j, const char *name);
 void pkg_jobs_set_flags(struct pkg_jobs *j, pkg_flags f);
+/**
+ * @return the flags of the jobs
+ */
+pkg_flags pkg_jobs_get_flags(struct pkg_jobs *j);
 pkg_jobs_t pkg_jobs_type(struct pkg_jobs *j);
 
 /**

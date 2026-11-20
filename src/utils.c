@@ -1170,6 +1170,10 @@ confirm_jobs_action(struct pkg_jobs *jobs)
 	if (type != PKG_JOBS_INSTALL && type != PKG_JOBS_UPGRADE)
 		return (query_yesno(false, "\nProceed with this action? "));
 
+	/* Nothing will be removed, only downloaded. */
+	if ((pkg_jobs_get_flags(jobs) & PKG_FLAG_SKIP_INSTALL) != 0)
+		return (query_yesno(false, "\nProceed with this download? "));
+
 	sb_t names = sb_init();
 	char prompt[BUFSIZ];
 
@@ -1230,7 +1234,7 @@ print_jobs_summary(struct pkg_jobs *jobs, const char *msg, ...)
 	int type, displayed = 0;
 	int64_t dlsize, oldsize, newsize;
 	pkg_solved_display_t disp[PKG_DISPLAY_MAX];
-	bool first = true;
+	bool fetch_only, size_change, first = true;
 	size_t bytes_change, limbytes;
 	struct jobs_sum_number sum;
 
@@ -1239,6 +1243,7 @@ print_jobs_summary(struct pkg_jobs *jobs, const char *msg, ...)
 	memset(disp, 0, sizeof(*disp) * PKG_DISPLAY_MAX);
 	memset(&sum, 0, sizeof(sum));
 
+	fetch_only = (pkg_jobs_get_flags(jobs) & PKG_FLAG_SKIP_INSTALL) != 0;
 	nbtodl = 0;
 	while (pkg_jobs_iter(jobs, &iter, &new_pkg, &old_pkg, &type)) {
 		set_jobs_summary_pkg(jobs, new_pkg, old_pkg, type, &oldsize,
@@ -1313,11 +1318,14 @@ print_jobs_summary(struct pkg_jobs *jobs, const char *msg, ...)
 		printf("Number of groups to be installed: %d\n", sum.group_install);
 	if (sum.group_upgrade > 0)
 		printf("Number of groups to be upgraded: %d\n", sum.group_upgrade);
+	/* Nothing is installed nor removed when only downloading. */
+	size_change = !fetch_only && bytes_change > limbytes;
+
 	/* Add an extra line before the size output. */
-	if (bytes_change > limbytes || dlsize)
+	if (size_change || dlsize)
 		putchar('\n');
 
-	if (bytes_change > limbytes) {
+	if (size_change) {
 		if (oldsize > newsize) {
 			humanize_number(size, sizeof(size), oldsize - newsize, "B",
 			    HN_AUTOSCALE, HN_IEC_PREFIXES);
@@ -1334,6 +1342,10 @@ print_jobs_summary(struct pkg_jobs *jobs, const char *msg, ...)
 		    HN_AUTOSCALE, HN_IEC_PREFIXES);
 		printf("%s to be downloaded.\n", size);
 	}
+
+	if (fetch_only)
+		printf("The packages will only be downloaded: nothing will be "
+		    "installed, upgraded or removed.\n");
 
 	if (vuln_count > 0)
 		printf("\nWARNING: %d package(s) have known vulnerabilities\n",

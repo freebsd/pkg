@@ -35,7 +35,8 @@ tests_init \
 	hold_back \
 	hold_back_force \
 	removal_automatic \
-	multiple_versions
+	multiple_versions \
+	fetch_only
 
 # bar-1.0 owns ${TMPDIR}/file1 and is installed, either explicitly or, when no
 # is passed as first argument, as an automatic package.  The repository then
@@ -1476,4 +1477,76 @@ EOF
 		-s exit:0 \
 		pkg -o REPOS_DIR="${TMPDIR}/repoconf" \
 		-o PKG_CACHEDIR="${TMPDIR}" upgrade -n -y
+}
+
+# --fetch-only downloads the packages of the transaction but installs
+# nothing: the summary and the confirmation must say so (issue #2716).
+fetch_only_body()
+{
+	atf_check sh ${RESOURCEDIR}/test_subr.sh new_pkg test test 1.0
+	atf_check -o ignore pkg create -M test.ucl
+	atf_check -o ignore pkg repo .
+
+	mkdir repoconf
+	cat <<EOF > repoconf/repo.conf
+local: {
+	url: "file://${TMPDIR}",
+	enabled: true
+}
+EOF
+
+	atf_check -o ignore pkg -o REPOS_DIR="${TMPDIR}/repoconf" \
+		-o PKG_CACHEDIR="${TMPDIR}" update
+	atf_check -o ignore pkg -o REPOS_DIR="${TMPDIR}/repoconf" \
+		-o PKG_CACHEDIR="${TMPDIR}" install -y test-1.0
+
+	atf_check sh ${RESOURCEDIR}/test_subr.sh new_pkg test test 1.1
+	atf_check -o ignore pkg create -M test.ucl
+	sleep 1
+	atf_check -o ignore pkg repo .
+	atf_check -o ignore pkg -o REPOS_DIR="${TMPDIR}/repoconf" \
+		-o PKG_CACHEDIR="${TMPDIR}" update -f
+
+	# The summary tells that nothing will be installed nor removed.
+	atf_check \
+		-o match:"test: 1.0 -> 1.1" \
+		-o match:"will only be downloaded" \
+		-o not-match:"will free" \
+		-o not-match:"will require" \
+		-s exit:0 \
+		pkg -o REPOS_DIR="${TMPDIR}/repoconf" \
+		-o PKG_CACHEDIR="${TMPDIR}" upgrade -F -n -y
+
+	# The confirmation asks for a download, and the package is not installed
+	# when the download is refused.
+	atf_check \
+		-o match:"Proceed with this download" \
+		-s exit:1 \
+		sh -c "echo n | pkg -o REPOS_DIR=\"${TMPDIR}/repoconf\" \
+		    -o PKG_CACHEDIR=\"${TMPDIR}\" upgrade -F"
+
+	atf_check -o inline:"test-1.0\n" -s exit:0 pkg query '%n-%v' test
+
+	# The same applies to the packages which would be installed.
+	atf_check sh ${RESOURCEDIR}/test_subr.sh new_pkg new new 1.0
+	atf_check -o ignore pkg create -M new.ucl
+	sleep 1
+	atf_check -o ignore pkg repo .
+	atf_check -o ignore pkg -o REPOS_DIR="${TMPDIR}/repoconf" \
+		-o PKG_CACHEDIR="${TMPDIR}" update -f
+
+	atf_check \
+		-o match:"new: 1.0" \
+		-o match:"will only be downloaded" \
+		-s exit:0 \
+		pkg -o REPOS_DIR="${TMPDIR}/repoconf" \
+		-o PKG_CACHEDIR="${TMPDIR}" install -F -n -y new
+
+	atf_check \
+		-o match:"Proceed with this download" \
+		-s exit:1 \
+		sh -c "echo n | pkg -o REPOS_DIR=\"${TMPDIR}/repoconf\" \
+		    -o PKG_CACHEDIR=\"${TMPDIR}\" install -F new"
+
+	atf_check -s exit:1 pkg info -e new
 }

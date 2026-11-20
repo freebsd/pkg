@@ -98,6 +98,12 @@ pkg_jobs_set_flags(struct pkg_jobs *j, pkg_flags flags)
 	j->flags = flags;
 }
 
+pkg_flags
+pkg_jobs_get_flags(struct pkg_jobs *j)
+{
+	return (j->flags);
+}
+
 int
 pkg_jobs_set_repository(struct pkg_jobs *j, const char *ident)
 {
