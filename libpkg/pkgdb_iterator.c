@@ -1124,6 +1124,8 @@ pkgdb_sqlite_it_next(struct pkgdb_sqlite_it *it,
 
 		return (EPKG_OK);
 	case SQLITE_DONE:
+		pkg_free(*pkg_p);
+		*pkg_p = NULL;
 		it->finished ++;
 		if (it->flags & PKGDB_IT_FLAG_CYCLED) {
 			sqlite3_reset(it->stmt);
