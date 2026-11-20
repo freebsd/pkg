@@ -1491,7 +1491,8 @@ pkg_repo_binary_groupsearch(struct pkg_repo *repo, const char *pattern, match_t 
 					pat = newpattern;
 				}
 				if (regcomp(re, pat, flag) != 0) {
-					pkg_emit_error("Invalid regex: 'pattern'");
+					pkg_emit_error("Invalid regular expression '%s'",
+					    pattern);
 					ucl_object_unref(groups);
 					if (ar != NULL)
 						ucl_object_unref(ar);

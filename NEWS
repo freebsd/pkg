@@ -36,6 +36,9 @@ Changes from 2.9.0 to 2.9.99.1
 - lua: new pkg.sysctl function returning the value of a sysctl
 - upgrade: install the new dependencies of an upgraded package even when a
   lower-priority repository still carries its old version
+- search: an invalid regular expression is reported once as a user error
+  instead of once per repository by the SQL layer, and the same for every
+  command which matches a pattern as a regular expression
 
 Changes from 2.8.99.5 to 2.8.99.6
 - abi: an overlong string coming from a manifest or a catalogue is rejected

@@ -4,6 +4,7 @@
 
 tests_init \
 	search \
+	search_invalid_regex \
 	search_multiple_json_compact \
 	search_options \
 	search_comment_description
@@ -157,4 +158,65 @@ EOF
 		-e ignore \
 		-s exit:0 \
 		pkg -o REPOS_DIR="${TMPDIR}/reposconf" search -S comment-description networking
+}
+
+search_invalid_regex_body() {
+	# An invalid regular expression must be reported once, as a user error,
+	# and not once per repository by the SQL layer (issue #2751).
+
+	for r in repoA repoB; do
+		mkdir ${r}
+		cat << EOF > ${r}.ucl
+name: pkg${r}
+origin: misc/pkg${r}
+version: "1.0"
+maintainer: test
+categories: [test]
+comment: a test
+www: http://test
+prefix: /usr/local
+desc: <<EOD
+a test
+EOD
+EOF
+		pkg create -o ${r} -M ./${r}.ucl
+		pkg repo -o ${r} ${r}
+	done
+
+	mkdir reposconf
+	cat << EOF > reposconf/repos.conf
+repoA: {
+	url: file://${TMPDIR}/repoA,
+	enabled: true
+}
+repoB: {
+	url: file://${TMPDIR}/repoB,
+	enabled: true
+}
+EOF
+
+	# 'pkg search' matches a regular expression by default: '*rust' is not
+	# a valid one.
+	atf_check \
+		-o empty \
+		-e save:stderr \
+		-s exit:1 \
+		pkg -o REPOS_DIR="${TMPDIR}/reposconf" search '*rust'
+
+	atf_check -o inline:"1\n" -e empty -s exit:0 \
+		grep -c "Invalid regular expression" stderr
+
+	# The message must not mention the SQL layer nor an internal file.
+	atf_check -o empty -e empty -s exit:1 \
+		grep -E "sqlite|pkgdb_iterator" stderr
+
+	# The commands matching the installed packages report it the same way.
+	atf_check \
+		-o empty \
+		-e save:stderr \
+		-s exit:1 \
+		pkg info -x '*rust'
+
+	atf_check -o inline:"1\n" -e empty -s exit:0 \
+		grep -c "Invalid regular expression" stderr
 }

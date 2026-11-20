@@ -165,6 +165,39 @@ pkgdb_regex_delete(void *p)
 	free(re);
 }
 
+/*
+ * Check that a pattern is a valid regular expression.  The regular expressions
+ * are compiled by the SQL function when the query runs, so an invalid pattern
+ * would be reported by the SQL layer, once per repository it is applied to.
+ * Checking it beforehand reports it once, as a user error.
+ */
+bool
+pkgdb_regex_is_valid(const char *pattern)
+{
+	regex_t	 re;
+	char	 errbuf[256];
+	int	 flags, rc;
+
+	if (pattern == NULL)
+		return (true);
+
+	flags = REG_EXTENDED | REG_NOSUB;
+	if (!pkgdb_case_sensitive())
+		flags |= REG_ICASE;
+
+	rc = regcomp(&re, pattern, flags);
+	if (rc != 0) {
+		regerror(rc, &re, errbuf, sizeof(errbuf));
+		pkg_emit_error("Invalid regular expression '%s': %s\n"
+		    "Use -e for an exact match or -g for a glob", pattern,
+		    errbuf);
+		return (false);
+	}
+	regfree(&re);
+
+	return (true);
+}
+
 void
 pkgdb_now(sqlite3_context *ctx, int argc, __unused sqlite3_value **argv)
 {

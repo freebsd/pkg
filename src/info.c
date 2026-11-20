@@ -400,6 +400,7 @@ exec_info(int argc, char **argv)
 		}
 
 		if ((it = pkgdb_query(db, pkgname, match)) == NULL) {
+			retcode = EXIT_FAILURE;
 			goto cleanup;
 		}
 

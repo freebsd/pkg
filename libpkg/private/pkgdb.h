@@ -171,6 +171,7 @@ int pkgdb_check_access(unsigned mode, const char *dbname);
  */
 void pkgdb_regex(sqlite3_context *ctx, int argc, sqlite3_value **argv);
 void pkgdb_regex_delete(void *p);
+bool pkgdb_regex_is_valid(const char *pattern);
 void pkgdb_now(sqlite3_context *ctx, int argc, __unused sqlite3_value **argv);
 int pkgdb_sqlcmd_init(sqlite3 *db, char **err,
     const struct sqlite3_api_routines *api);

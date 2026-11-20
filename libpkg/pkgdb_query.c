@@ -124,6 +124,9 @@ pkgdb_query_cond(struct pkgdb *db, const char *cond, const char *pattern, match_
 	if (match != MATCH_ALL && (pattern == NULL || pattern[0] == '\0'))
 		return (NULL);
 
+	if (match == MATCH_REGEX && !pkgdb_regex_is_valid(pattern))
+		return (NULL);
+
 	comp = pkgdb_get_pattern_query(pattern, match);
 
 	if (cond) {
@@ -378,6 +381,9 @@ pkgdb_repo_query_cond2(struct pkgdb *db, const char *cond, const char *pattern, 
 	struct pkgdb_it *it;
 	struct pkg_repo_it *rit;
 
+	if (match == MATCH_REGEX && !pkgdb_regex_is_valid(pattern))
+		return (NULL);
+
 	it = pkgdb_it_new_repo(db);
 
 	vec_foreach(db->repos, i) {
@@ -534,6 +540,9 @@ pkgdb_repo_search2(struct pkgdb *db, const char *pattern, match_t match,
 	struct pkgdb_it *it;
 	struct pkg_repo_it *rit;
 
+	if (match == MATCH_REGEX && !pkgdb_regex_is_valid(pattern))
+		return (NULL);
+
 	it = pkgdb_it_new_repo(db);
 
 	vec_foreach(db->repos, i) {
@@ -580,7 +589,8 @@ pkgdb_all_search2(struct pkgdb *db, const char *pattern, match_t match,
 	struct pkg_repo_it *rit;
 
 
-	it = pkgdb_query(db, pattern, match);
+	if ((it = pkgdb_query(db, pattern, match)) == NULL)
+		return (NULL);
 
 	vec_foreach(db->repos, i) {
 		if (consider_this_repo(repos, db->repos.d[i]->name)) {

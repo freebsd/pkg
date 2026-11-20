@@ -56,6 +56,11 @@ searches the catalogue of packages available for installation.
 By default,
 .Nm Ns es
 for case-sensitive package names from all enabled repos.
+The
+.Ar pattern
+is a regular expression matched anywhere in the package name: use
+.Fl g
+to match a shell glob instead.
 Available packages can also be matched by comment, description, origin,
 or version.
 It returns the name, version, and comment by default,
