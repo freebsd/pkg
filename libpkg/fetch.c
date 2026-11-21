@@ -168,6 +168,8 @@ pkg_fetch_file(struct pkg_repo *repo, const char *url, char *dest, time_t t,
 	int retcode = EPKG_FATAL;
 	struct fetch_item fi;
 	char *url_to_free = NULL;
+	struct stat st;
+	int64_t attempts, attempt;
 
 	fd = open(dest, O_CREAT|O_APPEND|O_WRONLY, 00644);
 	if (fd == -1) {
@@ -182,13 +184,34 @@ pkg_fetch_file(struct pkg_repo *repo, const char *url, char *dest, time_t t,
 		fi.url = url;
 	}
 
-	fi.offset = offset;
 	fi.size = size;
 	fi.max_size = 0;
 	fi.expected_size = size;
 	fi.mtime = t;
 
-	retcode = pkg_fetch_file_to_fd(repo, fd, &fi, false);
+	/*
+	 * A transfer can fail in the middle, which is common for the large
+	 * packages and slow or unreliable links, and the connection set up is
+	 * not the only thing worth retrying.  Retry the transfer, resuming
+	 * where it stopped so that it does not start over.
+	 */
+	attempts = pkg_object_int(pkg_config_get("FETCH_RETRY")) + 1;
+
+	for (attempt = 1; ; attempt++) {
+		fi.offset = offset;
+
+		retcode = pkg_fetch_file_to_fd(repo, fd, &fi, false);
+		if (retcode == EPKG_OK || retcode == EPKG_CANCEL ||
+		    attempt >= attempts)
+			break;
+
+		if (fstat(fd, &st) == 0 && st.st_size > 0 &&
+		    (size <= 0 || st.st_size < size))
+			offset = st.st_size;
+
+		pkg_emit_notice("%s: fetching failed, retrying (%d/%d)",
+		    fi.url, (int)attempt, (int)(attempts - 1));
+	}
 	free(url_to_free);
 
 	if (t != 0) {

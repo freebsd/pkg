@@ -3,7 +3,8 @@
 . $(atf_get_srcdir)/test_environment.sh
 
 CLEANUP="simple_fetch simple_repo simple_audit \
-	server_ignores_ims server_sends_304 missing_pkg_port"
+	server_ignores_ims server_sends_304 missing_pkg_port \
+	server_truncates_once"
 
 tests_init \
 	simple_fetch \
@@ -11,7 +12,8 @@ tests_init \
 	simple_audit \
 	server_ignores_ims \
 	server_sends_304 \
-	missing_pkg_port
+	missing_pkg_port \
+	server_truncates_once
 
 
 httpd_startup() {
@@ -290,4 +292,119 @@ EOF
 missing_pkg_port_cleanup()
 {
     httpd_cleanup
+}
+
+# Same as httpd_startup() but the first transfer of a package is truncated, as
+# when the connection dies in the middle of a download.  Range requests are
+# honoured, and every request is logged so that a test can count them.
+httpd_startup_truncate()
+{
+	pidfile=${TMPDIR}/http.pid
+	statusfile=${TMPDIR}/http.status
+	: > ${pidfile}
+	: > ${statusfile}
+	: > ${TMPDIR}/http.log
+
+	cat > ${TMPDIR}/truncate.py << 'EOF'
+import http.server, os, sys
+
+DIR, LOG = sys.argv[1], sys.argv[2]
+STATE = {'truncated': False}
+
+class Handler(http.server.BaseHTTPRequestHandler):
+    protocol_version = 'HTTP/1.1'
+
+    def log_message(self, *args):
+        pass
+
+    def do_GET(self):
+        with open(LOG, 'a') as log:
+            log.write('%s %s\n' % (self.path,
+                self.headers.get('Range', '-')))
+
+        path = os.path.join(DIR, self.path.lstrip('/'))
+        if not os.path.isfile(path):
+            self.send_error(404)
+            return
+
+        data = open(path, 'rb').read()
+        start = 0
+        rng = self.headers.get('Range')
+        if rng:
+            start = int(rng.split('=')[1].split('-')[0])
+        body = data[start:]
+
+        self.send_response(206 if rng else 200)
+        self.send_header('Content-Length', str(len(body)))
+        if rng:
+            self.send_header('Content-Range',
+                'bytes %d-%d/%d' % (start, len(data) - 1, len(data)))
+        self.end_headers()
+
+        # The catalogue files are packages too, only truncate a real one.
+        truncatable = (self.path.endswith('.pkg')
+            and not self.path.endswith('/data.pkg')
+            and not self.path.endswith('/packagesite.pkg'))
+        if truncatable and not STATE['truncated']:
+            STATE['truncated'] = True
+            self.wfile.write(body[:len(body) // 2])
+            self.wfile.flush()
+            self.close_connection = True
+            return
+
+        self.wfile.write(body)
+
+with http.server.HTTPServer(('127.0.0.1', 0), Handler) as httpd:
+    print('http://%s:%d' % httpd.server_address[:2], flush=True)
+    httpd.serve_forever()
+EOF
+	python3 -u ${TMPDIR}/truncate.py "$1" ${TMPDIR}/http.log > ${statusfile} &
+	jobs -p %1 > ${pidfile}
+	while kill -s 0 %1 && ! [ -s ${statusfile} ]; do
+	    sleep .1
+	done
+	url=$(cat ${statusfile})
+	atf_check test -n "${url}"
+}
+
+# A transfer which dies in the middle is retried, and resumes where it stopped
+# instead of downloading the package again from the beginning.
+server_truncates_once_body()
+{
+	atf_require python3 "Requires python3 to run this test"
+
+	atf_check sh ${RESOURCEDIR}/test_subr.sh new_pkg test test 1
+	atf_check -o ignore pkg create -M test.ucl
+	mkdir repo
+	mv test-1.pkg repo/
+	atf_check -o ignore pkg repo repo
+
+	httpd_startup_truncate ${TMPDIR}/repo
+
+	cat > pkg.conf << EOF
+PKG_DBDIR=${TMPDIR}
+PKG_CACHEDIR=${TMPDIR}/cache
+REPOS_DIR=[]
+repositories: {
+	local: { url: ${url} }
+}
+EOF
+
+	atf_check \
+		-o match:"Fetching test-1:  done" \
+		-e match:"fetch size does not match expected package size" \
+		-s exit:0 \
+		pkg -C ./pkg.conf -o FETCH_RETRY=3 fetch -y test
+
+	# The package was requested twice, the second time to resume it.
+	atf_check -o inline:"2\n" -s exit:0 \
+		sh -c "grep -c '^/test-1.pkg ' ${TMPDIR}/http.log"
+
+	atf_check -o match:"^/test-1.pkg bytes=[0-9]+-$" -s exit:0 \
+		sh -c "grep '^/test-1.pkg ' ${TMPDIR}/http.log | tail -1"
+}
+
+server_truncates_once_cleanup()
+{
+	httpd_cleanup
 }

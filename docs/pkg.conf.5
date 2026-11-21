@@ -239,6 +239,8 @@ each server in the list is tried this many times before advancing to
 the next one; the list is walked at most once.
 For a plain repository (a single server) this is the total number of
 retries before giving up.
+A transfer which fails in the middle is retried too, and the package is
+resumed where it stopped instead of being downloaded from the beginning.
 Default: 3.
 .It Cm FETCH_TIMEOUT: integer
 Maximum number of seconds to wait for any one file to download from the
