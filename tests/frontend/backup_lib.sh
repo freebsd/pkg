@@ -13,7 +13,8 @@ tests_init \
 	missing_library_no_backup \
 	rootdir_check_integrity \
 	rootdir_slash_override_path \
-	re_upgrade_file_cleanup
+	re_upgrade_file_cleanup \
+	autoremove
 
 basic_body() {
 	atf_skip_on Darwin The macOS linker uses different flags
@@ -851,4 +852,71 @@ EOF
 	# The backup package must have exactly ONE file, not two
 	atf_check -o inline:"/back/libclean.so.1\n" \
 	    pkg -r ${TMPDIR}/target query "%Fp" test-backup-libclean.so.1
+}
+
+autoremove_body()
+{
+	atf_skip_on Darwin The macOS linker uses different flags
+
+	atf_check touch empty.c
+	atf_check cc -shared -Wl,-soname=libfoo.so.1 empty.c -o libfoo.so.1
+	atf_check ln -s libfoo.so.1 libfoo.so
+	atf_check cc -shared -Wl,-soname=libbar.so.1 empty.c -o libbar.so.1 -lfoo -L.
+	atf_check cc -shared -Wl,-soname=libfoo.so.2 empty.c -o libfoo.so.2
+
+	atf_check sh ${RESOURCEDIR}/test_subr.sh new_pkg "foo" "foo" "1"
+	cat << EOF >> foo.ucl
+files: {
+	${TMPDIR}/libfoo.so.1: "",
+}
+EOF
+	atf_check pkg create -M foo.ucl
+
+	atf_check sh ${RESOURCEDIR}/test_subr.sh new_pkg "foo" "foo" "2"
+	cat << EOF >> foo.ucl
+files: {
+	${TMPDIR}/libfoo.so.2: "",
+}
+EOF
+	atf_check pkg create -M foo.ucl
+
+	atf_check sh ${RESOURCEDIR}/test_subr.sh new_pkg "bar" "bar" "1"
+	cat << EOF >> bar.ucl
+files: {
+	${TMPDIR}/libbar.so.1: "",
+}
+EOF
+	atf_check pkg create -M bar.ucl
+
+	atf_check mkdir ${TMPDIR}/target ${TMPDIR}/reposconf
+	atf_check -o ignore pkg repo .
+	cat <<EOF > ${TMPDIR}/reposconf/repo.conf
+local: {
+	url: file://${TMPDIR},
+	enabled: true
+}
+EOF
+
+	atf_check \
+	    pkg -o REPOS_DIR=/dev/null -r ${TMPDIR}/target \
+	        install -qfy ${TMPDIR}/foo-1.pkg
+	atf_check \
+	    pkg -o REPOS_DIR=/dev/null -r ${TMPDIR}/target \
+	        install -qfy ${TMPDIR}/bar-1.pkg
+
+	atf_check -o ignore \
+	    pkg -o REPOS_DIR=${TMPDIR}/reposconf -r ${TMPDIR}/target \
+	        -o BACKUP_LIBRARIES=yes upgrade -y foo
+	atf_check -o ignore -s exit:0 \
+	    pkg -r ${TMPDIR}/target info -q foo-backup-libfoo.so.1
+	atf_check -o ignore \
+	    pkg -r ${TMPDIR}/target autoremove -y
+	atf_check -o ignore -s exit:0 \
+	    pkg -r ${TMPDIR}/target info -q foo-backup-libfoo.so.1
+
+	atf_check -o ignore pkg -r ${TMPDIR}/target delete -y bar
+	atf_check -o ignore \
+	    pkg -r ${TMPDIR}/target autoremove -y
+	atf_check -o ignore -s exit:1 \
+	    pkg -r ${TMPDIR}/target info -q foo-backup-libfoo.so.1
 }

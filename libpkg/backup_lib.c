@@ -128,6 +128,7 @@ register_backup(struct pkgdb *db, struct pkg *orig, int fd, const char *libname)
 		free(sum);
 		return (EPKG_FATAL);
 	}
+	pkg->automatic = true;
 	backup_remove_file_entry(pkg, libname);
 	xasprintf(&lpath, "%s/%s", backup_library_relative_path(), libname);
 	if (pkg_addfile(pkg, lpath, sum, false) != EPKG_OK) {
