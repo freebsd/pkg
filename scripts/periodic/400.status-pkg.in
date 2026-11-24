@@ -39,7 +39,7 @@ status_pkg() {
 # $weekly_pkg_status_jails for this script only.
 
 status_pkg_all() {
-    local rc
+    local rc=0
     local jails
 
     : ${weekly_status_pkg_chroots=$pkg_chroots}

@@ -29,7 +29,6 @@ list_pkgs() {
 }
 
 list_pkgs_all() {
-    local rc
     local jails
     local bak_file
     local rc=0

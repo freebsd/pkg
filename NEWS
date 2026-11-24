@@ -60,6 +60,9 @@ Changes from 2.9.0 to 2.9.99.1
   again for every file, which made it crawl on networks without DNS
 - search: new "any" search field, to match the package name, origin, comment
   and description at once
+- periodic: the security audit script no longer forces the fetch of the
+  vulnerability database in every chroot and every jail once one of them has
+  reported something
 
 Changes from 2.8.99.5 to 2.8.99.6
 - abi: an overlong string coming from a manifest or a catalogue is rejected

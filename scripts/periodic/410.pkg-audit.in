@@ -55,7 +55,7 @@ auditfile="${PKG_DBDIR}/vuln.xml"
 audit_pkgs() {
 	local pkgargs="$1"
 	local basedir="$2"
-	local rc
+	local rc=0
 	local then
 	local now
 
@@ -118,7 +118,7 @@ deprecation_pkgs() {
 # $security_status_pkgaudit_jails for this script only.
 
 audit_pkgs_all() {
-	local rc
+	local rc=0
 	local last_rc
 	local jails
 
