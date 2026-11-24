@@ -697,6 +697,7 @@ create_hardlink(struct pkg_add_context *context, struct pkg_file *f,
 	bool tried_mkdir = false;
 	struct pkg_file *fh;
 	int fd, fdh;
+	int e;
 	const char *pathfrom, *pathto;
 	struct tempdir *tmpdir = NULL;
 	struct tempdir *tmphdir = NULL;
@@ -757,6 +758,8 @@ create_hardlink(struct pkg_add_context *context, struct pkg_file *f,
 retry:
 	if (linkat(fdh, RELATIVE_PATH(pathfrom),
 	    fd, RELATIVE_PATH(pathto), 0) == -1) {
+		e = errno;
+
 		if (!tried_mkdir) {
 			if (!try_mkdir(fd, pathto)) {
 				close_tempdir(tmpdir);
@@ -769,7 +772,14 @@ retry:
 
 		close_tempdir(tmpdir);
 		close_tempdir(tmphdir);
-		pkg_fatal_errno("Failed to create hardlink: %s <-> %s", pathfrom, pathto);
+		errno = e;
+		if (e == EXDEV)
+			pkg_emit_error("Cannot hardlink %s to %s: the two paths "
+			    "are on different file systems", f->path, fh->path);
+		else
+			pkg_errno("Failed to create hardlink %s -> %s", f->path,
+			    fh->path);
+		return (EPKG_FATAL);
 	}
 	close_tempdir(tmpdir);
 	close_tempdir(tmphdir);
