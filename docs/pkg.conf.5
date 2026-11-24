@@ -147,20 +147,29 @@ Default: NO.
 .It Cm BACKUP_LIBRARIES: boolean
 If set to
 .Sy true
-and if an upgrade will remove a library (typically due to the library version
-number having been bumped), then
+and if an upgrade would remove a library, typically because the library
+version number was bumped, then
 .Xr pkg 8
-will back up the library to the path defined by
-.Cm BACKUP_LIBRARY_PATH .
-A package containing the backed up library will be created.
-This package is named after the original package containing the library, with
-the suffix
-.Ql -backup-libraries
-appended.
-The package version will be bumped whenever an additional library is backed up.
+copies the library to the directory defined by
+.Cm BACKUP_LIBRARY_PATH
+before removing it, and records it in the installed package database.
+Each backed up library is recorded in a package of its own, named after the
+package which provided the library, followed by
+.Ql -backup-
+and the name of the library, for example
+.Ql foo-backup-libfoo.so.1 .
+The version of such a package is the date and time at which the library was
+backed up, and it is replaced if the same library is backed up again.
+As that package provides the library, the packages which depend on it are not
+considered broken by the upgrade.
 Default: NO.
 .It Cm BACKUP_LIBRARY_PATH: string
-Path for library backups.
+Directory where the libraries are backed up.
+The path is resolved in the root directory when
+.Xr pkg 8
+is run with
+.Fl r ,
+so that the libraries stay inside the target system.
 Default:
 .Pa /usr/local/lib/compat/pkg .
 .It Cm COMPRESSION_FORMAT: string
