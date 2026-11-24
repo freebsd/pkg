@@ -1659,6 +1659,13 @@ jobs_solve_partial_upgrade(struct pkg_jobs *j)
 		struct job_pattern *jp = &j->patterns.d[pi];
 		retcode = pkg_jobs_find_remote_pattern(j, jp);
 		if (retcode == EPKG_FATAL) {
+			if ((j->flags & PKG_FLAG_IGNORE_UNAVAILABLE) != 0 &&
+			    (jp->flags & PKG_PATTERN_FLAG_FILE) == 0) {
+				pkg_emit_notice("Package '%s' is not available "
+						"in the repositories, skipping",
+						jp->pattern);
+				continue;
+			}
 			pkg_emit_error("No packages available to %s matching '%s' "
 					"have been found in the "
 					"repositories",

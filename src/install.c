@@ -49,7 +49,8 @@ void
 usage_install(void)
 {
 	fprintf(stderr,
-	    "Usage: pkg install [-ACfFgiIlMnNqRUxy] [--autoremove] [--no-remove] [-r reponame] <pkg-name> ...\n\n");
+	    "Usage: pkg install [-ACfFgiIlMnNqRUxy] [--autoremove] [--ignore-unavailable]\n"
+	    "       [--no-remove] [-r reponame] <pkg-name> ...\n\n");
 	fprintf(stderr, "For more information see 'pkg help install'.\n");
 }
 
@@ -68,6 +69,7 @@ exec_install(int argc, char **argv)
 	int		 nbactions = 0;
 	int		 scriptnoexec = 0;
 	int		 autoremove = 0;
+	int		 ignore_unavailable = 0;
 	bool		 rc = true;
 	bool		 local_only = false;
 	bool		 autoremove_flag = false;
@@ -87,6 +89,7 @@ exec_install(int argc, char **argv)
 		{ "script-no-exec",	no_argument,		&scriptnoexec,	1 },
 		{ "local-only",		no_argument,		NULL,	'l' },
 		{ "ignore-missing",	no_argument,		NULL,	'M' },
+		{ "ignore-unavailable",	no_argument,		&ignore_unavailable, 1 },
 		{ "dry-run",		no_argument,		NULL,	'n' },
 		{ "quiet",		no_argument,		NULL,	'q' },
 		{ "repository",		required_argument,	NULL,	'r' },
@@ -171,6 +174,8 @@ exec_install(int argc, char **argv)
 				f |= PKG_FLAG_NOEXEC;
 			if (autoremove)
 				autoremove_flag = true;
+			if (ignore_unavailable)
+				f |= PKG_FLAG_IGNORE_UNAVAILABLE;
 			break;
 		default:
 			usage_install();

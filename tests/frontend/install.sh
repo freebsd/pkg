@@ -25,7 +25,8 @@ tests_init \
 	install_vulnerable \
 	install_vulnerable_not_in_range \
 	install_vulnerable_no_vuln_db \
-	install_local_file_upgrade
+	install_local_file_upgrade \
+	install_ignore_unavailable
 
 test_setup()
 {
@@ -940,4 +941,42 @@ EOF
 		pkg -C ./pkg.conf upgrade -y
 	atf_check -o inline:"lua-true\nshell-true\n" sh -c \
 		"grep -E '^(lua|shell)-' ${TMPDIR}/out2"
+}
+
+install_ignore_unavailable_body()
+{
+	test_setup
+
+	# Create one package so we at least have a repo.
+	atf_check sh ${RESOURCEDIR}/test_subr.sh new_pkg ${TMPDIR}/test test 1 /usr/local
+	atf_check \
+		-o ignore \
+		pkg -C "${TMPDIR}/pkg.conf" create -o ${TMPDIR} -M ${TMPDIR}/test.ucl
+	atf_check \
+		-o ignore \
+		pkg -C "${TMPDIR}/pkg.conf" repo ${TMPDIR}
+
+	# A single unavailable package fails the whole request.
+	atf_check \
+		-o ignore \
+		-e ignore \
+		-s exit:1 \
+		pkg -C "${TMPDIR}/pkg.conf" install -y -n test missing
+	atf_check -o ignore -s exit:1 pkg -C "${TMPDIR}/pkg.conf" info -q test
+
+	# The available packages are installed, the other ones are reported and
+	# skipped.
+	atf_check \
+		-o match:"Package 'missing' is not available in the repositories, skipping" \
+		-e ignore \
+		pkg -C "${TMPDIR}/pkg.conf" install -y --ignore-unavailable test missing
+	atf_check -o ignore pkg -C "${TMPDIR}/pkg.conf" info -q test
+
+	# A local package file which exists but cannot be read is still an error.
+	atf_check -o ignore touch ${TMPDIR}/broken.pkg
+	atf_check \
+		-o ignore \
+		-e ignore \
+		-s exit:1 \
+		pkg -C "${TMPDIR}/pkg.conf" install -y --ignore-unavailable ${TMPDIR}/broken.pkg
 }

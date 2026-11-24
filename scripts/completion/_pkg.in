@@ -446,6 +446,7 @@ _pkg_args() {
 				'(-X --register-only)'{-X,--register-only}"[record installation in the database but don't extract any files]" \
 				'(-l --local-only)'{-l,--local-only}'[only install from local archives]' \
 				'--autoremove[also remove orphaned packages]' \
+				'--ignore-unavailable[install the packages the repositories provide and skip the others]' \
 				"--script-no-exec[don't execute the pre-/post-install scripts but still log them]" \
 				- patterns \
 				'(-i --case-insensitive -C --case-sensitive)'{-i,--case-insensitive}'[case insensitive pattern matching]' \
