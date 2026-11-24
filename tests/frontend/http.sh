@@ -4,7 +4,7 @@
 
 CLEANUP="simple_fetch simple_repo simple_audit \
 	server_ignores_ims server_sends_304 missing_pkg_port \
-	server_truncates_once"
+	server_truncates_once srv_fallback"
 
 tests_init \
 	simple_fetch \
@@ -13,7 +13,8 @@ tests_init \
 	server_ignores_ims \
 	server_sends_304 \
 	missing_pkg_port \
-	server_truncates_once
+	server_truncates_once \
+	srv_fallback
 
 
 httpd_startup() {
@@ -405,6 +406,48 @@ EOF
 }
 
 server_truncates_once_cleanup()
+{
+	httpd_cleanup
+}
+
+# A repository with the SRV discovery of the servers, but without any SRV
+# record, falls back on the host of its URL instead of failing, and the failed
+# lookup is only done once and not again for every file fetched.
+srv_fallback_body()
+{
+	atf_require python3 "Requires python3 to run this test"
+
+	mkdir repo
+	for p in onepkg twopkg; do
+		atf_check sh ${RESOURCEDIR}/test_subr.sh new_pkg ${p} ${p} 1
+		atf_check -o ignore pkg create -M ${p}.ucl
+		mv ${p}-1.pkg repo/
+	done
+	atf_check -o ignore pkg repo repo
+
+	httpd_startup ${TMPDIR}/repo
+
+	cat > pkg.conf << EOF
+PKG_DBDIR=${TMPDIR}
+PKG_CACHEDIR=${TMPDIR}/cache
+REPOS_DIR=[]
+repositories: {
+	local: { url: "pkg+${url}", mirror_type: "srv" }
+}
+EOF
+
+	atf_check \
+		-o match:"Installing onepkg-1" \
+		-e save:srv.err \
+		-s exit:0 \
+		pkg -C ./pkg.conf install -y onepkg twopkg
+
+	# One lookup for the whole run, not one per file nor per repository use.
+	atf_check -o inline:"1\n" -s exit:0 \
+		grep -c "SRV lookup failed" srv.err
+}
+
+srv_fallback_cleanup()
 {
 	httpd_cleanup
 }

@@ -260,14 +260,18 @@ libfetch_open(struct pkg_repo *repo, struct fetch_item *fi)
 	 */
 	if (repo->mirror_type == SRV &&
 	    strncmp(u->scheme, "http", 4) == 0) {
-		if (repo->srv == NULL) {
+		if (repo->srv == NULL && !repo->server_list_failed) {
 			snprintf(zone, sizeof(zone),
 			    "_%s._tcp.%s", u->scheme, u->host);
 			repo->srv = dns_getsrvinfo(zone);
+			if (repo->srv == NULL) {
+				repo->server_list_failed = true;
+				pkg_emit_error("SRV lookup failed for '%s', "
+				    "falling back to %s://%s", zone, u->scheme,
+				    u->host);
+			}
 		}
 		if (repo->srv == NULL) {
-			pkg_emit_error("SRV lookup failed for '%s', "
-			    "falling back to %s://%s", zone, u->scheme, u->host);
 			if (u->port == 0)
 				u->port = strcmp(u->scheme, "https") == 0 ?
 				    443 : 80;
@@ -284,17 +288,19 @@ libfetch_open(struct pkg_repo *repo, struct fetch_item *fi)
 		}
 		snprintf(zone, sizeof(zone),
 		    "%s://%s:%d", u->scheme, u->host, u->port);
-		if (repo->http == NULL)
+		if (repo->http == NULL && !repo->server_list_failed) {
 			gethttpmirrors(repo, zone, false);
-		if (repo->http == NULL)
-			gethttpmirrors(repo, repo->url, true);
-		if (repo->http == NULL) {
-			pkg_emit_error("Could not retrieve mirror list from "
-			    "'%s', falling back to %s://%s", zone,
-			    u->scheme, u->host);
-		} else {
-			http_current = repo->http;
+			if (repo->http == NULL)
+				gethttpmirrors(repo, repo->url, true);
+			if (repo->http == NULL) {
+				repo->server_list_failed = true;
+				pkg_emit_error("Could not retrieve mirror list "
+				    "from '%s', falling back to %s://%s", zone,
+				    u->scheme, u->host);
+			}
 		}
+		if (repo->http != NULL)
+			http_current = repo->http;
 	}
 
 	while (repo->fh == NULL) {

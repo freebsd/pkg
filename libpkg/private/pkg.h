@@ -581,6 +581,12 @@ struct pkg_repo {
 		struct dns_srvinfo *srv;
 		struct http_mirror *http;
 	};
+	/*
+	 * The list of servers, SRV records or HTTP mirrors, could not be
+	 * resolved and pkg falls back on the configured URL: do not look it
+	 * up again for every file fetched from the repository.
+	 */
+	bool server_list_failed;
 	signature_t signature_type;
 	char *fingerprints;
 	char *ssh_args;

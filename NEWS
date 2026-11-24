@@ -55,6 +55,9 @@ Changes from 2.9.0 to 2.9.99.1
 - fetch: a transfer which fails in the middle is retried FETCH_RETRY times
   instead of aborting, and the package is resumed where it stopped instead of
   being downloaded again from the beginning
+- fetch: when the SRV records or the mirror list of a repository cannot be
+  resolved, pkg falls back on the host of its URL without looking the list up
+  again for every file, which made it crawl on networks without DNS
 
 Changes from 2.8.99.5 to 2.8.99.6
 - abi: an overlong string coming from a manifest or a catalogue is rejected
