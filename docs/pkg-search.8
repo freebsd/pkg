@@ -230,6 +230,14 @@ be used both for searching for a match to the given
 .Ar pattern
 and as identifying labels for the block of output for each package.
 .Bl -tag -width 2n
+.It Sy any
+The name of the package, its origin, its one line comment and its
+description, at once: a package matches if
+.Ar pattern
+is found in any of them, the way the ports tree searches its index by
+keyword.
+The output format will include the package name and the comment.
+Results are sorted by package name.
 .It Sy comment
 The one line comment field describing the port, derived from the
 .Cm COMMENT

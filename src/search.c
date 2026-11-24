@@ -49,6 +49,7 @@ typedef struct _cliopt {
 
 /* an option string should not be a prefix of any other option string */
 static const cliopt search_label[] = {
+	{ "any",                 'a'  },
 	{ "comment",             'c'  },
 	{ "comment-description", 'D'  },
 	{ "description",         'd'  },
@@ -122,6 +123,9 @@ search_label_opt(const char *optionarg)
 
 	/* label options */
 	switch(match_optarg(search_label, optionarg)) {
+	case 'a':
+		field = FIELD_ANY;
+		break;
 	case 'o':
 		field = FIELD_ORIGIN;
 		break;
@@ -457,6 +461,9 @@ exec_search(int argc, char **argv)
 		break;
 	case FIELD_COMMENT_DESC:
 		opt |= INFO_TAG_NAMEVER|INFO_COMMENT|INFO_DESCR;
+		break;
+	case FIELD_ANY:
+		opt |= INFO_TAG_NAMEVER|INFO_COMMENT;
 		break;
 	}
 

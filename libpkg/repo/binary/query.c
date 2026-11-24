@@ -1314,6 +1314,7 @@ pkg_repo_binary_build_search_query(sb_t *sql, match_t match,
 		what = "desc";
 		break;
 	case FIELD_COMMENT_DESC:
+	case FIELD_ANY:
 		break;
 	}
 
@@ -1332,6 +1333,23 @@ pkg_repo_binary_build_search_query(sb_t *sql, match_t match,
 		sb_printf(sql, ")");
 	} else if (field == FIELD_COMMENT_DESC && how != NULL) {
 		sb_printf(sql, "(");
+		sb_printf(sql, how, "comment");
+		sb_printf(sql, " OR ");
+		sb_printf(sql, how, "desc");
+		sb_printf(sql, ")");
+	} else if (field == FIELD_ANY && how != NULL) {
+		/*
+		 * Match every field a package can be identified by, the way
+		 * the ports tree searches its index by keyword.
+		 */
+		sb_printf(sql, "(");
+		sb_printf(sql, how, "p.name");
+		sb_printf(sql, " OR ");
+		sb_printf(sql, how, "p.name || '-' || version");
+		sb_printf(sql, " OR ");
+		sb_printf(sql, how,
+		    "categories.name || substr(origin, instr(origin, '/'))");
+		sb_printf(sql, " OR ");
 		sb_printf(sql, how, "comment");
 		sb_printf(sql, " OR ");
 		sb_printf(sql, how, "desc");
@@ -1359,6 +1377,9 @@ pkg_repo_binary_build_search_query(sb_t *sql, match_t match,
 		break;
 	case FIELD_DESC:
 		orderby = " ORDER BY desc";
+		break;
+	case FIELD_ANY:
+		orderby = " ORDER BY p.name";
 		break;
 	case FIELD_COMMENT_DESC:
 		orderby = " ORDER BY comment";

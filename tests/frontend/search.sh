@@ -4,6 +4,7 @@
 
 tests_init \
 	search \
+	search_any \
 	search_glob_fallback \
 	search_invalid_regex \
 	search_multiple_json_compact \
@@ -279,4 +280,49 @@ EOF
 		-e empty \
 		-s exit:0 \
 		pkg -o REPOS_DIR="${TMPDIR}/reposconf" search -q -g '*rust'
+}
+
+# A package can be searched by name, origin, comment and description at once,
+# the way the ports tree searches its index by keyword (issue #2700).
+search_any_body()
+{
+	cat << EOF > zzz.ucl
+name: zzz
+origin: misc/zzz
+version: "1.0"
+maintainer: test
+categories: [test]
+comment: a tool to search bone
+www: http://test
+prefix: /usr/local
+desc: <<EOD
+A tool which digs deep into the marrow of things.
+EOD
+EOF
+
+	mkdir reposconf
+	cat << EOF > reposconf/repos.conf
+repo: {
+	url: file://${TMPDIR}/repo,
+	enabled: true
+}
+EOF
+
+	atf_check -o ignore pkg create -o ${TMPDIR}/repo -M ./zzz.ucl
+	atf_check -o ignore pkg repo -o ${TMPDIR}/repo ${TMPDIR}/repo
+
+	# The name, the origin, the comment and the description.
+	for field in zzz test bone marrow; do
+		atf_check \
+			-o match:"zzz-1.0" \
+			-e ignore \
+			-s exit:0 \
+			pkg -o REPOS_DIR="${TMPDIR}/reposconf" search -S any ${field}
+	done
+
+	atf_check \
+		-o empty \
+		-e empty \
+		-s exit:1 \
+		pkg -o REPOS_DIR="${TMPDIR}/reposconf" search -S any nothere
 }
