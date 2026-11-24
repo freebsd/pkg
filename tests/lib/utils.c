@@ -45,6 +45,7 @@ ATF_TC_WITHOUT_HEAD(arch_to_legacy);
 ATF_TC_WITHOUT_HEAD(safe_relative_path);
 ATF_TC_WITHOUT_HEAD(abi_from_string);
 ATF_TC_WITHOUT_HEAD(resolve_beneath);
+ATF_TC_WITHOUT_HEAD(lookup_in_rootdir);
 ATF_TC_WITHOUT_HEAD(tokenize_count);
 ATF_TC_WITHOUT_HEAD(absolutepath);
 
@@ -357,6 +358,82 @@ ATF_TC_BODY(resolve_beneath, tc) {
 	ctx.pkg_rootdir = NULL;
 }
 
+/*
+ * The users and groups are resolved in the user and group databases of the
+ * root directory, not on the host which does not necessarily know them nor
+ * with the same ids (#2179).
+ */
+static uid_t
+uid_in_root(const char *name)
+{
+	struct pkg_id_cache ids = { 0 };
+
+	return (get_uid_from_uname(name, &ids));
+}
+
+static gid_t
+gid_in_root(const char *name)
+{
+	struct pkg_id_cache ids = { 0 };
+
+	return (get_gid_from_gname(name, &ids));
+}
+
+ATF_TC_BODY(lookup_in_rootdir, tc) {
+	int rootfd;
+	FILE *f;
+
+	ATF_REQUIRE(mkdir("rootuid", 0755) == 0);
+	ATF_REQUIRE(mkdir("rootuid/etc", 0755) == 0);
+	f = fopen("rootuid/etc/passwd", "w");
+	ATF_REQUIRE(f != NULL);
+	fputs("root:*:1234:1234:root of the root directory:/root:/bin/sh\n"
+	    "pkgtestu:*:4242:4242:pkg test:/nonexistent:/bin/sh\n"
+	    "pkgbogus:*:1234abc:1234:bogus:/nonexistent:/bin/sh\n"
+	    "pkgempty:*::1234:empty:/nonexistent:/bin/sh\n", f);
+	fclose(f);
+	f = fopen("rootuid/etc/group", "w");
+	ATF_REQUIRE(f != NULL);
+	fputs("wheel:*:1234:root\n"
+	    "pkgtestg:*:4343:\n", f);
+	fclose(f);
+
+	rootfd = open("rootuid", O_DIRECTORY);
+	ATF_REQUIRE(rootfd != -1);
+	ctx.rootfd = rootfd;
+	ctx.pkg_rootdir = "rootuid";
+
+	/* the ids of the target, which the host does not know */
+	ATF_REQUIRE_EQ(4242, uid_in_root("pkgtestu"));
+	ATF_REQUIRE_EQ(4343, gid_in_root("pkgtestg"));
+	/* even for a name the host knows with another id */
+	ATF_REQUIRE_EQ(1234, uid_in_root("root"));
+	/* a malformed id is not turned into 0 nor truncated for chown(2) */
+	ATF_REQUIRE_EQ(0, uid_in_root("pkgbogus"));
+	ATF_REQUIRE_EQ(0, uid_in_root("pkgempty"));
+	/* a name missing from the databases falls back on the host */
+	ATF_REQUIRE_EQ(0, uid_in_root("pkgnosuchuser"));
+
+	/* no root directory: the host resolution is kept */
+	ctx.pkg_rootdir = NULL;
+	ATF_REQUIRE_EQ(0, uid_in_root("pkgtestu"));
+
+	/* "/" is the host: its databases are not read directly, which would
+	 * bypass the name service switch */
+	ctx.pkg_rootdir = "/";
+	ATF_REQUIRE_EQ(0, uid_in_root("pkgtestu"));
+
+	/* the databases are read through the descriptor of the root, not
+	 * through its path, which the caller moving away would break */
+	ctx.pkg_rootdir = "rootuid";
+	ATF_REQUIRE(chdir("/") == 0);
+	ATF_REQUIRE_EQ(4242, uid_in_root("pkgtestu"));
+
+	close(rootfd);
+	ctx.rootfd = -1;
+	ctx.pkg_rootdir = NULL;
+}
+
 ATF_TC_BODY(tokenize_count, tc) {
 	const char *lines[] = { "a b c", "\"a\"\"b\"", "\"a\"b'c'", "'a''b''c'",
 	    "  a  ", "\"\"\"\"" };
@@ -420,6 +497,7 @@ ATF_TP_ADD_TCS(tp)
 	ATF_TP_ADD_TC(tp, safe_relative_path);
 	ATF_TP_ADD_TC(tp, abi_from_string);
 	ATF_TP_ADD_TC(tp, resolve_beneath);
+	ATF_TP_ADD_TC(tp, lookup_in_rootdir);
 	ATF_TP_ADD_TC(tp, tokenize_count);
 	ATF_TP_ADD_TC(tp, absolutepath);
 

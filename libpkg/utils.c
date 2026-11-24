@@ -1532,31 +1532,53 @@ charv_search(charv_t *v, const char *el)
 static bool
 lookup_id_in_rootdir(const char *name, const char *database, unsigned long *id)
 {
-	char	 path[MAXPATHLEN];
-	char	*line = NULL, *end;
-	size_t	 linecap = 0, len;
-	FILE	*f;
-	bool	 found = false;
+	char		 dbfile[MAXPATHLEN], path[MAXPATHLEN];
+	char		*line = NULL, *field, *end;
+	const char	*errstr = NULL;
+	long long	 value;
+	size_t		 linecap = 0, len;
+	bool		 found = false;
+	FILE		*f;
+	int		 fd;
 
-	if (ctx.pkg_rootdir == NULL || name == NULL || name[0] == '\0')
+	/* "/" is the host: its databases are read through the name service
+	 * switch, not by pkg itself. */
+	if (ctx.pkg_rootdir == NULL || STREQ(ctx.pkg_rootdir, "/") ||
+	    name == NULL || name[0] == '\0')
 		return (false);
 
-	snprintf(path, sizeof(path), "%s/etc/%s", ctx.pkg_rootdir, database);
-	if ((f = fopen(path, "re")) == NULL)
+	snprintf(dbfile, sizeof(dbfile), "/etc/%s", database);
+	if (pkg_resolve_beneath(ctx.rootfd, dbfile, path,
+	    sizeof(path)) != EPKG_OK)
 		return (false);
+	if ((fd = openat(ctx.rootfd, RELATIVE_PATH(path),
+	    O_RDONLY | O_CLOEXEC)) == -1)
+		return (false);
+	if ((f = fdopen(fd, "r")) == NULL) {
+		close(fd);
+		return (false);
+	}
 
 	len = strlen(name);
 	while (getline(&line, &linecap, f) != -1) {
 		if (strncmp(line, name, len) != 0 || line[len] != ':')
 			continue;
 
-		/* Skip the password, then read the id. */
-		end = strchr(line, ':');
-		end = end != NULL ? strchr(end + 1, ':') : NULL;
-		if (end == NULL)
+		/* Skip the password, the id ends at the colon of the next
+		 * field. */
+		field = strchr(line, ':');
+		field = field != NULL ? strchr(field + 1, ':') : NULL;
+		if (field == NULL || (end = strchr(field + 1, ':')) == NULL)
+			continue;
+		*end = '\0';
+
+		/* (uid_t)-1 is not a valid id */
+		value = strtonum(field + 1, 0, (long long)((uid_t)-1) - 1,
+		    &errstr);
+		if (errstr != NULL)
 			continue;
 
-		*id = strtoul(end + 1, NULL, 10);
+		*id = (unsigned long)value;
 		found = true;
 		break;
 	}
