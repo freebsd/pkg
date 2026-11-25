@@ -861,7 +861,10 @@ autoremove_body()
 	atf_check touch empty.c
 	atf_check cc -shared -Wl,-soname=libfoo.so.1 empty.c -o libfoo.so.1
 	atf_check ln -s libfoo.so.1 libfoo.so
-	atf_check cc -shared -Wl,-soname=libbar.so.1 empty.c -o libbar.so.1 -lfoo -L.
+	# Reference a symbol of libfoo so that the link records the dependency
+	# even with linkers which drop unused libraries, as --as-needed does.
+	echo 'extern void foo(void); void bar(void) { foo(); }' > bar.c
+	atf_check cc -shared -Wl,-soname=libbar.so.1 bar.c -o libbar.so.1 -lfoo -L.
 	atf_check cc -shared -Wl,-soname=libfoo.so.2 empty.c -o libfoo.so.2
 
 	atf_check sh ${RESOURCEDIR}/test_subr.sh new_pkg "foo" "foo" "1"
@@ -903,6 +906,9 @@ EOF
 	atf_check \
 	    pkg -o REPOS_DIR=/dev/null -r ${TMPDIR}/target \
 	        install -qfy ${TMPDIR}/bar-1.pkg
+
+	atf_check -o match:"libfoo.so.1" \
+	    pkg -r ${TMPDIR}/target query "%B" bar
 
 	atf_check -o ignore \
 	    pkg -o REPOS_DIR=${TMPDIR}/reposconf -r ${TMPDIR}/target \
