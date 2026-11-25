@@ -12,6 +12,7 @@ tests_init \
 	info_name_only \
 	info_comment \
 	info_deps \
+	info_deps_shlib_alternatives \
 	info_rdeps \
 	info_files \
 	info_size \
@@ -415,4 +416,42 @@ raw_json_all_body() {
 	atf_check -o save:out.json pkg info -a --raw --raw-format json
 	atf_check -o ignore -e empty python3 -m json.tool out.json
 	atf_check -o inline:"2\n" python3 -c "import json; print(len(json.load(open('out.json'))))"
+}
+
+# A shared library requirement may be satisfied by several installed
+# packages: they are all listed, in a stable order, without singling out
+# any of them.
+info_deps_shlib_alternatives_body() {
+	atf_skip_on Darwin The macOS linker uses different flags
+
+	atf_check mkdir -p a b
+	echo 'void foo(void) {}' > foo.c
+	echo 'extern void foo(void); int main(void) { foo(); return 0; }' > main.c
+	atf_check cc -shared -Wl,-soname=libfoo.so.1 foo.c -o a/libfoo.so.1
+	atf_check cc -shared -Wl,-soname=libfoo.so.1 foo.c -o b/libfoo.so.1
+	atf_check ln -s libfoo.so.1 a/libfoo.so
+	atf_check cc main.c -o app -L$PWD/a -lfoo
+
+	atf_check sh ${RESOURCEDIR}/test_subr.sh new_pkg "fooA" "fooA" "1" "${TMPDIR}"
+	cat << EOF >> fooA.ucl
+files: { ${TMPDIR}/a/libfoo.so.1: "" }
+EOF
+	atf_check -o ignore pkg register -M fooA.ucl
+
+	atf_check sh ${RESOURCEDIR}/test_subr.sh new_pkg "fooB" "fooB" "1" "${TMPDIR}"
+	cat << EOF >> fooB.ucl
+files: { ${TMPDIR}/b/libfoo.so.1: "" }
+EOF
+	atf_check -o ignore pkg register -M fooB.ucl
+
+	atf_check sh ${RESOURCEDIR}/test_subr.sh new_pkg "app" "app" "1" "${TMPDIR}"
+	cat << EOF >> app.ucl
+files: { ${TMPDIR}/app: "" }
+EOF
+	atf_check -o ignore pkg register -M app.ucl
+
+	atf_check \
+	    -o match:"libfoo.so.1: provided by fooA-1, fooB-1" \
+	    -s exit:0 \
+	    pkg info -d app
 }

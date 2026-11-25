@@ -310,6 +310,48 @@ info_flags(uint64_t opt, bool remote)
 
 typedef struct pkgdb_it *(*pkgdb_query_fn)(struct pkgdb *, const char *);
 
+static int
+charp_cmp(const void *a, const void *b)
+{
+	return (strcasecmp(*(const char * const *)a, *(const char * const *)b));
+}
+
+/*
+ * Print the installed packages which satisfy a given requirement.  They are
+ * all listed on the same footing: any of them fulfils the requirement and
+ * the order in which the query returns them is not meaningful.
+ */
+static void
+print_depinfo_providers(struct pkgdb *db, const char *what,
+    pkgdb_query_fn query)
+{
+	struct pkgdb_it	*it;
+	struct pkg	*p = NULL;
+	vec_t(char *)	 names = vec_init();
+
+	it = query(db, what);
+	while (pkgdb_it_next(it, &p, PKG_LOAD_BASIC) == EPKG_OK) {
+		char *name = NULL;
+
+		pkg_asprintf(&name, "%n-%v", p, p);
+		vec_push(&names, name);
+	}
+	pkgdb_it_free(it);
+
+	if (names.len == 0) {
+		vec_free(&names);
+		return;
+	}
+
+	qsort(names.d, names.len, sizeof(char *), charp_cmp);
+	printf("\t%s: provided by ", what);
+	for (size_t i = 0; i < names.len; i++) {
+		printf("%s%s", names.d[i], i + 1 < names.len ? ", " : "\n");
+		free(names.d[i]);
+	}
+	vec_free(&names);
+}
+
 static void
 print_depinfo(struct pkgdb *db, struct pkg *pkg, bool print_tag,
     int shlib_attr, const char *shlib_label, pkgdb_query_fn shlib_query,
@@ -321,8 +363,6 @@ print_depinfo(struct pkgdb *db, struct pkg *pkg, bool print_tag,
 	bool shlibstag = false;
 	bool reqtag = false;
 	const char *buf;
-	struct pkgdb_it *it;
-	struct pkg *p = NULL;
 
 	pkg_get(pkg, shlib_attr, &sl);
 	pb = pkgbase_new(db);
@@ -335,11 +375,7 @@ print_depinfo(struct pkgdb *db, struct pkg *pkg, bool print_tag,
 				printf("%-15s:\n", shlib_label);
 			shlibstag = true;
 		}
-		it = shlib_query(db, buf);
-		while (pkgdb_it_next(it, &p, PKG_LOAD_BASIC) == EPKG_OK) {
-			pkg_printf("\t%n-%v (%S)\n", p, p, buf);
-		}
-		pkgdb_it_free(it);
+		print_depinfo_providers(db, buf, shlib_query);
 	}
 	free(slit);
 	free(sl);
@@ -352,11 +388,7 @@ print_depinfo(struct pkgdb *db, struct pkg *pkg, bool print_tag,
 				printf("%-15s:\n", provide_label);
 			reqtag = true;
 		}
-		it = provide_query(db, buf);
-		while (pkgdb_it_next(it, &p, PKG_LOAD_BASIC) == EPKG_OK) {
-			pkg_printf("\t%n-%v (%S)\n", p, p, buf);
-		}
-		pkgdb_it_free(it);
+		print_depinfo_providers(db, buf, provide_query);
 	}
 	free(slit);
 	free(sl);

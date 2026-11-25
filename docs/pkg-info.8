@@ -82,6 +82,9 @@ Show the pkg-message for matching packages.
 Display the list of packages on which
 .Ar pkg-name
 depends.
+Each shared library requirement is listed with the installed packages
+which provide it: any of them can fulfil the requirement, so none of them
+is presented as preferred.
 .It Fl E , Cm --show-name-only
 Hides the full package output and only shows the package name.
 This option is deprecated and exists only for Ports compatibility.
