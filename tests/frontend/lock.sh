@@ -9,7 +9,9 @@ tests_init \
 	lock_upgrade_available \
 	unlock_all \
 	lock_already_locked \
-	unlock_already_unlocked
+	unlock_already_unlocked \
+	lock_comment \
+	lock_comment_not_exported
 
 lock_setup() {
 	for pkg in 'png' 'sqlite3' ; do
@@ -273,4 +275,77 @@ EOF
 		-s exit:0 \
 		pkg -o REPOS_DIR="${TMPDIR}/reposconf" \
 		-o PKG_CACHEDIR="${TMPDIR}" upgrade -n
+}
+
+lock_comment_body() {
+	lock_setup
+
+	atf_check \
+	    -o match:"Locking sqlite3.*" \
+	    -e empty \
+	    -s exit:0 \
+	    pkg lock -y -c "waiting for the sqlite4 migration" sqlite3
+
+	atf_check \
+	    -o inline:"Currently locked packages:\nsqlite3-3.8.6\n\twaiting for the sqlite4 migration\n" \
+	    -e empty \
+	    -s exit:0 \
+	    pkg lock -l
+
+	# The comment of an already locked package is replaced.
+	atf_check \
+	    -o match:"sqlite3-3.8.6: already locked" \
+	    -e empty \
+	    -s exit:0 \
+	    pkg lock -y -c "another reason" sqlite3
+	atf_check \
+	    -o inline:"Currently locked packages:\nsqlite3-3.8.6\n\tanother reason\n" \
+	    -e empty \
+	    -s exit:0 \
+	    pkg lock -l
+
+	# The comment goes away with the lock.
+	atf_check \
+	    -o match:"Unlocking sqlite3.*" \
+	    -e empty \
+	    -s exit:0 \
+	    pkg unlock -y sqlite3
+	atf_check \
+	    -o match:"Locking sqlite3.*" \
+	    -e empty \
+	    -s exit:0 \
+	    pkg lock -y sqlite3
+	atf_check \
+	    -o inline:"Currently locked packages:\nsqlite3-3.8.6\n" \
+	    -e empty \
+	    -s exit:0 \
+	    pkg lock -l
+}
+
+# The lock comment describes the state of the local database, it must not be
+# recorded in a package built from the installed package.
+lock_comment_not_exported_body() {
+	atf_check touch ${TMPDIR}/lockfile
+	atf_check sh ${RESOURCEDIR}/test_subr.sh new_pkg "lck" "lck" "1"
+	cat << EOF >> lck.ucl
+files: {
+	${TMPDIR}/lockfile: "",
+}
+EOF
+	atf_check -o ignore pkg create -M lck.ucl
+	atf_check -o ignore \
+	    pkg -o REPOS_DIR=/dev/null install -qy ${TMPDIR}/lck-1.pkg
+	atf_check -o match:"Locking lck.*" -e empty -s exit:0 \
+	    pkg lock -y -c "local reason" lck
+
+	# Rebuild the package from the installed one.
+	atf_check -o ignore pkg create -o ${TMPDIR} lck
+
+	# Installing it elsewhere must not bring the comment along.
+	atf_check mkdir ${TMPDIR}/other
+	atf_check -o ignore \
+	    pkg -o REPOS_DIR=/dev/null -r ${TMPDIR}/other \
+	        install -qy ${TMPDIR}/lck-1.pkg
+	atf_check -o not-match:"lock_comment" \
+	    pkg -r ${TMPDIR}/other info -A lck
 }

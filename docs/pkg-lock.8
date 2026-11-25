@@ -24,9 +24,11 @@
 .Sh SYNOPSIS
 .Nm
 .Op Fl lqy
+.Op Fl c Ar string
 .Op Fl a
 .Nm
 .Op Fl lqy
+.Op Fl c Ar string
 .Op Fl Cgix
 .Ar pkg-name ...
 .Nm "pkg unlock"
@@ -39,11 +41,13 @@
 .Pp
 .Nm
 .Op Cm --{show-locked,quiet,yes}
+.Op Cm --comment Ar string
 .Op Cm --all
 .Nm
 .Fl -has-locked-packages
 .Nm
 .Op Cm --{show-locked,quiet,yes}
+.Op Cm --comment Ar string
 .Op Cm --{case-sensitive,glob,case-insensitive,regex}
 .Ar pkg-name ...
 .Nm "pkg unlock"
@@ -90,6 +94,16 @@ The following options are supported by
 .Bl -tag -width all
 .It Fl a , Fl -all
 Lock or unlock all installed packages.
+.It Fl c Ar string , Fl -comment Ar string
+Record
+.Ar string
+as a comment explaining why the package is locked.
+The comment is shown next to the package by
+.Fl l
+and is removed when the package is unlocked.
+An empty
+.Ar string
+removes an existing comment.
 .It Fl C , Fl -case-sensitive
 Make the standard or the regular expression
 .Fl ( x )
@@ -111,7 +125,9 @@ matching against
 .Ar pkg-name
 case insensitive.
 .It Fl l , Fl -show-locked
-Show a list of all locked packages.
+Show a list of all locked packages, with the comment given with
+.Fl c
+when there is one.
 This can be used without locking or unlocking any packages, in which
 case privileged access to the package database is not required.
 Otherwise it will be displayed after any lock or unlock operations.
