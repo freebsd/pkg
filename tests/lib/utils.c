@@ -251,6 +251,14 @@ ATF_TC_BODY(abi_from_string, tc) {
 	ATF_REQUIRE(!pkg_abi_from_string(&abi, "dragonfly:abc.4:x86:64"));
 	ATF_REQUIRE(!pkg_abi_from_string(&abi, "dragonfly:6.abc:x86:64"));
 	ATF_REQUIRE(!pkg_abi_from_string(&abi, "dragonfly:6:x86:64"));
+
+	/* Platforms which do not encode their version in their binaries
+	   report a 0.0 version: it must parse as any other one. */
+	ATF_REQUIRE(pkg_abi_from_string(&abi, "Linux:0.0:x86_64"));
+	ATF_REQUIRE_EQ(abi.os, PKG_OS_LINUX);
+	ATF_REQUIRE_EQ(abi.major, 0);
+	ATF_REQUIRE_EQ(abi.minor, 0);
+	ATF_REQUIRE_EQ(abi.arch, PKG_ARCH_AMD64);
 }
 
 ATF_TC_BODY(resolve_beneath, tc) {

@@ -227,9 +227,14 @@ pkg_abi_from_string(struct pkg_abi *abi, const char *string)
 			goto out;
 		}
 
-		abi->major = strtonum(major, 1, INT_MAX, &errstr);
+		/*
+		 * Some platforms do not encode their version in their
+		 * binaries, the ABI is then reported as 0.0 and must still
+		 * be usable.
+		 */
+		abi->major = strtonum(major, 0, INT_MAX, &errstr);
 		if (errstr == NULL)
-			abi->minor = strtonum(minor, 1, INT_MAX, &errstr);
+			abi->minor = strtonum(minor, 0, INT_MAX, &errstr);
 		if (errstr != NULL) {
 			/* strsep() consumed 'version', no wildcard possible here */
 			pkg_emit_error("Invalid version in ABI string '%s'",
