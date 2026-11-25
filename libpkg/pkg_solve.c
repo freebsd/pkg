@@ -553,7 +553,7 @@ pkg_solve_add_require_rule(struct pkg_solve_problem *problem,
 			vec_push(&problem->rules, rule);
 		} else {
 			/* Missing dependencies... */
-			free(rule);
+			pkg_solve_rule_free(rule);
 		}
 	} else {
 		/*
