@@ -440,6 +440,29 @@ pkg_repo_binary_query(struct pkg_repo *repo, const char *cond, const char *patte
 	return (pkg_repo_binary_it_new(repo, stmt, PKGDB_IT_FLAG_ONCE));
 }
 
+/*
+ * Read the names of every package of the catalogue at once: looking a package
+ * up with pkg_repo_binary_query() compiles a query joining the categories and
+ * the flavors for each of them, which makes a walk of all the installed
+ * packages crawl.
+ */
+int
+pkg_repo_binary_names(struct pkg_repo *repo, stringset_t *names)
+{
+	sqlite3		*sqlite = PRIV_GET(repo);
+	sqlite3_stmt	*stmt;
+	int		 ret;
+
+	if ((stmt = prepare_sql(sqlite, "SELECT name FROM packages")) == NULL)
+		return (EPKG_FATAL);
+
+	while ((ret = sqlite3_step(stmt)) == SQLITE_ROW)
+		stringset_add(names, (const char *)sqlite3_column_text(stmt, 0));
+	sqlite3_finalize(stmt);
+
+	return (ret == SQLITE_DONE ? EPKG_OK : EPKG_FATAL);
+}
+
 struct pkg_repo_it *
 pkg_repo_binary_shlib_provide(struct pkg_repo *repo, const char *require)
 {

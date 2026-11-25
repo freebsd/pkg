@@ -988,6 +988,15 @@ struct pkgdb_it *pkgdb_repo_which(struct pkgdb *db, const char *path,
     bool glob, c_charv_t *repos);
 
 /**
+ * Tell for each of the given package names whether it is missing from the
+ * catalogues of the enabled repositories, which are opened and closed here.
+ * \param names the package names to look for
+ * \param missing one boolean per name, allocated for the caller
+ * \return EPKG_OK unless no catalogue could be read
+ */
+int pkg_repos_missing(charv_t *names, bool **missing);
+
+/**
  * @todo Return directly the struct pkg?
  */
 struct pkgdb_it * pkgdb_query_which(struct pkgdb *db, const char *path, bool glob);

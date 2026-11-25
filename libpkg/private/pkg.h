@@ -553,6 +553,9 @@ struct pkg_repo_ops {
 	struct pkg_repo_it * (*groupsearch)(struct pkg_repo *, const char *,
 	    match_t, pkgdb_field field);
 
+	/* The names of the packages the catalogue holds */
+	int (*names)(struct pkg_repo *, stringset_t *);
+
 	int64_t (*stat)(struct pkg_repo *, pkg_stats_t type);
 
 	int (*ensure_loaded)(struct pkg_repo *repo, struct pkg *pkg, unsigned flags);

@@ -25,6 +25,7 @@
 
 static int check_deps(struct pkgdb *db, struct pkg *pkg, charv_t *dh,
     bool noinstall, sb_t *out);
+static bool installed_from_repo(struct pkg *pkg);
 static void add_missing_dep(struct pkg_dep *d, charv_t *dh, int *nbpkgs);
 static int fix_deps(struct pkgdb *db, charv_t *dh, int nbpkgs);
 static void check_summary(struct pkgdb *db, charv_t *dh);
@@ -105,6 +106,32 @@ check_deps(struct pkgdb *db, struct pkg *p, charv_t *dh, bool noinstall, sb_t *o
 	free(sl);
 
 	return (nbpkgs);
+}
+
+/*
+ * A package installed from a repository records it as an annotation; the ones
+ * which were not are not expected to be found in a repository.
+ */
+static bool
+installed_from_repo(struct pkg *p)
+{
+	struct pkg_kvlist_iterator	*kit;
+	struct pkg_kvlist		*kl = NULL;
+	struct pkg_kv			*kv;
+	bool				 found = false;
+
+	pkg_get(p, PKG_ATTR_ANNOTATIONS, &kl);
+	kit = pkg_kvlist_iterator(kl);
+	while ((kv = pkg_kvlist_next(kit)) != NULL) {
+		if (STREQ(kv->key, "repository")) {
+			found = true;
+			break;
+		}
+	}
+	free(kit);
+	free(kl);
+
+	return (found);
 }
 
 static void
@@ -223,9 +250,9 @@ void
 usage_check(void)
 {
 	fprintf(stderr,
-	    "Usage: pkg check -d[n]|-s [-qvy] -a\n");
+	    "Usage: pkg check -d[n]|-s|-m|-R [-qvy] -a\n");
 	fprintf(stderr,
-	    "       pkg check -d[n]|-s [-qvy] [-Cgix] <pattern>\n\n");
+	    "       pkg check -d[n]|-s|-m|-R [-qvy] [-Cgix] <pattern>\n\n");
 	fprintf(stderr, "For more information see 'pkg help check'.\n");
 }
 
@@ -235,6 +262,8 @@ exec_check(int argc, char **argv)
 	struct pkg *pkg = NULL;
 	struct pkgdb_it *it = NULL;
 	struct pkgdb *db = NULL;
+	charv_t rnames = vec_init();
+	charv_t rlines = vec_init();
 	sb_t msg = sb_init();
 	sb_t out = sb_init();
 	match_t match = MATCH_EXACT;
@@ -244,6 +273,7 @@ exec_check(int argc, char **argv)
 	bool dcheck = false;
 	bool checksums = false;
 	bool metadata = false;
+	bool rcheck = false;
 	bool noinstall = false;
 	int nbpkgs = 0;
 	int i, processed, total = 0;
@@ -261,6 +291,7 @@ exec_check(int argc, char **argv)
 		{ "metadata",		no_argument,	NULL,	'm' },
 		{ "dry-run",		no_argument,	NULL,	'n' },
 		{ "recompute",		no_argument,	NULL,	'r' },
+		{ "repositories",	no_argument,	NULL,	'R' },
 		{ "checksums",		no_argument,	NULL,	's' },
 		{ "verbose",		no_argument,	NULL,	'v' },
 		{ "quiet",              no_argument,    NULL,   'q' },
@@ -271,7 +302,7 @@ exec_check(int argc, char **argv)
 
 	processed = 0;
 
-	while ((ch = getopt_long(argc, argv, "+aBCdgimnqrsvxy", longopts, NULL)) != -1) {
+	while ((ch = getopt_long(argc, argv, "+aBCdgimnqRrsvxy", longopts, NULL)) != -1) {
 		switch (ch) {
 		case 'a':
 			match = MATCH_ALL;
@@ -305,6 +336,10 @@ exec_check(int argc, char **argv)
 		case 'r':
 			/* backward compatibility but do nothing */
 			break;
+		case 'R':
+			rcheck = true;
+			flags |= PKG_LOAD_ANNOTATIONS;
+			break;
 		case 's':
 			checksums = true;
 			flags |= PKG_LOAD_FILES;
@@ -326,14 +361,15 @@ exec_check(int argc, char **argv)
 	argc -= optind;
 	argv += optind;
 
-	if (!(dcheck || checksums || metadata)) {
+	if (!(dcheck || checksums || metadata || rcheck)) {
 		checksums = true;
 		flags |= PKG_LOAD_FILES;
 	}
 	/* Default to all packages if no pkg provided */
-	if (argc == 0 && (dcheck || checksums || metadata)) {
+	if (argc == 0 && (dcheck || checksums || metadata || rcheck)) {
 		match = MATCH_ALL;
-	} else if ((argc == 0 && match != MATCH_ALL) || !(dcheck || checksums || metadata)) {
+	} else if ((argc == 0 && match != MATCH_ALL) ||
+	    !(dcheck || checksums || metadata || rcheck)) {
 		usage_check();
 		return (EXIT_FAILURE);
 	}
@@ -427,6 +463,26 @@ exec_check(int argc, char **argv)
 				}
 			}
 
+			if (rcheck) {
+				const char *n, *v;
+				char *line;
+
+				if (!quiet && verbose)
+					printf(" repositories...");
+				if (installed_from_repo(pkg)) {
+					pkg_get(pkg, PKG_ATTR_NAME, &n);
+					pkg_get(pkg, PKG_ATTR_VERSION, &v);
+					if (quiet)
+						line = xstrdup(n);
+					else
+						xasprintf(&line, "%s-%s is not "
+						    "available in the repositories",
+						    n, v);
+					vec_push(&rnames, xstrdup(n));
+					vec_push(&rlines, line);
+				}
+			}
+
 			if (!quiet) {
 				if (!verbose)
 					++processed;
@@ -471,11 +527,30 @@ exec_check(int argc, char **argv)
 
 	if (!verbose)
 		progressbar_stop();
+
 	sb_fini(&msg);
 	sb_fini(&out);
 	vec_free_and_free(&dh, free);
 	pkg_free(pkg);
 	pkgdb_close(db);
+
+	if (rcheck && rnames.len > 0) {
+		bool *missing = NULL;
+
+		if (pkg_repos_missing(&rnames, &missing) != EPKG_OK) {
+			rc = EXIT_FAILURE;
+		} else {
+			vec_foreach(rnames, i) {
+				if (!missing[i])
+					continue;
+				printf("%s\n", rlines.d[i]);
+				rc = EXIT_FAILURE;
+			}
+		}
+		free(missing);
+	}
+	vec_free_and_free(&rnames, free);
+	vec_free_and_free(&rlines, free);
 
 	return (rc);
 }

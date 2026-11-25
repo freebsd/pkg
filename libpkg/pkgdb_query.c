@@ -605,3 +605,57 @@ pkgdb_all_search2(struct pkgdb *db, const char *pattern, match_t match,
 
 	return (it);
 }
+
+/*
+ * Read the catalogues of the enabled repositories and tell which of the given
+ * packages they do not hold.  They are opened apart from the package database,
+ * and read once: looking the packages up one by one would compile a query per
+ * package.
+ */
+int
+pkg_repos_missing(charv_t *names, bool **missing)
+{
+	struct pkg_repo	*r = NULL;
+	stringset_t	*present;
+	bool		*res;
+	size_t		 i;
+	bool		 opened = false;
+
+	*missing = NULL;
+	res = xcalloc(names->len, sizeof(bool));
+	for (i = 0; i < names->len; i++)
+		res[i] = true;
+
+	while (pkg_repos(&r) == EPKG_OK) {
+		if (!r->enable)
+			continue;
+		if (r->ops->open(r, R_OK) != EPKG_OK) {
+			pkg_emit_error("Repository %s cannot be opened. "
+			    "'pkg update' required", r->name);
+			continue;
+		}
+		opened = true;
+		r->ops->init(r);
+		if (r->ops->names != NULL) {
+			present = stringset_new();
+			if (r->ops->names(r, present) == EPKG_OK) {
+				for (i = 0; i < names->len; i++)
+					if (stringset_contains(present,
+					    names->d[i]))
+						res[i] = false;
+			}
+			stringset_destroy(present);
+		}
+		r->ops->close(r, false);
+	}
+
+	if (!opened) {
+		pkg_emit_error("No active remote repositories configured");
+		free(res);
+		return (EPKG_FATAL);
+	}
+
+	*missing = res;
+
+	return (EPKG_OK);
+}

@@ -33,6 +33,7 @@ struct pkg_repo_ops pkg_repo_binary_ops = {
 	.close = pkg_repo_binary_close,
 	.update = pkg_repo_binary_update,
 	.query = pkg_repo_binary_query,
+	.names = pkg_repo_binary_names,
 	.groupquery = pkg_repo_binary_groupquery,
 	.shlib_provided = pkg_repo_binary_shlib_provide,
 	.shlib_required = pkg_repo_binary_shlib_require,

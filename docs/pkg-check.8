@@ -23,24 +23,24 @@
 .Sh SYNOPSIS
 .Nm
 .Sm off
-.Fl d | Fl s | Fl m
+.Fl d | Fl s | Fl m | Fl R
 .Sm on
 .Op Fl nqvy
 .Fl a
 .Nm
 .Sm off
-.Fl d | Fl s | Fl m
+.Fl d | Fl s | Fl m | Fl R
 .Sm on
 .Op Fl nqvy
 .Op Fl Cgix
 .Ar pattern
 .Pp
 .Nm
-.Fl -{dependencies,checksums,metadata}
+.Fl -{dependencies,checksums,metadata,repositories}
 .Op Fl -{dry-run,quiet,verbose,yes}
 .Fl -all
 .Nm
-.Fl -{dependencies,checksums,metadata}
+.Fl -{dependencies,checksums,metadata,repositories}
 .Op Fl -{dry-run,quiet,verbose,yes}
 .Op Fl -{case-sensitive,glob,case-insensitive,regex}
 .Ar pattern
@@ -66,6 +66,16 @@ or
 .Fl -checksums
 detects installed packages with invalid checksums.
 An invalid checksum can be caused by data corruption or tampering.
+.Pp
+.Nm
+.Fl R
+or
+.Nm
+.Fl -repositories
+reports the installed packages which are not available in any of the enabled
+repositories: they can neither be reinstalled nor upgraded.
+The packages which were not installed from a repository are not reported,
+they are not expected to be found in one.
 .Sh OPTIONS
 These options are supported by
 .Nm :
@@ -94,6 +104,9 @@ matching with
 .Ar pattern .
 .It Fl m , Fl -metadata
 Checks for metadata discrepancies between the recorded state in pkgdb and the filesystem.
+.It Fl R , Fl -repositories
+Checks for installed packages which are no longer available in the enabled
+repositories.
 .It Fl n , Fl -dry-run
 Only check for missing dependencies, do not install them.
 .It Fl s , Fl -checksums
