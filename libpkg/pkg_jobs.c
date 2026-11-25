@@ -1570,8 +1570,11 @@ pkg_jobs_find_upgrade_candidates(struct pkg_jobs *j)
 
 	candidates = xcalloc(1, sizeof(*candidates));
 	while (pkgdb_it_next(it, &pkg, PKG_LOAD_BASIC) == EPKG_OK) {
-		if (is_upgrade_candidate(j, pkg))
+		if (is_upgrade_candidate(j, pkg)) {
+			dbg(2, "%s-%s is an upgrade candidate", pkg->name,
+			    pkg->version);
 			vec_push(candidates, pkg->id);
+		}
 	}
 	pkg_free(pkg);
 	pkgdb_it_free(it);
