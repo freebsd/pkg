@@ -1925,8 +1925,8 @@ pkg_open_root_fd(struct pkg *pkg)
 
 	path = pkg_kv_get(&pkg->annotations, "relocated");
 	if (path == NULL) {
-		if ((pkg->rootfd = dup(ctx.rootfd)) == -1) {
-			pkg_emit_errno("dup", "rootfd");
+		if ((pkg->rootfd = fcntl(ctx.rootfd, F_DUPFD_CLOEXEC, 0)) == -1) {
+			pkg_emit_errno("fcntl", "rootfd");
 			return (EPKG_FATAL);
 		}
 		return (EPKG_OK);
@@ -1934,7 +1934,7 @@ pkg_open_root_fd(struct pkg *pkg)
 
 	pkg_absolutepath(path, rootpath, sizeof(rootpath), false);
 
-	if ((pkg->rootfd = openat(ctx.rootfd, RELATIVE_PATH(rootpath), O_DIRECTORY)) >= 0 ) {
+	if ((pkg->rootfd = openat(ctx.rootfd, RELATIVE_PATH(rootpath), O_DIRECTORY | O_CLOEXEC)) >= 0 ) {
 		pkg->rootpath = xstrdup(rootpath);
 		return (EPKG_OK);
 	}
