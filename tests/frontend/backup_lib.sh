@@ -859,11 +859,13 @@ autoremove_body()
 	atf_skip_on Darwin The macOS linker uses different flags
 
 	atf_check touch empty.c
-	atf_check cc -shared -Wl,-soname=libfoo.so.1 empty.c -o libfoo.so.1
-	atf_check ln -s libfoo.so.1 libfoo.so
-	# Reference a symbol of libfoo so that the link records the dependency
-	# even with linkers which drop unused libraries, as --as-needed does.
+	# libfoo must define the symbol bar uses, otherwise a linker which
+	# drops libraries not satisfying any reference, as --as-needed does,
+	# does not record the dependency.
+	echo 'void foo(void) {}' > foo.c
 	echo 'extern void foo(void); void bar(void) { foo(); }' > bar.c
+	atf_check cc -shared -Wl,-soname=libfoo.so.1 foo.c -o libfoo.so.1
+	atf_check ln -s libfoo.so.1 libfoo.so
 	atf_check cc -shared -Wl,-soname=libbar.so.1 bar.c -o libbar.so.1 -lfoo -L.
 	atf_check cc -shared -Wl,-soname=libfoo.so.2 empty.c -o libfoo.so.2
 
