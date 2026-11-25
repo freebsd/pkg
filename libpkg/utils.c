@@ -451,7 +451,7 @@ is_valid_os_version(struct pkg *pkg)
 		return (true);
 	const char *fbsd_version;
 	const char *errstr = NULL;
-	char query_buf[512];
+	char query_buf[1024];
 	/* -1: not checked, 0: not allowed, 1: allowed */
 	static int osver_mismatch_allowed = -1;
 	bool ret;
@@ -472,6 +472,10 @@ is_valid_os_version(struct pkg *pkg)
 				if (osver_mismatch_allowed == -1) {
 					snprintf(query_buf, sizeof(query_buf),
 							"Newer FreeBSD version for package %s:\n"
+							"This package was built for a newer version of FreeBSD "
+							"than the one running: its shared libraries may not "
+							"be ABI compatible and the programs depending on them "
+							"may fail to run.\n"
 							"To ignore this error set IGNORE_OSVERSION=yes\n"
 							"- package: %d\n"
 							"- running userland: %d\n"
@@ -485,6 +489,10 @@ is_valid_os_version(struct pkg *pkg)
 			}
 			else {
 				pkg_emit_error("Newer FreeBSD version for package %s:\n"
+					"This package was built for a newer version of FreeBSD "
+					"than the one running: its shared libraries may not "
+					"be ABI compatible and the programs depending on them "
+					"may fail to run.\n"
 					"To ignore this error set IGNORE_OSVERSION=yes\n"
 					"- package: %d\n"
 					"- running kernel: %d\n",
