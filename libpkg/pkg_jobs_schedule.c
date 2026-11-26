@@ -316,6 +316,40 @@ pkg_jobs_schedule_priority(struct pkg_solved *node)
 	}
 }
 
+/*
+ * The install dependencies of a group are cyclic by construction, they are
+ * what grouped the jobs together.  The other edges still have to be honoured
+ * inside the group: the one from a package to the new packages which install
+ * the files it is about to give up tells that its files have to be released
+ * first, and the two halves of a split upgrade have to stay in order.
+ */
+static bool
+pkg_jobs_schedule_group_edge(struct pkg_solved *a, struct pkg_solved *b)
+{
+	enum pkg_jobs_schedule_graph_edge_type edge =
+	    pkg_jobs_schedule_graph_edge(a, b);
+
+	return (edge == PKG_SCHEDULE_EDGE_OLD_CONFLICT_NEW ||
+	    edge == PKG_SCHEDULE_EDGE_OLD_DEP_OLD ||
+	    edge == PKG_SCHEDULE_EDGE_SPLIT_UPGRADE);
+}
+
+/* Returns true when a job of the same group has to run before jobs->d[i]. */
+static bool
+pkg_jobs_schedule_group_pending(pkg_solved_list *jobs, bool *done, size_t i)
+{
+	for (size_t k = 0; k < jobs->len; k++) {
+		if (done[k] || k == i)
+			continue;
+		if (jobs->d[k]->scc != jobs->d[i]->scc)
+			continue;
+		if (pkg_jobs_schedule_group_edge(jobs->d[k], jobs->d[i]))
+			return (true);
+	}
+
+	return (false);
+}
+
 /* This comparison function is used as a tiebreaker in the topological sort. */
 static int
 pkg_jobs_schedule_cmp_available(struct pkg_solved *a, struct pkg_solved *b)
@@ -422,10 +456,25 @@ pkg_jobs_schedule_topological_sort(pkg_solved_list *jobs, int *group,
 			for (i = 0; i < n; i++) {
 				if (done[i] || group[i] != chosen)
 					continue;
+				if (pkg_jobs_schedule_group_pending(jobs, done,
+				    i))
+					continue;
 				if (b == -1 ||
 				    pkg_jobs_schedule_cmp_available(jobs->d[i],
 				    jobs->d[b]) > 0)
 					b = i;
+			}
+			if (b == -1) {
+				/* Only edges of the group itself remain, they
+				 * are cyclic: fall back on the heuristic. */
+				for (i = 0; i < n; i++) {
+					if (done[i] || group[i] != chosen)
+						continue;
+					if (b == -1 ||
+					    pkg_jobs_schedule_cmp_available(
+					    jobs->d[i], jobs->d[b]) > 0)
+						b = i;
+				}
 			}
 			if (b == -1)
 				break;

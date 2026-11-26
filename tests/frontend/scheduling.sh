@@ -8,7 +8,8 @@ tests_init \
 	provides_scc_contiguous \
 	provides_upgrade_cycle \
 	shlibs_order \
-	shlibs_mutual
+	shlibs_mutual \
+	file_ownership_in_cycle
 
 setup_repo()
 {
@@ -237,4 +238,65 @@ EOF
 	atf_check -o inline:"aaa\nbbb\nccc\n" sh -c \
 	    "grep -E 'Upgrading|Installing' ${TMPDIR}/out |
 	    sed -e 's/.*Upgrading //' -e 's/.*Installing //' -e 's/[- ].*//'"
+}
+
+# A file moves to a new package which, with the package giving it up, forms a
+# cycle of provides and requires: they are grouped together and the group is
+# ordered by the scheduler.  The package giving the file up must still be
+# upgraded before the one installing it, otherwise both own the file at the
+# same time and the installation fails.
+file_ownership_in_cycle_body()
+{
+	echo 1 > ${TMPDIR}/f1
+
+	atf_check -s exit:0 sh ${RESOURCEDIR}/test_subr.sh new_pkg zzz zzz 1.0
+	cat << EOF >> zzz.ucl
+provides: [libz-1]
+files: {
+	${TMPDIR}/f1: ""
+}
+EOF
+	atf_check -o ignore -e empty -s exit:0 pkg create -M ./zzz.ucl
+
+	mkdir reposconf
+	cat << EOF >> reposconf/repo.conf
+local1: {
+	url: file://${TMPDIR}
+	enabled: true
+}
+EOF
+	atf_check -o ignore -e empty -s exit:0 pkg repo .
+	atf_check -o ignore -e ignore -s exit:0 \
+	    pkg -o REPOS_DIR="${TMPDIR}/reposconf" update -f
+	atf_check -o ignore -e ignore -s exit:0 \
+	    pkg -o REPOS_DIR="${TMPDIR}/reposconf" install -y zzz
+
+	# zzz gives the file up to mmm, mmm requires what zzz provides and
+	# zzz requires what mmm provides.
+	atf_check -s exit:0 sh ${RESOURCEDIR}/test_subr.sh new_pkg zzz zzz 2.0
+	cat << EOF >> zzz.ucl
+provides: [libz-1]
+requires: [libm-1]
+EOF
+	atf_check -s exit:0 sh ${RESOURCEDIR}/test_subr.sh new_pkg mmm mmm 2.0
+	cat << EOF >> mmm.ucl
+provides: [libm-1]
+requires: [libz-1]
+files: {
+	${TMPDIR}/f1: ""
+}
+EOF
+	for p in zzz mmm; do
+		atf_check -o ignore -e empty -s exit:0 pkg create -M ./${p}.ucl
+	done
+	atf_check -o ignore -e empty -s exit:0 pkg repo .
+	atf_check -o ignore -e ignore -s exit:0 \
+	    pkg -o REPOS_DIR="${TMPDIR}/reposconf" update -f
+
+	atf_check -e ignore -s exit:0 -o save:${TMPDIR}/out \
+	    pkg -o REPOS_DIR="${TMPDIR}/reposconf" upgrade -y
+
+	atf_check -s exit:0 sh -c \
+	    "awk '/Upgrading zzz/ {z = NR} /Installing mmm/ {m = NR} END {exit !(z && m && z < m)}' \
+	    ${TMPDIR}/out"
 }
