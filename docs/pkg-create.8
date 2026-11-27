@@ -385,18 +385,50 @@ Set the option
 .Ar option-name
 to the value
 .Ar option-value .
-.It Cm file Ar sha256-hash path
-.Cm file
-entries list files included in the package.
-If the file is a regular one, such
-an entry contains its sha256 digest along with its path.
-If a packaged file is
-a link, you must use this entry's other form, as described below.
-.It Cm file Ar - path
-Same as above but for file links.
-The sha256 hash is replaced with a
-.Ar -
-(dash).
+.It Cm files Ar file-path sha256-hash
+Associative array of file paths, keyed on
+.Ar file-path
+with optional
+.Ar sha256-hash
+.Pp
+Two forms for each entry are accepted:
+.Pp
+Form 1: string value (path as the key, checksum as the value)
+.Bd -literal -offset indent
+
+files: {
+    "/usr/local/bin/mytool": "",
+    "/usr/local/bin/mytool2": "-",
+    "/usr/local/share/mytool/data": "1234abcd..."
+}
+
+.Ed
+.Pp
+A string with 2 or more characters is stored as the checksum.
+.Pp
+A shorter string like ("") or ("-") means no checksum.
+.Pp
+The checksum is optional and if missing gets created automatically.
+.Pp
+Owner, group, mode and the rest are not set in this form, see Form 2.
+.Pp
+Form 2: object value (path as the key, attributes inside)
+.Bd -literal -offset indent
+
+files: {
+    "/usr/local/bin/mytool": {
+        uname: "root",
+        gname: "root",
+        perm: "0755",
+        sum: "1234abcd...",
+        mtime: 1700000000,
+        symlink_target: "mytool-1.0",
+        fflags: 0
+    }
+}
+
+.Ed
+All attributes are optional.
 .It Cm dir Ar path
 Mimics the
 .Cm file
