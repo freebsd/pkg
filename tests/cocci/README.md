@@ -22,7 +22,7 @@ Usage
 From the pkg's source root (use _libpkg_ or _src_ as `$DIR`):
 
 	% spatch -I . -I /usr/include -I /usr/local/include -I libpkg -I src       \
-		-I external/blake2  -I external/yxml      -I external/include     \
+		-I external/blake2  -I external/include     \
 		-I external/libelf  -I external/libfetch        \
 		-I external/libsbuf -I external/libucl/include -I external/linenoise   \
 		-I external/picosat -I external/sqlite         \
